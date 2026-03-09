@@ -7,10 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Search, Filter } from 'lucide-react';
 import { LOJAS, INTERESSES, SITUACOES_SHOWROOM } from '@/types/crm';
-import type { Atendimento } from '@/types/crm';
+import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import AtendimentoCard from './AtendimentoCard';
+import AtendimentoDetail from './AtendimentoDetail';
 import AtendimentoForm from './AtendimentoForm';
 import { toast } from 'sonner';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+const KANBAN_COLUMNS: { value: SituacaoShowroom; label: string; color: string }[] = SITUACOES_SHOWROOM;
 
 const ShowroomTab = () => {
   const { user, role } = useAuth();
@@ -18,10 +22,11 @@ const ShowroomTab = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedAtendimento, setSelectedAtendimento] = useState<Atendimento | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [filterLoja, setFilterLoja] = useState('todas');
   const [filterInteresse, setFilterInteresse] = useState('todos');
-  const [filterSituacao, setFilterSituacao] = useState('todas');
   const [showFilters, setShowFilters] = useState(false);
 
   const fetchAtendimentos = useCallback(async () => {
@@ -30,7 +35,6 @@ const ShowroomTab = () => {
 
     if (filterLoja !== 'todas') query = query.eq('loja', filterLoja);
     if (filterInteresse !== 'todos') query = query.eq('interesse', filterInteresse);
-    if (filterSituacao !== 'todas') query = query.eq('situacao', filterSituacao);
     if (search.trim()) {
       query = query.or(`nome_cliente.ilike.%${search}%,telefone.ilike.%${search}%`);
     }
@@ -43,13 +47,20 @@ const ShowroomTab = () => {
       setAtendimentos((data as unknown as Atendimento[]) || []);
     }
     setLoading(false);
-  }, [filterLoja, filterInteresse, filterSituacao, search]);
+  }, [filterLoja, filterInteresse, search]);
 
   useEffect(() => { fetchAtendimentos(); }, [fetchAtendimentos]);
 
   const handleEdit = (id: string) => {
+    setDetailOpen(false);
+    setSelectedAtendimento(null);
     setEditingId(id);
     setShowForm(true);
+  };
+
+  const handleCardClick = (atendimento: Atendimento) => {
+    setSelectedAtendimento(atendimento);
+    setDetailOpen(true);
   };
 
   const handleFormClose = () => {
@@ -58,9 +69,18 @@ const ShowroomTab = () => {
     fetchAtendimentos();
   };
 
+  const handleDeleted = () => {
+    setDetailOpen(false);
+    setSelectedAtendimento(null);
+    fetchAtendimentos();
+  };
+
   if (showForm) {
     return <AtendimentoForm atendimentoId={editingId} onClose={handleFormClose} />;
   }
+
+  const getColumnAtendimentos = (situacao: SituacaoShowroom) =>
+    atendimentos.filter(a => a.situacao === situacao);
 
   return (
     <div className="space-y-4">
@@ -88,7 +108,7 @@ const ShowroomTab = () => {
 
       {showFilters && (
         <Card className="animate-fade-in">
-          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select value={filterLoja} onValueChange={setFilterLoja}>
               <SelectTrigger><SelectValue placeholder="Loja" /></SelectTrigger>
               <SelectContent>
@@ -103,13 +123,6 @@ const ShowroomTab = () => {
                 {INTERESSES.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={filterSituacao} onValueChange={setFilterSituacao}>
-              <SelectTrigger><SelectValue placeholder="Situação" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas</SelectItem>
-                {SITUACOES_SHOWROOM.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
           </CardContent>
         </Card>
       )}
@@ -118,19 +131,50 @@ const ShowroomTab = () => {
         <div className="flex justify-center py-12">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
         </div>
-      ) : atendimentos.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Nenhum atendimento encontrado
-          </CardContent>
-        </Card>
       ) : (
-        <div className="grid gap-3">
-          {atendimentos.map(a => (
-            <AtendimentoCard key={a.id} atendimento={a} onEdit={() => handleEdit(a.id)} role={role} />
-          ))}
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-4 min-w-max">
+            {KANBAN_COLUMNS.map(col => {
+              const items = getColumnAtendimentos(col.value);
+              return (
+                <div key={col.value} className="w-[280px] shrink-0 flex flex-col">
+                  {/* Column header */}
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${col.color}`}>
+                        {col.label}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-medium">{items.length}</span>
+                    </div>
+                  </div>
+                  {/* Column body */}
+                  <div className="bg-muted/30 rounded-lg p-2 flex-1 min-h-[200px] space-y-2">
+                    {items.length === 0 ? (
+                      <p className="text-xs text-muted-foreground/50 text-center py-8">Nenhum atendimento</p>
+                    ) : (
+                      items.map(a => (
+                        <AtendimentoCard
+                          key={a.id}
+                          atendimento={a}
+                          onClick={() => handleCardClick(a)}
+                        />
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
+
+      <AtendimentoDetail
+        atendimento={selectedAtendimento}
+        open={detailOpen}
+        onClose={() => { setDetailOpen(false); setSelectedAtendimento(null); }}
+        onEdit={handleEdit}
+        onDeleted={handleDeleted}
+      />
     </div>
   );
 };
