@@ -364,6 +364,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         </>
       )}
 
+      {/* Card: Observações */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Observações</CardTitle></CardHeader>
+        <CardContent>
+          <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={3} placeholder="Observações gerais sobre o atendimento..." />
+        </CardContent>
+      </Card>
+
       <div className="flex gap-3 justify-end pt-2 pb-8">
         <Button variant="outline" onClick={onClose}>Cancelar</Button>
         <Button onClick={handleSave} disabled={saving} className="gap-2">
