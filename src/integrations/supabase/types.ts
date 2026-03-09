@@ -14,16 +14,319 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      atendimentos: {
+        Row: {
+          created_at: string
+          id: string
+          interesse: string
+          loja: string
+          nome_cliente: string
+          observacoes: string | null
+          origem: string | null
+          sexo: string
+          situacao: string
+          telefone: string
+          temperatura: string | null
+          tipo_atendimento: string
+          uf: string
+          updated_at: string
+          vendedor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interesse: string
+          loja: string
+          nome_cliente: string
+          observacoes?: string | null
+          origem?: string | null
+          sexo: string
+          situacao?: string
+          telefone: string
+          temperatura?: string | null
+          tipo_atendimento: string
+          uf: string
+          updated_at?: string
+          vendedor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interesse?: string
+          loja?: string
+          nome_cliente?: string
+          observacoes?: string | null
+          origem?: string | null
+          sexo?: string
+          situacao?: string
+          telefone?: string
+          temperatura?: string | null
+          tipo_atendimento?: string
+          uf?: string
+          updated_at?: string
+          vendedor_id?: string
+        }
+        Relationships: []
+      }
+      avaliacoes: {
+        Row: {
+          atendimento_id: string
+          avaliacao_compra: number | null
+          avaliacao_consignacao: number | null
+          avaliador_id: string | null
+          created_at: string
+          id: string
+          maior_valor: number | null
+          menor_valor: number | null
+          moto_avaliacao_id: string
+          negociacao: string | null
+          observacao_avaliador: string | null
+          previsao_custos_cliente: number | null
+          previsao_custos_loja: number | null
+          quanto_pede: number | null
+          quanto_vende: number | null
+          quanto_vende_errado: number | null
+          situacao: string
+          updated_at: string
+          valor_fipe: number | null
+        }
+        Insert: {
+          atendimento_id: string
+          avaliacao_compra?: number | null
+          avaliacao_consignacao?: number | null
+          avaliador_id?: string | null
+          created_at?: string
+          id?: string
+          maior_valor?: number | null
+          menor_valor?: number | null
+          moto_avaliacao_id: string
+          negociacao?: string | null
+          observacao_avaliador?: string | null
+          previsao_custos_cliente?: number | null
+          previsao_custos_loja?: number | null
+          quanto_pede?: number | null
+          quanto_vende?: number | null
+          quanto_vende_errado?: number | null
+          situacao?: string
+          updated_at?: string
+          valor_fipe?: number | null
+        }
+        Update: {
+          atendimento_id?: string
+          avaliacao_compra?: number | null
+          avaliacao_consignacao?: number | null
+          avaliador_id?: string | null
+          created_at?: string
+          id?: string
+          maior_valor?: number | null
+          menor_valor?: number | null
+          moto_avaliacao_id?: string
+          negociacao?: string | null
+          observacao_avaliador?: string | null
+          previsao_custos_cliente?: number | null
+          previsao_custos_loja?: number | null
+          quanto_pede?: number | null
+          quanto_vende?: number | null
+          quanto_vende_errado?: number | null
+          situacao?: string
+          updated_at?: string
+          valor_fipe?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_moto_avaliacao_id_fkey"
+            columns: ["moto_avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "motos_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moto_fotos: {
+        Row: {
+          created_at: string
+          id: string
+          moto_avaliacao_id: string
+          tipo: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          moto_avaliacao_id: string
+          tipo: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          moto_avaliacao_id?: string
+          tipo?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moto_fotos_moto_avaliacao_id_fkey"
+            columns: ["moto_avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "motos_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      motos_avaliacao: {
+        Row: {
+          ano_fabricacao: string | null
+          ano_modelo: string | null
+          atendimento_id: string
+          categoria: string | null
+          cor: string | null
+          created_at: string
+          enviada_avaliacao: boolean | null
+          id: string
+          km: string | null
+          marca: string
+          modelo: string
+          observacoes: string | null
+          placa: string | null
+          updated_at: string
+        }
+        Insert: {
+          ano_fabricacao?: string | null
+          ano_modelo?: string | null
+          atendimento_id: string
+          categoria?: string | null
+          cor?: string | null
+          created_at?: string
+          enviada_avaliacao?: boolean | null
+          id?: string
+          km?: string | null
+          marca: string
+          modelo: string
+          observacoes?: string | null
+          placa?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ano_fabricacao?: string | null
+          ano_modelo?: string | null
+          atendimento_id?: string
+          categoria?: string | null
+          cor?: string | null
+          created_at?: string
+          enviada_avaliacao?: boolean | null
+          id?: string
+          km?: string | null
+          marca?: string
+          modelo?: string
+          observacoes?: string | null
+          placa?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "motos_avaliacao_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      motos_interesse: {
+        Row: {
+          ano: string | null
+          atendimento_id: string
+          created_at: string
+          estoque_moto_id: string | null
+          id: string
+          marca: string | null
+          modelo: string | null
+          origem: string
+        }
+        Insert: {
+          ano?: string | null
+          atendimento_id: string
+          created_at?: string
+          estoque_moto_id?: string | null
+          id?: string
+          marca?: string | null
+          modelo?: string | null
+          origem: string
+        }
+        Update: {
+          ano?: string | null
+          atendimento_id?: string
+          created_at?: string
+          estoque_moto_id?: string | null
+          id?: string
+          marca?: string | null
+          modelo?: string | null
+          origem?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "motos_interesse_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          loja: string | null
+          nome: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          loja?: string | null
+          nome?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          loja?: string | null
+          nome?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "vendedor" | "gestor" | "avaliador"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +453,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["vendedor", "gestor", "avaliador"],
+    },
   },
 } as const
