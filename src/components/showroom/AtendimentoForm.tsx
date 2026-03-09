@@ -318,10 +318,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               <SelectContent>{INTERESSES.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-            <Label>Observações</Label>
-            <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={3} />
-          </div>
         </CardContent>
       </Card>
 
