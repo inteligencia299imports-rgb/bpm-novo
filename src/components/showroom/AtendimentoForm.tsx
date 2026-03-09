@@ -8,11 +8,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Save, Loader2, SendHorizonal } from 'lucide-react';
-import { LOJAS, INTERESSES, SITUACOES_SHOWROOM, UFS, TIPOS_ATENDIMENTO, SEXOS } from '@/types/crm';
+import { LOJAS, INTERESSES, TEMPERATURAS, UFS, TIPOS_ATENDIMENTO, SEXOS } from '@/types/crm';
 import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
 import MotoCompraSection from './MotoCompraSection';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+// Phone mask utility
+const formatPhone = (value: string): string => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
+const unformatPhone = (value: string): string => value.replace(/\D/g, '');
 
 interface Props {
   atendimentoId: string | null;
@@ -64,7 +75,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       if (at) {
         setLoja(at.loja);
         setNomeCliente(at.nome_cliente);
-        setTelefone(at.telefone);
+        setTelefone(formatPhone(at.telefone));
         setSexo(at.sexo);
         setUf(at.uf);
         setTipoAtendimento(at.tipo_atendimento);
@@ -104,8 +115,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     load();
   }, [atendimentoId]);
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTelefone(formatPhone(e.target.value));
+  };
+
+  const isPhoneValid = unformatPhone(telefone).length === 11;
+
   const handleSave = async () => {
-    if (!nomeCliente.trim() || !telefone.trim() || !loja || !sexo || !uf || !tipoAtendimento) {
+    if (!nomeCliente.trim() || !isPhoneValid || !loja || !sexo || !uf || !tipoAtendimento) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -113,10 +130,10 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
     const atData = {
       vendedor_id: user!.id,
-      loja, nome_cliente: nomeCliente.trim(), telefone: telefone.trim(),
+      loja, nome_cliente: nomeCliente.trim(), telefone: unformatPhone(telefone),
       sexo, uf, tipo_atendimento: tipoAtendimento,
       origem: origem || null, temperatura: temperatura || null,
-      observacoes: observacoes || null, interesse, situacao,
+      observacoes: observacoes || null, interesse, situacao: isEditing ? situacao : 'em_aberto' as SituacaoShowroom,
     };
 
     let atId = atendimentoId;
@@ -180,9 +197,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Salve o atendimento primeiro');
       return;
     }
-    // mark as sent
     await supabase.from('motos_avaliacao').update({ enviada_avaliacao: true }).eq('id', motoAvaliacaoId);
-    // create avaliacao record
     const { error } = await supabase.from('avaliacoes').insert({
       atendimento_id: atendimentoId!,
       moto_avaliacao_id: motoAvaliacaoId,
@@ -200,6 +215,21 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     return <div className="flex justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
   }
 
+  const ToggleButton = ({ label, value, selected, onSelect }: { label: string; value: string; selected: string; onSelect: (v: string) => void }) => (
+    <button
+      type="button"
+      onClick={() => onSelect(value)}
+      className={cn(
+        "px-3 py-1.5 rounded-md text-sm font-medium border transition-colors",
+        selected === value
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+      )}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center gap-3">
@@ -207,24 +237,25 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         <h1 className="text-xl font-bold">{isEditing ? 'Editar Atendimento' : 'Novo Atendimento'}</h1>
       </div>
 
-      {/* Basic info */}
+      {/* Card: Dados do Cliente */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Dados do Atendimento</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Dados do Cliente</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <Label>Loja *</Label>
-            <Select value={loja} onValueChange={setLoja}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{LOJAS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
           <div className="space-y-1.5">
             <Label>Nome do Cliente *</Label>
             <Input value={nomeCliente} onChange={e => setNomeCliente(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label>Telefone *</Label>
-            <Input value={telefone} onChange={e => setTelefone(e.target.value)} />
+            <Input
+              value={telefone}
+              onChange={handlePhoneChange}
+              placeholder="(61) 99108-8509"
+              maxLength={15}
+            />
+            {telefone && !isPhoneValid && (
+              <p className="text-xs text-destructive">Telefone deve ter 11 dígitos</p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Sexo *</Label>
@@ -240,33 +271,47 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               <SelectContent>{UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label>Tipo de Atendimento *</Label>
-            <Select value={tipoAtendimento} onValueChange={setTipoAtendimento}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{TIPOS_ATENDIMENTO.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Origem</Label>
-            <Input value={origem} onChange={e => setOrigem(e.target.value)} placeholder="Ex: Instagram, Indicação..." />
+        </CardContent>
+      </Card>
+
+      {/* Card: Dados do Atendimento */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Dados do Atendimento</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label>Loja *</Label>
+              <div className="flex flex-wrap gap-2">
+                {LOJAS.map(l => (
+                  <ToggleButton key={l} label={l} value={l} selected={loja} onSelect={setLoja} />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tipo de Atendimento *</Label>
+              <Select value={tipoAtendimento} onValueChange={setTipoAtendimento}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{TIPOS_ATENDIMENTO.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Origem</Label>
+              <Input value={origem} onChange={e => setOrigem(e.target.value)} placeholder="Ex: Instagram, Indicação..." />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>Temperatura</Label>
-            <Input value={temperatura} onChange={e => setTemperatura(e.target.value)} placeholder="Frio, Morno, Quente" />
+            <div className="flex flex-wrap gap-2">
+              {TEMPERATURAS.map(t => (
+                <ToggleButton key={t} label={t} value={t} selected={temperatura} onSelect={setTemperatura} />
+              ))}
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>Interesse *</Label>
             <Select value={interesse} onValueChange={v => setInteresse(v as Interesse)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{INTERESSES.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Situação</Label>
-            <Select value={situacao} onValueChange={v => setSituacao(v as SituacaoShowroom)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{SITUACOES_SHOWROOM.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">

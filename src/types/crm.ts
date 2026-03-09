@@ -6,6 +6,7 @@ export type SituacaoAvaliacao = 'sem_avaliar' | 'em_aberto' | 'adquirida';
 export type Negociacao = 'compra' | 'consignacao';
 
 export const LOJAS = ['299i', '299s', 'Aventura', 'Ducati'] as const;
+export const TEMPERATURAS = ['Frio', 'Morno', 'Quente'] as const;
 export const INTERESSES: { value: Interesse; label: string }[] = [
   { value: 'comprar', label: 'Comprar' },
   { value: 'vender', label: 'Vender' },
@@ -27,6 +28,22 @@ export const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS',
 export const TIPOS_ATENDIMENTO = ['Presencial', 'Online'] as const;
 export const SEXOS = ['Masculino', 'Feminino', 'Outro'] as const;
 
+export const MARCAS_MOTO = [
+  'Honda', 'Yamaha', 'Suzuki', 'Kawasaki', 'BMW', 'Ducati', 'Harley-Davidson',
+  'Triumph', 'KTM', 'Royal Enfield', 'Benelli', 'MV Agusta', 'Aprilia', 'Moto Guzzi',
+  'Husqvarna', 'Indian', 'Dafra', 'Shineray', 'Haojue', 'Outra',
+] as const;
+
+export const CATEGORIAS_MOTO = [
+  'Street', 'Sport', 'Naked', 'Trail', 'Custom', 'Scooter', 'Touring',
+  'Adventure', 'Café Racer', 'Supermotard', 'Elétrica', 'Outra',
+] as const;
+
+export const CORES_MOTO = [
+  'Preto', 'Branco', 'Vermelho', 'Azul', 'Cinza', 'Prata',
+  'Amarelo', 'Verde', 'Laranja', 'Marrom', 'Dourado', 'Outra',
+] as const;
+
 export const TIPOS_FOTO = [
   'lateral_direita', 'frente', 'pneu_frontal', 'lateral_esquerda',
   'traseira', 'pneu_traseiro', 'painel', 'detalhe_1', 'detalhe_2', 'detalhe_3'
@@ -43,6 +60,34 @@ export const TIPOS_FOTO_LABELS: Record<string, string> = {
   detalhe_1: 'Detalhe 1',
   detalhe_2: 'Detalhe 2',
   detalhe_3: 'Detalhe 3',
+};
+
+// Generate year options from current year+1 down to 1990
+const currentYear = new Date().getFullYear();
+export const ANOS_MOTO = Array.from({ length: currentYear + 2 - 1990 }, (_, i) => String(currentYear + 1 - i));
+
+// Generate model options per brand (simplified - common models)
+export const MODELOS_POR_MARCA: Record<string, string[]> = {
+  Honda: ['CG 160', 'CB 300', 'CB 500F', 'CB 500X', 'CB 650R', 'CB 1000R', 'CBR 650R', 'CBR 1000RR', 'XRE 190', 'XRE 300', 'Africa Twin', 'ADV 150', 'PCX 160', 'Elite 125', 'Biz 125', 'Pop 110i', 'NXR 160 Bros', 'Outro'],
+  Yamaha: ['Factor 125', 'Factor 150', 'Fazer 250', 'MT-03', 'MT-07', 'MT-09', 'R3', 'R1', 'XTZ 150', 'XTZ 250', 'Ténéré 700', 'NMAX 160', 'Crosser 150', 'Fluo 125', 'Outro'],
+  Suzuki: ['GSX-S750', 'GSX-S1000', 'V-Strom 650', 'V-Strom 1050', 'Hayabusa', 'Burgman 400', 'Intruder 125', 'Outro'],
+  Kawasaki: ['Z400', 'Z650', 'Z900', 'Z1000', 'Ninja 400', 'Ninja 650', 'Ninja ZX-6R', 'Ninja ZX-10R', 'Versys 650', 'Versys 1000', 'Vulcan S', 'Outro'],
+  BMW: ['G 310 R', 'G 310 GS', 'F 750 GS', 'F 850 GS', 'F 900 R', 'F 900 XR', 'R 1250 GS', 'R 1250 RT', 'S 1000 R', 'S 1000 RR', 'S 1000 XR', 'R nineT', 'Outro'],
+  Ducati: ['Monster', 'Multistrada V4', 'Panigale V2', 'Panigale V4', 'Scrambler', 'Streetfighter V4', 'Diavel', 'Hypermotard', 'DesertX', 'Outro'],
+  'Harley-Davidson': ['Iron 883', 'Forty-Eight', 'Street Bob', 'Fat Boy', 'Road King', 'Street Glide', 'Road Glide', 'Sportster S', 'Pan America', 'Nightster', 'Outro'],
+  Triumph: ['Street Triple', 'Speed Triple', 'Tiger 900', 'Tiger 1200', 'Bonneville T120', 'Scrambler 900', 'Trident 660', 'Rocket 3', 'Outro'],
+  KTM: ['Duke 200', 'Duke 390', 'Duke 890', 'Duke 1290', 'Adventure 390', 'Adventure 890', 'Adventure 1290', 'RC 390', 'Outro'],
+  'Royal Enfield': ['Classic 350', 'Meteor 350', 'Hunter 350', 'Himalayan', 'Continental GT 650', 'Interceptor 650', 'Super Meteor 650', 'Outro'],
+  Benelli: ['TNT 150', 'Leoncino 250', 'Leoncino 500', 'TNT 600', 'TRK 502', 'Outro'],
+  'MV Agusta': ['Brutale', 'Dragster', 'F3', 'Superveloce', 'Outro'],
+  Aprilia: ['Tuono 660', 'RS 660', 'Tuareg 660', 'RSV4', 'Outro'],
+  'Moto Guzzi': ['V7', 'V85 TT', 'V100 Mandello', 'Outro'],
+  Husqvarna: ['Svartpilen 401', 'Vitpilen 401', 'Norden 901', 'Outro'],
+  Indian: ['Scout', 'Chief', 'Chieftain', 'Challenger', 'Pursuit', 'Outro'],
+  Dafra: ['Apache 200', 'NH 190', 'Horizon 250', 'Outro'],
+  Shineray: ['Jet 50', 'Phoenix 50', 'Worker 150', 'Outro'],
+  Haojue: ['NK 150', 'DR 160', 'DK 150', 'Outro'],
+  Outra: ['Outro'],
 };
 
 export interface Atendimento {
@@ -119,7 +164,6 @@ export interface Avaliacao {
   avaliador_id: string | null;
   created_at: string;
   updated_at: string;
-  // joined
   atendimento?: Atendimento;
   moto_avaliacao?: MotoAvaliacao;
   moto_fotos?: MotoFoto[];
