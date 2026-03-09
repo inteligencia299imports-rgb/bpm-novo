@@ -289,14 +289,18 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             </div>
             <div className="space-y-1.5">
               <Label>Tipo de Atendimento *</Label>
-              <Select value={tipoAtendimento} onValueChange={setTipoAtendimento}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{TIPOS_ATENDIMENTO.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-2">
+                {TIPOS_ATENDIMENTO.map(t => (
+                  <ToggleButton key={t} label={t} value={t} selected={tipoAtendimento} onSelect={setTipoAtendimento} />
+                ))}
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>Origem</Label>
-              <Input value={origem} onChange={e => setOrigem(e.target.value)} placeholder="Ex: Instagram, Indicação..." />
+              <Select value={origem} onValueChange={setOrigem}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
           </div>
           <div className="space-y-1.5">
