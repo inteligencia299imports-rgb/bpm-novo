@@ -51,44 +51,44 @@ const MotoVendaSection: React.FC<Props> = ({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Ano Fabricação</Label>
+            <Label>Ano Fabricação *</Label>
             <Select value={anoFab} onValueChange={setAnoFab}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Ano Modelo</Label>
+            <Label>Ano Modelo *</Label>
             <Select value={anoMod} onValueChange={setAnoMod}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Categoria</Label>
+            <Label>Categoria *</Label>
             <Select value={categoria} onValueChange={setCategoria}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>{CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Cor</Label>
+            <Label>Cor *</Label>
             <Select value={cor} onValueChange={setCor}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>{CORES_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Placa</Label>
+            <Label>Placa *</Label>
             <Input value={placa} onChange={e => setPlaca(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>KM</Label>
+            <Label>KM *</Label>
             <Input value={km} onChange={e => setKm(e.target.value)} />
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label>Observações da Moto</Label>
+          <Label>Observações da Moto *</Label>
           <Textarea value={obs} onChange={e => setObs(e.target.value)} rows={3} />
         </div>
         {motoAvaliacaoId && <PhotoUpload motoAvaliacaoId={motoAvaliacaoId} />}
