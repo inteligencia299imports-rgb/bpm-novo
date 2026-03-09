@@ -5,6 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MARCAS_MOTO, MODELOS_POR_MARCA, ANOS_MOTO, CATEGORIAS_MOTO, CORES_MOTO } from '@/types/crm';
+import type { Interesse } from '@/types/crm';
+import PhotoUpload from './PhotoUpload';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MARCAS_MOTO, MODELOS_POR_MARCA, ANOS_MOTO, CATEGORIAS_MOTO, CORES_MOTO } from '@/types/crm';
 import PhotoUpload from './PhotoUpload';
 
 interface Props {
