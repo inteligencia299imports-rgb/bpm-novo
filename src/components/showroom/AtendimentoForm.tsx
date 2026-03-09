@@ -122,8 +122,16 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
   const handleSave = async () => {
-    if (!nomeCliente.trim() || !isPhoneValid || !loja || !sexo || !uf || !tipoAtendimento) {
+    if (!nomeCliente.trim() || !isPhoneValid || !loja || !sexo || !uf || !tipoAtendimento || !origem || !temperatura || !observacoes.trim()) {
       toast.error('Preencha todos os campos obrigatórios');
+      return;
+    }
+    if ((interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'externo' && (!compraMarca || !compraModelo || !compraAno)) {
+      toast.error('Preencha todos os campos da Moto de Interesse');
+      return;
+    }
+    if ((interesse === 'vender' || interesse === 'trocar') && (!vendaMarca || !vendaModelo || !vendaAnoFab || !vendaAnoMod || !vendaCategoria || !vendaCor || !vendaPlaca.trim() || !vendaKm.trim())) {
+      toast.error('Preencha todos os campos da Moto do Cliente');
       return;
     }
     setSaving(true);
