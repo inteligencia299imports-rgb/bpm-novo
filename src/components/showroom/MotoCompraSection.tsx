@@ -1,8 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MARCAS_MOTO, MODELOS_POR_MARCA, ANOS_MOTO } from '@/types/crm';
 
 interface Props {
   origemMoto: string;
@@ -18,9 +18,11 @@ interface Props {
 const MotoCompraSection: React.FC<Props> = ({
   origemMoto, setOrigemMoto, marca, setMarca, modelo, setModelo, ano, setAno,
 }) => {
+  const modelos = marca ? (MODELOS_POR_MARCA[marca] || ['Outro']) : [];
+
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">🏍️ Moto de Interesse (Compra)</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">Moto de Interesse (Compra)</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1.5">
           <Label>Origem da Moto</Label>
@@ -38,15 +40,24 @@ const MotoCompraSection: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label>Marca</Label>
-              <Input value={marca} onChange={e => setMarca(e.target.value)} />
+              <Select value={marca} onValueChange={(v) => { setMarca(v); setModelo(''); }}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{MARCAS_MOTO.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Modelo</Label>
-              <Input value={modelo} onChange={e => setModelo(e.target.value)} />
+              <Select value={modelo} onValueChange={setModelo} disabled={!marca}>
+                <SelectTrigger><SelectValue placeholder={marca ? "Selecione" : "Selecione a marca primeiro"} /></SelectTrigger>
+                <SelectContent>{modelos.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Ano</Label>
-              <Input value={ano} onChange={e => setAno(e.target.value)} />
+              <Select value={ano} onValueChange={setAno}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
           </div>
         )}

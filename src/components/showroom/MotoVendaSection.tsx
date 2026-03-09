@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MARCAS_MOTO, MODELOS_POR_MARCA, ANOS_MOTO, CATEGORIAS_MOTO, CORES_MOTO } from '@/types/crm';
 import PhotoUpload from './PhotoUpload';
 
 interface Props {
@@ -25,34 +27,54 @@ const MotoVendaSection: React.FC<Props> = ({
   placa, setPlaca, km, setKm, obs, setObs,
   motoAvaliacaoId, atendimentoId,
 }) => {
+  const modelos = marca ? (MODELOS_POR_MARCA[marca] || ['Outro']) : [];
+
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">🔄 Moto do Cliente (Venda/Troca)</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">Moto do Cliente (Venda/Troca)</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <Label>Marca *</Label>
-            <Input value={marca} onChange={e => setMarca(e.target.value)} />
+            <Select value={marca} onValueChange={(v) => { setMarca(v); setModelo(''); }}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>{MARCAS_MOTO.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Modelo *</Label>
-            <Input value={modelo} onChange={e => setModelo(e.target.value)} />
+            <Select value={modelo} onValueChange={setModelo} disabled={!marca}>
+              <SelectTrigger><SelectValue placeholder={marca ? "Selecione" : "Selecione a marca primeiro"} /></SelectTrigger>
+              <SelectContent>{modelos.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Ano Fabricação</Label>
-            <Input value={anoFab} onChange={e => setAnoFab(e.target.value)} />
+            <Select value={anoFab} onValueChange={setAnoFab}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Ano Modelo</Label>
-            <Input value={anoMod} onChange={e => setAnoMod(e.target.value)} />
+            <Select value={anoMod} onValueChange={setAnoMod}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Categoria</Label>
-            <Input value={categoria} onChange={e => setCategoria(e.target.value)} />
+            <Select value={categoria} onValueChange={setCategoria}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>{CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Cor</Label>
-            <Input value={cor} onChange={e => setCor(e.target.value)} />
+            <Select value={cor} onValueChange={setCor}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>{CORES_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Placa</Label>
