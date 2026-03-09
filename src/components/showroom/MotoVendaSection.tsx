@@ -31,7 +31,7 @@ const MotoVendaSection: React.FC<Props> = ({
   marca, setMarca, modelo, setModelo, anoFab, setAnoFab,
   anoMod, setAnoMod, categoria, setCategoria, cor, setCor,
   placa, setPlaca, km, setKm, obs, setObs,
-  motoAvaliacaoId, atendimentoId,
+  motoAvaliacaoId, atendimentoId, interesse,
 }) => {
   const modelos = marca ? (MODELOS_POR_MARCA[marca] || ['Outro']) : [];
 
