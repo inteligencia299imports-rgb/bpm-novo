@@ -31,6 +31,20 @@ const MotoVendaSection: React.FC<Props> = ({
 }) => {
   const modelos = marca ? (MODELOS_POR_MARCA[marca] || ['Outro']) : [];
 
+  const handlePlacaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7).toUpperCase();
+    setPlaca(val);
+  };
+
+  const formatKm = (value: string): string => {
+    const digits = value.replace(/\D/g, '');
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+
+  const handleKmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setKm(formatKm(e.target.value));
+  };
+
   return (
     <Card>
       <CardHeader><CardTitle className="text-base">Moto do Cliente ({interesse === 'trocar' ? 'Troca' : 'Venda'})</CardTitle></CardHeader>
