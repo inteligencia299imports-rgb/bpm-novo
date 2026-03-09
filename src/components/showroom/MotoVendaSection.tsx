@@ -23,6 +23,8 @@ interface Props {
   obs: string; setObs: (v: string) => void;
   motoAvaliacaoId: string | null;
   atendimentoId: string | null;
+  interesse: Interesse;
+}
 }
 
 const MotoVendaSection: React.FC<Props> = ({
