@@ -41,7 +41,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [nomeCliente, setNomeCliente] = useState('');
   const [telefone, setTelefone] = useState('');
   const [sexo, setSexo] = useState('');
-  const [uf, setUf] = useState('');
+  const [uf, setUf] = useState('DF');
   const [tipoAtendimento, setTipoAtendimento] = useState('');
   const [origem, setOrigem] = useState('');
   const [temperatura, setTemperatura] = useState('');
