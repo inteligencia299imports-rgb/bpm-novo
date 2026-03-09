@@ -6,6 +6,7 @@ export type SituacaoAvaliacao = 'sem_avaliar' | 'em_aberto' | 'adquirida';
 export type Negociacao = 'compra' | 'consignacao';
 
 export const LOJAS = ['299i', '299s', 'Aventura', 'Ducati'] as const;
+export const ORIGENS = ['Instagram', 'Facebook', 'WhatsApp', 'Site', 'Indicação', 'Presencial', 'OLX', 'Outro'] as const;
 export const TEMPERATURAS = ['Frio', 'Morno', 'Quente'] as const;
 export const INTERESSES: { value: Interesse; label: string }[] = [
   { value: 'comprar', label: 'Comprar' },

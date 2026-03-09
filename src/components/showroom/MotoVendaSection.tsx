@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MARCAS_MOTO, MODELOS_POR_MARCA, ANOS_MOTO, CATEGORIAS_MOTO, CORES_MOTO } from '@/types/crm';
+import type { Interesse } from '@/types/crm';
 import PhotoUpload from './PhotoUpload';
 
 interface Props {
@@ -19,19 +20,20 @@ interface Props {
   obs: string; setObs: (v: string) => void;
   motoAvaliacaoId: string | null;
   atendimentoId: string | null;
+  interesse: Interesse;
 }
 
 const MotoVendaSection: React.FC<Props> = ({
   marca, setMarca, modelo, setModelo, anoFab, setAnoFab,
   anoMod, setAnoMod, categoria, setCategoria, cor, setCor,
   placa, setPlaca, km, setKm, obs, setObs,
-  motoAvaliacaoId, atendimentoId,
+  motoAvaliacaoId, atendimentoId, interesse,
 }) => {
   const modelos = marca ? (MODELOS_POR_MARCA[marca] || ['Outro']) : [];
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Moto do Cliente (Venda/Troca)</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">Moto do Cliente ({interesse === 'trocar' ? 'Troca' : 'Venda'})</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-1.5">

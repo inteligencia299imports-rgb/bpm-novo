@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Save, Loader2, SendHorizonal } from 'lucide-react';
-import { LOJAS, INTERESSES, TEMPERATURAS, UFS, TIPOS_ATENDIMENTO, SEXOS } from '@/types/crm';
+import { LOJAS, INTERESSES, TEMPERATURAS, ORIGENS, UFS, TIPOS_ATENDIMENTO, SEXOS } from '@/types/crm';
 import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
 import MotoCompraSection from './MotoCompraSection';
@@ -41,7 +41,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [nomeCliente, setNomeCliente] = useState('');
   const [telefone, setTelefone] = useState('');
   const [sexo, setSexo] = useState('');
-  const [uf, setUf] = useState('');
+  const [uf, setUf] = useState('DF');
   const [tipoAtendimento, setTipoAtendimento] = useState('');
   const [origem, setOrigem] = useState('');
   const [temperatura, setTemperatura] = useState('');
@@ -289,14 +289,18 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             </div>
             <div className="space-y-1.5">
               <Label>Tipo de Atendimento *</Label>
-              <Select value={tipoAtendimento} onValueChange={setTipoAtendimento}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{TIPOS_ATENDIMENTO.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-2">
+                {TIPOS_ATENDIMENTO.map(t => (
+                  <ToggleButton key={t} label={t} value={t} selected={tipoAtendimento} onSelect={setTipoAtendimento} />
+                ))}
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>Origem</Label>
-              <Input value={origem} onChange={e => setOrigem(e.target.value)} placeholder="Ex: Instagram, Indicação..." />
+              <Select value={origem} onValueChange={setOrigem}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
           </div>
           <div className="space-y-1.5">
@@ -313,10 +317,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{INTERESSES.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
             </Select>
-          </div>
-          <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-            <Label>Observações</Label>
-            <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={3} />
           </div>
         </CardContent>
       </Card>
@@ -345,6 +345,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             obs={vendaObs} setObs={setVendaObs}
             motoAvaliacaoId={motoAvaliacaoId}
             atendimentoId={atendimentoId}
+            interesse={interesse}
           />
           {isEditing && motoAvaliacaoId && !enviadaAvaliacao && (
             <div className="flex justify-end">
@@ -362,6 +363,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           )}
         </>
       )}
+
+      {/* Card: Observações */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Observações</CardTitle></CardHeader>
+        <CardContent>
+          <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={3} placeholder="Observações gerais sobre o atendimento..." />
+        </CardContent>
+      </Card>
 
       <div className="flex gap-3 justify-end pt-2 pb-8">
         <Button variant="outline" onClick={onClose}>Cancelar</Button>
