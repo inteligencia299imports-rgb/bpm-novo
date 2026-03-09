@@ -25,7 +25,6 @@ interface Props {
   atendimentoId: string | null;
   interesse: Interesse;
 }
-}
 
 const MotoVendaSection: React.FC<Props> = ({
   marca, setMarca, modelo, setModelo, anoFab, setAnoFab,
