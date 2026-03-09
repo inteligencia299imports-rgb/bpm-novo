@@ -31,6 +31,20 @@ const MotoVendaSection: React.FC<Props> = ({
 }) => {
   const modelos = marca ? (MODELOS_POR_MARCA[marca] || ['Outro']) : [];
 
+  const handlePlacaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7).toUpperCase();
+    setPlaca(val);
+  };
+
+  const formatKm = (value: string): string => {
+    const digits = value.replace(/\D/g, '');
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+
+  const handleKmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setKm(formatKm(e.target.value));
+  };
+
   return (
     <Card>
       <CardHeader><CardTitle className="text-base">Moto do Cliente ({interesse === 'trocar' ? 'Troca' : 'Venda'})</CardTitle></CardHeader>
@@ -80,11 +94,11 @@ const MotoVendaSection: React.FC<Props> = ({
           </div>
           <div className="space-y-1.5">
             <Label>Placa *</Label>
-            <Input value={placa} onChange={e => setPlaca(e.target.value)} />
+            <Input value={placa} onChange={handlePlacaChange} maxLength={7} placeholder="ABC1D23" />
           </div>
           <div className="space-y-1.5">
             <Label>KM *</Label>
-            <Input value={km} onChange={e => setKm(e.target.value)} />
+            <Input value={km} onChange={handleKmChange} placeholder="12.000" />
           </div>
         </div>
         <div className="space-y-1.5">
