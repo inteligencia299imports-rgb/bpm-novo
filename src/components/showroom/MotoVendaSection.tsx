@@ -94,11 +94,11 @@ const MotoVendaSection: React.FC<Props> = ({
           </div>
           <div className="space-y-1.5">
             <Label>Placa *</Label>
-            <Input value={placa} onChange={e => setPlaca(e.target.value)} />
+            <Input value={placa} onChange={handlePlacaChange} maxLength={7} placeholder="ABC1D23" />
           </div>
           <div className="space-y-1.5">
             <Label>KM *</Label>
-            <Input value={km} onChange={e => setKm(e.target.value)} />
+            <Input value={km} onChange={handleKmChange} placeholder="12.000" />
           </div>
         </div>
         <div className="space-y-1.5">
