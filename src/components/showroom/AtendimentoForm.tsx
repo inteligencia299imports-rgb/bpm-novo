@@ -312,7 +312,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Temperatura</Label>
+            <Label>Temperatura *</Label>
             <div className="flex flex-wrap gap-2">
               {TEMPERATURAS.map(t => (
                 <ToggleButton key={t} label={t} value={t} selected={temperatura} onSelect={setTemperatura} />
