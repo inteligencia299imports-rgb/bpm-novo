@@ -40,7 +40,7 @@ const ShowroomTab = () => {
       toast.error('Erro ao carregar atendimentos');
       console.error(error);
     } else {
-      setAtendimentos(data || []);
+      setAtendimentos((data as unknown as Atendimento[]) || []);
     }
     setLoading(false);
   }, [filterLoja, filterInteresse, filterSituacao, search]);
