@@ -345,6 +345,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             obs={vendaObs} setObs={setVendaObs}
             motoAvaliacaoId={motoAvaliacaoId}
             atendimentoId={atendimentoId}
+            interesse={interesse}
           />
           {isEditing && motoAvaliacaoId && !enviadaAvaliacao && (
             <div className="flex justify-end">
