@@ -258,7 +258,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             <Input
               value={telefone}
               onChange={handlePhoneChange}
-              placeholder="(61) 99100-0000"
+              placeholder="(61) 90000-0000"
               maxLength={15}
             />
             {telefone && !isPhoneValid && (
