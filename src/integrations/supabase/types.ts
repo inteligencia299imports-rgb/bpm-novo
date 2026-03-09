@@ -313,6 +313,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      atendimento_has_avaliacao: {
+        Args: { _atendimento_id: string }
+        Returns: boolean
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
