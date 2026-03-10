@@ -108,32 +108,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               {format(new Date(atendimento.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
-        </div>
-        <div className="flex gap-2 pl-11">
-          <Button size="sm" variant="outline" className="gap-1.5 flex-1 sm:flex-none" onClick={() => onEdit(atendimento.id)}>
-            <Edit className="h-4 w-4" /> Editar
+          <Button size="icon" variant="outline" className="shrink-0" onClick={() => onEdit(atendimento.id)}>
+            <Edit className="h-4 w-4" />
           </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" className="gap-1.5 flex-1 sm:flex-none">
-                <Trash2 className="h-4 w-4" /> Excluir
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir atendimento?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta ação não pode ser desfeita. O atendimento de <strong>{atendimento.nome_cliente}</strong> e todos os dados relacionados serão permanentemente excluídos.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       </div>
 
@@ -161,7 +138,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 className="w-full gap-1.5 text-green-600 border-green-600 hover:bg-green-50"
                 onClick={() => window.open(whatsappUrl, '_blank')}
               >
-                <MessageCircle className="h-4 w-4" /> Abrir WhatsApp
+                <MessageCircle className="h-4 w-4" /> WhatsApp
               </Button>
             </CardContent>
           </Card>
@@ -257,6 +234,31 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               </CardContent>
             </Card>
           )}
+
+          {/* Excluir */}
+          <div className="md:col-span-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="w-full gap-1.5">
+                  <Trash2 className="h-4 w-4" /> Excluir Atendimento
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir atendimento?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação não pode ser desfeita. O atendimento de <strong>{atendimento.nome_cliente}</strong> e todos os dados relacionados serão permanentemente excluídos.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </ScrollArea>
     </div>
