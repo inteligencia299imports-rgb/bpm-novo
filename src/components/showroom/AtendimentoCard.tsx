@@ -1,9 +1,8 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, MapPin, ShoppingCart, Tag, Bike } from 'lucide-react';
+import { Phone, MapPin, Tag, Bike } from 'lucide-react';
 import type { Atendimento } from '@/types/crm';
-import { INTERESSES } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -44,7 +43,6 @@ const getMotoLabel = (atendimento: Props['atendimento']): string | null => {
 };
 
 const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
-  const int = INTERESSES.find(i => i.value === atendimento.interesse);
   const motoLabel = getMotoLabel(atendimento);
 
   return (
@@ -73,10 +71,6 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
               <span className="flex items-center gap-1">
                 <MapPin className="h-3 w-3" />
                 {atendimento.uf}
-              </span>
-              <span className="flex items-center gap-1">
-                <ShoppingCart className="h-3 w-3" />
-                {int?.label}
               </span>
               <span className="flex items-center gap-1">
                 <Tag className="h-3 w-3" />
