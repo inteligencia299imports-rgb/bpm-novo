@@ -1,0 +1,1 @@
+ALTER TABLE public.avaliacoes ADD COLUMN tipo_aquisicao text DEFAULT NULL;
