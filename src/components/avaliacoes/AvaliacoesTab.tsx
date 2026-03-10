@@ -104,7 +104,8 @@ const AvaliacoesTab = () => {
           <div className="flex gap-4 min-w-max">
             {KANBAN_COLUMNS.map(col => {
               const items = getColumnAvaliacoes(col.value);
-              const colHex = col.value === 'sem_avaliar' ? '#6B7280' : col.value === 'em_aberto' ? '#F2C94C' : '#27AE60';
+              const colHexMap: Record<string, string> = { sem_avaliar: '#6B7280', em_aberto: '#F2C94C', adquirida: '#27AE60', dispensada: '#FF3B30' };
+              const colHex = colHexMap[col.value] || '#6B7280';
               return (
                 <div key={col.value} className="w-[320px] shrink-0 flex flex-col">
                   {/* Column header */}
