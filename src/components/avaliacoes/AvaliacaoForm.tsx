@@ -514,7 +514,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-sm font-medium text-foreground">Valor de Fechamento (R$)</label>
+              <label className="text-sm font-medium text-foreground">Valor de Fechamento (R$) <span className="text-destructive">*</span></label>
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                 <Input
@@ -527,7 +527,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground">Tipo de Aquisição</label>
+              <label className="text-sm font-medium text-foreground">Tipo de Aquisição <span className="text-destructive">*</span></label>
               <div className="flex gap-3 mt-2">
                 <Button
                   variant={tipoSelecionado === 'propria' ? 'default' : 'outline'}
@@ -545,13 +545,24 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 </Button>
               </div>
             </div>
-            <Button
-              className="w-full"
-              onClick={handleSaveAquisicao}
-              disabled={savingAquisicao}
-            >
-              {savingAquisicao ? 'Salvando...' : 'Salvar'}
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); }}
+              >
+                Voltar
+              </Button>
+              {valorFechamentoAquisicao.trim() !== '' && parseCurrencyToNumber(valorFechamentoAquisicao) !== null && parseCurrencyToNumber(valorFechamentoAquisicao)! > 0 && tipoSelecionado && (
+                <Button
+                  className="flex-1"
+                  onClick={handleSaveAquisicao}
+                  disabled={savingAquisicao}
+                >
+                  {savingAquisicao ? 'Salvando...' : 'Salvar'}
+                </Button>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -35,6 +35,11 @@ const STATUS_HEX: Record<string, string> = {
   dispensada: '#FF3B30',
 };
 
+const getTipoAquisicaoLabel = (tipo: string | null) => {
+  if (!tipo) return null;
+  return tipo === 'propria' ? 'Própria' : 'Consignada';
+};
+
 const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
   const moto = avaliacao.moto_avaliacao;
   const at = avaliacao.atendimento;
