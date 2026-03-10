@@ -259,3 +259,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               </AlertDialogContent>
             </AlertDialog>
           </div>
+        </div>
+      </ScrollArea>
+    </div>
+  );
+};
+
+export default AtendimentoDetail;
