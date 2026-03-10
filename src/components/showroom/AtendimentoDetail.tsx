@@ -272,6 +272,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </div>
         </div>
       </ScrollArea>
+
+      {/* Dialog de Fotos */}
+      <Dialog open={!!photoMotoId} onOpenChange={(o) => !o && setPhotoMotoId(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Fotos da Moto</DialogTitle>
+          </DialogHeader>
+          {photoMotoId && <PhotoUpload motoAvaliacaoId={photoMotoId} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
