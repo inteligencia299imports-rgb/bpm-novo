@@ -370,10 +370,55 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   <p className="text-sm mt-1">{moto.observacoes}</p>
                 </div>
               )}
-              <div className="flex gap-2 mt-3">
+              <div className="flex gap-2 mt-3 flex-wrap">
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowPhotosDialog(true)}>
                   <Camera className="h-4 w-4" /> Ver Fotos {fotos.length > 0 && `(${fotos.length})`}
                 </Button>
+                <DocumentUpload
+                  label="CNH"
+                  currentUrl={cnhUrl}
+                  bucketPath={`docs/${at?.id}/cnh`}
+                  onUploaded={async (url) => {
+                    await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', at?.id);
+                    setCnhUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', at?.id);
+                    setCnhUrl(null);
+                  }}
+                />
+                <DocumentUpload
+                  label="CRLV"
+                  currentUrl={crlvUrl}
+                  bucketPath={`docs/${moto?.id}/crlv`}
+                  onUploaded={async (url) => {
+                    await supabase.from('motos_avaliacao').update({ crlv_url: url } as any).eq('id', moto?.id);
+                    setCrlvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('motos_avaliacao').update({ crlv_url: null } as any).eq('id', moto?.id);
+                    setCrlvUrl(null);
+                  }}
+                />
+                {cnhUrl && crlvUrl && !consultaRealizada && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={async () => {
+                      await supabase.from('motos_avaliacao').update({ consulta_realizada: true } as any).eq('id', moto?.id);
+                      setConsultaRealizada(true);
+                      toast.success('Consulta documentacional realizada com sucesso!');
+                    }}
+                  >
+                    <Search className="h-4 w-4" /> Solicitar Consulta
+                  </Button>
+                )}
+                {consultaRealizada && (
+                  <Badge variant="secondary" className="text-xs bg-green-500/15 text-green-600 gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Consulta Realizada
+                  </Badge>
+                )}
               </div>
             </CardContent>
           </Card>
