@@ -24,7 +24,8 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
   const sit = SITUACOES_AVALIACAO.find(s => s.value === avaliacao.situacao);
   const moto = avaliacao.moto_avaliacao;
   const at = avaliacao.atendimento;
-  const statusColor = avaliacao.situacao === 'sem_avaliar' ? '#6B7280' : avaliacao.situacao === 'em_aberto' ? '#F2C94C' : '#27AE60';
+  const statusColorMap: Record<string, string> = { sem_avaliar: '#6B7280', em_aberto: '#F2C94C', adquirida: '#27AE60', dispensada: '#FF3B30' };
+  const statusColor = statusColorMap[avaliacao.situacao] || '#6B7280';
 
   return (
     <div
