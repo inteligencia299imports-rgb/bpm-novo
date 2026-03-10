@@ -6,14 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, Phone } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
-import type { SituacaoAvaliacao, Negociacao, MotoFoto } from '@/types/crm';
+import type { SituacaoAvaliacao, MotoFoto } from '@/types/crm';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -43,6 +42,27 @@ const formatCurrency = (value: number | null) => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+// Currency mask: formats input as "1.234,56"
+const applyCurrencyMask = (value: string): string => {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '';
+  const num = parseInt(digits, 10);
+  const formatted = (num / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatted;
+};
+
+const parseCurrencyToNumber = (value: string): number | null => {
+  if (!value) return null;
+  const cleaned = value.replace(/\./g, '').replace(',', '.');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+};
+
+const numberToCurrencyMask = (value: number | null): string => {
+  if (value === null || value === undefined) return '';
+  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const { user, role } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -53,7 +73,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const canEdit = role === 'avaliador' || role === 'gestor' || role === 'vendedor';
 
-  // form fields
+  // form fields (stored as masked strings)
   const [valorFipe, setValorFipe] = useState('');
   const [menorValor, setMenorValor] = useState('');
   const [maiorValor, setMaiorValor] = useState('');
@@ -64,9 +84,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [avalCompra, setAvalCompra] = useState('');
   const [prevCustosLoja, setPrevCustosLoja] = useState('');
   const [prevCustosCliente, setPrevCustosCliente] = useState('');
-  const [negociacao, setNegociacao] = useState<Negociacao | ''>('');
   const [obsAvaliador, setObsAvaliador] = useState('');
-  const [situacao, setSituacao] = useState<SituacaoAvaliacao>('sem_avaliar');
 
   useEffect(() => {
     const load = async () => {
@@ -82,19 +100,17 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
       if (data) {
         setAvaliacao({ ...data, atendimento: data.atendimentos, moto_avaliacao: data.motos_avaliacao });
-        setValorFipe(data.valor_fipe?.toString() || '');
-        setMenorValor(data.menor_valor?.toString() || '');
-        setMaiorValor(data.maior_valor?.toString() || '');
-        setQuantoPede(data.quanto_pede?.toString() || '');
-        setQuantoVende(data.quanto_vende?.toString() || '');
-        setQuantoVendeErrado(data.quanto_vende_errado?.toString() || '');
-        setAvalConsig(data.avaliacao_consignacao?.toString() || '');
-        setAvalCompra(data.avaliacao_compra?.toString() || '');
-        setPrevCustosLoja(data.previsao_custos_loja?.toString() || '');
-        setPrevCustosCliente(data.previsao_custos_cliente?.toString() || '');
-        setNegociacao((data.negociacao as Negociacao) || '');
+        setValorFipe(numberToCurrencyMask(data.valor_fipe));
+        setMenorValor(numberToCurrencyMask(data.menor_valor));
+        setMaiorValor(numberToCurrencyMask(data.maior_valor));
+        setQuantoPede(numberToCurrencyMask(data.quanto_pede));
+        setQuantoVende(numberToCurrencyMask(data.quanto_vende));
+        setQuantoVendeErrado(numberToCurrencyMask(data.quanto_vende_errado));
+        setAvalConsig(numberToCurrencyMask(data.avaliacao_consignacao));
+        setAvalCompra(numberToCurrencyMask(data.avaliacao_compra));
+        setPrevCustosLoja(numberToCurrencyMask(data.previsao_custos_loja));
+        setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
         setObsAvaliador(data.observacao_avaliador || '');
-        setSituacao(data.situacao as SituacaoAvaliacao);
 
         if (data.moto_avaliacao_id) {
           const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', data.moto_avaliacao_id);
@@ -106,50 +122,56 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     load();
   }, [avaliacaoId]);
 
+  const handleCurrencyChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setter(applyCurrencyMask(e.target.value));
+  };
+
+  const allFieldsFilled = () => {
+    return [valorFipe, menorValor, maiorValor, quantoPede, quantoVende, quantoVendeErrado, avalConsig, avalCompra, prevCustosLoja, prevCustosCliente, obsAvaliador].every(v => v.trim() !== '');
+  };
+
   const handleSave = async () => {
+    if (!allFieldsFilled()) {
+      toast.error('Preencha todos os campos');
+      return;
+    }
     setSaving(true);
-    const toNum = (v: string) => v ? parseFloat(v) : null;
-    const { error } = await supabase.from('avaliacoes').update({
-      valor_fipe: toNum(valorFipe),
-      menor_valor: toNum(menorValor),
-      maior_valor: toNum(maiorValor),
-      quanto_pede: toNum(quantoPede),
-      quanto_vende: toNum(quantoVende),
-      quanto_vende_errado: toNum(quantoVendeErrado),
-      avaliacao_consignacao: toNum(avalConsig),
-      avaliacao_compra: toNum(avalCompra),
-      previsao_custos_loja: toNum(prevCustosLoja),
-      previsao_custos_cliente: toNum(prevCustosCliente),
-      negociacao: negociacao || null,
+    const updateData: any = {
+      valor_fipe: parseCurrencyToNumber(valorFipe),
+      menor_valor: parseCurrencyToNumber(menorValor),
+      maior_valor: parseCurrencyToNumber(maiorValor),
+      quanto_pede: parseCurrencyToNumber(quantoPede),
+      quanto_vende: parseCurrencyToNumber(quantoVende),
+      quanto_vende_errado: parseCurrencyToNumber(quantoVendeErrado),
+      avaliacao_consignacao: parseCurrencyToNumber(avalConsig),
+      avaliacao_compra: parseCurrencyToNumber(avalCompra),
+      previsao_custos_loja: parseCurrencyToNumber(prevCustosLoja),
+      previsao_custos_cliente: parseCurrencyToNumber(prevCustosCliente),
       observacao_avaliador: obsAvaliador || null,
-      situacao,
       avaliador_id: user!.id,
-    }).eq('id', avaliacaoId);
+    };
+
+    const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
 
     if (error) {
       toast.error('Erro ao salvar avaliação');
     } else {
       toast.success('Avaliação salva!');
       setShowEvalDialog(false);
-      // Reload data
-      setAvaliacao((prev: any) => ({
-        ...prev,
-        valor_fipe: toNum(valorFipe),
-        menor_valor: toNum(menorValor),
-        maior_valor: toNum(maiorValor),
-        quanto_pede: toNum(quantoPede),
-        quanto_vende: toNum(quantoVende),
-        quanto_vende_errado: toNum(quantoVendeErrado),
-        avaliacao_consignacao: toNum(avalConsig),
-        avaliacao_compra: toNum(avalCompra),
-        previsao_custos_loja: toNum(prevCustosLoja),
-        previsao_custos_cliente: toNum(prevCustosCliente),
-        negociacao: negociacao || null,
-        observacao_avaliador: obsAvaliador || null,
-        situacao,
-      }));
+      setAvaliacao((prev: any) => ({ ...prev, ...updateData }));
     }
     setSaving(false);
+  };
+
+  const handleStatusChange = async (newStatus: SituacaoAvaliacao) => {
+    const { error } = await supabase.from('avaliacoes').update({ situacao: newStatus }).eq('id', avaliacaoId);
+    if (error) {
+      toast.error('Erro ao alterar status');
+    } else {
+      const label = SITUACOES_AVALIACAO.find(s => s.value === newStatus)?.label;
+      toast.success(`Status alterado para ${label}`);
+      setAvaliacao((prev: any) => ({ ...prev, situacao: newStatus }));
+    }
   };
 
   if (loading) {
@@ -159,6 +181,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const moto = avaliacao?.moto_avaliacao;
   const at = avaliacao?.atendimento;
   const sit = SITUACOES_AVALIACAO.find(s => s.value === avaliacao?.situacao);
+  const interesse = at?.interesse;
 
   const hasEvaluation = !!(avaliacao?.valor_fipe || avaliacao?.avaliacao_compra || avaliacao?.avaliacao_consignacao || avaliacao?.quanto_pede);
 
@@ -178,14 +201,40 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     ) : null
   );
 
-  const getInteresseLabel = (interesse: string) => {
-    switch (interesse) {
+  const getInteresseLabel = (int: string) => {
+    switch (int) {
       case 'comprar': return 'Comprar';
       case 'vender': return 'Vender';
       case 'trocar': return 'Trocar';
-      default: return interesse;
+      default: return int;
     }
   };
+
+  // Status buttons config - filter out current status
+  // "Adquirida" not available if interesse is "trocar"
+  const statusButtons = [
+    { value: 'em_aberto' as SituacaoAvaliacao, label: 'Em Aberto', icon: <Clock className="h-4 w-4" />, color: '#F2C94C' },
+    { value: 'adquirida' as SituacaoAvaliacao, label: 'Adquirida', icon: <CheckCircle className="h-4 w-4" />, color: '#27AE60' },
+    { value: 'dispensada' as SituacaoAvaliacao, label: 'Dispensada', icon: <XCircle className="h-4 w-4" />, color: '#FF3B30' },
+  ]
+    .filter(b => b.value !== avaliacao?.situacao)
+    .filter(b => !(b.value === 'adquirida' && interesse === 'trocar'));
+
+  const CurrencyField = ({ label, value, onChange }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
+    <div className="space-y-1.5">
+      <Label>{label} <span className="text-destructive">*</span></Label>
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+        <Input
+          value={value}
+          onChange={onChange}
+          className="pl-10"
+          placeholder="0,00"
+          inputMode="numeric"
+        />
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -313,8 +362,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     <InfoItem label="Aval. Compra" value={formatCurrency(avaliacao?.avaliacao_compra)} />
                     <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
                     <InfoItem label="Custos Cliente" value={formatCurrency(avaliacao?.previsao_custos_cliente)} />
-                    <InfoItem label="Negociação" value={avaliacao?.negociacao === 'compra' ? 'Compra' : avaliacao?.negociacao === 'consignacao' ? 'Consignação' : null} />
-                    <InfoItem label="Situação" value={sit?.label} />
                   </div>
                   {avaliacao?.observacao_avaliador && (
                     <div className="mt-2">
@@ -340,6 +387,25 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               )}
             </CardContent>
           </Card>
+
+          {/* Status Actions */}
+          <div className="md:col-span-2 flex flex-col items-center gap-3">
+            <div className="flex gap-2 flex-wrap justify-center">
+              {statusButtons.map(btn => (
+                <Button
+                  key={btn.value}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  style={{ borderColor: btn.color, color: btn.color }}
+                  onClick={() => handleStatusChange(btn.value)}
+                >
+                  {btn.icon}
+                  {btn.label}
+                </Button>
+              ))}
+            </div>
+          </div>
         </div>
       </ScrollArea>
 
@@ -352,66 +418,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            <div className="space-y-1.5">
-              <Label>Valor FIPE</Label>
-              <Input type="number" value={valorFipe} onChange={e => setValorFipe(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Menor Valor</Label>
-              <Input type="number" value={menorValor} onChange={e => setMenorValor(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Maior Valor</Label>
-              <Input type="number" value={maiorValor} onChange={e => setMaiorValor(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Quanto Pede?</Label>
-              <Input type="number" value={quantoPede} onChange={e => setQuantoPede(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Quanto Vende?</Label>
-              <Input type="number" value={quantoVende} onChange={e => setQuantoVende(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Quanto Vende (se der errado)?</Label>
-              <Input type="number" value={quantoVendeErrado} onChange={e => setQuantoVendeErrado(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Avaliação Consignação</Label>
-              <Input type="number" value={avalConsig} onChange={e => setAvalConsig(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Avaliação Compra</Label>
-              <Input type="number" value={avalCompra} onChange={e => setAvalCompra(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Previsão Custos Loja</Label>
-              <Input type="number" value={prevCustosLoja} onChange={e => setPrevCustosLoja(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Previsão Custos Cliente</Label>
-              <Input type="number" value={prevCustosCliente} onChange={e => setPrevCustosCliente(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Negociação</Label>
-              <Select value={negociacao} onValueChange={v => setNegociacao(v as Negociacao)}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="compra">Compra</SelectItem>
-                  <SelectItem value="consignacao">Consignação</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Situação</Label>
-              <Select value={situacao} onValueChange={v => setSituacao(v as SituacaoAvaliacao)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{SITUACOES_AVALIACAO.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
+            <CurrencyField label="Valor FIPE" value={valorFipe} onChange={handleCurrencyChange(setValorFipe)} />
+            <CurrencyField label="Menor Valor" value={menorValor} onChange={handleCurrencyChange(setMenorValor)} />
+            <CurrencyField label="Maior Valor" value={maiorValor} onChange={handleCurrencyChange(setMaiorValor)} />
+            <CurrencyField label="Quanto Pede?" value={quantoPede} onChange={handleCurrencyChange(setQuantoPede)} />
+            <CurrencyField label="Quanto Vende?" value={quantoVende} onChange={handleCurrencyChange(setQuantoVende)} />
+            <CurrencyField label="Quanto Vende (se der errado)?" value={quantoVendeErrado} onChange={handleCurrencyChange(setQuantoVendeErrado)} />
+            <CurrencyField label="Avaliação Consignação" value={avalConsig} onChange={handleCurrencyChange(setAvalConsig)} />
+            <CurrencyField label="Avaliação Compra" value={avalCompra} onChange={handleCurrencyChange(setAvalCompra)} />
+            <CurrencyField label="Previsão Custos Loja" value={prevCustosLoja} onChange={handleCurrencyChange(setPrevCustosLoja)} />
+            <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Observação do Avaliador</Label>
-              <Textarea value={obsAvaliador} onChange={e => setObsAvaliador(e.target.value)} rows={3} />
+              <Label>Observação do Avaliador <span className="text-destructive">*</span></Label>
+              <Textarea value={obsAvaliador} onChange={e => setObsAvaliador(e.target.value)} rows={3} placeholder="Observações sobre a avaliação..." />
             </div>
           </div>
           <div className="flex gap-3 justify-end pt-4">
