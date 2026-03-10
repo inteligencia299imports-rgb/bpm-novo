@@ -65,7 +65,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [cnhUrl, setCnhUrl] = useState<string | null>(atendimento.cnh_url || null);
   const [crlvUrls, setCrlvUrls] = useState<Record<string, string | null>>({});
-  const [valorPopup, setValorPopup] = useState<{ valorSinal: string; valorVenda: string } | null>(null);
+  const [valorPopup, setValorPopup] = useState<{ valorSinal: string; valorVenda: string; valorFechamento: string } | null>(null);
   const [savingValor, setSavingValor] = useState(false);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
