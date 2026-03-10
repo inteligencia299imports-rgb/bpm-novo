@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send } from 'lucide-react';
 import type { Atendimento, MotoInteresse, MotoAvaliacao } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES } from '@/types/crm';
@@ -12,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import PhotoUpload from './PhotoUpload';
 
 interface Props {
   atendimento: Atendimento;
