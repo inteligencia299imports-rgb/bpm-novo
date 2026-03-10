@@ -545,20 +545,22 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 </Button>
               </div>
             </div>
-            <div className="flex gap-3">
+            <Separator />
+            <div className="flex gap-3 pt-2">
               <Button
-                variant="outline"
-                className="flex-1"
+                variant="secondary"
+                className="flex-1 gap-2"
                 onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); }}
               >
-                Voltar
+                <ArrowLeft className="h-4 w-4" /> Voltar
               </Button>
               {valorFechamentoAquisicao.trim() !== '' && parseCurrencyToNumber(valorFechamentoAquisicao) !== null && parseCurrencyToNumber(valorFechamentoAquisicao)! > 0 && tipoSelecionado && (
                 <Button
-                  className="flex-1"
+                  className="flex-1 gap-2"
                   onClick={handleSaveAquisicao}
                   disabled={savingAquisicao}
                 >
+                  {savingAquisicao ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   {savingAquisicao ? 'Salvando...' : 'Salvar'}
                 </Button>
               )}
