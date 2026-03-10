@@ -51,7 +51,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [fotos, setFotos] = useState<MotoFoto[]>([]);
   const [showEvalDialog, setShowEvalDialog] = useState(false);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
-  const canEdit = role === 'avaliador' || role === 'gestor';
+  const canEdit = role === 'avaliador' || role === 'gestor' || role === 'vendedor';
 
   // form fields
   const [valorFipe, setValorFipe] = useState('');
