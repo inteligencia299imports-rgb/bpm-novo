@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search } from 'lucide-react';
 import type { Atendimento, MotoInteresse, MotoAvaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES } from '@/types/crm';
@@ -43,6 +44,18 @@ const formatCurrency = (value: number | null) => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+const formatCurrencyInput = (value: string): string => {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '';
+  const num = parseInt(digits, 10);
+  return (num / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const parseCurrencyInput = (value: string): number => {
+  const digits = value.replace(/\D/g, '');
+  return parseInt(digits || '0', 10) / 100;
+};
+
 const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted }) => {
   const [motosInteresse, setMotosInteresse] = useState<MotoInteresse[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<MotoAvaliacao[]>([]);
@@ -52,6 +65,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [cnhUrl, setCnhUrl] = useState<string | null>(atendimento.cnh_url || null);
   const [crlvUrls, setCrlvUrls] = useState<Record<string, string | null>>({});
+  const [valorPopup, setValorPopup] = useState<{ type: 'sinal' | 'vendido'; value: string } | null>(null);
+  const [savingValor, setSavingValor] = useState(false);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
@@ -121,6 +136,32 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     const number = digits.startsWith('55') ? digits : `55${digits}`;
     return `https://wa.me/${number}`;
   })();
+
+  const handleStatusChange = async (value: SituacaoShowroom, label: string, extraData?: Record<string, any>) => {
+    const updateData: any = { situacao: value, ...extraData };
+    const { error } = await supabase.from('atendimentos').update(updateData).eq('id', atendimento.id);
+    if (error) {
+      toast.error('Erro ao alterar status');
+    } else {
+      toast.success(`Status alterado para ${label}`);
+      onDeleted();
+    }
+  };
+
+  const handleSaveValor = async () => {
+    if (!valorPopup) return;
+    const numValue = parseCurrencyInput(valorPopup.value);
+    if (numValue <= 0) {
+      toast.error('Informe um valor válido');
+      return;
+    }
+    setSavingValor(true);
+    const field = valorPopup.type === 'sinal' ? 'valor_sinal' : 'valor_venda';
+    const label = valorPopup.type === 'sinal' ? 'Sinal' : 'Vendido';
+    await handleStatusChange(valorPopup.type === 'sinal' ? 'sinal' : 'vendido', label, { [field]: numValue });
+    setSavingValor(false);
+    setValorPopup(null);
+  };
 
   const isAvaliada = (motoId: string) => {
     const av = avaliacoes[motoId];
@@ -375,6 +416,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 { value: 'perdido' as SituacaoShowroom, label: 'Perdido', icon: <XCircle className="h-4 w-4" />, color: '#FF3B30' },
               ]
                 .filter(b => b.value !== atendimento.situacao)
+                .filter(b => {
+                  // Quando interesse é "vender", oculta Sinal e Vendido
+                  if (atendimento.interesse === 'vender' && (b.value === 'sinal' || b.value === 'vendido')) {
+                    return false;
+                  }
+                  return true;
+                })
                 .map(btn => (
                   <Button
                     key={btn.value}
@@ -382,13 +430,28 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     size="sm"
                     className="gap-2"
                     style={{ borderColor: btn.color, color: btn.color }}
-                    onClick={async () => {
-                      const { error } = await supabase.from('atendimentos').update({ situacao: btn.value }).eq('id', atendimento.id);
-                      if (error) {
-                        toast.error('Erro ao alterar status');
+                    onClick={() => {
+                      if (btn.value === 'sinal' || btn.value === 'vendido') {
+                        // Para troca + vendido: verificar avaliação, CNH e CRLV
+                        if (btn.value === 'vendido' && atendimento.interesse === 'trocar') {
+                          const faltando: string[] = [];
+                          if (!cnhUrl) faltando.push('CNH do cliente');
+                          
+                          const allMotosAvaliadas = motosAvaliacao.length > 0 && motosAvaliacao.every(m => isAvaliada(m.id));
+                          if (!allMotosAvaliadas) faltando.push('Avaliação da moto do cliente');
+                          
+                          const allCrlvs = motosAvaliacao.length > 0 && motosAvaliacao.every(m => crlvUrls[m.id]);
+                          if (!allCrlvs) faltando.push('CRLV da moto do cliente');
+                          
+                          if (faltando.length > 0) {
+                            toast.error(`Para marcar como Vendido, é necessário: ${faltando.join(', ')}`);
+                            return;
+                          }
+                        }
+                        setValorPopup({ type: btn.value, value: '' });
                       } else {
-                        toast.success(`Status alterado para ${btn.label}`);
-                        onDeleted();
+                        // Pendente e Perdido: alterar direto
+                        handleStatusChange(btn.value, btn.label);
                       }
                     }}
                   >
@@ -497,6 +560,47 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* Dialog de Valor (Sinal/Venda) */}
+      <Dialog open={!!valorPopup} onOpenChange={(o) => !o && setValorPopup(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {valorPopup?.type === 'sinal' ? (
+                <><Sparkles className="h-5 w-5" /> Valor do Sinal</>
+              ) : (
+                <><DollarSign className="h-5 w-5" /> Valor da Venda</>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium text-foreground">
+                {valorPopup?.type === 'sinal' ? 'Valor do Sinal (R$)' : 'Valor da Venda (R$)'}
+              </label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <Input
+                  className="pl-10"
+                  placeholder="0,00"
+                  value={valorPopup?.value || ''}
+                  onChange={(e) => {
+                    const formatted = formatCurrencyInput(e.target.value);
+                    setValorPopup(prev => prev ? { ...prev, value: formatted } : null);
+                  }}
+                  inputMode="numeric"
+                />
+              </div>
+            </div>
+            <Button
+              className="w-full"
+              onClick={handleSaveValor}
+              disabled={savingValor}
+            >
+              {savingValor ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

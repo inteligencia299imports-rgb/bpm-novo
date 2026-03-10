@@ -31,6 +31,8 @@ export type Database = {
           tipo_atendimento: string
           uf: string
           updated_at: string
+          valor_sinal: number | null
+          valor_venda: number | null
           vendedor_id: string
         }
         Insert: {
@@ -49,6 +51,8 @@ export type Database = {
           tipo_atendimento: string
           uf: string
           updated_at?: string
+          valor_sinal?: number | null
+          valor_venda?: number | null
           vendedor_id: string
         }
         Update: {
@@ -67,6 +71,8 @@ export type Database = {
           tipo_atendimento?: string
           uf?: string
           updated_at?: string
+          valor_sinal?: number | null
+          valor_venda?: number | null
           vendedor_id?: string
         }
         Relationships: []
