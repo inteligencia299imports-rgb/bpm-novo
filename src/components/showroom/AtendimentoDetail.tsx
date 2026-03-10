@@ -164,6 +164,20 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     const newStatus = venda > 0 ? 'vendido' : 'sinal';
     const label = venda > 0 ? 'Vendido' : 'Sinal';
     await handleStatusChange(newStatus as SituacaoShowroom, label, updateData);
+
+    // Se for troca e vendido, marcar todas as avaliações como adquirida/própria
+    if (newStatus === 'vendido' && atendimento.interesse === 'trocar') {
+      for (const moto of motosAvaliacao) {
+        const av = avaliacoes[moto.id];
+        if (av) {
+          await supabase.from('avaliacoes').update({
+            situacao: 'adquirida',
+            tipo_aquisicao: 'propria',
+          } as any).eq('id', av.id);
+        }
+      }
+    }
+
     setSavingValor(false);
     setValorPopup(null);
   };
