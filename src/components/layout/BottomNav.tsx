@@ -12,7 +12,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
 
   const tabs = [
     { id: 'showroom', label: 'Showroom', icon: ShoppingBag, roles: ['vendedor', 'gestor'] },
-    { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
+    { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['vendedor', 'avaliador', 'gestor'] },
   ].filter(t => role && t.roles.includes(role));
 
   return (
