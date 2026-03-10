@@ -251,7 +251,16 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <Label>Nome do Cliente *</Label>
-            <Input value={nomeCliente} onChange={e => setNomeCliente(e.target.value)} />
+            <Input
+              placeholder="Nome Sobrenome"
+              value={nomeCliente}
+              onChange={e => {
+                const formatted = e.target.value
+                  .toLowerCase()
+                  .replace(/(?:^|\s)\S/g, match => match.toUpperCase());
+                setNomeCliente(formatted);
+              }}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Telefone *</Label>
