@@ -180,8 +180,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setSaving(false);
   };
 
-  const handleStatusChange = async (newStatus: SituacaoAvaliacao) => {
-    const { error } = await supabase.from('avaliacoes').update({ situacao: newStatus }).eq('id', avaliacaoId);
+  const [tipoAquisicaoPopup, setTipoAquisicaoPopup] = useState(false);
+
+  const handleStatusChange = async (newStatus: SituacaoAvaliacao, tipoAquisicao?: string) => {
+    const updateData: any = { situacao: newStatus };
+    if (tipoAquisicao) updateData.tipo_aquisicao = tipoAquisicao;
+    const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
     if (error) {
       toast.error('Erro ao alterar status');
     } else {
