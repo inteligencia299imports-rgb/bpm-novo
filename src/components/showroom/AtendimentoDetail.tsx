@@ -131,18 +131,22 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={atendimento.nome_cliente} />
-                <InfoItem label="Telefone" value={formatPhone(atendimento.telefone)} />
+                <div>
+                  <span className="text-xs text-muted-foreground">Telefone</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium">{formatPhone(atendimento.telefone)}</span>
+                    <button
+                      onClick={() => window.open(whatsappUrl, '_blank')}
+                      className="text-green-600 hover:text-green-700 transition-colors"
+                      title="Abrir WhatsApp"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
                 <InfoItem label="Sexo" value={atendimento.sexo} />
                 <InfoItem label="UF" value={atendimento.uf} />
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full gap-1.5 text-green-600 border-green-600 hover:bg-green-50"
-                onClick={() => window.open(whatsappUrl, '_blank')}
-              >
-                <MessageCircle className="h-4 w-4" /> WhatsApp
-              </Button>
             </CardContent>
           </Card>
 
