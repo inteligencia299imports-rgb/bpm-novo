@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PhotoUpload from './PhotoUpload';
+import DocumentUpload from './DocumentUpload';
 
 interface Props {
   atendimento: Atendimento;
