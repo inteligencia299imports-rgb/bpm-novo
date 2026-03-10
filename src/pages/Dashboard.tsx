@@ -12,7 +12,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (role === 'avaliador' && activeTab === 'showroom') setActiveTab('avaliacoes');
-    if (role === 'vendedor' && activeTab === 'avaliacoes') setActiveTab('showroom');
+    // vendedores can now access avaliacoes tab
   }, [role]);
 
   return (

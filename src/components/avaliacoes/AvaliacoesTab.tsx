@@ -3,14 +3,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search } from 'lucide-react';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
-import type { Avaliacao } from '@/types/crm';
+import type { Avaliacao, SituacaoAvaliacao } from '@/types/crm';
 import AvaliacaoCard from './AvaliacaoCard';
 import AvaliacaoForm from './AvaliacaoForm';
 import { toast } from 'sonner';
+
+const KANBAN_COLUMNS = SITUACOES_AVALIACAO;
 
 const AvaliacoesTab = () => {
   const { role } = useAuth();
@@ -18,12 +18,10 @@ const AvaliacoesTab = () => {
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [filterSituacao, setFilterSituacao] = useState('todas');
-  const [showFilters, setShowFilters] = useState(false);
 
   const fetchAvaliacoes = useCallback(async () => {
     setLoading(true);
-    let query = supabase
+    const { data, error } = await supabase
       .from('avaliacoes')
       .select(`
         *,
@@ -32,31 +30,34 @@ const AvaliacoesTab = () => {
       `)
       .order('created_at', { ascending: false });
 
-    if (filterSituacao !== 'todas') query = query.eq('situacao', filterSituacao);
-
-    const { data, error } = await query;
     if (error) {
       toast.error('Erro ao carregar avaliações');
       console.error(error);
     } else {
-      const mapped = (data || []).map((d: any) => ({
+      let mapped = (data || []).map((d: any) => ({
         ...d,
         atendimento: d.atendimentos,
         moto_avaliacao: d.motos_avaliacao,
       }));
-      // client-side search
-      const filtered = search.trim()
-        ? mapped.filter((a: any) =>
-          a.atendimento?.nome_cliente?.toLowerCase().includes(search.toLowerCase()) ||
-          a.moto_avaliacao?.marca?.toLowerCase().includes(search.toLowerCase()) ||
-          a.moto_avaliacao?.modelo?.toLowerCase().includes(search.toLowerCase()) ||
-          a.moto_avaliacao?.placa?.toLowerCase().includes(search.toLowerCase())
-        )
-        : mapped;
-      setAvaliacoes(filtered);
+      if (search.trim()) {
+        const s = search.trim().toLowerCase();
+        mapped = mapped.filter((a: any) => {
+          const fields = [
+            a.atendimento?.nome_cliente,
+            a.atendimento?.telefone,
+            a.atendimento?.loja,
+            a.moto_avaliacao?.marca,
+            a.moto_avaliacao?.modelo,
+            a.moto_avaliacao?.placa,
+            a.moto_avaliacao?.cor,
+          ];
+          return fields.some(f => f && String(f).toLowerCase().includes(s));
+        });
+      }
+      setAvaliacoes(mapped);
     }
     setLoading(false);
-  }, [filterSituacao, search]);
+  }, [search]);
 
   useEffect(() => { fetchAvaliacoes(); }, [fetchAvaliacoes]);
 
@@ -69,43 +70,67 @@ const AvaliacoesTab = () => {
     return <AvaliacaoForm avaliacaoId={selectedId} onClose={handleClose} />;
   }
 
-  return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Avaliações</h1>
+  const getColumnAvaliacoes = (situacao: SituacaoAvaliacao) =>
+    avaliacoes.filter(a => a.situacao === situacao);
 
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Avaliações</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Pipeline de avaliações de motos</p>
+      </div>
+
+      {/* Search */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar por cliente, marca, modelo ou placa..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+          <Input
+            placeholder="Buscar por cliente, marca, modelo ou placa..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-10 bg-card border-border"
+          />
         </div>
-        <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="gap-2">
-          <Filter className="h-4 w-4" /> Filtros
-        </Button>
       </div>
 
-      {showFilters && (
-        <Card className="animate-fade-in">
-          <CardContent className="pt-4">
-            <Select value={filterSituacao} onValueChange={setFilterSituacao}>
-              <SelectTrigger className="w-full sm:w-64"><SelectValue placeholder="Situação" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas</SelectItem>
-                {SITUACOES_AVALIACAO.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      )}
-
+      {/* Kanban Board */}
       {loading ? (
-        <div className="flex justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>
-      ) : avaliacoes.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhuma avaliação encontrada</CardContent></Card>
+        <div className="flex justify-center py-12">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
       ) : (
-        <div className="grid gap-3">
-          {avaliacoes.map(a => (
-            <AvaliacaoCard key={a.id} avaliacao={a} onOpen={() => setSelectedId(a.id)} role={role} />
-          ))}
+        <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0">
+          <div className="flex gap-4 min-w-max">
+            {KANBAN_COLUMNS.map(col => {
+              const items = getColumnAvaliacoes(col.value);
+              const colHex = col.value === 'sem_avaliar' ? '#6B7280' : col.value === 'em_aberto' ? '#F2C94C' : '#27AE60';
+              return (
+                <div key={col.value} className="w-[320px] shrink-0 flex flex-col">
+                  {/* Column header */}
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colHex }} />
+                      <span className="text-sm font-semibold text-foreground">{col.label}</span>
+                      <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5 font-medium">
+                        {items.length}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Column body */}
+                  <div className="bg-muted/50 rounded-lg p-2.5 flex-1 min-h-[200px] space-y-2.5 border border-border/50">
+                    {items.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-8">Nenhuma avaliação</p>
+                    ) : (
+                      items.map(a => (
+                        <AvaliacaoCard key={a.id} avaliacao={a} onOpen={() => setSelectedId(a.id)} role={role} />
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

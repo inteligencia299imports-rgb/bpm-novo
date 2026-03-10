@@ -1,8 +1,6 @@
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Bike } from 'lucide-react';
+import { Bike, Phone, Calendar, User } from 'lucide-react';
 import type { Avaliacao, AppRole } from '@/types/crm';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
 import { format } from 'date-fns';
@@ -14,40 +12,81 @@ interface Props {
   role: AppRole | null;
 }
 
+const formatPhone = (value: string): string => {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  return value;
+};
+
 const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
   const sit = SITUACOES_AVALIACAO.find(s => s.value === avaliacao.situacao);
   const moto = avaliacao.moto_avaliacao;
   const at = avaliacao.atendimento;
+  const statusColor = avaliacao.situacao === 'sem_avaliar' ? '#6B7280' : avaliacao.situacao === 'em_aberto' ? '#F2C94C' : '#27AE60';
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Bike className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold text-base">
-                {moto?.marca} {moto?.modelo}
-              </h3>
-              {moto?.placa && <Badge variant="outline" className="text-xs font-mono">{moto.placa}</Badge>}
-              {sit && <span className={`status-badge ${sit.color}`}>{sit.label}</span>}
+    <div
+      className="bg-card rounded-lg border border-border shadow-soft hover:shadow-card hover:bg-surface-hover transition-all cursor-pointer group overflow-hidden"
+      onClick={onOpen}
+    >
+      <div className="flex">
+        {/* Status bar */}
+        <div className="w-1 shrink-0 rounded-l-lg" style={{ backgroundColor: statusColor }} />
+
+        <div className="flex-1 p-3 space-y-2">
+          {/* Moto info */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground truncate">
+              <Bike className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="truncate">{moto?.marca} {moto?.modelo}</span>
             </div>
-            <div className="flex items-center gap-4 mt-1.5 text-sm text-muted-foreground flex-wrap">
-              <span>Cliente: {at?.nome_cliente}</span>
-              {at?.loja && <span>Loja: {at.loja}</span>}
-              {moto?.ano_fabricacao && <span>Ano: {moto.ano_fabricacao}/{moto.ano_modelo}</span>}
-              {moto?.km && <span>{moto.km} km</span>}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {format(new Date(avaliacao.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-            </p>
+            {moto?.placa && (
+              <Badge variant="outline" className="text-[10px] shrink-0 font-mono border-primary/30 text-primary">
+                {moto.placa}
+              </Badge>
+            )}
           </div>
-          <Button variant="ghost" size="icon" onClick={onOpen} title="Abrir avaliação">
-            <Eye className="h-4 w-4" />
-          </Button>
+
+          {/* Year / KM */}
+          {(moto?.ano_fabricacao || moto?.km) && (
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              {moto?.ano_fabricacao && <span>{moto.ano_fabricacao}/{moto.ano_modelo}</span>}
+              {moto?.km && <span>{moto.km} km</span>}
+              {moto?.cor && <span>{moto.cor}</span>}
+            </div>
+          )}
+
+          {/* Client */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="flex items-center gap-1 truncate">
+              <User className="h-3 w-3 shrink-0" />
+              {at?.nome_cliente}
+            </span>
+            {at?.telefone && (
+              <span className="flex items-center gap-1">
+                <Phone className="h-3 w-3" />
+                {formatPhone(at.telefone)}
+              </span>
+            )}
+          </div>
+
+          {/* Footer: store + date */}
+          <div className="flex items-center justify-between">
+            {at?.loja && (
+              <Badge variant="secondary" className="text-[10px]">
+                {at.loja}
+              </Badge>
+            )}
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Calendar className="h-3 w-3" />
+              {format(new Date(avaliacao.created_at), "dd/MM HH:mm", { locale: ptBR })}
+            </span>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
