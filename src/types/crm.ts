@@ -121,6 +121,7 @@ export interface Atendimento {
   moto_interesse?: MotoInteresse;
   moto_avaliacao?: MotoAvaliacao;
   avaliacao?: Avaliacao;
+  cnh_url?: string | null;
 }
 
 export interface MotoInteresse {
