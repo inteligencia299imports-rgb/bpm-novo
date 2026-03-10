@@ -325,6 +325,20 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <InfoItem label="Sexo" value={at?.sexo} />
                 <InfoItem label="UF" value={at?.uf} />
               </div>
+              <Separator className="my-2" />
+              <DocumentUpload
+                label="CNH"
+                currentUrl={cnhUrl}
+                bucketPath={`docs/${at?.id}/cnh`}
+                onUploaded={async (url) => {
+                  await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', at?.id);
+                  setCnhUrl(url);
+                }}
+                onRemoved={async () => {
+                  await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', at?.id);
+                  setCnhUrl(null);
+                }}
+              />
             </CardContent>
           </Card>
 
