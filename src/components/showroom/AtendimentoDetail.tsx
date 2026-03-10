@@ -429,8 +429,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               ]
                 .filter(b => b.value !== atendimento.situacao)
                 .filter(b => {
-                  // Quando interesse é "vender", oculta Sinal e Vendido
                   if (atendimento.interesse === 'vender' && (b.value === 'sinal' || b.value === 'vendido')) {
+                    return false;
+                  }
+                  // Sinal e Vendido só aparecem se moto de interesse for do estoque
+                  if ((b.value === 'sinal' || b.value === 'vendido') && !motosInteresse.some(m => m.origem === 'estoque')) {
                     return false;
                   }
                   return true;
