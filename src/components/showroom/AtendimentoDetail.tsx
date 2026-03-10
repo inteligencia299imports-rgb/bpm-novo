@@ -561,6 +561,47 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           )}
         </DialogContent>
       </Dialog>
+      {/* Dialog de Valor (Sinal/Venda) */}
+      <Dialog open={!!valorPopup} onOpenChange={(o) => !o && setValorPopup(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {valorPopup?.type === 'sinal' ? (
+                <><Sparkles className="h-5 w-5" /> Valor do Sinal</>
+              ) : (
+                <><DollarSign className="h-5 w-5" /> Valor da Venda</>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium text-foreground">
+                {valorPopup?.type === 'sinal' ? 'Valor do Sinal (R$)' : 'Valor da Venda (R$)'}
+              </label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <Input
+                  className="pl-10"
+                  placeholder="0,00"
+                  value={valorPopup?.value || ''}
+                  onChange={(e) => {
+                    const formatted = formatCurrencyInput(e.target.value);
+                    setValorPopup(prev => prev ? { ...prev, value: formatted } : null);
+                  }}
+                  inputMode="numeric"
+                />
+              </div>
+            </div>
+            <Button
+              className="w-full"
+              onClick={handleSaveValor}
+              disabled={savingValor}
+            >
+              {savingValor ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
