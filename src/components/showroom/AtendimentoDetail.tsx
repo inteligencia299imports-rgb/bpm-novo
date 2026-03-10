@@ -150,15 +150,20 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
   const handleSaveValor = async () => {
     if (!valorPopup) return;
-    const numValue = parseCurrencyInput(valorPopup.value);
-    if (numValue <= 0) {
-      toast.error('Informe um valor válido');
+    const sinal = parseCurrencyInput(valorPopup.valorSinal);
+    const venda = parseCurrencyInput(valorPopup.valorVenda);
+    if (sinal <= 0 && venda <= 0) {
+      toast.error('Informe ao menos um valor válido');
       return;
     }
     setSavingValor(true);
-    const field = valorPopup.type === 'sinal' ? 'valor_sinal' : 'valor_venda';
-    const label = valorPopup.type === 'sinal' ? 'Sinal' : 'Vendido';
-    await handleStatusChange(valorPopup.type === 'sinal' ? 'sinal' : 'vendido', label, { [field]: numValue });
+    const updateData: any = {};
+    if (sinal > 0) updateData.valor_sinal = sinal;
+    if (venda > 0) updateData.valor_venda = venda;
+    // Determine status: if venda has value -> vendido, else sinal
+    const newStatus = venda > 0 ? 'vendido' : 'sinal';
+    const label = venda > 0 ? 'Vendido' : 'Sinal';
+    await handleStatusChange(newStatus as SituacaoShowroom, label, updateData);
     setSavingValor(false);
     setValorPopup(null);
   };
