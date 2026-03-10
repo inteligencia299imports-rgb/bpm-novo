@@ -35,7 +35,7 @@ const Login = () => {
             <Bike className="h-7 w-7 text-primary-foreground" />
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold">Moto CRM</CardTitle>
+            <CardTitle className="text-2xl font-bold">299 CRM</CardTitle>
             <CardDescription className="mt-1">Sistema de Gestão de Atendimentos</CardDescription>
           </div>
         </CardHeader>
