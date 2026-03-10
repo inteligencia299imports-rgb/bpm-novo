@@ -22,12 +22,40 @@ const PhotoUpload: React.FC<Props> = ({ motoAvaliacaoId }) => {
     load();
   }, [motoAvaliacaoId]);
 
+  const compressImage = (file: File, maxWidth = 1200, quality = 0.7): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxWidth / img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error('Falha ao comprimir')),
+          'image/webp',
+          quality
+        );
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleUpload = async (tipo: string, file: File) => {
     setUploading(tipo);
-    const ext = file.name.split('.').pop();
-    const path = `${motoAvaliacaoId}/${tipo}.${ext}`;
 
-    const { error: upErr } = await supabase.storage.from('moto-fotos').upload(path, file, { upsert: true });
+    let uploadFile: Blob | File;
+    try {
+      uploadFile = await compressImage(file);
+    } catch {
+      uploadFile = file;
+    }
+
+    const path = `${motoAvaliacaoId}/${tipo}.webp`;
+
+    const { error: upErr } = await supabase.storage.from('moto-fotos').upload(path, uploadFile, { upsert: true, contentType: 'image/webp' });
     if (upErr) { toast.error('Erro no upload'); setUploading(null); return; }
 
     const { data: urlData } = supabase.storage.from('moto-fotos').getPublicUrl(path);
