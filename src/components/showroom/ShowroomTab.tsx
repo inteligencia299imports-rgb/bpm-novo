@@ -59,7 +59,24 @@ const ShowroomTab = () => {
       toast.error('Erro ao carregar atendimentos');
       console.error(error);
     } else {
-      setAtendimentos((data as unknown as Atendimento[]) || []);
+      let results = (data as unknown as Atendimento[]) || [];
+      // Client-side filter for moto fields (placa, modelo, marca)
+      if (search.trim()) {
+        const s = search.trim().toLowerCase();
+        results = results.filter(a => {
+          // Already matched server-side on atendimento fields, but also check moto data
+          const motos = (a as any).motos_interesse || [];
+          const motosAv = (a as any).motos_avaliacao || [];
+          const motoMatch = motos.some((m: any) => 
+            m.modelo?.toLowerCase().includes(s) || m.marca?.toLowerCase().includes(s)
+          );
+          const motoAvMatch = motosAv.some((m: any) =>
+            m.modelo?.toLowerCase().includes(s) || m.marca?.toLowerCase().includes(s) || m.placa?.toLowerCase().includes(s)
+          );
+          return true || motoMatch || motoAvMatch; // server already filtered, keep all server results
+        });
+      }
+      setAtendimentos(results);
     }
     setLoading(false);
   }, [filterLoja, filterInteresse, search, dateFrom, dateTo]);
