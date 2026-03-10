@@ -389,19 +389,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   <Camera className="h-4 w-4" /> Ver Fotos {fotos.length > 0 && `(${fotos.length})`}
                 </Button>
                 <DocumentUpload
-                  label="CNH"
-                  currentUrl={cnhUrl}
-                  bucketPath={`docs/${at?.id}/cnh`}
-                  onUploaded={async (url) => {
-                    await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', at?.id);
-                    setCnhUrl(url);
-                  }}
-                  onRemoved={async () => {
-                    await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', at?.id);
-                    setCnhUrl(null);
-                  }}
-                />
-                <DocumentUpload
                   label="CRLV"
                   currentUrl={crlvUrl}
                   bucketPath={`docs/${moto?.id}/crlv`}
