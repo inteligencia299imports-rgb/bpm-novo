@@ -1,8 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Bike, Phone, Calendar, User } from 'lucide-react';
+import { Phone, Bike, Calendar, ArrowLeftRight } from 'lucide-react';
 import type { Avaliacao, AppRole } from '@/types/crm';
-import { SITUACOES_AVALIACAO } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -20,12 +19,35 @@ const formatPhone = (value: string): string => {
   return value;
 };
 
+const getInteresseLabel = (interesse: string) => {
+  switch (interesse) {
+    case 'comprar': return 'Comprar';
+    case 'vender': return 'Vender';
+    case 'trocar': return 'Trocar';
+    default: return interesse;
+  }
+};
+
+const STATUS_HEX: Record<string, string> = {
+  sem_avaliar: '#6B7280',
+  em_aberto: '#F2C94C',
+  adquirida: '#27AE60',
+  dispensada: '#FF3B30',
+};
+
 const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
-  const sit = SITUACOES_AVALIACAO.find(s => s.value === avaliacao.situacao);
   const moto = avaliacao.moto_avaliacao;
   const at = avaliacao.atendimento;
-  const statusColorMap: Record<string, string> = { sem_avaliar: '#6B7280', em_aberto: '#F2C94C', adquirida: '#27AE60', dispensada: '#FF3B30' };
-  const statusColor = statusColorMap[avaliacao.situacao] || '#6B7280';
+  const statusColor = STATUS_HEX[avaliacao.situacao] || '#6B7280';
+
+  // Build moto label: placa - marca modelo
+  const motoLabel = (() => {
+    if (!moto) return null;
+    const parts: string[] = [];
+    if (moto.placa) parts.push(moto.placa);
+    parts.push(`${moto.marca} ${moto.modelo}`);
+    return parts.join(' - ');
+  })();
 
   return (
     <div
@@ -37,53 +59,47 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
         <div className="w-1 shrink-0 rounded-l-lg" style={{ backgroundColor: statusColor }} />
 
         <div className="flex-1 p-3 space-y-2">
-          {/* Moto info */}
+          {/* Header: client name + interesse badge */}
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground truncate">
-              <Bike className="h-3.5 w-3.5 text-primary shrink-0" />
-              <span className="truncate">{moto?.marca} {moto?.modelo}</span>
-            </div>
-            {moto?.placa && (
-              <Badge variant="outline" className="text-[10px] shrink-0 font-mono border-primary/30 text-primary">
-                {moto.placa}
+            <h3 className="font-semibold text-sm text-foreground truncate">
+              {at?.nome_cliente}
+            </h3>
+            {at?.interesse && (
+              <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary">
+                {getInteresseLabel(at.interesse)}
               </Badge>
             )}
           </div>
 
-          {/* Year / KM */}
-          {(moto?.ano_fabricacao || moto?.km) && (
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              {moto?.ano_fabricacao && <span>{moto.ano_fabricacao}/{moto.ano_modelo}</span>}
-              {moto?.km && <span>{moto.km} km</span>}
-              {moto?.cor && <span>{moto.cor}</span>}
+          {/* Moto reference */}
+          {motoLabel && (
+            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              <span className="truncate">{motoLabel}</span>
             </div>
           )}
 
-          {/* Client */}
+          {/* Phone + Date */}
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="flex items-center gap-1 truncate">
-              <User className="h-3 w-3 shrink-0" />
-              {at?.nome_cliente}
-            </span>
             {at?.telefone && (
               <span className="flex items-center gap-1">
                 <Phone className="h-3 w-3" />
                 {formatPhone(at.telefone)}
               </span>
             )}
+            <span className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {format(new Date(avaliacao.created_at), "dd/MM HH:mm", { locale: ptBR })}
+            </span>
           </div>
 
-          {/* Footer: store + date */}
+          {/* Store badge */}
           <div className="flex items-center justify-between">
             {at?.loja && (
               <Badge variant="secondary" className="text-[10px]">
                 {at.loja}
               </Badge>
             )}
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Calendar className="h-3 w-3" />
-              {format(new Date(avaliacao.created_at), "dd/MM HH:mm", { locale: ptBR })}
-            </span>
           </div>
         </div>
       </div>
