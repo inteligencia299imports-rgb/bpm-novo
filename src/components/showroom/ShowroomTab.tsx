@@ -75,6 +75,17 @@ const ShowroomTab = () => {
     fetchAtendimentos();
   };
 
+  if (detailOpen && selectedAtendimento) {
+    return (
+      <AtendimentoDetail
+        atendimento={selectedAtendimento}
+        onClose={() => { setDetailOpen(false); setSelectedAtendimento(null); }}
+        onEdit={handleEdit}
+        onDeleted={handleDeleted}
+      />
+    );
+  }
+
   if (showForm) {
     return <AtendimentoForm atendimentoId={editingId} onClose={handleFormClose} />;
   }
