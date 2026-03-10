@@ -1,19 +1,23 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { FileUp, FileCheck, Loader2, Eye } from 'lucide-react';
+import { FileUp, FileCheck, Loader2, Eye, Trash2, RefreshCw } from 'lucide-react';
 
 interface Props {
   label: string;
   currentUrl: string | null;
   bucketPath: string;
   onUploaded: (url: string) => void;
+  onRemoved?: () => void;
 }
 
-const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUploaded }) => {
+const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUploaded, onRemoved }) => {
   const [uploading, setUploading] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
     setUploading(true);
@@ -31,13 +35,28 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
     }
 
     const { data: urlData } = supabase.storage.from('moto-fotos').getPublicUrl(path);
-    onUploaded(urlData.publicUrl);
+    const newUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+    onUploaded(newUrl);
     toast.success(`${label} enviado(a) com sucesso`);
     setUploading(false);
+    setDialogOpen(true);
   };
 
+  const handleRemove = async () => {
+    // Remove from storage (best effort)
+    const extensions = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+    for (const ext of extensions) {
+      await supabase.storage.from('moto-fotos').remove([`${bucketPath}.${ext}`]);
+    }
+    onRemoved?.();
+    setDialogOpen(false);
+    toast.success(`${label} removido(a)`);
+  };
+
+  const isImage = currentUrl && /\.(jpg|jpeg|png|webp|gif)/i.test(currentUrl.split('?')[0]);
+
   return (
-    <div className="flex items-center gap-2">
+    <>
       <input
         ref={inputRef}
         type="file"
@@ -46,14 +65,33 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) handleFile(f);
+          if (inputRef.current) inputRef.current.value = '';
         }}
       />
+      <input
+        ref={replaceInputRef}
+        type="file"
+        accept="image/*,.pdf"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          if (replaceInputRef.current) replaceInputRef.current.value = '';
+        }}
+      />
+
       <Button
         size="sm"
         variant="outline"
         className="gap-1.5"
         disabled={uploading}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => {
+          if (currentUrl) {
+            setDialogOpen(true);
+          } else {
+            inputRef.current?.click();
+          }
+        }}
       >
         {uploading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -64,17 +102,77 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
         )}
         {currentUrl ? `${label} ✓` : `Anexar ${label}`}
       </Button>
-      {currentUrl && (
-        <Button
-          size="sm"
-          variant="ghost"
-          className="gap-1 px-2"
-          onClick={() => window.open(currentUrl, '_blank')}
-        >
-          <Eye className="h-4 w-4" /> Ver
-        </Button>
-      )}
-    </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileCheck className="h-5 w-5" /> {label}
+            </DialogTitle>
+          </DialogHeader>
+
+          {currentUrl && (
+            <div className="space-y-4">
+              {/* Preview */}
+              <div className="rounded-lg border overflow-hidden bg-muted/30 flex items-center justify-center min-h-[200px]">
+                {isImage ? (
+                  <img
+                    src={currentUrl}
+                    alt={label}
+                    className="max-w-full max-h-[300px] object-contain"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-2 py-8">
+                    <FileCheck className="h-12 w-12 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Documento PDF anexado</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(currentUrl, '_blank')}
+                      className="gap-1.5 mt-2"
+                    >
+                      <Eye className="h-4 w-4" /> Abrir PDF
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 justify-end">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="gap-1.5"
+                  onClick={handleRemove}
+                >
+                  <Trash2 className="h-4 w-4" /> Remover
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  disabled={uploading}
+                  onClick={() => replaceInputRef.current?.click()}
+                >
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Substituir
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setDialogOpen(false)}
+                >
+                  Salvar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
