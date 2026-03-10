@@ -43,7 +43,6 @@ const getMotoLabel = (atendimento: Props['atendimento']): string | null => {
 };
 
 const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
-  const int = INTERESSES.find(i => i.value === atendimento.interesse);
   const motoLabel = getMotoLabel(atendimento);
 
   return (
