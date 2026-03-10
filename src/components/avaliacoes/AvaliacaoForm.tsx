@@ -325,6 +325,20 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <InfoItem label="Sexo" value={at?.sexo} />
                 <InfoItem label="UF" value={at?.uf} />
               </div>
+              <Separator className="my-2" />
+              <DocumentUpload
+                label="CNH"
+                currentUrl={cnhUrl}
+                bucketPath={`docs/${at?.id}/cnh`}
+                onUploaded={async (url) => {
+                  await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', at?.id);
+                  setCnhUrl(url);
+                }}
+                onRemoved={async () => {
+                  await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', at?.id);
+                  setCnhUrl(null);
+                }}
+              />
             </CardContent>
           </Card>
 
@@ -374,19 +388,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowPhotosDialog(true)}>
                   <Camera className="h-4 w-4" /> Ver Fotos {fotos.length > 0 && `(${fotos.length})`}
                 </Button>
-                <DocumentUpload
-                  label="CNH"
-                  currentUrl={cnhUrl}
-                  bucketPath={`docs/${at?.id}/cnh`}
-                  onUploaded={async (url) => {
-                    await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', at?.id);
-                    setCnhUrl(url);
-                  }}
-                  onRemoved={async () => {
-                    await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', at?.id);
-                    setCnhUrl(null);
-                  }}
-                />
                 <DocumentUpload
                   label="CRLV"
                   currentUrl={crlvUrl}
