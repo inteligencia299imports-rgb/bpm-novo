@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2 } from 'lucide-react';
 import type { Atendimento, MotoInteresse, MotoAvaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES } from '@/types/crm';
 import { format } from 'date-fns';
@@ -331,17 +331,24 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           setCrlvUrls(prev => ({ ...prev, [moto.id]: null }));
                         }}
                       />
-                      {cnhUrl && crlvUrls[moto.id] && (
+                      {cnhUrl && crlvUrls[moto.id] && !(moto as any).consulta_realizada && (
                         <Button
                           size="sm"
                           variant="outline"
                           className="gap-1.5"
-                          onClick={() => {
-                            toast.success('Consulta solicitada com sucesso!');
+                          onClick={async () => {
+                            await supabase.from('motos_avaliacao').update({ consulta_realizada: true } as any).eq('id', moto.id);
+                            setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, consulta_realizada: true } as any : m));
+                            toast.success('Consulta documentacional realizada com sucesso!');
                           }}
                         >
                           <Search className="h-4 w-4" /> Solicitar Consulta
                         </Button>
+                      )}
+                      {(moto as any).consulta_realizada && (
+                        <Badge variant="secondary" className="text-xs bg-green-500/15 text-green-600 gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Consulta Realizada
+                        </Badge>
                       )}
                       {!moto.enviada_avaliacao ? (
                         <Button
@@ -435,13 +442,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         // Para troca + vendido: verificar avaliação, CNH e CRLV
                         if (btn.value === 'vendido' && atendimento.interesse === 'trocar') {
                           const faltando: string[] = [];
-                          if (!cnhUrl) faltando.push('CNH do cliente');
-                          
-                          const allMotosAvaliadas = motosAvaliacao.length > 0 && motosAvaliacao.every(m => isAvaliada(m.id));
-                          if (!allMotosAvaliadas) faltando.push('Avaliação da moto do cliente');
+                         if (!cnhUrl) faltando.push('CNH do cliente');
                           
                           const allCrlvs = motosAvaliacao.length > 0 && motosAvaliacao.every(m => crlvUrls[m.id]);
-                          if (!allCrlvs) faltando.push('CRLV da moto do cliente');
+                          if (!allCrlvs) faltando.push('CRLV da moto');
+                          
+                          const allMotosAvaliadas = motosAvaliacao.length > 0 && motosAvaliacao.every(m => isAvaliada(m.id));
+                          if (!allMotosAvaliadas) faltando.push('Avaliação da moto ter sido feita');
+                          
+                          const allConsultas = motosAvaliacao.length > 0 && motosAvaliacao.every(m => (m as any).consulta_realizada);
+                          if (!allConsultas) faltando.push('Consulta documentacional realizada');
                           
                           if (faltando.length > 0) {
                             toast.error(`Para marcar como Vendido, é necessário: ${faltando.join(', ')}`);
