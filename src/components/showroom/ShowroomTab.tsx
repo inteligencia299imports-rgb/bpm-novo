@@ -5,7 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Plus, Search, Filter, CalendarIcon, X } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 import { LOJAS, INTERESSES, SITUACOES_SHOWROOM } from '@/types/crm';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import AtendimentoCard from './AtendimentoCard';
@@ -27,6 +32,8 @@ const ShowroomTab = () => {
   const [filterLoja, setFilterLoja] = useState('todas');
   const [filterInteresse, setFilterInteresse] = useState('todos');
   const [showFilters, setShowFilters] = useState(false);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const fetchAtendimentos = useCallback(async () => {
     setLoading(true);
@@ -37,6 +44,14 @@ const ShowroomTab = () => {
     if (search.trim()) {
       query = query.or(`nome_cliente.ilike.%${search}%,telefone.ilike.%${search}%`);
     }
+    if (dateFrom) {
+      query = query.gte('created_at', dateFrom.toISOString());
+    }
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      query = query.lte('created_at', end.toISOString());
+    }
 
     const { data, error } = await query;
     if (error) {
@@ -46,7 +61,7 @@ const ShowroomTab = () => {
       setAtendimentos((data as unknown as Atendimento[]) || []);
     }
     setLoading(false);
-  }, [filterLoja, filterInteresse, search]);
+  }, [filterLoja, filterInteresse, search, dateFrom, dateTo]);
 
   useEffect(() => { fetchAtendimentos(); }, [fetchAtendimentos]);
 
@@ -123,7 +138,7 @@ const ShowroomTab = () => {
 
       {showFilters && (
         <Card className="animate-fade-in border-border shadow-soft">
-          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Select value={filterLoja} onValueChange={setFilterLoja}>
               <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Loja" /></SelectTrigger>
               <SelectContent>
@@ -138,6 +153,53 @@ const ShowroomTab = () => {
                 {INTERESSES.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
               </SelectContent>
             </Select>
+
+            {/* Date From */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("justify-start text-left font-normal bg-card border-border", !dateFrom && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateFrom ? format(dateFrom, "dd/MM/yyyy", { locale: ptBR }) : "Data início"}
+                  {dateFrom && (
+                    <X className="ml-auto h-3.5 w-3.5 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setDateFrom(undefined); }} />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateFrom}
+                  onSelect={setDateFrom}
+                  initialFocus
+                  locale={ptBR}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Date To */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("justify-start text-left font-normal bg-card border-border", !dateTo && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateTo ? format(dateTo, "dd/MM/yyyy", { locale: ptBR }) : "Data fim"}
+                  {dateTo && (
+                    <X className="ml-auto h-3.5 w-3.5 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setDateTo(undefined); }} />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateTo}
+                  onSelect={setDateTo}
+                  initialFocus
+                  locale={ptBR}
+                  disabled={(date) => dateFrom ? date < dateFrom : false}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </CardContent>
         </Card>
       )}
