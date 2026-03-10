@@ -76,10 +76,16 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
           </div>
 
           {/* Moto reference */}
-          {motoLabel && (
+          {motoInteresse && (
             <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
               <Bike className="h-3.5 w-3.5" />
-              <span className="truncate">{motoLabel}</span>
+              <span className="truncate">{motoInteresse}</span>
+            </div>
+          )}
+          {motoCliente && (
+            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              <span className="truncate">{motoCliente}</span>
             </div>
           )}
 
