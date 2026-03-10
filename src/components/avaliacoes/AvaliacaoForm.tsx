@@ -181,10 +181,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   };
 
   const [tipoAquisicaoPopup, setTipoAquisicaoPopup] = useState(false);
+  const [valorFechamentoAquisicao, setValorFechamentoAquisicao] = useState('');
+  const [tipoSelecionado, setTipoSelecionado] = useState<string | null>(null);
+  const [savingAquisicao, setSavingAquisicao] = useState(false);
 
-  const handleStatusChange = async (newStatus: SituacaoAvaliacao, tipoAquisicao?: string) => {
+  const handleStatusChange = async (newStatus: SituacaoAvaliacao, tipoAquisicao?: string, valorFechamento?: number) => {
     const updateData: any = { situacao: newStatus };
     if (tipoAquisicao) updateData.tipo_aquisicao = tipoAquisicao;
+    if (valorFechamento && valorFechamento > 0) updateData.valor_fechamento = valorFechamento;
     const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
     if (error) {
       toast.error('Erro ao alterar status');
@@ -193,6 +197,24 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       toast.success(`Status alterado para ${label}`);
       setAvaliacao((prev: any) => ({ ...prev, situacao: newStatus }));
     }
+  };
+
+  const handleSaveAquisicao = async () => {
+    if (!tipoSelecionado) {
+      toast.error('Selecione o tipo de aquisição');
+      return;
+    }
+    const valor = parseCurrencyInput(valorFechamentoAquisicao);
+    if (interesse === 'vender' && valor <= 0) {
+      toast.error('Informe o valor de fechamento');
+      return;
+    }
+    setSavingAquisicao(true);
+    await handleStatusChange('adquirida', tipoSelecionado, valor > 0 ? valor : undefined);
+    setSavingAquisicao(false);
+    setTipoAquisicaoPopup(false);
+    setValorFechamentoAquisicao('');
+    setTipoSelecionado(null);
   };
 
   if (loading) {
