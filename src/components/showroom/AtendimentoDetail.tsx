@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PhotoUpload from './PhotoUpload';
+import DocumentUpload from './DocumentUpload';
 
 interface Props {
   atendimento: Atendimento;
@@ -49,6 +50,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [loading, setLoading] = useState(true);
   const [photoMotoId, setPhotoMotoId] = useState<string | null>(null);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
+  const [cnhUrl, setCnhUrl] = useState<string | null>(atendimento.cnh_url || null);
+  const [crlvUrls, setCrlvUrls] = useState<Record<string, string | null>>({});
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
@@ -62,7 +65,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimento.id),
       ]);
       setMotosInteresse((resInt.data as unknown as MotoInteresse[]) || []);
-      setMotosAvaliacao((resAv.data as unknown as MotoAvaliacao[]) || []);
+      const motosAv = (resAv.data as unknown as MotoAvaliacao[]) || [];
+      setMotosAvaliacao(motosAv);
+      
+      // Init CRLV URLs from fetched data
+      const crlvMap: Record<string, string | null> = {};
+      for (const m of motosAv) {
+        crlvMap[m.id] = (m as any).crlv_url || null;
+      }
+      setCrlvUrls(crlvMap);
       
       // Map avaliacoes by moto_avaliacao_id
       const avalMap: Record<string, any> = {};
@@ -169,6 +180,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <InfoItem label="Sexo" value={atendimento.sexo} />
                 <InfoItem label="UF" value={atendimento.uf} />
               </div>
+              <Separator className="my-2" />
+              <DocumentUpload
+                label="CNH"
+                currentUrl={cnhUrl}
+                bucketPath={`docs/${atendimento.id}/cnh`}
+                onUploaded={async (url) => {
+                  await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', atendimento.id);
+                  setCnhUrl(url);
+                }}
+              />
             </CardContent>
           </Card>
 
@@ -247,6 +268,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPhotoMotoId(moto.id)}>
                         <Camera className="h-4 w-4" /> Incluir Fotos
                       </Button>
+                      <DocumentUpload
+                        label="CRLV"
+                        currentUrl={crlvUrls[moto.id] || null}
+                        bucketPath={`docs/${moto.id}/crlv`}
+                        onUploaded={async (url) => {
+                          await supabase.from('motos_avaliacao').update({ crlv_url: url } as any).eq('id', moto.id);
+                          setCrlvUrls(prev => ({ ...prev, [moto.id]: url }));
+                        }}
+                      />
                       {!moto.enviada_avaliacao ? (
                         <Button
                           size="sm"

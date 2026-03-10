@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       atendimentos: {
         Row: {
+          cnh_url: string | null
           created_at: string
           id: string
           interesse: string
@@ -33,6 +34,7 @@ export type Database = {
           vendedor_id: string
         }
         Insert: {
+          cnh_url?: string | null
           created_at?: string
           id?: string
           interesse: string
@@ -50,6 +52,7 @@ export type Database = {
           vendedor_id: string
         }
         Update: {
+          cnh_url?: string | null
           created_at?: string
           id?: string
           interesse?: string
@@ -189,6 +192,7 @@ export type Database = {
           categoria: string | null
           cor: string | null
           created_at: string
+          crlv_url: string | null
           enviada_avaliacao: boolean | null
           id: string
           km: string | null
@@ -205,6 +209,7 @@ export type Database = {
           categoria?: string | null
           cor?: string | null
           created_at?: string
+          crlv_url?: string | null
           enviada_avaliacao?: boolean | null
           id?: string
           km?: string | null
@@ -221,6 +226,7 @@ export type Database = {
           categoria?: string | null
           cor?: string | null
           created_at?: string
+          crlv_url?: string | null
           enviada_avaliacao?: boolean | null
           id?: string
           km?: string | null
