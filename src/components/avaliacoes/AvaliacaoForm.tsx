@@ -165,6 +165,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       previsao_custos_cliente: parseCurrencyToNumber(prevCustosCliente),
       observacao_avaliador: obsAvaliador || null,
       avaliador_id: user!.id,
+      situacao: 'em_aberto',
     };
 
     const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
