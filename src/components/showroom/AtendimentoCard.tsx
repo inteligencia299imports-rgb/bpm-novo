@@ -1,7 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Phone, Bike, Calendar, ArrowLeftRight, DollarSign, XCircle, Sparkles } from 'lucide-react';
+import { Phone, Bike, Calendar, ArrowLeftRight } from 'lucide-react';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import { STATUS_COLORS } from '@/types/crm';
 import { format } from 'date-fns';
