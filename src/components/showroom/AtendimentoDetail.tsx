@@ -244,11 +244,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           )}
 
           {/* Excluir */}
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex justify-center">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="w-full gap-1.5">
-                  <Trash2 className="h-4 w-4" /> Excluir Atendimento
+                <Button variant="destructive" size="sm">
+                  Excluir
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
