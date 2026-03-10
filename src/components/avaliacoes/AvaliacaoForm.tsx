@@ -482,6 +482,40 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Dialog Tipo de Aquisição */}
+      <Dialog open={tipoAquisicaoPopup} onOpenChange={setTipoAquisicaoPopup}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5" /> Tipo de Aquisição
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">Selecione o tipo de aquisição da moto:</p>
+            <div className="flex gap-3">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  handleStatusChange('adquirida', 'propria');
+                  setTipoAquisicaoPopup(false);
+                }}
+              >
+                Própria
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  handleStatusChange('adquirida', 'consignada');
+                  setTipoAquisicaoPopup(false);
+                }}
+              >
+                Consignada
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
