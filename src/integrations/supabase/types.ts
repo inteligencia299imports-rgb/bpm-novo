@@ -98,6 +98,7 @@ export type Database = {
           situacao: string
           tipo_aquisicao: string | null
           updated_at: string
+          valor_fechamento: number | null
           valor_fipe: number | null
         }
         Insert: {
@@ -120,6 +121,7 @@ export type Database = {
           situacao?: string
           tipo_aquisicao?: string | null
           updated_at?: string
+          valor_fechamento?: number | null
           valor_fipe?: number | null
         }
         Update: {
@@ -142,6 +144,7 @@ export type Database = {
           situacao?: string
           tipo_aquisicao?: string | null
           updated_at?: string
+          valor_fechamento?: number | null
           valor_fipe?: number | null
         }
         Relationships: [
