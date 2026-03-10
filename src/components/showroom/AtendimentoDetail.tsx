@@ -104,6 +104,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           {sit && (
             <Badge className={`${sit.color} text-xs`}>{sit.label}</Badge>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-green-600 border-green-600 hover:bg-green-50"
+            onClick={() => {
+              const digits = atendimento.telefone.replace(/\D/g, '');
+              const number = digits.startsWith('55') ? digits : `55${digits}`;
+              window.open(`https://wa.me/${number}`, '_blank');
+            }}
+          >
+            <MessageCircle className="h-4 w-4" /> WhatsApp
+          </Button>
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onEdit(atendimento.id)}>
             <Edit className="h-4 w-4" /> Editar
           </Button>
