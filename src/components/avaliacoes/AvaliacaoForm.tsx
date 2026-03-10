@@ -63,6 +63,22 @@ const numberToCurrencyMask = (value: number | null): string => {
   return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+const CurrencyField = ({ label, value, onChange }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
+  <div className="space-y-1.5">
+    <Label>{label} <span className="text-destructive">*</span></Label>
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+      <Input
+        value={value}
+        onChange={onChange}
+        className="pl-10"
+        placeholder="0,00"
+        inputMode="numeric"
+      />
+    </div>
+  </div>
+);
+
 const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const { user, role } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -219,23 +235,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   ]
     .filter(b => b.value !== avaliacao?.situacao)
     .filter(b => !(b.value === 'adquirida' && interesse === 'trocar'));
-const CurrencyField = ({ label, value, onChange }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-  <div className="space-y-1.5">
-    <Label>{label} <span className="text-destructive">*</span></Label>
-    <div className="relative">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-      <Input
-        value={value}
-        onChange={onChange}
-        className="pl-10"
-        placeholder="0,00"
-        inputMode="numeric"
-      />
-    </div>
-  </div>
-);
-
-
 
 
   return (
