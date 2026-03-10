@@ -65,7 +65,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [cnhUrl, setCnhUrl] = useState<string | null>(atendimento.cnh_url || null);
   const [crlvUrls, setCrlvUrls] = useState<Record<string, string | null>>({});
-  const [valorPopup, setValorPopup] = useState<{ valorSinal: string; valorVenda: string } | null>(null);
+  const [valorPopup, setValorPopup] = useState<{ valorSinal: string; valorVenda: string; valorFechamento: string } | null>(null);
   const [savingValor, setSavingValor] = useState(false);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
@@ -165,15 +165,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     const label = venda > 0 ? 'Vendido' : 'Sinal';
     await handleStatusChange(newStatus as SituacaoShowroom, label, updateData);
 
-    // Se for troca e vendido, marcar todas as avaliações como adquirida/própria
+    // Se for troca e vendido, marcar todas as avaliações como adquirida/própria com valor de fechamento
     if (newStatus === 'vendido' && atendimento.interesse === 'trocar') {
+      const fechamento = parseCurrencyInput(valorPopup.valorFechamento);
       for (const moto of motosAvaliacao) {
         const av = avaliacoes[moto.id];
         if (av) {
-          await supabase.from('avaliacoes').update({
+          const avUpdate: any = {
             situacao: 'adquirida',
             tipo_aquisicao: 'propria',
-          } as any).eq('id', av.id);
+          };
+          if (fechamento > 0) avUpdate.valor_fechamento = fechamento;
+          await supabase.from('avaliacoes').update(avUpdate).eq('id', av.id);
         }
       }
     }
@@ -478,7 +481,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             return;
                           }
                         }
-                        setValorPopup({ valorSinal: '', valorVenda: '' });
+                        setValorPopup({ valorSinal: '', valorVenda: '', valorFechamento: '' });
                       } else {
                         handleStatusChange(btn.value, btn.label);
                       }
@@ -631,6 +634,24 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 />
               </div>
             </div>
+            {atendimento.interesse === 'trocar' && (
+              <div>
+                <label className="text-sm font-medium text-foreground">Valor de Fechamento da Moto do Cliente (R$)</label>
+                <div className="relative mt-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <Input
+                    className="pl-10"
+                    placeholder="0,00"
+                    value={valorPopup?.valorFechamento || ''}
+                    onChange={(e) => {
+                      const formatted = formatCurrencyInput(e.target.value);
+                      setValorPopup(prev => prev ? { ...prev, valorFechamento: formatted } : null);
+                    }}
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+            )}
             <Button
               className="w-full"
               onClick={handleSaveValor}
