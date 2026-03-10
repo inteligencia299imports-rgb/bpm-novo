@@ -22,22 +22,24 @@ const formatPhone = (value: string): string => {
 
 const getMotoLabel = (atendimento: Props['atendimento']): string | null => {
   const interesse = atendimento.interesse;
-  const label = interesse === 'comprar' ? 'Compra' : interesse === 'vender' ? 'Venda' : 'Troca';
-
-  const motoAv = atendimento.motos_avaliacao?.[0];
+  const label = interesse === 'comprar' ? 'Comprar' : interesse === 'vender' ? 'Vender' : 'Trocar';
   const motoInt = atendimento.motos_interesse?.[0];
+  const motoAv = atendimento.motos_avaliacao?.[0];
 
-  if (interesse === 'comprar') {
-    if (motoInt?.modelo) return `${label} - ${motoInt.modelo}`;
-    return label;
+  // Sempre prioriza moto de interesse (compra)
+  if (motoInt?.modelo) {
+    if (motoInt.origem === 'estoque' && motoAv?.placa) {
+      return `${label} - ${motoAv.placa} - ${motoInt.modelo}`;
+    }
+    return `${label} - ${motoInt.modelo}`;
   }
 
-  // vender ou trocar: prioriza moto de avaliação
-  if (motoAv) {
+  // Se for apenas vender, mostra moto do cliente
+  if (interesse === 'vender' && motoAv) {
     const parts = [label, motoAv.placa, motoAv.modelo].filter(Boolean);
     return parts.join(' - ');
   }
-  if (motoInt?.modelo) return `${label} - ${motoInt.modelo}`;
+
   return label;
 };
 
