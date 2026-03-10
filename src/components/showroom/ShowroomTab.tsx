@@ -56,20 +56,19 @@ const ShowroomTab = () => {
       console.error(error);
     } else {
       let results = (data as unknown as Atendimento[]) || [];
-      // Client-side filter for moto fields (placa, modelo, marca)
       if (search.trim()) {
         const s = search.trim().toLowerCase();
         results = results.filter(a => {
-          // Already matched server-side on atendimento fields, but also check moto data
+          const fields = [
+            a.nome_cliente, a.telefone, a.loja, a.interesse, a.situacao,
+            a.observacoes, a.origem, a.temperatura, a.tipo_atendimento, a.uf
+          ];
           const motos = (a as any).motos_interesse || [];
           const motosAv = (a as any).motos_avaliacao || [];
-          const motoMatch = motos.some((m: any) => 
-            m.modelo?.toLowerCase().includes(s) || m.marca?.toLowerCase().includes(s)
-          );
-          const motoAvMatch = motosAv.some((m: any) =>
-            m.modelo?.toLowerCase().includes(s) || m.marca?.toLowerCase().includes(s) || m.placa?.toLowerCase().includes(s)
-          );
-          return true || motoMatch || motoAvMatch; // server already filtered, keep all server results
+          const motoFields = motos.flatMap((m: any) => [m.modelo, m.marca, m.ano]);
+          const motoAvFields = motosAv.flatMap((m: any) => [m.modelo, m.marca, m.placa, m.cor, m.ano_fabricacao, m.ano_modelo, m.km]);
+          const all = [...fields, ...motoFields, ...motoAvFields];
+          return all.some(f => f && String(f).toLowerCase().includes(s));
         });
       }
       setAtendimentos(results);
