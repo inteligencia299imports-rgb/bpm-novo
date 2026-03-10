@@ -189,6 +189,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                   await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', atendimento.id);
                   setCnhUrl(url);
                 }}
+                onRemoved={async () => {
+                  await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', atendimento.id);
+                  setCnhUrl(null);
+                }}
               />
             </CardContent>
           </Card>
