@@ -55,8 +55,6 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
   const statusColor = STATUS_COLORS[atendimento.situacao as SituacaoShowroom] || '#6B7280';
 
-  // Only show buttons for statuses that aren't the current one
-  const availableButtons = STATUS_BUTTONS.filter(b => b.value !== situacao);
 
   return (
     <div
