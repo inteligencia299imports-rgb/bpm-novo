@@ -505,36 +505,53 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         </DialogContent>
       </Dialog>
       {/* Dialog Tipo de Aquisição */}
-      <Dialog open={tipoAquisicaoPopup} onOpenChange={setTipoAquisicaoPopup}>
-        <DialogContent className="max-w-xs">
+      <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); } }}>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" /> Tipo de Aquisição
+              <CheckCircle className="h-5 w-5" /> Aquisição
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <p className="text-sm text-muted-foreground">Selecione o tipo de aquisição da moto:</p>
-            <div className="flex gap-3">
-              <Button
-                className="flex-1"
-                onClick={() => {
-                  handleStatusChange('adquirida', 'propria');
-                  setTipoAquisicaoPopup(false);
-                }}
-              >
-                Própria
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  handleStatusChange('adquirida', 'consignada');
-                  setTipoAquisicaoPopup(false);
-                }}
-              >
-                Consignada
-              </Button>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium text-foreground">Valor de Fechamento (R$)</label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <Input
+                  className="pl-10"
+                  placeholder="0,00"
+                  value={valorFechamentoAquisicao}
+                  onChange={(e) => setValorFechamentoAquisicao(formatCurrencyInput(e.target.value))}
+                  inputMode="numeric"
+                />
+              </div>
             </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Tipo de Aquisição</label>
+              <div className="flex gap-3 mt-2">
+                <Button
+                  variant={tipoSelecionado === 'propria' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => setTipoSelecionado('propria')}
+                >
+                  Própria
+                </Button>
+                <Button
+                  variant={tipoSelecionado === 'consignada' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => setTipoSelecionado('consignada')}
+                >
+                  Consignada
+                </Button>
+              </div>
+            </div>
+            <Button
+              className="w-full"
+              onClick={handleSaveAquisicao}
+              disabled={savingAquisicao}
+            >
+              {savingAquisicao ? 'Salvando...' : 'Salvar'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
