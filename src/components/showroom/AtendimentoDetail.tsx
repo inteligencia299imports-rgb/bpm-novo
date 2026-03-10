@@ -290,6 +290,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           setCrlvUrls(prev => ({ ...prev, [moto.id]: null }));
                         }}
                       />
+                      {cnhUrl && crlvUrls[moto.id] && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 border-primary text-primary hover:bg-primary/10"
+                          onClick={() => {
+                            toast.success('Consulta solicitada com sucesso!');
+                          }}
+                        >
+                          <Send className="h-4 w-4" /> Solicitar Consulta
+                        </Button>
+                      )}
                       {!moto.enviada_avaliacao ? (
                         <Button
                           size="sm"
