@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2 } from 'lucide-react';
+import DocumentUpload from '@/components/showroom/DocumentUpload';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
 import type { SituacaoAvaliacao, MotoFoto } from '@/types/crm';
 import { toast } from 'sonner';
@@ -87,6 +88,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [fotos, setFotos] = useState<MotoFoto[]>([]);
   const [showEvalDialog, setShowEvalDialog] = useState(false);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
+  const [cnhUrl, setCnhUrl] = useState<string | null>(null);
+  const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
+  const [consultaRealizada, setConsultaRealizada] = useState(false);
   const canEdit = role === 'avaliador' || role === 'gestor' || role === 'vendedor';
 
   // form fields (stored as masked strings)
@@ -108,14 +112,17 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         .from('avaliacoes')
         .select(`
           *,
-          atendimentos (id, nome_cliente, telefone, loja, vendedor_id, interesse, sexo, uf, tipo_atendimento, origem, temperatura, created_at),
-          motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes)
+          atendimentos (id, nome_cliente, telefone, loja, vendedor_id, interesse, sexo, uf, tipo_atendimento, origem, temperatura, created_at, cnh_url),
+          motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, consulta_realizada)
         `)
         .eq('id', avaliacaoId)
         .single();
 
       if (data) {
         setAvaliacao({ ...data, atendimento: data.atendimentos, moto_avaliacao: data.motos_avaliacao });
+        setCnhUrl((data.atendimentos as any)?.cnh_url || null);
+        setCrlvUrl((data.motos_avaliacao as any)?.crlv_url || null);
+        setConsultaRealizada(!!(data.motos_avaliacao as any)?.consulta_realizada);
         setValorFipe(numberToCurrencyMask(data.valor_fipe));
         setMenorValor(numberToCurrencyMask(data.menor_valor));
         setMaiorValor(numberToCurrencyMask(data.maior_valor));
@@ -363,10 +370,55 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   <p className="text-sm mt-1">{moto.observacoes}</p>
                 </div>
               )}
-              <div className="flex gap-2 mt-3">
+              <div className="flex gap-2 mt-3 flex-wrap">
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowPhotosDialog(true)}>
                   <Camera className="h-4 w-4" /> Ver Fotos {fotos.length > 0 && `(${fotos.length})`}
                 </Button>
+                <DocumentUpload
+                  label="CNH"
+                  currentUrl={cnhUrl}
+                  bucketPath={`docs/${at?.id}/cnh`}
+                  onUploaded={async (url) => {
+                    await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', at?.id);
+                    setCnhUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', at?.id);
+                    setCnhUrl(null);
+                  }}
+                />
+                <DocumentUpload
+                  label="CRLV"
+                  currentUrl={crlvUrl}
+                  bucketPath={`docs/${moto?.id}/crlv`}
+                  onUploaded={async (url) => {
+                    await supabase.from('motos_avaliacao').update({ crlv_url: url } as any).eq('id', moto?.id);
+                    setCrlvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('motos_avaliacao').update({ crlv_url: null } as any).eq('id', moto?.id);
+                    setCrlvUrl(null);
+                  }}
+                />
+                {cnhUrl && crlvUrl && !consultaRealizada && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={async () => {
+                      await supabase.from('motos_avaliacao').update({ consulta_realizada: true } as any).eq('id', moto?.id);
+                      setConsultaRealizada(true);
+                      toast.success('Consulta documentacional realizada com sucesso!');
+                    }}
+                  >
+                    <Search className="h-4 w-4" /> Solicitar Consulta
+                  </Button>
+                )}
+                {consultaRealizada && (
+                  <Badge variant="secondary" className="text-xs bg-green-500/15 text-green-600 gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Consulta Realizada
+                  </Badge>
+                )}
               </div>
             </CardContent>
           </Card>
