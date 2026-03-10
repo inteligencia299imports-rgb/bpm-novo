@@ -1,6 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Bike, Calendar, ArrowLeftRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Phone, Bike, Calendar, ArrowLeftRight, DollarSign, XCircle, Sparkles } from 'lucide-react';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import { STATUS_COLORS } from '@/types/crm';
 import { format } from 'date-fns';
@@ -9,6 +10,7 @@ import { ptBR } from 'date-fns/locale';
 interface Props {
   atendimento: Atendimento & { motos_interesse?: any[]; motos_avaliacao?: any[] };
   onClick: () => void;
+  onStatusChange?: (id: string, status: SituacaoShowroom) => void;
 }
 
 const formatPhone = (value: string): string => {
@@ -49,11 +51,21 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
+const STATUS_BUTTONS: { value: SituacaoShowroom; label: string; icon: React.ReactNode; color: string }[] = [
+  { value: 'sinal', label: 'Sinal', icon: <Sparkles className="h-3 w-3" />, color: '#9B51E0' },
+  { value: 'vendido', label: 'Vendido', icon: <DollarSign className="h-3 w-3" />, color: '#27AE60' },
+  { value: 'perdido', label: 'Perdido', icon: <XCircle className="h-3 w-3" />, color: '#FF3B30' },
+];
+
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, onStatusChange }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
   const statusColor = STATUS_COLORS[atendimento.situacao as SituacaoShowroom] || '#6B7280';
+  const situacao = atendimento.situacao as SituacaoShowroom;
+
+  // Only show buttons for statuses that aren't the current one
+  const availableButtons = STATUS_BUTTONS.filter(b => b.value !== situacao);
 
   return (
     <div
@@ -119,6 +131,28 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
               </Badge>
             )}
           </div>
+
+          {/* Status change buttons */}
+          {onStatusChange && availableButtons.length > 0 && (
+            <div className="flex gap-1.5 pt-1 border-t border-border/50">
+              {availableButtons.map(btn => (
+                <Button
+                  key={btn.value}
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1 h-7 text-[10px] gap-1 px-1 hover:opacity-80"
+                  style={{ color: btn.color }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStatusChange(atendimento.id, btn.value);
+                  }}
+                >
+                  {btn.icon}
+                  {btn.label}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -260,6 +260,7 @@ const ShowroomTab = () => {
                           key={a.id}
                           atendimento={a}
                           onClick={() => handleCardClick(a)}
+                          onStatusChange={handleStatusChange}
                         />
                       ))
                     )}
