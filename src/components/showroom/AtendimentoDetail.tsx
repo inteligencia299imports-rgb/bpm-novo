@@ -435,13 +435,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         // Para troca + vendido: verificar avaliação, CNH e CRLV
                         if (btn.value === 'vendido' && atendimento.interesse === 'trocar') {
                           const faltando: string[] = [];
-                          if (!cnhUrl) faltando.push('CNH do cliente');
-                          
-                          const allMotosAvaliadas = motosAvaliacao.length > 0 && motosAvaliacao.every(m => isAvaliada(m.id));
-                          if (!allMotosAvaliadas) faltando.push('Avaliação da moto do cliente');
+                         if (!cnhUrl) faltando.push('CNH do cliente');
                           
                           const allCrlvs = motosAvaliacao.length > 0 && motosAvaliacao.every(m => crlvUrls[m.id]);
-                          if (!allCrlvs) faltando.push('CRLV da moto do cliente');
+                          if (!allCrlvs) faltando.push('CRLV da moto');
+                          
+                          const allMotosAvaliadas = motosAvaliacao.length > 0 && motosAvaliacao.every(m => isAvaliada(m.id));
+                          if (!allMotosAvaliadas) faltando.push('Avaliação da moto ter sido feita');
+                          
+                          const allConsultas = motosAvaliacao.length > 0 && motosAvaliacao.every(m => (m as any).consulta_realizada);
+                          if (!allConsultas) faltando.push('Consulta documentacional realizada');
                           
                           if (faltando.length > 0) {
                             toast.error(`Para marcar como Vendido, é necessário: ${faltando.join(', ')}`);
