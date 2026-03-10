@@ -179,13 +179,6 @@ const ShowroomTab = () => {
         </div>
       )}
 
-      <AtendimentoDetail
-        atendimento={selectedAtendimento}
-        open={detailOpen}
-        onClose={() => { setDetailOpen(false); setSelectedAtendimento(null); }}
-        onEdit={handleEdit}
-        onDeleted={handleDeleted}
-      />
     </div>
   );
 };
