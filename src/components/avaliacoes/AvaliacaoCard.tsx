@@ -35,6 +35,11 @@ const STATUS_HEX: Record<string, string> = {
   dispensada: '#FF3B30',
 };
 
+const getTipoAquisicaoLabel = (tipo: string | null) => {
+  if (!tipo) return null;
+  return tipo === 'propria' ? 'Própria' : 'Consignada';
+};
+
 const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
   const moto = avaliacao.moto_avaliacao;
   const at = avaliacao.atendimento;
@@ -93,11 +98,16 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
             </span>
           </div>
 
-          {/* Store badge */}
-          <div className="flex items-center justify-between">
+          {/* Store badge + Tipo Aquisição */}
+          <div className="flex items-center justify-between gap-2">
             {at?.loja && (
               <Badge variant="secondary" className="text-[10px]">
                 {at.loja}
+              </Badge>
+            )}
+            {avaliacao.situacao === 'adquirida' && (avaliacao as any).tipo_aquisicao && (
+              <Badge variant="outline" className="text-[10px] border-green-500/30 text-green-600">
+                {getTipoAquisicaoLabel((avaliacao as any).tipo_aquisicao)}
               </Badge>
             )}
           </div>

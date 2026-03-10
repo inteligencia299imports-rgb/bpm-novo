@@ -56,6 +56,35 @@ const ShowroomTab = () => {
       console.error(error);
     } else {
       let results = (data as unknown as Atendimento[]) || [];
+
+      // Fetch avaliacoes to check for adquirida status
+      const atendimentoIds = results.map(a => a.id);
+      let adquiridaSet = new Set<string>();
+      if (atendimentoIds.length > 0) {
+        const { data: avalData } = await supabase
+          .from('avaliacoes')
+          .select('atendimento_id, situacao')
+          .in('atendimento_id', atendimentoIds);
+        if (avalData) {
+          // Group by atendimento_id
+          const avalMap: Record<string, string[]> = {};
+          for (const av of avalData) {
+            const atId = (av as any).atendimento_id;
+            if (!avalMap[atId]) avalMap[atId] = [];
+            avalMap[atId].push((av as any).situacao);
+          }
+          // If all avaliacoes for an atendimento are 'adquirida', hide it
+          for (const [atId, situacoes] of Object.entries(avalMap)) {
+            if (situacoes.length > 0 && situacoes.every(s => s === 'adquirida')) {
+              adquiridaSet.add(atId);
+            }
+          }
+        }
+      }
+
+      // Filter out atendimentos where all motos were acquired
+      results = results.filter(a => !adquiridaSet.has(a.id));
+
       if (search.trim()) {
         const s = search.trim().toLowerCase();
         results = results.filter(a => {

@@ -403,14 +403,21 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           <Send className="h-4 w-4" /> Enviar para Avaliação
                         </Button>
                       ) : isAvaliada(moto.id) ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
-                          onClick={() => setViewAvaliacaoData(avaliacoes[moto.id])}
-                        >
-                          <Eye className="h-4 w-4" /> Avaliada - Ver Valores
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
+                            onClick={() => setViewAvaliacaoData(avaliacoes[moto.id])}
+                          >
+                            <Eye className="h-4 w-4" /> Avaliada - Ver Valores
+                          </Button>
+                          {avaliacoes[moto.id]?.situacao === 'adquirida' && avaliacoes[moto.id]?.tipo_aquisicao && (
+                            <Badge variant="outline" className="text-[10px] border-green-500/30 text-green-600">
+                              {avaliacoes[moto.id].tipo_aquisicao === 'propria' ? 'Própria' : 'Consignada'}
+                            </Badge>
+                          )}
+                        </>
                       ) : (
                         null
                       )}
