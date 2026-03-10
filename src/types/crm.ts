@@ -13,12 +13,21 @@ export const INTERESSES: { value: Interesse; label: string }[] = [
   { value: 'vender', label: 'Vender' },
   { value: 'trocar', label: 'Trocar' },
 ];
-export const SITUACOES_SHOWROOM: { value: SituacaoShowroom; label: string; color: string }[] = [
-  { value: 'em_aberto', label: 'Em Aberto', color: 'bg-info/15 text-info' },
-  { value: 'pendente', label: 'Pendente', color: 'bg-warning/15 text-warning' },
-  { value: 'sinal', label: 'Sinal', color: 'bg-primary/15 text-primary' },
-  { value: 'perdido', label: 'Perdido', color: 'bg-destructive/15 text-destructive' },
-  { value: 'vendido', label: 'Vendido', color: 'bg-success/15 text-success' },
+
+export const STATUS_COLORS: Record<SituacaoShowroom, string> = {
+  em_aberto: '#2EC5FF',
+  pendente: '#F2C94C',
+  sinal: '#9B51E0',
+  perdido: '#FF3B30',
+  vendido: '#27AE60',
+};
+
+export const SITUACOES_SHOWROOM: { value: SituacaoShowroom; label: string; color: string; hex: string }[] = [
+  { value: 'em_aberto', label: 'Em Aberto', color: 'bg-info/15 text-info', hex: '#2EC5FF' },
+  { value: 'pendente', label: 'Pendente', color: 'bg-warning/15 text-warning', hex: '#F2C94C' },
+  { value: 'sinal', label: 'Sinal', color: 'bg-sinal/15 text-sinal', hex: '#9B51E0' },
+  { value: 'perdido', label: 'Perdido', color: 'bg-destructive/15 text-destructive', hex: '#FF3B30' },
+  { value: 'vendido', label: 'Vendido', color: 'bg-success/15 text-success', hex: '#27AE60' },
 ];
 export const SITUACOES_AVALIACAO: { value: SituacaoAvaliacao; label: string; color: string }[] = [
   { value: 'sem_avaliar', label: 'Sem Avaliar', color: 'bg-muted text-muted-foreground' },

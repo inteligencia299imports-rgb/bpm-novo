@@ -16,7 +16,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
   ].filter(t => role && t.roles.includes(role));
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card backdrop-blur-md safe-area-bottom">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card safe-area-bottom">
       <div className="flex items-center justify-around h-16">
         {tabs.map(tab => (
           <button

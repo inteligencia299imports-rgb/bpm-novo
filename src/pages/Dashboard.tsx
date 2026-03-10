@@ -18,7 +18,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background flex">
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-      <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto animate-fade-in pb-20 md:pb-6">
+      <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in pb-20 md:pb-6">
         {activeTab === 'showroom' && <ShowroomTab />}
         {activeTab === 'avaliacoes' && <AvaliacoesTab />}
       </main>
