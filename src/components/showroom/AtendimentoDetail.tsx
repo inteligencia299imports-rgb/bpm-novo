@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send } from 'lucide-react';
 import type { Atendimento, MotoInteresse, MotoAvaliacao } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES } from '@/types/crm';
 import { format } from 'date-fns';
@@ -215,6 +215,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         <p className="text-sm mt-1">{moto.observacoes}</p>
                       </div>
                     )}
+                    <div className="flex gap-2 mt-3">
+                      <Button size="sm" variant="outline" className="gap-1.5">
+                        <Camera className="h-4 w-4" /> Incluir Fotos
+                      </Button>
+                      <Button size="sm" variant="outline" className="gap-1.5">
+                        <Send className="h-4 w-4" /> Enviar para Avaliação
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </CardContent>
@@ -236,11 +244,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           )}
 
           {/* Excluir */}
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex justify-center">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="w-full gap-1.5">
-                  <Trash2 className="h-4 w-4" /> Excluir Atendimento
+                <Button variant="destructive" size="sm">
+                  Excluir
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
