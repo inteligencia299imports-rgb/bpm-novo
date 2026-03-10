@@ -234,7 +234,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     { value: 'dispensada' as SituacaoAvaliacao, label: 'Dispensada', icon: <XCircle className="h-4 w-4" />, color: '#FF3B30' },
   ]
     .filter(b => b.value !== avaliacao?.situacao)
-    .filter(b => !(b.value === 'adquirida' && interesse === 'trocar'));
+    .filter(b => !(b.value === 'adquirida' && interesse === 'trocar'))
+    .filter(b => !(b.value === 'em_aberto' && avaliacao?.situacao !== 'dispensada'));
 
 
   return (
