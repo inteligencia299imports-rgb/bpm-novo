@@ -219,7 +219,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       </div>
                     )}
                     <div className="flex gap-2 mt-3">
-                      <Button size="sm" variant="outline" className="gap-1.5">
+                      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPhotoMotoId(moto.id)}>
                         <Camera className="h-4 w-4" /> Incluir Fotos
                       </Button>
                       <Button size="sm" variant="outline" className="gap-1.5">
