@@ -50,6 +50,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [loading, setLoading] = useState(true);
   const [photoMotoId, setPhotoMotoId] = useState<string | null>(null);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
+  const [cnhUrl, setCnhUrl] = useState<string | null>(atendimento.cnh_url || null);
+  const [crlvUrls, setCrlvUrls] = useState<Record<string, string | null>>({});
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
