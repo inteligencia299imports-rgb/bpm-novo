@@ -510,8 +510,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </div>
-        </div>
+            </div>
+           </div>
       </ScrollArea>
 
       {/* Dialog de Fotos */}
