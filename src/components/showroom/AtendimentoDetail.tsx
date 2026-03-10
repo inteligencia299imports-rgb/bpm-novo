@@ -280,6 +280,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           await supabase.from('motos_avaliacao').update({ crlv_url: url } as any).eq('id', moto.id);
                           setCrlvUrls(prev => ({ ...prev, [moto.id]: url }));
                         }}
+                        onRemoved={async () => {
+                          await supabase.from('motos_avaliacao').update({ crlv_url: null } as any).eq('id', moto.id);
+                          setCrlvUrls(prev => ({ ...prev, [moto.id]: null }));
+                        }}
                       />
                       {!moto.enviada_avaliacao ? (
                         <Button
