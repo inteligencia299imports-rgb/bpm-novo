@@ -49,13 +49,7 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const STATUS_BUTTONS: { value: SituacaoShowroom; label: string; icon: React.ReactNode; color: string }[] = [
-  { value: 'sinal', label: 'Sinal', icon: <Sparkles className="h-3 w-3" />, color: '#9B51E0' },
-  { value: 'vendido', label: 'Vendido', icon: <DollarSign className="h-3 w-3" />, color: '#27AE60' },
-  { value: 'perdido', label: 'Perdido', icon: <XCircle className="h-3 w-3" />, color: '#FF3B30' },
-];
-
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, onStatusChange }) => {
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
