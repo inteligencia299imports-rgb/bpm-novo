@@ -180,6 +180,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <InfoItem label="Sexo" value={atendimento.sexo} />
                 <InfoItem label="UF" value={atendimento.uf} />
               </div>
+              <Separator className="my-2" />
+              <DocumentUpload
+                label="CNH"
+                currentUrl={cnhUrl}
+                bucketPath={`docs/${atendimento.id}/cnh`}
+                onUploaded={async (url) => {
+                  await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', atendimento.id);
+                  setCnhUrl(url);
+                }}
+              />
             </CardContent>
           </Card>
 
