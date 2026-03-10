@@ -1,0 +1,1 @@
+ALTER TABLE public.motos_avaliacao ADD COLUMN consulta_realizada boolean DEFAULT false;

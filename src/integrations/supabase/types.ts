@@ -196,6 +196,7 @@ export type Database = {
           ano_modelo: string | null
           atendimento_id: string
           categoria: string | null
+          consulta_realizada: boolean | null
           cor: string | null
           created_at: string
           crlv_url: string | null
@@ -213,6 +214,7 @@ export type Database = {
           ano_modelo?: string | null
           atendimento_id: string
           categoria?: string | null
+          consulta_realizada?: boolean | null
           cor?: string | null
           created_at?: string
           crlv_url?: string | null
@@ -230,6 +232,7 @@ export type Database = {
           ano_modelo?: string | null
           atendimento_id?: string
           categoria?: string | null
+          consulta_realizada?: boolean | null
           cor?: string | null
           created_at?: string
           crlv_url?: string | null
