@@ -33,6 +33,7 @@ export const SITUACOES_AVALIACAO: { value: SituacaoAvaliacao; label: string; col
   { value: 'sem_avaliar', label: 'Sem Avaliar', color: 'bg-muted text-muted-foreground' },
   { value: 'em_aberto', label: 'Em Aberto', color: 'bg-warning/15 text-warning' },
   { value: 'adquirida', label: 'Adquirida', color: 'bg-success/15 text-success' },
+  { value: 'dispensada', label: 'Dispensada', color: 'bg-destructive/15 text-destructive' },
 ];
 export const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'] as const;
 export const TIPOS_ATENDIMENTO = ['Presencial', 'Online'] as const;
