@@ -204,7 +204,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       toast.error('Selecione o tipo de aquisição');
       return;
     }
-    const valor = parseCurrencyInput(valorFechamentoAquisicao);
+    const valor = parseCurrencyToNumber(valorFechamentoAquisicao);
     if (interesse === 'vender' && valor <= 0) {
       toast.error('Informe o valor de fechamento');
       return;
