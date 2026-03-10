@@ -277,9 +277,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       <Dialog open={!!photoMotoId} onOpenChange={(o) => !o && setPhotoMotoId(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Fotos da Moto</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5" /> Fotos da Moto
+            </DialogTitle>
           </DialogHeader>
           {photoMotoId && <PhotoUpload motoAvaliacaoId={photoMotoId} />}
+          <div className="flex justify-end pt-2">
+            <Button size="sm" onClick={() => setPhotoMotoId(null)}>Salvar</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
