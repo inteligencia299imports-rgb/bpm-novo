@@ -65,7 +65,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimento.id),
       ]);
       setMotosInteresse((resInt.data as unknown as MotoInteresse[]) || []);
-      setMotosAvaliacao((resAv.data as unknown as MotoAvaliacao[]) || []);
+      const motosAv = (resAv.data as unknown as MotoAvaliacao[]) || [];
+      setMotosAvaliacao(motosAv);
+      
+      // Init CRLV URLs from fetched data
+      const crlvMap: Record<string, string | null> = {};
+      for (const m of motosAv) {
+        crlvMap[m.id] = (m as any).crlv_url || null;
+      }
+      setCrlvUrls(crlvMap);
       
       // Map avaliacoes by moto_avaliacao_id
       const avalMap: Record<string, any> = {};
