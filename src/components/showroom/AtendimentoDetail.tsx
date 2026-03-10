@@ -226,9 +226,44 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPhotoMotoId(moto.id)}>
                         <Camera className="h-4 w-4" /> Incluir Fotos
                       </Button>
-                      <Button size="sm" variant="outline" className="gap-1.5">
-                        <Send className="h-4 w-4" /> Enviar para Avaliação
-                      </Button>
+                      {!moto.enviada_avaliacao ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          onClick={async () => {
+                            // Create avaliação record
+                            const { error: avError } = await supabase.from('avaliacoes').insert({
+                              atendimento_id: atendimento.id,
+                              moto_avaliacao_id: moto.id,
+                            });
+                            if (avError) {
+                              toast.error('Erro ao enviar para avaliação');
+                              console.error(avError);
+                              return;
+                            }
+                            // Mark moto as sent
+                            const { error: mError } = await supabase
+                              .from('motos_avaliacao')
+                              .update({ enviada_avaliacao: true })
+                              .eq('id', moto.id);
+                            if (mError) {
+                              toast.error('Erro ao atualizar moto');
+                              console.error(mError);
+                              return;
+                            }
+                            toast.success('Enviado para avaliação!');
+                            // Refresh local state
+                            setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, enviada_avaliacao: true } : m));
+                          }}
+                        >
+                          <Send className="h-4 w-4" /> Enviar para Avaliação
+                        </Button>
+                      ) : (
+                        <Badge variant="secondary" className="text-xs bg-success/15 text-success">
+                          ✓ Enviada para avaliação
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 ))}
