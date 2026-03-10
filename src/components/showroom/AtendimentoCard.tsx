@@ -75,10 +75,6 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
                 {atendimento.uf}
               </span>
               <span className="flex items-center gap-1">
-                <ShoppingCart className="h-3 w-3" />
-                {int?.label}
-              </span>
-              <span className="flex items-center gap-1">
                 <Tag className="h-3 w-3" />
                 {atendimento.tipo_atendimento}
               </span>
