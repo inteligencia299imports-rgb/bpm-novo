@@ -42,7 +42,8 @@ const ShowroomTab = () => {
     if (filterLoja !== 'todas') query = query.eq('loja', filterLoja);
     if (filterInteresse !== 'todos') query = query.eq('interesse', filterInteresse);
     if (search.trim()) {
-      query = query.or(`nome_cliente.ilike.%${search}%,telefone.ilike.%${search}%`);
+      const s = search.trim();
+      query = query.or(`nome_cliente.ilike.%${s}%,telefone.ilike.%${s}%,loja.ilike.%${s}%,interesse.ilike.%${s}%,situacao.ilike.%${s}%,observacoes.ilike.%${s}%,origem.ilike.%${s}%,temperatura.ilike.%${s}%,tipo_atendimento.ilike.%${s}%,uf.ilike.%${s}%`);
     }
     if (dateFrom) {
       query = query.gte('created_at', dateFrom.toISOString());
