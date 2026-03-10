@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, Eye } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle } from 'lucide-react';
 import type { Atendimento, MotoInteresse, MotoAvaliacao } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES } from '@/types/crm';
 import { format } from 'date-fns';
@@ -104,6 +104,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           {sit && (
             <Badge className={`${sit.color} text-xs`}>{sit.label}</Badge>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-green-600 border-green-600 hover:bg-green-50"
+            onClick={() => {
+              const digits = atendimento.telefone.replace(/\D/g, '');
+              const number = digits.startsWith('55') ? digits : `55${digits}`;
+              window.open(`https://wa.me/${number}`, '_blank');
+            }}
+          >
+            <MessageCircle className="h-4 w-4" /> WhatsApp
+          </Button>
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onEdit(atendimento.id)}>
             <Edit className="h-4 w-4" /> Editar
           </Button>
