@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import Header from '@/components/layout/Header';
+import Sidebar from '@/components/layout/Sidebar';
+import BottomNav from '@/components/layout/BottomNav';
 import ShowroomTab from '@/components/showroom/ShowroomTab';
 import AvaliacoesTab from '@/components/avaliacoes/AvaliacoesTab';
 
@@ -15,12 +16,13 @@ const Dashboard = () => {
   }, [role]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header activeTab={activeTab} onTabChange={setActiveTab} />
-      <main className="p-4 md:p-6 max-w-7xl mx-auto animate-fade-in">
+    <div className="min-h-screen bg-background flex">
+      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto animate-fade-in pb-20 md:pb-6">
         {activeTab === 'showroom' && <ShowroomTab />}
         {activeTab === 'avaliacoes' && <AvaliacoesTab />}
       </main>
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 };
