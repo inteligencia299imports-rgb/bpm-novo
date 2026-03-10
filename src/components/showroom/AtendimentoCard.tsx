@@ -31,9 +31,18 @@ const getInteresseLabel = (interesse: string) => {
 const getMotoLabel = (atendimento: Props['atendimento']): string | null => {
   const motoInt = atendimento.motos_interesse?.[0];
   const motoAv = atendimento.motos_avaliacao?.[0];
-  if (motoInt?.modelo) return motoInt.modelo;
-  if (motoAv?.modelo) return `${motoAv.marca} ${motoAv.modelo}`;
-  return null;
+
+  const parts: string[] = [];
+
+  if (motoInt?.modelo) {
+    if (motoInt.origem !== 'externo' && motoAv?.placa) parts.push(motoAv.placa);
+    parts.push(motoInt.modelo);
+  } else if (motoAv) {
+    if (motoAv.placa) parts.push(motoAv.placa);
+    parts.push(`${motoAv.marca} ${motoAv.modelo}`);
+  }
+
+  return parts.length > 0 ? parts.join(' - ') : null;
 };
 
 const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
