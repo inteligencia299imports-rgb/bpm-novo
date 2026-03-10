@@ -478,7 +478,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             return;
                           }
                         }
-                        setValorPopup({ valorSinal: '', valorVenda: '' });
+                        setValorPopup({ valorSinal: '', valorVenda: '', valorFechamento: '' });
                       } else {
                         handleStatusChange(btn.value, btn.label);
                       }
