@@ -433,8 +433,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           )}
 
           {/* Status Actions + Delete */}
-          <div className="md:col-span-2 flex flex-col items-center gap-3">
-            <div className="flex gap-2 flex-wrap justify-center">
+           <div className="md:col-span-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
               {[
                 { value: 'pendente' as SituacaoShowroom, label: 'Pendente', icon: <Clock className="h-4 w-4" />, color: '#F2C94C' },
                 { value: 'sinal' as SituacaoShowroom, label: 'Sinal', icon: <Sparkles className="h-4 w-4" />, color: '#9B51E0' },
@@ -446,7 +446,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                   if (atendimento.interesse === 'vender' && (b.value === 'sinal' || b.value === 'vendido')) {
                     return false;
                   }
-                  // Sinal e Vendido só aparecem se moto de interesse for do estoque
                   if ((b.value === 'sinal' || b.value === 'vendido') && !motosInteresse.some(m => m.origem === 'estoque')) {
                     return false;
                   }
@@ -457,11 +456,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     key={btn.value}
                     variant="outline"
                     size="sm"
-                    className="gap-2"
+                    className="gap-2 w-full"
                     style={{ borderColor: btn.color, color: btn.color }}
                     onClick={() => {
                       if (btn.value === 'sinal' || btn.value === 'vendido') {
-                        // Para troca + vendido: verificar avaliação, CNH e CRLV
                         if (btn.value === 'vendido' && atendimento.interesse === 'trocar') {
                           const faltando: string[] = [];
                          if (!cnhUrl) faltando.push('CNH do cliente');
@@ -482,7 +480,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         }
                         setValorPopup({ valorSinal: '', valorVenda: '' });
                       } else {
-                        // Pendente e Perdido: alterar direto
                         handleStatusChange(btn.value, btn.label);
                       }
                     }}
@@ -491,15 +488,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     {btn.label}
                   </Button>
                 ))}
-            </div>
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  Excluir
-                </Button>
-              </AlertDialogTrigger>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="gap-2 w-full">
+                    <Trash2 className="h-4 w-4" />
+                    Excluir
+                  </Button>
+                </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Excluir atendimento?</AlertDialogTitle>
