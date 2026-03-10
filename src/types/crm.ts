@@ -147,6 +147,7 @@ export interface MotoAvaliacao {
   km: string | null;
   observacoes: string | null;
   enviada_avaliacao: boolean;
+  crlv_url?: string | null;
 }
 
 export interface MotoFoto {
