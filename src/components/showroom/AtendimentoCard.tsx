@@ -1,9 +1,8 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, MapPin, ShoppingCart, Tag, Bike } from 'lucide-react';
+import { Phone, MapPin, Tag, Bike } from 'lucide-react';
 import type { Atendimento } from '@/types/crm';
-import { INTERESSES } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
