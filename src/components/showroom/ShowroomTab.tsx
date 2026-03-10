@@ -41,9 +41,6 @@ const ShowroomTab = () => {
 
     if (filterLoja !== 'todas') query = query.eq('loja', filterLoja);
     if (filterInteresse !== 'todos') query = query.eq('interesse', filterInteresse);
-    if (search.trim()) {
-      query = query.or(`nome_cliente.ilike.%${search}%,telefone.ilike.%${search}%`);
-    }
     if (dateFrom) {
       query = query.gte('created_at', dateFrom.toISOString());
     }
@@ -58,7 +55,23 @@ const ShowroomTab = () => {
       toast.error('Erro ao carregar atendimentos');
       console.error(error);
     } else {
-      setAtendimentos((data as unknown as Atendimento[]) || []);
+      let results = (data as unknown as Atendimento[]) || [];
+      if (search.trim()) {
+        const s = search.trim().toLowerCase();
+        results = results.filter(a => {
+          const fields = [
+            a.nome_cliente, a.telefone, a.loja, a.interesse, a.situacao,
+            a.observacoes, a.origem, a.temperatura, a.tipo_atendimento, a.uf
+          ];
+          const motos = (a as any).motos_interesse || [];
+          const motosAv = (a as any).motos_avaliacao || [];
+          const motoFields = motos.flatMap((m: any) => [m.modelo, m.marca, m.ano]);
+          const motoAvFields = motosAv.flatMap((m: any) => [m.modelo, m.marca, m.placa, m.cor, m.ano_fabricacao, m.ano_modelo, m.km]);
+          const all = [...fields, ...motoFields, ...motoAvFields];
+          return all.some(f => f && String(f).toLowerCase().includes(s));
+        });
+      }
+      setAtendimentos(results);
     }
     setLoading(false);
   }, [filterLoja, filterInteresse, search, dateFrom, dateTo]);
