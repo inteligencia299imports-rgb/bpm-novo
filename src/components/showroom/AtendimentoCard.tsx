@@ -9,7 +9,6 @@ import { ptBR } from 'date-fns/locale';
 interface Props {
   atendimento: Atendimento & { motos_interesse?: any[]; motos_avaliacao?: any[] };
   onClick: () => void;
-  onStatusChange?: (id: string, status: SituacaoShowroom) => void;
 }
 
 const formatPhone = (value: string): string => {
