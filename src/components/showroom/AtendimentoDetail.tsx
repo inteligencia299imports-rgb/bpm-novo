@@ -268,6 +268,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPhotoMotoId(moto.id)}>
                         <Camera className="h-4 w-4" /> Incluir Fotos
                       </Button>
+                      <DocumentUpload
+                        label="CRLV"
+                        currentUrl={crlvUrls[moto.id] || null}
+                        bucketPath={`docs/${moto.id}/crlv`}
+                        onUploaded={async (url) => {
+                          await supabase.from('motos_avaliacao').update({ crlv_url: url } as any).eq('id', moto.id);
+                          setCrlvUrls(prev => ({ ...prev, [moto.id]: url }));
+                        }}
+                      />
                       {!moto.enviada_avaliacao ? (
                         <Button
                           size="sm"
