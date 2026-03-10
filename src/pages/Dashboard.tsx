@@ -9,7 +9,7 @@ const Dashboard = () => {
   const { role } = useAuth();
   const defaultTab = role === 'avaliador' ? 'avaliacoes' : 'showroom';
   const [activeTab, setActiveTab] = useState(defaultTab);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   useEffect(() => {
     if (role === 'avaliador' && activeTab === 'showroom') setActiveTab('avaliacoes');
