@@ -65,7 +65,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [cnhUrl, setCnhUrl] = useState<string | null>(atendimento.cnh_url || null);
   const [crlvUrls, setCrlvUrls] = useState<Record<string, string | null>>({});
-  const [valorPopup, setValorPopup] = useState<{ type: 'sinal' | 'vendido'; value: string } | null>(null);
+  const [valorPopup, setValorPopup] = useState<{ valorSinal: string; valorVenda: string } | null>(null);
   const [savingValor, setSavingValor] = useState(false);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
@@ -150,15 +150,20 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
   const handleSaveValor = async () => {
     if (!valorPopup) return;
-    const numValue = parseCurrencyInput(valorPopup.value);
-    if (numValue <= 0) {
-      toast.error('Informe um valor válido');
+    const sinal = parseCurrencyInput(valorPopup.valorSinal);
+    const venda = parseCurrencyInput(valorPopup.valorVenda);
+    if (sinal <= 0 && venda <= 0) {
+      toast.error('Informe ao menos um valor válido');
       return;
     }
     setSavingValor(true);
-    const field = valorPopup.type === 'sinal' ? 'valor_sinal' : 'valor_venda';
-    const label = valorPopup.type === 'sinal' ? 'Sinal' : 'Vendido';
-    await handleStatusChange(valorPopup.type === 'sinal' ? 'sinal' : 'vendido', label, { [field]: numValue });
+    const updateData: any = {};
+    if (sinal > 0) updateData.valor_sinal = sinal;
+    if (venda > 0) updateData.valor_venda = venda;
+    // Determine status: if venda has value -> vendido, else sinal
+    const newStatus = venda > 0 ? 'vendido' : 'sinal';
+    const label = venda > 0 ? 'Vendido' : 'Sinal';
+    await handleStatusChange(newStatus as SituacaoShowroom, label, updateData);
     setSavingValor(false);
     setValorPopup(null);
   };
@@ -424,8 +429,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               ]
                 .filter(b => b.value !== atendimento.situacao)
                 .filter(b => {
-                  // Quando interesse é "vender", oculta Sinal e Vendido
                   if (atendimento.interesse === 'vender' && (b.value === 'sinal' || b.value === 'vendido')) {
+                    return false;
+                  }
+                  // Sinal e Vendido só aparecem se moto de interesse for do estoque
+                  if ((b.value === 'sinal' || b.value === 'vendido') && !motosInteresse.some(m => m.origem === 'estoque')) {
                     return false;
                   }
                   return true;
@@ -458,7 +466,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             return;
                           }
                         }
-                        setValorPopup({ type: btn.value, value: '' });
+                        setValorPopup({ valorSinal: '', valorVenda: '' });
                       } else {
                         // Pendente e Perdido: alterar direto
                         handleStatusChange(btn.value, btn.label);
@@ -577,27 +585,37 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {valorPopup?.type === 'sinal' ? (
-                <><Sparkles className="h-5 w-5" /> Valor do Sinal</>
-              ) : (
-                <><DollarSign className="h-5 w-5" /> Valor da Venda</>
-              )}
+              <Bike className="h-5 w-5" /> Negociação
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-sm font-medium text-foreground">
-                {valorPopup?.type === 'sinal' ? 'Valor do Sinal (R$)' : 'Valor da Venda (R$)'}
-              </label>
+              <label className="text-sm font-medium text-foreground">Valor do Sinal (R$)</label>
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                 <Input
                   className="pl-10"
                   placeholder="0,00"
-                  value={valorPopup?.value || ''}
+                  value={valorPopup?.valorSinal || ''}
                   onChange={(e) => {
                     const formatted = formatCurrencyInput(e.target.value);
-                    setValorPopup(prev => prev ? { ...prev, value: formatted } : null);
+                    setValorPopup(prev => prev ? { ...prev, valorSinal: formatted } : null);
+                  }}
+                  inputMode="numeric"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Valor da Venda (R$)</label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <Input
+                  className="pl-10"
+                  placeholder="0,00"
+                  value={valorPopup?.valorVenda || ''}
+                  onChange={(e) => {
+                    const formatted = formatCurrencyInput(e.target.value);
+                    setValorPopup(prev => prev ? { ...prev, valorVenda: formatted } : null);
                   }}
                   inputMode="numeric"
                 />
