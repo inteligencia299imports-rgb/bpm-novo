@@ -61,7 +61,7 @@ const ShowroomTab = () => {
       setAtendimentos((data as unknown as Atendimento[]) || []);
     }
     setLoading(false);
-  }, [filterLoja, filterInteresse, search]);
+  }, [filterLoja, filterInteresse, search, dateFrom, dateTo]);
 
   useEffect(() => { fetchAtendimentos(); }, [fetchAtendimentos]);
 
