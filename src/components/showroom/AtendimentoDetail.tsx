@@ -136,6 +136,32 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     return `https://wa.me/${number}`;
   })();
 
+  const handleStatusChange = async (value: SituacaoShowroom, label: string, extraData?: Record<string, any>) => {
+    const updateData: any = { situacao: value, ...extraData };
+    const { error } = await supabase.from('atendimentos').update(updateData).eq('id', atendimento.id);
+    if (error) {
+      toast.error('Erro ao alterar status');
+    } else {
+      toast.success(`Status alterado para ${label}`);
+      onDeleted();
+    }
+  };
+
+  const handleSaveValor = async () => {
+    if (!valorPopup) return;
+    const numValue = parseCurrencyInput(valorPopup.value);
+    if (numValue <= 0) {
+      toast.error('Informe um valor válido');
+      return;
+    }
+    setSavingValor(true);
+    const field = valorPopup.type === 'sinal' ? 'valor_sinal' : 'valor_venda';
+    const label = valorPopup.type === 'sinal' ? 'Sinal' : 'Vendido';
+    await handleStatusChange(valorPopup.type === 'sinal' ? 'sinal' : 'vendido', label, { [field]: numValue });
+    setSavingValor(false);
+    setValorPopup(null);
+  };
+
   const isAvaliada = (motoId: string) => {
     const av = avaliacoes[motoId];
     return av && av.situacao !== 'sem_avaliar';
