@@ -31,7 +31,7 @@ const ShowroomTab = () => {
 
   const fetchAtendimentos = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from('atendimentos').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').order('created_at', { ascending: false });
 
     if (filterLoja !== 'todas') query = query.eq('loja', filterLoja);
     if (filterInteresse !== 'todos') query = query.eq('interesse', filterInteresse);

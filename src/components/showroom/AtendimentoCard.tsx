@@ -1,14 +1,14 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, MapPin, ShoppingCart, Tag } from 'lucide-react';
-import type { Atendimento, AppRole } from '@/types/crm';
+import { Phone, MapPin, ShoppingCart, Tag, Bike } from 'lucide-react';
+import type { Atendimento } from '@/types/crm';
 import { INTERESSES } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface Props {
-  atendimento: Atendimento;
+  atendimento: Atendimento & { motos_interesse?: any[]; motos_avaliacao?: any[] };
   onClick: () => void;
 }
 
@@ -20,8 +20,30 @@ const formatPhone = (value: string): string => {
   return value;
 };
 
+const getMotoLabel = (atendimento: Props['atendimento']): string | null => {
+  const interesse = atendimento.interesse;
+  if (interesse === 'comprar') {
+    const moto = atendimento.motos_interesse?.[0];
+    if (moto && moto.marca) {
+      return [moto.marca, moto.modelo, moto.ano].filter(Boolean).join(' ');
+    }
+  }
+  if (interesse === 'vender' || interesse === 'trocar') {
+    const moto = atendimento.motos_avaliacao?.[0];
+    if (moto && moto.marca) {
+      return [moto.marca, moto.modelo, moto.ano_fabricacao].filter(Boolean).join(' ');
+    }
+    const motoInt = atendimento.motos_interesse?.[0];
+    if (motoInt && motoInt.marca) {
+      return [motoInt.marca, motoInt.modelo, motoInt.ano].filter(Boolean).join(' ');
+    }
+  }
+  return null;
+};
+
 const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
+  const motoLabel = getMotoLabel(atendimento);
 
   return (
     <Card
@@ -34,6 +56,12 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
             <h3 className="font-semibold text-sm truncate">{atendimento.nome_cliente}</h3>
             <Badge variant="outline" className="text-[10px] shrink-0">{atendimento.loja}</Badge>
           </div>
+          {motoLabel && (
+            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+              <Bike className="h-3 w-3" />
+              <span className="truncate">{motoLabel}</span>
+            </div>
+          )}
           <div className="flex flex-col gap-1 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Phone className="h-3 w-3" />
