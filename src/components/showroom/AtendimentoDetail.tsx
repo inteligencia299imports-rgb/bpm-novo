@@ -4,8 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send } from 'lucide-react';
-import type { Atendimento, MotoInteresse, MotoAvaliacao } from '@/types/crm';
+import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle } from 'lucide-react';
+import type { Atendimento, MotoInteresse, MotoAvaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -250,8 +250,39 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             </Card>
           )}
 
-          {/* Excluir */}
-          <div className="md:col-span-2 flex justify-center">
+          {/* Status Actions + Delete */}
+          <div className="md:col-span-2 flex flex-col items-center gap-3">
+            {/* Status change buttons */}
+            <div className="flex gap-2 flex-wrap justify-center">
+              {[
+                { value: 'sinal' as SituacaoShowroom, label: 'Sinal', icon: <Sparkles className="h-4 w-4" />, color: '#9B51E0' },
+                { value: 'vendido' as SituacaoShowroom, label: 'Vendido', icon: <DollarSign className="h-4 w-4" />, color: '#27AE60' },
+                { value: 'perdido' as SituacaoShowroom, label: 'Perdido', icon: <XCircle className="h-4 w-4" />, color: '#FF3B30' },
+              ]
+                .filter(b => b.value !== atendimento.situacao)
+                .map(btn => (
+                  <Button
+                    key={btn.value}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    style={{ borderColor: btn.color, color: btn.color }}
+                    onClick={async () => {
+                      const { error } = await supabase.from('atendimentos').update({ situacao: btn.value }).eq('id', atendimento.id);
+                      if (error) {
+                        toast.error('Erro ao alterar status');
+                      } else {
+                        toast.success(`Status alterado para ${btn.label}`);
+                        onDeleted(); // refresh list
+                      }
+                    }}
+                  >
+                    {btn.icon}
+                    {btn.label}
+                  </Button>
+                ))}
+            </div>
+
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm" className="gap-2">
