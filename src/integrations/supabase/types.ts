@@ -96,6 +96,7 @@ export type Database = {
           quanto_vende: number | null
           quanto_vende_errado: number | null
           situacao: string
+          tipo_aquisicao: string | null
           updated_at: string
           valor_fipe: number | null
         }
@@ -117,6 +118,7 @@ export type Database = {
           quanto_vende?: number | null
           quanto_vende_errado?: number | null
           situacao?: string
+          tipo_aquisicao?: string | null
           updated_at?: string
           valor_fipe?: number | null
         }
@@ -138,6 +140,7 @@ export type Database = {
           quanto_vende?: number | null
           quanto_vende_errado?: number | null
           situacao?: string
+          tipo_aquisicao?: string | null
           updated_at?: string
           valor_fipe?: number | null
         }

@@ -180,8 +180,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setSaving(false);
   };
 
-  const handleStatusChange = async (newStatus: SituacaoAvaliacao) => {
-    const { error } = await supabase.from('avaliacoes').update({ situacao: newStatus }).eq('id', avaliacaoId);
+  const [tipoAquisicaoPopup, setTipoAquisicaoPopup] = useState(false);
+
+  const handleStatusChange = async (newStatus: SituacaoAvaliacao, tipoAquisicao?: string) => {
+    const updateData: any = { situacao: newStatus };
+    if (tipoAquisicao) updateData.tipo_aquisicao = tipoAquisicao;
+    const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
     if (error) {
       toast.error('Erro ao alterar status');
     } else {
@@ -401,7 +405,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   size="sm"
                   className="gap-2"
                   style={{ borderColor: btn.color, color: btn.color }}
-                  onClick={() => handleStatusChange(btn.value)}
+                  onClick={() => {
+                    if (btn.value === 'adquirida') {
+                      setTipoAquisicaoPopup(true);
+                      return;
+                    }
+                    handleStatusChange(btn.value);
+                  }}
                 >
                   {btn.icon}
                   {btn.label}
@@ -469,6 +479,40 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           )}
           <div className="flex justify-end pt-2">
             <Button size="sm" variant="outline" onClick={() => setShowPhotosDialog(false)}>Fechar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Dialog Tipo de Aquisição */}
+      <Dialog open={tipoAquisicaoPopup} onOpenChange={setTipoAquisicaoPopup}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5" /> Tipo de Aquisição
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">Selecione o tipo de aquisição da moto:</p>
+            <div className="flex gap-3">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  handleStatusChange('adquirida', 'propria');
+                  setTipoAquisicaoPopup(false);
+                }}
+              >
+                Própria
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  handleStatusChange('adquirida', 'consignada');
+                  setTipoAquisicaoPopup(false);
+                }}
+              >
+                Consignada
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
