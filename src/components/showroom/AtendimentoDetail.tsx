@@ -466,7 +466,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             return;
                           }
                         }
-                        setValorPopup({ type: btn.value, value: '' });
+                        setValorPopup({ valorSinal: '', valorVenda: '' });
                       } else {
                         // Pendente e Perdido: alterar direto
                         handleStatusChange(btn.value, btn.label);
