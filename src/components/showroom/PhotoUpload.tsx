@@ -81,7 +81,6 @@ const PhotoUpload: React.FC<Props> = ({ motoAvaliacaoId }) => {
 
   return (
     <div className="space-y-3">
-      <Label className="text-sm font-semibold">📷 Fotos da Moto</Label>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {TIPOS_FOTO.map(tipo => {
           const foto = fotos.find(f => f.tipo === tipo);
