@@ -254,7 +254,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           <div className="md:col-span-2 flex justify-center">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">
+                <Button variant="destructive" size="sm" className="gap-2">
+                  <Trash2 className="h-4 w-4" />
                   Excluir
                 </Button>
               </AlertDialogTrigger>
