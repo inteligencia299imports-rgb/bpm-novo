@@ -210,7 +210,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       return;
     }
     setSavingAquisicao(true);
-    await handleStatusChange('adquirida', tipoSelecionado, valor > 0 ? valor : undefined);
+    await handleStatusChange('adquirida', tipoSelecionado, valor && valor > 0 ? valor : undefined);
     setSavingAquisicao(false);
     setTipoAquisicaoPopup(false);
     setValorFechamentoAquisicao('');
