@@ -32,6 +32,8 @@ const ShowroomTab = () => {
   const [filterLoja, setFilterLoja] = useState('todas');
   const [filterInteresse, setFilterInteresse] = useState('todos');
   const [showFilters, setShowFilters] = useState(false);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const fetchAtendimentos = useCallback(async () => {
     setLoading(true);
