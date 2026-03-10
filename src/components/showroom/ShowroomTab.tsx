@@ -102,6 +102,17 @@ const ShowroomTab = () => {
     fetchAtendimentos();
   };
 
+  const handleStatusChange = async (id: string, status: SituacaoShowroom) => {
+    const { error } = await supabase.from('atendimentos').update({ situacao: status }).eq('id', id);
+    if (error) {
+      toast.error('Erro ao alterar status');
+      console.error(error);
+    } else {
+      toast.success(`Status alterado para ${SITUACOES_SHOWROOM.find(s => s.value === status)?.label}`);
+      fetchAtendimentos();
+    }
+  };
+
   if (detailOpen && selectedAtendimento) {
     return (
       <AtendimentoDetail
@@ -249,6 +260,7 @@ const ShowroomTab = () => {
                           key={a.id}
                           atendimento={a}
                           onClick={() => handleCardClick(a)}
+                          onStatusChange={handleStatusChange}
                         />
                       ))
                     )}
