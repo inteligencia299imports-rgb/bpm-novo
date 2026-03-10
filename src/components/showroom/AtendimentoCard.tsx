@@ -121,27 +121,6 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
             )}
           </div>
 
-          {/* Status change buttons */}
-          {onStatusChange && availableButtons.length > 0 && (
-            <div className="flex gap-1.5 pt-1 border-t border-border/50">
-              {availableButtons.map(btn => (
-                <Button
-                  key={btn.value}
-                  variant="ghost"
-                  size="sm"
-                  className="flex-1 h-7 text-[10px] gap-1 px-1 hover:opacity-80"
-                  style={{ color: btn.color }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStatusChange(atendimento.id, btn.value);
-                  }}
-                >
-                  {btn.icon}
-                  {btn.label}
-                </Button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
