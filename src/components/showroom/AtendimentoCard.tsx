@@ -1,6 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Bike, Calendar } from 'lucide-react';
+import { Phone, Bike, Calendar, ArrowLeftRight } from 'lucide-react';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import { STATUS_COLORS } from '@/types/crm';
 import { format } from 'date-fns';
@@ -28,25 +28,31 @@ const getInteresseLabel = (interesse: string) => {
   }
 };
 
-const getMotoLabel = (atendimento: Props['atendimento']): string | null => {
+const getMotoInteresseLabel = (atendimento: Props['atendimento']): string | null => {
   const motoInt = atendimento.motos_interesse?.[0];
-  const motoAv = atendimento.motos_avaliacao?.[0];
-
+  if (!motoInt?.modelo) return null;
   const parts: string[] = [];
-
-  if (motoInt?.modelo) {
-    if (motoInt.origem !== 'externo' && motoAv?.placa) parts.push(motoAv.placa);
-    parts.push(motoInt.modelo);
-  } else if (motoAv) {
-    if (motoAv.placa) parts.push(motoAv.placa);
-    parts.push(`${motoAv.marca} ${motoAv.modelo}`);
+  if (motoInt.origem !== 'externo' && motoInt.estoque_moto_id) {
+    const motoAv = atendimento.motos_avaliacao?.[0];
+    if (motoAv?.placa) parts.push(motoAv.placa);
   }
+  parts.push(motoInt.modelo);
+  return parts.join(' - ');
+};
 
-  return parts.length > 0 ? parts.join(' - ') : null;
+const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null => {
+  const motoAv = atendimento.motos_avaliacao?.[0];
+  if (!motoAv) return null;
+  const parts: string[] = [];
+  if (motoAv.placa) parts.push(motoAv.placa);
+  parts.push(`${motoAv.marca} ${motoAv.modelo}`);
+  return parts.join(' - ');
 };
 
 const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
-  const motoLabel = getMotoLabel(atendimento);
+  const interesse = atendimento.interesse;
+  const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
+  const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
   const statusColor = STATUS_COLORS[atendimento.situacao as SituacaoShowroom] || '#6B7280';
 
   return (
@@ -70,10 +76,16 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
           </div>
 
           {/* Moto reference */}
-          {motoLabel && (
+          {motoInteresse && (
             <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
               <Bike className="h-3.5 w-3.5" />
-              <span className="truncate">{motoLabel}</span>
+              <span className="truncate">{motoInteresse}</span>
+            </div>
+          )}
+          {motoCliente && (
+            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              <span className="truncate">{motoCliente}</span>
             </div>
           )}
 
