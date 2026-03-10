@@ -330,9 +330,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           <Eye className="h-4 w-4" /> Avaliada - Ver Valores
                         </Button>
                       ) : (
-                        <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600">
-                          ⏳ Aguardando avaliação
-                        </Badge>
+                        null
                       )}
                     </div>
                   </div>
