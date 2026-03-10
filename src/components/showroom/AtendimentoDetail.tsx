@@ -294,7 +294,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1.5 border-primary text-primary hover:bg-primary/10"
+                          className="gap-1.5"
                           onClick={() => {
                             toast.success('Consulta solicitada com sucesso!');
                           }}
