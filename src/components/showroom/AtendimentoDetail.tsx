@@ -634,6 +634,24 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 />
               </div>
             </div>
+            {atendimento.interesse === 'trocar' && (
+              <div>
+                <label className="text-sm font-medium text-foreground">Valor de Fechamento da Moto do Cliente (R$)</label>
+                <div className="relative mt-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <Input
+                    className="pl-10"
+                    placeholder="0,00"
+                    value={valorPopup?.valorFechamento || ''}
+                    onChange={(e) => {
+                      const formatted = formatCurrencyInput(e.target.value);
+                      setValorPopup(prev => prev ? { ...prev, valorFechamento: formatted } : null);
+                    }}
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+            )}
             <Button
               className="w-full"
               onClick={handleSaveValor}
