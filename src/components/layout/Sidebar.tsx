@@ -1,7 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Bike, LogOut, User, ShoppingBag, ClipboardCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 const ROLE_LABELS: Record<string, string> = {
   vendedor: 'Vendedor',
@@ -23,13 +22,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
   ].filter(t => role && t.roles.includes(role));
 
   return (
-    <aside className="hidden md:flex flex-col w-64 min-h-screen border-r border-border bg-sidebar text-sidebar-foreground">
+    <aside className="hidden md:flex flex-col w-64 min-h-screen bg-sidebar text-sidebar-foreground shadow-card">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
-          <Bike className="h-5 w-5 text-sidebar-primary-foreground" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-foreground/10">
+          <Bike className="h-5 w-5 text-sidebar-foreground" />
         </div>
-        <span className="text-lg font-bold tracking-tight">Moto CRM</span>
+        <span className="text-lg font-bold tracking-tight text-sidebar-foreground">Moto CRM</span>
       </div>
 
       {/* Navigation */}
@@ -40,8 +39,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
             onClick={() => onTabChange(tab.id)}
             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
               activeTab === tab.id
-                ? 'bg-sidebar-accent text-sidebar-primary'
-                : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                ? 'bg-sidebar-accent text-sidebar-foreground'
+                : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
             }`}
           >
             <tab.icon className="h-5 w-5" />
@@ -55,19 +54,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
         <div className="flex items-center gap-2 mb-3">
           <User className="h-4 w-4 text-sidebar-foreground/60" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{userName}</p>
+            <p className="text-sm font-medium truncate text-sidebar-foreground">{userName}</p>
             <p className="text-xs text-sidebar-foreground/60">{ROLE_LABELS[role || '']}</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={signOut}
-          className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+          className="flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
         >
           <LogOut className="h-4 w-4" />
           Sair
-        </Button>
+        </button>
       </div>
     </aside>
   );
