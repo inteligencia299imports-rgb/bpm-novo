@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ShoppingBag, ClipboardCheck, LogOut } from 'lucide-react';
+import { Bike, ClipboardCheck, LogOut } from 'lucide-react';
 
 interface BottomNavProps {
   activeTab: string;
