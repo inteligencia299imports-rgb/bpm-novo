@@ -6,17 +6,17 @@
 
 @layer base {
   :root {
-    /* Background: #0F1115 */
-    --background: 225 21% 7%;
-    --foreground: 0 0% 90%;
+    /* Background: #F5F7FA */
+    --background: 216 25% 97%;
+    --foreground: 215 28% 17%;
 
-    /* Card / Surface: #1A1D22 */
-    --card: 218 13% 12%;
-    --card-foreground: 0 0% 90%;
+    /* Card / Surface: #FFFFFF */
+    --card: 0 0% 100%;
+    --card-foreground: 215 28% 17%;
 
     /* Popover = surface */
-    --popover: 218 13% 12%;
-    --popover-foreground: 0 0% 90%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 17%;
 
     /* Primary: #2F6F84 */
     --primary: 193 47% 35%;
@@ -25,13 +25,16 @@
     /* Primary dark: #275C6D */
     --primary-dark: 193 46% 29%;
 
-    /* Secondary = surface-hover: #23272F */
-    --secondary: 220 14% 16%;
-    --secondary-foreground: 0 0% 90%;
+    /* Primary light: #3F8DA6 */
+    --primary-light: 196 45% 45%;
 
-    /* Muted = text-muted bg */
-    --muted: 220 14% 16%;
-    --muted-foreground: 220 6% 46%;
+    /* Secondary = surface-soft hover: #F1F4F7 */
+    --secondary: 213 22% 95%;
+    --secondary-foreground: 215 28% 17%;
+
+    /* Muted */
+    --muted: 213 22% 95%;
+    --muted-foreground: 220 9% 46%;
 
     /* Accent = primary */
     --accent: 193 47% 35%;
@@ -41,35 +44,41 @@
     --destructive: 4 100% 59%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Border: #2A2F36 */
-    --border: 215 13% 19%;
-    --input: 215 13% 19%;
+    /* Border: #E2E8F0 */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
     --ring: 193 47% 35%;
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* Sidebar uses primary as bg */
-    --sidebar-background: 193 46% 29%;
+    --sidebar-background: 193 47% 35%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
     --sidebar-primary-foreground: 193 47% 35%;
-    --sidebar-accent: 193 47% 35%;
+    --sidebar-accent: 193 46% 29%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 193 40% 24%;
+    --sidebar-border: 193 40% 28%;
     --sidebar-ring: 0 0% 100%;
 
     /* Status colors */
     --success: 145 63% 42%;
     --success-foreground: 0 0% 100%;
     --warning: 44 87% 62%;
-    --warning-foreground: 225 21% 7%;
+    --warning-foreground: 215 28% 17%;
     --info: 196 100% 59%;
-    --info-foreground: 225 21% 7%;
+    --info-foreground: 215 28% 17%;
 
-    /* Surface hover */
-    --surface-hover: 220 14% 16%;
+    /* Sinal (purple): #9B51E0 */
+    --sinal: 269 68% 60%;
+    --sinal-foreground: 0 0% 100%;
+
+    /* Surface hover: #F1F4F7 */
+    --surface-hover: 213 22% 95%;
 
     /* Text tokens */
-    --text-secondary: 199 5% 63%;
+    --text-primary: 215 28% 17%;
+    --text-secondary: 217 10% 34%;
+    --text-muted: 220 9% 46%;
   }
 }
 
@@ -84,7 +93,7 @@
 
 @layer utilities {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-lg border border-border/50 shadow-sm;
+    @apply bg-card border border-border shadow-sm;
   }
   .status-badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, MapPin, Tag, Bike } from 'lucide-react';
-import type { Atendimento } from '@/types/crm';
+import { Phone, Bike, Calendar } from 'lucide-react';
+import type { Atendimento, SituacaoShowroom } from '@/types/crm';
+import { STATUS_COLORS } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -19,83 +19,88 @@ const formatPhone = (value: string): string => {
   return value;
 };
 
+const getInteresseLabel = (interesse: string) => {
+  switch (interesse) {
+    case 'comprar': return 'Comprar';
+    case 'vender': return 'Vender';
+    case 'trocar': return 'Trocar';
+    default: return interesse;
+  }
+};
+
 const getMotoLabel = (atendimento: Props['atendimento']): string | null => {
-  const interesse = atendimento.interesse;
-  const label = interesse === 'comprar' ? 'Comprar' : interesse === 'vender' ? 'Vender' : 'Trocar';
   const motoInt = atendimento.motos_interesse?.[0];
   const motoAv = atendimento.motos_avaliacao?.[0];
-
-  // Sempre prioriza moto de interesse (compra)
-  if (motoInt?.modelo) {
-    if (motoInt.origem === 'estoque' && motoAv?.placa) {
-      return `${label} - ${motoAv.placa} - ${motoInt.modelo}`;
-    }
-    return `${label} - ${motoInt.modelo}`;
-  }
-
-  // Se for apenas vender, mostra moto do cliente
-  if (interesse === 'vender' && motoAv) {
-    const parts = [label, motoAv.placa, motoAv.modelo].filter(Boolean);
-    return parts.join(' - ');
-  }
-
-  return label;
+  if (motoInt?.modelo) return motoInt.modelo;
+  if (motoAv?.modelo) return `${motoAv.marca} ${motoAv.modelo}`;
+  return null;
 };
 
 const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
   const motoLabel = getMotoLabel(atendimento);
+  const statusColor = STATUS_COLORS[atendimento.situacao as SituacaoShowroom] || '#6B7280';
 
   return (
-    <Card
-      className="hover:shadow-md transition-all cursor-pointer hover:border-primary/30 group"
+    <div
+      className="bg-card rounded-lg border border-border shadow-soft hover:shadow-card hover:bg-surface-hover transition-all cursor-pointer group overflow-hidden"
       onClick={onClick}
     >
-      <CardContent className="p-3">
-        <div className="space-y-2">
+      <div className="flex">
+        {/* Status bar */}
+        <div className="w-1 shrink-0 rounded-l-lg" style={{ backgroundColor: statusColor }} />
+
+        <div className="flex-1 p-3 space-y-2">
+          {/* Header: name + interest badge */}
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-semibold text-sm truncate">{atendimento.nome_cliente}</h3>
-            <Badge variant="outline" className="text-[10px] shrink-0">{atendimento.loja}</Badge>
+            <h3 className="font-semibold text-sm text-foreground truncate">
+              {atendimento.nome_cliente}
+            </h3>
+            <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary">
+              {getInteresseLabel(atendimento.interesse)}
+            </Badge>
           </div>
+
+          {/* Moto reference */}
           {motoLabel && (
             <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-              <Bike className="h-3 w-3" />
+              <Bike className="h-3.5 w-3.5" />
               <span className="truncate">{motoLabel}</span>
             </div>
           )}
-          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
+
+          {/* Details */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
               <Phone className="h-3 w-3" />
               {formatPhone(atendimento.telefone)}
             </span>
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {atendimento.uf}
-              </span>
-              <span className="flex items-center gap-1">
-                <Tag className="h-3 w-3" />
-                {atendimento.tipo_atendimento}
-              </span>
-            </div>
+            <span className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {format(new Date(atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}
+            </span>
           </div>
-          {atendimento.temperatura && (
-            <Badge
-              variant="secondary"
-              className={`text-[10px] ${
-                atendimento.temperatura === 'Quente' ? 'bg-destructive/15 text-destructive' :
-                atendimento.temperatura === 'Morno' ? 'bg-warning/15 text-warning' :
-                'bg-info/15 text-info'
-              }`}
-            >
-              {atendimento.temperatura}
+
+          {/* Store badge */}
+          <div className="flex items-center justify-between">
+            <Badge variant="secondary" className="text-[10px]">
+              {atendimento.loja}
             </Badge>
-          )}
-          <p className="text-[10px] text-muted-foreground/60">
-            {format(new Date(atendimento.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-          </p>
+            {atendimento.temperatura && (
+              <Badge
+                variant="secondary"
+                className={`text-[10px] ${
+                  atendimento.temperatura === 'Quente' ? 'bg-destructive/10 text-destructive' :
+                  atendimento.temperatura === 'Morno' ? 'bg-warning/10 text-warning' :
+                  'bg-info/10 text-info'
+                }`}
+              >
+                {atendimento.temperatura}
+              </Badge>
+            )}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
