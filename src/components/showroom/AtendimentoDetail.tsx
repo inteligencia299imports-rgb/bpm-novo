@@ -215,6 +215,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         <p className="text-sm mt-1">{moto.observacoes}</p>
                       </div>
                     )}
+                    <div className="flex gap-2 mt-3">
+                      <Button size="sm" variant="outline" className="gap-1.5">
+                        <Camera className="h-4 w-4" /> Incluir Fotos
+                      </Button>
+                      <Button size="sm" variant="outline" className="gap-1.5">
+                        <Send className="h-4 w-4" /> Enviar para Avaliação
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </CardContent>
