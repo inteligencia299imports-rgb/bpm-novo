@@ -521,7 +521,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   className="pl-10"
                   placeholder="0,00"
                   value={valorFechamentoAquisicao}
-                  onChange={(e) => setValorFechamentoAquisicao(formatCurrencyInput(e.target.value))}
+                  onChange={(e) => setValorFechamentoAquisicao(applyCurrencyMask(e.target.value))}
                   inputMode="numeric"
                 />
               </div>
