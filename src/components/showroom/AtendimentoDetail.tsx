@@ -85,43 +85,37 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     ) : null
   );
 
+  const whatsappUrl = (() => {
+    const digits = atendimento.telefone.replace(/\D/g, '');
+    const number = digits.startsWith('55') ? digits : `55${digits}`;
+    return `https://wa.me/${number}`;
+  })();
+
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={onClose}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h1 className="text-xl font-bold">{atendimento.nome_cliente}</h1>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg sm:text-xl font-bold truncate">{atendimento.nome_cliente}</h1>
+              {sit && <Badge className={`${sit.color} text-[10px] shrink-0`}>{sit.label}</Badge>}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Criado em {format(new Date(atendimento.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              {format(new Date(atendimento.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {sit && (
-            <Badge className={`${sit.color} text-xs`}>{sit.label}</Badge>
-          )}
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1.5 text-green-600 border-green-600 hover:bg-green-50"
-            onClick={() => {
-              const digits = atendimento.telefone.replace(/\D/g, '');
-              const number = digits.startsWith('55') ? digits : `55${digits}`;
-              window.open(`https://wa.me/${number}`, '_blank');
-            }}
-          >
-            <MessageCircle className="h-4 w-4" /> WhatsApp
-          </Button>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onEdit(atendimento.id)}>
+        <div className="flex gap-2 pl-11">
+          <Button size="sm" variant="outline" className="gap-1.5 flex-1 sm:flex-none" onClick={() => onEdit(atendimento.id)}>
             <Edit className="h-4 w-4" /> Editar
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" className="gap-1.5">
+              <Button variant="destructive" size="sm" className="gap-1.5 flex-1 sm:flex-none">
                 <Trash2 className="h-4 w-4" /> Excluir
               </Button>
             </AlertDialogTrigger>
@@ -145,7 +139,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       <Separator />
 
-      <ScrollArea className="h-[calc(100vh-12rem)]">
+      <ScrollArea className="h-[calc(100vh-14rem)]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6">
           {/* Dados do Cliente */}
           <Card>
@@ -154,13 +148,21 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={atendimento.nome_cliente} />
                 <InfoItem label="Telefone" value={formatPhone(atendimento.telefone)} />
                 <InfoItem label="Sexo" value={atendimento.sexo} />
                 <InfoItem label="UF" value={atendimento.uf} />
               </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full gap-1.5 text-green-600 border-green-600 hover:bg-green-50"
+                onClick={() => window.open(whatsappUrl, '_blank')}
+              >
+                <MessageCircle className="h-4 w-4" /> Abrir WhatsApp
+              </Button>
             </CardContent>
           </Card>
 
