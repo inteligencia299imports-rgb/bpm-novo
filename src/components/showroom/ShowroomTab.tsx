@@ -44,6 +44,14 @@ const ShowroomTab = () => {
     if (search.trim()) {
       query = query.or(`nome_cliente.ilike.%${search}%,telefone.ilike.%${search}%`);
     }
+    if (dateFrom) {
+      query = query.gte('created_at', dateFrom.toISOString());
+    }
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      query = query.lte('created_at', end.toISOString());
+    }
 
     const { data, error } = await query;
     if (error) {
