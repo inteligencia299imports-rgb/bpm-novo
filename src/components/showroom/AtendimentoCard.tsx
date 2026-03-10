@@ -22,23 +22,23 @@ const formatPhone = (value: string): string => {
 
 const getMotoLabel = (atendimento: Props['atendimento']): string | null => {
   const interesse = atendimento.interesse;
+  const label = interesse === 'comprar' ? 'Compra' : interesse === 'vender' ? 'Venda' : 'Troca';
+
+  const motoAv = atendimento.motos_avaliacao?.[0];
+  const motoInt = atendimento.motos_interesse?.[0];
+
   if (interesse === 'comprar') {
-    const moto = atendimento.motos_interesse?.[0];
-    if (moto && moto.marca) {
-      return [moto.marca, moto.modelo, moto.ano].filter(Boolean).join(' ');
-    }
+    if (motoInt?.modelo) return `${label} - ${motoInt.modelo}`;
+    return label;
   }
-  if (interesse === 'vender' || interesse === 'trocar') {
-    const moto = atendimento.motos_avaliacao?.[0];
-    if (moto && moto.marca) {
-      return [moto.marca, moto.modelo, moto.ano_fabricacao].filter(Boolean).join(' ');
-    }
-    const motoInt = atendimento.motos_interesse?.[0];
-    if (motoInt && motoInt.marca) {
-      return [motoInt.marca, motoInt.modelo, motoInt.ano].filter(Boolean).join(' ');
-    }
+
+  // vender ou trocar: prioriza moto de avaliação
+  if (motoAv) {
+    const parts = [label, motoAv.placa, motoAv.modelo].filter(Boolean);
+    return parts.join(' - ');
   }
-  return null;
+  if (motoInt?.modelo) return `${label} - ${motoInt.modelo}`;
+  return label;
 };
 
 const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
