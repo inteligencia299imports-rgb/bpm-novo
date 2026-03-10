@@ -299,7 +299,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             toast.success('Consulta solicitada com sucesso!');
                           }}
                         >
-                          <Send className="h-4 w-4" /> Solicitar Consulta
+                          <Search className="h-4 w-4" /> Solicitar Consulta
                         </Button>
                       )}
                       {!moto.enviada_avaliacao ? (
