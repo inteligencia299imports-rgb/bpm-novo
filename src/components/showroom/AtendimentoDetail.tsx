@@ -389,6 +389,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 { value: 'perdido' as SituacaoShowroom, label: 'Perdido', icon: <XCircle className="h-4 w-4" />, color: '#FF3B30' },
               ]
                 .filter(b => b.value !== atendimento.situacao)
+                .filter(b => {
+                  // Quando interesse é "vender", oculta Sinal e Vendido
+                  if (atendimento.interesse === 'vender' && (b.value === 'sinal' || b.value === 'vendido')) {
+                    return false;
+                  }
+                  return true;
+                })
                 .map(btn => (
                   <Button
                     key={btn.value}
@@ -396,13 +403,28 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     size="sm"
                     className="gap-2"
                     style={{ borderColor: btn.color, color: btn.color }}
-                    onClick={async () => {
-                      const { error } = await supabase.from('atendimentos').update({ situacao: btn.value }).eq('id', atendimento.id);
-                      if (error) {
-                        toast.error('Erro ao alterar status');
+                    onClick={() => {
+                      if (btn.value === 'sinal' || btn.value === 'vendido') {
+                        // Para troca + vendido: verificar avaliação, CNH e CRLV
+                        if (btn.value === 'vendido' && atendimento.interesse === 'trocar') {
+                          const faltando: string[] = [];
+                          if (!cnhUrl) faltando.push('CNH do cliente');
+                          
+                          const allMotosAvaliadas = motosAvaliacao.length > 0 && motosAvaliacao.every(m => isAvaliada(m.id));
+                          if (!allMotosAvaliadas) faltando.push('Avaliação da moto do cliente');
+                          
+                          const allCrlvs = motosAvaliacao.length > 0 && motosAvaliacao.every(m => crlvUrls[m.id]);
+                          if (!allCrlvs) faltando.push('CRLV da moto do cliente');
+                          
+                          if (faltando.length > 0) {
+                            toast.error(`Para marcar como Vendido, é necessário: ${faltando.join(', ')}`);
+                            return;
+                          }
+                        }
+                        setValorPopup({ type: btn.value, value: '' });
                       } else {
-                        toast.success(`Status alterado para ${btn.label}`);
-                        onDeleted();
+                        // Pendente e Perdido: alterar direto
+                        handleStatusChange(btn.value, btn.label);
                       }
                     }}
                   >
