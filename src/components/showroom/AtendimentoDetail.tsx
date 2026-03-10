@@ -138,7 +138,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 className="w-full gap-1.5 text-green-600 border-green-600 hover:bg-green-50"
                 onClick={() => window.open(whatsappUrl, '_blank')}
               >
-                <MessageCircle className="h-4 w-4" /> Abrir WhatsApp
+                <MessageCircle className="h-4 w-4" /> WhatsApp
               </Button>
             </CardContent>
           </Card>
