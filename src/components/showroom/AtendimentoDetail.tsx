@@ -247,6 +247,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Tag className="h-4 w-4 text-primary" /> Moto do Cliente
                 </CardTitle>
+                {motosAvaliacao.some(m => m.enviada_avaliacao && !isAvaliada(m.id)) && (
+                  <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 w-fit mt-1 gap-1">
+                    <Clock className="h-3 w-3" /> Aguardando avaliação
+                  </Badge>
+                )}
               </CardHeader>
               <CardContent>
                 {motosAvaliacao.map((moto, idx) => (
