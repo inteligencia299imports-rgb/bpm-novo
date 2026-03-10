@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye } from 'lucide-react';
 import type { Atendimento, MotoInteresse, MotoAvaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES } from '@/types/crm';
 import { format } from 'date-fns';
@@ -37,11 +37,18 @@ const formatKm = (km: string | null) => {
   return num.toLocaleString('pt-BR') + ' km';
 };
 
+const formatCurrency = (value: number | null) => {
+  if (value === null || value === undefined) return '-';
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
+
 const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted }) => {
   const [motosInteresse, setMotosInteresse] = useState<MotoInteresse[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<MotoAvaliacao[]>([]);
+  const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [photoMotoId, setPhotoMotoId] = useState<string | null>(null);
+  const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
@@ -49,12 +56,22 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   useEffect(() => {
     const fetchRelated = async () => {
       setLoading(true);
-      const [resInt, resAv] = await Promise.all([
+      const [resInt, resAv, resAval] = await Promise.all([
         supabase.from('motos_interesse').select('*').eq('atendimento_id', atendimento.id),
         supabase.from('motos_avaliacao').select('*').eq('atendimento_id', atendimento.id),
+        supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimento.id),
       ]);
       setMotosInteresse((resInt.data as unknown as MotoInteresse[]) || []);
       setMotosAvaliacao((resAv.data as unknown as MotoAvaliacao[]) || []);
+      
+      // Map avaliacoes by moto_avaliacao_id
+      const avalMap: Record<string, any> = {};
+      if (resAval.data) {
+        for (const av of resAval.data) {
+          avalMap[(av as any).moto_avaliacao_id] = av;
+        }
+      }
+      setAvaliacoes(avalMap);
       setLoading(false);
     };
     fetchRelated();
@@ -93,6 +110,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     const number = digits.startsWith('55') ? digits : `55${digits}`;
     return `https://wa.me/${number}`;
   })();
+
+  const isAvaliada = (motoId: string) => {
+    const av = avaliacoes[motoId];
+    return av && av.situacao !== 'sem_avaliar';
+  };
 
   return (
     <div className="space-y-4">
@@ -214,7 +236,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       <InfoItem label="Cor" value={moto.cor} />
                       <InfoItem label="Placa" value={moto.placa} />
                       <InfoItem label="KM" value={formatKm(moto.km)} />
-                      <InfoItem label="Enviada p/ Avaliação" value={moto.enviada_avaliacao ? 'Sim' : 'Não'} />
                     </div>
                     {moto.observacoes && (
                       <div className="mt-2">
@@ -222,7 +243,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         <p className="text-sm mt-1">{moto.observacoes}</p>
                       </div>
                     )}
-                    <div className="flex gap-2 mt-3">
+                    <div className="flex gap-2 mt-3 flex-wrap">
                       <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPhotoMotoId(moto.id)}>
                         <Camera className="h-4 w-4" /> Incluir Fotos
                       </Button>
@@ -232,7 +253,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           variant="outline"
                           className="gap-1.5"
                           onClick={async () => {
-                            // Create avaliação record
                             const { error: avError } = await supabase.from('avaliacoes').insert({
                               atendimento_id: atendimento.id,
                               moto_avaliacao_id: moto.id,
@@ -242,7 +262,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               console.error(avError);
                               return;
                             }
-                            // Mark moto as sent
                             const { error: mError } = await supabase
                               .from('motos_avaliacao')
                               .update({ enviada_avaliacao: true })
@@ -253,15 +272,23 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               return;
                             }
                             toast.success('Enviado para avaliação!');
-                            // Refresh local state
                             setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, enviada_avaliacao: true } : m));
                           }}
                         >
                           <Send className="h-4 w-4" /> Enviar para Avaliação
                         </Button>
+                      ) : isAvaliada(moto.id) ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
+                          onClick={() => setViewAvaliacaoData(avaliacoes[moto.id])}
+                        >
+                          <Eye className="h-4 w-4" /> Avaliada - Ver Valores
+                        </Button>
                       ) : (
-                        <Badge variant="secondary" className="text-xs bg-success/15 text-success">
-                          ✓ Enviada para avaliação
+                        <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600">
+                          ⏳ Aguardando avaliação
                         </Badge>
                       )}
                     </div>
@@ -287,7 +314,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
           {/* Status Actions + Delete */}
           <div className="md:col-span-2 flex flex-col items-center gap-3">
-            {/* Status change buttons */}
             <div className="flex gap-2 flex-wrap justify-center">
               {[
                 { value: 'pendente' as SituacaoShowroom, label: 'Pendente', icon: <Clock className="h-4 w-4" />, color: '#F2C94C' },
@@ -309,7 +335,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         toast.error('Erro ao alterar status');
                       } else {
                         toast.success(`Status alterado para ${btn.label}`);
-                        onDeleted(); // refresh list
+                        onDeleted();
                       }
                     }}
                   >
@@ -357,6 +383,67 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           <div className="flex justify-end pt-2">
             <Button size="sm" onClick={() => setPhotoMotoId(null)}>Salvar</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Valores da Avaliação */}
+      <Dialog open={!!viewAvaliacaoData} onOpenChange={(o) => !o && setViewAvaliacaoData(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" /> Valores da Avaliação
+            </DialogTitle>
+          </DialogHeader>
+          {viewAvaliacaoData && (
+            <div className="grid grid-cols-2 gap-4 py-2">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor FIPE</span>
+                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.valor_fipe)}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Menor Valor</span>
+                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.menor_valor)}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Maior Valor</span>
+                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.maior_valor)}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quanto Pede</span>
+                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.quanto_pede)}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quanto Vende</span>
+                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.quanto_vende)}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quanto Vende (errado)</span>
+                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.quanto_vende_errado)}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Aval. Consignação</span>
+                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.avaliacao_consignacao)}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Aval. Compra</span>
+                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.avaliacao_compra)}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Custos Loja</span>
+                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.previsao_custos_loja)}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Custos Cliente</span>
+                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.previsao_custos_cliente)}</span>
+              </div>
+              {viewAvaliacaoData.observacao_avaliador && (
+                <div className="col-span-2 flex flex-col gap-0.5">
+                  <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observação do Avaliador</span>
+                  <p className="text-sm">{viewAvaliacaoData.observacao_avaliador}</p>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
