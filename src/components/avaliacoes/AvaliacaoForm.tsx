@@ -405,7 +405,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   size="sm"
                   className="gap-2"
                   style={{ borderColor: btn.color, color: btn.color }}
-                  onClick={() => handleStatusChange(btn.value)}
+                  onClick={() => {
+                    if (btn.value === 'adquirida') {
+                      setTipoAquisicaoPopup(true);
+                      return;
+                    }
+                    handleStatusChange(btn.value);
+                  }}
                 >
                   {btn.icon}
                   {btn.label}
