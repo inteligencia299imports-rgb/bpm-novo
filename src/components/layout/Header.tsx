@@ -29,7 +29,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange }) => {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
             <Bike className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="text-lg font-bold tracking-tight hidden sm:block">299 CRM</span>
+          <span className="text-lg font-bold tracking-tight hidden sm:block">CRM 299</span>
         </div>
 
         <nav className="flex gap-1">
