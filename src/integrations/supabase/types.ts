@@ -164,6 +164,112 @@ export type Database = {
           },
         ]
       }
+      estoque: {
+        Row: {
+          ano_fabricacao: string | null
+          ano_modelo: string | null
+          atendimento_venda_id: string | null
+          avaliacao_id: string | null
+          categoria: string | null
+          cilindrada: string | null
+          cor: string | null
+          created_at: string
+          data_entrada: string
+          data_venda: string | null
+          empresa: string | null
+          id: string
+          km: string | null
+          marca: string
+          modelo: string
+          moto_avaliacao_id: string | null
+          observacoes: string | null
+          placa: string | null
+          preco: number | null
+          preco_acao: number | null
+          status: string
+          tipo: string
+          updated_at: string
+          valor_sinal: number | null
+          valor_venda: number | null
+        }
+        Insert: {
+          ano_fabricacao?: string | null
+          ano_modelo?: string | null
+          atendimento_venda_id?: string | null
+          avaliacao_id?: string | null
+          categoria?: string | null
+          cilindrada?: string | null
+          cor?: string | null
+          created_at?: string
+          data_entrada?: string
+          data_venda?: string | null
+          empresa?: string | null
+          id?: string
+          km?: string | null
+          marca: string
+          modelo: string
+          moto_avaliacao_id?: string | null
+          observacoes?: string | null
+          placa?: string | null
+          preco?: number | null
+          preco_acao?: number | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor_sinal?: number | null
+          valor_venda?: number | null
+        }
+        Update: {
+          ano_fabricacao?: string | null
+          ano_modelo?: string | null
+          atendimento_venda_id?: string | null
+          avaliacao_id?: string | null
+          categoria?: string | null
+          cilindrada?: string | null
+          cor?: string | null
+          created_at?: string
+          data_entrada?: string
+          data_venda?: string | null
+          empresa?: string | null
+          id?: string
+          km?: string | null
+          marca?: string
+          modelo?: string
+          moto_avaliacao_id?: string | null
+          observacoes?: string | null
+          placa?: string | null
+          preco?: number | null
+          preco_acao?: number | null
+          status?: string
+          tipo?: string
+          updated_at?: string
+          valor_sinal?: number | null
+          valor_venda?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estoque_atendimento_venda_id_fkey"
+            columns: ["atendimento_venda_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_moto_avaliacao_id_fkey"
+            columns: ["moto_avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "motos_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marcas_motos: {
         Row: {
           created_at: string
