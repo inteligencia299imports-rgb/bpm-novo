@@ -6,8 +6,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter, Package, Bike } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CATEGORIAS_MOTO, CORES_MOTO } from '@/types/crm';
-import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { toast } from 'sonner';
 
 interface EstoqueItem {
@@ -47,13 +45,19 @@ const EstoqueTab = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterMarca, setFilterMarca] = useState('todas');
-  const [filterCategoria, setFilterCategoria] = useState('todas');
+  const [filterTipo, setFilterTipo] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('disponivel');
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
-  const { getMarcaNomes } = useMarcasModelos();
-  const marcas = getMarcaNomes();
+  const [allMarcas, setAllMarcas] = useState<string[]>([]);
+
+  useEffect(() => {
+    supabase.from('estoque').select('marca').then(({ data }) => {
+      const unique = [...new Set((data || []).map(d => d.marca))].sort();
+      setAllMarcas(unique);
+    });
+  }, []);
 
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
@@ -66,8 +70,8 @@ const EstoqueTab = () => {
       if (filterMarca !== 'todas') {
         query = query.eq('marca', filterMarca);
       }
-      if (filterCategoria !== 'todas') {
-        query = query.eq('categoria', filterCategoria);
+      if (filterTipo !== 'todos') {
+        query = query.eq('tipo', filterTipo);
       }
 
       const { data, error } = await query;
@@ -79,7 +83,7 @@ const EstoqueTab = () => {
     } finally {
       setLoading(false);
     }
-  }, [filterStatus, filterMarca, filterCategoria]);
+  }, [filterStatus, filterMarca, filterTipo]);
 
   useEffect(() => { fetchEstoque(); }, [fetchEstoque]);
 
@@ -94,7 +98,7 @@ const EstoqueTab = () => {
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Reset page when filters change
-  useEffect(() => { setPage(1); }, [search, filterMarca, filterCategoria, filterStatus]);
+  useEffect(() => { setPage(1); }, [search, filterMarca, filterTipo, filterStatus]);
 
   return (
     <div className="space-y-4">
@@ -143,14 +147,15 @@ const EstoqueTab = () => {
               <SelectTrigger><SelectValue placeholder="Marca" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas as marcas</SelectItem>
-                {marcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                {allMarcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={filterCategoria} onValueChange={setFilterCategoria}>
-              <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
+            <Select value={filterTipo} onValueChange={setFilterTipo}>
+              <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="todas">Todas as categorias</SelectItem>
-                {CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                <SelectItem value="todos">Todos os tipos</SelectItem>
+                <SelectItem value="propria">Própria</SelectItem>
+                <SelectItem value="consignada">Consignada</SelectItem>
               </SelectContent>
             </Select>
           </div>
