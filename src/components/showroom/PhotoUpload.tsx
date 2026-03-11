@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Label } from '@/components/ui/label';
-import { Camera, X, Loader2 } from 'lucide-react';
+import { Camera, Loader2, ExternalLink, Trash2 } from 'lucide-react';
 import { TIPOS_FOTO, TIPOS_FOTO_LABELS } from '@/types/crm';
 import type { MotoFoto } from '@/types/crm';
 import { toast } from 'sonner';
@@ -79,6 +79,14 @@ const PhotoUpload: React.FC<Props> = ({ motoAvaliacaoId }) => {
     setUploading(null);
   };
 
+  const handleDelete = async (foto: MotoFoto) => {
+    const path = `${motoAvaliacaoId}/${foto.tipo}.webp`;
+    await supabase.storage.from('moto-fotos').remove([path]);
+    await supabase.from('moto_fotos').delete().eq('id', foto.id);
+    setFotos(prev => prev.filter(f => f.id !== foto.id));
+    toast.success(`${TIPOS_FOTO_LABELS[foto.tipo]} removida`);
+  };
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -103,9 +111,29 @@ const PhotoUpload: React.FC<Props> = ({ motoAvaliacaoId }) => {
                 }} />
               </label>
               {foto && !uploading && (
-                <span className="absolute bottom-0 left-0 right-0 bg-foreground/60 text-background text-[9px] text-center py-0.5 truncate">
-                  {TIPOS_FOTO_LABELS[tipo]}
-                </span>
+                <>
+                  <span className="absolute bottom-0 left-0 right-0 bg-foreground/60 text-background text-[9px] text-center py-0.5 truncate">
+                    {TIPOS_FOTO_LABELS[tipo]}
+                  </span>
+                  <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(foto.url, '_blank'); }}
+                      className="p-1 rounded-full bg-foreground/70 text-background hover:bg-foreground/90 transition-colors"
+                      title="Visualizar"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(foto); }}
+                      className="p-1 rounded-full bg-destructive/80 text-destructive-foreground hover:bg-destructive transition-colors"
+                      title="Excluir"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           );
