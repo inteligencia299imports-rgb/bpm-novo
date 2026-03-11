@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, LogOut, User, ShoppingBag, ClipboardCheck, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Bike, LogOut, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -21,6 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
 
   const tabs = [
     { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor'] },
+    { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['vendedor', 'avaliador', 'gestor'] },
   ].filter(t => role && t.roles.includes(role));
 

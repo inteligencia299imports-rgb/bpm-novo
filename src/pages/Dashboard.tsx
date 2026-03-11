@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from '@/components/layout/Sidebar';
 import BottomNav from '@/components/layout/BottomNav';
 import ShowroomTab from '@/components/showroom/ShowroomTab';
+import EstoqueTab from '@/components/estoque/EstoqueTab';
 import AvaliacoesTab from '@/components/avaliacoes/AvaliacoesTab';
 
 const Dashboard = () => {
@@ -25,6 +26,7 @@ const Dashboard = () => {
       />
       <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in pb-20 md:pb-6">
         {activeTab === 'showroom' && <ShowroomTab />}
+        {activeTab === 'estoque' && <EstoqueTab />}
         {activeTab === 'avaliacoes' && <AvaliacoesTab />}
       </main>
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
