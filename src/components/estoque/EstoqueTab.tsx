@@ -172,7 +172,7 @@ const EstoqueTab = () => {
       ) : (
         <div className="space-y-6">
           {Object.entries(
-            filtered.reduce<Record<string, EstoqueItem[]>>((acc, item) => {
+            paginated.reduce<Record<string, EstoqueItem[]>>((acc, item) => {
               (acc[item.marca] = acc[item.marca] || []).push(item);
               return acc;
             }, {})
