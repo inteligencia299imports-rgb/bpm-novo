@@ -46,8 +46,7 @@ export const MARCAS_MOTO = [
 ] as const;
 
 export const CATEGORIAS_MOTO = [
-  'Street', 'Sport', 'Naked', 'Trail', 'Custom', 'Scooter', 'Touring',
-  'Adventure', 'Café Racer', 'Supermotard', 'Elétrica', 'Outra',
+  'BIG TRAIL','CAFÉ RACER','CROSSOVER','CUSTOM','ESPORTIVA','NAKED','OFF-ROAD','SCOOTER','SPORT - TOURING','STREET','TOURING','TRAIL',
 ] as const;
 
 export const CORES_MOTO = [
