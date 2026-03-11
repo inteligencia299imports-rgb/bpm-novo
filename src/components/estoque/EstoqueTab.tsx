@@ -68,7 +68,6 @@ const EstoqueTab = () => {
       if (filterTipo !== 'todos') {
         query = query.eq('tipo', filterTipo);
       }
-      }
 
       const { data, error } = await query;
       if (error) throw error;
