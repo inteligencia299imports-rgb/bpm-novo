@@ -46,13 +46,13 @@ const EstoqueTab = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterMarca, setFilterMarca] = useState('todas');
-  const [filterCategoria, setFilterCategoria] = useState('todas');
+  const [filterTipo, setFilterTipo] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('disponivel');
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
-  const { getMarcaNomes } = useMarcasModelos();
-  const marcas = getMarcaNomes();
+
+  const marcasFromData = [...new Set(items.map(i => i.marca))].sort();
 
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
