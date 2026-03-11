@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, LogOut, User, ShoppingBag, ClipboardCheck, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Bike, LogOut, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const ROLE_LABELS: Record<string, string> = {
