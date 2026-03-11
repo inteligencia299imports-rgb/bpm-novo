@@ -191,7 +191,8 @@ const ShowroomTab = () => {
 
       {showFilters && (
         <Card className="animate-fade-in border-border shadow-soft">
-          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <CardContent className="pt-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Select value={filterLoja} onValueChange={setFilterLoja}>
               <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Loja" /></SelectTrigger>
               <SelectContent>
