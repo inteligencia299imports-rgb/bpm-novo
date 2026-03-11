@@ -164,6 +164,53 @@ export type Database = {
           },
         ]
       }
+      marcas_motos: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      modelos_motos: {
+        Row: {
+          created_at: string
+          id: string
+          marca_id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          marca_id: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          marca_id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modelos_motos_marca_id_fkey"
+            columns: ["marca_id"]
+            isOneToOne: false
+            referencedRelation: "marcas_motos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       moto_fotos: {
         Row: {
           created_at: string
