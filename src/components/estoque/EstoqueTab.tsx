@@ -50,6 +50,8 @@ const EstoqueTab = () => {
   const [filterCategoria, setFilterCategoria] = useState('todas');
   const [filterStatus, setFilterStatus] = useState('disponivel');
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
   const { getMarcaNomes } = useMarcasModelos();
   const marcas = getMarcaNomes();
 
@@ -87,6 +89,12 @@ const EstoqueTab = () => {
     return [item.marca, item.modelo, item.placa, item.cor, item.cilindrada, item.empresa, item.observacoes]
       .some(v => v?.toLowerCase().includes(s));
   });
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [search, filterMarca, filterCategoria, filterStatus]);
 
   return (
     <div className="space-y-4">
@@ -164,7 +172,7 @@ const EstoqueTab = () => {
       ) : (
         <div className="space-y-6">
           {Object.entries(
-            filtered.reduce<Record<string, EstoqueItem[]>>((acc, item) => {
+            paginated.reduce<Record<string, EstoqueItem[]>>((acc, item) => {
               (acc[item.marca] = acc[item.marca] || []).push(item);
               return acc;
             }, {})
@@ -253,6 +261,31 @@ const EstoqueTab = () => {
                 </div>
               </div>
             ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            Anterior
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            {page} de {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+          >
+            Próxima
+          </Button>
         </div>
       )}
     </div>
