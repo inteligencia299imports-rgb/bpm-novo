@@ -51,8 +51,7 @@ export const CATEGORIAS_MOTO = [
 ] as const;
 
 export const CORES_MOTO = [
-  'Preto', 'Branco', 'Vermelho', 'Azul', 'Cinza', 'Prata',
-  'Amarelo', 'Verde', 'Laranja', 'Marrom', 'Dourado', 'Outra',
+  'AMARELA','AZUL','BEGE','BORDO','BRANCA','BRONZE','CAFÉ','CINZA','COHIBA','DOURADA','FANTASIA','GRAFITE','GRENÁ','LARANJA','MARFIM','MARROM','OYSTER','PRATA','PRETA','ROSA','ROXA','SILVERSTONE','TERRACOTA','VARIAS','VERDE','VERMELHA','VINHO',
 ] as const;
 
 export const TIPOS_FOTO = [
