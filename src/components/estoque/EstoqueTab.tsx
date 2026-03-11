@@ -50,8 +50,14 @@ const EstoqueTab = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
+  const [allMarcas, setAllMarcas] = useState<string[]>([]);
 
-  const marcasFromData = [...new Set(items.map(i => i.marca))].sort();
+  useEffect(() => {
+    supabase.from('estoque').select('marca').then(({ data }) => {
+      const unique = [...new Set((data || []).map(d => d.marca))].sort();
+      setAllMarcas(unique);
+    });
+  }, []);
 
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
