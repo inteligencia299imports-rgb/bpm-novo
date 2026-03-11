@@ -1,9 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ANOS_MOTO } from '@/types/crm';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
+import { supabase } from '@/lib/supabase';
+
+interface EstoqueOption {
+  id: string;
+  modelo: string;
+  cor: string | null;
+  placa: string | null;
+  marca: string;
+}
 
 interface Props {
   origemMoto: string;
@@ -14,14 +23,43 @@ interface Props {
   setModelo: (v: string) => void;
   ano: string;
   setAno: (v: string) => void;
+  estoqueMotoId: string;
+  setEstoqueMotoId: (v: string) => void;
 }
 
 const MotoCompraSection: React.FC<Props> = ({
   origemMoto, setOrigemMoto, marca, setMarca, modelo, setModelo, ano, setAno,
+  estoqueMotoId, setEstoqueMotoId,
 }) => {
   const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
   const marcas = getMarcaNomes();
   const modelos = marca ? getModelosPorMarca(marca) : [];
+
+  const [estoque, setEstoque] = useState<EstoqueOption[]>([]);
+  const [loadingEstoque, setLoadingEstoque] = useState(false);
+
+  useEffect(() => {
+    if (origemMoto === 'estoque') {
+      setLoadingEstoque(true);
+      supabase
+        .from('estoque')
+        .select('id, modelo, cor, placa, marca')
+        .eq('status', 'disponivel')
+        .order('marca')
+        .order('modelo')
+        .then(({ data }) => {
+          setEstoque(data || []);
+          setLoadingEstoque(false);
+        });
+    }
+  }, [origemMoto]);
+
+  const formatEstoqueLabel = (item: EstoqueOption) => {
+    const parts = [item.modelo];
+    if (item.cor) parts.push(item.cor);
+    if (item.placa) parts.push(item.placa);
+    return parts.join(' - ');
+  };
 
   return (
     <Card>
@@ -29,7 +67,13 @@ const MotoCompraSection: React.FC<Props> = ({
       <CardContent className="space-y-4">
         <div className="space-y-1.5">
           <Label>Origem da Moto</Label>
-          <Select value={origemMoto} onValueChange={setOrigemMoto}>
+          <Select value={origemMoto} onValueChange={(v) => {
+            setOrigemMoto(v);
+            setEstoqueMotoId('');
+            setMarca('');
+            setModelo('');
+            setAno('');
+          }}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="estoque">Estoque</SelectItem>
@@ -38,7 +82,26 @@ const MotoCompraSection: React.FC<Props> = ({
           </Select>
         </div>
         {origemMoto === 'estoque' ? (
-          <p className="text-sm text-muted-foreground">Busca no estoque será implementada em versão futura.</p>
+          <div className="space-y-1.5">
+            <Label>Moto do Estoque *</Label>
+            <Select value={estoqueMotoId} onValueChange={setEstoqueMotoId}>
+              <SelectTrigger>
+                <SelectValue placeholder={loadingEstoque ? "Carregando..." : "Selecione a moto"} />
+              </SelectTrigger>
+              <SelectContent>
+                {estoque.map(item => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {formatEstoqueLabel(item)}
+                  </SelectItem>
+                ))}
+                {!loadingEstoque && estoque.length === 0 && (
+                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                    Nenhuma moto disponível no estoque.
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">

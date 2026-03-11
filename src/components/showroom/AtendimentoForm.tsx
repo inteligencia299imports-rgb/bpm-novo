@@ -54,6 +54,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [compraMarca, setCompraMarca] = useState('');
   const [compraModelo, setCompraModelo] = useState('');
   const [compraAno, setCompraAno] = useState('');
+  const [estoqueMotoId, setEstoqueMotoId] = useState('');
 
   // venda
   const [vendaMarca, setVendaMarca] = useState('');
@@ -92,6 +93,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setCompraMarca(mi.marca || '');
           setCompraModelo(mi.modelo || '');
           setCompraAno(mi.ano || '');
+          setEstoqueMotoId(mi.estoque_moto_id || '');
         }
       }
       if (at?.interesse === 'vender' || at?.interesse === 'trocar') {
@@ -163,6 +165,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         marca: origemMoto === 'externo' ? compraMarca || null : null,
         modelo: origemMoto === 'externo' ? compraModelo || null : null,
         ano: origemMoto === 'externo' ? compraAno || null : null,
+        estoque_moto_id: origemMoto === 'estoque' ? estoqueMotoId || null : null,
       };
       if (isEditing) {
         const { data: existing } = await supabase.from('motos_interesse').select('id').eq('atendimento_id', atId!).maybeSingle();
@@ -346,6 +349,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           marca={compraMarca} setMarca={setCompraMarca}
           modelo={compraModelo} setModelo={setCompraModelo}
           ano={compraAno} setAno={setCompraAno}
+          estoqueMotoId={estoqueMotoId} setEstoqueMotoId={setEstoqueMotoId}
         />
       )}
 
