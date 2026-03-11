@@ -63,8 +63,18 @@ const MotoCompraSection: React.FC<Props> = ({
     const parts = [item.modelo];
     if (item.cor) parts.push(item.cor);
     if (item.placa) parts.push(item.placa);
-    return parts.join(' - ');
+    return parts.join(' - ').toUpperCase();
   };
+
+  const sortedEstoque = useMemo(() =>
+    [...estoque].sort((a, b) => formatEstoqueLabel(a).localeCompare(formatEstoqueLabel(b))),
+    [estoque]
+  );
+
+  const [comboOpen, setComboOpen] = useState(false);
+  const selectedLabel = estoqueMotoId
+    ? formatEstoqueLabel(estoque.find(e => e.id === estoqueMotoId)!)
+    : null;
 
   return (
     <Card>
