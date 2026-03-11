@@ -65,8 +65,9 @@ const EstoqueTab = () => {
       if (filterMarca !== 'todas') {
         query = query.eq('marca', filterMarca);
       }
-      if (filterCategoria !== 'todas') {
-        query = query.eq('categoria', filterCategoria);
+      if (filterTipo !== 'todos') {
+        query = query.eq('tipo', filterTipo);
+      }
       }
 
       const { data, error } = await query;
