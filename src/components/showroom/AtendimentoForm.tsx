@@ -165,6 +165,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         marca: origemMoto === 'externo' ? compraMarca || null : null,
         modelo: origemMoto === 'externo' ? compraModelo || null : null,
         ano: origemMoto === 'externo' ? compraAno || null : null,
+        estoque_moto_id: origemMoto === 'estoque' ? estoqueMotoId || null : null,
       };
       if (isEditing) {
         const { data: existing } = await supabase.from('motos_interesse').select('id').eq('atendimento_id', atId!).maybeSingle();
