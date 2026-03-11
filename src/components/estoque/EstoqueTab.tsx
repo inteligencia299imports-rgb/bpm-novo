@@ -79,7 +79,7 @@ const EstoqueTab = () => {
     } finally {
       setLoading(false);
     }
-  }, [filterStatus, filterMarca, filterCategoria]);
+  }, [filterStatus, filterMarca, filterTipo]);
 
   useEffect(() => { fetchEstoque(); }, [fetchEstoque]);
 
