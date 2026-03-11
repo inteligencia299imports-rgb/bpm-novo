@@ -143,14 +143,15 @@ const EstoqueTab = () => {
               <SelectTrigger><SelectValue placeholder="Marca" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas as marcas</SelectItem>
-                {marcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                {marcasFromData.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={filterCategoria} onValueChange={setFilterCategoria}>
-              <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
+            <Select value={filterTipo} onValueChange={setFilterTipo}>
+              <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="todas">Todas as categorias</SelectItem>
-                {CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                <SelectItem value="todos">Todos os tipos</SelectItem>
+                <SelectItem value="propria">Própria</SelectItem>
+                <SelectItem value="consignada">Consignada</SelectItem>
               </SelectContent>
             </Select>
           </div>
