@@ -99,23 +99,44 @@ const MotoCompraSection: React.FC<Props> = ({
         {origemMoto === 'estoque' ? (
           <div className="space-y-1.5">
             <Label>Moto do Estoque *</Label>
-            <Select value={estoqueMotoId} onValueChange={setEstoqueMotoId}>
-              <SelectTrigger>
-                <SelectValue placeholder={loadingEstoque ? "Carregando..." : "Selecione a moto"} />
-              </SelectTrigger>
-              <SelectContent>
-                {estoque.map(item => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {formatEstoqueLabel(item)}
-                  </SelectItem>
-                ))}
-                {!loadingEstoque && estoque.length === 0 && (
-                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                    Nenhuma moto disponível no estoque.
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
+            <Popover open={comboOpen} onOpenChange={setComboOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={comboOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  {loadingEstoque
+                    ? "Carregando..."
+                    : selectedLabel || "Buscar moto..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar por modelo, cor ou placa..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhuma moto encontrada.</CommandEmpty>
+                    <CommandGroup>
+                      {sortedEstoque.map(item => (
+                        <CommandItem
+                          key={item.id}
+                          value={formatEstoqueLabel(item)}
+                          onSelect={() => {
+                            setEstoqueMotoId(item.id);
+                            setComboOpen(false);
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", estoqueMotoId === item.id ? "opacity-100" : "opacity-0")} />
+                          {formatEstoqueLabel(item)}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
