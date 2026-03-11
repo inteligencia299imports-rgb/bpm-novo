@@ -54,6 +54,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [compraMarca, setCompraMarca] = useState('');
   const [compraModelo, setCompraModelo] = useState('');
   const [compraAno, setCompraAno] = useState('');
+  const [estoqueMotoId, setEstoqueMotoId] = useState('');
 
   // venda
   const [vendaMarca, setVendaMarca] = useState('');
