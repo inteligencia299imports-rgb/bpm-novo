@@ -147,7 +147,7 @@ const EstoqueTab = () => {
               <SelectTrigger><SelectValue placeholder="Marca" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas as marcas</SelectItem>
-                {marcasFromData.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                {allMarcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={filterTipo} onValueChange={setFilterTipo}>
