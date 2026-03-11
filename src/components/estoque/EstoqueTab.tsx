@@ -50,6 +50,8 @@ const EstoqueTab = () => {
   const [filterCategoria, setFilterCategoria] = useState('todas');
   const [filterStatus, setFilterStatus] = useState('disponivel');
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
   const { getMarcaNomes } = useMarcasModelos();
   const marcas = getMarcaNomes();
 
