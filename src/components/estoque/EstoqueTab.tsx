@@ -250,6 +250,9 @@ const EstoqueTab = () => {
               </CardContent>
             </Card>
           ))}
+                </div>
+              </div>
+            ))}
         </div>
       )}
     </div>
