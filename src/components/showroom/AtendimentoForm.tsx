@@ -349,6 +349,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           marca={compraMarca} setMarca={setCompraMarca}
           modelo={compraModelo} setModelo={setCompraModelo}
           ano={compraAno} setAno={setCompraAno}
+          estoqueMotoId={estoqueMotoId} setEstoqueMotoId={setEstoqueMotoId}
         />
       )}
 
