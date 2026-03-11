@@ -162,8 +162,22 @@ const EstoqueTab = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map(item => (
+        <div className="space-y-6">
+          {Object.entries(
+            filtered.reduce<Record<string, EstoqueItem[]>>((acc, item) => {
+              (acc[item.marca] = acc[item.marca] || []).push(item);
+              return acc;
+            }, {})
+          )
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([marca, motos]) => (
+              <div key={marca}>
+                <div className="flex items-center gap-2 mb-3">
+                  <h2 className="text-sm font-semibold text-foreground">{marca}</h2>
+                  <Badge variant="outline" className="text-xs">{motos.length}</Badge>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {motos.map(item => (
             <Card key={item.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4 space-y-3">
                 {/* Header */}
