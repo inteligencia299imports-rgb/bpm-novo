@@ -6,8 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter, Package, Bike } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CATEGORIAS_MOTO, CORES_MOTO } from '@/types/crm';
-import { useMarcasModelos } from '@/hooks/useMarcasModelos';
+import { toast } from 'sonner';
 import { toast } from 'sonner';
 
 interface EstoqueItem {
