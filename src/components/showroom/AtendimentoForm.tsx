@@ -93,6 +93,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setCompraMarca(mi.marca || '');
           setCompraModelo(mi.modelo || '');
           setCompraAno(mi.ano || '');
+          setEstoqueMotoId(mi.estoque_moto_id || '');
         }
       }
       if (at?.interesse === 'vender' || at?.interesse === 'trocar') {
