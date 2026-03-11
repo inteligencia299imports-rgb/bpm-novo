@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from '@/components/layout/Sidebar';
 import BottomNav from '@/components/layout/BottomNav';
 import ShowroomTab from '@/components/showroom/ShowroomTab';
+import EstoqueTab from '@/components/estoque/EstoqueTab';
 import AvaliacoesTab from '@/components/avaliacoes/AvaliacoesTab';
 
 const Dashboard = () => {
