@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Filter, Package, Bike } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { toast } from 'sonner';
 
 interface EstoqueItem {
   id: string;
