@@ -136,31 +136,43 @@ const EstoqueTab = () => {
         </div>
 
         {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="disponivel">Disponível</SelectItem>
-                <SelectItem value="reservada">Reservada</SelectItem>
-                <SelectItem value="vendida">Vendida</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterMarca} onValueChange={setFilterMarca}>
-              <SelectTrigger><SelectValue placeholder="Marca" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas as marcas</SelectItem>
-                {allMarcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={filterTipo} onValueChange={setFilterTipo}>
-              <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os tipos</SelectItem>
-                <SelectItem value="propria">Própria</SelectItem>
-                <SelectItem value="consignada">Consignada</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="disponivel">Disponível</SelectItem>
+                  <SelectItem value="reservada">Reservada</SelectItem>
+                  <SelectItem value="vendida">Vendida</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterMarca} onValueChange={setFilterMarca}>
+                <SelectTrigger><SelectValue placeholder="Marca" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas as marcas</SelectItem>
+                  {allMarcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={filterTipo} onValueChange={setFilterTipo}>
+                <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os tipos</SelectItem>
+                  <SelectItem value="propria">Própria</SelectItem>
+                  <SelectItem value="consignada">Consignada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); }}
+              >
+                <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
+              </Button>
+            )}
           </div>
         )}
       </div>

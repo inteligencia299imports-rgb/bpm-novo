@@ -254,6 +254,17 @@ const ShowroomTab = () => {
                 />
               </PopoverContent>
             </Popover>
+            </div>
+            {(filterLoja !== 'todas' || filterInteresse !== 'todos' || dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() => { setFilterLoja('todas'); setFilterInteresse('todos'); setDateFrom(undefined); setDateTo(undefined); }}
+              >
+                <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
