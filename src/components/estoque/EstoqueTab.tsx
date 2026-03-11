@@ -53,11 +53,14 @@ const EstoqueTab = () => {
   const [allMarcas, setAllMarcas] = useState<string[]>([]);
 
   useEffect(() => {
-    supabase.from('estoque').select('marca').then(({ data }) => {
+    let query = supabase.from('estoque').select('marca');
+    if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
+    if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
+    query.then(({ data }) => {
       const unique = [...new Set((data || []).map(d => d.marca))].sort();
       setAllMarcas(unique);
     });
-  }, []);
+  }, [filterStatus, filterTipo]);
 
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
