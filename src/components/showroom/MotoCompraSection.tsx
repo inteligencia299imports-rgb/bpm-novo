@@ -1,7 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Button } from '@/components/ui/button';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { ANOS_MOTO } from '@/types/crm';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { supabase } from '@/lib/supabase';
@@ -58,8 +63,18 @@ const MotoCompraSection: React.FC<Props> = ({
     const parts = [item.modelo];
     if (item.cor) parts.push(item.cor);
     if (item.placa) parts.push(item.placa);
-    return parts.join(' - ');
+    return parts.join(' - ').toUpperCase();
   };
+
+  const sortedEstoque = useMemo(() =>
+    [...estoque].sort((a, b) => formatEstoqueLabel(a).localeCompare(formatEstoqueLabel(b))),
+    [estoque]
+  );
+
+  const [comboOpen, setComboOpen] = useState(false);
+  const selectedLabel = estoqueMotoId
+    ? formatEstoqueLabel(estoque.find(e => e.id === estoqueMotoId)!)
+    : null;
 
   return (
     <Card>
@@ -84,23 +99,44 @@ const MotoCompraSection: React.FC<Props> = ({
         {origemMoto === 'estoque' ? (
           <div className="space-y-1.5">
             <Label>Moto do Estoque *</Label>
-            <Select value={estoqueMotoId} onValueChange={setEstoqueMotoId}>
-              <SelectTrigger>
-                <SelectValue placeholder={loadingEstoque ? "Carregando..." : "Selecione a moto"} />
-              </SelectTrigger>
-              <SelectContent>
-                {estoque.map(item => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {formatEstoqueLabel(item)}
-                  </SelectItem>
-                ))}
-                {!loadingEstoque && estoque.length === 0 && (
-                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                    Nenhuma moto disponível no estoque.
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
+            <Popover open={comboOpen} onOpenChange={setComboOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={comboOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  {loadingEstoque
+                    ? "Carregando..."
+                    : selectedLabel || "Buscar moto..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar por modelo, cor ou placa..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhuma moto encontrada.</CommandEmpty>
+                    <CommandGroup>
+                      {sortedEstoque.map(item => (
+                        <CommandItem
+                          key={item.id}
+                          value={formatEstoqueLabel(item)}
+                          onSelect={() => {
+                            setEstoqueMotoId(item.id);
+                            setComboOpen(false);
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", estoqueMotoId === item.id ? "opacity-100" : "opacity-0")} />
+                          {formatEstoqueLabel(item)}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
