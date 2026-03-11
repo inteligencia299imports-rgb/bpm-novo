@@ -276,10 +276,11 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           </div>
           <div className="space-y-1.5">
             <Label>Sexo *</Label>
-            <Select value={sexo} onValueChange={setSexo}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-2">
+              {SEXOS.map(s => (
+                <ToggleButton key={s} label={s} value={s} selected={sexo} onSelect={setSexo} />
+              ))}
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>UF *</Label>
