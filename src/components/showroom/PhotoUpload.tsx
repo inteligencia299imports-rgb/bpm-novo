@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Label } from '@/components/ui/label';
-import { Camera, X, Loader2 } from 'lucide-react';
+import { Camera, Loader2, ExternalLink, Trash2 } from 'lucide-react';
 import { TIPOS_FOTO, TIPOS_FOTO_LABELS } from '@/types/crm';
 import type { MotoFoto } from '@/types/crm';
 import { toast } from 'sonner';
