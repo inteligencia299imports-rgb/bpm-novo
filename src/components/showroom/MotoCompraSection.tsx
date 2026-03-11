@@ -2,7 +2,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MARCAS_MOTO, MODELOS_POR_MARCA, ANOS_MOTO } from '@/types/crm';
+import { ANOS_MOTO } from '@/types/crm';
+import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 
 interface Props {
   origemMoto: string;
@@ -18,7 +19,9 @@ interface Props {
 const MotoCompraSection: React.FC<Props> = ({
   origemMoto, setOrigemMoto, marca, setMarca, modelo, setModelo, ano, setAno,
 }) => {
-  const modelos = marca ? (MODELOS_POR_MARCA[marca] || ['Outro']) : [];
+  const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
+  const marcas = getMarcaNomes();
+  const modelos = marca ? getModelosPorMarca(marca) : [];
 
   return (
     <Card>
@@ -41,8 +44,8 @@ const MotoCompraSection: React.FC<Props> = ({
             <div className="space-y-1.5">
               <Label>Marca *</Label>
               <Select value={marca} onValueChange={(v) => { setMarca(v); setModelo(''); }}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{MARCAS_MOTO.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                <SelectTrigger><SelectValue placeholder={loading ? "Carregando..." : "Selecione"} /></SelectTrigger>
+                <SelectContent>{marcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">

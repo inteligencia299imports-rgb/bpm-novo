@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MARCAS_MOTO, MODELOS_POR_MARCA, ANOS_MOTO, CATEGORIAS_MOTO, CORES_MOTO } from '@/types/crm';
+import { ANOS_MOTO, CATEGORIAS_MOTO, CORES_MOTO } from '@/types/crm';
 import type { Interesse } from '@/types/crm';
+import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import PhotoUpload from './PhotoUpload';
 
 interface Props {
@@ -29,7 +30,9 @@ const MotoVendaSection: React.FC<Props> = ({
   placa, setPlaca, km, setKm, obs, setObs,
   motoAvaliacaoId, atendimentoId, interesse,
 }) => {
-  const modelos = marca ? (MODELOS_POR_MARCA[marca] || ['Outro']) : [];
+  const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
+  const marcas = getMarcaNomes();
+  const modelos = marca ? getModelosPorMarca(marca) : [];
 
   const handlePlacaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7).toUpperCase();
@@ -53,8 +56,8 @@ const MotoVendaSection: React.FC<Props> = ({
           <div className="space-y-1.5">
             <Label>Marca *</Label>
             <Select value={marca} onValueChange={(v) => { setMarca(v); setModelo(''); }}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{MARCAS_MOTO.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+              <SelectTrigger><SelectValue placeholder={loading ? "Carregando..." : "Selecione"} /></SelectTrigger>
+              <SelectContent>{marcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
