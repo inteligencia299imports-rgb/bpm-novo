@@ -90,6 +90,12 @@ const EstoqueTab = () => {
       .some(v => v?.toLowerCase().includes(s));
   });
 
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [search, filterMarca, filterCategoria, filterStatus]);
+
   return (
     <div className="space-y-4">
       {/* Header */}
