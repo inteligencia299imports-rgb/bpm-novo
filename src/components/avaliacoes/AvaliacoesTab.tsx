@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
 import type { Avaliacao, SituacaoAvaliacao } from '@/types/crm';
 import AvaliacaoCard from './AvaliacaoCard';
@@ -91,6 +91,11 @@ const AvaliacoesTab = () => {
             onChange={e => setSearch(e.target.value)}
             className="pl-10 bg-card border-border"
           />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 

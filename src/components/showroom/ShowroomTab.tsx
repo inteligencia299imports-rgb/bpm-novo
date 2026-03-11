@@ -191,7 +191,8 @@ const ShowroomTab = () => {
 
       {showFilters && (
         <Card className="animate-fade-in border-border shadow-soft">
-          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <CardContent className="pt-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Select value={filterLoja} onValueChange={setFilterLoja}>
               <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Loja" /></SelectTrigger>
               <SelectContent>
@@ -253,6 +254,17 @@ const ShowroomTab = () => {
                 />
               </PopoverContent>
             </Popover>
+            </div>
+            {(filterLoja !== 'todas' || filterInteresse !== 'todos' || dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() => { setFilterLoja('todas'); setFilterInteresse('todos'); setDateFrom(undefined); setDateTo(undefined); }}
+              >
+                <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
