@@ -136,6 +136,10 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Preencha todos os campos da Moto do Cliente');
       return;
     }
+    if ((interesse === 'vender' || interesse === 'trocar') && vendaPlaca.trim().length !== 7) {
+      toast.error('A placa deve ter exatamente 7 caracteres');
+      return;
+    }
     setSaving(true);
 
     const atData = {
