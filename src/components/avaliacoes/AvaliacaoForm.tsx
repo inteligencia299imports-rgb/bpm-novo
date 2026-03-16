@@ -434,17 +434,26 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CardContent>
               {hasEvaluation ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    <InfoItem label="Valor FIPE" value={formatCurrency(avaliacao?.valor_fipe)} />
-                    <InfoItem label="Menor Valor" value={formatCurrency(avaliacao?.menor_valor)} />
-                    <InfoItem label="Maior Valor" value={formatCurrency(avaliacao?.maior_valor)} />
-                    <InfoItem label="Quanto Pede" value={formatCurrency(avaliacao?.quanto_pede)} />
-                    <InfoItem label="Quanto Vende" value={formatCurrency(avaliacao?.quanto_vende)} />
-                    <InfoItem label="Quanto Vende (errado)" value={formatCurrency(avaliacao?.quanto_vende_errado)} />
-                    <InfoItem label="Aval. Consignação" value={formatCurrency(avaliacao?.avaliacao_consignacao)} />
-                    <InfoItem label="Aval. Compra" value={formatCurrency(avaliacao?.avaliacao_compra)} />
-                    <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
-                    <InfoItem label="Custos Cliente" value={formatCurrency(avaliacao?.previsao_custos_cliente)} />
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <InfoItem label="Valor FIPE" value={formatCurrency(avaliacao?.valor_fipe)} />
+                      <InfoItem label="Menor Valor" value={formatCurrency(avaliacao?.menor_valor)} />
+                      <InfoItem label="Maior Valor" value={formatCurrency(avaliacao?.maior_valor)} />
+                    </div>
+                    <Separator />
+                    <div className="grid grid-cols-3 gap-3">
+                      <InfoItem label="Quanto Pede" value={formatCurrency(avaliacao?.quanto_pede)} />
+                      <InfoItem label="Quanto Vende" value={formatCurrency(avaliacao?.quanto_vende)} />
+                      <InfoItem label="Vende (errado)" value={formatCurrency(avaliacao?.quanto_vende_errado)} />
+                    </div>
+                    <Separator />
+                    <div className="grid grid-cols-2 gap-3">
+                      <InfoItem label="Aval. Consignação" value={formatCurrency(avaliacao?.avaliacao_consignacao)} />
+                      <InfoItem label="Aval. Compra" value={formatCurrency(avaliacao?.avaliacao_compra)} />
+                      <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
+                      <InfoItem label="Custos Cliente" value={formatCurrency(avaliacao?.previsao_custos_cliente)} />
+                    </div>
+                    <Separator />
                   </div>
                   {avaliacao?.observacao_avaliador && (
                     <div className="mt-2">
