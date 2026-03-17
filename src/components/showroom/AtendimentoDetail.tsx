@@ -542,58 +542,63 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       {/* Dialog de Valores da Avaliação */}
       <Dialog open={!!viewAvaliacaoData} onOpenChange={(o) => !o && setViewAvaliacaoData(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" /> Valores da Avaliação
+              <DollarSign className="h-5 w-5" /> Avaliação Comercial
             </DialogTitle>
           </DialogHeader>
           {viewAvaliacaoData && (
-            <div className="grid grid-cols-2 gap-4 py-2">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor FIPE</span>
-                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.valor_fipe)}</span>
+            <div className="space-y-4 py-2">
+              {/* Contexto de Mercado */}
+              <div className="grid grid-cols-3 gap-3">
+                <InfoItem label="Valor FIPE" value={formatCurrency(viewAvaliacaoData.valor_fipe)} />
+                <InfoItem label="Menor Valor" value={formatCurrency(viewAvaliacaoData.menor_valor)} />
+                <InfoItem label="Maior Valor" value={formatCurrency(viewAvaliacaoData.maior_valor)} />
               </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Menor Valor</span>
-                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.menor_valor)}</span>
+              <Separator />
+              {/* Estratégia de Preço */}
+              <div className="grid grid-cols-3 gap-3">
+                <InfoItem label="Quanto Pede" value={formatCurrency(viewAvaliacaoData.quanto_pede)} />
+                <InfoItem label="Quanto Vende" value={formatCurrency(viewAvaliacaoData.quanto_vende)} />
+                <InfoItem label="Se Der Errado" value={formatCurrency(viewAvaliacaoData.quanto_vende_errado)} />
               </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Maior Valor</span>
-                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.maior_valor)}</span>
+              <Separator />
+              {/* Resultados - Consignação */}
+              <div className="grid grid-cols-4 gap-3">
+                <InfoItem label="Aval. Consignação" value={formatCurrency(viewAvaliacaoData.avaliacao_consignacao)} />
+                <InfoItem label="Custos Cliente" value={formatCurrency(viewAvaliacaoData.previsao_custos_cliente)} />
+                <InfoItem label="Custos Loja" value={formatCurrency(viewAvaliacaoData.previsao_custos_loja)} />
+                <div>
+                  <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
+                  <p className="text-sm font-semibold text-primary">
+                    {formatCurrency(
+                      (viewAvaliacaoData.avaliacao_consignacao ?? 0) - (viewAvaliacaoData.previsao_custos_loja ?? 0)
+                    )}
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quanto Pede</span>
-                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.quanto_pede)}</span>
+              {/* Resultados - Compra */}
+              <div className="grid grid-cols-4 gap-3">
+                <InfoItem label="Aval. Compra" value={formatCurrency(viewAvaliacaoData.avaliacao_compra)} />
+                <InfoItem label="Custos Cliente" value={formatCurrency(viewAvaliacaoData.previsao_custos_cliente)} />
+                <InfoItem label="Custos Loja" value={formatCurrency(viewAvaliacaoData.previsao_custos_loja)} />
+                <div>
+                  <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
+                  <p className="text-sm font-semibold text-primary">
+                    {formatCurrency(
+                      (viewAvaliacaoData.avaliacao_compra ?? 0) - (viewAvaliacaoData.previsao_custos_loja ?? 0)
+                    )}
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quanto Vende</span>
-                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.quanto_vende)}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quanto Vende (errado)</span>
-                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.quanto_vende_errado)}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Aval. Consignação</span>
-                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.avaliacao_consignacao)}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Aval. Compra</span>
-                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.avaliacao_compra)}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Custos Loja</span>
-                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.previsao_custos_loja)}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Custos Cliente</span>
-                <span className="text-sm font-semibold">{formatCurrency(viewAvaliacaoData.previsao_custos_cliente)}</span>
-              </div>
+              <p className="text-xs font-medium text-primary">REPASSE CLIENTE = AVALIAÇÃO - CUSTOS LOJA</p>
+              <Separator />
+              {/* Observação */}
               {viewAvaliacaoData.observacao_avaliador && (
-                <div className="col-span-2 flex flex-col gap-0.5">
+                <div>
                   <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observação do Avaliador</span>
-                  <p className="text-sm">{viewAvaliacaoData.observacao_avaliador}</p>
+                  <p className="text-sm mt-1">{viewAvaliacaoData.observacao_avaliador}</p>
                 </div>
               )}
             </div>
