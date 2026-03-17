@@ -203,6 +203,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       const label = SITUACOES_AVALIACAO.find(s => s.value === newStatus)?.label;
       toast.success(`Status alterado para ${label}`);
       setAvaliacao((prev: any) => ({ ...prev, situacao: newStatus }));
+
+      // Sync: dispensada em avaliação → dispensada no showroom
+      if (newStatus === 'dispensada' && avaliacao?.atendimento_id) {
+        await supabase.from('atendimentos').update({ situacao: 'dispensada' }).eq('id', avaliacao.atendimento_id);
+      }
     }
   };
 
