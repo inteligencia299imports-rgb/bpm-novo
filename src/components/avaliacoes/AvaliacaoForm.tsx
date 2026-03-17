@@ -452,7 +452,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
                       <div>
                         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
-                        <p className="text-sm font-semibold text-sidebar-primary">
+                        <p className="text-sm font-semibold text-primary">
                           {formatCurrency(
                             (avaliacao?.avaliacao_consignacao ?? 0) - (avaliacao?.previsao_custos_loja ?? 0)
                           )}
@@ -464,7 +464,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
                       <div>
                         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
-                        <p className="text-sm font-semibold text-sidebar-primary">
+                        <p className="text-sm font-semibold text-primary">
                           {formatCurrency(
                             (avaliacao?.avaliacao_compra ?? 0) - (avaliacao?.previsao_custos_loja ?? 0)
                           )}
