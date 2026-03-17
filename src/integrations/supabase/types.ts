@@ -22,6 +22,9 @@ export type Database = {
           interesse: string
           loja: string
           nome_cliente: string
+          nps_enviado_at: string | null
+          nps_respondido_at: string | null
+          nps_status: string
           observacoes: string | null
           origem: string | null
           sexo: string
@@ -42,6 +45,9 @@ export type Database = {
           interesse: string
           loja: string
           nome_cliente: string
+          nps_enviado_at?: string | null
+          nps_respondido_at?: string | null
+          nps_status?: string
           observacoes?: string | null
           origem?: string | null
           sexo: string
@@ -62,6 +68,9 @@ export type Database = {
           interesse?: string
           loja?: string
           nome_cliente?: string
+          nps_enviado_at?: string | null
+          nps_respondido_at?: string | null
+          nps_status?: string
           observacoes?: string | null
           origem?: string | null
           sexo?: string
