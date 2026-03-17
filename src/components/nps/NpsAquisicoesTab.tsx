@@ -22,7 +22,7 @@ const NpsAquisicoesTab = () => {
         motos_avaliacao!inner (id, marca, modelo, placa)
       `)
       .eq('situacao', 'adquirida')
-      .in('tipo_aquisicao', ['compra', 'consignacao'])
+      .in('tipo_aquisicao', ['propria', 'consignada'])
       .order('updated_at', { ascending: false });
 
     if (error) {
