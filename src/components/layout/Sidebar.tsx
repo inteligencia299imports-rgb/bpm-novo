@@ -28,7 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
   ].filter(t => role && t.roles.includes(role));
 
   return (
-    <aside className={`hidden md:flex flex-col min-h-screen bg-sidebar text-sidebar-foreground shadow-card transition-all duration-300 ${collapsed ? 'w-16' : 'w-56'}`}>
+    <aside className={`hidden md:flex flex-col min-h-screen bg-sidebar text-sidebar-foreground shadow-card transition-all duration-300 ${collapsed ? 'w-16' : 'w-52'}`}>
       {/* Logo + Toggle */}
       <div className="flex items-center justify-between px-3 py-5 border-b border-sidebar-border">
         <div className={`flex items-center gap-3 ${collapsed ? 'justify-center w-full' : 'px-2'}`}>
