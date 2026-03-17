@@ -112,7 +112,7 @@ const AvaliacoesTab = () => {
               const colHexMap: Record<string, string> = { sem_avaliar: '#6B7280', em_aberto: '#F2C94C', adquirida: '#27AE60', dispensada: '#FF3B30', perdido: '#FF8C00' };
               const colHex = colHexMap[col.value] || '#6B7280';
               return (
-                <div key={col.value} className="w-[320px] shrink-0 flex flex-col">
+                <div key={col.value} className="w-[320px] shrink-0 md:w-auto md:shrink flex flex-col">
                   {/* Column header */}
                   <div className="flex items-center justify-between mb-3 px-1">
                     <div className="flex items-center gap-2">
