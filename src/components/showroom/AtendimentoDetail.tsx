@@ -578,9 +578,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           {viewAvaliacaoData && (
             <div className="space-y-5 pt-2">
               {/* Consignação */}
-              <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div className="rounded-lg border bg-muted/30 p-5 space-y-3">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Consignação</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-start">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 items-start">
                   <div>
                     <span className="text-[11px] uppercase tracking-wider text-muted-foreground block mb-0.5">Avaliação</span>
                     <p className="text-base font-semibold">{formatCurrency(viewAvaliacaoData.avaliacao_consignacao)}</p>
