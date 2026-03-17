@@ -77,7 +77,10 @@ const AvaliacoesTab = () => {
     <div className="space-y-5">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Avaliações</h1>
+        <div className="flex items-center gap-2">
+          <ClipboardCheck className="h-6 w-6 text-primary" />
+          <h1 className="text-xl font-bold text-foreground">Avaliações</h1>
+        </div>
         <p className="text-sm text-muted-foreground mt-0.5">Pipeline de avaliações de motos</p>
       </div>
 
