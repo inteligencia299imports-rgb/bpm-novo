@@ -144,6 +144,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       toast.error('Erro ao alterar status');
     } else {
       toast.success(`Status alterado para ${label}`);
+
+      // Sync: perdido no showroom → perdido nas avaliações
+      if (value === 'perdido') {
+        await supabase.from('avaliacoes').update({ situacao: 'perdido' }).eq('atendimento_id', atendimento.id);
+      }
+      // Sync: dispensada no showroom → dispensada nas avaliações
+      if (value === 'dispensada') {
+        await supabase.from('avaliacoes').update({ situacao: 'dispensada' }).eq('atendimento_id', atendimento.id);
+      }
+
       onDeleted();
     }
   };
