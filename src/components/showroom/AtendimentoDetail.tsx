@@ -80,7 +80,21 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         supabase.from('motos_avaliacao').select('*').eq('atendimento_id', atendimento.id),
         supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimento.id),
       ]);
-      setMotosInteresse((resInt.data as unknown as MotoInteresse[]) || []);
+      const motosInt = (resInt.data as unknown as MotoInteresse[]) || [];
+      setMotosInteresse(motosInt);
+
+      // Fetch estoque data for motos from stock
+      const estoqueIds = motosInt.filter(m => m.origem === 'estoque' && m.estoque_moto_id).map(m => m.estoque_moto_id!);
+      if (estoqueIds.length > 0) {
+        const { data: estoqueItems } = await supabase.from('estoque').select('*').in('id', estoqueIds);
+        const estoqueMap: Record<string, any> = {};
+        if (estoqueItems) {
+          for (const item of estoqueItems) {
+            estoqueMap[item.id] = item;
+          }
+        }
+        setEstoqueData(estoqueMap);
+      }
       const motosAv = (resAv.data as unknown as MotoAvaliacao[]) || [];
       setMotosAvaliacao(motosAv);
       
