@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react';
+import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Award } from 'lucide-react';
 import logoImg from '@/assets/logo-crm.png';
 import { Button } from '@/components/ui/button';
 
@@ -24,7 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
     { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
-    { id: 'nps', label: 'NPS', icon: Star, roles: ['vendedor', 'gestor', 'avaliador'] },
+    { id: 'nps', label: 'NPS', icon: Award, roles: ['vendedor', 'gestor', 'avaliador'] },
   ].filter(t => role && t.roles.includes(role));
 
   return (
