@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, LogOut, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react';
+import { User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react';
+import logoImg from '@/assets/logo-crm.png';
 import { Button } from '@/components/ui/button';
 
 const ROLE_LABELS: Record<string, string> = {
