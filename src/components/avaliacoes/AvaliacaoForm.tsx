@@ -275,6 +275,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     .filter(b => b.value !== avaliacao?.situacao)
     .filter(b => !(b.value === 'adquirida' && interesse === 'trocar'))
     .filter(b => !(b.value === 'adquirida' && !hasEvaluation))
+    .filter(b => !(b.value === 'adquirida' && (!cnhUrl || !crlvUrl || !consultaRealizada)))
     .filter(b => !(b.value === 'em_aberto' && avaliacao?.situacao !== 'dispensada' && avaliacao?.situacao !== 'perdido'));
 
 
