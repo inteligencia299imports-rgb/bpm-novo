@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Star } from 'lucide-react';
 import NpsVendasTab from './NpsVendasTab';
 import NpsAquisicoesTab from './NpsAquisicoesTab';
 
