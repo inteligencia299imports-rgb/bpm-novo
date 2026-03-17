@@ -447,9 +447,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       <InfoItem label="Se Der Errado" value={formatCurrency(avaliacao?.quanto_vende_errado)} />
                     </div>
                     <Separator />
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-4 gap-3">
                       <InfoItem label="Aval. Consignação" value={formatCurrency(avaliacao?.avaliacao_consignacao)} />
                       <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
+                      <InfoItem label="Custos Cliente" value={formatCurrency(avaliacao?.previsao_custos_cliente)} />
                       <div>
                         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
                         <p className="text-sm font-semibold text-primary">
@@ -459,9 +460,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                         </p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-4 gap-3">
                       <InfoItem label="Aval. Compra" value={formatCurrency(avaliacao?.avaliacao_compra)} />
                       <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
+                      <InfoItem label="Custos Cliente" value={formatCurrency(avaliacao?.previsao_custos_cliente)} />
                       <div>
                         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
                         <p className="text-sm font-semibold text-primary">
