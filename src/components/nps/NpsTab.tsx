@@ -13,8 +13,8 @@ const NpsTab = () => {
     <div className="space-y-5">
       <div>
         <div className="flex items-center gap-2">
-          <Star className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold text-foreground">NPS</h1>
+          <Star className="h-7 w-7 text-primary" />
+          <h1 className="text-2xl font-bold text-foreground">NPS</h1>
         </div>
         <p className="text-sm text-muted-foreground mt-0.5">Pesquisa de satisfação dos clientes</p>
       </div>

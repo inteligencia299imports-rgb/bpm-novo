@@ -166,8 +166,8 @@ const ShowroomTab = () => {
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Bike className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold text-foreground">Showroom</h1>
+            <Bike className="h-7 w-7 text-primary" />
+            <h1 className="text-2xl font-bold text-foreground">Showroom</h1>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">Pipeline de atendimentos</p>
         </div>
