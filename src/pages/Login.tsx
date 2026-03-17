@@ -32,8 +32,8 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md animate-fade-in">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
-            <Bike className="h-7 w-7 text-primary-foreground" />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl overflow-hidden">
+            <img src={logoImg} alt="CRM 299" className="h-14 w-14 object-cover" />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold">CRM 299</CardTitle>

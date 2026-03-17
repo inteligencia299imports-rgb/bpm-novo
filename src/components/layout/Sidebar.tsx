@@ -85,14 +85,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
             </div>
           )}
         </div>
-        <button
-          onClick={signOut}
-          title={collapsed ? 'Sair' : undefined}
-          className={`flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-white/10 transition-colors ${collapsed ? 'justify-center' : ''}`}
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          {!collapsed && 'Sair'}
-        </button>
       </div>
     </aside>
   );

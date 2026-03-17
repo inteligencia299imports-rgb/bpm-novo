@@ -53,9 +53,6 @@ const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange }) => {
             <span className="font-medium">{userName}</span>
             <span className="text-muted-foreground">({ROLE_LABELS[role || '']})</span>
           </div>
-          <Button variant="ghost" size="icon" onClick={signOut} title="Sair">
-            <LogOut className="h-4 w-4" />
-          </Button>
         </div>
       </div>
     </header>
