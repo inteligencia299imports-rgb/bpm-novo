@@ -32,8 +32,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
       {/* Logo + Toggle */}
       <div className="flex items-center justify-between px-3 py-5 border-b border-sidebar-border">
         <div className={`flex items-center gap-3 ${collapsed ? 'justify-center w-full' : 'px-2'}`}>
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 shrink-0">
-            <Bike className="h-5 w-5 text-sidebar-foreground" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden shrink-0">
+            <img src={logoImg} alt="CRM 299" className="h-9 w-9 object-cover" />
           </div>
           {!collapsed && <span className="text-lg font-bold tracking-tight text-sidebar-foreground">CRM 299</span>}
         </div>
