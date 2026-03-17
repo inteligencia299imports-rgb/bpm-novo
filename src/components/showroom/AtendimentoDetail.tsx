@@ -542,7 +542,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       {/* Dialog de Valores da Avaliação */}
       <Dialog open={!!viewAvaliacaoData} onOpenChange={(o) => !o && setViewAvaliacaoData(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <DollarSign className="h-5 w-5" /> Avaliação Comercial
@@ -550,20 +550,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </DialogHeader>
           {viewAvaliacaoData && (
             <div className="space-y-4 py-2">
-              {/* Contexto de Mercado */}
-              <div className="grid grid-cols-3 gap-3">
-                <InfoItem label="Valor FIPE" value={formatCurrency(viewAvaliacaoData.valor_fipe)} />
-                <InfoItem label="Menor Valor" value={formatCurrency(viewAvaliacaoData.menor_valor)} />
-                <InfoItem label="Maior Valor" value={formatCurrency(viewAvaliacaoData.maior_valor)} />
-              </div>
-              <Separator />
-              {/* Estratégia de Preço */}
-              <div className="grid grid-cols-3 gap-3">
-                <InfoItem label="Quanto Pede" value={formatCurrency(viewAvaliacaoData.quanto_pede)} />
-                <InfoItem label="Quanto Vende" value={formatCurrency(viewAvaliacaoData.quanto_vende)} />
-                <InfoItem label="Se Der Errado" value={formatCurrency(viewAvaliacaoData.quanto_vende_errado)} />
-              </div>
-              <Separator />
               {/* Resultados - Consignação */}
               <div className="grid grid-cols-4 gap-3">
                 <InfoItem label="Aval. Consignação" value={formatCurrency(viewAvaliacaoData.avaliacao_consignacao)} />
