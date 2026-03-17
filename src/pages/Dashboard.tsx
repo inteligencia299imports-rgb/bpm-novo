@@ -5,6 +5,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import ShowroomTab from '@/components/showroom/ShowroomTab';
 import EstoqueTab from '@/components/estoque/EstoqueTab';
 import AvaliacoesTab from '@/components/avaliacoes/AvaliacoesTab';
+import NpsTab from '@/components/nps/NpsTab';
 
 const Dashboard = () => {
   const { role } = useAuth();
@@ -28,6 +29,7 @@ const Dashboard = () => {
         {activeTab === 'showroom' && <ShowroomTab />}
         {activeTab === 'estoque' && <EstoqueTab />}
         {activeTab === 'avaliacoes' && <AvaliacoesTab />}
+        {activeTab === 'nps' && <NpsTab />}
       </main>
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
