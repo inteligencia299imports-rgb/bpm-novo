@@ -14,7 +14,7 @@ const Dashboard = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   useEffect(() => {
-    if (role === 'avaliador' && activeTab === 'showroom') setActiveTab('avaliacoes');
+    if (role === 'avaliador' && activeTab === 'showroom') setActiveTab('showroom');
   }, [role]);
 
   return (
