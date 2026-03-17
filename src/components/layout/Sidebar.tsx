@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, LogOut, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react';
+import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react';
+import logoImg from '@/assets/logo-crm.png';
 import { Button } from '@/components/ui/button';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -31,8 +32,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
       {/* Logo + Toggle */}
       <div className="flex items-center justify-between px-3 py-5 border-b border-sidebar-border">
         <div className={`flex items-center gap-3 ${collapsed ? 'justify-center w-full' : 'px-2'}`}>
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 shrink-0">
-            <Bike className="h-5 w-5 text-sidebar-foreground" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden shrink-0">
+            <img src={logoImg} alt="CRM 299" className="h-9 w-9 object-cover" />
           </div>
           {!collapsed && <span className="text-lg font-bold tracking-tight text-sidebar-foreground">CRM 299</span>}
         </div>
@@ -84,14 +85,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
             </div>
           )}
         </div>
-        <button
-          onClick={signOut}
-          title={collapsed ? 'Sair' : undefined}
-          className={`flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-white/10 transition-colors ${collapsed ? 'justify-center' : ''}`}
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          {!collapsed && 'Sair'}
-        </button>
       </div>
     </aside>
   );

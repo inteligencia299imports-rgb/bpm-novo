@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, ClipboardCheck, Package, LogOut, Star } from 'lucide-react';
+import { Bike, ClipboardCheck, Package, Star } from 'lucide-react';
 
 interface BottomNavProps {
   activeTab: string;
@@ -34,13 +34,6 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
             <span className="text-[10px] font-medium">{tab.label}</span>
           </button>
         ))}
-        <button
-          onClick={signOut}
-          className="flex flex-col items-center justify-center gap-1 flex-1 h-full text-muted-foreground transition-colors hover:text-destructive"
-        >
-          <LogOut className="h-5 w-5" />
-          <span className="text-[10px] font-medium">Sair</span>
-        </button>
       </div>
     </nav>
   );
