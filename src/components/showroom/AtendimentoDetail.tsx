@@ -568,6 +568,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <DollarSign className="h-5 w-5" /> Avaliação Comercial
+              {viewAvaliacaoData?.avaliador_nome && (
+                <span className="text-sm font-normal text-muted-foreground ml-auto">
+                  Avaliador: {viewAvaliacaoData.avaliador_nome}
+                </span>
+              )}
             </DialogTitle>
           </DialogHeader>
           {viewAvaliacaoData && (
