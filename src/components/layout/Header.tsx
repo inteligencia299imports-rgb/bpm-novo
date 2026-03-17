@@ -1,7 +1,8 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Bike, LogOut, User } from 'lucide-react';
+import { User } from 'lucide-react';
+import logoImg from '@/assets/logo-crm.png';
 
 const ROLE_LABELS: Record<string, string> = {
   vendedor: 'Vendedor',
