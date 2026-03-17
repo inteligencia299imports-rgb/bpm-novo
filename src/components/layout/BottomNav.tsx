@@ -11,10 +11,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
   const { role, signOut } = useAuth();
 
   const tabs = [
-    { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor'] },
+    { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['vendedor', 'avaliador', 'gestor'] },
-    { id: 'nps', label: 'NPS', icon: Star, roles: ['vendedor', 'gestor'] },
+    { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
+    { id: 'nps', label: 'NPS', icon: Star, roles: ['vendedor', 'gestor', 'avaliador'] },
   ].filter(t => role && t.roles.includes(role));
 
   return (
