@@ -98,6 +98,9 @@ export type Database = {
           menor_valor: number | null
           moto_avaliacao_id: string
           negociacao: string | null
+          nps_enviado_at: string | null
+          nps_respondido_at: string | null
+          nps_status: string
           observacao_avaliador: string | null
           previsao_custos_cliente: number | null
           previsao_custos_loja: number | null
@@ -121,6 +124,9 @@ export type Database = {
           menor_valor?: number | null
           moto_avaliacao_id: string
           negociacao?: string | null
+          nps_enviado_at?: string | null
+          nps_respondido_at?: string | null
+          nps_status?: string
           observacao_avaliador?: string | null
           previsao_custos_cliente?: number | null
           previsao_custos_loja?: number | null
@@ -144,6 +150,9 @@ export type Database = {
           menor_valor?: number | null
           moto_avaliacao_id?: string
           negociacao?: string | null
+          nps_enviado_at?: string | null
+          nps_respondido_at?: string | null
+          nps_status?: string
           observacao_avaliador?: string | null
           previsao_custos_cliente?: number | null
           previsao_custos_loja?: number | null
