@@ -449,8 +449,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     <Separator />
                     <div className="grid grid-cols-4 gap-3">
                       <InfoItem label="Aval. Consignação" value={formatCurrency(avaliacao?.avaliacao_consignacao)} />
-                      <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
                       <InfoItem label="Custos Cliente" value={formatCurrency(avaliacao?.previsao_custos_cliente)} />
+                      <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
                       <div>
                         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
                         <p className="text-sm font-semibold text-primary">
@@ -462,8 +462,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     </div>
                     <div className="grid grid-cols-4 gap-3">
                       <InfoItem label="Aval. Compra" value={formatCurrency(avaliacao?.avaliacao_compra)} />
-                      <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
                       <InfoItem label="Custos Cliente" value={formatCurrency(avaliacao?.previsao_custos_cliente)} />
+                      <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
                       <div>
                         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
                         <p className="text-sm font-semibold text-primary">
@@ -473,6 +473,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                         </p>
                       </div>
                     </div>
+                    <p className="text-xs font-medium text-primary">REPASSE CLIENTE = AVALIAÇÃO - CUSTOS LOJA</p>
                     <Separator />
                   </div>
                   {avaliacao?.observacao_avaliador && (
