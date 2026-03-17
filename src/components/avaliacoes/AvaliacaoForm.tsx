@@ -203,6 +203,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       const label = SITUACOES_AVALIACAO.find(s => s.value === newStatus)?.label;
       toast.success(`Status alterado para ${label}`);
       setAvaliacao((prev: any) => ({ ...prev, situacao: newStatus }));
+
+      // Sync: dispensada em avaliação → dispensada no showroom
+      if (newStatus === 'dispensada' && avaliacao?.atendimento_id) {
+        await supabase.from('atendimentos').update({ situacao: 'dispensada' }).eq('id', avaliacao.atendimento_id);
+      }
     }
   };
 
@@ -266,11 +271,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     { value: 'em_aberto' as SituacaoAvaliacao, label: 'Em Aberto', icon: <Clock className="h-4 w-4" />, color: '#F2C94C' },
     { value: 'adquirida' as SituacaoAvaliacao, label: 'Adquirida', icon: <CheckCircle className="h-4 w-4" />, color: '#27AE60' },
     { value: 'dispensada' as SituacaoAvaliacao, label: 'Dispensada', icon: <XCircle className="h-4 w-4" />, color: '#FF3B30' },
+    { value: 'perdido' as SituacaoAvaliacao, label: 'Perdido', icon: <XCircle className="h-4 w-4" />, color: '#FF8C00' },
   ]
     .filter(b => b.value !== avaliacao?.situacao)
     .filter(b => !(b.value === 'adquirida' && interesse === 'trocar'))
     .filter(b => !(b.value === 'adquirida' && !hasEvaluation))
-    .filter(b => !(b.value === 'em_aberto' && avaliacao?.situacao !== 'dispensada'));
+    .filter(b => !(b.value === 'em_aberto' && avaliacao?.situacao !== 'dispensada' && avaliacao?.situacao !== 'perdido'));
 
 
   return (

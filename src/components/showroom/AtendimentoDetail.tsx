@@ -144,6 +144,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       toast.error('Erro ao alterar status');
     } else {
       toast.success(`Status alterado para ${label}`);
+
+      // Sync: perdido no showroom → perdido nas avaliações
+      if (value === 'perdido') {
+        await supabase.from('avaliacoes').update({ situacao: 'perdido' }).eq('atendimento_id', atendimento.id);
+      }
+      // Sync: dispensada no showroom → dispensada nas avaliações
+      if (value === 'dispensada') {
+        await supabase.from('avaliacoes').update({ situacao: 'dispensada' }).eq('atendimento_id', atendimento.id);
+      }
+
       onDeleted();
     }
   };
@@ -450,6 +460,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 { value: 'sinal' as SituacaoShowroom, label: 'Sinal', icon: <Sparkles className="h-4 w-4" />, color: '#9B51E0' },
                 { value: 'vendido' as SituacaoShowroom, label: 'Vendido', icon: <DollarSign className="h-4 w-4" />, color: '#27AE60' },
                 { value: 'perdido' as SituacaoShowroom, label: 'Perdido', icon: <XCircle className="h-4 w-4" />, color: '#FF3B30' },
+                { value: 'dispensada' as SituacaoShowroom, label: 'Dispensada', icon: <XCircle className="h-4 w-4" />, color: '#FF8C00' },
               ]
                 .filter(b => b.value !== atendimento.situacao)
                 .filter(b => {

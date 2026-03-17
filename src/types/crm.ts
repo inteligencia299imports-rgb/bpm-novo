@@ -1,8 +1,8 @@
 export type AppRole = 'vendedor' | 'gestor' | 'avaliador';
 
 export type Interesse = 'comprar' | 'vender' | 'trocar';
-export type SituacaoShowroom = 'em_aberto' | 'pendente' | 'sinal' | 'perdido' | 'vendido';
-export type SituacaoAvaliacao = 'sem_avaliar' | 'em_aberto' | 'adquirida' | 'dispensada';
+export type SituacaoShowroom = 'em_aberto' | 'pendente' | 'sinal' | 'perdido' | 'vendido' | 'dispensada';
+export type SituacaoAvaliacao = 'sem_avaliar' | 'em_aberto' | 'adquirida' | 'dispensada' | 'perdido';
 export type Negociacao = 'compra' | 'consignacao';
 
 export const LOJAS = ['299i', '299s', 'Aventura', 'Ducati'] as const;
@@ -20,6 +20,7 @@ export const STATUS_COLORS: Record<SituacaoShowroom, string> = {
   sinal: '#9B51E0',
   perdido: '#FF3B30',
   vendido: '#27AE60',
+  dispensada: '#FF8C00',
 };
 
 export const SITUACOES_SHOWROOM: { value: SituacaoShowroom; label: string; color: string; hex: string }[] = [
@@ -28,12 +29,14 @@ export const SITUACOES_SHOWROOM: { value: SituacaoShowroom; label: string; color
   { value: 'sinal', label: 'Sinal', color: 'bg-sinal/15 text-sinal', hex: '#9B51E0' },
   { value: 'perdido', label: 'Perdido', color: 'bg-destructive/15 text-destructive', hex: '#FF3B30' },
   { value: 'vendido', label: 'Vendido', color: 'bg-success/15 text-success', hex: '#27AE60' },
+  { value: 'dispensada', label: 'Dispensada', color: 'bg-orange-500/15 text-orange-500', hex: '#FF8C00' },
 ];
 export const SITUACOES_AVALIACAO: { value: SituacaoAvaliacao; label: string; color: string }[] = [
   { value: 'sem_avaliar', label: 'Sem Avaliar', color: 'bg-muted text-muted-foreground' },
   { value: 'em_aberto', label: 'Em Aberto', color: 'bg-warning/15 text-warning' },
   { value: 'adquirida', label: 'Adquirida', color: 'bg-success/15 text-success' },
   { value: 'dispensada', label: 'Dispensada', color: 'bg-destructive/15 text-destructive' },
+  { value: 'perdido', label: 'Perdido', color: 'bg-orange-500/15 text-orange-500' },
 ];
 export const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'] as const;
 export const TIPOS_ATENDIMENTO = ['Presencial', 'Online'] as const;
