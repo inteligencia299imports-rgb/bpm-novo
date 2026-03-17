@@ -564,55 +564,84 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       {/* Dialog de Valores da Avaliação */}
       <Dialog open={!!viewAvaliacaoData} onOpenChange={(o) => !o && setViewAvaliacaoData(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" /> Avaliação Comercial
-              {viewAvaliacaoData?.avaliador_nome && (
-                <span className="text-sm font-normal text-muted-foreground ml-auto">
-                  Avaliador: {viewAvaliacaoData.avaliador_nome}
-                </span>
-              )}
+        <DialogContent className="max-w-3xl">
+          <DialogHeader className="pb-0">
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <DollarSign className="h-5 w-5 text-primary" /> Avaliação Comercial
             </DialogTitle>
+            {viewAvaliacaoData?.avaliador_nome && (
+              <p className="text-sm text-muted-foreground">
+                Avaliado por <span className="font-medium text-foreground">{viewAvaliacaoData.avaliador_nome}</span>
+              </p>
+            )}
           </DialogHeader>
           {viewAvaliacaoData && (
-            <div className="space-y-4 py-2">
-              {/* Resultados - Consignação */}
-              <div className="grid grid-cols-4 gap-3">
-                <InfoItem label="Aval. Consignação" value={formatCurrency(viewAvaliacaoData.avaliacao_consignacao)} />
-                <InfoItem label="Custos Cliente" value={formatCurrency(viewAvaliacaoData.previsao_custos_cliente)} />
-                <InfoItem label="Custos Loja" value={formatCurrency(viewAvaliacaoData.previsao_custos_loja)} />
-                <div>
-                  <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
-                  <p className="text-sm font-semibold text-primary">
-                    {formatCurrency(
-                      (viewAvaliacaoData.avaliacao_consignacao ?? 0) - (viewAvaliacaoData.previsao_custos_loja ?? 0)
-                    )}
-                  </p>
+            <div className="space-y-5 pt-2">
+              {/* Consignação */}
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Consignação</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground block mb-0.5">Avaliação</span>
+                    <p className="text-base font-semibold">{formatCurrency(viewAvaliacaoData.avaliacao_consignacao)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground block mb-0.5">Custos Cliente</span>
+                    <p className="text-base font-semibold">{formatCurrency(viewAvaliacaoData.previsao_custos_cliente)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground block mb-0.5">Custos Loja</span>
+                    <p className="text-base font-semibold">{formatCurrency(viewAvaliacaoData.previsao_custos_loja)}</p>
+                  </div>
+                  <div className="bg-primary/10 rounded-md p-2 -m-1">
+                    <span className="text-[11px] uppercase tracking-wider text-primary block mb-0.5 font-semibold">Repasse Cliente</span>
+                    <p className="text-lg font-bold text-primary">
+                      {formatCurrency(
+                        (viewAvaliacaoData.avaliacao_consignacao ?? 0) - (viewAvaliacaoData.previsao_custos_loja ?? 0)
+                      )}
+                    </p>
+                  </div>
                 </div>
               </div>
-              {/* Resultados - Compra */}
-              <div className="grid grid-cols-4 gap-3">
-                <InfoItem label="Aval. Compra" value={formatCurrency(viewAvaliacaoData.avaliacao_compra)} />
-                <InfoItem label="Custos Cliente" value={formatCurrency(viewAvaliacaoData.previsao_custos_cliente)} />
-                <InfoItem label="Custos Loja" value={formatCurrency(viewAvaliacaoData.previsao_custos_loja)} />
-                <div>
-                  <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
-                  <p className="text-sm font-semibold text-primary">
-                    {formatCurrency(
-                      (viewAvaliacaoData.avaliacao_compra ?? 0) - (viewAvaliacaoData.previsao_custos_loja ?? 0)
-                    )}
-                  </p>
+
+              {/* Compra */}
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Compra</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground block mb-0.5">Avaliação</span>
+                    <p className="text-base font-semibold">{formatCurrency(viewAvaliacaoData.avaliacao_compra)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground block mb-0.5">Custos Cliente</span>
+                    <p className="text-base font-semibold">{formatCurrency(viewAvaliacaoData.previsao_custos_cliente)}</p>
+                  </div>
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground block mb-0.5">Custos Loja</span>
+                    <p className="text-base font-semibold">{formatCurrency(viewAvaliacaoData.previsao_custos_loja)}</p>
+                  </div>
+                  <div className="bg-primary/10 rounded-md p-2 -m-1">
+                    <span className="text-[11px] uppercase tracking-wider text-primary block mb-0.5 font-semibold">Repasse Cliente</span>
+                    <p className="text-lg font-bold text-primary">
+                      {formatCurrency(
+                        (viewAvaliacaoData.avaliacao_compra ?? 0) - (viewAvaliacaoData.previsao_custos_loja ?? 0)
+                      )}
+                    </p>
+                  </div>
                 </div>
               </div>
-              <p className="text-xs font-medium text-primary">REPASSE CLIENTE = AVALIAÇÃO - CUSTOS LOJA</p>
-              <Separator />
+
+              <p className="text-[11px] font-medium text-muted-foreground text-center">REPASSE CLIENTE = AVALIAÇÃO − CUSTOS LOJA</p>
+
               {/* Observação */}
               {viewAvaliacaoData.observacao_avaliador && (
-                <div>
-                  <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observação do Avaliador</span>
-                  <p className="text-sm mt-1">{viewAvaliacaoData.observacao_avaliador}</p>
-                </div>
+                <>
+                  <Separator />
+                  <div className="rounded-lg border bg-muted/30 p-4">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Observação do Avaliador</h4>
+                    <p className="text-sm leading-relaxed">{viewAvaliacaoData.observacao_avaliador}</p>
+                  </div>
+                </>
               )}
             </div>
           )}
