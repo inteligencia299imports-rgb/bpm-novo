@@ -120,7 +120,7 @@ const NpsAquisicoesTab = () => {
                           npsStatus={a.nps_status || 'em_aberto'}
                           onUpdateStatus={(status) => handleUpdateStatus(a.id, status)}
                           accentColor="#9B51E0"
-                          badge={a.tipo_aquisicao === 'consignacao' ? 'Consignação' : 'Compra'}
+                          badge={a.tipo_aquisicao === 'consignada' ? 'Consignada' : 'Própria'}
                         />
                       ))
                     )}
