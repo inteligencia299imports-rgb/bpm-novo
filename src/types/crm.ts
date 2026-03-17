@@ -20,6 +20,7 @@ export const STATUS_COLORS: Record<SituacaoShowroom, string> = {
   sinal: '#9B51E0',
   perdido: '#FF3B30',
   vendido: '#27AE60',
+  dispensada: '#FF8C00',
 };
 
 export const SITUACOES_SHOWROOM: { value: SituacaoShowroom; label: string; color: string; hex: string }[] = [
