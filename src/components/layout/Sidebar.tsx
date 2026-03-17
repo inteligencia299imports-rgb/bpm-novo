@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react';
+import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Star } from 'lucide-react';
 import logoImg from '@/assets/logo-crm.png';
 import { Button } from '@/components/ui/button';
 
