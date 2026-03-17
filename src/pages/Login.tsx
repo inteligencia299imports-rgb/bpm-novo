@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Bike, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import logoImg from '@/assets/logo-crm.png';
 import { toast } from 'sonner';
 
 const Login = () => {
