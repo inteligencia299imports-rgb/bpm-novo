@@ -90,11 +90,21 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       }
       setCrlvUrls(crlvMap);
       
-      // Map avaliacoes by moto_avaliacao_id
+      // Map avaliacoes by moto_avaliacao_id and fetch avaliador names
       const avalMap: Record<string, any> = {};
       if (resAval.data) {
+        const avaliadorIds = [...new Set(resAval.data.map((av: any) => av.avaliador_id).filter(Boolean))];
+        let avaliadorNames: Record<string, string> = {};
+        if (avaliadorIds.length > 0) {
+          const { data: roles } = await supabase.from('user_roles').select('user_id, nome').in('user_id', avaliadorIds);
+          if (roles) {
+            for (const r of roles) {
+              avaliadorNames[r.user_id] = r.nome;
+            }
+          }
+        }
         for (const av of resAval.data) {
-          avalMap[(av as any).moto_avaliacao_id] = av;
+          avalMap[(av as any).moto_avaliacao_id] = { ...av, avaliador_nome: avaliadorNames[(av as any).avaliador_id] || null };
         }
       }
       setAvaliacoes(avalMap);
@@ -558,6 +568,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <DollarSign className="h-5 w-5" /> Avaliação Comercial
+              {viewAvaliacaoData?.avaliador_nome && (
+                <span className="text-sm font-normal text-muted-foreground ml-auto">
+                  Avaliador: {viewAvaliacaoData.avaliador_nome}
+                </span>
+              )}
             </DialogTitle>
           </DialogHeader>
           {viewAvaliacaoData && (
