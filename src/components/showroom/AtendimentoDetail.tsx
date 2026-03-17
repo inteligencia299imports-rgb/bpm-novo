@@ -580,7 +580,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               {/* Consignação */}
               <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Consignação</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-start">
                   <div>
                     <span className="text-[11px] uppercase tracking-wider text-muted-foreground block mb-0.5">Avaliação</span>
                     <p className="text-base font-semibold">{formatCurrency(viewAvaliacaoData.avaliacao_consignacao)}</p>
@@ -593,9 +593,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     <span className="text-[11px] uppercase tracking-wider text-muted-foreground block mb-0.5">Custos Loja</span>
                     <p className="text-base font-semibold">{formatCurrency(viewAvaliacaoData.previsao_custos_loja)}</p>
                   </div>
-                  <div className="bg-primary/10 rounded-md p-2 -m-1">
+                  <div>
                     <span className="text-[11px] uppercase tracking-wider text-primary block mb-0.5 font-semibold">Repasse Cliente</span>
-                    <p className="text-lg font-bold text-primary">
+                    <p className="text-base font-bold text-primary">
                       {formatCurrency(
                         (viewAvaliacaoData.avaliacao_consignacao ?? 0) - (viewAvaliacaoData.previsao_custos_loja ?? 0)
                       )}
@@ -607,7 +607,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               {/* Compra */}
               <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Compra</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-start">
                   <div>
                     <span className="text-[11px] uppercase tracking-wider text-muted-foreground block mb-0.5">Avaliação</span>
                     <p className="text-base font-semibold">{formatCurrency(viewAvaliacaoData.avaliacao_compra)}</p>
@@ -620,9 +620,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     <span className="text-[11px] uppercase tracking-wider text-muted-foreground block mb-0.5">Custos Loja</span>
                     <p className="text-base font-semibold">{formatCurrency(viewAvaliacaoData.previsao_custos_loja)}</p>
                   </div>
-                  <div className="bg-primary/10 rounded-md p-2 -m-1">
+                  <div>
                     <span className="text-[11px] uppercase tracking-wider text-primary block mb-0.5 font-semibold">Repasse Cliente</span>
-                    <p className="text-lg font-bold text-primary">
+                    <p className="text-base font-bold text-primary">
                       {formatCurrency(
                         (viewAvaliacaoData.avaliacao_compra ?? 0) - (viewAvaliacaoData.previsao_custos_loja ?? 0)
                       )}
