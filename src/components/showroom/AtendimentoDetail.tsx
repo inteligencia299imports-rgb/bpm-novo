@@ -464,6 +464,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               ]
                 .filter(b => b.value !== atendimento.situacao)
                 .filter(b => {
+                  if (b.value === 'dispensada') return false;
                   if (atendimento.interesse === 'vender' && (b.value === 'sinal' || b.value === 'vendido')) {
                     return false;
                   }
