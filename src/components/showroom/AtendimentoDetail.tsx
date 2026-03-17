@@ -77,7 +77,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       const [resInt, resAv, resAval] = await Promise.all([
         supabase.from('motos_interesse').select('*').eq('atendimento_id', atendimento.id),
         supabase.from('motos_avaliacao').select('*').eq('atendimento_id', atendimento.id),
-        supabase.from('avaliacoes').select('*, avaliador:user_roles!avaliacoes_avaliador_id_fkey(nome)').eq('atendimento_id', atendimento.id),
+        supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimento.id),
       ]);
       setMotosInteresse((resInt.data as unknown as MotoInteresse[]) || []);
       const motosAv = (resAv.data as unknown as MotoAvaliacao[]) || [];
