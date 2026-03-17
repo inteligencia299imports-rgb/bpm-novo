@@ -60,6 +60,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [motosInteresse, setMotosInteresse] = useState<MotoInteresse[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<MotoAvaliacao[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
+  const [estoqueData, setEstoqueData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [photoMotoId, setPhotoMotoId] = useState<string | null>(null);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
