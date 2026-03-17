@@ -60,6 +60,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [motosInteresse, setMotosInteresse] = useState<MotoInteresse[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<MotoAvaliacao[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
+  const [estoqueData, setEstoqueData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [photoMotoId, setPhotoMotoId] = useState<string | null>(null);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
@@ -79,7 +80,21 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         supabase.from('motos_avaliacao').select('*').eq('atendimento_id', atendimento.id),
         supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimento.id),
       ]);
-      setMotosInteresse((resInt.data as unknown as MotoInteresse[]) || []);
+      const motosInt = (resInt.data as unknown as MotoInteresse[]) || [];
+      setMotosInteresse(motosInt);
+
+      // Fetch estoque data for motos from stock
+      const estoqueIds = motosInt.filter(m => m.origem === 'estoque' && m.estoque_moto_id).map(m => m.estoque_moto_id!);
+      if (estoqueIds.length > 0) {
+        const { data: estoqueItems } = await supabase.from('estoque').select('*').in('id', estoqueIds);
+        const estoqueMap: Record<string, any> = {};
+        if (estoqueItems) {
+          for (const item of estoqueItems) {
+            estoqueMap[item.id] = item;
+          }
+        }
+        setEstoqueData(estoqueMap);
+      }
       const motosAv = (resAv.data as unknown as MotoAvaliacao[]) || [];
       setMotosAvaliacao(motosAv);
       
@@ -308,17 +323,88 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {motosInteresse.map((moto, idx) => (
+                {motosInteresse.map((moto, idx) => {
+                  const isEstoque = moto.origem === 'estoque' && moto.estoque_moto_id;
+                  const estItem = isEstoque ? estoqueData[moto.estoque_moto_id!] : null;
+                  return (
                   <div key={moto.id} className="space-y-3">
                     {idx > 0 && <Separator className="my-3" />}
+                    {estItem ? (
+                      <>
+                        {/* Header like estoque card */}
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-semibold text-foreground">{estItem.marca} {estItem.modelo}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {[estItem.ano_fabricacao, estItem.ano_modelo].filter(Boolean).join('/')}
+                              {estItem.cilindrada ? ` · ${estItem.cilindrada}cc` : ''}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-xs">Estoque</Badge>
+                        </div>
+                        {/* Details grid like estoque card */}
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                          {estItem.placa && (
+                            <>
+                              <span className="text-muted-foreground">Placa</span>
+                              <span className="font-medium text-foreground">{estItem.placa}</span>
+                            </>
+                          )}
+                          {estItem.cor && (
+                            <>
+                              <span className="text-muted-foreground">Cor</span>
+                              <span className="text-foreground">{estItem.cor}</span>
+                            </>
+                          )}
+                          {estItem.categoria && (
+                            <>
+                              <span className="text-muted-foreground">Categoria</span>
+                              <span className="text-foreground">{estItem.categoria}</span>
+                            </>
+                          )}
+                          {estItem.km && (
+                            <>
+                              <span className="text-muted-foreground">KM</span>
+                              <span className="text-foreground">{estItem.km}</span>
+                            </>
+                          )}
+                          <span className="text-muted-foreground">Tipo</span>
+                          <span className="text-foreground capitalize">{estItem.tipo === 'propria' ? 'Própria' : 'Consignada'}</span>
+                          {estItem.empresa && (
+                            <>
+                              <span className="text-muted-foreground">Empresa</span>
+                              <span className="text-foreground">{estItem.empresa}</span>
+                            </>
+                          )}
+                        </div>
+                        {/* Price like estoque card */}
+                        <div className="flex items-center justify-between pt-2 border-t border-border">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Preço</p>
+                            <p className="font-semibold text-foreground">{formatCurrency(estItem.preco)}</p>
+                          </div>
+                          {estItem.preco_acao != null && (
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">Preço Ação</p>
+                              <p className="font-semibold text-success">{formatCurrency(estItem.preco_acao)}</p>
+                            </div>
+                          )}
+                        </div>
+                        {estItem.observacoes && (
+                          <p className="text-xs text-muted-foreground italic">{estItem.observacoes}</p>
+                        )}
+                      </>
+                    ) : (
                     <div className="grid grid-cols-2 gap-4">
-                      <InfoItem label="Origem" value={moto.origem === 'estoque' ? 'Estoque' : 'Externo'} />
+                      <InfoItem label="Origem" value="Externo" />
                       <InfoItem label="Marca" value={moto.marca} />
                       <InfoItem label="Modelo" value={moto.modelo} />
                       <InfoItem label="Ano" value={moto.ano} />
                     </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           )}
