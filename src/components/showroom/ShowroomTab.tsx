@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Search, Filter, CalendarIcon, X } from 'lucide-react';
+import { Plus, Search, Filter, CalendarIcon, X, Bike } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -165,7 +165,10 @@ const ShowroomTab = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Showroom</h1>
+          <div className="flex items-center gap-2">
+            <Bike className="h-6 w-6 text-primary" />
+            <h1 className="text-xl font-bold text-foreground">Showroom</h1>
+          </div>
           <p className="text-sm text-muted-foreground mt-0.5">Pipeline de atendimentos</p>
         </div>
         <Button onClick={() => setShowForm(true)} className="gap-2 bg-primary hover:bg-primary-dark text-primary-foreground shadow-soft">

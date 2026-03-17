@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, X } from 'lucide-react';
+import { Search, X, ClipboardCheck } from 'lucide-react';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
 import type { Avaliacao, SituacaoAvaliacao } from '@/types/crm';
 import AvaliacaoCard from './AvaliacaoCard';
@@ -77,7 +77,10 @@ const AvaliacoesTab = () => {
     <div className="space-y-5">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Avaliações</h1>
+        <div className="flex items-center gap-2">
+          <ClipboardCheck className="h-6 w-6 text-primary" />
+          <h1 className="text-xl font-bold text-foreground">Avaliações</h1>
+        </div>
         <p className="text-sm text-muted-foreground mt-0.5">Pipeline de avaliações de motos</p>
       </div>
 
