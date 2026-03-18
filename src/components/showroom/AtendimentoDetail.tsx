@@ -129,6 +129,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       setLoading(false);
     };
     fetchRelated();
+
+    // Fetch status history
+    supabase
+      .from('status_history')
+      .select('*')
+      .eq('entity_type', 'showroom')
+      .eq('entity_id', atendimento.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setHistory(data || []));
   }, [atendimento.id]);
 
   const handleDelete = async () => {
