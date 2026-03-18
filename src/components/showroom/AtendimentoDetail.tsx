@@ -651,7 +651,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           if (!allConsultas) faltando.push('Consulta documentacional realizada');
                           
                           if (faltando.length > 0) {
-                            toast.error(`Para marcar como Vendido, é necessário: ${faltando.join(', ')}`);
+                            toast.error('Para finalizar como Vendido, certifique-se de que a CNH do cliente e o CRLV da moto foram enviados, e que a avaliação e a consulta de documentação já foram concluídas.');
                             return;
                           }
                         }
