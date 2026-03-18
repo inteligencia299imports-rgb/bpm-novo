@@ -30,7 +30,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${
+            className={`flex flex-col items-center justify-center gap-1 min-w-[60px] px-2 h-full transition-colors ${
               activeTab === tab.id
                 ? 'text-primary'
                 : 'text-muted-foreground'
