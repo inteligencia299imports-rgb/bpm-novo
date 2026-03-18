@@ -91,7 +91,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={item.nome_cliente} />
                 <div>
@@ -108,6 +108,20 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                 <InfoItem label="Loja" value={item.loja} />
                 <InfoItem label="UF" value={item.uf} />
               </div>
+              <Separator className="my-2" />
+              <DocumentUpload
+                label="CNH"
+                currentUrl={cnhUrl}
+                bucketPath={`docs/${item.id}/cnh`}
+                onUploaded={async (url) => {
+                  await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', item.id);
+                  setCnhUrl(url);
+                }}
+                onRemoved={async () => {
+                  await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', item.id);
+                  setCnhUrl(null);
+                }}
+              />
             </CardContent>
           </Card>
 
@@ -119,7 +133,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                   <Bike className="h-4 w-4 text-primary" /> Dados da Moto
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <InfoItem label="Marca / Modelo" value={`${moto.marca} ${moto.modelo}`} />
                   {moto.placa && <InfoItem label="Placa" value={moto.placa} />}
@@ -134,6 +148,20 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                     <p className="text-xs text-muted-foreground italic">{moto.observacoes}</p>
                   </>
                 )}
+                <Separator className="my-2" />
+                <DocumentUpload
+                  label="CRLV"
+                  currentUrl={crlvUrl}
+                  bucketPath={`docs/${moto.id}/crlv`}
+                  onUploaded={async (url) => {
+                    await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
+                    setCrlvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
+                    setCrlvUrl(null);
+                  }}
+                />
               </CardContent>
             </Card>
           )}
