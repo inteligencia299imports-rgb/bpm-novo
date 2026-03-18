@@ -235,17 +235,22 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     if (!valorPopup) return;
     const sinal = parseCurrencyInput(valorPopup.valorSinal);
     const venda = parseCurrencyInput(valorPopup.valorVenda);
-    if (sinal <= 0 && venda <= 0) {
-      toast.error('Informe ao menos um valor válido');
+    
+    if (valorPopup.modo === 'sinal' && sinal <= 0) {
+      toast.error('Informe o valor do sinal');
       return;
     }
+    if (valorPopup.modo === 'vendido' && venda <= 0) {
+      toast.error('Informe o valor da venda');
+      return;
+    }
+    
     setSavingValor(true);
     const updateData: any = {};
     if (sinal > 0) updateData.valor_sinal = sinal;
     if (venda > 0) updateData.valor_venda = venda;
-    // Determine status: if venda has value -> vendido, else sinal
-    const newStatus = venda > 0 ? 'vendido' : 'sinal';
-    const label = venda > 0 ? 'Vendido' : 'Sinal';
+    const newStatus = valorPopup.modo;
+    const label = newStatus === 'vendido' ? 'Vendido' : 'Sinal';
     await handleStatusChange(newStatus as SituacaoShowroom, label, updateData);
 
     // Se for troca e vendido, marcar todas as avaliações como adquirida/própria com valor de fechamento
