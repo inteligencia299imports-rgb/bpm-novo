@@ -130,7 +130,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       // Fetch status history (showroom + consulta for related motos)
       const motoIds = motosAv.map(m => m.id);
-      const [showroomRes, consultaRes] = await Promise.all([
+      const [showroomRes, consultaRes, avaliacaoRes] = await Promise.all([
         supabase
           .from('status_history')
           .select('*')
@@ -145,8 +145,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               .in('entity_id', motoIds)
               .order('created_at', { ascending: true })
           : Promise.resolve({ data: [] }),
+        motoIds.length > 0
+          ? supabase
+              .from('status_history')
+              .select('*')
+              .eq('entity_type', 'avaliacao')
+              .in('entity_id', motoIds)
+              .order('created_at', { ascending: true })
+          : Promise.resolve({ data: [] }),
       ]);
-      const allHistory = [...(showroomRes.data || []), ...(consultaRes.data || [])];
+      const allHistory = [...(showroomRes.data || []), ...(consultaRes.data || []), ...(avaliacaoRes.data || [])];
       allHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       setHistory(allHistory);
 
