@@ -954,6 +954,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </div>
         </DialogContent>
       </Dialog>
+      {/* Dialog de Contrato */}
+      <ContratoDialog
+        open={contratoOpen}
+        onOpenChange={setContratoOpen}
+        atendimento={atendimento}
+        motosInteresse={motosInteresse}
+        motosAvaliacao={motosAvaliacao}
+        estoqueData={estoqueData}
+        avaliacoes={avaliacoes}
+      />
     </div>
   );
 };
