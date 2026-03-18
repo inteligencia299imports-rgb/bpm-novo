@@ -5,14 +5,14 @@ import { Search, X, ShoppingBag } from 'lucide-react';
 import { POS_VENDA_COLUMNS } from '@/types/crm';
 import type { PosVendaStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
-import ProcessDetailSheet, { ProcessDetailData } from '@/components/shared/ProcessDetailSheet';
+import PosVendaDetail from './PosVendaDetail';
 import { toast } from 'sonner';
 
 const PosVendaTab = () => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedItem, setSelectedItem] = useState<ProcessDetailData | null>(null);
+  const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -22,69 +22,32 @@ const PosVendaTab = () => {
       .eq('situacao', 'vendido')
       .order('updated_at', { ascending: false });
 
-    if (error) {
-      toast.error('Erro ao carregar pós-venda');
-      console.error(error);
-      setLoading(false);
-      return;
-    }
+    if (error) { toast.error('Erro ao carregar pós-venda'); setLoading(false); return; }
 
     const atIds = (data || []).map(a => a.id);
     let filtered = data || [];
-
     if (atIds.length > 0) {
-      const { data: estoqueData } = await supabase
-        .from('estoque')
-        .select('atendimento_venda_id')
-        .eq('tipo', 'propria')
-        .in('atendimento_venda_id', atIds);
-
+      const { data: estoqueData } = await supabase.from('estoque').select('atendimento_venda_id').eq('tipo', 'propria').in('atendimento_venda_id', atIds);
       const validIds = new Set((estoqueData || []).map((e: any) => e.atendimento_venda_id));
       filtered = filtered.filter(a => validIds.has(a.id));
     }
-
     if (search.trim()) {
       const s = search.trim().toLowerCase();
-      filtered = filtered.filter((a: any) => {
-        const fields = [a.nome_cliente, a.telefone, a.loja];
-        return fields.some(f => f && String(f).toLowerCase().includes(s));
-      });
+      filtered = filtered.filter((a: any) => [a.nome_cliente, a.telefone, a.loja].some(f => f && String(f).toLowerCase().includes(s)));
     }
-
     setItems(filtered);
     setLoading(false);
   }, [search]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
-
   const getColumnItems = (status: PosVendaStatus) => items.filter((a: any) => (a.pos_venda_status || 'em_aberto') === status);
 
-  const openDetail = (a: any, col: typeof POS_VENDA_COLUMNS[number]) => {
-    const moto = a.motos_avaliacao?.[0];
-    setSelectedItem({
-      clientName: a.nome_cliente,
-      phone: a.telefone,
-      loja: a.loja,
-      date: a.updated_at,
-      statusLabel: col.label,
-      statusColor: col.hex,
-      motoMarca: moto?.marca,
-      motoModelo: moto?.modelo,
-      motoPlaca: moto?.placa,
-      motoCor: moto?.cor,
-      motoAno: [moto?.ano_fabricacao, moto?.ano_modelo].filter(Boolean).join('/'),
-      motoKm: moto?.km,
-      observacoes: a.observacoes,
-    });
-  };
+  if (selectedItem) return <PosVendaDetail item={selectedItem} onClose={() => setSelectedItem(null)} />;
 
   return (
     <div className="space-y-5">
       <div>
-        <div className="flex items-center gap-2">
-          <ShoppingBag className="h-7 w-7 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">Pós-Venda</h1>
-        </div>
+        <div className="flex items-center gap-2"><ShoppingBag className="h-7 w-7 text-primary" /><h1 className="text-2xl font-bold text-foreground">Pós-Venda</h1></div>
         <p className="text-sm text-muted-foreground mt-0.5">Motos vendidas próprias</p>
       </div>
       <div className="flex flex-col sm:flex-row gap-3">
@@ -111,26 +74,14 @@ const PosVendaTab = () => {
                     </div>
                   </div>
                   <div className="bg-muted/50 rounded-lg p-2.5 flex-1 min-h-[200px] space-y-2.5 border border-border/50">
-                    {colItems.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p>
-                    ) : (
-                      colItems.map((a: any) => {
-                        const moto = a.motos_avaliacao?.[0];
-                        const motoLabel = moto ? [moto.placa, `${moto.marca} ${moto.modelo}`].filter(Boolean).join(' - ') : undefined;
-                        return (
-                          <ProcessCard
-                            key={a.id}
-                            clientName={a.nome_cliente}
-                            phone={a.telefone}
-                            motoLabel={motoLabel}
-                            loja={a.loja}
-                            date={a.updated_at}
-                            statusColor={col.hex}
-                            onClick={() => openDetail(a, col)}
-                          />
-                        );
-                      })
-                    )}
+                    {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => {
+                      const moto = a.motos_avaliacao?.[0];
+                      return (
+                        <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone}
+                          motoLabel={moto ? [moto.placa, `${moto.marca} ${moto.modelo}`].filter(Boolean).join(' - ') : undefined}
+                          loja={a.loja} date={a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -138,7 +89,6 @@ const PosVendaTab = () => {
           </div>
         </div>
       )}
-      <ProcessDetailSheet open={!!selectedItem} onClose={() => setSelectedItem(null)} data={selectedItem} title="Pós-Venda" />
     </div>
   );
 };
