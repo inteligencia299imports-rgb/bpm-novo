@@ -27,37 +27,44 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
     return <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>;
   }
 
+  const sorted = [...history].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
   return (
     <>
       <div className="relative pl-6">
         {/* Vertical line */}
         <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
 
-        {history.map((h) => (
-          <div
-            key={h.id}
-            className="relative flex items-start gap-3 pb-5 last:pb-0 cursor-pointer hover:bg-muted/50 rounded-md px-2 -mx-2"
-            onClick={() => setSelected(h)}
-          >
-            {/* Dot */}
-            <div className="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2 border-primary bg-background z-10" />
+        {sorted.map((h, idx) => {
+          const isLatest = idx === 0;
+          return (
+            <div
+              key={h.id}
+              className="relative flex items-start gap-3 pb-5 last:pb-0 cursor-pointer hover:bg-muted/50 rounded-md px-2 -mx-2"
+              onClick={() => setSelected(h)}
+            >
+              {/* Dot */}
+              <div className={`absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2 z-10 ${isLatest ? 'border-primary bg-primary' : 'border-primary bg-background'}`} />
 
-            <div className="flex-1 min-w-0">
-              <span className="text-sm uppercase">{h.status_to.replace(/_/g, ' ')}</span>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-muted-foreground">
-                  {format(new Date(h.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              <div className="flex-1 min-w-0">
+                <span className={`text-sm uppercase ${isLatest ? 'font-bold text-primary' : ''}`}>
+                  {h.status_to.replace(/_/g, ' ')}
                 </span>
-                {h.changed_by_name && (
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <User className="h-3 w-3" />
-                    {h.changed_by_name}
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(h.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </span>
-                )}
+                  {h.changed_by_name && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {h.changed_by_name}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
