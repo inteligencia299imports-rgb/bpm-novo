@@ -5,18 +5,20 @@ import { Search, X, Wrench } from 'lucide-react';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
 import type { PreparacaoStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
+import ProcessDetailSheet, { ProcessDetailData } from '@/components/shared/ProcessDetailSheet';
 import { toast } from 'sonner';
 
 const PreparacaoTab = () => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedItem, setSelectedItem] = useState<ProcessDetailData | null>(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('avaliacoes')
-      .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja), motos_avaliacao!inner(id, marca, modelo, placa, cor)`)
+      .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria)`)
       .eq('situacao', 'adquirida')
       .order('updated_at', { ascending: false });
 
@@ -40,6 +42,35 @@ const PreparacaoTab = () => {
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const getColumnItems = (status: PreparacaoStatus) => items.filter((a: any) => (a.preparacao_status || 'em_aberto') === status);
+
+  const openDetail = (a: any, col: typeof PREPARACAO_COLUMNS[number]) => {
+    setSelectedItem({
+      clientName: a.atendimento?.nome_cliente || 'N/A',
+      phone: a.atendimento?.telefone,
+      loja: a.atendimento?.loja,
+      date: a.updated_at,
+      statusLabel: col.label,
+      statusColor: col.hex,
+      motoMarca: a.moto?.marca,
+      motoModelo: a.moto?.modelo,
+      motoPlaca: a.moto?.placa,
+      motoCor: a.moto?.cor,
+      motoAno: [a.moto?.ano_fabricacao, a.moto?.ano_modelo].filter(Boolean).join('/'),
+      motoKm: a.moto?.km,
+      motoCategoria: a.moto?.categoria,
+      valorFipe: a.valor_fipe,
+      avaliacaoCompra: a.avaliacao_compra,
+      avaliacaoConsignacao: a.avaliacao_consignacao,
+      quantoPede: a.quanto_pede,
+      quantoVende: a.quanto_vende,
+      valorFechamento: a.valor_fechamento,
+      previsaoCustosLoja: a.previsao_custos_loja,
+      previsaoCustosCliente: a.previsao_custos_cliente,
+      tipoAquisicao: a.tipo_aquisicao,
+      negociacao: a.negociacao,
+      observacaoAvaliador: a.observacao_avaliador,
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -87,6 +118,7 @@ const PreparacaoTab = () => {
                           date={a.updated_at}
                           statusColor={col.hex}
                           extraBadge={a.tipo_aquisicao ? { label: a.tipo_aquisicao === 'propria' ? 'Própria' : 'Consignada', className: 'border-green-500/30 text-green-600' } : undefined}
+                          onClick={() => openDetail(a, col)}
                         />
                       ))
                     )}
@@ -97,6 +129,7 @@ const PreparacaoTab = () => {
           </div>
         </div>
       )}
+      <ProcessDetailSheet open={!!selectedItem} onClose={() => setSelectedItem(null)} data={selectedItem} title="Preparação" />
     </div>
   );
 };
