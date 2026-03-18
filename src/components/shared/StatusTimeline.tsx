@@ -39,7 +39,7 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, onEntryClick, 
             <div className="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2 border-primary bg-background z-10" />
 
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-semibold uppercase">{h.status_to.replace(/_/g, ' ')}</span>
+              <span className="text-sm uppercase">{h.status_to.replace(/_/g, ' ')}</span>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-xs text-muted-foreground">
                   {format(new Date(h.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
