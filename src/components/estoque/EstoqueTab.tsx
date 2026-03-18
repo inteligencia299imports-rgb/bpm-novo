@@ -142,7 +142,7 @@ const EstoqueTab = () => {
 
         {showFilters && (
           <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
@@ -167,13 +167,21 @@ const EstoqueTab = () => {
                   <SelectItem value="consignada">Consignada</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
+                <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas as empresas</SelectItem>
+                  <SelectItem value="FAG">FAG</SelectItem>
+                  <SelectItem value="MMATOS">MMATOS</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos') && (
+            {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterEmpresa !== 'todas') && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); }}
+                onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterEmpresa('todas'); }}
               >
                 <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
               </Button>
