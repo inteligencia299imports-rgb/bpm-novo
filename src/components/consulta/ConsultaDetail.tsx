@@ -239,7 +239,14 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 <div className="space-y-0">
                   {history.map((h, i) => (
                     <div key={h.id}>
-                      <div className="flex items-start gap-3 py-3">
+                      <div
+                        className={`flex items-start gap-3 py-3 ${h.status_to === 'consulta_realizada' && resultadoSalvo ? 'cursor-pointer hover:bg-muted/50 rounded-md px-2 -mx-2' : ''}`}
+                        onClick={() => {
+                          if (h.status_to === 'consulta_realizada' && resultadoSalvo) {
+                            setHistoryDetailPopup(h);
+                          }
+                        }}
+                      >
                         <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                         <div className="flex-1">
                           <div className="flex items-center gap-1.5 text-sm">
