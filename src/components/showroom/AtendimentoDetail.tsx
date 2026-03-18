@@ -136,18 +136,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           .select('*')
           .eq('entity_type', 'showroom')
           .eq('entity_id', atendimento.id)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: true }),
         motoIds.length > 0
           ? supabase
               .from('status_history')
               .select('*')
               .eq('entity_type', 'consulta')
               .in('entity_id', motoIds)
-              .order('created_at', { ascending: false })
+              .order('created_at', { ascending: true })
           : Promise.resolve({ data: [] }),
       ]);
       const allHistory = [...(showroomRes.data || []), ...(consultaRes.data || [])];
-      allHistory.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      allHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       setHistory(allHistory);
 
       setLoading(false);

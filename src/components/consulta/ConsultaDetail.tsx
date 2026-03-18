@@ -66,7 +66,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
       .select('*')
       .eq('entity_type', 'consulta')
       .eq('entity_id', moto.id)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
       .then(({ data }) => setHistory(data || []));
   };
 

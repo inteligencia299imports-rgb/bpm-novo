@@ -57,7 +57,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
       .select('*')
       .eq('entity_type', 'pos_venda')
       .eq('entity_id', item.id)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
       .then(({ data }) => setHistory(data || []));
   }, [item.id]);
 

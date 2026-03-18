@@ -75,10 +75,6 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
                   <p className="text-sm font-medium uppercase">{selected.status_to.replace(/_/g, ' ')}</p>
                 </div>
                 <div>
-                  <span className="text-xs text-muted-foreground">Status Anterior</span>
-                  <p className="text-sm font-medium uppercase">{selected.status_from.replace(/_/g, ' ')}</p>
-                </div>
-                <div>
                   <span className="text-xs text-muted-foreground">Data / Hora</span>
                   <p className="text-sm font-medium">
                     {format(new Date(selected.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
