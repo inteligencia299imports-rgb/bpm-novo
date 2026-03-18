@@ -130,14 +130,27 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     };
     fetchRelated();
 
-    // Fetch status history
-    supabase
-      .from('status_history')
-      .select('*')
-      .eq('entity_type', 'showroom')
-      .eq('entity_id', atendimento.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => setHistory(data || []));
+    // Fetch status history (showroom + consulta for related motos)
+    const fetchHistory = async () => {
+      const [showroomRes, consultaRes] = await Promise.all([
+        supabase
+          .from('status_history')
+          .select('*')
+          .eq('entity_type', 'showroom')
+          .eq('entity_id', atendimento.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('status_history')
+          .select('*')
+          .eq('entity_type', 'consulta')
+          .in('entity_id', (resAv.data || []).map((m: any) => m.id))
+          .order('created_at', { ascending: false }),
+      ]);
+      const all = [...(showroomRes.data || []), ...(consultaRes.data || [])];
+      all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setHistory(all);
+    };
+    fetchHistory();
   }, [atendimento.id]);
 
   const handleDelete = async () => {
