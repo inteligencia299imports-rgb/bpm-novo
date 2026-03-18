@@ -407,19 +407,24 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     setCrlvUrl(null);
                   }}
                 />
-                {cnhUrl && crlvUrl && !consultaRealizada && (
+                {cnhUrl && crlvUrl && !consultaSolicitada && !consultaRealizada && (
                   <Button
                     size="sm"
                     variant="outline"
                     className="gap-1.5"
                     onClick={async () => {
-                      await supabase.from('motos_avaliacao').update({ consulta_realizada: true } as any).eq('id', moto?.id);
-                      setConsultaRealizada(true);
-                      toast.success('Consulta documentacional realizada com sucesso!');
+                      await supabase.from('motos_avaliacao').update({ consulta_solicitada: true } as any).eq('id', moto?.id);
+                      setConsultaSolicitada(true);
+                      toast.success('Consulta solicitada com sucesso!');
                     }}
                   >
                     <Search className="h-4 w-4" /> Solicitar Consulta
                   </Button>
+                )}
+                {consultaSolicitada && !consultaRealizada && (
+                  <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
+                    <Clock className="h-3 w-3" /> Consulta Solicitada
+                  </Badge>
                 )}
                 {consultaRealizada && (
                   <Badge variant="secondary" className="text-xs bg-green-500/15 text-green-600 gap-1">
