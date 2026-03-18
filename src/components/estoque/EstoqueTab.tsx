@@ -57,6 +57,7 @@ const EstoqueTab = () => {
     let query = supabase.from('estoque').select('marca');
     if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
     if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
+    if (filterEmpresa !== 'todas') query = query.eq('empresa', filterEmpresa);
     query.then(({ data }) => {
       const unique = [...new Set((data || []).map(d => d.marca))].sort();
       setAllMarcas(unique);
