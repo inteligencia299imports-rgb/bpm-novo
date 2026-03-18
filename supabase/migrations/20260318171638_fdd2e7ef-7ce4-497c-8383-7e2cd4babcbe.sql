@@ -1,0 +1,1 @@
+ALTER TABLE public.status_history ADD COLUMN observacoes text;

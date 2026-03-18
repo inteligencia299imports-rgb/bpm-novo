@@ -92,7 +92,8 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
       status_to: 'consulta_realizada',
       changed_by: user?.id,
       changed_by_name: userName || user?.email || null,
-    });
+      observacoes: resultadoTexto || null,
+    } as any);
 
     setIsConsultada(true);
     setResultadoSalvo(resultadoTexto);
@@ -263,11 +264,11 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 <StatusTimeline
                   history={history}
                   renderPopupExtra={(h) => {
-                    if (h.status_to === 'consulta_realizada' && resultadoSalvo) {
+                    if (h.observacoes) {
                       return (
                         <div>
-                          <span className="text-xs text-muted-foreground">Resultado da Consulta</span>
-                          <p className="text-sm mt-1 whitespace-pre-wrap">{resultadoSalvo}</p>
+                          <span className="text-xs text-muted-foreground">Observações</span>
+                          <p className="text-sm mt-1 whitespace-pre-wrap">{h.observacoes}</p>
                         </div>
                       );
                     }

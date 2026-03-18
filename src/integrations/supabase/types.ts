@@ -499,6 +499,7 @@ export type Database = {
           entity_id: string
           entity_type: string
           id: string
+          observacoes: string | null
           status_from: string
           status_to: string
         }
@@ -509,6 +510,7 @@ export type Database = {
           entity_id: string
           entity_type: string
           id?: string
+          observacoes?: string | null
           status_from: string
           status_to: string
         }
@@ -519,6 +521,7 @@ export type Database = {
           entity_id?: string
           entity_type?: string
           id?: string
+          observacoes?: string | null
           status_from?: string
           status_to?: string
         }
