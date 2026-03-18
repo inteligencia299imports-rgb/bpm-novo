@@ -81,7 +81,7 @@ const CurrencyField = ({ label, value, onChange }: { label: string; value: strin
 );
 
 const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
-  const { user, role } = useAuth();
+  const { user, role, userName } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [avaliacao, setAvaliacao] = useState<any>(null);
@@ -416,6 +416,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     className="gap-1.5"
                     onClick={async () => {
                       await supabase.from('motos_avaliacao').update({ consulta_solicitada: true } as any).eq('id', moto?.id);
+                      await supabase.from('status_history').insert({
+                        entity_type: 'consulta',
+                        entity_id: moto?.id,
+                        status_from: 'sem_consulta',
+                        status_to: 'consulta_solicitada',
+                        changed_by: user?.id,
+                        changed_by_name: userName || user?.email || null,
+                      });
                       setConsultaSolicitada(true);
                       toast.success('Consulta solicitada com sucesso!');
                     }}

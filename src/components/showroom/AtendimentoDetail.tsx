@@ -503,6 +503,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           className="gap-1.5"
                           onClick={async () => {
                             await supabase.from('motos_avaliacao').update({ consulta_solicitada: true } as any).eq('id', moto.id);
+                            await supabase.from('status_history').insert({
+                              entity_type: 'consulta',
+                              entity_id: moto.id,
+                              status_from: 'sem_consulta',
+                              status_to: 'consulta_solicitada',
+                              changed_by: user?.id,
+                              changed_by_name: userName || user?.email || null,
+                            });
                             setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, consulta_solicitada: true } as any : m));
                             toast.success('Consulta solicitada com sucesso!');
                           }}
