@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { FileUp, FileCheck, Loader2, Eye, Trash2, RefreshCw, Download } from 'lucide-react';
+import { FileUp, FileCheck, Loader2, Eye, Trash2, RefreshCw, Download, Save } from 'lucide-react';
 
 interface Props {
   label: string;
@@ -165,14 +165,6 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
                 </Button>
                 <Button
                   size="sm"
-                  variant="destructive"
-                  className="gap-1.5"
-                  onClick={handleRemove}
-                >
-                  <Trash2 className="h-4 w-4" /> Remover
-                </Button>
-                <Button
-                  size="sm"
                   variant="outline"
                   className="gap-1.5"
                   disabled={uploading}
@@ -187,9 +179,18 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
                 </Button>
                 <Button
                   size="sm"
+                  variant="ghost"
+                  className="gap-1.5 text-destructive hover:text-destructive"
+                  onClick={handleRemove}
+                >
+                  <Trash2 className="h-4 w-4" /> Remover
+                </Button>
+                <Button
+                  size="sm"
+                  className="gap-1.5"
                   onClick={() => setDialogOpen(false)}
                 >
-                  Salvar
+                  <Save className="h-4 w-4" /> Salvar
                 </Button>
               </div>
             </div>
