@@ -124,6 +124,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         setCnhUrl((data.atendimentos as any)?.cnh_url || null);
         setCrlvUrl((data.motos_avaliacao as any)?.crlv_url || null);
         setConsultaRealizada(!!(data.motos_avaliacao as any)?.consulta_realizada);
+        setConsultaSolicitada(!!(data.motos_avaliacao as any)?.consulta_solicitada);
         setValorFipe(numberToCurrencyMask(data.valor_fipe));
         setMenorValor(numberToCurrencyMask(data.menor_valor));
         setMaiorValor(numberToCurrencyMask(data.maior_valor));
