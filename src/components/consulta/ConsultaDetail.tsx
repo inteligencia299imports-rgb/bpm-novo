@@ -8,6 +8,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 interface ConsultaDetailProps {
   moto: any;
@@ -36,6 +37,17 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 
 const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
+  const [cnhUrl, setCnhUrl] = useState<string | null>(null);
+  const [crlvUrl, setCrlvUrl] = useState<string | null>(moto.crlv_url || null);
+  const atendimento = moto.atendimento || moto.atendimentos;
+
+  useEffect(() => {
+    // Fetch CNH from atendimento
+    if (atendimento?.id) {
+      supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
+        .then(({ data }) => setCnhUrl(data?.cnh_url || null));
+    }
+  }, [atendimento?.id]);
 
   useEffect(() => {
     supabase
@@ -51,7 +63,6 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const statusLabel = isConsultada ? 'Consultada' : 'Pendente';
   const statusColor = isConsultada ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning';
   const statusHex = isConsultada ? '#27AE60' : '#F2C94C';
-  const atendimento = moto.atendimento || moto.atendimentos;
   const ano = [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/');
 
   return (
@@ -96,7 +107,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={atendimento?.nome_cliente} />
                 {atendimento?.telefone && (
@@ -107,6 +118,24 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
               </div>
+              {atendimento?.id && (
+                <>
+                  <Separator className="my-2" />
+                  <DocumentUpload
+                    label="CNH"
+                    currentUrl={cnhUrl}
+                    bucketPath={`docs/${atendimento.id}/cnh`}
+                    onUploaded={async (url) => {
+                      await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', atendimento.id);
+                      setCnhUrl(url);
+                    }}
+                    onRemoved={async () => {
+                      await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', atendimento.id);
+                      setCnhUrl(null);
+                    }}
+                  />
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -117,7 +146,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 <Bike className="h-4 w-4 text-primary" /> Dados da Moto
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Marca" value={<span className="uppercase">{moto.marca}</span>} />
                 <InfoItem label="Modelo" value={<span className="uppercase">{moto.modelo}</span>} />
@@ -133,6 +162,20 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                   <p className="text-xs text-muted-foreground italic">{moto.observacoes}</p>
                 </>
               )}
+              <Separator className="my-2" />
+              <DocumentUpload
+                label="CRLV"
+                currentUrl={crlvUrl}
+                bucketPath={`docs/${moto.id}/crlv`}
+                onUploaded={async (url) => {
+                  await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
+                  setCrlvUrl(url);
+                }}
+                onRemoved={async () => {
+                  await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
+                  setCrlvUrl(null);
+                }}
+              />
             </CardContent>
           </Card>
 

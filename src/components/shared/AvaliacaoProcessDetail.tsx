@@ -8,6 +8,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 interface Props {
   item: any;
@@ -31,12 +32,26 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 
 const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColumns, statusField, title, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
+  const [cnhUrl, setCnhUrl] = useState<string | null>(null);
+  const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
   const moto = item.moto || item.motos_avaliacao;
   const atendimento = item.atendimento || item.atendimentos;
   const statusValue = item[statusField] || 'em_aberto';
   const statusCol = statusColumns.find(c => c.value === statusValue);
   const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
   const whatsappUrl = atendimento?.telefone ? `https://wa.me/55${atendimento.telefone.replace(/\D/g, '')}` : '';
+
+  useEffect(() => {
+    // Fetch CNH from atendimento
+    if (atendimento?.id) {
+      supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
+        .then(({ data }) => setCnhUrl(data?.cnh_url || null));
+    }
+    // Fetch CRLV from moto
+    if (moto?.id) {
+      setCrlvUrl(moto.crlv_url || null);
+    }
+  }, [atendimento?.id, moto?.id]);
 
   useEffect(() => {
     supabase
@@ -86,7 +101,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={atendimento?.nome_cliente} />
                 {atendimento?.telefone && (
@@ -104,6 +119,24 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
               </div>
+              {atendimento?.id && (
+                <>
+                  <Separator className="my-2" />
+                  <DocumentUpload
+                    label="CNH"
+                    currentUrl={cnhUrl}
+                    bucketPath={`docs/${atendimento.id}/cnh`}
+                    onUploaded={async (url) => {
+                      await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', atendimento.id);
+                      setCnhUrl(url);
+                    }}
+                    onRemoved={async () => {
+                      await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', atendimento.id);
+                      setCnhUrl(null);
+                    }}
+                  />
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -115,7 +148,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   <Bike className="h-4 w-4 text-primary" /> Dados da Moto
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <InfoItem label="Marca / Modelo" value={`${moto.marca} ${moto.modelo}`} />
                   {moto.placa && <InfoItem label="Placa" value={moto.placa} />}
@@ -130,6 +163,20 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                     <p className="text-xs text-muted-foreground italic">{moto.observacoes}</p>
                   </>
                 )}
+                <Separator className="my-2" />
+                <DocumentUpload
+                  label="CRLV"
+                  currentUrl={crlvUrl}
+                  bucketPath={`docs/${moto.id}/crlv`}
+                  onUploaded={async (url) => {
+                    await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
+                    setCrlvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
+                    setCrlvUrl(null);
+                  }}
+                />
               </CardContent>
             </Card>
           )}

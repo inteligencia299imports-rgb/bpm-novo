@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, Clock, ArrowRight, DollarSign, Store } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, Clock, ArrowRight, DollarSign, Store, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { POS_VENDA_COLUMNS } from '@/types/crm';
-import { MessageCircle } from 'lucide-react';
+import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 interface Props {
   item: any;
@@ -44,6 +44,8 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
   const moto = item.motos_avaliacao?.[0];
+  const [cnhUrl, setCnhUrl] = useState<string | null>(item.cnh_url || null);
+  const [crlvUrl, setCrlvUrl] = useState<string | null>(moto?.crlv_url || null);
   const statusCol = POS_VENDA_COLUMNS.find(c => c.value === (item.pos_venda_status || 'em_aberto'));
   const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
   const whatsappUrl = item.telefone ? `https://wa.me/55${item.telefone.replace(/\D/g, '')}` : '';
@@ -89,7 +91,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={item.nome_cliente} />
                 <div>
@@ -106,6 +108,20 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                 <InfoItem label="Loja" value={item.loja} />
                 <InfoItem label="UF" value={item.uf} />
               </div>
+              <Separator className="my-2" />
+              <DocumentUpload
+                label="CNH"
+                currentUrl={cnhUrl}
+                bucketPath={`docs/${item.id}/cnh`}
+                onUploaded={async (url) => {
+                  await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', item.id);
+                  setCnhUrl(url);
+                }}
+                onRemoved={async () => {
+                  await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', item.id);
+                  setCnhUrl(null);
+                }}
+              />
             </CardContent>
           </Card>
 
@@ -117,7 +133,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                   <Bike className="h-4 w-4 text-primary" /> Dados da Moto
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <InfoItem label="Marca / Modelo" value={`${moto.marca} ${moto.modelo}`} />
                   {moto.placa && <InfoItem label="Placa" value={moto.placa} />}
@@ -132,6 +148,20 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                     <p className="text-xs text-muted-foreground italic">{moto.observacoes}</p>
                   </>
                 )}
+                <Separator className="my-2" />
+                <DocumentUpload
+                  label="CRLV"
+                  currentUrl={crlvUrl}
+                  bucketPath={`docs/${moto.id}/crlv`}
+                  onUploaded={async (url) => {
+                    await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
+                    setCrlvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
+                    setCrlvUrl(null);
+                  }}
+                />
               </CardContent>
             </Card>
           )}
