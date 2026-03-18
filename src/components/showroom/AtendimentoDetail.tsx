@@ -18,6 +18,7 @@ import PhotoUpload from './PhotoUpload';
 import DocumentUpload from './DocumentUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import ContratoDialog from './ContratoDialog';
 
 interface Props {
   atendimento: Atendimento;
@@ -72,6 +73,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [valorPopup, setValorPopup] = useState<{ valorSinal: string; valorVenda: string; valorFechamento: string } | null>(null);
   const [savingValor, setSavingValor] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
+  const [contratoOpen, setContratoOpen] = useState(false);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
@@ -295,6 +297,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       </div>
 
       <Separator />
+      {atendimento.situacao === 'sinal' && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full gap-2 border-primary text-primary hover:bg-primary/10"
+          onClick={() => setContratoOpen(true)}
+        >
+          <FileText className="h-4 w-4" /> Emissão de Contrato
+        </Button>
+      )}
 
       <ScrollArea className="h-[calc(100vh-14rem)]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6">
@@ -942,6 +954,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </div>
         </DialogContent>
       </Dialog>
+      {/* Dialog de Contrato */}
+      <ContratoDialog
+        open={contratoOpen}
+        onOpenChange={setContratoOpen}
+        atendimento={atendimento}
+        motosInteresse={motosInteresse}
+        motosAvaliacao={motosAvaliacao}
+        estoqueData={estoqueData}
+        avaliacoes={avaliacoes}
+      />
     </div>
   );
 };

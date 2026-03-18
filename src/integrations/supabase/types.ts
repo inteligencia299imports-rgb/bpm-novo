@@ -194,6 +194,71 @@ export type Database = {
           },
         ]
       }
+      contratos: {
+        Row: {
+          atendimento_id: string
+          cpf_cnpj: string | null
+          created_at: string
+          data_sinal: string | null
+          data_vencimento_sinal: string | null
+          id: string
+          ipva_cotas: number | null
+          ipva_tipo: string | null
+          ipva_valor: number | null
+          observacoes_contrato: string | null
+          observacoes_internas: string | null
+          transferencia_tipo: string | null
+          transferencia_valor: number | null
+          updated_at: string
+          valor_fechamento: number | null
+          valor_quitacao: number | null
+        }
+        Insert: {
+          atendimento_id: string
+          cpf_cnpj?: string | null
+          created_at?: string
+          data_sinal?: string | null
+          data_vencimento_sinal?: string | null
+          id?: string
+          ipva_cotas?: number | null
+          ipva_tipo?: string | null
+          ipva_valor?: number | null
+          observacoes_contrato?: string | null
+          observacoes_internas?: string | null
+          transferencia_tipo?: string | null
+          transferencia_valor?: number | null
+          updated_at?: string
+          valor_fechamento?: number | null
+          valor_quitacao?: number | null
+        }
+        Update: {
+          atendimento_id?: string
+          cpf_cnpj?: string | null
+          created_at?: string
+          data_sinal?: string | null
+          data_vencimento_sinal?: string | null
+          id?: string
+          ipva_cotas?: number | null
+          ipva_tipo?: string | null
+          ipva_valor?: number | null
+          observacoes_contrato?: string | null
+          observacoes_internas?: string | null
+          transferencia_tipo?: string | null
+          transferencia_valor?: number | null
+          updated_at?: string
+          valor_fechamento?: number | null
+          valor_quitacao?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estoque: {
         Row: {
           ano_fabricacao: string | null
@@ -296,6 +361,53 @@ export type Database = {
             columns: ["moto_avaliacao_id"]
             isOneToOne: false
             referencedRelation: "motos_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formas_pagamento: {
+        Row: {
+          contrato_id: string
+          created_at: string
+          financeira: string | null
+          id: string
+          numero_parcelas: number | null
+          tipo: string
+          valor_entrada: number | null
+          valor_financiado: number | null
+          valor_parcelas: number | null
+          valor_total: number | null
+        }
+        Insert: {
+          contrato_id: string
+          created_at?: string
+          financeira?: string | null
+          id?: string
+          numero_parcelas?: number | null
+          tipo: string
+          valor_entrada?: number | null
+          valor_financiado?: number | null
+          valor_parcelas?: number | null
+          valor_total?: number | null
+        }
+        Update: {
+          contrato_id?: string
+          created_at?: string
+          financeira?: string | null
+          id?: string
+          numero_parcelas?: number | null
+          tipo?: string
+          valor_entrada?: number | null
+          valor_financiado?: number | null
+          valor_parcelas?: number | null
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formas_pagamento_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
             referencedColumns: ["id"]
           },
         ]
