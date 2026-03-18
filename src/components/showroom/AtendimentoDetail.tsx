@@ -494,6 +494,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         <p className="text-sm mt-1">{moto.observacoes}</p>
                       </div>
                     )}
+                    {(moto as any).consulta_realizada && (moto as any).resultado_consulta && (
+                      <div className="mt-2 p-3 rounded-md border border-green-200 bg-green-50/50">
+                        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Resultado da Consulta</span>
+                        <p className="text-sm mt-0.5 font-medium whitespace-pre-wrap">{(moto as any).resultado_consulta}</p>
+                      </div>
+                    )}
                     <div className="flex gap-2 mt-3 flex-wrap">
                       <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPhotoMotoId(moto.id)}>
                         <Camera className="h-4 w-4" /> Incluir Fotos
