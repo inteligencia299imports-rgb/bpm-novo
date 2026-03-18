@@ -5,12 +5,14 @@ import { Search, X, Handshake } from 'lucide-react';
 import { POS_VENDA_COLUMNS } from '@/types/crm';
 import type { PosVendaStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
+import ProcessDetailSheet, { ProcessDetailData } from '@/components/shared/ProcessDetailSheet';
 import { toast } from 'sonner';
 
 const IntermediacacaoTab = () => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedItem, setSelectedItem] = useState<ProcessDetailData | null>(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -56,6 +58,25 @@ const IntermediacacaoTab = () => {
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const getColumnItems = (status: PosVendaStatus) => items.filter((a: any) => (a.pos_venda_status || 'em_aberto') === status);
+
+  const openDetail = (a: any, col: typeof POS_VENDA_COLUMNS[number]) => {
+    const moto = a.motos_avaliacao?.[0];
+    setSelectedItem({
+      clientName: a.nome_cliente,
+      phone: a.telefone,
+      loja: a.loja,
+      date: a.updated_at,
+      statusLabel: col.label,
+      statusColor: col.hex,
+      motoMarca: moto?.marca,
+      motoModelo: moto?.modelo,
+      motoPlaca: moto?.placa,
+      motoCor: moto?.cor,
+      motoAno: [moto?.ano_fabricacao, moto?.ano_modelo].filter(Boolean).join('/'),
+      motoKm: moto?.km,
+      observacoes: a.observacoes,
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -105,6 +126,7 @@ const IntermediacacaoTab = () => {
                             loja={a.loja}
                             date={a.updated_at}
                             statusColor={col.hex}
+                            onClick={() => openDetail(a, col)}
                           />
                         );
                       })
@@ -116,6 +138,7 @@ const IntermediacacaoTab = () => {
           </div>
         </div>
       )}
+      <ProcessDetailSheet open={!!selectedItem} onClose={() => setSelectedItem(null)} data={selectedItem} title="Intermediação" />
     </div>
   );
 };

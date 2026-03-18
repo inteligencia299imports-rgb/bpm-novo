@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
 import { Search, X, FileSearch } from 'lucide-react';
 import ProcessCard from '@/components/shared/ProcessCard';
+import ProcessDetailSheet, { ProcessDetailData } from '@/components/shared/ProcessDetailSheet';
 import { toast } from 'sonner';
 
 const COLUMNS = [
@@ -14,6 +15,7 @@ const ConsultaTab = () => {
   const [motos, setMotos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedItem, setSelectedItem] = useState<ProcessDetailData | null>(null);
 
   const fetchMotos = useCallback(async () => {
     setLoading(true);
@@ -41,17 +43,29 @@ const ConsultaTab = () => {
 
   useEffect(() => { fetchMotos(); }, [fetchMotos]);
 
-  const toggleConsulta = async (id: string, current: boolean) => {
-    const { error } = await supabase.from('motos_avaliacao').update({ consulta_realizada: !current }).eq('id', id);
-    if (error) {
-      toast.error('Erro ao atualizar consulta');
-    } else {
-      toast.success(!current ? 'Consulta marcada como realizada' : 'Consulta marcada como pendente');
-      fetchMotos();
-    }
-  };
-
   const getColumnMotos = (val: boolean) => motos.filter(m => (m.consulta_realizada ?? false) === val);
+
+  const openDetail = (m: any, col: typeof COLUMNS[number]) => {
+    setSelectedItem({
+      clientName: m.atendimento?.nome_cliente || 'N/A',
+      phone: m.atendimento?.telefone,
+      loja: m.atendimento?.loja,
+      date: m.created_at,
+      statusLabel: col.label,
+      statusColor: col.hex,
+      motoMarca: m.marca,
+      motoModelo: m.modelo,
+      motoPlaca: m.placa,
+      motoCor: m.cor,
+      motoAno: [m.ano_fabricacao, m.ano_modelo].filter(Boolean).join('/'),
+      motoKm: m.km,
+      motoCategoria: m.categoria,
+      observacoes: m.observacoes,
+      extras: [
+        { label: 'Consulta Realizada', value: m.consulta_realizada ? 'Sim' : 'Não' },
+      ],
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -106,7 +120,7 @@ const ConsultaTab = () => {
                           loja={m.atendimento?.loja}
                           date={m.created_at}
                           statusColor={col.hex}
-                          onClick={() => toggleConsulta(m.id, m.consulta_realizada ?? false)}
+                          onClick={() => openDetail(m, col)}
                         />
                       ))
                     )}
@@ -117,6 +131,13 @@ const ConsultaTab = () => {
           </div>
         </div>
       )}
+
+      <ProcessDetailSheet
+        open={!!selectedItem}
+        onClose={() => setSelectedItem(null)}
+        data={selectedItem}
+        title="Consulta"
+      />
     </div>
   );
 };
