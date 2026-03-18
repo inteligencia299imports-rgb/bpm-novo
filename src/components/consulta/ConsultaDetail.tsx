@@ -49,6 +49,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const [saving, setSaving] = useState(false);
   const [isConsultada, setIsConsultada] = useState(moto.consulta_realizada === true);
   const [resultadoSalvo, setResultadoSalvo] = useState<string | null>(moto.resultado_consulta || null);
+  const [historyDetailPopup, setHistoryDetailPopup] = useState<any | null>(null);
   const atendimento = moto.atendimento || moto.atendimentos;
 
   useEffect(() => {
@@ -142,9 +143,6 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
             <CardContent className="py-3 px-4">
               <span className="text-xs text-muted-foreground">Resultado da Consulta</span>
               <p className="text-sm font-medium uppercase">{isConsultada ? 'Consulta Realizada' : 'Consulta Pendente'}</p>
-              {resultadoSalvo && (
-                <p className="text-sm mt-2 text-foreground whitespace-pre-wrap">{resultadoSalvo}</p>
-              )}
             </CardContent>
           </Card>
 
@@ -241,7 +239,14 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 <div className="space-y-0">
                   {history.map((h, i) => (
                     <div key={h.id}>
-                      <div className="flex items-start gap-3 py-3">
+                      <div
+                        className={`flex items-start gap-3 py-3 ${h.status_to === 'consulta_realizada' && resultadoSalvo ? 'cursor-pointer hover:bg-muted/50 rounded-md px-2 -mx-2' : ''}`}
+                        onClick={() => {
+                          if (h.status_to === 'consulta_realizada' && resultadoSalvo) {
+                            setHistoryDetailPopup(h);
+                          }
+                        }}
+                      >
                         <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                         <div className="flex-1">
                           <div className="flex items-center gap-1.5 text-sm">
@@ -293,6 +298,38 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Popup Detalhe do Histórico */}
+      <Dialog open={!!historyDetailPopup} onOpenChange={() => setHistoryDetailPopup(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" /> Resultado da Consulta
+            </DialogTitle>
+          </DialogHeader>
+          {historyDetailPopup && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs text-muted-foreground">Responsável</span>
+                  <p className="text-sm font-medium">{historyDetailPopup.changed_by_name || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground">Data / Hora</span>
+                  <p className="text-sm font-medium">
+                    {format(new Date(historyDetailPopup.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <span className="text-xs text-muted-foreground">Resultado</span>
+                <p className="text-sm mt-1 whitespace-pre-wrap">{resultadoSalvo}</p>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
