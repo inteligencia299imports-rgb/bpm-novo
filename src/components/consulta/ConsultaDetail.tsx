@@ -92,7 +92,8 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
       status_to: 'consulta_realizada',
       changed_by: user?.id,
       changed_by_name: userName || user?.email || null,
-    });
+      observacoes: resultadoTexto || null,
+    } as any);
 
     setIsConsultada(true);
     setResultadoSalvo(resultadoTexto);
