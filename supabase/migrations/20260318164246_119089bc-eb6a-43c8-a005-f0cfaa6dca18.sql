@@ -1,0 +1,1 @@
+ALTER TABLE public.motos_avaliacao ADD COLUMN resultado_consulta text;
