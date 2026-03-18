@@ -436,14 +436,28 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           {motosAvaliacao.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-primary" /> Moto do Cliente
-                </CardTitle>
-                {motosAvaliacao.some(m => m.enviada_avaliacao && !isAvaliada(m.id)) && (
-                  <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 w-fit mt-1 gap-1">
-                    <Clock className="h-3 w-3" /> Aguardando avaliação
-                  </Badge>
-                )}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-primary" /> Moto do Cliente
+                  </CardTitle>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {motosAvaliacao.some(m => (m as any).consulta_solicitada && !(m as any).consulta_realizada) && (
+                      <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
+                        <Clock className="h-3 w-3" /> Consulta Solicitada
+                      </Badge>
+                    )}
+                    {motosAvaliacao.some(m => (m as any).consulta_realizada) && (
+                      <Badge variant="secondary" className="text-xs bg-green-500/15 text-green-600 gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Consulta Realizada
+                      </Badge>
+                    )}
+                    {motosAvaliacao.some(m => m.enviada_avaliacao && !isAvaliada(m.id)) && (
+                      <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
+                        <Clock className="h-3 w-3" /> Aguardando avaliação
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {motosAvaliacao.map((moto, idx) => (
@@ -495,16 +509,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         >
                           <Search className="h-4 w-4" /> Solicitar Consulta
                         </Button>
-                      )}
-                      {(moto as any).consulta_solicitada && !(moto as any).consulta_realizada && (
-                        <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
-                          <Clock className="h-3 w-3" /> Consulta Solicitada
-                        </Badge>
-                      )}
-                      {(moto as any).consulta_realizada && (
-                        <Badge variant="secondary" className="text-xs bg-green-500/15 text-green-600 gap-1">
-                          <CheckCircle2 className="h-3 w-3" /> Consulta Realizada
-                        </Badge>
                       )}
                       {!moto.enviada_avaliacao ? (
                         <Button
