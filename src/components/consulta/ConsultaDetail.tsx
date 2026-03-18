@@ -239,12 +239,17 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               ) : (
                 <StatusTimeline
                   history={history}
-                  onEntryClick={(h) => {
+                  renderPopupExtra={(h) => {
                     if (h.status_to === 'consulta_realizada' && resultadoSalvo) {
-                      setHistoryDetailPopup(h);
+                      return (
+                        <div>
+                          <span className="text-xs text-muted-foreground">Resultado da Consulta</span>
+                          <p className="text-sm mt-1 whitespace-pre-wrap">{resultadoSalvo}</p>
+                        </div>
+                      );
                     }
+                    return null;
                   }}
-                  isClickable={(h) => h.status_to === 'consulta_realizada' && !!resultadoSalvo}
                 />
               )}
             </CardContent>
