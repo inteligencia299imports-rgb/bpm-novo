@@ -588,6 +588,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               console.error(mError);
                               return;
                             }
+                            // Registrar no histórico
+                            await supabase.from('status_history').insert({
+                              entity_type: 'avaliacao',
+                              entity_id: moto.id,
+                              status_from: 'sem_avaliacao',
+                              status_to: 'avaliacao_solicitada',
+                              changed_by: user?.id,
+                              changed_by_name: userName || user?.email || null,
+                            } as any);
                             toast.success('Enviado para avaliação!');
                             setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, enviada_avaliacao: true } : m));
                           }}

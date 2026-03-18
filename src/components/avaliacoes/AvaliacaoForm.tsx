@@ -182,6 +182,17 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     if (error) {
       toast.error('Erro ao salvar avaliação');
     } else {
+      // Registrar no histórico que a moto foi avaliada
+      if (avaliacao?.moto_avaliacao_id) {
+        await supabase.from('status_history').insert({
+          entity_type: 'avaliacao',
+          entity_id: avaliacao.moto_avaliacao_id,
+          status_from: 'avaliacao_solicitada',
+          status_to: 'avaliada',
+          changed_by: user?.id,
+          changed_by_name: userName || user?.email || null,
+        } as any);
+      }
       toast.success('Avaliação salva!');
       setShowEvalDialog(false);
       setAvaliacao((prev: any) => ({ ...prev, ...updateData }));
@@ -198,13 +209,25 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     const updateData: any = { situacao: newStatus };
     if (tipoAquisicao) updateData.tipo_aquisicao = tipoAquisicao;
     if (valorFechamento && valorFechamento > 0) updateData.valor_fechamento = valorFechamento;
-    const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
+   const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
     if (error) {
       toast.error('Erro ao alterar status');
     } else {
       const label = SITUACOES_AVALIACAO.find(s => s.value === newStatus)?.label;
       toast.success(`Status alterado para ${label}`);
       setAvaliacao((prev: any) => ({ ...prev, situacao: newStatus }));
+
+      // Registrar no histórico
+      if (avaliacao?.moto_avaliacao_id) {
+        await supabase.from('status_history').insert({
+          entity_type: 'avaliacao',
+          entity_id: avaliacao.moto_avaliacao_id,
+          status_from: avaliacao.situacao || 'em_aberto',
+          status_to: newStatus,
+          changed_by: user?.id,
+          changed_by_name: userName || user?.email || null,
+        } as any);
+      }
 
       // Sync: dispensada em avaliação → dispensada no showroom
       if (newStatus === 'dispensada' && avaliacao?.atendimento_id) {
