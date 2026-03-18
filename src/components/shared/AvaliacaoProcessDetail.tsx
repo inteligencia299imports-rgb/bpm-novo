@@ -60,7 +60,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       .select('*')
       .eq('entity_type', entityType)
       .eq('entity_id', item.id)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
       .then(({ data }) => setHistory(data || []));
   }, [item.id, entityType]);
 
