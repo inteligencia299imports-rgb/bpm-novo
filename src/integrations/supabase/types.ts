@@ -397,6 +397,7 @@ export type Database = {
           modelo: string
           observacoes: string | null
           placa: string | null
+          resultado_consulta: string | null
           updated_at: string
         }
         Insert: {
@@ -416,6 +417,7 @@ export type Database = {
           modelo: string
           observacoes?: string | null
           placa?: string | null
+          resultado_consulta?: string | null
           updated_at?: string
         }
         Update: {
@@ -435,6 +437,7 @@ export type Database = {
           modelo?: string
           observacoes?: string | null
           placa?: string | null
+          resultado_consulta?: string | null
           updated_at?: string
         }
         Relationships: [
