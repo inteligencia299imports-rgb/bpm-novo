@@ -295,23 +295,20 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               {format(new Date(atendimento.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
-          <Button size="icon" variant="outline" className="shrink-0" onClick={() => onEdit(atendimento.id)}>
-            <Edit className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            {atendimento.situacao === 'sinal' && (
+              <Button size="icon" variant="outline" onClick={() => setContratoOpen(true)} title="Emissão de Contrato">
+                <FileText className="h-4 w-4" />
+              </Button>
+            )}
+            <Button size="icon" variant="outline" onClick={() => onEdit(atendimento.id)}>
+              <Edit className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
       <Separator />
-      {atendimento.situacao === 'sinal' && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full gap-2 border-primary text-primary hover:bg-primary/10"
-          onClick={() => setContratoOpen(true)}
-        >
-          <FileText className="h-4 w-4" /> Emissão de Contrato
-        </Button>
-      )}
 
       <ScrollArea className="h-[calc(100vh-14rem)]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6">
