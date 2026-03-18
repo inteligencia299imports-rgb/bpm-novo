@@ -20,6 +20,10 @@ interface StatusTimelineProps {
   renderPopupExtra?: (entry: TimelineEntry) => React.ReactNode;
 }
 
+const formatStatusLabel = (raw: string): string => {
+  return raw.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação');
+};
+
 const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExtra }) => {
   const [selected, setSelected] = useState<TimelineEntry | null>(null);
 
