@@ -18,6 +18,7 @@ import PhotoUpload from './PhotoUpload';
 import DocumentUpload from './DocumentUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import ContratoDialog from './ContratoDialog';
 
 interface Props {
   atendimento: Atendimento;
