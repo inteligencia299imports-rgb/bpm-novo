@@ -70,7 +70,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [cnhUrl, setCnhUrl] = useState<string | null>(atendimento.cnh_url || null);
   const [crlvUrls, setCrlvUrls] = useState<Record<string, string | null>>({});
-  const [valorPopup, setValorPopup] = useState<{ valorSinal: string; valorVenda: string; valorFechamento: string } | null>(null);
+  const [valorPopup, setValorPopup] = useState<{ valorSinal: string; valorVenda: string; valorFechamento: string; modo: 'sinal' | 'vendido' } | null>(null);
   const [savingValor, setSavingValor] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [contratoOpen, setContratoOpen] = useState(false);
@@ -235,17 +235,22 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     if (!valorPopup) return;
     const sinal = parseCurrencyInput(valorPopup.valorSinal);
     const venda = parseCurrencyInput(valorPopup.valorVenda);
-    if (sinal <= 0 && venda <= 0) {
-      toast.error('Informe ao menos um valor válido');
+    
+    if (valorPopup.modo === 'sinal' && sinal <= 0) {
+      toast.error('Informe o valor do sinal');
       return;
     }
+    if (valorPopup.modo === 'vendido' && venda <= 0) {
+      toast.error('Informe o valor da venda');
+      return;
+    }
+    
     setSavingValor(true);
     const updateData: any = {};
     if (sinal > 0) updateData.valor_sinal = sinal;
     if (venda > 0) updateData.valor_venda = venda;
-    // Determine status: if venda has value -> vendido, else sinal
-    const newStatus = venda > 0 ? 'vendido' : 'sinal';
-    const label = venda > 0 ? 'Vendido' : 'Sinal';
+    const newStatus = valorPopup.modo;
+    const label = newStatus === 'vendido' ? 'Vendido' : 'Sinal';
     await handleStatusChange(newStatus as SituacaoShowroom, label, updateData);
 
     // Se for troca e vendido, marcar todas as avaliações como adquirida/própria com valor de fechamento
@@ -748,7 +753,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             return;
                           }
                         }
-                        setValorPopup({ valorSinal: '', valorVenda: '', valorFechamento: '' });
+                        setValorPopup({ valorSinal: '', valorVenda: '', valorFechamento: '', modo: btn.value as 'sinal' | 'vendido' });
                       } else {
                         handleStatusChange(btn.value, btn.label);
                       }
@@ -890,7 +895,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Bike className="h-5 w-5" /> Negociação
+              <Bike className="h-5 w-5" /> {valorPopup?.modo === 'vendido' ? 'Finalizar Venda' : 'Registrar Sinal'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -910,23 +915,25 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 />
               </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">Valor da Venda (R$)</label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                <Input
-                  className="pl-10"
-                  placeholder="0,00"
-                  value={valorPopup?.valorVenda || ''}
-                  onChange={(e) => {
-                    const formatted = formatCurrencyInput(e.target.value);
-                    setValorPopup(prev => prev ? { ...prev, valorVenda: formatted } : null);
-                  }}
-                  inputMode="numeric"
-                />
+            {valorPopup?.modo === 'vendido' && (
+              <div>
+                <label className="text-sm font-medium text-foreground">Valor da Venda (R$)</label>
+                <div className="relative mt-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <Input
+                    className="pl-10"
+                    placeholder="0,00"
+                    value={valorPopup?.valorVenda || ''}
+                    onChange={(e) => {
+                      const formatted = formatCurrencyInput(e.target.value);
+                      setValorPopup(prev => prev ? { ...prev, valorVenda: formatted } : null);
+                    }}
+                    inputMode="numeric"
+                  />
+                </div>
               </div>
-            </div>
-            {atendimento.interesse === 'trocar' && (
+            )}
+            {valorPopup?.modo === 'vendido' && atendimento.interesse === 'trocar' && (
               <div>
                 <label className="text-sm font-medium text-foreground">Valor de Fechamento da Moto do Cliente (R$)</label>
                 <div className="relative mt-1">
