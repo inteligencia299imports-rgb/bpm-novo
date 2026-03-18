@@ -81,7 +81,7 @@ const CurrencyField = ({ label, value, onChange }: { label: string; value: strin
 );
 
 const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
-  const { user, role } = useAuth();
+  const { user, role, userName } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [avaliacao, setAvaliacao] = useState<any>(null);
