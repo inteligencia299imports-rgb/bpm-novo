@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, Clock, ArrowRight, RotateCw, Calendar, Palette, Tag } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { ArrowLeft, User, Phone, MapPin, Bike, Clock, ArrowRight, RotateCw, Calendar, Palette, Tag, FileText, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface ConsultaDetailProps {
   moto: any;
@@ -36,20 +40,25 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 );
 
 const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
+  const { user, userName } = useAuth();
   const [history, setHistory] = useState<any[]>([]);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto.crlv_url || null);
+  const [resultadoPopup, setResultadoPopup] = useState(false);
+  const [resultadoTexto, setResultadoTexto] = useState<string>(moto.resultado_consulta || '');
+  const [saving, setSaving] = useState(false);
+  const [isConsultada, setIsConsultada] = useState(moto.consulta_realizada === true);
+  const [resultadoSalvo, setResultadoSalvo] = useState<string | null>(moto.resultado_consulta || null);
   const atendimento = moto.atendimento || moto.atendimentos;
 
   useEffect(() => {
-    // Fetch CNH from atendimento
     if (atendimento?.id) {
       supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
         .then(({ data }) => setCnhUrl(data?.cnh_url || null));
     }
   }, [atendimento?.id]);
 
-  useEffect(() => {
+  const fetchHistory = () => {
     supabase
       .from('status_history')
       .select('*')
@@ -57,9 +66,40 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
       .eq('entity_id', moto.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => setHistory(data || []));
-  }, [moto.id]);
+  };
 
-  const isConsultada = moto.consulta_realizada === true;
+  useEffect(() => { fetchHistory(); }, [moto.id]);
+
+  const handleSaveResultado = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from('motos_avaliacao')
+      .update({ resultado_consulta: resultadoTexto, consulta_realizada: true } as any)
+      .eq('id', moto.id);
+
+    if (error) {
+      toast.error('Erro ao salvar resultado');
+      setSaving(false);
+      return;
+    }
+
+    await supabase.from('status_history').insert({
+      entity_type: 'consulta',
+      entity_id: moto.id,
+      status_from: 'consulta_solicitada',
+      status_to: 'consulta_realizada',
+      changed_by: user?.id,
+      changed_by_name: userName || user?.email || null,
+    });
+
+    setIsConsultada(true);
+    setResultadoSalvo(resultadoTexto);
+    fetchHistory();
+    toast.success('Resultado salvo com sucesso!');
+    setSaving(false);
+    setResultadoPopup(false);
+  };
+
   const statusLabel = isConsultada ? 'Consultada' : 'Pendente';
   const statusColor = isConsultada ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning';
   const statusHex = isConsultada ? '#27AE60' : '#F2C94C';
@@ -67,7 +107,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
 
   return (
     <div className="space-y-4">
-      {/* Header — same pattern as Showroom */}
+      {/* Header */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="shrink-0" onClick={onClose}>
@@ -85,6 +125,11 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               {format(new Date(moto.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
+          {!isConsultada && (
+            <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setResultadoPopup(true)}>
+              <FileText className="h-4 w-4" /> Incluir Resultado
+            </Button>
+          )}
         </div>
       </div>
 
@@ -97,6 +142,9 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
             <CardContent className="py-3 px-4">
               <span className="text-xs text-muted-foreground">Resultado da Consulta</span>
               <p className="text-sm font-medium uppercase">{isConsultada ? 'Consulta Realizada' : 'Consulta Pendente'}</p>
+              {resultadoSalvo && (
+                <p className="text-sm mt-2 text-foreground whitespace-pre-wrap">{resultadoSalvo}</p>
+              )}
             </CardContent>
           </Card>
 
@@ -223,6 +271,30 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
           </Card>
         </div>
       </ScrollArea>
+
+      {/* Popup Resultado */}
+      <Dialog open={resultadoPopup} onOpenChange={setResultadoPopup}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" /> Resultado da Consulta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Descreva o resultado da consulta..."
+              value={resultadoTexto}
+              onChange={(e) => setResultadoTexto(e.target.value)}
+              rows={6}
+            />
+            <div className="flex justify-end">
+              <Button className="gap-1.5" disabled={saving || !resultadoTexto.trim()} onClick={handleSaveResultado}>
+                <Save className="h-4 w-4" /> {saving ? 'Salvando...' : 'Salvar'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
