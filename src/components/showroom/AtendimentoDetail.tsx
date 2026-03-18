@@ -510,16 +510,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           <Search className="h-4 w-4" /> Solicitar Consulta
                         </Button>
                       )}
-                      {(moto as any).consulta_solicitada && !(moto as any).consulta_realizada && (
-                        <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
-                          <Clock className="h-3 w-3" /> Consulta Solicitada
-                        </Badge>
-                      )}
-                      {(moto as any).consulta_realizada && (
-                        <Badge variant="secondary" className="text-xs bg-green-500/15 text-green-600 gap-1">
-                          <CheckCircle2 className="h-3 w-3" /> Consulta Realizada
-                        </Badge>
-                      )}
                       {!moto.enviada_avaliacao ? (
                         <Button
                           size="sm"
