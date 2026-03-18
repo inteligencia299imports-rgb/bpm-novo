@@ -63,7 +63,6 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const statusLabel = isConsultada ? 'Consultada' : 'Pendente';
   const statusColor = isConsultada ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning';
   const statusHex = isConsultada ? '#27AE60' : '#F2C94C';
-  const atendimento = moto.atendimento || moto.atendimentos;
   const ano = [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/');
 
   return (
