@@ -571,6 +571,42 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             </Card>
           )}
 
+          {/* Histórico de Movimentações */}
+          <Card className="md:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" /> Histórico de Movimentações
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {history.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>
+              ) : (
+                <div className="space-y-0">
+                  {history.map((h, i) => (
+                    <div key={h.id}>
+                      <div className="flex items-start gap-3 py-3">
+                        <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <span className="text-muted-foreground uppercase">{h.status_from}</span>
+                            <ArrowRight className="h-3.5 w-3.5 text-primary" />
+                            <span className="font-bold uppercase">{h.status_to}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-muted-foreground">{format(new Date(h.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                            {h.changed_by_name && <span className="text-xs text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" />{h.changed_by_name}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      {i < history.length - 1 && <Separator />}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Status Actions + Delete */}
            <div className="md:col-span-2 flex justify-center">
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
