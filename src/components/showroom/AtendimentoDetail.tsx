@@ -385,7 +385,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           {estItem.placa && (
                             <>
                               <span className="text-muted-foreground">Placa</span>
-                              <span className="font-medium text-foreground">{estItem.placa}</span>
+                              <span className="font-medium text-foreground">{estItem.placa.replace(/-/g, '')}</span>
                             </>
                           )}
                           {estItem.cor && (
