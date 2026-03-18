@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Award } from 'lucide-react';
+import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Award, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench } from 'lucide-react';
 import logoImg from '@/assets/logo-crm.png';
 import { Button } from '@/components/ui/button';
 
@@ -24,6 +24,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
     { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
+    { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['vendedor', 'gestor', 'avaliador'] },
+    { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['vendedor', 'gestor', 'avaliador'] },
+    { id: 'intermediacao', label: 'Intermediação', icon: Handshake, roles: ['vendedor', 'gestor', 'avaliador'] },
+    { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['vendedor', 'gestor', 'avaliador'] },
+    { id: 'consignacao', label: 'Consignação', icon: FileText, roles: ['vendedor', 'gestor', 'avaliador'] },
+    { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'nps', label: 'NPS', icon: Award, roles: ['vendedor', 'gestor', 'avaliador'] },
   ].filter(t => role && t.roles.includes(role));
 

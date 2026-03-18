@@ -27,6 +27,7 @@ export type Database = {
           nps_status: string
           observacoes: string | null
           origem: string | null
+          pos_venda_status: string
           sexo: string
           situacao: string
           telefone: string
@@ -50,6 +51,7 @@ export type Database = {
           nps_status?: string
           observacoes?: string | null
           origem?: string | null
+          pos_venda_status?: string
           sexo: string
           situacao?: string
           telefone: string
@@ -73,6 +75,7 @@ export type Database = {
           nps_status?: string
           observacoes?: string | null
           origem?: string | null
+          pos_venda_status?: string
           sexo?: string
           situacao?: string
           telefone?: string
@@ -92,6 +95,7 @@ export type Database = {
           avaliacao_compra: number | null
           avaliacao_consignacao: number | null
           avaliador_id: string | null
+          consignacao_status: string
           created_at: string
           id: string
           maior_valor: number | null
@@ -102,6 +106,8 @@ export type Database = {
           nps_respondido_at: string | null
           nps_status: string
           observacao_avaliador: string | null
+          pos_compra_status: string
+          preparacao_status: string
           previsao_custos_cliente: number | null
           previsao_custos_loja: number | null
           quanto_pede: number | null
@@ -118,6 +124,7 @@ export type Database = {
           avaliacao_compra?: number | null
           avaliacao_consignacao?: number | null
           avaliador_id?: string | null
+          consignacao_status?: string
           created_at?: string
           id?: string
           maior_valor?: number | null
@@ -128,6 +135,8 @@ export type Database = {
           nps_respondido_at?: string | null
           nps_status?: string
           observacao_avaliador?: string | null
+          pos_compra_status?: string
+          preparacao_status?: string
           previsao_custos_cliente?: number | null
           previsao_custos_loja?: number | null
           quanto_pede?: number | null
@@ -144,6 +153,7 @@ export type Database = {
           avaliacao_compra?: number | null
           avaliacao_consignacao?: number | null
           avaliador_id?: string | null
+          consignacao_status?: string
           created_at?: string
           id?: string
           maior_valor?: number | null
@@ -154,6 +164,8 @@ export type Database = {
           nps_respondido_at?: string | null
           nps_status?: string
           observacao_avaliador?: string | null
+          pos_compra_status?: string
+          preparacao_status?: string
           previsao_custos_cliente?: number | null
           previsao_custos_loja?: number | null
           quanto_pede?: number | null

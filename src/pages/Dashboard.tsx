@@ -6,6 +6,12 @@ import ShowroomTab from '@/components/showroom/ShowroomTab';
 import EstoqueTab from '@/components/estoque/EstoqueTab';
 import AvaliacoesTab from '@/components/avaliacoes/AvaliacoesTab';
 import NpsTab from '@/components/nps/NpsTab';
+import ConsultaTab from '@/components/consulta/ConsultaTab';
+import PosVendaTab from '@/components/pos-venda/PosVendaTab';
+import IntermediacacaoTab from '@/components/intermediacao/IntermediacacaoTab';
+import PosCompraTab from '@/components/pos-compra/PosCompraTab';
+import ConsignacaoTab from '@/components/consignacao/ConsignacaoTab';
+import PreparacaoTab from '@/components/preparacao/PreparacaoTab';
 
 const Dashboard = () => {
   const { role } = useAuth();
@@ -29,6 +35,12 @@ const Dashboard = () => {
         {activeTab === 'showroom' && <ShowroomTab />}
         {activeTab === 'estoque' && <EstoqueTab />}
         {activeTab === 'avaliacoes' && <AvaliacoesTab />}
+        {activeTab === 'consulta' && <ConsultaTab />}
+        {activeTab === 'pos_venda' && <PosVendaTab />}
+        {activeTab === 'intermediacao' && <IntermediacacaoTab />}
+        {activeTab === 'pos_compra' && <PosCompraTab />}
+        {activeTab === 'consignacao' && <ConsignacaoTab />}
+        {activeTab === 'preparacao' && <PreparacaoTab />}
         {activeTab === 'nps' && <NpsTab />}
       </main>
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
