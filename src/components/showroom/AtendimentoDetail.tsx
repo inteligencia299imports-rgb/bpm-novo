@@ -622,17 +622,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <StatusTimeline
                   history={history}
                   renderPopupExtra={(h) => {
-                    if (h.status_to === 'consulta_realizada') {
-                      const moto = motosAvaliacao.find(m => m.id === h.entity_id);
-                      const resultado = moto ? (moto as any).resultado_consulta : null;
-                      if (resultado) {
-                        return (
-                          <div>
-                            <span className="text-xs text-muted-foreground">Observações</span>
-                            <p className="text-sm mt-0.5 whitespace-pre-wrap">{resultado}</p>
-                          </div>
-                        );
-                      }
+                    if (h.observacoes) {
+                      return (
+                        <div>
+                          <span className="text-xs text-muted-foreground">Observações</span>
+                          <p className="text-sm mt-0.5 whitespace-pre-wrap">{h.observacoes}</p>
+                        </div>
+                      );
                     }
                     return null;
                   }}
