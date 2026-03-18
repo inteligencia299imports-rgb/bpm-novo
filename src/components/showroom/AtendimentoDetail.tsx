@@ -175,11 +175,22 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   })();
 
   const handleStatusChange = async (value: SituacaoShowroom, label: string, extraData?: Record<string, any>) => {
+    const previousStatus = atendimento.situacao;
     const updateData: any = { situacao: value, ...extraData };
     const { error } = await supabase.from('atendimentos').update(updateData).eq('id', atendimento.id);
     if (error) {
       toast.error('Erro ao alterar status');
     } else {
+      // Record in status_history
+      await supabase.from('status_history').insert({
+        entity_type: 'showroom',
+        entity_id: atendimento.id,
+        status_from: previousStatus,
+        status_to: value,
+        changed_by: user?.id,
+        changed_by_name: userName || user?.email || null,
+      });
+
       toast.success(`Status alterado para ${label}`);
 
       // Sync: perdido no showroom → perdido nas avaliações
