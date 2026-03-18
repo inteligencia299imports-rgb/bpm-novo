@@ -221,7 +221,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Marca" value={<span className="uppercase">{moto.marca}</span>} />
                 <InfoItem label="Modelo" value={<span className="uppercase">{moto.modelo}</span>} />
-                {moto.placa && <InfoItem label="Placa" value={moto.placa} />}
+                {moto.placa && <InfoItem label="Placa" value={moto.placa.replace(/-/g, '')} />}
                 <InfoItem label="KM" value={formatKm(moto.km)} />
                 {ano && <InfoItem label="Ano" value={ano} />}
                 {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
