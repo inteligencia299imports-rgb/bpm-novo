@@ -127,9 +127,32 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               {format(new Date(moto.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
-          {!isConsultada && (
+          {!isConsultada ? (
             <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setResultadoPopup(true)}>
               <FileText className="h-4 w-4" /> Incluir Resultado
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={async () => {
+              await supabase.from('motos_avaliacao').update({ 
+                consulta_solicitada: true, 
+                consulta_realizada: false, 
+                resultado_consulta: null 
+              } as any).eq('id', moto.id);
+              await supabase.from('status_history').insert({
+                entity_type: 'consulta',
+                entity_id: moto.id,
+                status_from: 'consulta_realizada',
+                status_to: 'consulta_solicitada',
+                changed_by: user?.id,
+                changed_by_name: userName || user?.email || null,
+              });
+              setIsConsultada(false);
+              setResultadoSalvo(null);
+              setResultadoTexto('');
+              fetchHistory();
+              toast.success('Nova consulta solicitada!');
+            }}>
+              <Search className="h-4 w-4" /> Nova Consulta
             </Button>
           )}
         </div>
