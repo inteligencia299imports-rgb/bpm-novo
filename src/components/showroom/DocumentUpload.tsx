@@ -138,11 +138,11 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 justify-end flex-wrap">
+              <div className="grid grid-cols-4 gap-2">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5"
+                  className="gap-1.5 w-full"
                   onClick={async () => {
                     try {
                       const response = await fetch(currentUrl);
@@ -166,7 +166,7 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5"
+                  className="gap-1.5 w-full"
                   disabled={uploading}
                   onClick={() => replaceInputRef.current?.click()}
                 >
@@ -180,14 +180,14 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
                 <Button
                   size="sm"
                   variant="outline"
-                  className="gap-1.5 text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                  className="gap-1.5 w-full text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
                   onClick={handleRemove}
                 >
                   <Trash2 className="h-4 w-4" /> Remover
                 </Button>
                 <Button
                   size="sm"
-                  className="gap-1.5"
+                  className="gap-1.5 w-full"
                   onClick={() => setDialogOpen(false)}
                 >
                   <Save className="h-4 w-4" /> Salvar
