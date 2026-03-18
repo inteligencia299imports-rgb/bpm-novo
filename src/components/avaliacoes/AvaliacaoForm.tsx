@@ -91,6 +91,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
   const [consultaRealizada, setConsultaRealizada] = useState(false);
+  const [consultaSolicitada, setConsultaSolicitada] = useState(false);
   const canEdit = role === 'avaliador' || role === 'gestor' || role === 'vendedor';
 
   // form fields (stored as masked strings)
