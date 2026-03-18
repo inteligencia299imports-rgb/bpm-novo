@@ -506,12 +506,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     {idx > 0 && <Separator className="my-3" />}
                     <div className="grid grid-cols-2 gap-4">
                       <InfoItem label="Marca" value={moto.marca} />
-                      <InfoItem label="Modelo" value={moto.modelo} />
+                      <InfoItem label="Modelo" value={(moto.modelo || '').toUpperCase()} />
                       <InfoItem label="Ano Fabricação" value={moto.ano_fabricacao} />
                       <InfoItem label="Ano Modelo" value={moto.ano_modelo} />
                       <InfoItem label="Categoria" value={moto.categoria} />
                       <InfoItem label="Cor" value={moto.cor} />
-                      <InfoItem label="Placa" value={moto.placa} />
+                      <InfoItem label="Placa" value={moto.placa?.replace(/-/g, '')} />
                       <InfoItem label="KM" value={formatKm(moto.km)} />
                     </div>
                     {moto.observacoes && (
