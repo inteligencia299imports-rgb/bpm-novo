@@ -31,7 +31,7 @@ interface Props {
 }
 
 const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
-  const { user } = useAuth();
+  const { user, userName } = useAuth();
   const isEditing = !!atendimentoId;
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
