@@ -264,11 +264,11 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 <StatusTimeline
                   history={history}
                   renderPopupExtra={(h) => {
-                    if (h.status_to === 'consulta_realizada' && resultadoSalvo) {
+                    if (h.observacoes) {
                       return (
                         <div>
-                          <span className="text-xs text-muted-foreground">Resultado da Consulta</span>
-                          <p className="text-sm mt-1 whitespace-pre-wrap">{resultadoSalvo}</p>
+                          <span className="text-xs text-muted-foreground">Observações</span>
+                          <p className="text-sm mt-1 whitespace-pre-wrap">{h.observacoes}</p>
                         </div>
                       );
                     }
