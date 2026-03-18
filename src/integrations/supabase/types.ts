@@ -485,6 +485,39 @@ export type Database = {
           },
         ]
       }
+      status_history: {
+        Row: {
+          changed_by: string | null
+          changed_by_name: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          status_from: string
+          status_to: string
+        }
+        Insert: {
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          status_from: string
+          status_to: string
+        }
+        Update: {
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          status_from?: string
+          status_to?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
