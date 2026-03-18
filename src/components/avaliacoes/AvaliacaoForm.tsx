@@ -182,6 +182,17 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     if (error) {
       toast.error('Erro ao salvar avaliação');
     } else {
+      // Registrar no histórico que a moto foi avaliada
+      if (avaliacao?.moto_avaliacao_id) {
+        await supabase.from('status_history').insert({
+          entity_type: 'avaliacao',
+          entity_id: avaliacao.moto_avaliacao_id,
+          status_from: 'avaliacao_solicitada',
+          status_to: 'avaliada',
+          changed_by: user?.id,
+          changed_by_name: userName || user?.email || null,
+        } as any);
+      }
       toast.success('Avaliação salva!');
       setShowEvalDialog(false);
       setAvaliacao((prev: any) => ({ ...prev, ...updateData }));

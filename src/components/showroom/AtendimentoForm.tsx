@@ -231,6 +231,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     if (error) {
       toast.error('Erro ao enviar para avaliação');
     } else {
+      // Registrar no histórico
+      await supabase.from('status_history').insert({
+        entity_type: 'avaliacao',
+        entity_id: motoAvaliacaoId,
+        status_from: 'sem_avaliacao',
+        status_to: 'avaliacao_solicitada',
+        changed_by: user?.id,
+        changed_by_name: userName || user?.email || null,
+      } as any);
       setEnviadaAvaliacao(true);
       toast.success('Moto enviada para avaliação!');
     }
