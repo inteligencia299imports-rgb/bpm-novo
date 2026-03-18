@@ -84,7 +84,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {moto?.placa && <span className="mr-2">{moto.placa}</span>}
+              {moto?.placa && <span className="mr-2">{moto.placa.replace(/-/g, '')}</span>}
               {format(new Date(item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
