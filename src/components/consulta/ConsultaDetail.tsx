@@ -37,6 +37,17 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 
 const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
+  const [cnhUrl, setCnhUrl] = useState<string | null>(null);
+  const [crlvUrl, setCrlvUrl] = useState<string | null>(moto.crlv_url || null);
+  const atendimento = moto.atendimento || moto.atendimentos;
+
+  useEffect(() => {
+    // Fetch CNH from atendimento
+    if (atendimento?.id) {
+      supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
+        .then(({ data }) => setCnhUrl(data?.cnh_url || null));
+    }
+  }, [atendimento?.id]);
 
   useEffect(() => {
     supabase
