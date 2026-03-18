@@ -17,6 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import PhotoUpload from './PhotoUpload';
 import DocumentUpload from './DocumentUpload';
 import { useAuth } from '@/contexts/AuthContext';
+import StatusTimeline from '@/components/shared/StatusTimeline';
 
 interface Props {
   atendimento: Atendimento;

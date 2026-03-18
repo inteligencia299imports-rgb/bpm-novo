@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { POS_VENDA_COLUMNS } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
+import StatusTimeline from '@/components/shared/StatusTimeline';
 
 interface Props {
   item: any;
