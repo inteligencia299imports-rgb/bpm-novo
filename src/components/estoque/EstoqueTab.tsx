@@ -62,7 +62,7 @@ const EstoqueTab = () => {
       const unique = [...new Set((data || []).map(d => d.marca))].sort();
       setAllMarcas(unique);
     });
-  }, [filterStatus, filterTipo]);
+  }, [filterStatus, filterTipo, filterEmpresa]);
 
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
