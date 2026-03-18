@@ -511,26 +511,31 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           setCrlvUrls(prev => ({ ...prev, [moto.id]: null }));
                         }}
                       />
-                      {cnhUrl && crlvUrls[moto.id] && !(moto as any).consulta_solicitada && !(moto as any).consulta_realizada && (
+                      {cnhUrl && crlvUrls[moto.id] && (!(moto as any).consulta_solicitada || (moto as any).consulta_realizada) && (
                         <Button
                           size="sm"
                           variant="outline"
                           className="gap-1.5"
                           onClick={async () => {
-                            await supabase.from('motos_avaliacao').update({ consulta_solicitada: true } as any).eq('id', moto.id);
+                            const previousStatus = (moto as any).consulta_realizada ? 'consulta_realizada' : 'sem_consulta';
+                            await supabase.from('motos_avaliacao').update({ 
+                              consulta_solicitada: true, 
+                              consulta_realizada: false,
+                              resultado_consulta: null 
+                            } as any).eq('id', moto.id);
                             await supabase.from('status_history').insert({
                               entity_type: 'consulta',
                               entity_id: moto.id,
-                              status_from: 'sem_consulta',
+                              status_from: previousStatus,
                               status_to: 'consulta_solicitada',
                               changed_by: user?.id,
                               changed_by_name: userName || user?.email || null,
                             });
-                            setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, consulta_solicitada: true } as any : m));
+                            setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, consulta_solicitada: true, consulta_realizada: false, resultado_consulta: null } as any : m));
                             toast.success('Consulta solicitada com sucesso!');
                           }}
                         >
-                          <Search className="h-4 w-4" /> Solicitar Consulta
+                          <Search className="h-4 w-4" /> {(moto as any).consulta_realizada ? 'Nova Consulta' : 'Solicitar Consulta'}
                         </Button>
                       )}
                       {!moto.enviada_avaliacao ? (
