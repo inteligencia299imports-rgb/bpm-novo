@@ -415,17 +415,43 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             </>
                           )}
                         </div>
-                        {/* Price like estoque card */}
-                        <div className="flex items-center justify-between pt-2 border-t border-border">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Preço</p>
-                            <p className="font-semibold text-foreground">{formatCurrency(estItem.preco)}</p>
-                          </div>
-                          {estItem.preco_acao != null && (
-                            <div className="text-right">
-                              <p className="text-xs text-muted-foreground">Preço Ação</p>
-                              <p className="font-semibold text-success">{formatCurrency(estItem.preco_acao)}</p>
+                        {/* Prices section */}
+                        <div className="pt-2 border-t border-border space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Preço</p>
+                              <p className="font-semibold text-foreground">{formatCurrency(estItem.preco)}</p>
                             </div>
+                            {estItem.preco_acao != null && (
+                              <div className="text-right">
+                                <p className="text-xs text-muted-foreground">Preço Ação</p>
+                                <p className="font-semibold text-success">{formatCurrency(estItem.preco_acao)}</p>
+                              </div>
+                            )}
+                          </div>
+                          {(atendimento as any).valor_venda != null && (
+                            <>
+                              <Separator />
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Valor de Venda</p>
+                                  <p className="font-semibold text-primary">{formatCurrency((atendimento as any).valor_venda)}</p>
+                                </div>
+                                {estItem.preco_acao != null && (
+                                  <div className="text-right">
+                                    <p className="text-xs text-muted-foreground">Diferença (Venda - Ação)</p>
+                                    {(() => {
+                                      const diff = ((atendimento as any).valor_venda || 0) - (estItem.preco_acao || 0);
+                                      return (
+                                        <p className={`font-semibold ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                          {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
+                                        </p>
+                                      );
+                                    })()}
+                                  </div>
+                                )}
+                              </div>
+                            </>
                           )}
                         </div>
                         {estItem.observacoes && (
