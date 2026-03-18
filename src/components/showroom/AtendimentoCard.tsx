@@ -30,14 +30,19 @@ const getInteresseLabel = (interesse: string) => {
 
 const getMotoInteresseLabel = (atendimento: Props['atendimento']): string | null => {
   const motoInt = atendimento.motos_interesse?.[0];
-  if (!motoInt?.modelo) return null;
-  const parts: string[] = [];
-  if (motoInt.origem !== 'externo' && motoInt.estoque_moto_id) {
-    const motoAv = atendimento.motos_avaliacao?.[0];
-    if (motoAv?.placa) parts.push(motoAv.placa);
+  if (!motoInt) return null;
+
+  // For estoque motos, use attached _estoque data
+  if (motoInt.origem === 'estoque' && motoInt._estoque) {
+    const est = motoInt._estoque;
+    const parts: string[] = [];
+    if (est.placa) parts.push(est.placa);
+    if (est.modelo) parts.push(est.modelo);
+    return parts.join(' - ') || null;
   }
-  parts.push(motoInt.modelo);
-  return parts.join(' - ');
+
+  if (!motoInt.modelo) return null;
+  return motoInt.modelo;
 };
 
 const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null => {

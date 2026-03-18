@@ -57,6 +57,31 @@ const ShowroomTab = () => {
     } else {
       let results = (data as unknown as Atendimento[]) || [];
 
+      // Fetch estoque data for motos_interesse with estoque origin
+      const estoqueIds = results.flatMap((a: any) =>
+        (a.motos_interesse || [])
+          .filter((m: any) => m.origem === 'estoque' && m.estoque_moto_id)
+          .map((m: any) => m.estoque_moto_id)
+      ).filter(Boolean);
+
+      if (estoqueIds.length > 0) {
+        const { data: estoqueData } = await supabase
+          .from('estoque')
+          .select('id, modelo, marca, cor, placa, preco, preco_acao')
+          .in('id', [...new Set(estoqueIds)]);
+        if (estoqueData) {
+          const estoqueMap: Record<string, any> = {};
+          for (const e of estoqueData) estoqueMap[e.id] = e;
+          for (const a of results as any[]) {
+            for (const mi of (a.motos_interesse || [])) {
+              if (mi.estoque_moto_id && estoqueMap[mi.estoque_moto_id]) {
+                mi._estoque = estoqueMap[mi.estoque_moto_id];
+              }
+            }
+          }
+        }
+      }
+
       // Fetch avaliacoes to check for adquirida status
       const atendimentoIds = results.map(a => a.id);
       let adquiridaSet = new Set<string>();
@@ -66,14 +91,12 @@ const ShowroomTab = () => {
           .select('atendimento_id, situacao')
           .in('atendimento_id', atendimentoIds);
         if (avalData) {
-          // Group by atendimento_id
           const avalMap: Record<string, string[]> = {};
           for (const av of avalData) {
             const atId = (av as any).atendimento_id;
             if (!avalMap[atId]) avalMap[atId] = [];
             avalMap[atId].push((av as any).situacao);
           }
-          // If all avaliacoes for an atendimento are 'adquirida', hide it
           for (const [atId, situacoes] of Object.entries(avalMap)) {
             if (situacoes.length > 0 && situacoes.every(s => s === 'adquirida')) {
               adquiridaSet.add(atId);
@@ -94,7 +117,7 @@ const ShowroomTab = () => {
           ];
           const motos = (a as any).motos_interesse || [];
           const motosAv = (a as any).motos_avaliacao || [];
-          const motoFields = motos.flatMap((m: any) => [m.modelo, m.marca, m.ano]);
+          const motoFields = motos.flatMap((m: any) => [m.modelo, m.marca, m.ano, m._estoque?.modelo, m._estoque?.marca]);
           const motoAvFields = motosAv.flatMap((m: any) => [m.modelo, m.marca, m.placa, m.cor, m.ano_fabricacao, m.ano_modelo, m.km]);
           const all = [...fields, ...motoFields, ...motoAvFields];
           return all.some(f => f && String(f).toLowerCase().includes(s));
