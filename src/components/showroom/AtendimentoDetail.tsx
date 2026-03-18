@@ -73,6 +73,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [valorPopup, setValorPopup] = useState<{ valorSinal: string; valorVenda: string; valorFechamento: string } | null>(null);
   const [savingValor, setSavingValor] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
+  const [contratoOpen, setContratoOpen] = useState(false);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
