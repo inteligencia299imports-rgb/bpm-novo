@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { FileUp, FileCheck, Loader2, Eye, Trash2, RefreshCw, Download } from 'lucide-react';
+import { FileUp, FileCheck, Loader2, Eye, Trash2, RefreshCw, Download, Save } from 'lucide-react';
 
 interface Props {
   label: string;
