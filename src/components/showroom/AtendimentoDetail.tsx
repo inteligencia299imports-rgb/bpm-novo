@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2 } from 'lucide-react';
 import type { Atendimento, MotoInteresse, MotoAvaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES } from '@/types/crm';
 import { format } from 'date-fns';
@@ -16,6 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PhotoUpload from './PhotoUpload';
 import DocumentUpload from './DocumentUpload';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
   atendimento: Atendimento;
@@ -57,6 +58,7 @@ const parseCurrencyInput = (value: string): number => {
 };
 
 const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted }) => {
+  const { user, userName } = useAuth();
   const [motosInteresse, setMotosInteresse] = useState<MotoInteresse[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<MotoAvaliacao[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
@@ -68,6 +70,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [crlvUrls, setCrlvUrls] = useState<Record<string, string | null>>({});
   const [valorPopup, setValorPopup] = useState<{ valorSinal: string; valorVenda: string; valorFechamento: string } | null>(null);
   const [savingValor, setSavingValor] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
@@ -126,6 +129,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       setLoading(false);
     };
     fetchRelated();
+
+    // Fetch status history
+    supabase
+      .from('status_history')
+      .select('*')
+      .eq('entity_type', 'showroom')
+      .eq('entity_id', atendimento.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setHistory(data || []));
   }, [atendimento.id]);
 
   const handleDelete = async () => {
@@ -163,11 +175,22 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   })();
 
   const handleStatusChange = async (value: SituacaoShowroom, label: string, extraData?: Record<string, any>) => {
+    const previousStatus = atendimento.situacao;
     const updateData: any = { situacao: value, ...extraData };
     const { error } = await supabase.from('atendimentos').update(updateData).eq('id', atendimento.id);
     if (error) {
       toast.error('Erro ao alterar status');
     } else {
+      // Record in status_history
+      await supabase.from('status_history').insert({
+        entity_type: 'showroom',
+        entity_id: atendimento.id,
+        status_from: previousStatus,
+        status_to: value,
+        changed_by: user?.id,
+        changed_by_name: userName || user?.email || null,
+      });
+
       toast.success(`Status alterado para ${label}`);
 
       // Sync: perdido no showroom → perdido nas avaliações
@@ -547,6 +570,42 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               </CardContent>
             </Card>
           )}
+
+          {/* Histórico de Movimentações */}
+          <Card className="md:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" /> Histórico de Movimentações
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {history.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>
+              ) : (
+                <div className="space-y-0">
+                  {history.map((h, i) => (
+                    <div key={h.id}>
+                      <div className="flex items-start gap-3 py-3">
+                        <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <span className="text-muted-foreground uppercase">{h.status_from}</span>
+                            <ArrowRight className="h-3.5 w-3.5 text-primary" />
+                            <span className="font-bold uppercase">{h.status_to}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-muted-foreground">{format(new Date(h.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                            {h.changed_by_name && <span className="text-xs text-muted-foreground flex items-center gap-1"><User className="h-3 w-3" />{h.changed_by_name}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      {i < history.length - 1 && <Separator />}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Status Actions + Delete */}
            <div className="md:col-span-2 flex justify-center">
