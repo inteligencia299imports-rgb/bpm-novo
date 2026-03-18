@@ -31,7 +31,7 @@ interface Props {
 }
 
 const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
-  const { user } = useAuth();
+  const { user, userName } = useAuth();
   const isEditing = !!atendimentoId;
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
@@ -159,6 +159,16 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       const { data, error } = await supabase.from('atendimentos').insert(atData).select('id').single();
       if (error) { toast.error('Erro ao criar atendimento'); setSaving(false); return; }
       atId = data.id;
+
+      // Register initial status in history
+      await supabase.from('status_history').insert({
+        entity_type: 'showroom',
+        entity_id: atId,
+        status_from: 'novo',
+        status_to: 'em_aberto',
+        changed_by: user?.id,
+        changed_by_name: userName || user?.email || null,
+      });
     }
 
     // Save moto interesse
