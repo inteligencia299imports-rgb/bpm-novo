@@ -753,7 +753,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             return;
                           }
                         }
-                        setValorPopup({ valorSinal: '', valorVenda: '', valorFechamento: '' });
+                        setValorPopup({ valorSinal: '', valorVenda: '', valorFechamento: '', modo: btn.value as 'sinal' | 'vendido' });
                       } else {
                         handleStatusChange(btn.value, btn.label);
                       }
