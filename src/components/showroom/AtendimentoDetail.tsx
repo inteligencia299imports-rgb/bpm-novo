@@ -126,18 +126,32 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         }
       }
       setAvaliacoes(avalMap);
+
+      // Fetch status history (showroom + consulta for related motos)
+      const motoIds = motosAv.map(m => m.id);
+      const [showroomRes, consultaRes] = await Promise.all([
+        supabase
+          .from('status_history')
+          .select('*')
+          .eq('entity_type', 'showroom')
+          .eq('entity_id', atendimento.id)
+          .order('created_at', { ascending: false }),
+        motoIds.length > 0
+          ? supabase
+              .from('status_history')
+              .select('*')
+              .eq('entity_type', 'consulta')
+              .in('entity_id', motoIds)
+              .order('created_at', { ascending: false })
+          : Promise.resolve({ data: [] }),
+      ]);
+      const allHistory = [...(showroomRes.data || []), ...(consultaRes.data || [])];
+      allHistory.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setHistory(allHistory);
+
       setLoading(false);
     };
     fetchRelated();
-
-    // Fetch status history
-    supabase
-      .from('status_history')
-      .select('*')
-      .eq('entity_type', 'showroom')
-      .eq('entity_id', atendimento.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => setHistory(data || []));
   }, [atendimento.id]);
 
   const handleDelete = async () => {
