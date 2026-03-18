@@ -429,19 +429,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               </div>
                             )}
                           </div>
-                          {atendimento.valor_venda != null && (
+                          {(atendimento as any).valor_venda != null && (
                             <>
                               <Separator />
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="text-xs text-muted-foreground">Valor de Venda</p>
-                                  <p className="font-semibold text-primary">{formatCurrency(atendimento.valor_venda)}</p>
+                                  <p className="font-semibold text-primary">{formatCurrency((atendimento as any).valor_venda)}</p>
                                 </div>
                                 {estItem.preco_acao != null && (
                                   <div className="text-right">
                                     <p className="text-xs text-muted-foreground">Diferença (Venda - Ação)</p>
                                     {(() => {
-                                      const diff = (atendimento.valor_venda || 0) - (estItem.preco_acao || 0);
+                                      const diff = ((atendimento as any).valor_venda || 0) - (estItem.preco_acao || 0);
                                       return (
                                         <p className={`font-semibold ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
                                           {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
