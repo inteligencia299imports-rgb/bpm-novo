@@ -179,8 +179,8 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
                 </Button>
                 <Button
                   size="sm"
-                  variant="ghost"
-                  className="gap-1.5 text-destructive hover:text-destructive"
+                  variant="outline"
+                  className="gap-1.5 text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
                   onClick={handleRemove}
                 >
                   <Trash2 className="h-4 w-4" /> Remover
