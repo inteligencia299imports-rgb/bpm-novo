@@ -47,6 +47,7 @@ const EstoqueTab = () => {
   const [filterMarca, setFilterMarca] = useState('todas');
   const [filterTipo, setFilterTipo] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('disponivel');
+  const [filterEmpresa, setFilterEmpresa] = useState('todas');
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
