@@ -5,6 +5,41 @@ export type SituacaoShowroom = 'em_aberto' | 'pendente' | 'sinal' | 'perdido' | 
 export type SituacaoAvaliacao = 'sem_avaliar' | 'em_aberto' | 'adquirida' | 'dispensada' | 'perdido';
 export type SituacaoNps = 'em_aberto' | 'enviado' | 'respondido';
 export type Negociacao = 'compra' | 'consignacao';
+export type PosVendaStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante';
+export type PosCompraStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'pausado';
+export type ConsignacaoStatus = 'em_aberto' | 'contrato_assinado' | 'cadastro_nbs' | 'pausado';
+export type PreparacaoStatus = 'em_aberto' | 'pendente' | 'aguardando_aceite' | 'oficina' | 'servico_externo' | 'retorno' | 'servico_concluso' | 'aguardando_liberacao_estoque';
+
+export const POS_VENDA_COLUMNS: { value: PosVendaStatus; label: string; hex: string }[] = [
+  { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
+  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#9B51E0' },
+];
+
+export const POS_COMPRA_COLUMNS: { value: PosCompraStatus; label: string; hex: string }[] = [
+  { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
+  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#9B51E0' },
+  { value: 'pausado', label: 'Pausado', hex: '#FF8C00' },
+];
+
+export const CONSIGNACAO_COLUMNS: { value: ConsignacaoStatus; label: string; hex: string }[] = [
+  { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
+  { value: 'contrato_assinado', label: 'Contrato Assinado', hex: '#27AE60' },
+  { value: 'cadastro_nbs', label: 'Cadastro NBS', hex: '#F2C94C' },
+  { value: 'pausado', label: 'Pausado', hex: '#FF8C00' },
+];
+
+export const PREPARACAO_COLUMNS: { value: PreparacaoStatus; label: string; hex: string }[] = [
+  { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
+  { value: 'pendente', label: 'Pendente', hex: '#F2C94C' },
+  { value: 'aguardando_aceite', label: 'Aguardando Aceite', hex: '#FF8C00' },
+  { value: 'oficina', label: 'Oficina', hex: '#9B51E0' },
+  { value: 'servico_externo', label: 'Serviço Externo', hex: '#E91E63' },
+  { value: 'retorno', label: 'Retorno', hex: '#00BCD4' },
+  { value: 'servico_concluso', label: 'Serviço Concluso', hex: '#27AE60' },
+  { value: 'aguardando_liberacao_estoque', label: 'Aguardando Liberação Estoque', hex: '#607D8B' },
+];
 
 export const LOJAS = ['299i', '299s', 'Aventura', 'Ducati'] as const;
 export const ORIGENS = ['Brazilian Car','Capital Moto Week','Cliente Repasse','Clientes/Comprador','Clientes/Consignante','Colaborador 299','Ducati','E-commerce','Equipamentos','EuroBike','Facebook','Google','HD (BSB)','Indicação','Instagram','Lava-Moto','Lojistas','Mercado Livre','Olx','Papo de Carona','Parceiros (Outras UF)','Passante na rua','Prospecção Ativa','Prospecção Wpp','Repasse','Sales Force','Site 299','Triumph (GYN)','Vendas','Visita à Loja','Viu na Olx','WebMotors','WhatsApp Pessoal','Wide Chat'] as const;
