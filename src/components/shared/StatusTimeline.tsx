@@ -20,6 +20,10 @@ interface StatusTimelineProps {
   renderPopupExtra?: (entry: TimelineEntry) => React.ReactNode;
 }
 
+const formatStatusLabel = (raw: string): string => {
+  return raw.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação');
+};
+
 const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExtra }) => {
   const [selected, setSelected] = useState<TimelineEntry | null>(null);
 
@@ -48,7 +52,7 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
 
               <div className="flex-1 min-w-0">
                 <span className={`text-sm uppercase ${isLatest ? 'font-bold text-primary' : ''}`}>
-                  {h.status_to.replace(/_/g, ' ')}
+                  {formatStatusLabel(h.status_to)}
                 </span>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs text-muted-foreground">
@@ -79,7 +83,7 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <span className="text-xs text-muted-foreground">Movimentação</span>
-                  <p className="text-sm font-medium uppercase">{selected.status_to.replace(/_/g, ' ')}</p>
+                  <p className="text-sm font-medium uppercase">{formatStatusLabel(selected.status_to)}</p>
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground">Data / Hora</span>
