@@ -390,8 +390,8 @@ const ContratoDialog: React.FC<Props> = ({
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
-                  <InfoDisplay label="Valor do Sinal" value={formatCurrency(atendimento.valor_sinal ?? null)} />
-                  <InfoDisplay label="Valor da Venda" value={formatCurrency(atendimento.valor_venda ?? null)} />
+                  <InfoDisplay label="Valor do Sinal" value={formatCurrency((atendimento as any).valor_sinal ?? null)} />
+                  <InfoDisplay label="Valor da Venda" value={formatCurrency((atendimento as any).valor_venda ?? null)} />
                 </div>
 
                 {/* IPVA */}
