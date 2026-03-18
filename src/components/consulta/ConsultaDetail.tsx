@@ -146,7 +146,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 <Bike className="h-4 w-4 text-primary" /> Dados da Moto
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Marca" value={<span className="uppercase">{moto.marca}</span>} />
                 <InfoItem label="Modelo" value={<span className="uppercase">{moto.modelo}</span>} />
@@ -162,6 +162,20 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                   <p className="text-xs text-muted-foreground italic">{moto.observacoes}</p>
                 </>
               )}
+              <Separator className="my-2" />
+              <DocumentUpload
+                label="CRLV"
+                currentUrl={crlvUrl}
+                bucketPath={`docs/${moto.id}/crlv`}
+                onUploaded={async (url) => {
+                  await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
+                  setCrlvUrl(url);
+                }}
+                onRemoved={async () => {
+                  await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
+                  setCrlvUrl(null);
+                }}
+              />
             </CardContent>
           </Card>
 
