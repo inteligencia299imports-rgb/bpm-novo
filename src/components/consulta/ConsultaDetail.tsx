@@ -142,9 +142,6 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
             <CardContent className="py-3 px-4">
               <span className="text-xs text-muted-foreground">Resultado da Consulta</span>
               <p className="text-sm font-medium uppercase">{isConsultada ? 'Consulta Realizada' : 'Consulta Pendente'}</p>
-              {resultadoSalvo && (
-                <p className="text-sm mt-2 text-foreground whitespace-pre-wrap">{resultadoSalvo}</p>
-              )}
             </CardContent>
           </Card>
 
