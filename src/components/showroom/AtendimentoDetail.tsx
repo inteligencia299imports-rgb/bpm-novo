@@ -667,6 +667,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     style={{ borderColor: btn.color, color: btn.color }}
                     onClick={() => {
                       if (btn.value === 'sinal' || btn.value === 'vendido') {
+                        // Sinal requires all motos avaliadas when it's a trade
+                        if (btn.value === 'sinal' && atendimento.interesse === 'trocar') {
+                          const allMotosAvaliadas = motosAvaliacao.length > 0 && motosAvaliacao.every(m => isAvaliada(m.id));
+                          if (!allMotosAvaliadas) {
+                            toast.error('Para marcar como Sinal, a moto de troca precisa ter sido avaliada.');
+                            return;
+                          }
+                        }
                         if (btn.value === 'vendido' && atendimento.interesse === 'trocar') {
                           const faltando: string[] = [];
                          if (!cnhUrl) faltando.push('CNH do cliente');
