@@ -614,7 +614,24 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               {history.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>
               ) : (
-                <StatusTimeline history={history} />
+                <StatusTimeline
+                  history={history}
+                  renderPopupExtra={(h) => {
+                    if (h.status_to === 'consulta_realizada') {
+                      const moto = motosAvaliacao.find(m => m.id === h.entity_id);
+                      const resultado = moto ? (moto as any).resultado_consulta : null;
+                      if (resultado) {
+                        return (
+                          <div>
+                            <span className="text-xs text-muted-foreground">Observações</span>
+                            <p className="text-sm mt-0.5 whitespace-pre-wrap">{resultado}</p>
+                          </div>
+                        );
+                      }
+                    }
+                    return null;
+                  }}
+                />
               )}
             </CardContent>
           </Card>
