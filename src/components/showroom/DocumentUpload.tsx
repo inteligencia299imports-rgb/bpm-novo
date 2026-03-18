@@ -138,7 +138,31 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 justify-end">
+              <div className="flex gap-2 justify-end flex-wrap">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(currentUrl);
+                      const blob = await response.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      const ext = currentUrl.split('?')[0].split('.').pop() || 'jpg';
+                      a.download = `${label}.${ext}`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    } catch {
+                      window.open(currentUrl, '_blank');
+                    }
+                  }}
+                >
+                  <Download className="h-4 w-4" /> Baixar
+                </Button>
                 <Button
                   size="sm"
                   variant="destructive"
