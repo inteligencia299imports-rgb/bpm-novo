@@ -32,12 +32,26 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 
 const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColumns, statusField, title, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
+  const [cnhUrl, setCnhUrl] = useState<string | null>(null);
+  const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
   const moto = item.moto || item.motos_avaliacao;
   const atendimento = item.atendimento || item.atendimentos;
   const statusValue = item[statusField] || 'em_aberto';
   const statusCol = statusColumns.find(c => c.value === statusValue);
   const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
   const whatsappUrl = atendimento?.telefone ? `https://wa.me/55${atendimento.telefone.replace(/\D/g, '')}` : '';
+
+  useEffect(() => {
+    // Fetch CNH from atendimento
+    if (atendimento?.id) {
+      supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
+        .then(({ data }) => setCnhUrl(data?.cnh_url || null));
+    }
+    // Fetch CRLV from moto
+    if (moto?.id) {
+      setCrlvUrl(moto.crlv_url || null);
+    }
+  }, [atendimento?.id, moto?.id]);
 
   useEffect(() => {
     supabase
