@@ -124,7 +124,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               <Badge className={`${statusColor} text-[10px] shrink-0`}>{statusLabel}</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              {moto.placa && <span className="mr-2">{moto.placa}</span>}
+              {moto.placa && <span className="mr-2">{moto.placa.replace(/-/g, '')}</span>}
               {format(new Date(moto.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>

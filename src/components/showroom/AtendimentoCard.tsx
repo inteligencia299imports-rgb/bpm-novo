@@ -39,21 +39,21 @@ const getMotoInteresseLabel = (atendimento: Props['atendimento']): string | null
   if (motoInt.origem === 'estoque' && motoInt._estoque) {
     const est = motoInt._estoque;
     const parts: string[] = [];
-    if (est.placa) parts.push(est.placa);
-    if (est.modelo) parts.push(est.modelo);
+    if (est.placa) parts.push(formatPlaca(est.placa)!);
+    if (est.modelo) parts.push(formatModelo(est.modelo));
     return parts.join(' - ') || null;
   }
 
   if (!motoInt.modelo) return null;
-  return motoInt.modelo;
+  return formatModelo(motoInt.modelo);
 };
 
 const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null => {
   const motoAv = atendimento.motos_avaliacao?.[0];
   if (!motoAv) return null;
   const parts: string[] = [];
-  if (motoAv.placa) parts.push(motoAv.placa);
-  parts.push(`${motoAv.marca} ${motoAv.modelo}`);
+  if (motoAv.placa) parts.push(formatPlaca(motoAv.placa)!);
+  parts.push(`${motoAv.marca} ${formatModelo(motoAv.modelo)}`);
   return parts.join(' - ');
 };
 

@@ -227,7 +227,7 @@ const EstoqueTab = () => {
                   {item.placa && (
                     <>
                       <span className="text-muted-foreground">Placa</span>
-                      <span className="font-medium text-foreground">{item.placa}</span>
+                      <span className="font-medium text-foreground">{item.placa.replace(/-/g, '')}</span>
                     </>
                   )}
                   {item.cor && (
