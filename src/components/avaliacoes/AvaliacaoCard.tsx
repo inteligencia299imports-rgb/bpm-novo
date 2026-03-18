@@ -49,8 +49,8 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
   const motoLabel = (() => {
     if (!moto) return null;
     const parts: string[] = [];
-    if (moto.placa) parts.push(moto.placa);
-    parts.push(`${moto.marca} ${moto.modelo}`);
+    if (moto.placa) parts.push(moto.placa.replace(/-/g, ''));
+    parts.push(`${moto.marca} ${(moto.modelo || '').toUpperCase()}`);
     return parts.join(' - ');
   })();
 

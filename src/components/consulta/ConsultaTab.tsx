@@ -99,7 +99,7 @@ const ConsultaTab = () => {
                           key={m.id}
                           clientName={m.atendimento?.nome_cliente || 'N/A'}
                           phone={m.atendimento?.telefone}
-                          motoLabel={[m.placa, `${m.marca} ${m.modelo}`].filter(Boolean).join(' - ')}
+                          motoLabel={[m.placa?.replace(/-/g, ''), `${m.marca} ${(m.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ')}
                           loja={m.atendimento?.loja}
                           date={m.created_at}
                           statusColor={col.hex}

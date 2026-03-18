@@ -78,7 +78,7 @@ const PosVendaTab = () => {
                       const moto = a.motos_avaliacao?.[0];
                       return (
                         <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone}
-                          motoLabel={moto ? [moto.placa, `${moto.marca} ${moto.modelo}`].filter(Boolean).join(' - ') : undefined}
+                          motoLabel={moto ? [moto.placa?.replace(/-/g, ''), `${moto.marca} ${(moto.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
                           loja={a.loja} date={a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />
                       );
                     })}

@@ -136,8 +136,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <InfoItem label="Marca / Modelo" value={`${moto.marca} ${moto.modelo}`} />
-                  {moto.placa && <InfoItem label="Placa" value={moto.placa} />}
+                  <InfoItem label="Marca / Modelo" value={`${moto.marca} ${(moto.modelo || '').toUpperCase()}`} />
+                  {moto.placa && <InfoItem label="Placa" value={moto.placa.replace(/-/g, '')} />}
                   {moto.km && <InfoItem label="KM" value={formatKm(moto.km)} />}
                   {ano && <InfoItem label="Ano" value={ano} />}
                   {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}

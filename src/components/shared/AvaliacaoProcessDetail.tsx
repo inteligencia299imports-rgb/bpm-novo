@@ -84,7 +84,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {moto?.placa && <span className="mr-2">{moto.placa}</span>}
+              {moto?.placa && <span className="mr-2">{moto.placa.replace(/-/g, '')}</span>}
               {format(new Date(item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
@@ -151,8 +151,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <InfoItem label="Marca / Modelo" value={`${moto.marca} ${moto.modelo}`} />
-                  {moto.placa && <InfoItem label="Placa" value={moto.placa} />}
+                  <InfoItem label="Marca / Modelo" value={`${moto.marca} ${(moto.modelo || '').toUpperCase()}`} />
+                  {moto.placa && <InfoItem label="Placa" value={moto.placa.replace(/-/g, '')} />}
                   {moto.km && <InfoItem label="KM" value={formatKm(moto.km)} />}
                   {ano && <InfoItem label="Ano" value={ano} />}
                   {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}

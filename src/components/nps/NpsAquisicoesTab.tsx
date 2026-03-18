@@ -114,7 +114,7 @@ const NpsAquisicoesTab = () => {
                         <NpsCard
                           key={a.id}
                           title={a.atendimento?.nome_cliente || '-'}
-                          subtitle={`${a.moto_avaliacao?.marca} ${a.moto_avaliacao?.modelo}${a.moto_avaliacao?.placa ? ` - ${a.moto_avaliacao.placa}` : ''}`}
+                          subtitle={`${a.moto_avaliacao?.marca} ${(a.moto_avaliacao?.modelo || '').toUpperCase()}${a.moto_avaliacao?.placa ? ` - ${a.moto_avaliacao.placa.replace(/-/g, '')}` : ''}`}
                           loja={a.atendimento?.loja}
                           date={a.updated_at}
                           npsStatus={a.nps_status || 'em_aberto'}
