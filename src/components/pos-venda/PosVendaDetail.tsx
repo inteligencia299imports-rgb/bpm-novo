@@ -44,6 +44,8 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
   const moto = item.motos_avaliacao?.[0];
+  const [cnhUrl, setCnhUrl] = useState<string | null>(item.cnh_url || null);
+  const [crlvUrl, setCrlvUrl] = useState<string | null>(moto?.crlv_url || null);
   const statusCol = POS_VENDA_COLUMNS.find(c => c.value === (item.pos_venda_status || 'em_aberto'));
   const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
   const whatsappUrl = item.telefone ? `https://wa.me/55${item.telefone.replace(/\D/g, '')}` : '';
