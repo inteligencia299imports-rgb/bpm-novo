@@ -654,6 +654,21 @@ const ContratoDialog: React.FC<Props> = ({
                           <InfoDisplay label="Cor" value={motoAv.cor} />
                           <InfoDisplay label="Placa" value={motoAv.placa?.replace(/-/g, '')} />
                         </div>
+                        {avaliacaoData && (
+                          <div className="space-y-2 pt-2">
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <InfoDisplay label="Avaliação Compra" value={formatCurrency(avaliacaoData.avaliacao_compra)} />
+                              <InfoDisplay label="Custos Cliente" value={formatCurrency(avaliacaoData.previsao_custos_cliente)} />
+                              <InfoDisplay label="Custos Loja" value={formatCurrency(avaliacaoData.previsao_custos_loja)} />
+                              <InfoDisplay label="Repasse Cliente" value={
+                                avaliacaoData.avaliacao_compra != null && avaliacaoData.previsao_custos_loja != null
+                                  ? formatCurrency(avaliacaoData.avaliacao_compra - avaliacaoData.previsao_custos_loja)
+                                  : '-'
+                              } />
+                            </div>
+                            <p className="text-[10px] text-muted-foreground italic">REPASSE = AVALIAÇÃO - CUSTOS LOJA</p>
+                          </div>
+                        )}
                       </div>
                     )}
                     <div className="grid grid-cols-2 gap-4">
