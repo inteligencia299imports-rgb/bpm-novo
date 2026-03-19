@@ -664,7 +664,7 @@ const ContratoDialog: React.FC<Props> = ({
                       <div key={fp.id} className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2">
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs">{tipoLabel(fp.tipo)}</Badge>
+                            <span className="text-xs font-semibold">{tipoLabel(fp.tipo)}</span>
                             {fp.financeira && <span className="text-xs text-muted-foreground">{fp.financeira}</span>}
                           </div>
                           {fp.tipo === 'financiamento' ? (
