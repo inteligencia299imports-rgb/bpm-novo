@@ -564,7 +564,18 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </CardContent>
           </Card>
 
-          {/* Status Actions */}
+          {/* Histórico de Movimentações */}
+          <Card className="md:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" /> Histórico de Movimentações
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StatusTimeline history={history} />
+            </CardContent>
+          </Card>
+
           <div className="md:col-span-2 flex flex-col items-center gap-3">
             <div className="flex gap-2 flex-wrap justify-center">
               {statusButtons.map(btn => (
