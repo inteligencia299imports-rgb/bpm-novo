@@ -803,7 +803,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             return;
                           }
                         }
-                        setValorPopup({ valorSinal: '', valorVenda: '', valorFechamento: '', modo: btn.value as 'sinal' | 'vendido' });
+                        const toInput = (v: number | null | undefined) => v ? formatCurrencyInput(Math.round(v * 100).toString()) : '';
+                        setValorPopup({ valorSinal: toInput(atendimento.valor_sinal), valorVenda: toInput(atendimento.valor_venda), valorFechamento: '', modo: btn.value as 'sinal' | 'vendido' });
                       } else {
                         handleStatusChange(btn.value, btn.label);
                       }

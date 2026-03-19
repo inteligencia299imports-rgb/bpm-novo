@@ -164,6 +164,8 @@ export interface Atendimento {
   moto_avaliacao?: MotoAvaliacao;
   avaliacao?: Avaliacao;
   cnh_url?: string | null;
+  valor_sinal?: number | null;
+  valor_venda?: number | null;
 }
 
 export interface MotoInteresse {
