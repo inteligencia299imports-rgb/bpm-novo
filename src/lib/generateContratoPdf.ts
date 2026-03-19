@@ -133,8 +133,8 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   const pageWidth = 210;
   const marginTop = 10; // 1cm
   const marginBottom = 10; // 1cm
-  const marginLeft = 31.8; // 3.18cm
-  const marginRight = 31.8; // 3.18cm
+  const marginLeft = 10; // 1cm
+  const marginRight = 10; // 1cm
   const contentWidth = pageWidth - marginLeft - marginRight;
   const fontSize = 9;
   const lineHeight = 4;
