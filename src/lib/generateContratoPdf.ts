@@ -320,7 +320,7 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   y += sectionGap;
   
   // Signature lines - spacing for digital signature
-  y += lineHeight * 6; // space before company signature for digital signature
+  y += lineHeight * 5; // space before company signature for digital signature
   checkPageBreak(70);
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
