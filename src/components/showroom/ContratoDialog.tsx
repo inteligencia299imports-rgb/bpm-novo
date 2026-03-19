@@ -306,7 +306,7 @@ const ContratoDialog: React.FC<Props> = ({
       ipva_cotas: ipvaTipo === 'ambos' && ipvaCotas ? parseInt(ipvaCotas) : null,
       ipva_valor: ipvaTipo === 'loja' ? parseCurrencyInput(ipvaValor) || null : null,
       transferencia_tipo: transferenciaTipo || null,
-      transferencia_valor: ['cliente', 'loja', 'ambos'].includes(transferenciaTipo) ? parseCurrencyInput(transferenciaValor) || null : null,
+      transferencia_valor: transferenciaTipo === 'cliente' ? parseCurrencyInput(transferenciaValor) || null : null,
       valor_quitacao: parseCurrencyInput(valorQuitacao) || null,
       valor_fechamento: parseCurrencyInput(valorFechamento) || null,
       observacoes_internas: obsInternas || null,
@@ -612,18 +612,18 @@ const ContratoDialog: React.FC<Props> = ({
                 <div>
                   <label className="text-sm font-medium text-foreground">Transferência</label>
                   <div className="flex gap-2 mt-1 flex-wrap">
-                    {['cliente', 'loja', 'outra_uf', 'ambos'].map(opt => (
+                    {['cliente', 'loja', 'outra_uf'].map(opt => (
                       <Button
                         key={opt}
                         size="sm"
                         variant={transferenciaTipo === opt ? 'default' : 'outline'}
                         onClick={() => setTransferenciaTipo(opt)}
                       >
-                        {opt === 'cliente' ? 'Cliente' : opt === 'loja' ? 'Loja' : opt === 'outra_uf' ? 'Outra UF' : 'Ambos'}
+                        {opt === 'cliente' ? 'Cliente' : opt === 'loja' ? 'Loja' : 'Outra UF'}
                       </Button>
                     ))}
                   </div>
-                  {['cliente', 'loja', 'ambos'].includes(transferenciaTipo) && (
+                  {transferenciaTipo === 'cliente' && (
                     <div className="mt-2">
                       <CurrencyField label="Valor da Transferência" value={transferenciaValor} onChange={setTransferenciaValor} />
                     </div>
