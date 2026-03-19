@@ -145,13 +145,25 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', data.moto_avaliacao_id);
           if (fotosData) setFotos(fotosData);
 
-          const { data: histData } = await supabase
-            .from('status_history')
-            .select('*')
-            .eq('entity_type', 'avaliacao')
-            .eq('entity_id', data.moto_avaliacao_id)
-            .order('created_at', { ascending: true });
-          if (histData) setHistory(histData);
+          // Fetch history: avaliacao + consulta (by moto_avaliacao_id) + showroom (by atendimento_id)
+          const [{ data: histAval }, { data: histShowroom }] = await Promise.all([
+            supabase
+              .from('status_history')
+              .select('*')
+              .in('entity_type', ['avaliacao', 'consulta'])
+              .eq('entity_id', data.moto_avaliacao_id)
+              .order('created_at', { ascending: true }),
+            supabase
+              .from('status_history')
+              .select('*')
+              .in('entity_type', ['showroom', 'contrato'])
+              .eq('entity_id', data.atendimento_id)
+              .order('created_at', { ascending: true }),
+          ]);
+          const merged = [...(histAval || []), ...(histShowroom || [])].sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          setHistory(merged);
         }
       }
       setLoading(false);
