@@ -23,6 +23,14 @@ interface ContratoPdfData {
   valorSinal: string;
   valorVenda: string;
   
+  // Transferência
+  transferenciaTipo?: string | null;
+  transferenciaValor?: string | null;
+  
+  // IPVA
+  ipvaTipo?: string | null;
+  ipvaCotas?: string | null;
+  
   // Moto troca (optional)
   troca?: {
     marca: string;
@@ -283,6 +291,42 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   doc.text(`Modelo: ${data.produtoModelo}`, marginLeft, y); y += lineHeight;
   doc.text(`Fab/Mod: ${data.produtoAnoFabMod}`, marginLeft, y); y += lineHeight;
   doc.text(`Placa/Chassi: ${data.produtoPlacaChassi}`, marginLeft, y); y += lineHeight + sectionGap;
+
+  // TRANSFERÊNCIA
+  if (data.transferenciaTipo) {
+    checkPageBreak(10);
+    setNormal();
+    let transferenciaText = '';
+    if (data.transferenciaTipo === 'cliente') {
+      transferenciaText = `Transferência: O cliente pagará a transferência de propriedade da moto com a intermediação entre a 299 Imports e o DETRAN, no valor de ${data.transferenciaValor || '-'}.`;
+    } else if (data.transferenciaTipo === 'loja') {
+      transferenciaText = 'Transferência: A taxa de transferência será paga pela 299 Imports.';
+    } else if (data.transferenciaTipo === 'outra_uf') {
+      transferenciaText = 'Transferência: O cliente realizará a transferência de propriedade no seu estado de origem.';
+    }
+    if (transferenciaText) {
+      y = drawJustifiedText(doc, transferenciaText, marginLeft, contentWidth, y, lineHeight);
+      y += sectionGap;
+    }
+  }
+
+  // IPVA
+  if (data.ipvaTipo) {
+    checkPageBreak(10);
+    setNormal();
+    let ipvaText = '';
+    if (data.ipvaTipo === 'loja') {
+      ipvaText = 'IPVA: Os débitos de IPVA e licenciamento referente ao ano de 2026 serão pagos pela 299 Imports.';
+    } else if (data.ipvaTipo === 'cliente') {
+      ipvaText = 'IPVA: Os débitos de IPVA e licenciamento referente ao ano de 2026 serão de responsabilidade do comprador.';
+    } else if (data.ipvaTipo === 'ambos') {
+      ipvaText = `IPVA: Os débitos de IPVA e licenciamento referente ao ano de 2026 serão divididos entre a empresa e o comprador, sendo que: as cotas de IPVA n° ${data.ipvaCotas || '-'} serão de responsabilidade do comprador, e as demais serão pagas pela 299 Imports.`;
+    }
+    if (ipvaText) {
+      y = drawJustifiedText(doc, ipvaText, marginLeft, contentWidth, y, lineHeight);
+      y += sectionGap;
+    }
+  }
   
   // RECIBO DE SINAL DE NEGÓCIO (justified with bold values)
   sectionHeader('RECIBO DE SINAL DE NEGÓCIO');
