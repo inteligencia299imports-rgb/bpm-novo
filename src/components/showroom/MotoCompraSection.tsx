@@ -62,7 +62,7 @@ const MotoCompraSection: React.FC<Props> = ({
   const formatEstoqueLabel = (item: EstoqueOption) => {
     const parts = [item.modelo];
     if (item.cor) parts.push(item.cor);
-    if (item.placa) parts.push(item.placa);
+    if (item.placa) parts.push(item.placa.replace(/-/g, ''));
     return parts.join(' - ').toUpperCase();
   };
 

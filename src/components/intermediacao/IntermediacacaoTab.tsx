@@ -67,7 +67,7 @@ const IntermediacacaoTab = () => {
                   <div className="bg-muted/50 rounded-lg p-2.5 flex-1 min-h-[200px] space-y-2.5 border border-border/50">
                     {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => {
                       const moto = a.motos_avaliacao?.[0];
-                      return <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone} motoLabel={moto ? [moto.placa, `${moto.marca} ${moto.modelo}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} date={a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />;
+                      return <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone} motoLabel={moto ? [moto.placa?.replace(/-/g, ''), `${moto.marca} ${moto.modelo}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} date={a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />;
                     })}
                   </div>
                 </div>

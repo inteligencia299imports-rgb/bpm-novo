@@ -399,7 +399,7 @@ const ContratoDialog: React.FC<Props> = ({
                     <div className="grid grid-cols-3 gap-2 text-sm">
                       <InfoDisplay label="Ano" value={[estItem.ano_fabricacao, estItem.ano_modelo].filter(Boolean).join('/')} />
                       <InfoDisplay label="Cor" value={estItem.cor} />
-                      <InfoDisplay label="Placa" value={estItem.placa} />
+                      <InfoDisplay label="Placa" value={estItem.placa?.replace(/-/g, '')} />
                     </div>
                     <div className="grid grid-cols-2 gap-4 pt-1">
                       <InfoDisplay label="Preço" value={formatCurrency(estItem.preco)} />
@@ -490,7 +490,7 @@ const ContratoDialog: React.FC<Props> = ({
                         <div className="grid grid-cols-3 gap-2 text-sm">
                           <InfoDisplay label="Ano" value={[motoAv.ano_fabricacao, motoAv.ano_modelo].filter(Boolean).join('/')} />
                           <InfoDisplay label="Cor" value={motoAv.cor} />
-                          <InfoDisplay label="Placa" value={motoAv.placa} />
+                          <InfoDisplay label="Placa" value={motoAv.placa?.replace(/-/g, '')} />
                         </div>
                       </div>
                     )}
