@@ -623,7 +623,7 @@ const ContratoDialog: React.FC<Props> = ({
                       </Button>
                     ))}
                   </div>
-                  {['cliente', 'loja', 'ambos'].includes(transferenciaTipo) && (
+                  {transferenciaTipo === 'cliente' && (
                     <div className="mt-2">
                       <CurrencyField label="Valor da Transferência" value={transferenciaValor} onChange={setTransferenciaValor} />
                     </div>
