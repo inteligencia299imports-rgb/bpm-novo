@@ -228,8 +228,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         await supabase.from('avaliacoes').update({ situacao: 'dispensada' }).eq('atendimento_id', atendimento.id);
       }
 
-      onDeleted();
-    }
+      if (onStatusUpdated) {
+        onStatusUpdated();
+      } else {
+        onDeleted();
+      }
   };
 
   const handleSaveValor = async () => {
