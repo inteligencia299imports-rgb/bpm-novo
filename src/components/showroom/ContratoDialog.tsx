@@ -82,6 +82,14 @@ const CurrencyField = ({ label, value, onChange }: { label: string; value: strin
   </div>
 );
 
+const formatPhone = (phone: string | null | undefined) => {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 11) return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+  return phone;
+};
+
 const InfoDisplay = ({ label, value }: { label: string; value: string | null | undefined }) => (
   value ? (
     <div>
@@ -348,7 +356,7 @@ const ContratoDialog: React.FC<Props> = ({
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Dados do Cliente</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <InfoDisplay label="Nome" value={atendimento.nome_cliente} />
-                  <InfoDisplay label="Telefone" value={atendimento.telefone} />
+                  <InfoDisplay label="Telefone" value={formatPhone(atendimento.telefone)} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-foreground">CPF/CNPJ</label>
