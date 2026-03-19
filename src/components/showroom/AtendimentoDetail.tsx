@@ -233,6 +233,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       } else {
         onDeleted();
       }
+    }
   };
 
   const handleSaveValor = async () => {
