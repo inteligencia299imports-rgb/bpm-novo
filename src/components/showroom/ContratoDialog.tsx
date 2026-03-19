@@ -357,14 +357,14 @@ const ContratoDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] p-0">
-        <DialogHeader className="p-6 pb-0">
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0 flex flex-col overflow-hidden">
+        <DialogHeader className="p-6 pb-0 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" /> Emissão de Contrato
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-8rem)]">
+        <ScrollArea className="flex-1 min-h-0">
           {loading ? (
             <div className="py-12 text-center text-muted-foreground px-6">Carregando...</div>
           ) : (
@@ -643,7 +643,7 @@ const ContratoDialog: React.FC<Props> = ({
         </ScrollArea>
 
         {/* Bottom buttons */}
-        <div className="flex justify-end gap-2 p-6 pt-4 border-t mt-2">
+        <div className="flex justify-end gap-2 p-4 border-t shrink-0">
           <Button variant="outline" disabled><FileText className="h-4 w-4 mr-1" />Gerar</Button>
           <Button variant="outline" disabled><Eye className="h-4 w-4 mr-1" />Visualizar</Button>
           <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
