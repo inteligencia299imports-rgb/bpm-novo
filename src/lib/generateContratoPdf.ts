@@ -257,7 +257,15 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   // CONDIÇÕES DA VENDA
   sectionHeader('CONDIÇÕES DA VENDA');
   setNormal();
-  doc.text(`Valor da Venda: ${data.valorVenda}, sendo:`, marginLeft, y); y += lineHeight + sectionGap;
+  setNormal();
+  doc.text('Valor da Venda: ', marginLeft, y);
+  const vvLabelW = doc.getTextWidth('Valor da Venda: ');
+  setBold();
+  doc.text(`${data.valorVenda}`, marginLeft + vvLabelW, y);
+  const vvValW = doc.getTextWidth(`${data.valorVenda}`);
+  setNormal();
+  doc.text(', sendo:', marginLeft + vvLabelW + vvValW, y);
+  y += lineHeight + sectionGap;
   
   // Moto troca
   if (data.troca) {
