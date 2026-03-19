@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, CalendarIcon, Trash2, Plus } from 'lucide-react';
+import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, PlusCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -587,6 +587,7 @@ const ContratoDialog: React.FC<Props> = ({
 
                   {novaPagamentoTipo && (
                     <Button size="sm" onClick={handleAddPagamento} className="w-full">
+                      <PlusCircle className="h-4 w-4 mr-1" />
                       Adicionar
                     </Button>
                   )}
@@ -642,12 +643,13 @@ const ContratoDialog: React.FC<Props> = ({
         </ScrollArea>
 
         {/* Bottom buttons */}
-        <div className="flex justify-end gap-2 p-6 pt-0 border-t mt-2">
-          <Button variant="outline" onClick={handleSave} disabled={saving}>
+        <div className="flex justify-end gap-2 p-6 pt-4 border-t mt-2">
+          <Button variant="outline" disabled><FileText className="h-4 w-4 mr-1" />Gerar</Button>
+          <Button variant="outline" disabled><Eye className="h-4 w-4 mr-1" />Visualizar</Button>
+          <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
+            <Save className="h-4 w-4 mr-1" />
             {saving ? 'Salvando...' : 'Salvar'}
           </Button>
-          <Button variant="outline" disabled>Gerar</Button>
-          <Button variant="outline" disabled>Visualizar</Button>
         </div>
       </DialogContent>
     </Dialog>
