@@ -368,7 +368,7 @@ const ContratoDialog: React.FC<Props> = ({
     const produtoModelo = estItem?.modelo || motoInt?.modelo || '';
     const produtoAnoFab = estItem?.ano_fabricacao || '';
     const produtoAnoMod = estItem?.ano_modelo || motoInt?.ano || '';
-    const produtoPlaca = (estItem?.placa || '')?.replace(/-/g, '') || 'N/A';
+    const produtoPlaca = (estItem?.placa || '')?.replace(/-/g, '') || motoInt?.chassi || 'N/A';
 
     const pdfData: ContratoPdfData = {
       loja: atendimento.loja,
