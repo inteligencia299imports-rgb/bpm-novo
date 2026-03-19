@@ -440,6 +440,7 @@ const ContratoDialog: React.FC<Props> = ({
     }
   };
 
+  const tipoLabel = (tipo: string) => TIPOS_PAGAMENTO.find(t => t.value === tipo)?.label || tipo;
 
   // Get moto de interesse data
   const motoInt = motosInteresse[0];
