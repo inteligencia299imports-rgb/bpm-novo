@@ -509,11 +509,10 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y += lineHeight;
   doc.text(empresaNome, marginLeft, y); y += lineHeight;
   doc.text(`CNPJ: ${cnpj}`, marginLeft, y);
-  y += sectionGap * 2;
+  y += lineHeight;
 
-  // DEVOLUÇÃO DO VEÍCULO (new page)
-  doc.addPage();
-  y = marginTop;
+  // DEVOLUÇÃO DO VEÍCULO
+  checkPageBreak(40);
 
   sectionHeader('DEVOLUÇÃO DO VEÍCULO:');
   setNormal();
