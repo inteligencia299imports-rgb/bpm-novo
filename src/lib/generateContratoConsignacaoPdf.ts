@@ -210,10 +210,10 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   checkPageBreak(15);
   if (data.comPercentual5) {
     const valorText = `A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de ${data.valorFechamento};`;
-    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, data.valorFechamento.split(/\s+/));
+    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [data.valorFechamento]);
   } else {
     const valorText = `A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de ${data.valorFechamento};`;
-    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, data.valorFechamento.split(/\s+/));
+    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [data.valorFechamento]);
   }
   y += sectionGap;
 
