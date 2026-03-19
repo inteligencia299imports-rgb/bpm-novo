@@ -436,11 +436,11 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
         {/* Bottom buttons */}
         <div className="flex flex-col gap-2 p-4 border-t shrink-0">
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => handleVisualizar()} disabled={generating}>
+          <div className="flex justify-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => handleVisualizar()} disabled={generating}>
               <Eye className="h-4 w-4 mr-1" />Visualizar
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => handleVisualizar(5)} disabled={generating}>
+            <Button variant="outline" size="sm" onClick={() => handleVisualizar(5)} disabled={generating}>
               <Eye className="h-4 w-4 mr-1" />Visualizar (5%)
             </Button>
           </div>
