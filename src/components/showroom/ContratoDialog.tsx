@@ -442,6 +442,19 @@ const ContratoDialog: React.FC<Props> = ({
       }
 
       await generateContratoPdf(pdfData);
+
+      // Registrar no histórico de movimentações
+      if (user) {
+        await supabase.from('status_history').insert({
+          entity_type: 'showroom',
+          entity_id: atendimento.id,
+          status_from: atendimento.situacao,
+          status_to: 'contrato_gerado',
+          changed_by: user.id,
+          changed_by_name: userName || 'Vendedor',
+        });
+      }
+
       toast.success('Contrato gerado com sucesso!');
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
