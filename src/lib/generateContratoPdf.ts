@@ -35,7 +35,16 @@ interface ContratoPdfData {
   };
   
   // Formas de pagamento (besides troca)
-  formasPagamento: { descricao: string; valor: string }[];
+  formasPagamento: {
+    tipo: string;
+    descricao: string;
+    valor: string;
+    financeira?: string;
+    valorEntrada?: string;
+    numeroParcelas?: number;
+    valorParcelas?: string;
+    valorFinanciado?: string;
+  }[];
   
   // Observações
   observacoes: string;
