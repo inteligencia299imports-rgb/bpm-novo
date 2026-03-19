@@ -587,6 +587,7 @@ const ContratoDialog: React.FC<Props> = ({
 
                   {novaPagamentoTipo && (
                     <Button size="sm" onClick={handleAddPagamento} className="w-full">
+                      <PlusCircle className="h-4 w-4 mr-1" />
                       Adicionar
                     </Button>
                   )}
