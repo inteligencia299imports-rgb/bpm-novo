@@ -98,6 +98,21 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [consultaSolicitada, setConsultaSolicitada] = useState(false);
   const canEdit = role === 'avaliador' || role === 'gestor' || role === 'vendedor';
   const [history, setHistory] = useState<any[]>([]);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAvaliacao = async () => {
+    setDeleting(true);
+    try {
+      const { error } = await supabase.rpc('delete_avaliacao_cascade', { _avaliacao_id: avaliacaoId });
+      if (error) throw error;
+      toast.success('Avaliação excluída com sucesso');
+      onClose();
+    } catch (err: any) {
+      toast.error('Erro ao excluir avaliação: ' + (err.message || ''));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // form fields (stored as masked strings)
   const [valorFipe, setValorFipe] = useState('');
