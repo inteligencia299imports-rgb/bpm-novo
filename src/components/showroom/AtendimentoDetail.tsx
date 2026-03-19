@@ -589,14 +589,17 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               consulta_realizada: false,
                               resultado_consulta: null 
                             } as any).eq('id', moto.id);
-                            await supabase.from('status_history').insert({
+                            const { data: insertedConsulta } = await supabase.from('status_history').insert({
                               entity_type: 'consulta',
                               entity_id: moto.id,
                               status_from: previousStatus,
                               status_to: 'consulta_solicitada',
                               changed_by: user?.id,
                               changed_by_name: userName || user?.email || null,
-                            });
+                            }).select().single();
+                            if (insertedConsulta) {
+                              setHistory(prev => [...prev, insertedConsulta].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+                            }
                             setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, consulta_solicitada: true, consulta_realizada: false, resultado_consulta: null } as any : m));
                             toast.success('Consulta solicitada com sucesso!');
                           }}
