@@ -64,30 +64,59 @@ function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number
         }
       }
     } else {
-      const words = line.split(/\s+/);
-      let spaceWidth: number;
-      if (isLastLine || words.length <= 1) {
-        doc.setFont('helvetica', 'normal');
-        spaceWidth = doc.getTextWidth(' ');
-      } else {
-        let totalWordsW = 0;
-        for (const w of words) {
-          const isBold = boldSegments.some(seg => w.includes(seg) || seg.split(/\s+/).includes(w));
-          doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-          totalWordsW += doc.getTextWidth(w);
-        }
-        spaceWidth = (maxWidth - totalWordsW) / (words.length - 1);
-      }
-
+      // Bold segments handling - find bold segment within the line text
       let currentX = x;
-      for (const w of words) {
-        const isBold = boldSegments.some(seg => {
-          const segWords = seg.split(/\s+/);
-          return segWords.includes(w) || w === seg;
-        });
-        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-        doc.text(w, currentX, y);
-        currentX += doc.getTextWidth(w) + spaceWidth;
+      const fullLineText = line;
+      
+      // Check if any bold segment appears in this line
+      let hasBoldInLine = false;
+      for (const seg of boldSegments) {
+        if (fullLineText.includes(seg)) {
+          hasBoldInLine = true;
+          break;
+        }
+      }
+      
+      if (!hasBoldInLine) {
+        // No bold in this line, render with justification
+        if (isLastLine || !fullLineText.trim()) {
+          doc.text(fullLineText, x, y);
+        } else {
+          const words = fullLineText.split(/\s+/);
+          if (words.length <= 1) {
+            doc.text(fullLineText, x, y);
+          } else {
+            const wordsWidth = words.reduce((sum: number, w: string) => sum + doc.getTextWidth(w), 0);
+            const totalSpaceWidth = maxWidth - wordsWidth;
+            const spaceWidth = totalSpaceWidth / (words.length - 1);
+            currentX = x;
+            for (let j = 0; j < words.length; j++) {
+              doc.text(words[j], currentX, y);
+              currentX += doc.getTextWidth(words[j]) + spaceWidth;
+            }
+          }
+        }
+      } else {
+        // Render with bold segments inline
+        const segments: { text: string; bold: boolean }[] = [];
+        let remaining = fullLineText;
+        
+        for (const seg of boldSegments) {
+          const idx = remaining.indexOf(seg);
+          if (idx >= 0) {
+            if (idx > 0) segments.push({ text: remaining.substring(0, idx), bold: false });
+            segments.push({ text: seg, bold: true });
+            remaining = remaining.substring(idx + seg.length);
+          }
+        }
+        if (remaining) segments.push({ text: remaining, bold: false });
+        
+        currentX = x;
+        for (const seg of segments) {
+          doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+          doc.text(seg.text, currentX, y);
+          currentX += doc.getTextWidth(seg.text);
+        }
       }
       doc.setFont('helvetica', 'normal');
     }
