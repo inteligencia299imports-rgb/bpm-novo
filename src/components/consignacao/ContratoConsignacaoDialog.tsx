@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { generateContratoConsignacaoPdf } from '@/lib/generateContratoConsignacaoPdf';
 
 interface Props {
   open: boolean;
@@ -202,6 +203,33 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     }
 
     try {
+      const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
+
+      const formatCurrencyValue = (val: string) => {
+        const num = parseCurrencyInput(val);
+        return num ? num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
+      };
+
+      await generateContratoConsignacaoPdf({
+        nomeCliente: atendimento?.nome_cliente || '',
+        telefone: atendimento?.telefone || '',
+        cpfCnpj: cpfCnpj || '-',
+        email: email || '-',
+        endereco: endereco || '-',
+        cep: cep || '-',
+        marca: moto?.marca || '',
+        modelo: moto?.modelo || '',
+        anoFabMod: ano || '-',
+        placa: moto?.placa?.replace(/-/g, '') || '-',
+        km: moto?.km || '-',
+        valorQuitacao: formatCurrencyValue(valorQuitacao),
+        valorNegociado: formatCurrencyValue(valorFechamento),
+        observacoes: obsContrato || '',
+        valorFechamento: formatCurrencyValue(valorFechamento),
+        dataContrato: dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : '-',
+        comPercentual5: !!comPercentual,
+      });
+
       // Record in history
       if (user) {
         await supabase.from('status_history').insert({
