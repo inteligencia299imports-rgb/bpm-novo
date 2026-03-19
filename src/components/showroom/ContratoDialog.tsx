@@ -342,7 +342,10 @@ const ContratoDialog: React.FC<Props> = ({
 
   const handleSave = async () => {
     const id = await saveContrato();
-    if (id) toast.success('Contrato salvo com sucesso!');
+    if (id) {
+      toast.success('Contrato salvo com sucesso!');
+      onOpenChange(false);
+    }
   };
 
   const tipoLabel = (tipo: string) => TIPOS_PAGAMENTO.find(t => t.value === tipo)?.label || tipo;
