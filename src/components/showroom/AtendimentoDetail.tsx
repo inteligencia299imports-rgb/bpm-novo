@@ -298,8 +298,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <FileText className="h-4 w-4" /> Contrato
               </Button>
             )}
-            <Button size="icon" variant="outline" onClick={() => onEdit(atendimento.id)}>
-              <Edit className="h-4 w-4" />
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onEdit(atendimento.id)}>
+              <Edit className="h-4 w-4" /> Editar
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
