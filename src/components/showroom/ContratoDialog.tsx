@@ -308,6 +308,16 @@ const ContratoDialog: React.FC<Props> = ({
       data_vencimento_sinal: dataVencimento ? format(dataVencimento, 'yyyy-MM-dd') : null,
     };
 
+    // Save valor_sinal and valor_venda to atendimento
+    const atendimentoUpdate: any = {};
+    const parsedSinal = parseCurrencyInput(valorSinal);
+    const parsedVenda = parseCurrencyInput(valorVenda);
+    if (parsedSinal !== null) atendimentoUpdate.valor_sinal = parsedSinal;
+    if (parsedVenda !== null) atendimentoUpdate.valor_venda = parsedVenda;
+    if (Object.keys(atendimentoUpdate).length > 0) {
+      await supabase.from('atendimentos').update(atendimentoUpdate).eq('id', atendimento.id);
+    }
+
     if (contratoId) {
       const { error } = await supabase.from('contratos').update(payload).eq('id', contratoId);
       if (error) {
