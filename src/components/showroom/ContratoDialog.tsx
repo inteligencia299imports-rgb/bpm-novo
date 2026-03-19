@@ -219,6 +219,8 @@ const ContratoDialog: React.FC<Props> = ({
         setDataSinal(undefined);
         setDataVencimento(undefined);
         setFormasPagamento([]);
+        setValorSinal((atendimento as any).valor_sinal ? formatCurrencyInput(String(Math.round((atendimento as any).valor_sinal * 100))) : '');
+        setValorVenda((atendimento as any).valor_venda ? formatCurrencyInput(String(Math.round((atendimento as any).valor_venda * 100))) : '');
       }
       setLoading(false);
     };
