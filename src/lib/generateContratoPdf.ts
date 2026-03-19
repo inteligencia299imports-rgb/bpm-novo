@@ -271,7 +271,9 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y); y += lineHeight + sectionGap;
   
   // VENDEDOR
-  sectionHeader('VENDEDOR: ' + data.vendedorNome);
+  sectionHeader('VENDEDOR:');
+  setNormal();
+  doc.text(data.vendedorNome, marginLeft, y); y += lineHeight;
   y += sectionGap;
   
   // OBJETO
