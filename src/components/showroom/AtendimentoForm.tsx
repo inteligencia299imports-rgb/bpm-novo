@@ -128,11 +128,19 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
   const handleSave = async () => {
-    if (!nomeCliente.trim() || !isPhoneValid || !loja || !sexo || !uf || !tipoAtendimento || !origem || !temperatura || !observacoes.trim()) {
+    if (!nomeCliente.trim() || !isPhoneValid || !loja || !sexo || !uf || !tipoAtendimento || (!isDucati && !origem) || !temperatura || !observacoes.trim()) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
-    if ((interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'externo' && (!compraMarca || !compraModelo || !compraAno)) {
+    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && (!compraModelo || !compraAno)) {
+      toast.error('Preencha o modelo e ano da moto Ducati');
+      return;
+    }
+    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && (chassi.replace(/\s/g, '').length < 6 || chassi.replace(/\s/g, '').length > 17)) {
+      toast.error('O chassi deve ter entre 6 e 17 caracteres');
+      return;
+    }
+    if (!isDucati && (interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'externo' && (!compraMarca || !compraModelo || !compraAno)) {
       toast.error('Preencha todos os campos da Moto de Interesse');
       return;
     }
