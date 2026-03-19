@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Bike, Clock, ArrowRight, DollarSign, Tag, MessageCircle } from 'lucide-react';
+import { ArrowLeft, User, Bike, Clock, ArrowRight, DollarSign, Tag, MessageCircle, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
 
 interface Props {
   item: any;
@@ -35,6 +36,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [history, setHistory] = useState<any[]>([]);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
+  const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
   const moto = item.moto || item.motos_avaliacao;
   const atendimento = item.atendimento || item.atendimentos;
   const statusValue = item[statusField] || 'em_aberto';
@@ -88,6 +90,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               {format(new Date(item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
+          {entityType === 'consignacao' && (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
+                <FileText className="h-4 w-4" /> Contrato
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -248,6 +257,14 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           </Card>
         </div>
       </ScrollArea>
+
+      {entityType === 'consignacao' && (
+        <ContratoConsignacaoDialog
+          open={contratoConsignacaoOpen}
+          onOpenChange={setContratoConsignacaoOpen}
+          avaliacao={item}
+        />
+      )}
     </div>
   );
 };
