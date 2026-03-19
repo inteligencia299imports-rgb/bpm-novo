@@ -437,21 +437,21 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         {/* Bottom buttons */}
         <div className="flex flex-col gap-2 p-4 border-t shrink-0">
           <div className="flex justify-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => handleVisualizar()} disabled={generating}>
+            <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar()} disabled={generating}>
               <Eye className="h-4 w-4 mr-1" />Visualizar
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleVisualizar(5)} disabled={generating}>
+            <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar(5)} disabled={generating}>
               <Eye className="h-4 w-4 mr-1" />Visualizar (5%)
             </Button>
           </div>
           <div className="flex justify-center gap-2">
-            <Button variant="outline" onClick={() => handleGerar()} disabled={generating}>
+            <Button variant="outline" className="min-w-[140px]" onClick={() => handleGerar()} disabled={generating}>
               <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar'}
             </Button>
-            <Button variant="outline" onClick={() => handleGerar(5)} disabled={generating}>
+            <Button variant="outline" className="min-w-[140px]" onClick={() => handleGerar(5)} disabled={generating}>
               <Percent className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar (5%)'}
             </Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
+            <Button onClick={handleSave} disabled={saving} className="min-w-[140px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
               <Save className="h-4 w-4 mr-1" />
               {saving ? 'Salvando...' : 'Salvar'}
             </Button>
