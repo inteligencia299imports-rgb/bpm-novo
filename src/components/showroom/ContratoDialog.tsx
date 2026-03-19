@@ -374,7 +374,7 @@ const ContratoDialog: React.FC<Props> = ({
 
               {/* MOTO DE INTERESSE */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Moto de Interesse</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Moto de Interesse</h3>
                 {estItem ? (
                   <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                     <p className="font-semibold text-foreground">{estItem.marca} {estItem.modelo}</p>
