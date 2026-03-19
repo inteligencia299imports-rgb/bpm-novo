@@ -764,7 +764,7 @@ const ContratoDialog: React.FC<Props> = ({
           <Button variant="outline" onClick={handleGerar} disabled={generating}>
             <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar PDF'}
           </Button>
-          <Button variant="outline" disabled><Eye className="h-4 w-4 mr-1" />Visualizar</Button>
+          
           <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
             <Save className="h-4 w-4 mr-1" />
             {saving ? 'Salvando...' : 'Salvar'}
