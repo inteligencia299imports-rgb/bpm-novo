@@ -250,18 +250,33 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     const label = newStatus === 'vendido' ? 'Vendido' : 'Sinal';
     await handleStatusChange(newStatus as SituacaoShowroom, label, updateData);
 
-    // Se for troca e vendido, marcar todas as avaliações como adquirida/própria com valor de fechamento
-    if (newStatus === 'vendido' && atendimento.interesse === 'trocar') {
-      const fechamento = parseCurrencyInput(valorPopup.valorFechamento);
-      for (const moto of motosAvaliacao) {
-        const av = avaliacoes[moto.id];
-        if (av) {
-          const avUpdate: any = {
-            situacao: 'adquirida',
-            tipo_aquisicao: 'propria',
-          };
-          if (fechamento > 0) avUpdate.valor_fechamento = fechamento;
-          await supabase.from('avaliacoes').update(avUpdate).eq('id', av.id);
+    // Se vendido, vincular estoque ao atendimento e marcar como vendido
+    if (newStatus === 'vendido') {
+      for (const mi of motosInteresse) {
+        if (mi.estoque_moto_id) {
+          await supabase.from('estoque').update({
+            atendimento_venda_id: atendimento.id,
+            status: 'vendido',
+            data_venda: new Date().toISOString(),
+            valor_venda: venda > 0 ? venda : null,
+            valor_sinal: sinal > 0 ? sinal : null,
+          }).eq('id', mi.estoque_moto_id);
+        }
+      }
+
+      // Se for troca e vendido, marcar todas as avaliações como adquirida/própria com valor de fechamento
+      if (atendimento.interesse === 'trocar') {
+        const fechamento = parseCurrencyInput(valorPopup.valorFechamento);
+        for (const moto of motosAvaliacao) {
+          const av = avaliacoes[moto.id];
+          if (av) {
+            const avUpdate: any = {
+              situacao: 'adquirida',
+              tipo_aquisicao: 'propria',
+            };
+            if (fechamento > 0) avUpdate.valor_fechamento = fechamento;
+            await supabase.from('avaliacoes').update(avUpdate).eq('id', av.id);
+          }
         }
       }
     }
