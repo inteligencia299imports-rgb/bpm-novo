@@ -194,9 +194,9 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   
   // Helper to check page break
   const checkPageBreak = (neededSpace: number) => {
-    if (y + neededSpace > 275) {
+    if (y + neededSpace > 297 - marginBottom) {
       doc.addPage();
-      y = 20;
+      y = marginTop;
     }
   };
   
