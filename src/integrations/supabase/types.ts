@@ -259,6 +259,62 @@ export type Database = {
           },
         ]
       }
+      contratos_consignacao: {
+        Row: {
+          avaliacao_id: string
+          cep: string | null
+          cpf_cnpj: string | null
+          created_at: string
+          data_contrato: string | null
+          email: string | null
+          endereco: string | null
+          id: string
+          observacoes_contrato: string | null
+          observacoes_internas: string | null
+          updated_at: string
+          valor_fechamento: number | null
+          valor_quitacao: number | null
+        }
+        Insert: {
+          avaliacao_id: string
+          cep?: string | null
+          cpf_cnpj?: string | null
+          created_at?: string
+          data_contrato?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          observacoes_contrato?: string | null
+          observacoes_internas?: string | null
+          updated_at?: string
+          valor_fechamento?: number | null
+          valor_quitacao?: number | null
+        }
+        Update: {
+          avaliacao_id?: string
+          cep?: string | null
+          cpf_cnpj?: string | null
+          created_at?: string
+          data_contrato?: string | null
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          observacoes_contrato?: string | null
+          observacoes_internas?: string | null
+          updated_at?: string
+          valor_fechamento?: number | null
+          valor_quitacao?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_consignacao_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estoque: {
         Row: {
           ano_fabricacao: string | null
