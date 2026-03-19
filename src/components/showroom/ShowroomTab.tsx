@@ -154,6 +154,20 @@ const ShowroomTab = () => {
     fetchAtendimentos();
   };
 
+  const handleStatusUpdated = async () => {
+    await fetchAtendimentos();
+    if (selectedAtendimento) {
+      const { data } = await supabase
+        .from('atendimentos')
+        .select('*')
+        .eq('id', selectedAtendimento.id)
+        .single();
+      if (data) {
+        setSelectedAtendimento(data as Atendimento);
+      }
+    }
+  };
+
   const handleStatusChange = async (id: string, status: SituacaoShowroom) => {
     const { error } = await supabase.from('atendimentos').update({ situacao: status }).eq('id', id);
     if (error) {
@@ -172,6 +186,7 @@ const ShowroomTab = () => {
         onClose={() => { setDetailOpen(false); setSelectedAtendimento(null); }}
         onEdit={handleEdit}
         onDeleted={handleDeleted}
+        onStatusUpdated={handleStatusUpdated}
       />
     );
   }

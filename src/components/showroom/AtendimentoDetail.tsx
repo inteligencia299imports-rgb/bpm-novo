@@ -25,6 +25,7 @@ interface Props {
   onClose: () => void;
   onEdit: (id: string) => void;
   onDeleted: () => void;
+  onStatusUpdated?: () => void;
 }
 
 const formatPhone = (value: string): string => {
@@ -59,7 +60,7 @@ const parseCurrencyInput = (value: string): number => {
   return parseInt(digits || '0', 10) / 100;
 };
 
-const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted }) => {
+const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted, onStatusUpdated }) => {
   const { user, userName } = useAuth();
   const [motosInteresse, setMotosInteresse] = useState<MotoInteresse[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<MotoAvaliacao[]>([]);
@@ -227,7 +228,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         await supabase.from('avaliacoes').update({ situacao: 'dispensada' }).eq('atendimento_id', atendimento.id);
       }
 
-      onDeleted();
+      if (onStatusUpdated) {
+        onStatusUpdated();
+      } else {
+        onDeleted();
+      }
     }
   };
 
