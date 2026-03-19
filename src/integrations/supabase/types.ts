@@ -734,6 +734,10 @@ export type Database = {
         Args: { _atendimento_id: string }
         Returns: boolean
       }
+      delete_avaliacao_cascade: {
+        Args: { _avaliacao_id: string }
+        Returns: undefined
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
