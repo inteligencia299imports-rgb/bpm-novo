@@ -139,6 +139,10 @@ const ContratoDialog: React.FC<Props> = ({
   const [dataSinal, setDataSinal] = useState<Date | undefined>();
   const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
 
+  // Valor sinal / venda
+  const [valorSinal, setValorSinal] = useState('');
+  const [valorVenda, setValorVenda] = useState('');
+
   // Formas de pagamento
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
   const [novaPagamentoTipo, setNovaPagamentoTipo] = useState('');
