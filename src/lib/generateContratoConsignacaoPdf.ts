@@ -237,12 +237,13 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   sectionHeader('VALOR:');
   setNormal();
   checkPageBreak(15);
+  const valorFechamentoBold = `\u00A0${data.valorFechamento}`;
   if (data.comPercentual5) {
-    const valorText = `A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de ${data.valorFechamento};`;
-    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [data.valorFechamento]);
+    const valorText = `A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de${valorFechamentoBold};`;
+    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [valorFechamentoBold]);
   } else {
-    const valorText = `A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de ${data.valorFechamento};`;
-    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [data.valorFechamento]);
+    const valorText = `A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de${valorFechamentoBold};`;
+    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [valorFechamentoBold]);
   }
   y += sectionGap;
 
@@ -517,7 +518,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   sectionHeader('DEVOLUÇÃO DO VEÍCULO:');
   setNormal();
   y = drawJustifiedText(doc, 'Declaro a quem possa interessar que retirei o veículo objeto desta consignação e o mesmo encontra-se nas mesmas condições de funcionamento e conservação de quando foi consignado, não tendo, portanto, nada a reclamar.', marginLeft, contentWidth, y, lineHeight);
-  y += lineHeight * 5;
+  y += lineHeight * 4;
 
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
@@ -525,11 +526,16 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   doc.text(data.cpfCnpj, marginLeft, y);
   y += lineHeight * 4;
 
-  // Company + date at bottom
+  // Company signature + date
+  checkPageBreak(20);
+  doc.line(marginLeft, y, marginLeft + 70, y);
+  y += lineHeight;
   setNormal();
   doc.text(empresaNome, marginLeft, y); y += lineHeight;
-  doc.text(`CNPJ: ${cnpj}`, marginLeft, y); y += lineHeight * 3;
-  doc.text(`Brasília, ${data.dataContrato}`, marginLeft, y);
+  doc.text(`CNPJ: ${cnpj}`, marginLeft, y); y += lineHeight * 2;
+  setBold();
+  doc.text(`Brasília, ${data.dataContrato}`, pageWidth / 2, y, { align: 'center' });
+  setNormal();
 
   // Save
   const suffix = data.comPercentual5 ? '_5PCT' : '';
