@@ -400,7 +400,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               {estItem.cilindrada ? ` · ${estItem.cilindrada}cc` : ''}
                             </p>
                           </div>
-                          <Badge variant="outline" className="text-xs">Estoque</Badge>
+                          {atendimento.loja?.toLowerCase() !== 'ducati' && (
+                            <Badge variant="outline" className="text-xs">Estoque</Badge>
+                          )}
                         </div>
                         {/* Details grid like estoque card */}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
