@@ -215,6 +215,11 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
     doc.setFontSize(fontSize);
   };
   
+  const setBold = () => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fontSize);
+  };
+  
   // COMPRADOR
   sectionHeader('COMPRADOR');
   setNormal();
@@ -237,7 +242,14 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   // RECIBO DE SINAL DE NEGÓCIO (justified)
   sectionHeader('RECIBO DE SINAL DE NEGÓCIO');
   setNormal();
-  const reciboText = `Recebemos o valor de ${data.valorSinal} a título de sinal de negócio, referente a compra de uma motocicleta descrita nas condições de negócio, reconhecido neste documento no campo "comprador" e assinando no campo "assinatura do cliente" declarando para os devidos fins que efetuei o sinal de negócio do veículo acima descrito no campo "condições da venda", e me comprometo a efetuar o pagamento do valor restante até o dia ${data.dataVencimento} conforme as condições da venda descritas neste recibo, o comprador também declara, estar ciente que o prazo para entrega da moto é de até 7 dias úteis após ter efetuado o pagamento total da mesma.`;
+  // Build recibo with bold inline values
+  setNormal();
+  const reciboPart1 = 'Recebemos o valor de ';
+  const reciboPart2 = data.valorSinal;
+  const reciboPart3 = ' a título de sinal de negócio, referente a compra de uma motocicleta descrita nas condições de negócio, reconhecido neste documento no campo "comprador" e assinando no campo "assinatura do cliente" declarando para os devidos fins que efetuei o sinal de negócio do veículo acima descrito no campo "condições da venda", e me comprometo a efetuar o pagamento do valor restante até o dia ';
+  const reciboPart4 = data.dataVencimento;
+  const reciboPart5 = ' conforme as condições da venda descritas neste recibo, o comprador também declara, estar ciente que o prazo para entrega da moto é de até 7 dias úteis após ter efetuado o pagamento total da mesma.';
+  const reciboText = reciboPart1 + reciboPart2 + reciboPart3 + reciboPart4 + reciboPart5;
   checkPageBreak(40);
   y = drawJustifiedText(doc, reciboText, marginLeft, contentWidth, y, lineHeight);
   y += sectionGap;
@@ -245,7 +257,15 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   // CONDIÇÕES DA VENDA
   sectionHeader('CONDIÇÕES DA VENDA');
   setNormal();
-  doc.text(`Valor da Venda: ${data.valorVenda}, sendo:`, marginLeft, y); y += lineHeight + sectionGap;
+  setNormal();
+  doc.text('Valor da Venda: ', marginLeft, y);
+  const vvLabelW = doc.getTextWidth('Valor da Venda: ');
+  setBold();
+  doc.text(`${data.valorVenda}`, marginLeft + vvLabelW, y);
+  const vvValW = doc.getTextWidth(`${data.valorVenda}`);
+  setNormal();
+  doc.text(', sendo:', marginLeft + vvLabelW + vvValW, y);
+  y += lineHeight + sectionGap;
   
   // Moto troca
   if (data.troca) {
@@ -299,26 +319,30 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   }
   y += sectionGap;
   
-  // Signature lines
-  checkPageBreak(40);
+  // Signature lines - increased spacing for digital signature
+  checkPageBreak(70);
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
   setNormal();
   doc.text(template.empresaNome, marginLeft, y); y += lineHeight;
   doc.text(templateType === 'mmatos' ? `CNPJ: ${template.cnpj}` : template.cnpj, marginLeft, y);
-  y += lineHeight * 3;
+  y += lineHeight * 8;
   
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
   doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += lineHeight;
   doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y);
-  y += lineHeight * 3;
+  y += lineHeight * 8;
   
   // Data do sinal
   checkPageBreak(25);
   setNormal();
-  doc.text(`Data do Sinal: ${data.dataSinal}`, marginLeft, y);
+  doc.text('Data do Sinal: ', marginLeft, y);
+  const dsLabelW = doc.getTextWidth('Data do Sinal: ');
+  setBold();
+  doc.text(data.dataSinal, marginLeft + dsLabelW, y);
+  setNormal();
   y += lineHeight + sectionGap;
   
   // LGPD (justified)
