@@ -169,7 +169,7 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   }
   
   // Title
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('arial', 'bold');
   doc.setFontSize(18);
   doc.text('SINAL DE NEGÓCIO', pageWidth / 2, y, { align: 'center' });
   y += 7;
