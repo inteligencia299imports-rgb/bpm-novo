@@ -712,7 +712,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           onOpenChange={setContratoConsignacaoOpen}
           avaliacao={avaliacao}
         />
-        />
       )}
     </div>
   );
