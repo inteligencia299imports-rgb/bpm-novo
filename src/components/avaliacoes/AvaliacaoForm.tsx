@@ -146,7 +146,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           if (fotosData) setFotos(fotosData);
 
           // Fetch history: avaliacao + consulta (by moto_avaliacao_id) + showroom (by atendimento_id)
-          const [{ data: histAval }, { data: histShowroom }] = await Promise.all([
+          const [{ data: histAval }, { data: histShowroom }, { data: histConsignacao }] = await Promise.all([
             supabase
               .from('status_history')
               .select('*')
@@ -159,8 +159,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               .in('entity_type', ['showroom', 'contrato'])
               .eq('entity_id', data.atendimento_id)
               .order('created_at', { ascending: true }),
+            supabase
+              .from('status_history')
+              .select('*')
+              .eq('entity_type', 'consignacao')
+              .eq('entity_id', data.id)
+              .order('created_at', { ascending: true }),
           ]);
-          const merged = [...(histAval || []), ...(histShowroom || [])].sort(
+          const merged = [...(histAval || []), ...(histShowroom || []), ...(histConsignacao || [])].sort(
             (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
           );
           setHistory(merged);
