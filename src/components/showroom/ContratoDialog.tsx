@@ -115,7 +115,7 @@ interface FormaPagamento {
 const ContratoDialog: React.FC<Props> = ({
   open, onOpenChange, atendimento, motosInteresse, motosAvaliacao, estoqueData, avaliacoes,
 }) => {
-  const { userName } = useAuth();
+  const { userName, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -442,6 +442,19 @@ const ContratoDialog: React.FC<Props> = ({
       }
 
       await generateContratoPdf(pdfData);
+
+      // Registrar no histórico de movimentações
+      if (user) {
+        await supabase.from('status_history').insert({
+          entity_type: 'showroom',
+          entity_id: atendimento.id,
+          status_from: atendimento.situacao,
+          status_to: 'contrato_gerado',
+          changed_by: user.id,
+          changed_by_name: userName || 'Vendedor',
+        });
+      }
+
       toast.success('Contrato gerado com sucesso!');
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
