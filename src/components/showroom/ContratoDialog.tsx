@@ -415,15 +415,23 @@ const ContratoDialog: React.FC<Props> = ({
         dataSinal: dataSinal ? format(dataSinal, "dd/MM/yyyy", { locale: ptBR }) : '',
         dataVencimento: dataVencimento ? format(dataVencimento, "dd/MM/yyyy", { locale: ptBR }) : '',
         formasPagamento: formasPagamento.map(f => {
+          const fmt = (v: number | null | undefined) => v ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ 0,00';
           if (f.tipo === 'financiamento') {
             return {
-              descricao: `Financiamento${f.financeira ? ` (${f.financeira})` : ''} - ${f.numero_parcelas || '?'}x de R$ ${f.valor_parcelas ? f.valor_parcelas.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}`,
-              valor: `R$ ${f.valor_financiado ? f.valor_financiado.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}`,
+              tipo: 'financiamento',
+              descricao: 'Financiamento',
+              valor: fmt(f.valor_financiado),
+              financeira: f.financeira || '',
+              valorEntrada: fmt(f.valor_entrada),
+              numeroParcelas: f.numero_parcelas || 0,
+              valorParcelas: fmt(f.valor_parcelas),
+              valorFinanciado: fmt(f.valor_financiado),
             };
           }
           return {
+            tipo: f.tipo,
             descricao: tipoLabel(f.tipo),
-            valor: `R$ ${f.valor_total ? f.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}`,
+            valor: fmt(f.valor_total),
           };
         }),
       };

@@ -35,7 +35,16 @@ interface ContratoPdfData {
   };
   
   // Formas de pagamento (besides troca)
-  formasPagamento: { descricao: string; valor: string }[];
+  formasPagamento: {
+    tipo: string;
+    descricao: string;
+    valor: string;
+    financeira?: string;
+    valorEntrada?: string;
+    numeroParcelas?: number;
+    valorParcelas?: string;
+    valorFinanciado?: string;
+  }[];
   
   // Observações
   observacoes: string;
@@ -314,11 +323,23 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   
   // Formas de pagamento
   for (const forma of data.formasPagamento) {
-    checkPageBreak(6);
-    setNormal();
-    doc.text(`${forma.descricao}: ${forma.valor}`, marginLeft, y); y += lineHeight;
+    if (forma.tipo === 'financiamento') {
+      checkPageBreak(30);
+      setBold();
+      doc.text('Financiamento', marginLeft, y); y += lineHeight;
+      setNormal();
+      doc.text(`Banco: ${forma.financeira || '-'}`, marginLeft + 5, y); y += lineHeight;
+      doc.text(`Valor de Entrada: ${forma.valorEntrada || '-'}`, marginLeft + 5, y); y += lineHeight;
+      doc.text(`Nº Parcelas: ${forma.numeroParcelas || '-'}`, marginLeft + 5, y); y += lineHeight;
+      doc.text(`Valor Parcelas: ${forma.valorParcelas || '-'}`, marginLeft + 5, y); y += lineHeight;
+      doc.text(`Valor Financiado: ${forma.valorFinanciado || '-'}`, marginLeft + 5, y); y += lineHeight;
+    } else {
+      checkPageBreak(6);
+      setNormal();
+      doc.text(`${forma.descricao}: ${forma.valor}`, marginLeft, y); y += lineHeight;
+    }
+    y += sectionGap; // one line gap between each payment method
   }
-  y += sectionGap;
   
   // OBSERVAÇÕES
   sectionHeader('OBSERVAÇÕES');
