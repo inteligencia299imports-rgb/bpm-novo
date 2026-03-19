@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, Clock, ArrowRight, DollarSign, Store, MessageCircle } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, Clock, DollarSign, Store, MessageCircle, Tag, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { POS_VENDA_COLUMNS } from '@/types/crm';
+import { POS_VENDA_COLUMNS, INTERESSES } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Props {
   item: any;
@@ -20,6 +21,7 @@ interface Props {
 const formatPhone = (value: string): string => {
   const digits = value.replace(/\D/g, '');
   if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   return value;
 };
 
@@ -36,29 +38,102 @@ const formatCurrency = (value: number | null | undefined) => {
 };
 
 const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div>
-    <span className="text-xs text-muted-foreground">{label}</span>
-    <p className="text-sm font-medium">{value || '-'}</p>
-  </div>
+  value ? (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
+      <span className="text-sm font-semibold">{value || '-'}</span>
+    </div>
+  ) : null
 );
 
 const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
+  const [motosInteresse, setMotosInteresse] = useState<any[]>([]);
+  const [motosAvaliacao, setMotosAvaliacao] = useState<any[]>([]);
+  const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
+  const [estoqueData, setEstoqueData] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+  const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
+
   const moto = item.motos_avaliacao?.[0];
   const [cnhUrl, setCnhUrl] = useState<string | null>(item.cnh_url || null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto?.crlv_url || null);
   const statusCol = POS_VENDA_COLUMNS.find(c => c.value === (item.pos_venda_status || 'em_aberto'));
-  const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
+  const int = INTERESSES.find(i => i.value === item.interesse);
   const whatsappUrl = item.telefone ? `https://wa.me/55${item.telefone.replace(/\D/g, '')}` : '';
 
   useEffect(() => {
-    supabase
-      .from('status_history')
-      .select('*')
-      .eq('entity_type', 'pos_venda')
-      .eq('entity_id', item.id)
-      .order('created_at', { ascending: true })
-      .then(({ data }) => setHistory(data || []));
+    const fetchRelated = async () => {
+      setLoading(true);
+
+      // Fetch motos interesse, motos avaliacao, avaliacoes
+      const [resInt, resAv, resAval] = await Promise.all([
+        supabase.from('motos_interesse').select('*').eq('atendimento_id', item.id),
+        supabase.from('motos_avaliacao').select('*').eq('atendimento_id', item.id),
+        supabase.from('avaliacoes').select('*').eq('atendimento_id', item.id),
+      ]);
+
+      const motosInt = resInt.data || [];
+      setMotosInteresse(motosInt);
+
+      // Fetch estoque data for motos from stock
+      const estoqueIds = motosInt.filter((m: any) => m.origem === 'estoque' && m.estoque_moto_id).map((m: any) => m.estoque_moto_id!);
+      if (estoqueIds.length > 0) {
+        const { data: estoqueItems } = await supabase.from('estoque').select('*').in('id', estoqueIds);
+        const estoqueMap: Record<string, any> = {};
+        if (estoqueItems) {
+          for (const est of estoqueItems) estoqueMap[est.id] = est;
+        }
+        setEstoqueData(estoqueMap);
+      }
+
+      const motosAv = resAv.data || [];
+      setMotosAvaliacao(motosAv);
+
+      // Map avaliacoes by moto_avaliacao_id + fetch avaliador names
+      const avalMap: Record<string, any> = {};
+      if (resAval.data && resAval.data.length > 0) {
+        const avaliadorIds = [...new Set(resAval.data.map((av: any) => av.avaliador_id).filter(Boolean))];
+        let avaliadorNames: Record<string, string> = {};
+        if (avaliadorIds.length > 0) {
+          const { data: roles } = await supabase.from('user_roles').select('user_id, nome').in('user_id', avaliadorIds);
+          if (roles) for (const r of roles) avaliadorNames[r.user_id] = r.nome;
+        }
+        for (const av of resAval.data) {
+          avalMap[(av as any).moto_avaliacao_id] = { ...av, avaliador_nome: avaliadorNames[(av as any).avaliador_id] || null };
+        }
+      }
+      setAvaliacoes(avalMap);
+
+      // Fetch full integrated history
+      const motoIds = motosAv.map((m: any) => m.id);
+      const avalIds = resAval.data?.map((av: any) => av.id) || [];
+
+      const histPromises = [
+        supabase.from('status_history').select('*').eq('entity_type', 'showroom').eq('entity_id', item.id).order('created_at', { ascending: true }),
+        supabase.from('status_history').select('*').in('entity_type', ['contrato']).eq('entity_id', item.id).order('created_at', { ascending: true }),
+        supabase.from('status_history').select('*').eq('entity_type', 'pos_venda').eq('entity_id', item.id).order('created_at', { ascending: true }),
+      ];
+      if (motoIds.length > 0) {
+        histPromises.push(
+          supabase.from('status_history').select('*').eq('entity_type', 'consulta').in('entity_id', motoIds).order('created_at', { ascending: true }),
+          supabase.from('status_history').select('*').eq('entity_type', 'avaliacao').in('entity_id', motoIds).order('created_at', { ascending: true }),
+        );
+      }
+      if (avalIds.length > 0) {
+        histPromises.push(
+          supabase.from('status_history').select('*').eq('entity_type', 'consignacao').in('entity_id', avalIds).order('created_at', { ascending: true }),
+        );
+      }
+
+      const results = await Promise.all(histPromises);
+      const allHistory = results.flatMap(r => r.data || []);
+      allHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      setHistory(allHistory);
+
+      setLoading(false);
+    };
+    fetchRelated();
   }, [item.id]);
 
   return (
@@ -72,7 +147,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg sm:text-xl font-bold truncate">{item.nome_cliente}</h1>
-              {statusCol && <Badge className={`text-[10px] shrink-0`} style={{ backgroundColor: `${statusCol.hex}20`, color: statusCol.hex }}>{statusCol.label}</Badge>}
+              {statusCol && <Badge className="text-[10px] shrink-0" style={{ backgroundColor: `${statusCol.hex}20`, color: statusCol.hex }}>{statusCol.label}</Badge>}
             </div>
             <p className="text-xs text-muted-foreground">
               {format(new Date(item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
@@ -95,10 +170,10 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={item.nome_cliente} />
-                <div>
-                  <span className="text-xs text-muted-foreground">Telefone</span>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Telefone</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium">{formatPhone(item.telefone)}</span>
+                    <span className="text-sm font-semibold">{formatPhone(item.telefone)}</span>
                     {whatsappUrl && (
                       <button onClick={() => window.open(whatsappUrl, '_blank')} className="text-green-600 hover:text-green-700 transition-colors" title="Abrir WhatsApp">
                         <MessageCircle className="h-4 w-4" />
@@ -106,7 +181,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                     )}
                   </div>
                 </div>
-                <InfoItem label="Loja" value={item.loja} />
+                <InfoItem label="Sexo" value={item.sexo} />
                 <InfoItem label="UF" value={item.uf} />
               </div>
               <Separator className="my-2" />
@@ -126,43 +201,197 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
             </CardContent>
           </Card>
 
-          {/* Dados da Moto */}
-          {moto && (
+          {/* Dados do Atendimento */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Store className="h-4 w-4 text-primary" /> Dados do Atendimento
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <InfoItem label="Loja" value={item.loja} />
+                <InfoItem label="Tipo de Atendimento" value={item.tipo_atendimento} />
+                <InfoItem label="Interesse" value={int?.label} />
+                <InfoItem label="Origem" value={item.origem} />
+                <InfoItem label="Temperatura" value={item.temperatura} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Moto de Interesse (a moto vendida do estoque) */}
+          {motosInteresse.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Bike className="h-4 w-4 text-primary" /> Dados da Moto
+                  <Bike className="h-4 w-4 text-primary" /> Moto de Interesse
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <InfoItem label="Marca / Modelo" value={`${moto.marca} ${(moto.modelo || '').toUpperCase()}`} />
-                  {moto.placa && <InfoItem label="Placa" value={moto.placa.replace(/-/g, '')} />}
-                  {moto.km && <InfoItem label="KM" value={formatKm(moto.km)} />}
-                  {ano && <InfoItem label="Ano" value={ano} />}
-                  {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
-                  {moto.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{moto.categoria}</span>} />}
-                </div>
-                {moto.observacoes && (
-                  <>
-                    <Separator className="my-3" />
-                    <p className="text-xs text-muted-foreground italic">{moto.observacoes}</p>
-                  </>
-                )}
-                <Separator className="my-2" />
-                <DocumentUpload
-                  label="CRLV"
-                  currentUrl={crlvUrl}
-                  bucketPath={`docs/${moto.id}/crlv`}
-                  onUploaded={async (url) => {
-                    await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
-                    setCrlvUrl(url);
-                  }}
-                  onRemoved={async () => {
-                    await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
-                    setCrlvUrl(null);
-                  }}
-                />
+              <CardContent>
+                {motosInteresse.map((mi: any, idx: number) => {
+                  const isEstoque = mi.origem === 'estoque' && mi.estoque_moto_id;
+                  const estItem = isEstoque ? estoqueData[mi.estoque_moto_id!] : null;
+                  return (
+                    <div key={mi.id} className="space-y-3">
+                      {idx > 0 && <Separator className="my-3" />}
+                      {estItem ? (
+                        <>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-semibold text-foreground">{estItem.marca} {estItem.modelo}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {[estItem.ano_fabricacao, estItem.ano_modelo].filter(Boolean).join('/')}
+                                {estItem.cilindrada ? ` · ${estItem.cilindrada}cc` : ''}
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="text-xs">Estoque</Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                            {estItem.placa && (
+                              <>
+                                <span className="text-muted-foreground">Placa</span>
+                                <span className="font-medium text-foreground">{estItem.placa.replace(/-/g, '')}</span>
+                              </>
+                            )}
+                            {estItem.cor && (
+                              <>
+                                <span className="text-muted-foreground">Cor</span>
+                                <span className="text-foreground">{estItem.cor}</span>
+                              </>
+                            )}
+                            {estItem.categoria && (
+                              <>
+                                <span className="text-muted-foreground">Categoria</span>
+                                <span className="text-foreground">{estItem.categoria}</span>
+                              </>
+                            )}
+                            {estItem.km && (
+                              <>
+                                <span className="text-muted-foreground">KM</span>
+                                <span className="text-foreground">{estItem.km}</span>
+                              </>
+                            )}
+                            <span className="text-muted-foreground">Tipo</span>
+                            <span className="text-foreground capitalize">{estItem.tipo === 'propria' ? 'Própria' : 'Consignada'}</span>
+                            {estItem.empresa && (
+                              <>
+                                <span className="text-muted-foreground">Empresa</span>
+                                <span className="text-foreground">{estItem.empresa}</span>
+                              </>
+                            )}
+                          </div>
+                          {/* Prices */}
+                          <div className="pt-2 border-t border-border space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Preço</p>
+                                <p className="font-semibold text-foreground">{formatCurrency(estItem.preco)}</p>
+                              </div>
+                              {estItem.preco_acao != null && (
+                                <div className="text-right">
+                                  <p className="text-xs text-muted-foreground">Preço Ação</p>
+                                  <p className="font-semibold text-green-600">{formatCurrency(estItem.preco_acao)}</p>
+                                </div>
+                              )}
+                            </div>
+                            {item.valor_venda != null && (
+                              <>
+                                <Separator />
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">Valor de Venda</p>
+                                    <p className="font-semibold text-primary">{formatCurrency(item.valor_venda)}</p>
+                                  </div>
+                                  {estItem.preco_acao != null && (
+                                    <div className="text-right">
+                                      <p className="text-xs text-muted-foreground">Diferença (Venda - Ação)</p>
+                                      {(() => {
+                                        const diff = (item.valor_venda || 0) - (estItem.preco_acao || 0);
+                                        return (
+                                          <p className={`font-semibold ${diff >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                                            {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
+                                          </p>
+                                        );
+                                      })()}
+                                    </div>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          {estItem.observacoes && (
+                            <p className="text-xs text-muted-foreground italic">{estItem.observacoes}</p>
+                          )}
+                        </>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-4">
+                          <InfoItem label="Origem" value="Externo" />
+                          <InfoItem label="Marca" value={mi.marca} />
+                          <InfoItem label="Modelo" value={mi.modelo} />
+                          <InfoItem label="Ano" value={mi.ano} />
+                          {mi.chassi && <InfoItem label="Chassi" value={mi.chassi} />}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Moto do Cliente (troca) */}
+          {motosAvaliacao.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-primary" /> Moto do Cliente
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {motosAvaliacao.map((ma: any, idx: number) => {
+                  const av = avaliacoes[ma.id];
+                  const ano = [ma.ano_fabricacao, ma.ano_modelo].filter(Boolean).join('/');
+                  return (
+                    <div key={ma.id} className="space-y-3">
+                      {idx > 0 && <Separator className="my-3" />}
+                      <div className="grid grid-cols-2 gap-4">
+                        <InfoItem label="Marca" value={ma.marca} />
+                        <InfoItem label="Modelo" value={(ma.modelo || '').toUpperCase()} />
+                        <InfoItem label="Ano" value={ano} />
+                        <InfoItem label="Cor" value={ma.cor} />
+                        <InfoItem label="Placa" value={ma.placa?.replace(/-/g, '')} />
+                        <InfoItem label="KM" value={formatKm(ma.km)} />
+                        <InfoItem label="Categoria" value={ma.categoria} />
+                      </div>
+                      {ma.observacoes && (
+                        <div className="mt-2">
+                          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações da Moto</span>
+                          <p className="text-sm mt-1">{ma.observacoes}</p>
+                        </div>
+                      )}
+                      {/* Avaliação summary */}
+                      {av && av.situacao !== 'sem_avaliar' && (
+                        <div className="mt-2">
+                          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setViewAvaliacaoData(av)}>
+                            <Eye className="h-4 w-4" /> Ver Avaliação
+                          </Button>
+                        </div>
+                      )}
+                      <Separator className="my-2" />
+                      <DocumentUpload
+                        label="CRLV"
+                        currentUrl={ma.crlv_url || null}
+                        bucketPath={`docs/${ma.id}/crlv`}
+                        onUploaded={async (url) => {
+                          await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', ma.id);
+                        }}
+                        onRemoved={async () => {
+                          await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', ma.id);
+                        }}
+                      />
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           )}
@@ -198,7 +427,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
             </Card>
           )}
 
-          {/* Histórico */}
+          {/* Histórico de Movimentações */}
           <Card className="md:col-span-2">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -215,6 +444,54 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
           </Card>
         </div>
       </ScrollArea>
+
+      {/* Avaliação Popup */}
+      <Dialog open={!!viewAvaliacaoData} onOpenChange={() => setViewAvaliacaoData(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-primary" /> Resultado da Avaliação
+            </DialogTitle>
+          </DialogHeader>
+          {viewAvaliacaoData && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <InfoItem label="Valor FIPE" value={formatCurrency(viewAvaliacaoData.valor_fipe)} />
+                <InfoItem label="Menor Valor" value={formatCurrency(viewAvaliacaoData.menor_valor)} />
+                <InfoItem label="Maior Valor" value={formatCurrency(viewAvaliacaoData.maior_valor)} />
+                <InfoItem label="Quanto Pede" value={formatCurrency(viewAvaliacaoData.quanto_pede)} />
+                <InfoItem label="Quanto Vende" value={formatCurrency(viewAvaliacaoData.quanto_vende)} />
+                <InfoItem label="Avaliação Compra" value={formatCurrency(viewAvaliacaoData.avaliacao_compra)} />
+                <InfoItem label="Custos Cliente" value={formatCurrency(viewAvaliacaoData.previsao_custos_cliente)} />
+                <InfoItem label="Custos Loja" value={formatCurrency(viewAvaliacaoData.previsao_custos_loja)} />
+                {viewAvaliacaoData.avaliacao_compra != null && viewAvaliacaoData.previsao_custos_loja != null && (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
+                    <span className="text-sm font-bold text-primary">
+                      {formatCurrency((viewAvaliacaoData.avaliacao_compra ?? 0) - (viewAvaliacaoData.previsao_custos_loja ?? 0))}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {viewAvaliacaoData.observacao_avaliador && (
+                <>
+                  <Separator />
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações do Avaliador</span>
+                    <p className="text-sm mt-1">{viewAvaliacaoData.observacao_avaliador}</p>
+                  </div>
+                </>
+              )}
+              {viewAvaliacaoData.avaliador_nome && (
+                <div>
+                  <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Avaliador</span>
+                  <p className="text-sm font-medium">{viewAvaliacaoData.avaliador_nome}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
