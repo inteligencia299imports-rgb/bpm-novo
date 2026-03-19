@@ -1,0 +1,1 @@
+ALTER TABLE public.motos_interesse ADD COLUMN chassi text NULL;
