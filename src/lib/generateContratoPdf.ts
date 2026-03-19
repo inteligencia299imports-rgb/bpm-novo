@@ -242,7 +242,14 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   // RECIBO DE SINAL DE NEGÓCIO (justified)
   sectionHeader('RECIBO DE SINAL DE NEGÓCIO');
   setNormal();
-  const reciboText = `Recebemos o valor de ${data.valorSinal} a título de sinal de negócio, referente a compra de uma motocicleta descrita nas condições de negócio, reconhecido neste documento no campo "comprador" e assinando no campo "assinatura do cliente" declarando para os devidos fins que efetuei o sinal de negócio do veículo acima descrito no campo "condições da venda", e me comprometo a efetuar o pagamento do valor restante até o dia ${data.dataVencimento} conforme as condições da venda descritas neste recibo, o comprador também declara, estar ciente que o prazo para entrega da moto é de até 7 dias úteis após ter efetuado o pagamento total da mesma.`;
+  // Build recibo with bold inline values
+  setNormal();
+  const reciboPart1 = 'Recebemos o valor de ';
+  const reciboPart2 = data.valorSinal;
+  const reciboPart3 = ' a título de sinal de negócio, referente a compra de uma motocicleta descrita nas condições de negócio, reconhecido neste documento no campo "comprador" e assinando no campo "assinatura do cliente" declarando para os devidos fins que efetuei o sinal de negócio do veículo acima descrito no campo "condições da venda", e me comprometo a efetuar o pagamento do valor restante até o dia ';
+  const reciboPart4 = data.dataVencimento;
+  const reciboPart5 = ' conforme as condições da venda descritas neste recibo, o comprador também declara, estar ciente que o prazo para entrega da moto é de até 7 dias úteis após ter efetuado o pagamento total da mesma.';
+  const reciboText = reciboPart1 + reciboPart2 + reciboPart3 + reciboPart4 + reciboPart5;
   checkPageBreak(40);
   y = drawJustifiedText(doc, reciboText, marginLeft, contentWidth, y, lineHeight);
   y += sectionGap;
