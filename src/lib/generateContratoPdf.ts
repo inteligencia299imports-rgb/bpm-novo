@@ -215,6 +215,11 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
     doc.setFontSize(fontSize);
   };
   
+  const setBold = () => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(fontSize);
+  };
+  
   // COMPRADOR
   sectionHeader('COMPRADOR');
   setNormal();
