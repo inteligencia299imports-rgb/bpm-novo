@@ -400,9 +400,20 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               {estItem.cilindrada ? ` · ${estItem.cilindrada}cc` : ''}
                             </p>
                           </div>
-                          <Badge variant="outline" className="text-xs">Estoque</Badge>
+                          {atendimento.loja?.toLowerCase() !== 'ducati' && (
+                            <Badge variant="outline" className="text-xs">Estoque</Badge>
+                          )}
                         </div>
-                        {/* Details grid like estoque card */}
+                        {atendimento.loja?.toLowerCase() === 'ducati' ? (
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                            {moto.chassi && (
+                              <>
+                                <span className="text-muted-foreground">Chassi</span>
+                                <span className="font-medium text-foreground">{moto.chassi}</span>
+                              </>
+                            )}
+                          </div>
+                        ) : (
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                           {estItem.placa && (
                             <>
@@ -437,6 +448,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             </>
                           )}
                         </div>
+                        )}
                         {/* Prices section */}
                         <div className="pt-2 border-t border-border space-y-2">
                           <div className="flex items-center justify-between">
@@ -482,10 +494,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       </>
                     ) : (
                     <div className="grid grid-cols-2 gap-4">
-                      <InfoItem label="Origem" value="Externo" />
+                      {atendimento.loja?.toLowerCase() !== 'ducati' && <InfoItem label="Origem" value="Externo" />}
                       <InfoItem label="Marca" value={moto.marca} />
                       <InfoItem label="Modelo" value={moto.modelo} />
                       <InfoItem label="Ano" value={moto.ano} />
+                      {atendimento.loja?.toLowerCase() === 'ducati' && moto.chassi && <InfoItem label="Chassi" value={moto.chassi} />}
                     </div>
                     )}
                   </div>
