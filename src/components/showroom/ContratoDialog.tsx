@@ -449,7 +449,7 @@ const ContratoDialog: React.FC<Props> = ({
           entity_type: 'showroom',
           entity_id: atendimento.id,
           status_from: atendimento.situacao,
-          status_to: 'contrato_gerado',
+          status_to: 'contrato_de_sinal',
           changed_by: user.id,
           changed_by_name: userName || 'Vendedor',
         });
