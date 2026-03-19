@@ -361,15 +361,13 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 ))}
               </div>
             </div>
-            {!isDucati && (
-              <div className="space-y-1.5">
-                <Label>Origem *</Label>
-                <Select value={origem} onValueChange={setOrigem}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <Label>Origem *</Label>
+              <Select value={origem} onValueChange={setOrigem}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>Temperatura *</Label>
