@@ -60,7 +60,7 @@ const parseCurrencyInput = (value: string): number => {
   return parseInt(digits || '0', 10) / 100;
 };
 
-const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted }) => {
+const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted, onStatusUpdated }) => {
   const { user, userName } = useAuth();
   const [motosInteresse, setMotosInteresse] = useState<MotoInteresse[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<MotoAvaliacao[]>([]);
