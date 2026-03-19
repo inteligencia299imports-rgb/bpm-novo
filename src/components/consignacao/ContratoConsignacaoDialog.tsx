@@ -257,6 +257,50 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     }
   };
 
+  const handleVisualizar = async (comPercentual?: number) => {
+    setGenerating(true);
+    try {
+      const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
+      const formatCurrencyValue = (val: string) => {
+        const num = parseCurrencyInput(val);
+        return num ? num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
+      };
+
+      await generateContratoConsignacaoPdf({
+        nomeCliente: atendimento?.nome_cliente || '',
+        telefone: (() => {
+          const t = atendimento?.telefone || '';
+          const digits = t.replace(/\D/g, '');
+          if (digits.length === 11) return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+          if (digits.length === 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+          return t;
+        })(),
+        cpfCnpj: cpfCnpj || '-',
+        email: email || '-',
+        endereco: endereco || '-',
+        cep: cep || '-',
+        marca: moto?.marca || '',
+        modelo: moto?.modelo || '',
+        anoFabMod: ano || '-',
+        placa: moto?.placa?.replace(/-/g, '') || '-',
+        km: moto?.km || '-',
+        valorQuitacao: formatCurrencyValue(valorQuitacao),
+        valorNegociado: formatCurrencyValue(valorFechamento),
+        observacoes: obsContrato || '',
+        valorFechamento: formatCurrencyValue(valorFechamento),
+        dataContrato: dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : '-',
+        comPercentual5: !!comPercentual,
+      });
+
+      toast.success('PDF visualizado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao visualizar contrato:', err);
+      toast.error('Erro ao visualizar o contrato');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
 
   return (
