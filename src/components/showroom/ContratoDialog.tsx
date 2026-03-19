@@ -159,6 +159,9 @@ const ContratoDialog: React.FC<Props> = ({
   // Other payment valor
   const [outroValor, setOutroValor] = useState('');
 
+  const [sinalCalOpen, setSinalCalOpen] = useState(false);
+  const [vencCalOpen, setVencCalOpen] = useState(false);
+
   const hasTroca = atendimento.interesse === 'trocar' && motosAvaliacao.length > 0;
 
   // Load existing contract data
