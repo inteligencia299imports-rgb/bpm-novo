@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText } from 'lucide-react';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
 import type { SituacaoAvaliacao, MotoFoto } from '@/types/crm';
@@ -87,6 +88,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [avaliacao, setAvaliacao] = useState<any>(null);
   const [fotos, setFotos] = useState<MotoFoto[]>([]);
   const [showEvalDialog, setShowEvalDialog] = useState(false);
+  const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
@@ -321,6 +323,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               {avaliacao?.created_at && format(new Date(avaliacao.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
+          {avaliacao?.situacao === 'adquirida' && avaliacao?.tipo_aquisicao === 'consignada' && (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
+                <FileText className="h-4 w-4" /> Contrato
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -696,6 +705,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {avaliacao?.situacao === 'adquirida' && avaliacao?.tipo_aquisicao === 'consignada' && (
+        <ContratoConsignacaoDialog
+          open={contratoConsignacaoOpen}
+          onOpenChange={setContratoConsignacaoOpen}
+          avaliacao={avaliacao}
+        />
+      )}
     </div>
   );
 };
