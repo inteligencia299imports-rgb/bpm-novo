@@ -364,11 +364,11 @@ const ContratoDialog: React.FC<Props> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-8rem)] px-6">
+        <ScrollArea className="max-h-[calc(90vh-8rem)]">
           {loading ? (
-            <div className="py-12 text-center text-muted-foreground">Carregando...</div>
+            <div className="py-12 text-center text-muted-foreground px-6">Carregando...</div>
           ) : (
-            <div className="space-y-8 pb-6">
+            <div className="space-y-8 pb-6 px-6">
               {/* DADOS DO CLIENTE */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Dados do Cliente</h3>
