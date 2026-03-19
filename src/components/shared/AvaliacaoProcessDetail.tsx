@@ -257,6 +257,14 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           </Card>
         </div>
       </ScrollArea>
+
+      {entityType === 'consignacao' && (
+        <ContratoConsignacaoDialog
+          open={contratoConsignacaoOpen}
+          onOpenChange={setContratoConsignacaoOpen}
+          avaliacao={item}
+        />
+      )}
     </div>
   );
 };
