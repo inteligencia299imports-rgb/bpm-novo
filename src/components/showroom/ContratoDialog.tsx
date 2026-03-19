@@ -9,13 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, PlusCircle } from 'lucide-react';
+import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, PlusCircle, Download } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { Atendimento, MotoInteresse, MotoAvaliacao } from '@/types/crm';
+import { generateContratoPdf, type ContratoPdfData } from '@/lib/generateContratoPdf';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
   open: boolean;
