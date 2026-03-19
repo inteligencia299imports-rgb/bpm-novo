@@ -708,7 +708,7 @@ const ContratoDialog: React.FC<Props> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-foreground">Data do Sinal</label>
-                    <Popover>
+                    <Popover open={sinalCalOpen} onOpenChange={setSinalCalOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !dataSinal && "text-muted-foreground")}>
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -718,9 +718,7 @@ const ContratoDialog: React.FC<Props> = ({
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar mode="single" selected={dataSinal} onSelect={setDataSinal} initialFocus className="p-3 pointer-events-auto" />
                         <div className="border-t p-2 flex justify-end">
-                          <PopoverClose asChild>
-                            <Button size="sm" disabled={!dataSinal}>OK</Button>
-                          </PopoverClose>
+                          <Button size="sm" disabled={!dataSinal} onClick={() => setSinalCalOpen(false)}>OK</Button>
                         </div>
                       </PopoverContent>
                     </Popover>
