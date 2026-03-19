@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText } from 'lucide-react';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
+import StatusTimeline from '@/components/shared/StatusTimeline';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
 import type { SituacaoAvaliacao, MotoFoto } from '@/types/crm';
 import { toast } from 'sonner';
@@ -95,6 +96,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [consultaRealizada, setConsultaRealizada] = useState(false);
   const [consultaSolicitada, setConsultaSolicitada] = useState(false);
   const canEdit = role === 'avaliador' || role === 'gestor' || role === 'vendedor';
+  const [history, setHistory] = useState<any[]>([]);
 
   // form fields (stored as masked strings)
   const [valorFipe, setValorFipe] = useState('');
@@ -142,6 +144,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         if (data.moto_avaliacao_id) {
           const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', data.moto_avaliacao_id);
           if (fotosData) setFotos(fotosData);
+
+          const { data: histData } = await supabase
+            .from('status_history')
+            .select('*')
+            .eq('entity_type', 'avaliacao')
+            .eq('entity_id', data.moto_avaliacao_id)
+            .order('created_at', { ascending: true });
+          if (histData) setHistory(histData);
         }
       }
       setLoading(false);
@@ -554,7 +564,18 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </CardContent>
           </Card>
 
-          {/* Status Actions */}
+          {/* Histórico de Movimentações */}
+          <Card className="md:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" /> Histórico de Movimentações
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StatusTimeline history={history} />
+            </CardContent>
+          </Card>
+
           <div className="md:col-span-2 flex flex-col items-center gap-3">
             <div className="flex gap-2 flex-wrap justify-center">
               {statusButtons.map(btn => (
