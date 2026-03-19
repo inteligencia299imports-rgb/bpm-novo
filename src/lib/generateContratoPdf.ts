@@ -60,12 +60,12 @@ const TEMPLATES: Record<TemplateType, {
   fag: {
     empresaNome: 'FAG SOLUCOES E COMERCIO DE VEICULOS LTDA',
     cnpj: '49.580.035/0001-36',
-    logoPath: '/logos/299-logo.png',
+    logoPath: '/logos/299-logo.jpg',
   },
   mmatos: {
     empresaNome: 'MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA',
     cnpj: '21.194.795/0001-96',
-    logoPath: '/logos/299-logo.png',
+    logoPath: '/logos/299-logo.jpg',
   },
 };
 
@@ -92,6 +92,39 @@ async function loadImage(path: string): Promise<string> {
   });
 }
 
+// Justified text helper
+function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number, y: number, lineHeight: number): number {
+  const lines = doc.splitTextToSize(text, maxWidth);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isLastLine = i === lines.length - 1;
+    
+    if (isLastLine || !line.trim()) {
+      // Last line: left-aligned
+      doc.text(line, x, y);
+    } else {
+      // Justify: distribute words across the line
+      const words = line.split(/\s+/);
+      if (words.length <= 1) {
+        doc.text(line, x, y);
+      } else {
+        const lineWidthNatural = doc.getTextWidth(line.replace(/\s+/g, ' '));
+        const wordsWidth = words.reduce((sum: number, w: string) => sum + doc.getTextWidth(w), 0);
+        const totalSpaceWidth = maxWidth - wordsWidth;
+        const spaceWidth = totalSpaceWidth / (words.length - 1);
+        
+        let currentX = x;
+        for (let j = 0; j < words.length; j++) {
+          doc.text(words[j], currentX, y);
+          currentX += doc.getTextWidth(words[j]) + spaceWidth;
+        }
+      }
+    }
+    y += lineHeight;
+  }
+  return y;
+}
+
 export async function generateContratoPdf(data: ContratoPdfData): Promise<void> {
   const templateType = getTemplateType(data.loja, data.empresaMotoInteresse);
   const template = TEMPLATES[templateType];
@@ -101,42 +134,46 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   const marginLeft = 25;
   const marginRight = 25;
   const contentWidth = pageWidth - marginLeft - marginRight;
+  const fontSize = 9;
+  const lineHeight = 4; // line spacing for font size 9
+  const sectionGap = lineHeight; // one extra line between sections
   let y = 15;
   
   // Load and add logo
   try {
     const logoData = await loadImage(template.logoPath);
-    const logoWidth = templateType === 'ducati' ? 25 : 35;
-    const logoHeight = templateType === 'ducati' ? 30 : 20;
+    // Ducati: ~20x24mm shield, 299: ~30x15mm horizontal logo (matching PDF sizes)
+    const logoWidth = templateType === 'ducati' ? 20 : 30;
+    const logoHeight = templateType === 'ducati' ? 24 : 15;
     doc.addImage(logoData, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
-    y += logoHeight + 5;
+    y += logoHeight + 3;
   } catch {
     y += 10;
   }
   
   // Title
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
+  doc.setFontSize(20);
   doc.text('SINAL DE NEGÓCIO', pageWidth / 2, y, { align: 'center' });
-  y += 8;
+  y += 7;
   
   // Company info
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(fontSize);
   doc.text(template.empresaNome, pageWidth / 2, y, { align: 'center' });
-  y += 4;
+  y += lineHeight;
   doc.text(`CNPJ: ${template.cnpj}`, pageWidth / 2, y, { align: 'center' });
-  y += 4;
+  y += lineHeight;
   doc.text('SCIA Quadra 15 Conjunto 3, Nº 6, Loja 6 - 71250-015 - Brasília, DF', pageWidth / 2, y, { align: 'center' });
-  y += 4;
+  y += lineHeight;
   doc.text('Telefone: (61) 3710-5687', pageWidth / 2, y, { align: 'center' });
-  y += 6;
+  y += lineHeight + 2;
   
   // Line separator
   doc.setDrawColor(0);
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, pageWidth - marginRight, y);
-  y += 10;
+  y += sectionGap * 2;
   
   // Helper to check page break
   const checkPageBreak = (neededSpace: number) => {
@@ -148,91 +185,89 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   
   // Section header helper
   const sectionHeader = (title: string) => {
-    checkPageBreak(15);
+    checkPageBreak(10);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(fontSize);
     doc.text(title, marginLeft, y);
-    y += 6;
+    y += lineHeight;
+  };
+  
+  // Set default font
+  const setNormal = () => {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fontSize);
   };
   
   // COMPRADOR
   sectionHeader('COMPRADOR');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += 5;
-  doc.text(`Telefone: ${data.telefone}`, marginLeft, y); y += 5;
-  doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y); y += 8;
+  setNormal();
+  doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += lineHeight;
+  doc.text(`Telefone: ${data.telefone}`, marginLeft, y); y += lineHeight;
+  doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y); y += lineHeight + sectionGap;
   
   // VENDEDOR
   sectionHeader('VENDEDOR: ' + data.vendedorNome);
-  y += 4;
+  y += sectionGap;
   
   // OBJETO
   sectionHeader('OBJETO');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(`Marca: ${data.produtoMarca}`, marginLeft, y); y += 5;
-  doc.text(`Modelo: ${data.produtoModelo}`, marginLeft, y); y += 5;
-  doc.text(`Fab/Mod: ${data.produtoAnoFabMod}`, marginLeft, y); y += 5;
-  doc.text(`Placa/Chassi: ${data.produtoPlacaChassi}`, marginLeft, y); y += 8;
+  setNormal();
+  doc.text(`Marca: ${data.produtoMarca}`, marginLeft, y); y += lineHeight;
+  doc.text(`Modelo: ${data.produtoModelo}`, marginLeft, y); y += lineHeight;
+  doc.text(`Fab/Mod: ${data.produtoAnoFabMod}`, marginLeft, y); y += lineHeight;
+  doc.text(`Placa/Chassi: ${data.produtoPlacaChassi}`, marginLeft, y); y += lineHeight + sectionGap;
   
-  // RECIBO DE SINAL DE NEGÓCIO
+  // RECIBO DE SINAL DE NEGÓCIO (justified)
   sectionHeader('RECIBO DE SINAL DE NEGÓCIO');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  setNormal();
   const reciboText = `Recebemos o valor de ${data.valorSinal} a título de sinal de negócio, referente a compra de uma motocicleta descrita nas condições de negócio, reconhecido neste documento no campo "comprador" e assinando no campo "assinatura do cliente" declarando para os devidos fins que efetuei o sinal de negócio do veículo acima descrito no campo "condições da venda", e me comprometo a efetuar o pagamento do valor restante até o dia ${data.dataVencimento} conforme as condições da venda descritas neste recibo, o comprador também declara, estar ciente que o prazo para entrega da moto é de até 7 dias úteis após ter efetuado o pagamento total da mesma.`;
-  const reciboLines = doc.splitTextToSize(reciboText, contentWidth);
-  checkPageBreak(reciboLines.length * 5 + 5);
-  doc.text(reciboLines, marginLeft, y);
-  y += reciboLines.length * 5 + 8;
+  checkPageBreak(40);
+  y = drawJustifiedText(doc, reciboText, marginLeft, contentWidth, y, lineHeight);
+  y += sectionGap;
   
   // CONDIÇÕES DA VENDA
   sectionHeader('CONDIÇÕES DA VENDA');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(`Valor da Venda: ${data.valorVenda}, sendo:`, marginLeft, y); y += 7;
+  setNormal();
+  doc.text(`Valor da Venda: ${data.valorVenda}, sendo:`, marginLeft, y); y += lineHeight + sectionGap;
   
   // Moto troca
   if (data.troca) {
-    checkPageBreak(45);
+    checkPageBreak(35);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text('Moto na Troca:', marginLeft, y); y += 5;
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Marca: ${data.troca.marca}`, marginLeft + 5, y); y += 5;
-    doc.text(`Modelo: ${data.troca.modelo}`, marginLeft + 5, y); y += 5;
-    doc.text(`Fab/Mod: ${data.troca.anoFabMod}`, marginLeft + 5, y); y += 5;
-    doc.text(`Placa/Chassi: ${data.troca.placaChassi}`, marginLeft + 5, y); y += 5;
-    doc.text(`Km: ${data.troca.km}`, marginLeft + 5, y); y += 5;
-    doc.text(`Valor de Quitação: ${data.troca.valorQuitacao}`, marginLeft + 5, y); y += 5;
-    doc.text(`Valor Negociado: ${data.troca.valorNegociado}`, marginLeft + 5, y); y += 7;
+    doc.setFontSize(fontSize);
+    doc.text('Moto na Troca:', marginLeft, y); y += lineHeight;
+    setNormal();
+    doc.text(`Marca: ${data.troca.marca}`, marginLeft + 5, y); y += lineHeight;
+    doc.text(`Modelo: ${data.troca.modelo}`, marginLeft + 5, y); y += lineHeight;
+    doc.text(`Fab/Mod: ${data.troca.anoFabMod}`, marginLeft + 5, y); y += lineHeight;
+    doc.text(`Placa/Chassi: ${data.troca.placaChassi}`, marginLeft + 5, y); y += lineHeight;
+    doc.text(`Km: ${data.troca.km}`, marginLeft + 5, y); y += lineHeight;
+    doc.text(`Valor de Quitação: ${data.troca.valorQuitacao}`, marginLeft + 5, y); y += lineHeight;
+    doc.text(`Valor Negociado: ${data.troca.valorNegociado}`, marginLeft + 5, y); y += lineHeight + sectionGap;
   }
   
   // Formas de pagamento
   for (const forma of data.formasPagamento) {
-    checkPageBreak(8);
-    doc.text(`${forma.descricao}: ${forma.valor}`, marginLeft, y); y += 5;
+    checkPageBreak(6);
+    setNormal();
+    doc.text(`${forma.descricao}: ${forma.valor}`, marginLeft, y); y += lineHeight;
   }
-  y += 5;
+  y += sectionGap;
   
   // OBSERVAÇÕES
   sectionHeader('OBSERVAÇÕES');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  setNormal();
   if (data.observacoes) {
     const obsLines = doc.splitTextToSize(data.observacoes, contentWidth);
-    checkPageBreak(obsLines.length * 5 + 5);
+    checkPageBreak(obsLines.length * lineHeight + 5);
     doc.text(obsLines, marginLeft, y);
-    y += obsLines.length * 5 + 5;
-  } else {
-    y += 5;
+    y += obsLines.length * lineHeight;
   }
-  y += 3;
+  y += sectionGap;
   
-  // CONDIÇÕES DO CONTRATO
+  // CONDIÇÕES DO CONTRATO (justified)
   sectionHeader('CONDIÇÕES DO CONTRATO');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  setNormal();
   
   const condicoesTexts = [
     'No caso de Arrependimento por parte do COMPRADOR, o mesmo perde o valor dado ao VENDEDOR. E se o Arrependimento por parte do VENDEDOR, o COMPRADOR pode exigir a devolução do valor em dobro. Art. 417. Se, por ocasião da conclusão do contrato, uma parte der à outra, a título de arras, dinheiro ou outro bem móvel, deverá as arras, em caso de execução, ser restituídas ou computadas nas prestações devidas, se do mesmo gênero da vida diretor.',
@@ -241,48 +276,43 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   ];
   
   for (const txt of condicoesTexts) {
-    const lines = doc.splitTextToSize(txt, contentWidth);
-    checkPageBreak(lines.length * 4.5 + 4);
-    doc.text(lines, marginLeft, y);
-    y += lines.length * 4.5 + 4;
+    checkPageBreak(20);
+    y = drawJustifiedText(doc, txt, marginLeft, contentWidth, y, lineHeight);
+    y += sectionGap;
   }
-  y += 8;
+  y += sectionGap;
   
   // Signature lines
   checkPageBreak(40);
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
-  y += 4;
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text(template.empresaNome, marginLeft, y); y += 4;
+  y += lineHeight;
+  setNormal();
+  doc.text(template.empresaNome, marginLeft, y); y += lineHeight;
   doc.text(templateType === 'mmatos' ? `CNPJ: ${template.cnpj}` : template.cnpj, marginLeft, y);
-  y += 15;
+  y += lineHeight * 3;
   
   doc.line(marginLeft, y, marginLeft + 70, y);
-  y += 4;
-  doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += 4;
+  y += lineHeight;
+  doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += lineHeight;
   doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y);
-  y += 10;
+  y += lineHeight * 3;
   
-  // Page 2 - Data do sinal + LGPD
-  checkPageBreak(30);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
+  // Data do sinal
+  checkPageBreak(25);
+  setNormal();
   doc.text(`Data do Sinal: ${data.dataSinal}`, marginLeft, y);
-  y += 8;
+  y += lineHeight + sectionGap;
   
-  doc.setFontSize(8);
+  // LGPD (justified)
   const lgpdText = 'Em conformidade com a Lei Geral de Proteção de Dados (LGPD), Lei n.º 13.709/2018, o cliente consente expressamente com a utilização dos seus dados pessoais, fornecidos neste contrato a fins de contato e comunicação comercial pela empresa.';
-  const lgpdLines = doc.splitTextToSize(lgpdText, contentWidth);
-  checkPageBreak(lgpdLines.length * 4 + 10);
-  doc.text(lgpdLines, marginLeft, y);
-  y += lgpdLines.length * 4 + 5;
+  checkPageBreak(20);
+  y = drawJustifiedText(doc, lgpdText, marginLeft, contentWidth, y, lineHeight);
+  y += sectionGap;
   
   const digitalText = 'Ao confirmar e revisar este documento por via digital, estamos de acordo que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas dos envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o relativo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º, §2º.';
-  const digitalLines = doc.splitTextToSize(digitalText, contentWidth);
-  checkPageBreak(digitalLines.length * 4);
-  doc.text(digitalLines, marginLeft, y);
+  checkPageBreak(25);
+  y = drawJustifiedText(doc, digitalText, marginLeft, contentWidth, y, lineHeight);
   
   // Save
   const fileName = `SINAL_${data.nomeCliente.replace(/\s+/g, '_').toUpperCase()}.pdf`;
