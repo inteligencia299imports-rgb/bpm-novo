@@ -49,12 +49,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [interesse, setInteresse] = useState<Interesse>('comprar');
   const [situacao, setSituacao] = useState<SituacaoShowroom>('em_aberto');
 
+  const isDucati = loja === 'Ducati';
+
   // compra
   const [origemMoto, setOrigemMoto] = useState('estoque');
   const [compraMarca, setCompraMarca] = useState('');
   const [compraModelo, setCompraModelo] = useState('');
   const [compraAno, setCompraAno] = useState('');
   const [estoqueMotoId, setEstoqueMotoId] = useState('');
+  const [chassi, setChassi] = useState('');
 
   // venda
   const [vendaMarca, setVendaMarca] = useState('');
