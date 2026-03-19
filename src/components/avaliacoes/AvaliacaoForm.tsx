@@ -710,9 +710,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         <ContratoConsignacaoDialog
           open={contratoConsignacaoOpen}
           onOpenChange={setContratoConsignacaoOpen}
-          avaliacaoId={avaliacaoId}
-          nomeCliente={at?.nome_cliente || ''}
-          motoDescricao={moto ? `${moto.marca} ${moto.modelo}` : ''}
+          avaliacao={avaliacao}
+        />
         />
       )}
     </div>
