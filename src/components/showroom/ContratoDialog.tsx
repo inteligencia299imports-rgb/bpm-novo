@@ -488,7 +488,7 @@ const ContratoDialog: React.FC<Props> = ({
 
               {/* NEGOCIAÇÃO */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Negociação</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Negociação</h3>
 
                 {/* Lista de formas já adicionadas */}
                 {formasPagamento.length > 0 && (
