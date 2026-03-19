@@ -338,7 +338,11 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   // Data do sinal
   checkPageBreak(25);
   setNormal();
-  doc.text(`Data do Sinal: ${data.dataSinal}`, marginLeft, y);
+  doc.text('Data do Sinal: ', marginLeft, y);
+  const dsLabelW = doc.getTextWidth('Data do Sinal: ');
+  setBold();
+  doc.text(data.dataSinal, marginLeft + dsLabelW, y);
+  setNormal();
   y += lineHeight + sectionGap;
   
   // LGPD (justified)
