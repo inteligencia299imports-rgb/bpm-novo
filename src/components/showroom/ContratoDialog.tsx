@@ -435,7 +435,7 @@ const ContratoDialog: React.FC<Props> = ({
     if (!valorVenda) errors.push('Valor da Venda');
     if (!dataSinal) errors.push('Data do Sinal');
     if (!dataVencimento) errors.push('Data de Vencimento do Sinal');
-    if (formasPagamento.length === 0) errors.push('Formas de Pagamento');
+    
     if (!motoInt && !estItem) errors.push('Moto de Interesse');
     if (!transferenciaTipo) errors.push('Transferência');
     if (transferenciaTipo === 'cliente' && !transferenciaValor) errors.push('Valor da Transferência');
