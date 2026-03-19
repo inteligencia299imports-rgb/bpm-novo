@@ -9,13 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, PlusCircle } from 'lucide-react';
+import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, PlusCircle, Download } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { Atendimento, MotoInteresse, MotoAvaliacao } from '@/types/crm';
+import { generateContratoPdf, type ContratoPdfData } from '@/lib/generateContratoPdf';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
   open: boolean;
@@ -113,7 +115,9 @@ interface FormaPagamento {
 const ContratoDialog: React.FC<Props> = ({
   open, onOpenChange, atendimento, motosInteresse, motosAvaliacao, estoqueData, avaliacoes,
 }) => {
+  const { userName } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [contratoId, setContratoId] = useState<string | null>(null);
 
@@ -348,8 +352,6 @@ const ContratoDialog: React.FC<Props> = ({
     }
   };
 
-  const tipoLabel = (tipo: string) => TIPOS_PAGAMENTO.find(t => t.value === tipo)?.label || tipo;
-
   // Get moto de interesse data
   const motoInt = motosInteresse[0];
   const estItem = motoInt?.origem === 'estoque' && motoInt?.estoque_moto_id ? estoqueData[motoInt.estoque_moto_id] : null;
@@ -357,6 +359,96 @@ const ContratoDialog: React.FC<Props> = ({
   // Get moto do cliente data
   const motoAv = motosAvaliacao[0];
   const avaliacaoData = motoAv ? avaliacoes[motoAv.id] : null;
+
+  const handleGerar = async () => {
+    // Validate all required fields
+    const errors: string[] = [];
+    if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
+    if (!valorSinal) errors.push('Valor do Sinal');
+    if (!valorVenda) errors.push('Valor da Venda');
+    if (!dataSinal) errors.push('Data do Sinal');
+    if (!dataVencimento) errors.push('Data de Vencimento do Sinal');
+    if (formasPagamento.length === 0) errors.push('Formas de Pagamento');
+    if (!motoInt && !estItem) errors.push('Moto de Interesse');
+    
+    if (hasTroca) {
+      if (!valorQuitacao && !valorFechamento) errors.push('Valor de Quitação ou Fechamento da moto do cliente');
+    }
+
+    if (errors.length > 0) {
+      toast.error(`Preencha os campos obrigatórios: ${errors.join(', ')}`);
+      return;
+    }
+
+    // Save first
+    setGenerating(true);
+    const id = await saveContrato();
+    if (!id) {
+      setGenerating(false);
+      return;
+    }
+
+    try {
+      const produtoMarca = estItem?.marca || motoInt?.marca || '';
+      const produtoModelo = estItem?.modelo || motoInt?.modelo || '';
+      const produtoAnoFab = estItem?.ano_fabricacao || '';
+      const produtoAnoMod = estItem?.ano_modelo || motoInt?.ano || '';
+      const produtoPlaca = (estItem?.placa || '')?.replace(/-/g, '') || 'N/A';
+
+      const pdfData: ContratoPdfData = {
+        loja: atendimento.loja,
+        empresaMotoInteresse: estItem?.empresa || null,
+        nomeCliente: atendimento.nome_cliente,
+        telefone: formatPhone(atendimento.telefone) || atendimento.telefone,
+        cpfCnpj,
+        produtoMarca: produtoMarca.toUpperCase(),
+        produtoModelo: produtoModelo.toUpperCase(),
+        produtoAnoFabMod: [produtoAnoFab, produtoAnoMod].filter(Boolean).join('/'),
+        produtoPlacaChassi: produtoPlaca,
+        vendedorNome: userName || 'Vendedor',
+        valorSinal: `R$ ${valorSinal}`,
+        valorVenda: `R$ ${valorVenda}`,
+        observacoes: obsContrato || '',
+        dataSinal: dataSinal ? format(dataSinal, "dd/MM/yyyy", { locale: ptBR }) : '',
+        dataVencimento: dataVencimento ? format(dataVencimento, "dd/MM/yyyy", { locale: ptBR }) : '',
+        formasPagamento: formasPagamento.map(f => {
+          if (f.tipo === 'financiamento') {
+            return {
+              descricao: `Financiamento${f.financeira ? ` (${f.financeira})` : ''} - ${f.numero_parcelas || '?'}x de R$ ${f.valor_parcelas ? f.valor_parcelas.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}`,
+              valor: `R$ ${f.valor_financiado ? f.valor_financiado.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}`,
+            };
+          }
+          return {
+            descricao: tipoLabel(f.tipo),
+            valor: `R$ ${f.valor_total ? f.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}`,
+          };
+        }),
+      };
+
+      // Troca info
+      if (hasTroca && motoAv) {
+        pdfData.troca = {
+          marca: (motoAv.marca || '').toUpperCase(),
+          modelo: (motoAv.modelo || '').toUpperCase(),
+          anoFabMod: [motoAv.ano_fabricacao, motoAv.ano_modelo].filter(Boolean).join('/'),
+          placaChassi: (motoAv.placa || '')?.replace(/-/g, '') || 'N/A',
+          km: motoAv.km || 'N/A',
+          valorQuitacao: `R$ ${valorQuitacao || '0,00'}`,
+          valorNegociado: `R$ ${valorFechamento || '0,00'}`,
+        };
+      }
+
+      await generateContratoPdf(pdfData);
+      toast.success('Contrato gerado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      toast.error('Erro ao gerar o contrato PDF');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const tipoLabel = (tipo: string) => TIPOS_PAGAMENTO.find(t => t.value === tipo)?.label || tipo;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -647,7 +739,9 @@ const ContratoDialog: React.FC<Props> = ({
 
         {/* Bottom buttons */}
         <div className="flex justify-end gap-2 p-4 border-t shrink-0">
-          <Button variant="outline" disabled><FileText className="h-4 w-4 mr-1" />Gerar</Button>
+          <Button variant="outline" onClick={handleGerar} disabled={generating}>
+            <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar PDF'}
+          </Button>
           <Button variant="outline" disabled><Eye className="h-4 w-4 mr-1" />Visualizar</Button>
           <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
             <Save className="h-4 w-4 mr-1" />
