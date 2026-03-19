@@ -113,9 +113,23 @@ function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number
         
         currentX = x;
         for (const seg of segments) {
-          doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
-          doc.text(seg.text, currentX, y);
-          currentX += doc.getTextWidth(seg.text);
+          const leadingSpaces = (seg.text.match(/^\s+/)?.[0]) || '';
+          const trailingSpaces = (seg.text.match(/\s+$/)?.[0]) || '';
+          const cleanText = seg.text.trim();
+
+          if (leadingSpaces) {
+            currentX += doc.getTextWidth(leadingSpaces);
+          }
+
+          if (cleanText) {
+            doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+            doc.text(cleanText, currentX, y);
+            currentX += doc.getTextWidth(cleanText);
+          }
+
+          if (trailingSpaces) {
+            currentX += doc.getTextWidth(trailingSpaces);
+          }
         }
       }
       doc.setFont('helvetica', 'normal');
