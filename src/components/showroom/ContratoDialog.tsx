@@ -597,7 +597,7 @@ const ContratoDialog: React.FC<Props> = ({
 
               {/* OBSERVAÇÕES */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Observações</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Observações</h3>
                 <div>
                   <label className="text-sm font-medium text-foreground">Observações Internas</label>
                   <Textarea className="mt-1" rows={3} value={obsInternas} onChange={(e) => setObsInternas(e.target.value)} placeholder="Observações internas..." />
