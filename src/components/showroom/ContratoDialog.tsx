@@ -490,7 +490,7 @@ const ContratoDialog: React.FC<Props> = ({
                         <div className="grid grid-cols-3 gap-2 text-sm">
                           <InfoDisplay label="Ano" value={[motoAv.ano_fabricacao, motoAv.ano_modelo].filter(Boolean).join('/')} />
                           <InfoDisplay label="Cor" value={motoAv.cor} />
-                          <InfoDisplay label="Placa" value={motoAv.placa} />
+                          <InfoDisplay label="Placa" value={motoAv.placa?.replace(/-/g, '')} />
                         </div>
                       </div>
                     )}
