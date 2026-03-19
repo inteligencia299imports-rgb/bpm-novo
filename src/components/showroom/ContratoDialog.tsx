@@ -612,14 +612,14 @@ const ContratoDialog: React.FC<Props> = ({
                 <div>
                   <label className="text-sm font-medium text-foreground">Transferência</label>
                   <div className="flex gap-2 mt-1 flex-wrap">
-                    {['cliente', 'loja', 'outra_uf', 'ambos'].map(opt => (
+                    {['cliente', 'loja', 'outra_uf'].map(opt => (
                       <Button
                         key={opt}
                         size="sm"
                         variant={transferenciaTipo === opt ? 'default' : 'outline'}
                         onClick={() => setTransferenciaTipo(opt)}
                       >
-                        {opt === 'cliente' ? 'Cliente' : opt === 'loja' ? 'Loja' : opt === 'outra_uf' ? 'Outra UF' : 'Ambos'}
+                        {opt === 'cliente' ? 'Cliente' : opt === 'loja' ? 'Loja' : 'Outra UF'}
                       </Button>
                     ))}
                   </div>
