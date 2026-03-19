@@ -714,6 +714,11 @@ const ContratoDialog: React.FC<Props> = ({
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar mode="single" selected={dataSinal} onSelect={setDataSinal} initialFocus className="p-3 pointer-events-auto" />
+                        <div className="border-t p-2 flex justify-end">
+                          <PopoverClose asChild>
+                            <Button size="sm" disabled={!dataSinal}>OK</Button>
+                          </PopoverClose>
+                        </div>
                       </PopoverContent>
                     </Popover>
                   </div>
