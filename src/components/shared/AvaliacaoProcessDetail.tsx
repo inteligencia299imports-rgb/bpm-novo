@@ -90,6 +90,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               {format(new Date(item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
+          {entityType === 'consignacao' && (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
+                <FileText className="h-4 w-4" /> Contrato
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
