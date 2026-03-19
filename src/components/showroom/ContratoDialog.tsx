@@ -159,6 +159,9 @@ const ContratoDialog: React.FC<Props> = ({
   // Other payment valor
   const [outroValor, setOutroValor] = useState('');
 
+  const [sinalCalOpen, setSinalCalOpen] = useState(false);
+  const [vencCalOpen, setVencCalOpen] = useState(false);
+
   const hasTroca = atendimento.interesse === 'trocar' && motosAvaliacao.length > 0;
 
   // Load existing contract data
@@ -705,7 +708,7 @@ const ContratoDialog: React.FC<Props> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-foreground">Data do Sinal</label>
-                    <Popover>
+                    <Popover open={sinalCalOpen} onOpenChange={setSinalCalOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !dataSinal && "text-muted-foreground")}>
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -714,12 +717,15 @@ const ContratoDialog: React.FC<Props> = ({
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar mode="single" selected={dataSinal} onSelect={setDataSinal} initialFocus className="p-3 pointer-events-auto" />
+                        <div className="border-t p-2 flex justify-end">
+                          <Button size="sm" disabled={!dataSinal} onClick={() => setSinalCalOpen(false)}>OK</Button>
+                        </div>
                       </PopoverContent>
                     </Popover>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Data Vencimento do Sinal</label>
-                    <Popover>
+                    <Popover open={vencCalOpen} onOpenChange={setVencCalOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !dataVencimento && "text-muted-foreground")}>
                           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -728,6 +734,9 @@ const ContratoDialog: React.FC<Props> = ({
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar mode="single" selected={dataVencimento} onSelect={setDataVencimento} initialFocus className="p-3 pointer-events-auto" />
+                        <div className="border-t p-2 flex justify-end">
+                          <Button size="sm" disabled={!dataVencimento} onClick={() => setVencCalOpen(false)}>OK</Button>
+                        </div>
                       </PopoverContent>
                     </Popover>
                   </div>
