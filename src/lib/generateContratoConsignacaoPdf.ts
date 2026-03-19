@@ -482,11 +482,10 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
 
   checkPageBreak(25);
   y = drawJustifiedText(doc, 'Ao confirmar e revisar este documento por via digital, estamos de acordo que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas dos envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o relativo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º, §2º.', marginLeft, contentWidth, y, lineHeight);
-  y += sectionGap * 2;
+  y += lineHeight * 4;
 
   // Signatures
   // Client signature
-  y += lineHeight * 5;
   checkPageBreak(50);
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
