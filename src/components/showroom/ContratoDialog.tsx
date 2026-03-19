@@ -640,7 +640,7 @@ const ContratoDialog: React.FC<Props> = ({
               </div>
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         {/* Bottom buttons */}
         <div className="flex justify-end gap-2 p-4 border-t shrink-0">
