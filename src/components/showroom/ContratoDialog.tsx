@@ -566,9 +566,12 @@ const ContratoDialog: React.FC<Props> = ({
                     </div>
                   </div>
                 ) : motoInt ? (
-                  <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                     <p className="font-semibold text-foreground">{motoInt.marca} {motoInt.modelo}</p>
-                    <p className="text-xs text-muted-foreground">{motoInt.ano}</p>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <InfoDisplay label="Ano" value={motoInt.ano} />
+                      {motoInt.chassi && <InfoDisplay label="Chassi" value={motoInt.chassi} />}
+                    </div>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">Nenhuma moto de interesse</p>
