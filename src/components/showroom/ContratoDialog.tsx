@@ -139,6 +139,10 @@ const ContratoDialog: React.FC<Props> = ({
   const [dataSinal, setDataSinal] = useState<Date | undefined>();
   const [dataVencimento, setDataVencimento] = useState<Date | undefined>();
 
+  // Valor sinal / venda
+  const [valorSinal, setValorSinal] = useState('');
+  const [valorVenda, setValorVenda] = useState('');
+
   // Formas de pagamento
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
   const [novaPagamentoTipo, setNovaPagamentoTipo] = useState('');
@@ -178,6 +182,8 @@ const ContratoDialog: React.FC<Props> = ({
         setObsContrato(contrato.observacoes_contrato || '');
         setDataSinal(contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined);
         setDataVencimento(contrato.data_vencimento_sinal ? new Date(contrato.data_vencimento_sinal + 'T12:00:00') : undefined);
+        setValorSinal((atendimento as any).valor_sinal ? formatCurrencyInput(String(Math.round((atendimento as any).valor_sinal * 100))) : '');
+        setValorVenda((atendimento as any).valor_venda ? formatCurrencyInput(String(Math.round((atendimento as any).valor_venda * 100))) : '');
 
         // Load formas de pagamento
         const { data: formas } = await supabase
@@ -213,6 +219,8 @@ const ContratoDialog: React.FC<Props> = ({
         setDataSinal(undefined);
         setDataVencimento(undefined);
         setFormasPagamento([]);
+        setValorSinal((atendimento as any).valor_sinal ? formatCurrencyInput(String(Math.round((atendimento as any).valor_sinal * 100))) : '');
+        setValorVenda((atendimento as any).valor_venda ? formatCurrencyInput(String(Math.round((atendimento as any).valor_venda * 100))) : '');
       }
       setLoading(false);
     };
@@ -299,6 +307,16 @@ const ContratoDialog: React.FC<Props> = ({
       data_sinal: dataSinal ? format(dataSinal, 'yyyy-MM-dd') : null,
       data_vencimento_sinal: dataVencimento ? format(dataVencimento, 'yyyy-MM-dd') : null,
     };
+
+    // Save valor_sinal and valor_venda to atendimento
+    const atendimentoUpdate: any = {};
+    const parsedSinal = parseCurrencyInput(valorSinal);
+    const parsedVenda = parseCurrencyInput(valorVenda);
+    if (parsedSinal !== null) atendimentoUpdate.valor_sinal = parsedSinal;
+    if (parsedVenda !== null) atendimentoUpdate.valor_venda = parsedVenda;
+    if (Object.keys(atendimentoUpdate).length > 0) {
+      await supabase.from('atendimentos').update(atendimentoUpdate).eq('id', atendimento.id);
+    }
 
     if (contratoId) {
       const { error } = await supabase.from('contratos').update(payload).eq('id', contratoId);
@@ -398,8 +416,8 @@ const ContratoDialog: React.FC<Props> = ({
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
-                  <InfoDisplay label="Valor do Sinal" value={formatCurrency((atendimento as any).valor_sinal ?? null)} />
-                  <InfoDisplay label="Valor da Venda" value={formatCurrency((atendimento as any).valor_venda ?? null)} />
+                  <CurrencyField label="Valor do Sinal" value={valorSinal} onChange={setValorSinal} />
+                  <CurrencyField label="Valor da Venda" value={valorVenda} onChange={setValorVenda} />
                 </div>
 
                 {/* IPVA */}
