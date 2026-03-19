@@ -251,13 +251,33 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   sectionHeader('VALOR:');
   setNormal();
   checkPageBreak(15);
-  const valorFechamentoBold = data.valorFechamento;
-  if (data.comPercentual5) {
-    const valorText = `A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de ${valorFechamentoBold};`;
-    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [valorFechamentoBold]);
-  } else {
-    const valorText = `A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de ${valorFechamentoBold};`;
-    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [valorFechamentoBold]);
+  {
+    const prefix = data.comPercentual5
+      ? 'A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de '
+      : 'A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de ';
+    const suffix = ';';
+    const valor = data.valorFechamento;
+
+    // Render prefix in normal, valor in bold, suffix in normal
+    let cx = marginLeft;
+    setNormal();
+    doc.text(prefix, cx, y);
+    cx += doc.getTextWidth(prefix);
+
+    // Check if valor fits on same line
+    setBold();
+    const valorWidth = doc.getTextWidth(valor);
+    if (cx + valorWidth > marginLeft + contentWidth) {
+      // Wrap to next line
+      y += lineHeight;
+      cx = marginLeft;
+    }
+    doc.text(valor, cx, y);
+    cx += valorWidth;
+
+    setNormal();
+    doc.text(suffix, cx, y);
+    y += lineHeight;
   }
   y += sectionGap;
 
