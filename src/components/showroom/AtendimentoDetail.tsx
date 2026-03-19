@@ -629,14 +629,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               return;
                             }
                             // Registrar no histórico
-                            await supabase.from('status_history').insert({
+                            const historyEntry = {
                               entity_type: 'avaliacao',
                               entity_id: moto.id,
                               status_from: 'sem_avaliacao',
                               status_to: 'avaliacao_solicitada',
                               changed_by: user?.id,
                               changed_by_name: userName || user?.email || null,
-                            } as any);
+                            };
+                            const { data: insertedHistory } = await supabase.from('status_history').insert(historyEntry as any).select().single();
+                            if (insertedHistory) {
+                              setHistory(prev => [...prev, insertedHistory].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+                            }
                             toast.success('Enviado para avaliação!');
                             setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, enviada_avaliacao: true } : m));
                           }}
