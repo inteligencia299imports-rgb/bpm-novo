@@ -404,7 +404,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             <Badge variant="outline" className="text-xs">Estoque</Badge>
                           )}
                         </div>
-                        {/* Details grid like estoque card */}
+                        {atendimento.loja?.toLowerCase() === 'ducati' ? (
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                            {moto.chassi && (
+                              <>
+                                <span className="text-muted-foreground">Chassi</span>
+                                <span className="font-medium text-foreground">{moto.chassi}</span>
+                              </>
+                            )}
+                          </div>
+                        ) : (
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                           {estItem.placa && (
                             <>
@@ -439,6 +448,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             </>
                           )}
                         </div>
+                        )}
                         {/* Prices section */}
                         <div className="pt-2 border-t border-border space-y-2">
                           <div className="flex items-center justify-between">
