@@ -350,10 +350,10 @@ const ContratoDialog: React.FC<Props> = ({
           {loading ? (
             <div className="py-12 text-center text-muted-foreground">Carregando...</div>
           ) : (
-            <div className="space-y-6 pb-6">
+            <div className="space-y-8 pb-6">
               {/* DADOS DO CLIENTE */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Dados do Cliente</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Dados do Cliente</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <InfoDisplay label="Nome" value={atendimento.nome_cliente} />
                   <InfoDisplay label="Telefone" value={formatPhone(atendimento.telefone)} />
