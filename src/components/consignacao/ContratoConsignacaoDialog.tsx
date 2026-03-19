@@ -435,17 +435,27 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         </div>
 
         {/* Bottom buttons */}
-        <div className="flex justify-end gap-2 p-4 border-t shrink-0">
-          <Button variant="outline" onClick={() => handleGerar()} disabled={generating}>
-            <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar'}
-          </Button>
-          <Button variant="outline" onClick={() => handleGerar(5)} disabled={generating}>
-            <Percent className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar (5%)'}
-          </Button>
-          <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
-            <Save className="h-4 w-4 mr-1" />
-            {saving ? 'Salvando...' : 'Salvar'}
-          </Button>
+        <div className="flex flex-col gap-2 p-4 border-t shrink-0">
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => handleVisualizar()} disabled={generating}>
+              <Eye className="h-4 w-4 mr-1" />Visualizar
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => handleVisualizar(5)} disabled={generating}>
+              <Eye className="h-4 w-4 mr-1" />Visualizar (5%)
+            </Button>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => handleGerar()} disabled={generating}>
+              <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar'}
+            </Button>
+            <Button variant="outline" onClick={() => handleGerar(5)} disabled={generating}>
+              <Percent className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar (5%)'}
+            </Button>
+            <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
+              <Save className="h-4 w-4 mr-1" />
+              {saving ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
