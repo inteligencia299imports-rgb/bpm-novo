@@ -212,7 +212,13 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
       await generateContratoConsignacaoPdf({
         nomeCliente: atendimento?.nome_cliente || '',
-        telefone: atendimento?.telefone || '',
+        telefone: (() => {
+          const t = atendimento?.telefone || '';
+          const digits = t.replace(/\D/g, '');
+          if (digits.length === 11) return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+          if (digits.length === 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+          return t;
+        })(),
         cpfCnpj: cpfCnpj || '-',
         email: email || '-',
         endereco: endereco || '-',
