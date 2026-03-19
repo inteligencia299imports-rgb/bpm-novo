@@ -251,12 +251,12 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   sectionHeader('VALOR:');
   setNormal();
   checkPageBreak(15);
-  const valorFechamentoBold = `\u00A0${data.valorFechamento}`;
+  const valorFechamentoBold = data.valorFechamento;
   if (data.comPercentual5) {
-    const valorText = `A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de${valorFechamentoBold};`;
+    const valorText = `A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de ${valorFechamentoBold};`;
     y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [valorFechamentoBold]);
   } else {
-    const valorText = `A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de${valorFechamentoBold};`;
+    const valorText = `A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de ${valorFechamentoBold};`;
     y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [valorFechamentoBold]);
   }
   y += sectionGap;
