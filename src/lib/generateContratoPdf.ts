@@ -319,21 +319,21 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   }
   y += sectionGap;
   
-  // Signature lines
-  checkPageBreak(40);
+  // Signature lines - increased spacing for digital signature
+  checkPageBreak(70);
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
   setNormal();
   doc.text(template.empresaNome, marginLeft, y); y += lineHeight;
   doc.text(templateType === 'mmatos' ? `CNPJ: ${template.cnpj}` : template.cnpj, marginLeft, y);
-  y += lineHeight * 3;
+  y += lineHeight * 8;
   
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
   doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += lineHeight;
   doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y);
-  y += lineHeight * 3;
+  y += lineHeight * 8;
   
   // Data do sinal
   checkPageBreak(25);
