@@ -23,6 +23,14 @@ interface ContratoPdfData {
   valorSinal: string;
   valorVenda: string;
   
+  // Transferência
+  transferenciaTipo?: string | null;
+  transferenciaValor?: string | null;
+  
+  // IPVA
+  ipvaTipo?: string | null;
+  ipvaCotas?: string | null;
+  
   // Moto troca (optional)
   troca?: {
     marca: string;
