@@ -612,7 +612,7 @@ const ContratoDialog: React.FC<Props> = ({
                 <div>
                   <label className="text-sm font-medium text-foreground">Transferência</label>
                   <div className="flex gap-2 mt-1 flex-wrap">
-                    {['cliente', 'loja', 'outra_uf'].map(opt => (
+                    {['loja', 'cliente', 'outra_uf'].map(opt => (
                       <Button
                         key={opt}
                         size="sm"
