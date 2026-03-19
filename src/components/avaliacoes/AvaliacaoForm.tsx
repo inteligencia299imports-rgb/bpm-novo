@@ -144,6 +144,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         if (data.moto_avaliacao_id) {
           const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', data.moto_avaliacao_id);
           if (fotosData) setFotos(fotosData);
+
+          const { data: histData } = await supabase
+            .from('status_history')
+            .select('*')
+            .eq('entity_type', 'avaliacao')
+            .eq('entity_id', data.moto_avaliacao_id)
+            .order('created_at', { ascending: true });
+          if (histData) setHistory(histData);
         }
       }
       setLoading(false);
