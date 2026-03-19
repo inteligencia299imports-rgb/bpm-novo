@@ -334,7 +334,7 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   y += lineHeight;
   doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += lineHeight;
   doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y);
-  y += sectionGap;
+  y += sectionGap * 2;
   
   // Data do sinal
   checkPageBreak(25);
