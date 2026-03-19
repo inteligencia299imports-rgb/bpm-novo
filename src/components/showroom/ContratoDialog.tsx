@@ -661,7 +661,7 @@ const ContratoDialog: React.FC<Props> = ({
                 {formasPagamento.length > 0 && (
                   <div className="space-y-2">
                     {formasPagamento.map((fp) => (
-                      <div key={fp.id} className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
+                      <div key={fp.id} className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2">
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary" className="text-xs">{tipoLabel(fp.tipo)}</Badge>
