@@ -22,8 +22,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
 
   const tabs = [
     { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
+    { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'intermediacao', label: 'Intermediação', icon: Handshake, roles: ['vendedor', 'gestor', 'avaliador'] },
