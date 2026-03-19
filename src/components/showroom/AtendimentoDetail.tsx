@@ -167,21 +167,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   }, [atendimento.id]);
 
   const handleDelete = async () => {
-    await supabase.from('avaliacoes').delete().eq('atendimento_id', atendimento.id);
-    await supabase.from('motos_interesse').delete().eq('atendimento_id', atendimento.id);
-    const { data: motos } = await supabase.from('motos_avaliacao').select('id').eq('atendimento_id', atendimento.id);
-    if (motos) {
-      for (const m of motos) {
-        await supabase.from('moto_fotos').delete().eq('moto_avaliacao_id', m.id);
-      }
-    }
-    await supabase.from('motos_avaliacao').delete().eq('atendimento_id', atendimento.id);
-    const { error } = await supabase.from('atendimentos').delete().eq('id', atendimento.id);
-    if (error) {
-      toast.error('Erro ao excluir atendimento');
-    } else {
+    try {
+      const { error } = await supabase.rpc('delete_atendimento_cascade', { _atendimento_id: atendimento.id });
+      if (error) throw error;
       toast.success('Atendimento excluído');
       onDeleted();
+    } catch (err: any) {
+      toast.error('Erro ao excluir atendimento: ' + (err.message || ''));
     }
   };
 
