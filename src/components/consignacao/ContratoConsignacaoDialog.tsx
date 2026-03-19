@@ -6,7 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, CalendarIcon, Save, Download, Percent } from 'lucide-react';
+import { FileText, CalendarIcon, Save, Download, Percent, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -257,6 +257,50 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     }
   };
 
+  const handleVisualizar = async (comPercentual?: number) => {
+    setGenerating(true);
+    try {
+      const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
+      const formatCurrencyValue = (val: string) => {
+        const num = parseCurrencyInput(val);
+        return num ? num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
+      };
+
+      await generateContratoConsignacaoPdf({
+        nomeCliente: atendimento?.nome_cliente || '',
+        telefone: (() => {
+          const t = atendimento?.telefone || '';
+          const digits = t.replace(/\D/g, '');
+          if (digits.length === 11) return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+          if (digits.length === 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+          return t;
+        })(),
+        cpfCnpj: cpfCnpj || '-',
+        email: email || '-',
+        endereco: endereco || '-',
+        cep: cep || '-',
+        marca: moto?.marca || '',
+        modelo: moto?.modelo || '',
+        anoFabMod: ano || '-',
+        placa: moto?.placa?.replace(/-/g, '') || '-',
+        km: moto?.km || '-',
+        valorQuitacao: formatCurrencyValue(valorQuitacao),
+        valorNegociado: formatCurrencyValue(valorFechamento),
+        observacoes: obsContrato || '',
+        valorFechamento: formatCurrencyValue(valorFechamento),
+        dataContrato: dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : '-',
+        comPercentual5: !!comPercentual,
+      });
+
+      toast.success('PDF visualizado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao visualizar contrato:', err);
+      toast.error('Erro ao visualizar o contrato');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
 
   return (
@@ -391,17 +435,27 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         </div>
 
         {/* Bottom buttons */}
-        <div className="flex justify-end gap-2 p-4 border-t shrink-0">
-          <Button variant="outline" onClick={() => handleGerar()} disabled={generating}>
-            <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar'}
-          </Button>
-          <Button variant="outline" onClick={() => handleGerar(5)} disabled={generating}>
-            <Percent className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar (5%)'}
-          </Button>
-          <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
-            <Save className="h-4 w-4 mr-1" />
-            {saving ? 'Salvando...' : 'Salvar'}
-          </Button>
+        <div className="flex flex-col gap-2 p-4 border-t shrink-0">
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => handleVisualizar()} disabled={generating}>
+              <Eye className="h-4 w-4 mr-1" />Visualizar
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => handleVisualizar(5)} disabled={generating}>
+              <Eye className="h-4 w-4 mr-1" />Visualizar (5%)
+            </Button>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => handleGerar()} disabled={generating}>
+              <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar'}
+            </Button>
+            <Button variant="outline" onClick={() => handleGerar(5)} disabled={generating}>
+              <Percent className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar (5%)'}
+            </Button>
+            <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
+              <Save className="h-4 w-4 mr-1" />
+              {saving ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
