@@ -96,6 +96,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [consultaRealizada, setConsultaRealizada] = useState(false);
   const [consultaSolicitada, setConsultaSolicitada] = useState(false);
   const canEdit = role === 'avaliador' || role === 'gestor' || role === 'vendedor';
+  const [history, setHistory] = useState<any[]>([]);
 
   // form fields (stored as masked strings)
   const [valorFipe, setValorFipe] = useState('');
