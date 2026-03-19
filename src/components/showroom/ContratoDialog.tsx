@@ -465,7 +465,7 @@ const ContratoDialog: React.FC<Props> = ({
                 <>
                   <Separator />
                   <div className="space-y-3">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Moto do Cliente</h3>
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Moto do Cliente</h3>
                     {motoAv && (
                       <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
                         <p className="font-semibold text-foreground">{motoAv.marca} {motoAv.modelo}</p>
