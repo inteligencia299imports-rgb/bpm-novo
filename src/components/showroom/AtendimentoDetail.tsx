@@ -167,21 +167,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   }, [atendimento.id]);
 
   const handleDelete = async () => {
-    await supabase.from('avaliacoes').delete().eq('atendimento_id', atendimento.id);
-    await supabase.from('motos_interesse').delete().eq('atendimento_id', atendimento.id);
-    const { data: motos } = await supabase.from('motos_avaliacao').select('id').eq('atendimento_id', atendimento.id);
-    if (motos) {
-      for (const m of motos) {
-        await supabase.from('moto_fotos').delete().eq('moto_avaliacao_id', m.id);
-      }
-    }
-    await supabase.from('motos_avaliacao').delete().eq('atendimento_id', atendimento.id);
-    const { error } = await supabase.from('atendimentos').delete().eq('id', atendimento.id);
-    if (error) {
-      toast.error('Erro ao excluir atendimento');
-    } else {
+    try {
+      const { error } = await supabase.rpc('delete_atendimento_cascade', { _atendimento_id: atendimento.id });
+      if (error) throw error;
       toast.success('Atendimento excluído');
       onDeleted();
+    } catch (err: any) {
+      toast.error('Erro ao excluir atendimento: ' + (err.message || ''));
     }
   };
 
@@ -309,6 +301,27 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             <Button size="icon" variant="outline" onClick={() => onEdit(atendimento.id)}>
               <Edit className="h-4 w-4" />
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="destructive" className="gap-1.5">
+                  <Trash2 className="h-4 w-4" /> Excluir
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir atendimento?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação é irreversível. O atendimento de <strong>{atendimento.nome_cliente}</strong> e todos os dados relacionados (avaliações, motos, contratos, histórico) serão permanentemente excluídos.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>
