@@ -176,7 +176,7 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   
   // Company info
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(fontSize);
+  doc.setFontSize(7);
   doc.text(template.empresaNome, pageWidth / 2, y, { align: 'center' });
   y += lineHeight;
   doc.text(`CNPJ: ${template.cnpj}`, pageWidth / 2, y, { align: 'center' });
