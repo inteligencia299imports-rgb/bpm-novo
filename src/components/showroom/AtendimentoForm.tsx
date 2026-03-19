@@ -128,7 +128,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
   const handleSave = async () => {
-    if (!nomeCliente.trim() || !isPhoneValid || !loja || !sexo || !uf || !tipoAtendimento || (!isDucati && !origem) || !temperatura || !observacoes.trim()) {
+    if (!nomeCliente.trim() || !isPhoneValid || !loja || !sexo || !uf || !tipoAtendimento || !origem || !temperatura || !observacoes.trim()) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -158,7 +158,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       vendedor_id: user!.id,
       loja, nome_cliente: nomeCliente.trim(), telefone: unformatPhone(telefone),
       sexo, uf, tipo_atendimento: tipoAtendimento,
-      origem: isDucati ? 'Ducati' : (origem || null), temperatura: temperatura || null,
+      origem: origem || null, temperatura: temperatura || null,
       observacoes: observacoes || null, interesse, situacao: isEditing ? situacao : 'em_aberto' as SituacaoShowroom,
     };
 
@@ -361,15 +361,13 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 ))}
               </div>
             </div>
-            {!isDucati && (
-              <div className="space-y-1.5">
-                <Label>Origem *</Label>
-                <Select value={origem} onValueChange={setOrigem}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <Label>Origem *</Label>
+              <Select value={origem} onValueChange={setOrigem}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>Temperatura *</Label>
