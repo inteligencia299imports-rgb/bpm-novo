@@ -363,8 +363,68 @@ const ContratoDialog: React.FC<Props> = ({
   const motoAv = motosAvaliacao[0];
   const avaliacaoData = motoAv ? avaliacoes[motoAv.id] : null;
 
-  const handleGerar = async () => {
-    // Validate all required fields
+  const buildPdfData = (): ContratoPdfData | null => {
+    const produtoMarca = estItem?.marca || motoInt?.marca || '';
+    const produtoModelo = estItem?.modelo || motoInt?.modelo || '';
+    const produtoAnoFab = estItem?.ano_fabricacao || '';
+    const produtoAnoMod = estItem?.ano_modelo || motoInt?.ano || '';
+    const produtoPlaca = (estItem?.placa || '')?.replace(/-/g, '') || 'N/A';
+
+    const pdfData: ContratoPdfData = {
+      loja: atendimento.loja,
+      empresaMotoInteresse: estItem?.empresa || null,
+      nomeCliente: atendimento.nome_cliente,
+      telefone: formatPhone(atendimento.telefone) || atendimento.telefone,
+      cpfCnpj,
+      produtoMarca: produtoMarca.toUpperCase(),
+      produtoModelo: produtoModelo.toUpperCase(),
+      produtoAnoFabMod: [produtoAnoFab, produtoAnoMod].filter(Boolean).join('/'),
+      produtoPlacaChassi: produtoPlaca,
+      vendedorNome: userName || 'Vendedor',
+      valorSinal: `R$ ${valorSinal}`,
+      valorVenda: `R$ ${valorVenda}`,
+      observacoes: obsContrato || '',
+      dataSinal: dataSinal ? format(dataSinal, "dd/MM/yyyy", { locale: ptBR }) : '',
+      dataVencimento: dataVencimento ? format(dataVencimento, "dd/MM/yyyy", { locale: ptBR }) : '',
+      formasPagamento: formasPagamento.map(f => {
+        const fmt = (v: number | null | undefined) => v ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ 0,00';
+        if (f.tipo === 'financiamento') {
+          return {
+            tipo: 'financiamento',
+            descricao: 'Financiamento',
+            valor: fmt(f.valor_financiado),
+            financeira: f.financeira || '',
+            valorEntrada: fmt(f.valor_entrada),
+            numeroParcelas: f.numero_parcelas || 0,
+            valorParcelas: fmt(f.valor_parcelas),
+            valorFinanciado: fmt(f.valor_financiado),
+          };
+        }
+        return {
+          tipo: f.tipo,
+          descricao: tipoLabel(f.tipo),
+          valor: fmt(f.valor_total),
+        };
+      }),
+    };
+
+    // Troca info
+    if (hasTroca && motoAv) {
+      pdfData.troca = {
+        marca: (motoAv.marca || '').toUpperCase(),
+        modelo: (motoAv.modelo || '').toUpperCase(),
+        anoFabMod: [motoAv.ano_fabricacao, motoAv.ano_modelo].filter(Boolean).join('/'),
+        placaChassi: (motoAv.placa || '')?.replace(/-/g, '') || 'N/A',
+        km: motoAv.km || 'N/A',
+        valorQuitacao: `R$ ${valorQuitacao || '0,00'}`,
+        valorNegociado: `R$ ${valorFechamento || '0,00'}`,
+      };
+    }
+
+    return pdfData;
+  };
+
+  const validateForGeneration = (): boolean => {
     const errors: string[] = [];
     if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
     if (!valorSinal) errors.push('Valor do Sinal');
@@ -373,17 +433,18 @@ const ContratoDialog: React.FC<Props> = ({
     if (!dataVencimento) errors.push('Data de Vencimento do Sinal');
     if (formasPagamento.length === 0) errors.push('Formas de Pagamento');
     if (!motoInt && !estItem) errors.push('Moto de Interesse');
-    
-    if (hasTroca) {
-      if (!valorQuitacao && !valorFechamento) errors.push('Valor de Quitação ou Fechamento da moto do cliente');
-    }
+    if (hasTroca && !valorQuitacao && !valorFechamento) errors.push('Valor de Quitação ou Fechamento da moto do cliente');
 
     if (errors.length > 0) {
       toast.error(`Preencha os campos obrigatórios: ${errors.join(', ')}`);
-      return;
+      return false;
     }
+    return true;
+  };
 
-    // Save first
+  const handleGerar = async () => {
+    if (!validateForGeneration()) return;
+
     setGenerating(true);
     const id = await saveContrato();
     if (!id) {
@@ -392,62 +453,8 @@ const ContratoDialog: React.FC<Props> = ({
     }
 
     try {
-      const produtoMarca = estItem?.marca || motoInt?.marca || '';
-      const produtoModelo = estItem?.modelo || motoInt?.modelo || '';
-      const produtoAnoFab = estItem?.ano_fabricacao || '';
-      const produtoAnoMod = estItem?.ano_modelo || motoInt?.ano || '';
-      const produtoPlaca = (estItem?.placa || '')?.replace(/-/g, '') || 'N/A';
-
-      const pdfData: ContratoPdfData = {
-        loja: atendimento.loja,
-        empresaMotoInteresse: estItem?.empresa || null,
-        nomeCliente: atendimento.nome_cliente,
-        telefone: formatPhone(atendimento.telefone) || atendimento.telefone,
-        cpfCnpj,
-        produtoMarca: produtoMarca.toUpperCase(),
-        produtoModelo: produtoModelo.toUpperCase(),
-        produtoAnoFabMod: [produtoAnoFab, produtoAnoMod].filter(Boolean).join('/'),
-        produtoPlacaChassi: produtoPlaca,
-        vendedorNome: userName || 'Vendedor',
-        valorSinal: `R$ ${valorSinal}`,
-        valorVenda: `R$ ${valorVenda}`,
-        observacoes: obsContrato || '',
-        dataSinal: dataSinal ? format(dataSinal, "dd/MM/yyyy", { locale: ptBR }) : '',
-        dataVencimento: dataVencimento ? format(dataVencimento, "dd/MM/yyyy", { locale: ptBR }) : '',
-        formasPagamento: formasPagamento.map(f => {
-          const fmt = (v: number | null | undefined) => v ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ 0,00';
-          if (f.tipo === 'financiamento') {
-            return {
-              tipo: 'financiamento',
-              descricao: 'Financiamento',
-              valor: fmt(f.valor_financiado),
-              financeira: f.financeira || '',
-              valorEntrada: fmt(f.valor_entrada),
-              numeroParcelas: f.numero_parcelas || 0,
-              valorParcelas: fmt(f.valor_parcelas),
-              valorFinanciado: fmt(f.valor_financiado),
-            };
-          }
-          return {
-            tipo: f.tipo,
-            descricao: tipoLabel(f.tipo),
-            valor: fmt(f.valor_total),
-          };
-        }),
-      };
-
-      // Troca info
-      if (hasTroca && motoAv) {
-        pdfData.troca = {
-          marca: (motoAv.marca || '').toUpperCase(),
-          modelo: (motoAv.modelo || '').toUpperCase(),
-          anoFabMod: [motoAv.ano_fabricacao, motoAv.ano_modelo].filter(Boolean).join('/'),
-          placaChassi: (motoAv.placa || '')?.replace(/-/g, '') || 'N/A',
-          km: motoAv.km || 'N/A',
-          valorQuitacao: `R$ ${valorQuitacao || '0,00'}`,
-          valorNegociado: `R$ ${valorFechamento || '0,00'}`,
-        };
-      }
+      const pdfData = buildPdfData();
+      if (!pdfData) throw new Error('Dados insuficientes');
 
       await generateContratoPdf(pdfData);
 
@@ -469,6 +476,29 @@ const ContratoDialog: React.FC<Props> = ({
       toast.error('Erro ao gerar o contrato PDF');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const [viewing, setViewing] = useState(false);
+
+  const handleVisualizar = async () => {
+    if (!validateForGeneration()) return;
+    if (!contratoId) {
+      toast.error('Salve o contrato primeiro para poder visualizar');
+      return;
+    }
+
+    setViewing(true);
+    try {
+      const pdfData = buildPdfData();
+      if (!pdfData) throw new Error('Dados insuficientes');
+      await generateContratoPdf(pdfData);
+      toast.success('Contrato visualizado');
+    } catch (err) {
+      console.error('Erro ao visualizar PDF:', err);
+      toast.error('Erro ao visualizar o contrato PDF');
+    } finally {
+      setViewing(false);
     }
   };
 
@@ -769,6 +799,11 @@ const ContratoDialog: React.FC<Props> = ({
 
         {/* Bottom buttons */}
         <div className="flex justify-end gap-2 p-4 border-t shrink-0">
+          {contratoId && (
+            <Button variant="ghost" onClick={handleVisualizar} disabled={viewing}>
+              <Eye className="h-4 w-4 mr-1" />{viewing ? 'Abrindo...' : 'Visualizar'}
+            </Button>
+          )}
           <Button variant="outline" onClick={handleGerar} disabled={generating}>
             <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar PDF'}
           </Button>
