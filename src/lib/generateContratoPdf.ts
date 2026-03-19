@@ -131,20 +131,37 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = 210;
-  const marginLeft = 25;
-  const marginRight = 25;
+  const marginTop = 10; // 1cm
+  const marginBottom = 10; // 1cm
+  const marginLeft = 31.8; // 3.18cm
+  const marginRight = 31.8; // 3.18cm
   const contentWidth = pageWidth - marginLeft - marginRight;
   const fontSize = 9;
-  const lineHeight = 4; // line spacing for font size 9
-  const sectionGap = lineHeight; // one extra line between sections
-  let y = 15;
+  const lineHeight = 4;
+  const sectionGap = lineHeight;
+  let y = marginTop;
   
-  // Load and add logo
+  // Load and add logo (preserve aspect ratio)
   try {
     const logoData = await loadImage(template.logoPath);
-    // Ducati: ~20x24mm shield, 299: ~30x15mm horizontal logo (matching PDF sizes)
-    const logoWidth = templateType === 'ducati' ? 20 : 30;
-    const logoHeight = templateType === 'ducati' ? 24 : 15;
+    // Get natural dimensions to preserve aspect ratio
+    const img = new Image();
+    img.src = template.logoPath;
+    const naturalW = img.naturalWidth || 1;
+    const naturalH = img.naturalHeight || 1;
+    const aspect = naturalW / naturalH;
+    
+    let logoWidth: number;
+    let logoHeight: number;
+    if (templateType === 'ducati') {
+      // Ducati shield: constrain by height ~24mm
+      logoHeight = 24;
+      logoWidth = logoHeight * aspect;
+    } else {
+      // 299 Imports: constrain by width ~30mm
+      logoWidth = 30;
+      logoHeight = logoWidth / aspect;
+    }
     doc.addImage(logoData, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
     y += logoHeight + 3;
   } catch {
