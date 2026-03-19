@@ -493,7 +493,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   setNormal();
   doc.text(data.nomeCliente, marginLeft, y); y += lineHeight;
   doc.text(data.cpfCnpj, marginLeft, y);
-  y += lineHeight * 5;
+  y += lineHeight * 4;
 
   // Testemunha
   checkPageBreak(20);
