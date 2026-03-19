@@ -323,6 +323,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               {avaliacao?.created_at && format(new Date(avaliacao.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
+          {avaliacao?.situacao === 'adquirida' && avaliacao?.tipo_aquisicao === 'consignada' && (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
+                <FileText className="h-4 w-4" /> Contrato
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
