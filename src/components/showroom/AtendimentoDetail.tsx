@@ -25,6 +25,7 @@ interface Props {
   onClose: () => void;
   onEdit: (id: string) => void;
   onDeleted: () => void;
+  onStatusUpdated?: () => void;
 }
 
 const formatPhone = (value: string): string => {
