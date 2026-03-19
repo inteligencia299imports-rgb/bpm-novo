@@ -158,7 +158,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       vendedor_id: user!.id,
       loja, nome_cliente: nomeCliente.trim(), telefone: unformatPhone(telefone),
       sexo, uf, tipo_atendimento: tipoAtendimento,
-      origem: isDucati ? 'Ducati' : (origem || null), temperatura: temperatura || null,
+      origem: origem || null, temperatura: temperatura || null,
       observacoes: observacoes || null, interesse, situacao: isEditing ? situacao : 'em_aberto' as SituacaoShowroom,
     };
 
