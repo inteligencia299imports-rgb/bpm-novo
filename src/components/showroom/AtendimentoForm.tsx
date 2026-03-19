@@ -183,25 +183,35 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       });
     }
 
-    // Save moto interesse
     if (interesse === 'comprar' || interesse === 'trocar') {
-      const miData = {
-        atendimento_id: atId!,
-        origem: origemMoto,
-        marca: origemMoto === 'externo' ? compraMarca || null : null,
-        modelo: origemMoto === 'externo' ? compraModelo || null : null,
-        ano: origemMoto === 'externo' ? compraAno || null : null,
-        estoque_moto_id: origemMoto === 'estoque' ? estoqueMotoId || null : null,
-      };
+      const miData = isDucati
+        ? {
+            atendimento_id: atId!,
+            origem: 'estoque' as const,
+            marca: 'DUCATI',
+            modelo: compraModelo || null,
+            ano: compraAno || null,
+            estoque_moto_id: null,
+            chassi: chassi.toUpperCase().replace(/\s/g, '') || null,
+          }
+        : {
+            atendimento_id: atId!,
+            origem: origemMoto,
+            marca: origemMoto === 'externo' ? compraMarca || null : null,
+            modelo: origemMoto === 'externo' ? compraModelo || null : null,
+            ano: origemMoto === 'externo' ? compraAno || null : null,
+            estoque_moto_id: origemMoto === 'estoque' ? estoqueMotoId || null : null,
+            chassi: null,
+          };
       if (isEditing) {
         const { data: existing } = await supabase.from('motos_interesse').select('id').eq('atendimento_id', atId!).maybeSingle();
         if (existing) {
-          await supabase.from('motos_interesse').update(miData).eq('id', existing.id);
+          await supabase.from('motos_interesse').update(miData as any).eq('id', existing.id);
         } else {
-          await supabase.from('motos_interesse').insert(miData);
+          await supabase.from('motos_interesse').insert(miData as any);
         }
       } else {
-        await supabase.from('motos_interesse').insert(miData);
+        await supabase.from('motos_interesse').insert(miData as any);
       }
     }
 
