@@ -64,30 +64,59 @@ function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number
         }
       }
     } else {
-      const words = line.split(/\s+/);
-      let spaceWidth: number;
-      if (isLastLine || words.length <= 1) {
-        doc.setFont('helvetica', 'normal');
-        spaceWidth = doc.getTextWidth(' ');
-      } else {
-        let totalWordsW = 0;
-        for (const w of words) {
-          const isBold = boldSegments.some(seg => w.includes(seg) || seg.split(/\s+/).includes(w));
-          doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-          totalWordsW += doc.getTextWidth(w);
-        }
-        spaceWidth = (maxWidth - totalWordsW) / (words.length - 1);
-      }
-
+      // Bold segments handling - find bold segment within the line text
       let currentX = x;
-      for (const w of words) {
-        const isBold = boldSegments.some(seg => {
-          const segWords = seg.split(/\s+/);
-          return segWords.includes(w) || w === seg;
-        });
-        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-        doc.text(w, currentX, y);
-        currentX += doc.getTextWidth(w) + spaceWidth;
+      const fullLineText = line;
+      
+      // Check if any bold segment appears in this line
+      let hasBoldInLine = false;
+      for (const seg of boldSegments) {
+        if (fullLineText.includes(seg)) {
+          hasBoldInLine = true;
+          break;
+        }
+      }
+      
+      if (!hasBoldInLine) {
+        // No bold in this line, render with justification
+        if (isLastLine || !fullLineText.trim()) {
+          doc.text(fullLineText, x, y);
+        } else {
+          const words = fullLineText.split(/\s+/);
+          if (words.length <= 1) {
+            doc.text(fullLineText, x, y);
+          } else {
+            const wordsWidth = words.reduce((sum: number, w: string) => sum + doc.getTextWidth(w), 0);
+            const totalSpaceWidth = maxWidth - wordsWidth;
+            const spaceWidth = totalSpaceWidth / (words.length - 1);
+            currentX = x;
+            for (let j = 0; j < words.length; j++) {
+              doc.text(words[j], currentX, y);
+              currentX += doc.getTextWidth(words[j]) + spaceWidth;
+            }
+          }
+        }
+      } else {
+        // Render with bold segments inline
+        const segments: { text: string; bold: boolean }[] = [];
+        let remaining = fullLineText;
+        
+        for (const seg of boldSegments) {
+          const idx = remaining.indexOf(seg);
+          if (idx >= 0) {
+            if (idx > 0) segments.push({ text: remaining.substring(0, idx), bold: false });
+            segments.push({ text: seg, bold: true });
+            remaining = remaining.substring(idx + seg.length);
+          }
+        }
+        if (remaining) segments.push({ text: remaining, bold: false });
+        
+        currentX = x;
+        for (const seg of segments) {
+          doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+          doc.text(seg.text, currentX, y);
+          currentX += doc.getTextWidth(seg.text);
+        }
       }
       doc.setFont('helvetica', 'normal');
     }
@@ -210,10 +239,10 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   checkPageBreak(15);
   if (data.comPercentual5) {
     const valorText = `A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de ${data.valorFechamento};`;
-    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, data.valorFechamento.split(/\s+/));
+    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [data.valorFechamento]);
   } else {
     const valorText = `A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de ${data.valorFechamento};`;
-    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, data.valorFechamento.split(/\s+/));
+    y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [data.valorFechamento]);
   }
   y += sectionGap;
 
@@ -453,11 +482,10 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
 
   checkPageBreak(25);
   y = drawJustifiedText(doc, 'Ao confirmar e revisar este documento por via digital, estamos de acordo que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas dos envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o relativo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º, §2º.', marginLeft, contentWidth, y, lineHeight);
-  y += sectionGap * 2;
+  y += lineHeight * 4;
 
   // Signatures
   // Client signature
-  y += lineHeight * 5;
   checkPageBreak(50);
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
@@ -465,7 +493,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   setNormal();
   doc.text(data.nomeCliente, marginLeft, y); y += lineHeight;
   doc.text(data.cpfCnpj, marginLeft, y);
-  y += lineHeight * 5;
+  y += lineHeight * 4;
 
   // Testemunha
   checkPageBreak(20);
@@ -481,11 +509,10 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y += lineHeight;
   doc.text(empresaNome, marginLeft, y); y += lineHeight;
   doc.text(`CNPJ: ${cnpj}`, marginLeft, y);
-  y += sectionGap * 2;
+  y += lineHeight;
 
-  // DEVOLUÇÃO DO VEÍCULO (new page)
-  doc.addPage();
-  y = marginTop;
+  // DEVOLUÇÃO DO VEÍCULO
+  checkPageBreak(40);
 
   sectionHeader('DEVOLUÇÃO DO VEÍCULO:');
   setNormal();
