@@ -194,7 +194,20 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     }
   };
 
+  const validateFields = (): boolean => {
+    if (!cpfCnpj?.trim()) { toast.error('CPF/CNPJ é obrigatório'); return false; }
+    if (!email?.trim()) { toast.error('E-mail é obrigatório'); return false; }
+    if (!endereco?.trim()) { toast.error('Endereço é obrigatório'); return false; }
+    if (!cep?.trim()) { toast.error('CEP é obrigatório'); return false; }
+    if (!valorQuitacao?.trim() || parseCurrencyInput(valorQuitacao) <= 0) { toast.error('Valor de Quitação é obrigatório'); return false; }
+    if (!valorFechamento?.trim() || parseCurrencyInput(valorFechamento) <= 0) { toast.error('Valor de Fechamento é obrigatório'); return false; }
+    if (!dataContrato) { toast.error('Data do Contrato é obrigatória'); return false; }
+    return true;
+  };
+
   const handleGerar = async (comPercentual?: number) => {
+    if (!validateFields()) return;
+
     setGenerating(true);
     const id = await saveContrato();
     if (!id) {
@@ -238,7 +251,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
       // Record in history
       if (user) {
-        await supabase.from('status_history').insert({
+        const { error } = await supabase.from('status_history').insert({
           entity_type: 'consignacao',
           entity_id: avaliacao.id,
           status_from: avaliacao.consignacao_status || 'em_aberto',
@@ -246,6 +259,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           changed_by: user.id,
           changed_by_name: userName || 'Vendedor',
         });
+        if (error) console.error('Erro ao registrar histórico:', error);
       }
 
       toast.success(`Contrato de consignação ${comPercentual ? '(5%) ' : ''}gerado com sucesso!`);
