@@ -352,7 +352,94 @@ const ContratoDialog: React.FC<Props> = ({
     }
   };
 
-  const tipoLabel = (tipo: string) => TIPOS_PAGAMENTO.find(t => t.value === tipo)?.label || tipo;
+  const handleGerar = async () => {
+    // Validate all required fields
+    const errors: string[] = [];
+    if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
+    if (!valorSinal) errors.push('Valor do Sinal');
+    if (!valorVenda) errors.push('Valor da Venda');
+    if (!dataSinal) errors.push('Data do Sinal');
+    if (!dataVencimento) errors.push('Data de Vencimento do Sinal');
+    if (formasPagamento.length === 0) errors.push('Formas de Pagamento');
+    if (!motoInt && !estItem) errors.push('Moto de Interesse');
+    
+    if (hasTroca) {
+      if (!valorQuitacao && !valorFechamento) errors.push('Valor de Quitação ou Fechamento da moto do cliente');
+    }
+
+    if (errors.length > 0) {
+      toast.error(`Preencha os campos obrigatórios: ${errors.join(', ')}`);
+      return;
+    }
+
+    // Save first
+    setGenerating(true);
+    const id = await saveContrato();
+    if (!id) {
+      setGenerating(false);
+      return;
+    }
+
+    try {
+      const produtoMarca = estItem?.marca || motoInt?.marca || '';
+      const produtoModelo = estItem?.modelo || motoInt?.modelo || '';
+      const produtoAnoFab = estItem?.ano_fabricacao || '';
+      const produtoAnoMod = estItem?.ano_modelo || motoInt?.ano || '';
+      const produtoPlaca = (estItem?.placa || '')?.replace(/-/g, '') || 'N/A';
+
+      const pdfData: ContratoPdfData = {
+        loja: atendimento.loja,
+        empresaMotoInteresse: estItem?.empresa || null,
+        nomeCliente: atendimento.nome_cliente,
+        telefone: formatPhone(atendimento.telefone) || atendimento.telefone,
+        cpfCnpj,
+        produtoMarca: produtoMarca.toUpperCase(),
+        produtoModelo: produtoModelo.toUpperCase(),
+        produtoAnoFabMod: [produtoAnoFab, produtoAnoMod].filter(Boolean).join('/'),
+        produtoPlacaChassi: produtoPlaca,
+        vendedorNome: userName || 'Vendedor',
+        valorSinal: `R$ ${valorSinal}`,
+        valorVenda: `R$ ${valorVenda}`,
+        observacoes: obsContrato || '',
+        dataSinal: dataSinal ? format(dataSinal, "dd/MM/yyyy", { locale: ptBR }) : '',
+        dataVencimento: dataVencimento ? format(dataVencimento, "dd/MM/yyyy", { locale: ptBR }) : '',
+        formasPagamento: formasPagamento.map(f => {
+          if (f.tipo === 'financiamento') {
+            return {
+              descricao: `Financiamento${f.financeira ? ` (${f.financeira})` : ''} - ${f.numero_parcelas || '?'}x de R$ ${f.valor_parcelas ? f.valor_parcelas.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}`,
+              valor: `R$ ${f.valor_financiado ? f.valor_financiado.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}`,
+            };
+          }
+          return {
+            descricao: tipoLabel(f.tipo),
+            valor: `R$ ${f.valor_total ? f.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}`,
+          };
+        }),
+      };
+
+      // Troca info
+      if (hasTroca && motoAv) {
+        pdfData.troca = {
+          marca: (motoAv.marca || '').toUpperCase(),
+          modelo: (motoAv.modelo || '').toUpperCase(),
+          anoFabMod: [motoAv.ano_fabricacao, motoAv.ano_modelo].filter(Boolean).join('/'),
+          placaChassi: (motoAv.placa || '')?.replace(/-/g, '') || 'N/A',
+          km: motoAv.km || 'N/A',
+          valorQuitacao: `R$ ${valorQuitacao || '0,00'}`,
+          valorNegociado: `R$ ${valorFechamento || '0,00'}`,
+        };
+      }
+
+      await generateContratoPdf(pdfData);
+      toast.success('Contrato gerado com sucesso!');
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      toast.error('Erro ao gerar o contrato PDF');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
 
   // Get moto de interesse data
   const motoInt = motosInteresse[0];
