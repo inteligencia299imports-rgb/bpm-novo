@@ -113,9 +113,23 @@ function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number
         
         currentX = x;
         for (const seg of segments) {
-          doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
-          doc.text(seg.text, currentX, y);
-          currentX += doc.getTextWidth(seg.text);
+          const leadingSpaces = (seg.text.match(/^\s+/)?.[0]) || '';
+          const trailingSpaces = (seg.text.match(/\s+$/)?.[0]) || '';
+          const cleanText = seg.text.trim();
+
+          if (leadingSpaces) {
+            currentX += doc.getTextWidth(leadingSpaces);
+          }
+
+          if (cleanText) {
+            doc.setFont('helvetica', seg.bold ? 'bold' : 'normal');
+            doc.text(cleanText, currentX, y);
+            currentX += doc.getTextWidth(cleanText);
+          }
+
+          if (trailingSpaces) {
+            currentX += doc.getTextWidth(trailingSpaces);
+          }
         }
       }
       doc.setFont('helvetica', 'normal');
@@ -237,12 +251,12 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   sectionHeader('VALOR:');
   setNormal();
   checkPageBreak(15);
-  const valorFechamentoBold = `\u00A0${data.valorFechamento}`;
+  const valorFechamentoBold = data.valorFechamento;
   if (data.comPercentual5) {
-    const valorText = `A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de${valorFechamentoBold};`;
+    const valorText = `A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de ${valorFechamentoBold};`;
     y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [valorFechamentoBold]);
   } else {
-    const valorText = `A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de${valorFechamentoBold};`;
+    const valorText = `A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de ${valorFechamentoBold};`;
     y = drawJustifiedText(doc, valorText, marginLeft, contentWidth, y, lineHeight, [valorFechamentoBold]);
   }
   y += sectionGap;
