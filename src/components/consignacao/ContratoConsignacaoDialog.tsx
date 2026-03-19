@@ -301,14 +301,16 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                       {moto.cor && <InfoDisplay label="Cor" value={moto.cor} />}
                       {moto.placa && <InfoDisplay label="Placa" value={moto.placa?.replace(/-/g, '')} />}
                     </div>
-                    {(avaliacao.avaliacao_consignacao != null || avaliacao.avaliacao_compra != null) && (
-                      <div className="grid grid-cols-2 gap-2 text-sm pt-2">
-                        {avaliacao.avaliacao_consignacao != null && (
-                          <InfoDisplay label="Avaliação Consignação" value={formatCurrency(avaliacao.avaliacao_consignacao)} />
-                        )}
-                        {avaliacao.avaliacao_compra != null && (
-                          <InfoDisplay label="Avaliação Compra" value={formatCurrency(avaliacao.avaliacao_compra)} />
-                        )}
+                    {avaliacao.avaliacao_consignacao != null && (
+                      <div className="grid grid-cols-3 gap-2 text-sm pt-2">
+                        <InfoDisplay label="Aval. Consignação" value={formatCurrency(avaliacao.avaliacao_consignacao)} />
+                        <InfoDisplay label="Custos Loja" value={formatCurrency(avaliacao.previsao_custos_loja)} />
+                        <div>
+                          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
+                          <p className="text-sm font-bold text-primary">
+                            {formatCurrency((avaliacao.avaliacao_consignacao ?? 0) - (avaliacao.previsao_custos_loja ?? 0))}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
