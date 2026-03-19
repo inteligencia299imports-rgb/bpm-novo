@@ -173,6 +173,7 @@ export interface MotoInteresse {
   marca: string | null;
   modelo: string | null;
   ano: string | null;
+  chassi: string | null;
   estoque_moto_id: string | null;
 }
 
