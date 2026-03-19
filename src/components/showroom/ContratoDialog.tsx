@@ -360,6 +360,7 @@ const ContratoDialog: React.FC<Props> = ({
   const motoAv = motosAvaliacao[0];
   const avaliacaoData = motoAv ? avaliacoes[motoAv.id] : null;
 
+  const handleGerar = async () => {
     // Validate all required fields
     const errors: string[] = [];
     if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
