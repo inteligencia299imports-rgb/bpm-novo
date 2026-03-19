@@ -352,7 +352,14 @@ const ContratoDialog: React.FC<Props> = ({
     }
   };
 
-  const handleGerar = async () => {
+  // Get moto de interesse data
+  const motoInt = motosInteresse[0];
+  const estItem = motoInt?.origem === 'estoque' && motoInt?.estoque_moto_id ? estoqueData[motoInt.estoque_moto_id] : null;
+
+  // Get moto do cliente data
+  const motoAv = motosAvaliacao[0];
+  const avaliacaoData = motoAv ? avaliacoes[motoAv.id] : null;
+
     // Validate all required fields
     const errors: string[] = [];
     if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
