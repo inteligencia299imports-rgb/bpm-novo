@@ -182,6 +182,8 @@ const ContratoDialog: React.FC<Props> = ({
         setObsContrato(contrato.observacoes_contrato || '');
         setDataSinal(contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined);
         setDataVencimento(contrato.data_vencimento_sinal ? new Date(contrato.data_vencimento_sinal + 'T12:00:00') : undefined);
+        setValorSinal((atendimento as any).valor_sinal ? formatCurrencyInput(String(Math.round((atendimento as any).valor_sinal * 100))) : '');
+        setValorVenda((atendimento as any).valor_venda ? formatCurrencyInput(String(Math.round((atendimento as any).valor_venda * 100))) : '');
 
         // Load formas de pagamento
         const { data: formas } = await supabase
