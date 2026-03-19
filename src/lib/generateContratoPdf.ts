@@ -273,19 +273,14 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   doc.text(`Fab/Mod: ${data.produtoAnoFabMod}`, marginLeft, y); y += lineHeight;
   doc.text(`Placa/Chassi: ${data.produtoPlacaChassi}`, marginLeft, y); y += lineHeight + sectionGap;
   
-  // RECIBO DE SINAL DE NEGÓCIO (justified)
+  // RECIBO DE SINAL DE NEGÓCIO (justified with bold values)
   sectionHeader('RECIBO DE SINAL DE NEGÓCIO');
   setNormal();
-  // Build recibo with bold inline values
-  setNormal();
-  const reciboPart1 = 'Recebemos o valor de ';
-  const reciboPart2 = data.valorSinal;
-  const reciboPart3 = ' a título de sinal de negócio, referente a compra de uma motocicleta descrita nas condições de negócio, reconhecido neste documento no campo "comprador" e assinando no campo "assinatura do cliente" declarando para os devidos fins que efetuei o sinal de negócio do veículo acima descrito no campo "condições da venda", e me comprometo a efetuar o pagamento do valor restante até o dia ';
-  const reciboPart4 = data.dataVencimento;
-  const reciboPart5 = ' conforme as condições da venda descritas neste recibo, o comprador também declara, estar ciente que o prazo para entrega da moto é de até 7 dias úteis após ter efetuado o pagamento total da mesma.';
-  const reciboText = reciboPart1 + reciboPart2 + reciboPart3 + reciboPart4 + reciboPart5;
+  const reciboText = `Recebemos o valor de ${data.valorSinal} a título de sinal de negócio, referente a compra de uma motocicleta descrita nas condições de negócio, reconhecido neste documento no campo "comprador" e assinando no campo "assinatura do cliente" declarando para os devidos fins que efetuei o sinal de negócio do veículo acima descrito no campo "condições da venda", e me comprometo a efetuar o pagamento do valor restante até o dia ${data.dataVencimento} conforme as condições da venda descritas neste recibo, o comprador também declara, estar ciente que o prazo para entrega da moto é de até 7 dias úteis após ter efetuado o pagamento total da mesma.`;
+  // Bold segments: valor do sinal and data de vencimento
+  const reciboBoldSegments = [...data.valorSinal.split(/\s+/), ...data.dataVencimento.split(/\s+/)];
   checkPageBreak(40);
-  y = drawJustifiedText(doc, reciboText, marginLeft, contentWidth, y, lineHeight);
+  y = drawJustifiedText(doc, reciboText, marginLeft, contentWidth, y, lineHeight, reciboBoldSegments);
   y += sectionGap;
   
   // CONDIÇÕES DA VENDA
