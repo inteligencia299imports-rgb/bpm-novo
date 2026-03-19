@@ -566,6 +566,7 @@ export type Database = {
         Row: {
           ano: string | null
           atendimento_id: string
+          chassi: string | null
           created_at: string
           estoque_moto_id: string | null
           id: string
@@ -576,6 +577,7 @@ export type Database = {
         Insert: {
           ano?: string | null
           atendimento_id: string
+          chassi?: string | null
           created_at?: string
           estoque_moto_id?: string | null
           id?: string
@@ -586,6 +588,7 @@ export type Database = {
         Update: {
           ano?: string | null
           atendimento_id?: string
+          chassi?: string | null
           created_at?: string
           estoque_moto_id?: string | null
           id?: string

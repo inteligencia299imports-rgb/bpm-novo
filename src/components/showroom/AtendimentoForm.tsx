@@ -49,12 +49,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [interesse, setInteresse] = useState<Interesse>('comprar');
   const [situacao, setSituacao] = useState<SituacaoShowroom>('em_aberto');
 
+  const isDucati = loja === 'Ducati';
+
   // compra
   const [origemMoto, setOrigemMoto] = useState('estoque');
   const [compraMarca, setCompraMarca] = useState('');
   const [compraModelo, setCompraModelo] = useState('');
   const [compraAno, setCompraAno] = useState('');
   const [estoqueMotoId, setEstoqueMotoId] = useState('');
+  const [chassi, setChassi] = useState('');
 
   // venda
   const [vendaMarca, setVendaMarca] = useState('');
@@ -94,6 +97,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setCompraModelo(mi.modelo || '');
           setCompraAno(mi.ano || '');
           setEstoqueMotoId(mi.estoque_moto_id || '');
+          setChassi((mi as any).chassi || '');
         }
       }
       if (at?.interesse === 'vender' || at?.interesse === 'trocar') {
@@ -124,11 +128,19 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
   const handleSave = async () => {
-    if (!nomeCliente.trim() || !isPhoneValid || !loja || !sexo || !uf || !tipoAtendimento || !origem || !temperatura || !observacoes.trim()) {
+    if (!nomeCliente.trim() || !isPhoneValid || !loja || !sexo || !uf || !tipoAtendimento || (!isDucati && !origem) || !temperatura || !observacoes.trim()) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
-    if ((interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'externo' && (!compraMarca || !compraModelo || !compraAno)) {
+    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && (!compraModelo || !compraAno)) {
+      toast.error('Preencha o modelo e ano da moto Ducati');
+      return;
+    }
+    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && (chassi.replace(/\s/g, '').length < 6 || chassi.replace(/\s/g, '').length > 17)) {
+      toast.error('O chassi deve ter entre 6 e 17 caracteres');
+      return;
+    }
+    if (!isDucati && (interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'externo' && (!compraMarca || !compraModelo || !compraAno)) {
       toast.error('Preencha todos os campos da Moto de Interesse');
       return;
     }
@@ -146,7 +158,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       vendedor_id: user!.id,
       loja, nome_cliente: nomeCliente.trim(), telefone: unformatPhone(telefone),
       sexo, uf, tipo_atendimento: tipoAtendimento,
-      origem: origem || null, temperatura: temperatura || null,
+      origem: isDucati ? 'Ducati' : (origem || null), temperatura: temperatura || null,
       observacoes: observacoes || null, interesse, situacao: isEditing ? situacao : 'em_aberto' as SituacaoShowroom,
     };
 
@@ -171,25 +183,35 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       });
     }
 
-    // Save moto interesse
     if (interesse === 'comprar' || interesse === 'trocar') {
-      const miData = {
-        atendimento_id: atId!,
-        origem: origemMoto,
-        marca: origemMoto === 'externo' ? compraMarca || null : null,
-        modelo: origemMoto === 'externo' ? compraModelo || null : null,
-        ano: origemMoto === 'externo' ? compraAno || null : null,
-        estoque_moto_id: origemMoto === 'estoque' ? estoqueMotoId || null : null,
-      };
+      const miData = isDucati
+        ? {
+            atendimento_id: atId!,
+            origem: 'estoque' as const,
+            marca: 'DUCATI',
+            modelo: compraModelo || null,
+            ano: compraAno || null,
+            estoque_moto_id: null,
+            chassi: chassi.toUpperCase().replace(/\s/g, '') || null,
+          }
+        : {
+            atendimento_id: atId!,
+            origem: origemMoto,
+            marca: origemMoto === 'externo' ? compraMarca || null : null,
+            modelo: origemMoto === 'externo' ? compraModelo || null : null,
+            ano: origemMoto === 'externo' ? compraAno || null : null,
+            estoque_moto_id: origemMoto === 'estoque' ? estoqueMotoId || null : null,
+            chassi: null,
+          };
       if (isEditing) {
         const { data: existing } = await supabase.from('motos_interesse').select('id').eq('atendimento_id', atId!).maybeSingle();
         if (existing) {
-          await supabase.from('motos_interesse').update(miData).eq('id', existing.id);
+          await supabase.from('motos_interesse').update(miData as any).eq('id', existing.id);
         } else {
-          await supabase.from('motos_interesse').insert(miData);
+          await supabase.from('motos_interesse').insert(miData as any);
         }
       } else {
-        await supabase.from('motos_interesse').insert(miData);
+        await supabase.from('motos_interesse').insert(miData as any);
       }
     }
 
@@ -339,13 +361,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 ))}
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Origem *</Label>
-              <Select value={origem} onValueChange={setOrigem}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
+            {!isDucati && (
+              <div className="space-y-1.5">
+                <Label>Origem *</Label>
+                <Select value={origem} onValueChange={setOrigem}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Temperatura *</Label>
@@ -373,6 +397,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           modelo={compraModelo} setModelo={setCompraModelo}
           ano={compraAno} setAno={setCompraAno}
           estoqueMotoId={estoqueMotoId} setEstoqueMotoId={setEstoqueMotoId}
+          loja={loja}
+          chassi={chassi} setChassi={setChassi}
         />
       )}
 
