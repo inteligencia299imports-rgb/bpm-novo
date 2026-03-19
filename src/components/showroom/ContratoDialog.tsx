@@ -739,7 +739,9 @@ const ContratoDialog: React.FC<Props> = ({
 
         {/* Bottom buttons */}
         <div className="flex justify-end gap-2 p-4 border-t shrink-0">
-          <Button variant="outline" disabled><FileText className="h-4 w-4 mr-1" />Gerar</Button>
+          <Button variant="outline" onClick={handleGerar} disabled={generating}>
+            <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar PDF'}
+          </Button>
           <Button variant="outline" disabled><Eye className="h-4 w-4 mr-1" />Visualizar</Button>
           <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
             <Save className="h-4 w-4 mr-1" />
