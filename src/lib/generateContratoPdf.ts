@@ -214,7 +214,7 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
       logoHeight = logoWidth / aspect;
     }
     doc.addImage(logoData, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
-    y += logoHeight + 3;
+    y += logoHeight + 6;
   } catch {
     y += 10;
   }
