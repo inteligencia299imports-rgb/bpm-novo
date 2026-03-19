@@ -758,7 +758,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     key={btn.value}
                     variant="outline"
                     size="sm"
-                    className="gap-2 w-full"
+                    className="gap-2 min-w-[120px]"
                     style={{ borderColor: btn.color, color: btn.color }}
                     onClick={() => {
                       if (btn.value === 'sinal' || btn.value === 'vendido') {
