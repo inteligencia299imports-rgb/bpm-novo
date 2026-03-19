@@ -115,7 +115,9 @@ interface FormaPagamento {
 const ContratoDialog: React.FC<Props> = ({
   open, onOpenChange, atendimento, motosInteresse, motosAvaliacao, estoqueData, avaliacoes,
 }) => {
+  const { userName } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [contratoId, setContratoId] = useState<string | null>(null);
 
