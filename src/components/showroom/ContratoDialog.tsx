@@ -450,14 +450,6 @@ const ContratoDialog: React.FC<Props> = ({
 
   const tipoLabel = (tipo: string) => TIPOS_PAGAMENTO.find(t => t.value === tipo)?.label || tipo;
 
-  // Get moto de interesse data
-  const motoInt = motosInteresse[0];
-  const estItem = motoInt?.origem === 'estoque' && motoInt?.estoque_moto_id ? estoqueData[motoInt.estoque_moto_id] : null;
-
-  // Get moto do cliente data
-  const motoAv = motosAvaliacao[0];
-  const avaliacaoData = motoAv ? avaliacoes[motoAv.id] : null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl h-[90vh] p-0 flex flex-col">
