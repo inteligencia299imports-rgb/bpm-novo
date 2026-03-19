@@ -92,33 +92,67 @@ async function loadImage(path: string): Promise<string> {
   });
 }
 
-// Justified text helper
-function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number, y: number, lineHeight: number): number {
+// Justified text helper with bold support using **text** markers
+function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number, y: number, lineHeight: number, boldSegments?: string[]): number {
+  // First, split text to size using normal font to get line breaks
+  doc.setFont('helvetica', 'normal');
   const lines = doc.splitTextToSize(text, maxWidth);
+  
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line: string = lines[i];
     const isLastLine = i === lines.length - 1;
     
-    if (isLastLine || !line.trim()) {
-      // Last line: left-aligned
-      doc.text(line, x, y);
-    } else {
-      // Justify: distribute words across the line
-      const words = line.split(/\s+/);
-      if (words.length <= 1) {
+    if (!boldSegments || boldSegments.length === 0) {
+      // No bold segments - simple rendering
+      if (isLastLine || !line.trim()) {
         doc.text(line, x, y);
       } else {
-        const lineWidthNatural = doc.getTextWidth(line.replace(/\s+/g, ' '));
-        const wordsWidth = words.reduce((sum: number, w: string) => sum + doc.getTextWidth(w), 0);
-        const totalSpaceWidth = maxWidth - wordsWidth;
-        const spaceWidth = totalSpaceWidth / (words.length - 1);
-        
-        let currentX = x;
-        for (let j = 0; j < words.length; j++) {
-          doc.text(words[j], currentX, y);
-          currentX += doc.getTextWidth(words[j]) + spaceWidth;
+        const words = line.split(/\s+/);
+        if (words.length <= 1) {
+          doc.text(line, x, y);
+        } else {
+          const wordsWidth = words.reduce((sum: number, w: string) => sum + doc.getTextWidth(w), 0);
+          const totalSpaceWidth = maxWidth - wordsWidth;
+          const spaceWidth = totalSpaceWidth / (words.length - 1);
+          let currentX = x;
+          for (let j = 0; j < words.length; j++) {
+            doc.text(words[j], currentX, y);
+            currentX += doc.getTextWidth(words[j]) + spaceWidth;
+          }
         }
       }
+    } else {
+      // Render with bold segments
+      const words = line.split(/\s+/);
+      
+      // Calculate space width for justification
+      let spaceWidth: number;
+      if (isLastLine || words.length <= 1) {
+        doc.setFont('helvetica', 'normal');
+        spaceWidth = doc.getTextWidth(' ');
+      } else {
+        // Calculate total words width considering bold
+        let totalWordsW = 0;
+        for (const w of words) {
+          const isBold = boldSegments.some(seg => w.includes(seg) || seg.split(/\s+/).includes(w));
+          doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+          totalWordsW += doc.getTextWidth(w);
+        }
+        spaceWidth = (maxWidth - totalWordsW) / (words.length - 1);
+      }
+      
+      let currentX = x;
+      for (const w of words) {
+        // Check if this word is part of a bold segment
+        const isBold = boldSegments.some(seg => {
+          const segWords = seg.split(/\s+/);
+          return segWords.includes(w) || w === seg;
+        });
+        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+        doc.text(w, currentX, y);
+        currentX += doc.getTextWidth(w) + spaceWidth;
+      }
+      doc.setFont('helvetica', 'normal');
     }
     y += lineHeight;
   }
