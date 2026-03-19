@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -30,21 +31,27 @@ interface Props {
   setAno: (v: string) => void;
   estoqueMotoId: string;
   setEstoqueMotoId: (v: string) => void;
+  loja?: string;
+  chassi?: string;
+  setChassi?: (v: string) => void;
 }
 
 const MotoCompraSection: React.FC<Props> = ({
   origemMoto, setOrigemMoto, marca, setMarca, modelo, setModelo, ano, setAno,
-  estoqueMotoId, setEstoqueMotoId,
+  estoqueMotoId, setEstoqueMotoId, loja, chassi = '', setChassi,
 }) => {
   const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
   const marcas = getMarcaNomes();
   const modelos = marca ? getModelosPorMarca(marca) : [];
 
+  const isDucati = loja === 'Ducati';
+  const ducatiModelos = getModelosPorMarca('DUCATI');
+
   const [estoque, setEstoque] = useState<EstoqueOption[]>([]);
   const [loadingEstoque, setLoadingEstoque] = useState(false);
 
   useEffect(() => {
-    if (origemMoto === 'estoque') {
+    if (!isDucati && origemMoto === 'estoque') {
       setLoadingEstoque(true);
       supabase
         .from('estoque')
@@ -57,7 +64,7 @@ const MotoCompraSection: React.FC<Props> = ({
           setLoadingEstoque(false);
         });
     }
-  }, [origemMoto]);
+  }, [origemMoto, isDucati]);
 
   const formatEstoqueLabel = (item: EstoqueOption) => {
     const parts = [item.modelo];
@@ -75,6 +82,53 @@ const MotoCompraSection: React.FC<Props> = ({
   const selectedLabel = estoqueMotoId
     ? formatEstoqueLabel(estoque.find(e => e.id === estoqueMotoId)!)
     : null;
+
+  const handleChassiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 17).toUpperCase();
+    setChassi?.(val);
+  };
+
+  // Ducati-specific layout
+  if (isDucati) {
+    return (
+      <Card>
+        <CardHeader><CardTitle className="text-base">Moto de Interesse (Ducati)</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label>Modelo *</Label>
+              <Select value={modelo} onValueChange={setModelo}>
+                <SelectTrigger><SelectValue placeholder={loading ? "Carregando..." : "Selecione"} /></SelectTrigger>
+                <SelectContent>
+                  {ducatiModelos.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Ano *</Label>
+              <Select value={ano} onValueChange={setAno}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Chassi *</Label>
+              <Input
+                value={chassi}
+                onChange={handleChassiChange}
+                placeholder="Ex: 9BWZZZ377VT004251"
+                maxLength={17}
+                minLength={6}
+              />
+              {chassi && (chassi.length < 6 || chassi.length > 17) && (
+                <p className="text-xs text-destructive">Chassi deve ter entre 6 e 17 caracteres</p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
