@@ -82,6 +82,14 @@ const CurrencyField = ({ label, value, onChange }: { label: string; value: strin
   </div>
 );
 
+const formatPhone = (phone: string | null | undefined) => {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 11) return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+  return phone;
+};
+
 const InfoDisplay = ({ label, value }: { label: string; value: string | null | undefined }) => (
   value ? (
     <div>
