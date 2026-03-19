@@ -494,10 +494,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       </>
                     ) : (
                     <div className="grid grid-cols-2 gap-4">
-                      <InfoItem label="Origem" value="Externo" />
+                      {atendimento.loja?.toLowerCase() !== 'ducati' && <InfoItem label="Origem" value="Externo" />}
                       <InfoItem label="Marca" value={moto.marca} />
                       <InfoItem label="Modelo" value={moto.modelo} />
                       <InfoItem label="Ano" value={moto.ano} />
+                      {atendimento.loja?.toLowerCase() === 'ducati' && moto.chassi && <InfoItem label="Chassi" value={moto.chassi} />}
                     </div>
                     )}
                   </div>
