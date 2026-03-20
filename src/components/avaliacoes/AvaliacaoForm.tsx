@@ -641,7 +641,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <Button
                   key={btn.value}
                   size="sm"
-                  className="gap-2 text-white hover:opacity-90"
+                  className="gap-2 sm:min-w-[100px] flex-1 sm:flex-none text-white hover:opacity-90"
                   style={{ backgroundColor: btn.color }}
                   onClick={() => {
                     if (btn.value === 'adquirida') {
@@ -652,7 +652,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   }}
                 >
                   {btn.icon}
-                  {btn.label}
+                  <span className="hidden sm:inline">{btn.label}</span>
                 </Button>
               ))}
             </div>

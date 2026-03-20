@@ -894,7 +894,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     }}
                   >
                     {btn.icon}
-                    {btn.label}
+                    <span className="hidden sm:inline">{btn.label}</span>
                   </Button>
                 ))}
             </div>
