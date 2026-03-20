@@ -554,9 +554,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       <label className="text-xs text-muted-foreground">Cilindrada *</label>
                       <Input
                         value={cilindrada}
-                        onChange={e => setCilindrada(e.target.value)}
-                        placeholder="Ex: 800"
+                        onChange={e => setCilindrada(formatKm(e.target.value))}
+                        placeholder="Ex: 1.200"
                         className="h-9"
+                        inputMode="numeric"
                       />
                     </div>
 
