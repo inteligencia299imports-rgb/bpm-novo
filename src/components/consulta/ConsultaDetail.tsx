@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
