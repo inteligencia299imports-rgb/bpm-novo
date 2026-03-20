@@ -18,6 +18,18 @@ import ProcessoDialog from './ProcessoDialog';
 interface Props {
   item: any;
   onClose: () => void;
+  statusColumns?: { value: string; label: string; hex: string }[];
+  statusField?: string;
+  processoProps?: {
+    customEtapas?: string[];
+    statusField?: string;
+    observacoesField?: string;
+    statusRules?: {
+      concluded?: string;
+      special?: { etapa: string; status: string };
+      default?: string;
+    };
+  };
 }
 
 const formatPhone = (value: string): string => {
@@ -48,7 +60,7 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
   ) : null
 );
 
-const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
+const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusField = 'pos_venda_status', processoProps }) => {
   const [motosInteresse, setMotosInteresse] = useState<any[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<any[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
@@ -60,7 +72,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
   const moto = item.motos_avaliacao?.[0];
   const [cnhUrl, setCnhUrl] = useState<string | null>(item.cnh_url || null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto?.crlv_url || null);
-  const statusCol = POS_VENDA_COLUMNS.find(c => c.value === (item.pos_venda_status || 'em_aberto'));
+  const cols = statusColumns || POS_VENDA_COLUMNS;
+  const statusCol = cols.find(c => c.value === ((item as any)[statusField] || 'em_aberto'));
   const int = INTERESSES.find(i => i.value === item.interesse);
   const whatsappUrl = item.telefone ? `https://wa.me/55${item.telefone.replace(/\D/g, '')}` : '';
 
@@ -472,6 +485,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
         open={processoOpen}
         onOpenChange={setProcessoOpen}
         atendimentoId={item.id}
+        {...(processoProps || {})}
       />
     </div>
   );

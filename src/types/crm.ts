@@ -9,11 +9,43 @@ export type PosVendaStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 
 export type PosCompraStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'pausado';
 export type ConsignacaoStatus = 'em_aberto' | 'contrato_assinado' | 'cadastro_nbs' | 'pausado';
 export type PreparacaoStatus = 'em_aberto' | 'pendente' | 'aguardando_aceite' | 'oficina' | 'servico_externo' | 'retorno' | 'servico_concluso' | 'aguardando_liberacao_estoque';
+export type IntermediacaoParte1Status = 'em_aberto' | 'em_andamento' | 'autorizacao_pagamento' | 'concluido';
+export type IntermediacaoParte2Status = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
 
 export const POS_VENDA_COLUMNS: { value: PosVendaStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#9B51E0' },
+];
+
+export const INTERMEDIACAO_PARTE1_COLUMNS: { value: IntermediacaoParte1Status; label: string; hex: string }[] = [
+  { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
+  { value: 'autorizacao_pagamento', label: 'Autorização de Pagamento', hex: '#9B51E0' },
+];
+
+export const INTERMEDIACAO_PARTE2_COLUMNS: { value: IntermediacaoParte2Status; label: string; hex: string }[] = [
+  { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
+  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#9B51E0' },
+];
+
+export const INTERMEDIACAO_PARTE1_ETAPAS = [
+  'CHECK-LIST',
+  'VISTORIA',
+  'ENTREGA DA MOTO',
+  'DATA ENVIO ATPV',
+  'DATA RECEBIMENTO ATPV',
+  'COMUNICADO DE VENDA',
+  'AUTORIZAÇÃO DE PAGAMENTO',
+];
+
+export const INTERMEDIACAO_PARTE2_ETAPAS = [
+  'DOC. FORMALIZADO',
+  'DOCUMENTAÇÃO COM DESPACHANTE',
+  'DOC. OUTRA UF',
+  'PENDENTE (BOLETO)',
+  'TRANSFERÊNCIA FINALIZADA',
 ];
 
 export const POS_COMPRA_COLUMNS: { value: PosCompraStatus; label: string; hex: string }[] = [
