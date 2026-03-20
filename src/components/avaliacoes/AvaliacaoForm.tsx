@@ -797,6 +797,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           avaliacao={avaliacao}
         />
       )}
+
+      <CustosOficinaDialog
+        open={custosOpen}
+        onOpenChange={setCustosOpen}
+        avaliacaoId={avaliacaoId}
+      />
     </div>
   );
 };
