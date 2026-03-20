@@ -329,7 +329,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="flex flex-col gap-4 overflow-hidden px-0.5">
+          <div className="flex flex-col gap-4 overflow-hidden px-1">
             {/* Resumo */}
             {avaliacaoData && (
               <div className="bg-muted/50 rounded-lg p-4 border border-border/50 space-y-2.5">
@@ -373,7 +373,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             {!showLiberarForm ? (
               <>
                 {/* Detalhes */}
-                <div className="space-y-2 max-w-md">
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Detalhes da movimentação</label>
                   <Textarea
                     placeholder="Descreva os detalhes..."
