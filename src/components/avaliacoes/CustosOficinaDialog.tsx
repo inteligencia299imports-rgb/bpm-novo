@@ -158,40 +158,32 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
             {custos.length > 0 && (
               <div className="space-y-2">
                 {custos.map((custo) => (
-                  <div key={custo.id} className="flex items-start gap-3 bg-muted/50 rounded-lg p-3 border border-border">
-                    <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
-                      <div>
-                        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Responsável</span>
-                        <p className="font-semibold">{getResponsavelLabel(custo.responsavel)}</p>
+                  <div key={custo.id} className="flex items-center gap-3 rounded-lg p-3 border border-border bg-muted/30">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                        {getTipoLabel(custo.tipo)} · {getResponsavelLabel(custo.responsavel)}
+                        {custo.numero_os ? ` · OS ${custo.numero_os}` : ''}
+                      </p>
+                      <p className="text-sm font-semibold mt-0.5 uppercase truncate">
+                        {custo.detalhes || 'Sem detalhes'}
+                      </p>
+                      <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                        <span>Previsto: <span className="font-medium text-foreground">{formatCurrency(custo.valor_previsto)}</span></span>
+                        <span>Executado: <span className="font-medium text-foreground">{formatCurrency(custo.valor_executado)}</span></span>
                       </div>
-                      <div>
-                        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Tipo</span>
-                        <p className="font-semibold">{getTipoLabel(custo.tipo)}</p>
-                      </div>
-                      <div>
-                        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Nº OS</span>
-                        <p className="font-semibold">{custo.numero_os || '-'}</p>
-                      </div>
-                      <div>
-                        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor Previsto</span>
-                        <p className="font-semibold">{formatCurrency(custo.valor_previsto)}</p>
-                      </div>
-                      <div>
-                        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor Executado</span>
-                        <p className="font-semibold">{formatCurrency(custo.valor_executado)}</p>
-                      </div>
-                      {custo.detalhes && (
-                        <div className="col-span-2 sm:col-span-3">
-                          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Detalhes</span>
-                          <p className="font-medium text-muted-foreground">{custo.detalhes}</p>
-                        </div>
-                      )}
                     </div>
                     <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive" onClick={() => custo.id && handleRemove(custo.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
+
+                {/* Total */}
+                <div className="flex justify-end pt-1 pr-12">
+                  <p className="text-sm font-semibold">
+                    TOTAL: <span className="ml-1">{formatCurrency(custos.reduce((sum, c) => sum + (c.valor_executado ?? c.valor_previsto ?? 0), 0))}</span>
+                  </p>
+                </div>
               </div>
             )}
 
