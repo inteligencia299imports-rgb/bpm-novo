@@ -288,9 +288,9 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total Executado</p>
                         <p className="text-base font-bold text-foreground mt-1">{formatCurrency(totalExecutado)}</p>
                       </div>
-                      <div className={`rounded-lg p-3 text-center ${diferenca > 0 ? 'bg-destructive/10' : diferenca < 0 ? 'bg-green-500/10' : 'bg-secondary'}`}>
+                      <div className={`rounded-lg p-3 text-center ${diferenca > 0 ? 'bg-green-500/10' : diferenca < 0 ? 'bg-destructive/10' : 'bg-secondary'}`}>
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Diferença</p>
-                        <p className={`text-base font-bold mt-1 ${diferenca > 0 ? 'text-destructive' : diferenca < 0 ? 'text-green-600' : 'text-foreground'}`}>
+                        <p className={`text-base font-bold mt-1 ${diferenca > 0 ? 'text-green-600' : diferenca < 0 ? 'text-destructive' : 'text-foreground'}`}>
                           {diferenca > 0 ? '+' : ''}{formatCurrency(diferenca)}
                         </p>
                       </div>
