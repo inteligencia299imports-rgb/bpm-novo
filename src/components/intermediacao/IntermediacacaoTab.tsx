@@ -93,7 +93,7 @@ const IntermediacacaoTab = () => {
           onClick={() => setParte('parte1')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             parte === 'parte1'
-              ? 'bg-background text-foreground shadow-sm'
+              ? 'bg-primary text-primary-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
