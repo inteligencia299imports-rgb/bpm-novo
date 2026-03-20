@@ -120,6 +120,7 @@ const ContratoDialog: React.FC<Props> = ({
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [contratoId, setContratoId] = useState<string | null>(null);
+  const [jaGerado, setJaGerado] = useState(false);
 
   // Client data
   const [cpfCnpj, setCpfCnpj] = useState('');
