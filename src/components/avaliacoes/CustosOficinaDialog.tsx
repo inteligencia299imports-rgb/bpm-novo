@@ -133,6 +133,7 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
     }]);
     resetForm();
     toast.success('Custo adicionado');
+    setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }), 100);
   };
 
   const handleRemove = async (id: string) => {
