@@ -96,6 +96,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [cilindrada, setCilindrada] = useState('');
   const [precoTabela, setPrecoTabela] = useState('');
   const [valorFechamento, setValorFechamento] = useState('');
+  const [obsMoto, setObsMoto] = useState('');
 
   const formatKm = (value: string): string => {
     const digits = value.replace(/\D/g, '');
@@ -116,6 +117,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     setPrecoTabela(quantoPede != null ? formatCurrencyInput(String(Math.round(quantoPede * 100))) : '');
     const fechamento = avaliacaoData?.valor_fechamento;
     setValorFechamento(fechamento != null ? formatCurrencyInput(String(Math.round(fechamento * 100))) : '');
+    setObsMoto(avaliacaoData?.moto?.observacoes || '');
 
     const loadHistory = async () => {
       setLoading(true);
@@ -327,7 +329,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         status: 'disponivel',
         avaliacao_id: avaliacaoId,
         moto_avaliacao_id: moto.id,
-        observacoes: detalhes.trim() || null,
+        observacoes: obsMoto.trim() || null,
         data_entrada: new Date().toISOString(),
       } as any);
 
@@ -607,9 +609,21 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     <label className="text-xs text-muted-foreground">Observações da Moto</label>
                     <Textarea
                       placeholder="Ex: Manual, chave reserva, acessórios..."
+                      value={obsMoto}
+                      onChange={e => setObsMoto(e.target.value.toUpperCase())}
+                      rows={2}
+                      className="uppercase"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Detalhes da movimentação</label>
+                    <Textarea
+                      placeholder="Descreva os detalhes do processo..."
                       value={detalhes}
                       onChange={e => setDetalhes(e.target.value)}
                       rows={2}
+                      className="border-primary"
                     />
                   </div>
 
