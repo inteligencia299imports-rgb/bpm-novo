@@ -194,7 +194,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     return `https://wa.me/${number}`;
   })();
 
-  const handleStatusChange = async (value: SituacaoShowroom, label: string, extraData?: Record<string, any>) => {
+  const handleStatusChange = async (value: SituacaoShowroom, label: string, extraData?: Record<string, any>, observacoes?: string) => {
     const previousStatus = atendimento.situacao;
     const updateData: any = { situacao: value, ...extraData };
     const { error } = await supabase.from('atendimentos').update(updateData).eq('id', atendimento.id);
@@ -209,6 +209,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         status_to: value,
         changed_by: user?.id,
         changed_by_name: userName || user?.email || null,
+        observacoes: observacoes || null,
       });
 
       toast.success(`Status alterado para ${label}`);
@@ -228,6 +229,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         onDeleted();
       }
     }
+  };
+
+  const handleSaveMotivo = async () => {
+    if (!motivoPopup) return;
+    if (!motivoPopup.motivo.trim()) {
+      toast.error('Informe o motivo para alterar o status');
+      return;
+    }
+    setSavingMotivo(true);
+    const label = motivoPopup.modo === 'pendente' ? 'Pendente' : 'Perdido';
+    await handleStatusChange(motivoPopup.modo as SituacaoShowroom, label, undefined, motivoPopup.motivo.trim().toUpperCase());
+    setSavingMotivo(false);
+    setMotivoPopup(null);
   };
 
   const handleSaveValor = async () => {
