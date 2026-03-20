@@ -557,19 +557,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               {hasEvaluation ? (
                 <div className="space-y-3">
                   <div className="space-y-3">
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       <InfoItem label="Valor FIPE" value={formatCurrency(avaliacao?.valor_fipe)} />
                       <InfoItem label="Menor Valor" value={formatCurrency(avaliacao?.menor_valor)} />
                       <InfoItem label="Maior Valor" value={formatCurrency(avaliacao?.maior_valor)} />
                     </div>
                     <Separator />
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       <InfoItem label="Quanto Pede" value={formatCurrency(avaliacao?.quanto_pede)} />
                       <InfoItem label="Quanto Vende" value={formatCurrency(avaliacao?.quanto_vende)} />
                       <InfoItem label="Se Der Errado" value={formatCurrency(avaliacao?.quanto_vende_errado)} />
                     </div>
                     <Separator />
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <InfoItem label="Aval. Consignação" value={formatCurrency(avaliacao?.avaliacao_consignacao)} />
                       <InfoItem label="Custos Cliente" value={formatCurrency(avaliacao?.previsao_custos_cliente)} />
                       <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
@@ -582,7 +582,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                         </p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <InfoItem label="Aval. Compra" value={formatCurrency(avaliacao?.avaliacao_compra)} />
                       <InfoItem label="Custos Cliente" value={formatCurrency(avaliacao?.previsao_custos_cliente)} />
                       <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
