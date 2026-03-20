@@ -14,7 +14,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
-const ETAPAS = [
+const DEFAULT_ETAPAS = [
   'CHECK-LIST',
   'VISTORIA',
   'ENTREGA DA MOTO',
@@ -36,6 +36,14 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   atendimentoId: string;
+  customEtapas?: string[];
+  statusField?: string;
+  observacoesField?: string;
+  statusRules?: {
+    concluded?: string;
+    special?: { etapa: string; status: string };
+    default?: string;
+  };
 }
 
 const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) => {
