@@ -124,33 +124,28 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       const motoIds = motosAv.map(m => m.id);
       const estoqueIds = motosInt.filter(m => m.origem === 'estoque' && m.estoque_moto_id).map(m => m.estoque_moto_id!);
 
-      const secondaryPromises: Promise<any>[] = [];
-
-      // Estoque data
+      // Fetch all secondary data in parallel
       const estoquePromise = estoqueIds.length > 0
-        ? supabase.from('estoque').select('*').in('id', estoqueIds)
-        : Promise.resolve({ data: null });
-      secondaryPromises.push(estoquePromise);
+        ? supabase.from('estoque').select('*').in('id', estoqueIds).then(r => r)
+        : Promise.resolve({ data: null as any[] | null });
 
-      // Avaliador names
       const avaliadorIds = resAval.data
         ? [...new Set(resAval.data.map((av: any) => av.avaliador_id).filter(Boolean))]
         : [];
       const avaliadorPromise = avaliadorIds.length > 0
-        ? supabase.from('user_roles').select('user_id, nome').in('user_id', avaliadorIds)
-        : Promise.resolve({ data: null });
-      secondaryPromises.push(avaliadorPromise);
+        ? supabase.from('user_roles').select('user_id, nome').in('user_id', avaliadorIds).then(r => r)
+        : Promise.resolve({ data: null as any[] | null });
 
-      // Moto-related history (consulta + avaliacao)
       const consultaPromise = motoIds.length > 0
-        ? supabase.from('status_history').select('*').eq('entity_type', 'consulta').in('entity_id', motoIds).order('created_at', { ascending: true })
-        : Promise.resolve({ data: [] });
+        ? supabase.from('status_history').select('*').eq('entity_type', 'consulta').in('entity_id', motoIds).order('created_at', { ascending: true }).then(r => r)
+        : Promise.resolve({ data: [] as any[] });
       const avaliacaoHistPromise = motoIds.length > 0
-        ? supabase.from('status_history').select('*').eq('entity_type', 'avaliacao').in('entity_id', motoIds).order('created_at', { ascending: true })
-        : Promise.resolve({ data: [] });
-      secondaryPromises.push(consultaPromise, avaliacaoHistPromise);
+        ? supabase.from('status_history').select('*').eq('entity_type', 'avaliacao').in('entity_id', motoIds).order('created_at', { ascending: true }).then(r => r)
+        : Promise.resolve({ data: [] as any[] });
 
-      const [estoqueRes, rolesRes, consultaRes, avaliacaoRes] = await Promise.all(secondaryPromises);
+      const [estoqueRes, rolesRes, consultaRes, avaliacaoRes] = await Promise.all([
+        estoquePromise, avaliadorPromise, consultaPromise, avaliacaoHistPromise,
+      ]);
 
       // Update estoque
       if (estoqueRes.data) {
