@@ -1,24 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Loader2, Save, History } from 'lucide-react';
+import { ClipboardList, Loader2, History, Clock, Wrench, Truck, CheckCircle, Package, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { PREPARACAO_COLUMNS } from '@/types/crm';
-
+import { PREPARACAO_COLUMNS, LOJAS } from '@/types/crm';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   avaliacaoId: string;
   currentStatus: string;
+  avaliacaoData?: any;
   onStatusChanged?: (newStatus: string) => void;
 }
 
@@ -34,18 +34,54 @@ interface HistoryEntry {
 const getStatusLabel = (value: string) => PREPARACAO_COLUMNS.find(c => c.value === value)?.label || value;
 const getStatusHex = (value: string) => PREPARACAO_COLUMNS.find(c => c.value === value)?.hex || '#888';
 
-const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, currentStatus, onStatusChanged }) => {
-  
-  const [selectedStatus, setSelectedStatus] = useState(currentStatus);
+const ACTION_BUTTONS = [
+  { value: 'pendente', label: 'Pendente', icon: AlertCircle, targetStatus: 'pendente' },
+  { value: 'oficina', label: 'Oficina', icon: Wrench, targetStatus: 'oficina' },
+  { value: 'servico_externo', label: 'Serviço Externo', icon: Truck, targetStatus: 'servico_externo' },
+  { value: 'preparacao', label: 'Preparação', icon: CheckCircle, targetStatus: 'aguardando_aceite' },
+  { value: 'aceite', label: 'Aceite', icon: Package, targetStatus: 'aguardando_liberacao_estoque' },
+  { value: 'liberar', label: 'Liberar', icon: Package, targetStatus: 'liberar' },
+];
+
+const formatCurrencyInput = (value: string) => {
+  const nums = value.replace(/\D/g, '');
+  if (!nums) return '';
+  const n = parseInt(nums, 10) / 100;
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const parseCurrencyValue = (value: string): number | null => {
+  if (!value) return null;
+  const cleaned = value.replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? null : n;
+};
+
+const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, currentStatus, avaliacaoData, onStatusChanged }) => {
   const [detalhes, setDetalhes] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showLiberarForm, setShowLiberarForm] = useState(false);
+
+  // Liberar form fields
+  const [empresa, setEmpresa] = useState('');
+  const [loja, setLoja] = useState('');
+  const [placa, setPlaca] = useState('');
+  const [cilindrada, setCilindrada] = useState('');
+  const [precoTabela, setPrecoTabela] = useState('');
+  const [valorFechamento, setValorFechamento] = useState('');
 
   useEffect(() => {
     if (!open) return;
-    setSelectedStatus(currentStatus);
     setDetalhes('');
+    setShowLiberarForm(false);
+    setEmpresa('');
+    setLoja('');
+    setPlaca('');
+    setCilindrada('');
+    setPrecoTabela('');
+    setValorFechamento('');
     const loadHistory = async () => {
       setLoading(true);
       const { data } = await supabase
@@ -60,46 +96,52 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     loadHistory();
   }, [open, avaliacaoId, currentStatus]);
 
-  const handleSave = async () => {
-    if (selectedStatus === currentStatus && !detalhes.trim()) {
-      toast.error('Selecione um novo status ou adicione detalhes');
+  const getUserInfo = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    let userName = 'Usuário';
+    if (user) {
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('nome')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (roleData?.nome) userName = roleData.nome;
+    }
+    return { user, userName };
+  };
+
+  const handleAction = async (targetStatus: string, actionLabel: string) => {
+    if (targetStatus === 'liberar') {
+      setShowLiberarForm(true);
       return;
     }
+
+    if (!detalhes.trim()) {
+      toast.error('Informe os detalhes da movimentação');
+      return;
+    }
+
     setSaving(true);
     try {
-      // Get user info
-      const { data: { user } } = await supabase.auth.getUser();
-      let userName = 'Usuário';
-      if (user) {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('nome')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (roleData?.nome) userName = roleData.nome;
-      }
+      const { user, userName } = await getUserInfo();
 
-      // Update status if changed
-      if (selectedStatus !== currentStatus) {
-        await supabase
-          .from('avaliacoes')
-          .update({ preparacao_status: selectedStatus } as any)
-          .eq('id', avaliacaoId);
-      }
+      await supabase
+        .from('avaliacoes')
+        .update({ preparacao_status: targetStatus } as any)
+        .eq('id', avaliacaoId);
 
-      // Insert history entry
       await supabase.from('status_history').insert({
         entity_id: avaliacaoId,
         entity_type: 'preparacao',
         status_from: currentStatus,
-        status_to: selectedStatus,
-        observacoes: detalhes.trim() || null,
+        status_to: targetStatus,
+        observacoes: detalhes.trim(),
         changed_by: user?.id || null,
         changed_by_name: userName,
       });
 
-      toast.success('Processo salvo com sucesso!');
-      onStatusChanged?.(selectedStatus);
+      toast.success(`Status alterado para ${getStatusLabel(targetStatus)}`);
+      onStatusChanged?.(targetStatus);
       onOpenChange(false);
     } catch {
       toast.error('Erro ao salvar processo');
@@ -107,6 +149,92 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       setSaving(false);
     }
   };
+
+  const handleLiberar = async () => {
+    if (!empresa || !loja || !placa.trim() || !cilindrada.trim() || !precoTabela || !valorFechamento) {
+      toast.error('Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { user, userName } = await getUserInfo();
+
+      // Load avaliacao with moto data
+      const { data: avaliacao } = await supabase
+        .from('avaliacoes')
+        .select('*, motos_avaliacao(*)')
+        .eq('id', avaliacaoId)
+        .single();
+
+      if (!avaliacao) throw new Error('Avaliação não encontrada');
+
+      const moto = avaliacao.motos_avaliacao;
+      const precoValue = parseCurrencyValue(precoTabela);
+      const fechamentoValue = parseCurrencyValue(valorFechamento);
+
+      // Insert into estoque
+      await supabase.from('estoque').insert({
+        tipo: avaliacao.tipo_aquisicao === 'consignada' ? 'consignada' : 'propria',
+        marca: moto.marca,
+        categoria: moto.categoria || null,
+        modelo: moto.modelo,
+        cor: moto.cor || null,
+        cilindrada: cilindrada.trim(),
+        placa: placa.trim().toUpperCase(),
+        ano_fabricacao: moto.ano_fabricacao || null,
+        ano_modelo: moto.ano_modelo || null,
+        km: moto.km || null,
+        empresa: empresa,
+        preco: precoValue,
+        status: 'disponivel',
+        avaliacao_id: avaliacaoId,
+        moto_avaliacao_id: moto.id,
+        observacoes: detalhes.trim() || null,
+        data_entrada: new Date().toISOString(),
+      } as any);
+
+      // Update avaliacao: mark situacao as adquirida and preparacao done
+      await supabase
+        .from('avaliacoes')
+        .update({
+          preparacao_status: 'aguardando_liberacao_estoque',
+          situacao: 'adquirida',
+          valor_fechamento: fechamentoValue,
+        } as any)
+        .eq('id', avaliacaoId);
+
+      // Insert history
+      await supabase.from('status_history').insert({
+        entity_id: avaliacaoId,
+        entity_type: 'preparacao',
+        status_from: currentStatus,
+        status_to: 'aguardando_liberacao_estoque',
+        observacoes: `Moto liberada para estoque. Empresa: ${empresa}, Loja: ${loja}, Placa: ${placa.trim().toUpperCase()}${detalhes.trim() ? `. ${detalhes.trim()}` : ''}`,
+        changed_by: user?.id || null,
+        changed_by_name: userName,
+      });
+
+      toast.success('Moto registrada no estoque com sucesso!');
+      onStatusChanged?.('aguardando_liberacao_estoque');
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao registrar no estoque');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const visibleButtons = ACTION_BUTTONS.filter(btn => {
+    // Don't show button matching current status
+    if (btn.targetStatus === currentStatus) return false;
+    // "preparacao" button maps to aguardando_aceite
+    if (btn.value === 'preparacao' && currentStatus === 'aguardando_aceite') return false;
+    // "aceite" button maps to aguardando_liberacao_estoque
+    if (btn.value === 'aceite' && currentStatus === 'aguardando_liberacao_estoque') return false;
+    return true;
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,44 +251,147 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
           </div>
         ) : (
           <div className="flex flex-col gap-4 overflow-hidden">
-            {/* Status Selection */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PREPARACAO_COLUMNS.map(col => (
-                    <SelectItem key={col.value} value={col.value}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col.hex }} />
-                        {col.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Status atual */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Status atual:</span>
+              <Badge style={{ backgroundColor: `${getStatusHex(currentStatus)}20`, color: getStatusHex(currentStatus) }}>
+                {getStatusLabel(currentStatus)}
+              </Badge>
             </div>
 
-            {/* Details */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Detalhes</label>
-              <Textarea
-                placeholder="Descreva os detalhes da movimentação..."
-                value={detalhes}
-                onChange={e => setDetalhes(e.target.value)}
-                rows={3}
-              />
-            </div>
+            {!showLiberarForm ? (
+              <>
+                {/* Detalhes */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Detalhes da movimentação</label>
+                  <Textarea
+                    placeholder="Descreva os detalhes..."
+                    value={detalhes}
+                    onChange={e => setDetalhes(e.target.value)}
+                    rows={3}
+                  />
+                </div>
 
-            {/* Save Button */}
-            <div className="flex justify-end">
-              <Button onClick={handleSave} disabled={saving} className="gap-1.5">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Salvar
-              </Button>
-            </div>
+                {/* Action Buttons */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Ações</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {visibleButtons.map(btn => {
+                      const Icon = btn.icon;
+                      return (
+                        <Button
+                          key={btn.value}
+                          variant="outline"
+                          size="sm"
+                          disabled={saving}
+                          onClick={() => handleAction(btn.targetStatus, btn.label)}
+                          className="gap-1.5 h-9 text-xs"
+                        >
+                          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
+                          {btn.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Liberar Form */}
+                <div className="space-y-3">
+                  <label className="text-sm font-medium">Dados para Registro no Estoque</label>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Empresa *</label>
+                      <Select value={empresa} onValueChange={setEmpresa}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="MMATOS">MMATOS</SelectItem>
+                          <SelectItem value="FAG">FAG</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Loja *</label>
+                      <Select value={loja} onValueChange={setLoja}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LOJAS.map(l => (
+                            <SelectItem key={l} value={l}>{l}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Placa *</label>
+                      <Input
+                        value={placa}
+                        onChange={e => setPlaca(e.target.value.toUpperCase())}
+                        placeholder="ABC1D23"
+                        className="h-9 uppercase"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Cilindrada *</label>
+                      <Input
+                        value={cilindrada}
+                        onChange={e => setCilindrada(e.target.value)}
+                        placeholder="Ex: 800"
+                        className="h-9"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Preço de Tabela *</label>
+                      <Input
+                        value={precoTabela}
+                        onChange={e => setPrecoTabela(formatCurrencyInput(e.target.value))}
+                        placeholder="0,00"
+                        className="h-9"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Valor de Fechamento *</label>
+                      <Input
+                        value={valorFechamento}
+                        onChange={e => setValorFechamento(formatCurrencyInput(e.target.value))}
+                        placeholder="0,00"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Observações</label>
+                    <Textarea
+                      placeholder="Observações adicionais..."
+                      value={detalhes}
+                      onChange={e => setDetalhes(e.target.value)}
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" size="sm" onClick={() => setShowLiberarForm(false)} disabled={saving}>
+                      Voltar
+                    </Button>
+                    <Button size="sm" onClick={handleLiberar} disabled={saving} className="gap-1.5">
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
+                      Registrar no Estoque
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
 
             <Separator />
 
