@@ -612,8 +612,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   </div>
 
                   <div className="flex gap-2 justify-end">
-                    <Button variant="outline" size="sm" onClick={() => setShowLiberarForm(false)} disabled={saving}>
-                      Voltar
+                    <Button variant="outline" size="sm" onClick={() => setShowLiberarForm(false)} disabled={saving} className="gap-1.5">
+                      <ArrowLeft className="h-3.5 w-3.5" /> Voltar
                     </Button>
                     <Button size="sm" onClick={handleLiberar} disabled={saving} className="gap-1.5">
                       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
