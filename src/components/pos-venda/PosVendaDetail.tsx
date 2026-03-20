@@ -106,31 +106,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
       }
       setAvaliacoes(avalMap);
 
-      // Fetch full integrated history
-      const motoIds = motosAv.map((m: any) => m.id);
-      const avalIds = resAval.data?.map((av: any) => av.id) || [];
-
-      const histPromises = [
-        supabase.from('status_history').select('*').eq('entity_type', 'showroom').eq('entity_id', item.id).order('created_at', { ascending: true }),
-        supabase.from('status_history').select('*').in('entity_type', ['contrato']).eq('entity_id', item.id).order('created_at', { ascending: true }),
-        supabase.from('status_history').select('*').eq('entity_type', 'pos_venda').eq('entity_id', item.id).order('created_at', { ascending: true }),
-      ];
-      if (motoIds.length > 0) {
-        histPromises.push(
-          supabase.from('status_history').select('*').eq('entity_type', 'consulta').in('entity_id', motoIds).order('created_at', { ascending: true }),
-          supabase.from('status_history').select('*').eq('entity_type', 'avaliacao').in('entity_id', motoIds).order('created_at', { ascending: true }),
-        );
-      }
-      if (avalIds.length > 0) {
-        histPromises.push(
-          supabase.from('status_history').select('*').eq('entity_type', 'consignacao').in('entity_id', avalIds).order('created_at', { ascending: true }),
-        );
-      }
-
-      const results = await Promise.all(histPromises);
-      const allHistory = results.flatMap(r => r.data || []);
-      allHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      setHistory(allHistory);
 
       setLoading(false);
     };
