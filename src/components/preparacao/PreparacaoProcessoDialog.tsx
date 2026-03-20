@@ -35,7 +35,7 @@ const getStatusLabel = (value: string) => PREPARACAO_COLUMNS.find(c => c.value =
 const getStatusHex = (value: string) => PREPARACAO_COLUMNS.find(c => c.value === value)?.hex || '#888';
 
 const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, currentStatus, onStatusChanged }) => {
-  const { userRole } = useAuth();
+  
   const [selectedStatus, setSelectedStatus] = useState(currentStatus);
   const [detalhes, setDetalhes] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
