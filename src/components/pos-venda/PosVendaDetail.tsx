@@ -48,7 +48,6 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 );
 
 const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
-  const [history, setHistory] = useState<any[]>([]);
   const [motosInteresse, setMotosInteresse] = useState<any[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<any[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
