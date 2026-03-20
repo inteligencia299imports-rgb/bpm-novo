@@ -45,6 +45,7 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
+  const [observacoes, setObservacoes] = useState('');
 
   useEffect(() => {
     if (!open) return;
