@@ -383,16 +383,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         {/* Mobile buttons - below name/date, centered, equal width */}
         <div className="flex sm:hidden gap-2 justify-center">
           {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && (
-            <Button size="sm" onClick={() => setContratoOpen(true)} className="flex-1 max-w-[120px]">
+            <Button size="sm" onClick={() => setContratoOpen(true)} className="flex-1">
               <FileText className="h-4 w-4" />
             </Button>
           )}
-          <Button size="sm" variant="outline" className="flex-1 max-w-[120px]" onClick={() => onEdit(atendimento.id)}>
+          <Button size="sm" variant="outline" className="flex-1" onClick={() => onEdit(atendimento.id)}>
             <Edit className="h-4 w-4" />
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button size="sm" variant="destructive" className="flex-1 max-w-[120px]">
+              <Button size="sm" variant="destructive" className="flex-1">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
@@ -853,7 +853,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                   <Button
                     key={btn.value}
                     size="sm"
-                    className="gap-2 sm:min-w-[120px] flex-1 max-w-[120px] sm:max-w-none sm:flex-none text-white hover:opacity-90"
+                    className="gap-2 sm:min-w-[120px] flex-1 sm:flex-none text-white hover:opacity-90"
                     style={{ backgroundColor: btn.color }}
                     onClick={() => {
                       if (btn.value === 'sinal' || btn.value === 'vendido') {
