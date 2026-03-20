@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check } from 'lucide-react';
+import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check, ArrowLeft } from 'lucide-react';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -612,8 +612,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   </div>
 
                   <div className="flex gap-2 justify-end">
-                    <Button variant="outline" size="sm" onClick={() => setShowLiberarForm(false)} disabled={saving}>
-                      Voltar
+                    <Button variant="outline" size="sm" onClick={() => setShowLiberarForm(false)} disabled={saving} className="gap-1.5">
+                      <ArrowLeft className="h-3.5 w-3.5" /> Voltar
                     </Button>
                     <Button size="sm" onClick={handleLiberar} disabled={saving} className="gap-1.5">
                       {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
@@ -627,7 +627,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             <Separator />
 
             {/* History - using StatusTimeline like atendimento */}
-            <div className="space-y-2 px-10">
+            <div className="space-y-4 px-10">
               <div className="flex items-center gap-2">
                 <History className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">Histórico de Movimentações</span>
