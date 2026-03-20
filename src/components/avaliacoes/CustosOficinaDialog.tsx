@@ -147,7 +147,7 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="text-lg font-bold">Custos de Oficina</DialogTitle>
         </DialogHeader>
