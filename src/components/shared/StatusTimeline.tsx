@@ -57,9 +57,9 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
                 <span className={`text-sm uppercase ${isLatest ? 'font-bold text-primary' : ''}`}>
                   {formatStatusLabel(h.status_to)}
                 </span>
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                   <span className="text-xs text-muted-foreground">
-                    {format(new Date(h.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    {format(new Date(h.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
                   </span>
                   {h.changed_by_name && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
