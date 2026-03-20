@@ -58,6 +58,7 @@ const TIPOS = [
 const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId }) => {
   const [custos, setCustos] = useState<CustoOficina[]>([]);
   const [loading, setLoading] = useState(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
 
   // New item form
   const [responsavel, setResponsavel] = useState('');
@@ -133,6 +134,7 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
     }]);
     resetForm();
     toast.success('Custo adicionado');
+    setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }), 100);
   };
 
   const handleRemove = async (id: string) => {
@@ -147,12 +149,12 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
           <DialogTitle className="text-lg font-bold">Custos de Oficina</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 pb-6" style={{ maxHeight: 'calc(90vh - 80px)' }} type="auto">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 pb-6" style={{ maxHeight: 'calc(90vh - 80px)' }}>
           <div className="space-y-4 px-2">
             {/* Add new cost form */}
             <div className="space-y-3">
@@ -308,7 +310,7 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
