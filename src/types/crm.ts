@@ -65,11 +65,10 @@ export const CONSIGNACAO_COLUMNS: { value: ConsignacaoStatus; label: string; hex
 export const PREPARACAO_COLUMNS: { value: PreparacaoStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'pendente', label: 'Pendente', hex: '#F2C94C' },
-  { value: 'aguardando_aceite', label: 'Aguardando Aceite', hex: '#FF8C00' },
   { value: 'oficina', label: 'Oficina', hex: '#9B51E0' },
   { value: 'servico_externo', label: 'Serviço Externo', hex: '#E91E63' },
   { value: 'retorno', label: 'Retorno', hex: '#00BCD4' },
-  
+  { value: 'aguardando_aceite', label: 'Aguardando Aceite', hex: '#FF8C00' },
   { value: 'aguardando_liberacao_estoque', label: 'Aguardando Liberação Estoque', hex: '#607D8B' },
 ];
 
