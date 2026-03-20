@@ -183,6 +183,7 @@ const ProcessoDialog: React.FC<Props> = ({
         .eq('id', atendimentoId);
 
       toast.success('Processo salvo com sucesso!');
+      onStatusChanged?.(newStatus);
       onOpenChange(false);
     } catch {
       toast.error('Erro ao salvar processo');
