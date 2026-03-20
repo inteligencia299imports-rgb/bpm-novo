@@ -368,7 +368,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               {avaliacao?.created_at && format(new Date(avaliacao.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Desktop buttons */}
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
             {avaliacao?.situacao === 'adquirida' && avaliacao?.tipo_aquisicao === 'consignada' && (
               <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
                 <FileText className="h-4 w-4" /> Contrato
@@ -399,6 +400,38 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               </AlertDialog>
             )}
           </div>
+        </div>
+        {/* Mobile buttons */}
+        <div className="flex sm:hidden gap-2 justify-center">
+          {avaliacao?.situacao === 'adquirida' && avaliacao?.tipo_aquisicao === 'consignada' && (
+            <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="flex-1">
+              <FileText className="h-4 w-4" />
+            </Button>
+          )}
+          {(role === 'gestor') && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="destructive" className="flex-1">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir avaliação?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação é irreversível. Serão excluídos: avaliação, moto de avaliação, fotos, contrato de consignação, estoque vinculado e todo o histórico de movimentações relacionado.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteAvaliacao} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                    {deleting ? 'Excluindo...' : 'Excluir'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
 
