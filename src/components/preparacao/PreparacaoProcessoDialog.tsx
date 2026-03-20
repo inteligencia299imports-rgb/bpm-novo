@@ -231,8 +231,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     if (btn.targetStatus === currentStatus) return false;
     // "preparacao" button maps to aguardando_aceite
     if (btn.value === 'preparacao' && currentStatus === 'aguardando_aceite') return false;
-    // "aceite" button maps to aguardando_liberacao_estoque
-    if (btn.value === 'aceite' && currentStatus === 'aguardando_liberacao_estoque') return false;
+    // "aceite" only visible if preparação was done (status is aguardando_aceite)
+    if (btn.value === 'aceite' && currentStatus !== 'aguardando_aceite') return false;
+    // "liberar" only visible if aceite was done (status is aguardando_liberacao_estoque)
+    if (btn.value === 'liberar' && currentStatus !== 'aguardando_liberacao_estoque') return false;
     return true;
   });
 
