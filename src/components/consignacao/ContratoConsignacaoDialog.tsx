@@ -89,6 +89,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [contratoId, setContratoId] = useState<string | null>(null);
+  const [jaGerado, setJaGerado] = useState(false);
 
   // Client data
   const [cpfCnpj, setCpfCnpj] = useState('');
@@ -115,11 +116,22 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     if (!open || !avaliacao) return;
     const loadContrato = async () => {
       setLoading(true);
-      const { data: contrato } = await supabase
-        .from('contratos_consignacao')
-        .select('*')
-        .eq('avaliacao_id', avaliacao.id)
-        .maybeSingle();
+      const [{ data: contrato }, { data: histGerado }] = await Promise.all([
+        supabase
+          .from('contratos_consignacao')
+          .select('*')
+          .eq('avaliacao_id', avaliacao.id)
+          .maybeSingle(),
+        supabase
+          .from('status_history')
+          .select('id')
+          .eq('entity_type', 'consignacao')
+          .eq('entity_id', avaliacao.id)
+          .like('status_to', 'CONTRATO GERADO%')
+          .limit(1),
+      ]);
+
+      setJaGerado(!!(histGerado && histGerado.length > 0));
 
       if (contrato) {
         setContratoId(contrato.id);
@@ -262,6 +274,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         if (error) console.error('Erro ao registrar histórico:', error);
       }
 
+      setJaGerado(true);
       toast.success(`Contrato de consignação ${comPercentual ? '(5%) ' : ''}gerado com sucesso!`);
     } catch (err) {
       console.error('Erro ao gerar contrato:', err);
@@ -450,14 +463,16 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
         {/* Bottom buttons */}
         <div className="flex flex-col gap-2 p-4 border-t shrink-0">
-          <div className="flex justify-center gap-2">
-            <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar()} disabled={generating}>
-              <Eye className="h-4 w-4 mr-1" />Visualizar
-            </Button>
-            <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar(5)} disabled={generating}>
-              <Eye className="h-4 w-4 mr-1" />Visualizar (5%)
-            </Button>
-          </div>
+          {jaGerado && (
+            <div className="flex justify-center gap-2">
+              <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar()} disabled={generating}>
+                <Eye className="h-4 w-4 mr-1" />Visualizar
+              </Button>
+              <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar(5)} disabled={generating}>
+                <Eye className="h-4 w-4 mr-1" />Visualizar (5%)
+              </Button>
+            </div>
+          )}
           <div className="flex justify-center gap-2">
             <Button variant="outline" className="min-w-[140px]" onClick={() => handleGerar()} disabled={generating}>
               <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar'}

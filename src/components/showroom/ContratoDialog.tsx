@@ -120,6 +120,7 @@ const ContratoDialog: React.FC<Props> = ({
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [contratoId, setContratoId] = useState<string | null>(null);
+  const [jaGerado, setJaGerado] = useState(false);
 
   // Client data
   const [cpfCnpj, setCpfCnpj] = useState('');
@@ -169,11 +170,22 @@ const ContratoDialog: React.FC<Props> = ({
     if (!open) return;
     const loadContrato = async () => {
       setLoading(true);
-      const { data: contrato } = await supabase
-        .from('contratos')
-        .select('*')
-        .eq('atendimento_id', atendimento.id)
-        .maybeSingle();
+      const [{ data: contrato }, { data: histGerado }] = await Promise.all([
+        supabase
+          .from('contratos')
+          .select('*')
+          .eq('atendimento_id', atendimento.id)
+          .maybeSingle(),
+        supabase
+          .from('status_history')
+          .select('id')
+          .eq('entity_type', 'contrato')
+          .eq('entity_id', atendimento.id)
+          .eq('status_to', 'contrato_de_sinal')
+          .limit(1),
+      ]);
+
+      setJaGerado(!!(histGerado && histGerado.length > 0));
 
       if (contrato) {
         setContratoId(contrato.id);
@@ -480,6 +492,7 @@ const ContratoDialog: React.FC<Props> = ({
         });
       }
 
+      setJaGerado(true);
       toast.success('Contrato gerado com sucesso!');
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
@@ -829,7 +842,7 @@ const ContratoDialog: React.FC<Props> = ({
 
         {/* Bottom buttons */}
         <div className="flex justify-end gap-2 p-4 border-t shrink-0">
-          {contratoId && (
+          {jaGerado && contratoId && (
             <Button variant="outline" onClick={handleVisualizar} disabled={viewing}>
               <Eye className="h-4 w-4 mr-1" />{viewing ? 'Abrindo...' : 'Visualizar'}
             </Button>
