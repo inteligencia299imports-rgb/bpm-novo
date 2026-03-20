@@ -106,7 +106,7 @@ const MotoVendaSection: React.FC<Props> = ({
         </div>
         <div className="space-y-1.5">
           <Label>Observações da Moto *</Label>
-          <Textarea value={obs} onChange={e => setObs(e.target.value)} rows={3} />
+          <Textarea value={obs} onChange={e => setObs(e.target.value.toUpperCase())} rows={3} className="uppercase" />
         </div>
         {motoAvaliacaoId && <PhotoUpload motoAvaliacaoId={motoAvaliacaoId} />}
       </CardContent>
