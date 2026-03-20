@@ -272,11 +272,29 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
                 ))}
 
                 {/* Total */}
-                <div className="flex justify-end pt-1 pr-12">
-                  <p className="text-sm font-semibold">
-                    TOTAL: <span className="ml-1">{formatCurrency(custos.reduce((sum, c) => sum + (c.valor_executado ?? c.valor_previsto ?? 0), 0))}</span>
-                  </p>
-                </div>
+                {(() => {
+                  const totalPrevisto = custos.reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
+                  const totalExecutado = custos.reduce((sum, c) => sum + (c.valor_executado ?? 0), 0);
+                  const diferenca = totalExecutado - totalPrevisto;
+                  return (
+                    <div className="flex items-center justify-end gap-6 pt-2 pr-12 border-t border-border mt-2">
+                      <div className="text-center">
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Previsto</p>
+                        <p className="text-sm font-bold text-foreground">{formatCurrency(totalPrevisto)}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Executado</p>
+                        <p className="text-sm font-bold text-foreground">{formatCurrency(totalExecutado)}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Diferença</p>
+                        <p className={`text-sm font-bold ${diferenca > 0 ? 'text-destructive' : diferenca < 0 ? 'text-green-600' : 'text-foreground'}`}>
+                          {diferenca > 0 ? '+' : ''}{formatCurrency(diferenca)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
