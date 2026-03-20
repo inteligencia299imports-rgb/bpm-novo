@@ -329,7 +329,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         status: 'disponivel',
         avaliacao_id: avaliacaoId,
         moto_avaliacao_id: moto.id,
-        observacoes: detalhes.trim() || null,
+        observacoes: obsMoto.trim() || null,
         data_entrada: new Date().toISOString(),
       } as any);
 
