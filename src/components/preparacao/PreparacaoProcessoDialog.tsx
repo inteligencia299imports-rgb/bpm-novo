@@ -379,7 +379,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     placeholder="Descreva os detalhes..."
                     value={detalhes}
                     onChange={e => setDetalhes(e.target.value)}
-                    rows={3}
+                    rows={2}
                   />
                 </div>
 
