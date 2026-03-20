@@ -152,7 +152,7 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
           <DialogTitle className="text-lg font-bold">Custos de Oficina</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 overflow-auto px-6 pb-6" style={{ maxHeight: 'calc(90vh - 80px)' }}>
+        <ScrollArea className="flex-1 px-6 pb-6" style={{ maxHeight: 'calc(90vh - 80px)' }} type="auto">
           <div className="space-y-4 px-2">
             {/* Add new cost form */}
             <div className="space-y-3">
