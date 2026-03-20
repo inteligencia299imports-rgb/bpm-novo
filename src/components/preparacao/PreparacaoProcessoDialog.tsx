@@ -356,7 +356,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col px-6">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto px-6">
         <DialogHeader className="flex flex-row items-center justify-between pr-8">
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" /> Processo de Preparação
@@ -371,7 +371,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="flex flex-col gap-4 overflow-hidden px-1">
+          <div className="flex flex-col gap-4 px-1">
             {/* Resumo */}
             {avaliacaoData && (
               <div className="bg-muted/50 rounded-lg p-4 border border-border/50 space-y-2.5">
@@ -570,13 +570,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             <Separator />
 
             {/* History */}
-            <div className="space-y-2 min-h-0 flex-1 overflow-hidden">
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <History className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">Histórico de Movimentações</span>
               </div>
 
-              <div className="overflow-y-auto max-h-[200px] space-y-2 pr-1" style={{ scrollbarWidth: 'thin', scrollbarGutter: 'stable' }}>
+              <div className="space-y-2">
                 {history.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>
                 ) : (
