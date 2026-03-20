@@ -189,8 +189,8 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
                   <div className="flex items-center gap-1">
                     <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-8 px-2 gap-1.5 text-xs">
-                          <CalendarIcon className="h-3.5 w-3.5" />
+                        <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
+                          <CalendarIcon className="h-4 w-4" />
                           {e.data_conclusao
                             ? format(new Date(e.data_conclusao), 'dd/MM/yyyy', { locale: ptBR })
                             : 'Data'
