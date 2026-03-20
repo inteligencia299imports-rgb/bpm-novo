@@ -104,6 +104,10 @@ const MotoVendaSection: React.FC<Props> = ({
             <Label>KM *</Label>
             <Input value={km} onChange={handleKmChange} placeholder="12.000" />
           </div>
+          <div className="space-y-1.5">
+            <Label>Cilindrada</Label>
+            <Input value={cilindrada} onChange={e => setCilindrada(e.target.value)} placeholder="Ex: 1200" />
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label>Observações da Moto *</Label>
