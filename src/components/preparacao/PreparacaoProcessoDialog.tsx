@@ -282,7 +282,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       return (
                         <Button
                           key={btn.value}
-                          variant="outline"
+                          variant={btn.value === 'preparacao' ? 'default' : 'outline'}
                           size="sm"
                           disabled={saving}
                           onClick={() => handleAction(btn.targetStatus, btn.label)}
