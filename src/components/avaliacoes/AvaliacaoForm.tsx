@@ -652,7 +652,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   }}
                 >
                   {btn.icon}
-                  <span className="hidden sm:inline">{btn.label}</span>
+                  {btn.label}
                 </Button>
               ))}
             </div>
