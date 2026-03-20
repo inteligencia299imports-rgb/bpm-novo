@@ -616,17 +616,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Detalhes da movimentação</label>
-                    <Textarea
-                      placeholder="Descreva os detalhes do processo..."
-                      value={detalhes}
-                      onChange={e => setDetalhes(e.target.value)}
-                      rows={2}
-                      className="border-primary"
-                    />
-                  </div>
-
                   <div className="flex gap-2 justify-end">
                     <Button variant="outline" size="sm" onClick={() => setShowLiberarForm(false)} disabled={saving} className="gap-1.5">
                       <ArrowLeft className="h-3.5 w-3.5" /> Voltar
