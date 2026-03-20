@@ -19,6 +19,7 @@ import PhotoUpload from './PhotoUpload';
 import DocumentUpload from './DocumentUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import ContratoDialog from './ContratoDialog';
 
 interface Props {
