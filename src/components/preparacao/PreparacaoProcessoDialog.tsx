@@ -356,7 +356,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col px-6">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto px-6">
         <DialogHeader className="flex flex-row items-center justify-between pr-8">
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" /> Processo de Preparação
