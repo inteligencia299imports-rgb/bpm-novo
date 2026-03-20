@@ -153,7 +153,7 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
         </DialogHeader>
 
         <ScrollArea className="flex-1 px-6 pb-6">
-          <div className="space-y-4">
+          <div className="space-y-4 pr-2">
             {/* Existing costs */}
             {custos.length > 0 && (
               <div className="space-y-2">
