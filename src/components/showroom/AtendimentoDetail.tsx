@@ -392,7 +392,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button size="sm" variant="destructive" className="flex-1 max-w-[120px]">
+              <Button size="sm" variant="destructive" className="flex-1">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </AlertDialogTrigger>
