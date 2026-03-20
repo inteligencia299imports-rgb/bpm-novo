@@ -56,11 +56,20 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const atendimento = moto.atendimento || moto.atendimentos;
 
   useEffect(() => {
-    if (atendimento?.id) {
-      supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
-        .then(({ data }) => setCnhUrl(data?.cnh_url || null));
-    }
-  }, [atendimento?.id]);
+    const loadAll = async () => {
+      setLoading(true);
+      const [cnhRes, histRes] = await Promise.all([
+        atendimento?.id
+          ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
+          : Promise.resolve({ data: null }),
+        supabase.from('status_history').select('*').eq('entity_type', 'consulta').eq('entity_id', moto.id).order('created_at', { ascending: true }),
+      ]);
+      setCnhUrl(cnhRes.data?.cnh_url || null);
+      setHistory(histRes.data || []);
+      setLoading(false);
+    };
+    loadAll();
+  }, [moto.id, atendimento?.id]);
 
   const fetchHistory = () => {
     supabase
@@ -71,8 +80,6 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
       .order('created_at', { ascending: true })
       .then(({ data }) => setHistory(data || []));
   };
-
-  useEffect(() => { fetchHistory(); }, [moto.id]);
 
   const handleSaveResultado = async () => {
     setSaving(true);
