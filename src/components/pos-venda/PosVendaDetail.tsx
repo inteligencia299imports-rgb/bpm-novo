@@ -487,6 +487,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         onOpenChange={setProcessoOpen}
         atendimentoId={item.id}
         {...(processoProps || {})}
+        onStatusChanged={(newStatus) => {
+          onStatusChanged?.(item.id, newStatus, processoProps?.statusField || statusField);
+        }}
       />
     </div>
   );
