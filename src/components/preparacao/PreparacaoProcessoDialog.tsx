@@ -107,7 +107,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     setActiveStatus(currentStatus);
     setDetalhes('');
     setShowLiberarForm(false);
-    setEmpresa('');
+    setEmpresa('MMATOS');
     // Pre-populate from avaliação/atendimento data
     setLoja(avaliacaoData?.atendimento?.loja || '');
     setPlaca(avaliacaoData?.moto?.placa || '');
