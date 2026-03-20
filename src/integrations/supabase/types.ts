@@ -609,6 +609,7 @@ export type Database = {
           ano_modelo: string | null
           atendimento_id: string
           categoria: string | null
+          cilindrada: string | null
           consulta_realizada: boolean | null
           consulta_solicitada: boolean | null
           cor: string | null
@@ -629,6 +630,7 @@ export type Database = {
           ano_modelo?: string | null
           atendimento_id: string
           categoria?: string | null
+          cilindrada?: string | null
           consulta_realizada?: boolean | null
           consulta_solicitada?: boolean | null
           cor?: string | null
@@ -649,6 +651,7 @@ export type Database = {
           ano_modelo?: string | null
           atendimento_id?: string
           categoria?: string | null
+          cilindrada?: string | null
           consulta_realizada?: boolean | null
           consulta_solicitada?: boolean | null
           cor?: string | null
