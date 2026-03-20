@@ -38,28 +38,28 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
 
   return (
     <>
-      <div className="relative pl-6">
+      <div className="relative pl-4">
         {/* Vertical line */}
-        <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+        <div className="absolute left-[5px] top-2 bottom-2 w-px bg-border" />
 
         {sorted.map((h, idx) => {
           const isLatest = idx === 0;
           return (
             <div
               key={h.id}
-              className="relative flex items-start gap-3 pb-5 last:pb-0 cursor-pointer hover:bg-muted/50 rounded-md px-2 -mx-2"
+              className="relative flex items-start gap-2 pb-4 last:pb-0 cursor-pointer hover:bg-muted/50 rounded-md px-1.5 -mx-1.5"
               onClick={() => setSelected(h)}
             >
               {/* Dot */}
-              <div className={`absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2 z-10 ${isLatest ? 'border-primary bg-primary' : 'border-primary bg-background'}`} />
+              <div className={`absolute -left-4 top-1 w-2.5 h-2.5 rounded-full border-2 z-10 ${isLatest ? 'border-primary bg-primary' : 'border-primary bg-background'}`} />
 
               <div className="flex-1 min-w-0">
                 <span className={`text-sm uppercase ${isLatest ? 'font-bold text-primary' : ''}`}>
                   {formatStatusLabel(h.status_to)}
                 </span>
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                   <span className="text-xs text-muted-foreground">
-                    {format(new Date(h.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    {format(new Date(h.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
                   </span>
                   {h.changed_by_name && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
