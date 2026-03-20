@@ -230,6 +230,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           ano_fabricacao: vendaAnoFab || null, ano_modelo: vendaAnoMod || null,
           categoria: vendaCategoria || null, cor: vendaCor || null,
           placa: vendaPlaca || null, km: vendaKm || null,
+          cilindrada: vendaCilindrada || null,
           observacoes: vendaObs || null,
         };
         if (motoAvaliacaoId) {
