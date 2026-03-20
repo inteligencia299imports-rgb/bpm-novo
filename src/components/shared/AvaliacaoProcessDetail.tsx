@@ -162,7 +162,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   <Bike className="h-4 w-4 text-primary" /> Dados da Moto
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <InfoItem label="Marca / Modelo" value={`${moto.marca} ${(moto.modelo || '').toUpperCase()}`} />
                   {moto.placa && <InfoItem label="Placa" value={moto.placa.replace(/-/g, '')} />}
@@ -177,20 +177,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                     <p className="text-xs text-muted-foreground italic">{moto.observacoes}</p>
                   </>
                 )}
-                <Separator className="my-2" />
-                <DocumentUpload
-                  label="CRLV"
-                  currentUrl={crlvUrl}
-                  bucketPath={`docs/${moto.id}/crlv`}
-                  onUploaded={async (url) => {
-                    await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
-                    setCrlvUrl(url);
-                  }}
-                  onRemoved={async () => {
-                    await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
-                    setCrlvUrl(null);
-                  }}
-                />
               </CardContent>
             </Card>
           )}
