@@ -852,10 +852,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 .map(btn => (
                   <Button
                     key={btn.value}
-                    variant="outline"
                     size="sm"
-                    className="gap-2 min-w-[120px]"
-                    style={{ borderColor: btn.color, color: btn.color }}
+                    className="gap-2 min-w-[120px] text-white hover:opacity-90"
+                    style={{ backgroundColor: btn.color }}
                     onClick={() => {
                       if (btn.value === 'sinal' || btn.value === 'vendido') {
                         // Sinal requires all motos avaliadas when it's a trade
