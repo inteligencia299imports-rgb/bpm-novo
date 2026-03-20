@@ -5,6 +5,7 @@ import { Search, X } from 'lucide-react';
 import { SITUACOES_NPS } from '@/types/crm';
 import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
+import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import NpsCard from './NpsCard';
 
 const NpsVendasTab = () => {
@@ -75,9 +76,7 @@ const NpsVendasTab = () => {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-        </div>
+        <KanbanSkeleton columns={3} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
           <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-3">
