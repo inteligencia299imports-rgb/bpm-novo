@@ -33,11 +33,11 @@ const ProcessCard: React.FC<ProcessCardProps> = ({
     <div className="flex">
       <div className="w-1 shrink-0 rounded-l-lg" style={{ backgroundColor: statusColor }} />
       <div className="flex-1 p-3 space-y-2">
-        <h3 className="font-semibold text-sm text-foreground truncate">{clientName}</h3>
+        <h3 className="font-semibold text-sm text-foreground">{clientName}</h3>
         {motoLabel && (
           <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-            <ArrowLeftRight className="h-3.5 w-3.5" />
-            <span className="truncate">{motoLabel}</span>
+            <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" />
+            <span>{motoLabel}</span>
           </div>
         )}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
