@@ -279,18 +279,18 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
                   const totalExecutado = custos.reduce((sum, c) => sum + (c.valor_executado ?? 0), 0);
                   const diferenca = totalExecutado - totalPrevisto;
                   return (
-                    <div className="flex items-center justify-end gap-6 pt-2 pr-12 border-t border-border mt-2">
-                      <div className="text-center">
-                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Previsto</p>
-                        <p className="text-sm font-bold text-foreground">{formatCurrency(totalPrevisto)}</p>
+                    <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border">
+                      <div className="bg-secondary rounded-lg p-3 text-center">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total Previsto</p>
+                        <p className="text-base font-bold text-foreground mt-1">{formatCurrency(totalPrevisto)}</p>
                       </div>
-                      <div className="text-center">
-                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Executado</p>
-                        <p className="text-sm font-bold text-foreground">{formatCurrency(totalExecutado)}</p>
+                      <div className="bg-secondary rounded-lg p-3 text-center">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total Executado</p>
+                        <p className="text-base font-bold text-foreground mt-1">{formatCurrency(totalExecutado)}</p>
                       </div>
-                      <div className="text-center">
-                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Diferença</p>
-                        <p className={`text-sm font-bold ${diferenca > 0 ? 'text-destructive' : diferenca < 0 ? 'text-green-600' : 'text-foreground'}`}>
+                      <div className={`rounded-lg p-3 text-center ${diferenca > 0 ? 'bg-destructive/10' : diferenca < 0 ? 'bg-green-500/10' : 'bg-secondary'}`}>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Diferença</p>
+                        <p className={`text-base font-bold mt-1 ${diferenca > 0 ? 'text-destructive' : diferenca < 0 ? 'text-green-600' : 'text-foreground'}`}>
                           {diferenca > 0 ? '+' : ''}{formatCurrency(diferenca)}
                         </p>
                       </div>
