@@ -373,7 +373,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             {!showLiberarForm ? (
               <>
                 {/* Detalhes */}
-                <div className="space-y-2 max-w-md">
+                <div className="space-y-2">
                   <label className="text-sm font-medium">Detalhes da movimentação</label>
                   <Textarea
                     placeholder="Descreva os detalhes..."
