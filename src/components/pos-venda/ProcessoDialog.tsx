@@ -51,10 +51,17 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
     if (!open) return;
     const load = async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from('pos_venda_processos')
-        .select('etapa, concluida, data_conclusao')
-        .eq('atendimento_id', atendimentoId);
+      const [{ data }, { data: atData }] = await Promise.all([
+        supabase
+          .from('pos_venda_processos')
+          .select('etapa, concluida, data_conclusao')
+          .eq('atendimento_id', atendimentoId),
+        supabase
+          .from('atendimentos')
+          .select('pos_venda_observacoes')
+          .eq('id', atendimentoId)
+          .maybeSingle(),
+      ]);
 
       const map: Record<string, EtapaData> = {};
       if (data) {
@@ -63,6 +70,7 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
         }
       }
       setEtapas(ETAPAS.map(e => map[e] || { etapa: e, concluida: false, data_conclusao: null }));
+      setObservacoes((atData as any)?.pos_venda_observacoes || '');
       setLoading(false);
     };
     load();
