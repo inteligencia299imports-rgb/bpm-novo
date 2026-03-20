@@ -133,7 +133,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={atendimento?.nome_cliente} />
                 {atendimento?.telefone && (
@@ -151,24 +151,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
               </div>
-              {atendimento?.id && (
-                <>
-                  <Separator className="my-2" />
-                  <DocumentUpload
-                    label="CNH"
-                    currentUrl={cnhUrl}
-                    bucketPath={`docs/${atendimento.id}/cnh`}
-                    onUploaded={async (url) => {
-                      await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', atendimento.id);
-                      setCnhUrl(url);
-                    }}
-                    onRemoved={async () => {
-                      await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', atendimento.id);
-                      setCnhUrl(null);
-                    }}
-                  />
-                </>
-              )}
             </CardContent>
           </Card>
 
