@@ -229,8 +229,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const visibleButtons = ACTION_BUTTONS.filter(btn => {
     // Don't show button matching current status
     if (btn.targetStatus === currentStatus) return false;
-    // "preparacao" button maps to aguardando_aceite
-    if (btn.value === 'preparacao' && currentStatus === 'aguardando_aceite') return false;
+    if (btn.value === 'preparacao' && (currentStatus === 'aguardando_aceite' || currentStatus === 'aguardando_liberacao_estoque')) return false;
     // "aceite" only visible if preparação was done (status is aguardando_aceite)
     if (btn.value === 'aceite' && currentStatus !== 'aguardando_aceite') return false;
     // "liberar" only visible if aceite was done (status is aguardando_liberacao_estoque)
