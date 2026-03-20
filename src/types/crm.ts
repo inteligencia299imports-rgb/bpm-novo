@@ -14,7 +14,6 @@ export const POS_VENDA_COLUMNS: { value: PosVendaStatus; label: string; hex: str
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#9B51E0' },
-  { value: 'concluido', label: 'Concluído', hex: '#27AE60' },
 ];
 
 export const POS_COMPRA_COLUMNS: { value: PosCompraStatus; label: string; hex: string }[] = [
