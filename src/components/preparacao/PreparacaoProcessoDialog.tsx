@@ -619,7 +619,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
               />
             </div>
             <Separator className="mt-4" />
-            <div className="pb-7" />
+            <div className="pb-3" />
           </div>
         )}
         </div>
