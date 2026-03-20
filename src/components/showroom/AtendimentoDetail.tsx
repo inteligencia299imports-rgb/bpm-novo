@@ -383,7 +383,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         {/* Mobile buttons - below name/date, centered, equal width */}
         <div className="flex sm:hidden gap-2 justify-center">
           {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && (
-            <Button size="sm" onClick={() => setContratoOpen(true)} className="flex-1 max-w-[120px]">
+            <Button size="sm" onClick={() => setContratoOpen(true)} className="flex-1">
               <FileText className="h-4 w-4" />
             </Button>
           )}
