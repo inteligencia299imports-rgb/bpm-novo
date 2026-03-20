@@ -63,6 +63,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showLiberarForm, setShowLiberarForm] = useState(false);
+  const [activeStatus, setActiveStatus] = useState(currentStatus);
 
   // Liberar form fields
   const [empresa, setEmpresa] = useState('');
@@ -74,6 +75,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
   useEffect(() => {
     if (!open) return;
+    setActiveStatus(currentStatus);
     setDetalhes('');
     setShowLiberarForm(false);
     setEmpresa('');
@@ -82,17 +84,26 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     setCilindrada('');
     setPrecoTabela('');
     setValorFechamento('');
+
     const loadHistory = async () => {
       setLoading(true);
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('status_history')
         .select('*')
         .eq('entity_id', avaliacaoId)
         .eq('entity_type', 'preparacao')
         .order('created_at', { ascending: false });
-      setHistory((data as HistoryEntry[]) || []);
+
+      if (error) {
+        console.error('Erro ao carregar histórico:', error);
+        setHistory([]);
+      } else {
+        setHistory((data as HistoryEntry[]) || []);
+      }
+
       setLoading(false);
     };
+
     loadHistory();
   }, [open, avaliacaoId, currentStatus]);
 
@@ -110,20 +121,47 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     return { user, userName };
   };
 
-  const handleAction = async (targetStatus: string, actionLabel: string) => {
-    if (targetStatus === 'liberar') {
-      setShowLiberarForm(true);
-      return;
+  const insertHistory = async (params: {
+    statusFrom: string;
+    statusTo: string;
+    observacoes: string | null;
+    changedBy: string;
+    changedByName: string;
+  }) => {
+    const { error } = await supabase.from('status_history').insert({
+      entity_id: avaliacaoId,
+      entity_type: 'preparacao',
+      status_from: params.statusFrom,
+      status_to: params.statusTo,
+      observacoes: params.observacoes,
+      changed_by: params.changedBy,
+      changed_by_name: params.changedByName,
+    });
+
+    if (error) {
+      console.error('Erro ao registrar histórico:', error);
+      return false;
     }
 
-    if (!detalhes.trim()) {
-      toast.error('Informe os detalhes da movimentação');
+    return true;
+  };
+
+  const handleAction = async (targetStatus: string, _actionLabel: string) => {
+    if (targetStatus === 'liberar') {
+      setShowLiberarForm(true);
       return;
     }
 
     setSaving(true);
     try {
       const { user, userName } = await getUserInfo();
+      if (!user) {
+        toast.error('Sua sessão expirou. Faça login novamente para continuar.');
+        return;
+      }
+
+      const statusFrom = activeStatus || currentStatus || 'em_aberto';
+      const observacoes = detalhes.trim() || `Status alterado para ${getStatusLabel(targetStatus)}.`;
 
       const { error: updateError } = await supabase
         .from('avaliacoes')
@@ -136,23 +174,21 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         return;
       }
 
-      const { error: historyError } = await supabase.from('status_history').insert({
-        entity_id: avaliacaoId,
-        entity_type: 'preparacao',
-        status_from: currentStatus,
-        status_to: targetStatus,
-        observacoes: detalhes.trim() || null,
-        changed_by: user?.id || null,
-        changed_by_name: userName,
+      const historySaved = await insertHistory({
+        statusFrom,
+        statusTo: targetStatus,
+        observacoes,
+        changedBy: user.id,
+        changedByName: userName,
       });
 
-      if (historyError) {
-        console.error('Erro ao registrar histórico:', historyError);
+      if (!historySaved) {
         toast.error('Status alterado, mas erro ao registrar histórico');
       } else {
         toast.success(`Status alterado para ${getStatusLabel(targetStatus)}`);
       }
 
+      setActiveStatus(targetStatus);
       onStatusChanged?.(targetStatus);
       onOpenChange(false);
     } catch (err) {
@@ -172,22 +208,32 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     setSaving(true);
     try {
       const { user, userName } = await getUserInfo();
+      if (!user) {
+        toast.error('Sua sessão expirou. Faça login novamente para continuar.');
+        return;
+      }
+
+      const statusFrom = activeStatus || currentStatus || 'em_aberto';
 
       // Load avaliacao with moto data
-      const { data: avaliacao } = await supabase
+      const { data: avaliacao, error: avaliacaoError } = await supabase
         .from('avaliacoes')
         .select('*, motos_avaliacao(*)')
         .eq('id', avaliacaoId)
         .single();
 
-      if (!avaliacao) throw new Error('Avaliação não encontrada');
+      if (avaliacaoError || !avaliacao) {
+        console.error('Erro ao carregar avaliação:', avaliacaoError);
+        toast.error('Erro ao carregar dados da avaliação');
+        return;
+      }
 
       const moto = avaliacao.motos_avaliacao;
       const precoValue = parseCurrencyValue(precoTabela);
       const fechamentoValue = parseCurrencyValue(valorFechamento);
 
       // Insert into estoque
-      await supabase.from('estoque').insert({
+      const { error: estoqueError } = await supabase.from('estoque').insert({
         tipo: avaliacao.tipo_aquisicao === 'consignada' ? 'consignada' : 'propria',
         marca: moto.marca,
         categoria: moto.categoria || null,
@@ -198,7 +244,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         ano_fabricacao: moto.ano_fabricacao || null,
         ano_modelo: moto.ano_modelo || null,
         km: moto.km || null,
-        empresa: empresa,
+        empresa,
         preco: precoValue,
         status: 'disponivel',
         avaliacao_id: avaliacaoId,
@@ -207,8 +253,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         data_entrada: new Date().toISOString(),
       } as any);
 
-      // Update avaliacao: mark situacao as adquirida and preparacao done
-      await supabase
+      if (estoqueError) {
+        console.error('Erro ao registrar no estoque:', estoqueError);
+        toast.error('Erro ao registrar no estoque');
+        return;
+      }
+
+      const { error: updateError } = await supabase
         .from('avaliacoes')
         .update({
           preparacao_status: 'aguardando_liberacao_estoque',
@@ -217,18 +268,27 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         } as any)
         .eq('id', avaliacaoId);
 
-      // Insert history
-      await supabase.from('status_history').insert({
-        entity_id: avaliacaoId,
-        entity_type: 'preparacao',
-        status_from: currentStatus,
-        status_to: 'aguardando_liberacao_estoque',
+      if (updateError) {
+        console.error('Erro ao atualizar avaliação:', updateError);
+        toast.error('Estoque registrado, mas houve erro ao atualizar o status');
+        return;
+      }
+
+      const historySaved = await insertHistory({
+        statusFrom,
+        statusTo: 'aguardando_liberacao_estoque',
         observacoes: `Moto liberada para estoque. Empresa: ${empresa}, Loja: ${loja}, Placa: ${placa.trim().toUpperCase()}${detalhes.trim() ? `. ${detalhes.trim()}` : ''}`,
-        changed_by: user?.id || null,
-        changed_by_name: userName,
+        changedBy: user.id,
+        changedByName: userName,
       });
 
-      toast.success('Moto registrada no estoque com sucesso!');
+      if (!historySaved) {
+        toast.error('Estoque registrado, mas erro ao registrar histórico');
+      } else {
+        toast.success('Moto registrada no estoque com sucesso!');
+      }
+
+      setActiveStatus('aguardando_liberacao_estoque');
       onStatusChanged?.('aguardando_liberacao_estoque');
       onOpenChange(false);
     } catch (err) {
@@ -240,13 +300,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   };
 
   const visibleButtons = ACTION_BUTTONS.filter(btn => {
-    // Don't show button matching current status
-    if (btn.targetStatus === currentStatus) return false;
-    if (btn.value === 'preparacao' && (currentStatus === 'aguardando_aceite' || currentStatus === 'aguardando_liberacao_estoque')) return false;
-    // "aceite" only visible if preparação was done (status is aguardando_aceite)
-    if (btn.value === 'aceite' && currentStatus !== 'aguardando_aceite') return false;
-    // "liberar" only visible if aceite was done (status is aguardando_liberacao_estoque)
-    if (btn.value === 'liberar' && currentStatus !== 'aguardando_liberacao_estoque') return false;
+    if (btn.targetStatus === activeStatus) return false;
+    if (btn.value === 'preparacao' && (activeStatus === 'aguardando_aceite' || activeStatus === 'aguardando_liberacao_estoque')) return false;
+    if (btn.value === 'aceite' && activeStatus !== 'aguardando_aceite') return false;
+    if (btn.value === 'liberar' && activeStatus !== 'aguardando_liberacao_estoque') return false;
     return true;
   });
 
@@ -262,8 +319,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" /> Processo de Preparação
           </DialogTitle>
-          <Badge style={{ backgroundColor: `${getStatusHex(currentStatus)}20`, color: getStatusHex(currentStatus) }}>
-            {getStatusLabel(currentStatus)}
+          <Badge style={{ backgroundColor: `${getStatusHex(activeStatus)}20`, color: getStatusHex(activeStatus) }}>
+            {getStatusLabel(activeStatus)}
           </Badge>
         </DialogHeader>
 
