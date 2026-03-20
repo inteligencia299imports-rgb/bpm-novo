@@ -125,25 +125,38 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     try {
       const { user, userName } = await getUserInfo();
 
-      await supabase
+      const { error: updateError } = await supabase
         .from('avaliacoes')
         .update({ preparacao_status: targetStatus } as any)
         .eq('id', avaliacaoId);
 
-      await supabase.from('status_history').insert({
+      if (updateError) {
+        console.error('Erro ao atualizar status:', updateError);
+        toast.error('Erro ao atualizar status');
+        return;
+      }
+
+      const { error: historyError } = await supabase.from('status_history').insert({
         entity_id: avaliacaoId,
         entity_type: 'preparacao',
         status_from: currentStatus,
         status_to: targetStatus,
-        observacoes: detalhes.trim(),
+        observacoes: detalhes.trim() || null,
         changed_by: user?.id || null,
         changed_by_name: userName,
       });
 
-      toast.success(`Status alterado para ${getStatusLabel(targetStatus)}`);
+      if (historyError) {
+        console.error('Erro ao registrar histórico:', historyError);
+        toast.error('Status alterado, mas erro ao registrar histórico');
+      } else {
+        toast.success(`Status alterado para ${getStatusLabel(targetStatus)}`);
+      }
+
       onStatusChanged?.(targetStatus);
       onOpenChange(false);
-    } catch {
+    } catch (err) {
+      console.error('Erro:', err);
       toast.error('Erro ao salvar processo');
     } finally {
       setSaving(false);
