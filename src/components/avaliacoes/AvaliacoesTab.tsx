@@ -9,6 +9,7 @@ import type { Avaliacao, SituacaoAvaliacao } from '@/types/crm';
 import AvaliacaoCard from './AvaliacaoCard';
 import AvaliacaoForm from './AvaliacaoForm';
 import { toast } from 'sonner';
+import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
 const KANBAN_COLUMNS = SITUACOES_AVALIACAO;
 

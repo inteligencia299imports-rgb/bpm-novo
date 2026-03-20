@@ -7,6 +7,7 @@ import type { PreparacaoStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
 import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
 import { toast } from 'sonner';
+import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
 const PreparacaoTab = () => {
   const [items, setItems] = useState<any[]>([]);

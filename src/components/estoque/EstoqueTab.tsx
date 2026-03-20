@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Filter, Package, Bike, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
 interface EstoqueItem {
   id: string;

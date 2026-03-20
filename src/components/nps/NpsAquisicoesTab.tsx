@@ -5,6 +5,7 @@ import { Search, X } from 'lucide-react';
 import { SITUACOES_NPS } from '@/types/crm';
 import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
+import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import NpsCard from './NpsCard';
 
 const NpsAquisicoesTab = () => {

@@ -7,6 +7,7 @@ import type { PosVendaStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
 import PosVendaDetail from './PosVendaDetail';
 import { toast } from 'sonner';
+import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
 const PosVendaTab = () => {
   const [items, setItems] = useState<any[]>([]);

@@ -7,6 +7,7 @@ import type { PosVendaStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
 import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
 import { toast } from 'sonner';
+import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
 const IntermediacacaoTab = () => {
   const [items, setItems] = useState<any[]>([]);

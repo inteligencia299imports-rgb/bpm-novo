@@ -5,6 +5,7 @@ import { Search, X, FileSearch } from 'lucide-react';
 import ProcessCard from '@/components/shared/ProcessCard';
 import ConsultaDetail from './ConsultaDetail';
 import { toast } from 'sonner';
+import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
 const COLUMNS = [
   { value: false, label: 'Pendente', hex: '#F2C94C' },
