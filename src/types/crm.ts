@@ -69,7 +69,7 @@ export const PREPARACAO_COLUMNS: { value: PreparacaoStatus; label: string; hex: 
   { value: 'oficina', label: 'Oficina', hex: '#9B51E0' },
   { value: 'servico_externo', label: 'Serviço Externo', hex: '#E91E63' },
   { value: 'retorno', label: 'Retorno', hex: '#00BCD4' },
-  { value: 'servico_concluso', label: 'Serviço Concluso', hex: '#27AE60' },
+  
   { value: 'aguardando_liberacao_estoque', label: 'Aguardando Liberação Estoque', hex: '#607D8B' },
 ];
 
