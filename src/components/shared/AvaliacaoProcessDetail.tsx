@@ -47,26 +47,25 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const whatsappUrl = atendimento?.telefone ? `https://wa.me/55${atendimento.telefone.replace(/\D/g, '')}` : '';
 
   useEffect(() => {
-    // Fetch CNH from atendimento
-    if (atendimento?.id) {
-      supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
-        .then(({ data }) => setCnhUrl(data?.cnh_url || null));
-    }
-    // Fetch CRLV from moto
-    if (moto?.id) {
-      setCrlvUrl(moto.crlv_url || null);
-    }
-  }, [atendimento?.id, moto?.id]);
+    const loadAll = async () => {
+      setLoading(true);
+      const [cnhRes, histRes] = await Promise.all([
+        atendimento?.id
+          ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
+          : Promise.resolve({ data: null }),
+        supabase.from('status_history').select('*').eq('entity_type', entityType).eq('entity_id', item.id).order('created_at', { ascending: true }),
+      ]);
+      setCnhUrl(cnhRes.data?.cnh_url || null);
+      if (moto?.id) setCrlvUrl(moto.crlv_url || null);
+      setHistory(histRes.data || []);
+      setLoading(false);
+    };
+    loadAll();
+  }, [atendimento?.id, moto?.id, item.id, entityType]);
 
-  useEffect(() => {
-    supabase
-      .from('status_history')
-      .select('*')
-      .eq('entity_type', entityType)
-      .eq('entity_id', item.id)
-      .order('created_at', { ascending: true })
-      .then(({ data }) => setHistory(data || []));
-  }, [item.id, entityType]);
+  if (loading) {
+    return <DetailSkeleton onClose={onClose} cards={3} />;
+  }
 
   return (
     <div className="space-y-4">
