@@ -2,18 +2,46 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
 import { Search, X, Handshake } from 'lucide-react';
-import { POS_VENDA_COLUMNS } from '@/types/crm';
-import type { PosVendaStatus } from '@/types/crm';
+import { INTERMEDIACAO_PARTE1_COLUMNS, INTERMEDIACAO_PARTE2_COLUMNS, INTERMEDIACAO_PARTE1_ETAPAS, INTERMEDIACAO_PARTE2_ETAPAS } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
 import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+
+type Parte = 'parte1' | 'parte2';
+
+const PARTE_CONFIG = {
+  parte1: {
+    columns: INTERMEDIACAO_PARTE1_COLUMNS,
+    statusField: 'intermediacao_parte1_status',
+    etapas: INTERMEDIACAO_PARTE1_ETAPAS,
+    observacoesField: 'pos_venda_observacoes',
+    statusRules: {
+      concluded: 'AUTORIZAÇÃO DE PAGAMENTO',
+      default: 'em_andamento',
+    },
+  },
+  parte2: {
+    columns: INTERMEDIACAO_PARTE2_COLUMNS,
+    statusField: 'intermediacao_parte2_status',
+    etapas: INTERMEDIACAO_PARTE2_ETAPAS,
+    observacoesField: 'pos_venda_observacoes',
+    statusRules: {
+      concluded: 'TRANSFERÊNCIA FINALIZADA',
+      special: { etapa: 'DOCUMENTAÇÃO COM DESPACHANTE', status: 'doc_despachante' },
+      default: 'em_andamento',
+    },
+  },
+};
 
 const IntermediacacaoTab = () => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [parte, setParte] = useState<Parte>('parte1');
+
+  const config = PARTE_CONFIG[parte];
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -32,9 +60,25 @@ const IntermediacacaoTab = () => {
   }, [search]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
-  const getColumnItems = (status: PosVendaStatus) => items.filter((a: any) => (a.pos_venda_status || 'em_aberto') === status);
 
-  if (selectedItem) return <PosVendaDetail item={selectedItem} onClose={() => setSelectedItem(null)} />;
+  const getColumnItems = (status: string) => items.filter((a: any) => ((a as any)[config.statusField] || 'em_aberto') === status);
+
+  if (selectedItem) {
+    return (
+      <PosVendaDetail
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
+        statusColumns={config.columns as any}
+        statusField={config.statusField}
+        processoProps={{
+          customEtapas: config.etapas,
+          statusField: config.statusField,
+          observacoesField: config.observacoesField,
+          statusRules: config.statusRules,
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -42,6 +86,31 @@ const IntermediacacaoTab = () => {
         <div className="flex items-center gap-2"><Handshake className="h-7 w-7 text-primary" /><h1 className="text-2xl font-bold text-foreground">Intermediação</h1></div>
         <p className="text-sm text-muted-foreground mt-0.5">Motos vendidas consignadas</p>
       </div>
+
+      {/* Part 1 / Part 2 Toggle */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setParte('parte1')}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            parte === 'parte1'
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Parte 1
+        </button>
+        <button
+          onClick={() => setParte('parte2')}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            parte === 'parte2'
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Parte 2
+        </button>
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -50,11 +119,11 @@ const IntermediacacaoTab = () => {
         </div>
       </div>
       {loading ? (
-        <KanbanSkeleton columns={4} />
+        <KanbanSkeleton columns={3} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
           <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-3">
-            {POS_VENDA_COLUMNS.map(col => {
+            {config.columns.map(col => {
               const colItems = getColumnItems(col.value);
               return (
                 <div key={col.value} className="w-[320px] shrink-0 md:w-auto md:shrink flex flex-col">
