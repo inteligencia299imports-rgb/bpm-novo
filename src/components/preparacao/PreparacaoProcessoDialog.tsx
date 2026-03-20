@@ -24,6 +24,7 @@ interface Props {
 
 interface HistoryEntry {
   id: string;
+  entity_type: string;
   status_from: string;
   status_to: string;
   observacoes: string | null;
@@ -31,7 +32,21 @@ interface HistoryEntry {
   created_at: string;
 }
 
-const getStatusLabel = (value: string) => PREPARACAO_COLUMNS.find(c => c.value === value)?.label || value;
+const AVALIACAO_STATUS_LABELS: Record<string, string> = {
+  sem_avaliar: 'Sem Avaliar',
+  sem_avaliacao: 'Sem Avaliação',
+  em_aberto: 'Em Aberto',
+  adquirida: 'Adquirida',
+  dispensada: 'Dispensada',
+  perdido: 'Perdido',
+  avaliacao_solicitada: 'Avaliação Solicitada',
+  avaliacao_realizada: 'Avaliação Realizada',
+};
+
+const getStatusLabel = (value: string, entityType?: string) => {
+  if (entityType === 'avaliacao') return AVALIACAO_STATUS_LABELS[value] || value;
+  return PREPARACAO_COLUMNS.find(c => c.value === value)?.label || AVALIACAO_STATUS_LABELS[value] || value;
+};
 const getStatusHex = (value: string) => PREPARACAO_COLUMNS.find(c => c.value === value)?.hex || '#888';
 
 const ACTION_BUTTONS = [
@@ -87,25 +102,41 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
     const loadHistory = async () => {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Fetch preparacao history
+      const prepPromise = supabase
         .from('status_history')
         .select('*')
         .eq('entity_id', avaliacaoId)
         .eq('entity_type', 'preparacao')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Erro ao carregar histórico:', error);
-        setHistory([]);
-      } else {
-        setHistory((data as HistoryEntry[]) || []);
-      }
+      // Fetch avaliacao (aquisicao) history using moto_avaliacao_id
+      const avaliacaoPromise = avaliacaoData?.moto_avaliacao_id
+        ? supabase
+            .from('status_history')
+            .select('*')
+            .eq('entity_id', avaliacaoData.moto_avaliacao_id)
+            .eq('entity_type', 'avaliacao')
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] as any[] });
 
+      const [prepRes, avalRes] = await Promise.all([prepPromise, avaliacaoPromise]);
+
+      const prepHistory = (prepRes.data as HistoryEntry[]) || [];
+      const avalHistory = (avalRes.data as HistoryEntry[]) || [];
+      
+      // Merge and sort by date descending
+      const merged = [...prepHistory, ...avalHistory].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setHistory(merged);
       setLoading(false);
     };
 
     loadHistory();
-  }, [open, avaliacaoId, currentStatus]);
+  }, [open, avaliacaoId, currentStatus, avaliacaoData?.moto_avaliacao_id]);
 
   const getUserInfo = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -542,12 +573,15 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     <div key={h.id} className="bg-muted/50 rounded-lg p-3 space-y-1 border border-border/50">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-1.5">
+                          {h.entity_type === 'avaliacao' && (
+                            <span className="text-[9px] font-medium text-muted-foreground/70 uppercase mr-0.5">Aquisição</span>
+                          )}
                           <Badge variant="outline" className="text-[10px]" style={{ borderColor: getStatusHex(h.status_from), color: getStatusHex(h.status_from) }}>
-                            {getStatusLabel(h.status_from)}
+                            {getStatusLabel(h.status_from, h.entity_type)}
                           </Badge>
                           <span className="text-xs text-muted-foreground">→</span>
                           <Badge className="text-[10px]" style={{ backgroundColor: `${getStatusHex(h.status_to)}20`, color: getStatusHex(h.status_to) }}>
-                            {getStatusLabel(h.status_to)}
+                            {getStatusLabel(h.status_to, h.entity_type)}
                           </Badge>
                         </div>
                         <span className="text-[10px] text-muted-foreground">
