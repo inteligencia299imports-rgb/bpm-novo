@@ -12,6 +12,7 @@ import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
+import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 
 interface Props {
   item: any;
