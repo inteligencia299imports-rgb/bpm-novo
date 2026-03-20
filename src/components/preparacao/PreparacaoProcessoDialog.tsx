@@ -604,9 +604,9 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Observações</label>
+                    <label className="text-xs text-muted-foreground">Observações da Moto</label>
                     <Textarea
-                      placeholder="Observações adicionais..."
+                      placeholder="Ex: Manual, chave reserva, acessórios..."
                       value={detalhes}
                       onChange={e => setDetalhes(e.target.value)}
                       rows={2}
