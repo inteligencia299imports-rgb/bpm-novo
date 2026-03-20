@@ -451,6 +451,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     value={detalhes}
                     onChange={e => setDetalhes(e.target.value)}
                     rows={2}
+                    className="border-primary"
                   />
                 </div>
 
