@@ -407,21 +407,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
             </Card>
           )}
 
-          {/* Histórico de Movimentações */}
-          <Card className="md:col-span-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" /> Histórico de Movimentações
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {history.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>
-              ) : (
-                <StatusTimeline history={history} />
-              )}
-            </CardContent>
-          </Card>
         </div>
       </ScrollArea>
 
