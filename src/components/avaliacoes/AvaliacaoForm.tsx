@@ -640,10 +640,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               {statusButtons.map(btn => (
                 <Button
                   key={btn.value}
-                  variant="outline"
                   size="sm"
-                  className="gap-2"
-                  style={{ borderColor: btn.color, color: btn.color }}
+                  className="gap-2 text-white hover:opacity-90"
+                  style={{ backgroundColor: btn.color }}
                   onClick={() => {
                     if (btn.value === 'adquirida') {
                       setTipoAquisicaoPopup(true);
