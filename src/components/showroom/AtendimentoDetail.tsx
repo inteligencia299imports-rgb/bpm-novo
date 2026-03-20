@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2 } from 'lucide-react';
 import type { Atendimento, MotoInteresse, MotoAvaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES } from '@/types/crm';
@@ -75,6 +76,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [savingValor, setSavingValor] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [contratoOpen, setContratoOpen] = useState(false);
+  const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
+  const [savingMotivo, setSavingMotivo] = useState(false);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
@@ -192,7 +195,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     return `https://wa.me/${number}`;
   })();
 
-  const handleStatusChange = async (value: SituacaoShowroom, label: string, extraData?: Record<string, any>) => {
+  const handleStatusChange = async (value: SituacaoShowroom, label: string, extraData?: Record<string, any>, observacoes?: string) => {
     const previousStatus = atendimento.situacao;
     const updateData: any = { situacao: value, ...extraData };
     const { error } = await supabase.from('atendimentos').update(updateData).eq('id', atendimento.id);
@@ -207,6 +210,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         status_to: value,
         changed_by: user?.id,
         changed_by_name: userName || user?.email || null,
+        observacoes: observacoes || null,
       });
 
       toast.success(`Status alterado para ${label}`);
@@ -226,6 +230,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         onDeleted();
       }
     }
+  };
+
+  const handleSaveMotivo = async () => {
+    if (!motivoPopup) return;
+    if (!motivoPopup.motivo.trim()) {
+      toast.error('Informe o motivo para alterar o status');
+      return;
+    }
+    setSavingMotivo(true);
+    const label = motivoPopup.modo === 'pendente' ? 'Pendente' : 'Perdido';
+    await handleStatusChange(motivoPopup.modo as SituacaoShowroom, label, undefined, motivoPopup.motivo.trim().toUpperCase());
+    setSavingMotivo(false);
+    setMotivoPopup(null);
   };
 
   const handleSaveValor = async () => {
@@ -306,6 +323,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             <p className="text-xs text-muted-foreground">
               {format(new Date(atendimento.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
+            {atendimento.situacao === 'pendente' && (() => {
+              const lastPendente = [...history].reverse().find(h => h.entity_type === 'showroom' && h.status_to === 'pendente' && h.observacoes);
+              return lastPendente ? (
+                <p className="text-xs text-yellow-600 mt-0.5 italic">Motivo: {lastPendente.observacoes}</p>
+              ) : null;
+            })()}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {atendimento.situacao === 'sinal' && (
@@ -806,6 +829,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         const toInput = (v: number | null | undefined) => v ? formatCurrencyInput(Math.round(v * 100).toString()) : '';
                         const firstAv = motosAvaliacao.length > 0 ? avaliacoes[motosAvaliacao[0].id] : null;
                         setValorPopup({ valorSinal: toInput(atendimento.valor_sinal), valorVenda: toInput(atendimento.valor_venda), valorFechamento: toInput(firstAv?.valor_fechamento), modo: btn.value as 'sinal' | 'vendido' });
+                      } else if (btn.value === 'pendente' || btn.value === 'perdido') {
+                        setMotivoPopup({ modo: btn.value as 'pendente' | 'perdido', motivo: '' });
                       } else {
                         handleStatusChange(btn.value, btn.label);
                       }
@@ -1001,6 +1026,36 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         estoqueData={estoqueData}
         avaliacoes={avaliacoes}
       />
+      {/* Dialog de Motivo (Pendente/Perdido) */}
+      <Dialog open={!!motivoPopup} onOpenChange={(o) => !o && setMotivoPopup(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {motivoPopup?.modo === 'perdido' ? <XCircle className="h-5 w-5 text-destructive" /> : <Clock className="h-5 w-5 text-yellow-500" />}
+              {motivoPopup?.modo === 'perdido' ? 'Marcar como Perdido' : 'Marcar como Pendente'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium text-foreground">Motivo *</label>
+              <Textarea
+                className="mt-1 uppercase"
+                placeholder="Informe o motivo..."
+                value={motivoPopup?.motivo || ''}
+                onChange={(e) => setMotivoPopup(prev => prev ? { ...prev, motivo: e.target.value.toUpperCase() } : null)}
+                rows={3}
+              />
+            </div>
+            <Button
+              className="w-full"
+              onClick={handleSaveMotivo}
+              disabled={savingMotivo}
+            >
+              {savingMotivo ? 'Salvando...' : 'Confirmar'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
