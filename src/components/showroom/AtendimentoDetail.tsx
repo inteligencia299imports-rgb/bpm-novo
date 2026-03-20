@@ -1026,6 +1026,36 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         estoqueData={estoqueData}
         avaliacoes={avaliacoes}
       />
+      {/* Dialog de Motivo (Pendente/Perdido) */}
+      <Dialog open={!!motivoPopup} onOpenChange={(o) => !o && setMotivoPopup(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {motivoPopup?.modo === 'perdido' ? <XCircle className="h-5 w-5 text-destructive" /> : <Clock className="h-5 w-5 text-yellow-500" />}
+              {motivoPopup?.modo === 'perdido' ? 'Marcar como Perdido' : 'Marcar como Pendente'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium text-foreground">Motivo *</label>
+              <Textarea
+                className="mt-1 uppercase"
+                placeholder="Informe o motivo..."
+                value={motivoPopup?.motivo || ''}
+                onChange={(e) => setMotivoPopup(prev => prev ? { ...prev, motivo: e.target.value.toUpperCase() } : null)}
+                rows={3}
+              />
+            </div>
+            <Button
+              className="w-full"
+              onClick={handleSaveMotivo}
+              disabled={savingMotivo}
+            >
+              {savingMotivo ? 'Salvando...' : 'Confirmar'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
