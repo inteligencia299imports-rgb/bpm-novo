@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, Clock, DollarSign, Store, MessageCircle, Tag, Eye } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { POS_VENDA_COLUMNS, INTERESSES } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
-import StatusTimeline from '@/components/shared/StatusTimeline';
+
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -48,7 +48,6 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 );
 
 const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
-  const [history, setHistory] = useState<any[]>([]);
   const [motosInteresse, setMotosInteresse] = useState<any[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<any[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
@@ -106,31 +105,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
       }
       setAvaliacoes(avalMap);
 
-      // Fetch full integrated history
-      const motoIds = motosAv.map((m: any) => m.id);
-      const avalIds = resAval.data?.map((av: any) => av.id) || [];
-
-      const histPromises = [
-        supabase.from('status_history').select('*').eq('entity_type', 'showroom').eq('entity_id', item.id).order('created_at', { ascending: true }),
-        supabase.from('status_history').select('*').in('entity_type', ['contrato']).eq('entity_id', item.id).order('created_at', { ascending: true }),
-        supabase.from('status_history').select('*').eq('entity_type', 'pos_venda').eq('entity_id', item.id).order('created_at', { ascending: true }),
-      ];
-      if (motoIds.length > 0) {
-        histPromises.push(
-          supabase.from('status_history').select('*').eq('entity_type', 'consulta').in('entity_id', motoIds).order('created_at', { ascending: true }),
-          supabase.from('status_history').select('*').eq('entity_type', 'avaliacao').in('entity_id', motoIds).order('created_at', { ascending: true }),
-        );
-      }
-      if (avalIds.length > 0) {
-        histPromises.push(
-          supabase.from('status_history').select('*').eq('entity_type', 'consignacao').in('entity_id', avalIds).order('created_at', { ascending: true }),
-        );
-      }
-
-      const results = await Promise.all(histPromises);
-      const allHistory = results.flatMap(r => r.data || []);
-      allHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      setHistory(allHistory);
 
       setLoading(false);
     };
@@ -432,21 +406,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
             </Card>
           )}
 
-          {/* Histórico de Movimentações */}
-          <Card className="md:col-span-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" /> Histórico de Movimentações
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {history.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>
-              ) : (
-                <StatusTimeline history={history} />
-              )}
-            </CardContent>
-          </Card>
         </div>
       </ScrollArea>
 

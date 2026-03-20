@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Bike, Clock, ArrowRight, DollarSign, Tag, MessageCircle, FileText } from 'lucide-react';
+import { ArrowLeft, User, Bike, ArrowRight, DollarSign, Tag, MessageCircle, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
-import StatusTimeline from '@/components/shared/StatusTimeline';
+
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
 
@@ -34,7 +34,6 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 );
 
 const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColumns, statusField, title, onClose }) => {
-  const [history, setHistory] = useState<any[]>([]);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
@@ -49,15 +48,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      const [cnhRes, histRes] = await Promise.all([
+      const [cnhRes] = await Promise.all([
         atendimento?.id
           ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
           : Promise.resolve({ data: null }),
-        supabase.from('status_history').select('*').eq('entity_type', entityType).eq('entity_id', item.id).order('created_at', { ascending: true }),
       ]);
       setCnhUrl(cnhRes.data?.cnh_url || null);
       if (moto?.id) setCrlvUrl(moto.crlv_url || null);
-      setHistory(histRes.data || []);
       setLoading(false);
     };
     loadAll();
@@ -241,21 +238,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             </Card>
           )}
 
-          {/* Histórico */}
-          <Card className="md:col-span-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" /> Histórico de Movimentações
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {history.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>
-              ) : (
-                <StatusTimeline history={history} />
-              )}
-            </CardContent>
-          </Card>
         </div>
       </ScrollArea>
 
