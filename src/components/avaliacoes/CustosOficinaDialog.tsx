@@ -213,29 +213,37 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium">Responsável</label>
-                  <Select value={responsavel} onValueChange={setResponsavel}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {RESPONSAVEIS.map(r => (
-                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2 mt-1">
+                    {RESPONSAVEIS.map(r => (
+                      <Button
+                        key={r.value}
+                        type="button"
+                        size="sm"
+                        variant={responsavel === r.value ? 'default' : 'outline'}
+                        className="flex-1"
+                        onClick={() => setResponsavel(r.value)}
+                      >
+                        {r.label}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Tipo</label>
-                  <Select value={tipo} onValueChange={setTipo}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIPOS.map(t => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2 mt-1">
+                    {TIPOS.map(t => (
+                      <Button
+                        key={t.value}
+                        type="button"
+                        size="sm"
+                        variant={tipo === t.value ? 'default' : 'outline'}
+                        className="flex-1"
+                        onClick={() => setTipo(t.value)}
+                      >
+                        {t.label}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
