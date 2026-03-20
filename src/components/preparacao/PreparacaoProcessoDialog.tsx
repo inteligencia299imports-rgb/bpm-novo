@@ -102,25 +102,42 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
     const loadHistory = async () => {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      // Fetch preparacao history
+      const prepPromise = supabase
         .from('status_history')
         .select('*')
         .eq('entity_id', avaliacaoId)
         .eq('entity_type', 'preparacao')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Erro ao carregar histórico:', error);
-        setHistory([]);
-      } else {
-        setHistory((data as HistoryEntry[]) || []);
+      // Fetch avaliacao (aquisicao) history using moto_avaliacao_id
+      let avaliacaoPromise: Promise<any> = Promise.resolve({ data: [] });
+      if (avaliacaoData?.moto_avaliacao_id) {
+        avaliacaoPromise = supabase
+          .from('status_history')
+          .select('*')
+          .eq('entity_id', avaliacaoData.moto_avaliacao_id)
+          .eq('entity_type', 'avaliacao')
+          .order('created_at', { ascending: false });
       }
 
+      const [prepRes, avalRes] = await Promise.all([prepPromise, avaliacaoPromise]);
+
+      const prepHistory = (prepRes.data as HistoryEntry[]) || [];
+      const avalHistory = (avalRes.data as HistoryEntry[]) || [];
+      
+      // Merge and sort by date descending
+      const merged = [...prepHistory, ...avalHistory].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setHistory(merged);
       setLoading(false);
     };
 
     loadHistory();
-  }, [open, avaliacaoId, currentStatus]);
+  }, [open, avaliacaoId, currentStatus, avaliacaoData?.moto_avaliacao_id]);
 
   const getUserInfo = async () => {
     const { data: { user } } = await supabase.auth.getUser();
