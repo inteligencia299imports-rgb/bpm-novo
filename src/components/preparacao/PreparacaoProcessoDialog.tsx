@@ -41,10 +41,20 @@ const AVALIACAO_STATUS_LABELS: Record<string, string> = {
   perdido: 'Perdido',
   avaliacao_solicitada: 'Avaliação Solicitada',
   avaliacao_realizada: 'Avaliação Realizada',
+  avaliada: 'Avaliada',
+  sem_consulta: 'Sem Consulta',
+  consulta_solicitada: 'Consulta Solicitada',
+  consulta_realizada: 'Consulta Realizada',
+};
+
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+  avaliacao: 'Avaliação',
+  consulta: 'Consulta',
+  preparacao: 'Preparação',
 };
 
 const getStatusLabel = (value: string, entityType?: string) => {
-  if (entityType === 'avaliacao') return AVALIACAO_STATUS_LABELS[value] || value;
+  if (entityType === 'avaliacao' || entityType === 'consulta') return AVALIACAO_STATUS_LABELS[value] || value;
   return PREPARACAO_COLUMNS.find(c => c.value === value)?.label || AVALIACAO_STATUS_LABELS[value] || value;
 };
 const getStatusHex = (value: string) => PREPARACAO_COLUMNS.find(c => c.value === value)?.hex || '#888';
@@ -102,6 +112,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
     const loadHistory = async () => {
       setLoading(true);
+      const motoAvaliacaoId = avaliacaoData?.moto_avaliacao_id;
       
       // Fetch preparacao history
       const prepPromise = supabase
@@ -111,13 +122,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         .eq('entity_type', 'preparacao')
         .order('created_at', { ascending: false });
 
-      // Fetch avaliacao (aquisicao) history using moto_avaliacao_id
-      const avaliacaoPromise = avaliacaoData?.moto_avaliacao_id
+      // Fetch avaliacao + consulta history using moto_avaliacao_id
+      const avaliacaoPromise = motoAvaliacaoId
         ? supabase
             .from('status_history')
             .select('*')
-            .eq('entity_id', avaliacaoData.moto_avaliacao_id)
-            .eq('entity_type', 'avaliacao')
+            .eq('entity_id', motoAvaliacaoId)
+            .in('entity_type', ['avaliacao', 'consulta'])
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [] as any[] });
 
@@ -573,8 +584,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     <div key={h.id} className="bg-muted/50 rounded-lg p-3 space-y-1 border border-border/50">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-1.5">
-                          {h.entity_type === 'avaliacao' && (
-                            <span className="text-[9px] font-medium text-muted-foreground/70 uppercase mr-0.5">Aquisição</span>
+                          {h.entity_type !== 'preparacao' && (
+                            <span className="text-[9px] font-medium text-muted-foreground/70 uppercase mr-0.5">
+                              {ENTITY_TYPE_LABELS[h.entity_type] || h.entity_type}
+                            </span>
                           )}
                           <Badge variant="outline" className="text-[10px]" style={{ borderColor: getStatusHex(h.status_from), color: getStatusHex(h.status_from) }}>
                             {getStatusLabel(h.status_from, h.entity_type)}
