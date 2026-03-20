@@ -97,17 +97,24 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [precoTabela, setPrecoTabela] = useState('');
   const [valorFechamento, setValorFechamento] = useState('');
 
+  const formatKm = (value: string): string => {
+    const digits = value.replace(/\D/g, '');
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+
   useEffect(() => {
     if (!open) return;
     setActiveStatus(currentStatus);
     setDetalhes('');
     setShowLiberarForm(false);
     setEmpresa('');
-    setLoja('');
-    setPlaca('');
-    setCilindrada('');
+    // Pre-populate from avaliação/atendimento data
+    setLoja(avaliacaoData?.atendimento?.loja || '');
+    setPlaca(avaliacaoData?.moto?.placa || '');
+    setCilindrada(avaliacaoData?.moto?.cilindrada ? formatKm(avaliacaoData.moto.cilindrada) : '');
     setPrecoTabela('');
-    setValorFechamento('');
+    const fechamento = avaliacaoData?.valor_fechamento;
+    setValorFechamento(fechamento != null ? formatCurrencyInput(String(Math.round(fechamento * 100))) : '');
 
     const loadHistory = async () => {
       setLoading(true);
@@ -547,9 +554,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       <label className="text-xs text-muted-foreground">Cilindrada *</label>
                       <Input
                         value={cilindrada}
-                        onChange={e => setCilindrada(e.target.value)}
-                        placeholder="Ex: 800"
+                        onChange={e => setCilindrada(formatKm(e.target.value))}
+                        placeholder="Ex: 1.200"
                         className="h-9"
+                        inputMode="numeric"
                       />
                     </div>
 

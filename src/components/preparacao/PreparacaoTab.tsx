@@ -19,7 +19,7 @@ const PreparacaoTab = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('avaliacoes')
-      .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, observacoes)`)
+      .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes)`)
       .eq('situacao', 'adquirida')
       .order('updated_at', { ascending: false });
     if (error) { toast.error('Erro ao carregar preparação'); } else {
