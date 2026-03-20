@@ -19,6 +19,9 @@ const ETAPAS = [
   'COMUNICADO DE VENDA',
   'DOC. FORMALIZADO',
   'DOCUMENTAÇÃO COM DESPACHANTE',
+  'DOC. OUTRA UF',
+  'PENDENTE (BOLETO)',
+  'TRANSFERÊNCIA FINALIZADA',
 ];
 
 interface EtapaData {
@@ -112,6 +115,26 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
             .insert({ atendimento_id: atendimentoId, etapa: e.etapa, concluida: e.concluida, data_conclusao: e.data_conclusao } as any);
         }
       }
+
+      // Determine pos_venda_status based on checked etapas
+      const transferenciaFinalizada = etapas.find(e => e.etapa === 'TRANSFERÊNCIA FINALIZADA')?.concluida;
+      const docDespachante = etapas.find(e => e.etapa === 'DOCUMENTAÇÃO COM DESPACHANTE')?.concluida;
+      const anyConcluida = etapas.some(e => e.concluida);
+
+      let newStatus = 'em_aberto';
+      if (transferenciaFinalizada) {
+        newStatus = 'concluido';
+      } else if (docDespachante) {
+        newStatus = 'doc_despachante';
+      } else if (anyConcluida) {
+        newStatus = 'em_andamento';
+      }
+
+      await supabase
+        .from('atendimentos')
+        .update({ pos_venda_status: newStatus } as any)
+        .eq('id', atendimentoId);
+
       toast.success('Processo salvo com sucesso!');
       onOpenChange(false);
     } catch {

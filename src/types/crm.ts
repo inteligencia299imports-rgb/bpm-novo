@@ -5,7 +5,7 @@ export type SituacaoShowroom = 'em_aberto' | 'pendente' | 'sinal' | 'perdido' | 
 export type SituacaoAvaliacao = 'sem_avaliar' | 'em_aberto' | 'adquirida' | 'dispensada' | 'perdido';
 export type SituacaoNps = 'em_aberto' | 'enviado' | 'respondido';
 export type Negociacao = 'compra' | 'consignacao';
-export type PosVendaStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante';
+export type PosVendaStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
 export type PosCompraStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'pausado';
 export type ConsignacaoStatus = 'em_aberto' | 'contrato_assinado' | 'cadastro_nbs' | 'pausado';
 export type PreparacaoStatus = 'em_aberto' | 'pendente' | 'aguardando_aceite' | 'oficina' | 'servico_externo' | 'retorno' | 'servico_concluso' | 'aguardando_liberacao_estoque';
@@ -14,6 +14,7 @@ export const POS_VENDA_COLUMNS: { value: PosVendaStatus; label: string; hex: str
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#9B51E0' },
+  { value: 'concluido', label: 'Concluído', hex: '#27AE60' },
 ];
 
 export const POS_COMPRA_COLUMNS: { value: PosCompraStatus; label: string; hex: string }[] = [
