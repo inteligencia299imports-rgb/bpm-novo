@@ -339,7 +339,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       const { error: updateError } = await supabase
         .from('avaliacoes')
         .update({
-          preparacao_status: 'aguardando_liberacao_estoque',
+          preparacao_status: 'estoque',
           situacao: 'adquirida',
           valor_fechamento: fechamentoValue,
         } as any)
