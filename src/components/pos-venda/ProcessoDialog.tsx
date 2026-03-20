@@ -79,11 +79,24 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
   const setDate = (etapa: string, date: Date | undefined) => {
     if (!date) return;
     setEtapas(prev =>
-      prev.map(e =>
-        e.etapa === etapa ? { ...e, data_conclusao: date.toISOString(), concluida: true } : e
-      )
+      prev.map(e => {
+        if (e.etapa !== etapa) return e;
+        const existing = e.data_conclusao ? new Date(e.data_conclusao) : new Date();
+        date.setHours(existing.getHours(), existing.getMinutes());
+        return { ...e, data_conclusao: date.toISOString(), concluida: true };
+      })
     );
-    setCalendarOpen(null);
+  };
+
+  const setTime = (etapa: string, hours: number, minutes: number) => {
+    setEtapas(prev =>
+      prev.map(e => {
+        if (e.etapa !== etapa) return e;
+        const d = e.data_conclusao ? new Date(e.data_conclusao) : new Date();
+        d.setHours(hours, minutes);
+        return { ...e, data_conclusao: d.toISOString(), concluida: true };
+      })
+    );
   };
 
   const clearDate = (etapa: string) => {
