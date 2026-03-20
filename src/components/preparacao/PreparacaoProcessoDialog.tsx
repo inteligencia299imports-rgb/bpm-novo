@@ -24,6 +24,7 @@ interface Props {
 
 interface HistoryEntry {
   id: string;
+  entity_type: string;
   status_from: string;
   status_to: string;
   observacoes: string | null;
