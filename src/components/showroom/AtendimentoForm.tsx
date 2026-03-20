@@ -435,7 +435,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
       {/* Card: Observações */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Observações</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Observações do Atendimento</CardTitle></CardHeader>
         <CardContent>
           <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value.toUpperCase())} rows={3} placeholder="Observações gerais sobre o atendimento..." className="uppercase" />
         </CardContent>
