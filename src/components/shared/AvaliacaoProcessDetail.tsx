@@ -34,7 +34,6 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 );
 
 const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColumns, statusField, title, onClose }) => {
-  const [history, setHistory] = useState<any[]>([]);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
