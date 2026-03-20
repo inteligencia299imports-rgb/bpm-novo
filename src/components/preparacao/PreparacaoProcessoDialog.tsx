@@ -112,15 +112,14 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         .order('created_at', { ascending: false });
 
       // Fetch avaliacao (aquisicao) history using moto_avaliacao_id
-      let avaliacaoPromise: Promise<any> = Promise.resolve({ data: [] });
-      if (avaliacaoData?.moto_avaliacao_id) {
-        avaliacaoPromise = supabase
-          .from('status_history')
-          .select('*')
-          .eq('entity_id', avaliacaoData.moto_avaliacao_id)
-          .eq('entity_type', 'avaliacao')
-          .order('created_at', { ascending: false });
-      }
+      const avaliacaoPromise = avaliacaoData?.moto_avaliacao_id
+        ? supabase
+            .from('status_history')
+            .select('*')
+            .eq('entity_id', avaliacaoData.moto_avaliacao_id)
+            .eq('entity_type', 'avaliacao')
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] as any[] });
 
       const [prepRes, avalRes] = await Promise.all([prepPromise, avaliacaoPromise]);
 
