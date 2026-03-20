@@ -376,9 +376,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <FileText className="h-4 w-4" /> Contrato
               </Button>
             )}
-            <Button size="sm" variant="outline" onClick={() => setCustosOpen(true)} className="gap-1.5">
-              <Wrench className="h-4 w-4" /> Custos
-            </Button>
+            {avaliacao?.situacao === 'adquirida' && (
+              <Button size="sm" variant="outline" onClick={() => setCustosOpen(true)} className="gap-1.5">
+                <Wrench className="h-4 w-4" /> Custos
+              </Button>
+            )}
             {(role === 'gestor') && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
