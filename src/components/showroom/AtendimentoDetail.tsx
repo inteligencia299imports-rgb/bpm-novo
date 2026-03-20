@@ -170,12 +170,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       // Merge full history
       const fullHistory = [
-        ...(showroomRes.data || []),
+        ...showroomHistoryData,
         ...(consultaRes.data || []),
         ...(avaliacaoRes.data || []),
       ];
       fullHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       setHistory(fullHistory);
+      setLoading(false);
     };
     fetchRelated();
   }, [atendimento.id]);
