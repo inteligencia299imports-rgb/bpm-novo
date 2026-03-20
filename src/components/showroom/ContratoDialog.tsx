@@ -492,6 +492,7 @@ const ContratoDialog: React.FC<Props> = ({
         });
       }
 
+      setJaGerado(true);
       toast.success('Contrato gerado com sucesso!');
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
