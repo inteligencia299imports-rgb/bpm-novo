@@ -114,11 +114,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       }
       setCrlvUrls(crlvMap);
 
-      // Set showroom history immediately so it renders fast
-      const allHistory = [...(showroomRes.data || [])];
-      allHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      setHistory(allHistory);
-      setLoading(false);
+      // Store showroom history temporarily
+      const showroomHistoryData = showroomRes.data || [];
 
       // Now fetch secondary data in parallel without blocking the UI
       const motoIds = motosAv.map(m => m.id);
