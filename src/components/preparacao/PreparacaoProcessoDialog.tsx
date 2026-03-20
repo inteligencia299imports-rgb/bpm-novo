@@ -39,7 +39,7 @@ const ACTION_BUTTONS = [
   { value: 'oficina', label: 'Oficina', icon: Wrench, targetStatus: 'oficina' },
   { value: 'servico_externo', label: 'Serviço Externo', icon: Truck, targetStatus: 'servico_externo' },
   { value: 'preparacao', label: 'Preparação', icon: CheckCircle, targetStatus: 'aguardando_aceite' },
-  { value: 'aceite', label: 'Aceite', icon: Package, targetStatus: 'aguardando_liberacao_estoque' },
+  { value: 'aceite', label: 'Aceite', icon: Check, targetStatus: 'aguardando_liberacao_estoque' },
   { value: 'liberar', label: 'Liberar', icon: Package, targetStatus: 'liberar' },
 ];
 
