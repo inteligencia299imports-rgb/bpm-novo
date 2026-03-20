@@ -105,8 +105,8 @@ const MotoVendaSection: React.FC<Props> = ({
             <Input value={km} onChange={handleKmChange} placeholder="12.000" />
           </div>
           <div className="space-y-1.5">
-            <Label>Cilindrada</Label>
-            <Input value={cilindrada} onChange={e => setCilindrada(e.target.value)} placeholder="Ex: 1200" />
+            <Label>Cilindrada *</Label>
+            <Input value={cilindrada} onChange={e => setCilindrada(e.target.value.replace(/\D/g, ''))} placeholder="Ex: 1200" inputMode="numeric" />
           </div>
         </div>
         <div className="space-y-1.5">
