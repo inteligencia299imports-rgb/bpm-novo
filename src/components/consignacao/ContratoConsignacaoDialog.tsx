@@ -116,11 +116,22 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     if (!open || !avaliacao) return;
     const loadContrato = async () => {
       setLoading(true);
-      const { data: contrato } = await supabase
-        .from('contratos_consignacao')
-        .select('*')
-        .eq('avaliacao_id', avaliacao.id)
-        .maybeSingle();
+      const [{ data: contrato }, { data: histGerado }] = await Promise.all([
+        supabase
+          .from('contratos_consignacao')
+          .select('*')
+          .eq('avaliacao_id', avaliacao.id)
+          .maybeSingle(),
+        supabase
+          .from('status_history')
+          .select('id')
+          .eq('entity_type', 'consignacao')
+          .eq('entity_id', avaliacao.id)
+          .like('status_to', 'CONTRATO GERADO%')
+          .limit(1),
+      ]);
+
+      setJaGerado(!!(histGerado && histGerado.length > 0));
 
       if (contrato) {
         setContratoId(contrato.id);
