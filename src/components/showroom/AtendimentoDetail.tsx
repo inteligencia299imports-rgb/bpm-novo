@@ -347,7 +347,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               ) : null;
             })()}
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Desktop buttons */}
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
             {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && (
               <Button size="sm" onClick={() => setContratoOpen(true)} className="gap-1.5">
                 <FileText className="h-4 w-4" /> Contrato
@@ -378,6 +379,38 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               </AlertDialogContent>
             </AlertDialog>
           </div>
+        </div>
+        {/* Mobile buttons - below name/date, centered, equal width */}
+        <div className="flex sm:hidden gap-2 justify-center">
+          {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && (
+            <Button size="sm" onClick={() => setContratoOpen(true)} className="flex-1 max-w-[120px]">
+              <FileText className="h-4 w-4" />
+            </Button>
+          )}
+          <Button size="sm" variant="outline" className="flex-1 max-w-[120px]" onClick={() => onEdit(atendimento.id)}>
+            <Edit className="h-4 w-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="destructive" className="flex-1 max-w-[120px]">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir atendimento?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação é irreversível. O atendimento de <strong>{atendimento.nome_cliente}</strong> e todos os dados relacionados (avaliações, motos, contratos, histórico) serão permanentemente excluídos.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
