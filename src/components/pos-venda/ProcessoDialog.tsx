@@ -46,7 +46,14 @@ interface Props {
   };
 }
 
-const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) => {
+const ProcessoDialog: React.FC<Props> = ({ 
+  open, onOpenChange, atendimentoId, 
+  customEtapas, 
+  statusField = 'pos_venda_status',
+  observacoesField = 'pos_venda_observacoes',
+  statusRules,
+}) => {
+  const ETAPAS = customEtapas || DEFAULT_ETAPAS;
   const [etapas, setEtapas] = useState<EtapaData[]>(
     ETAPAS.map(e => ({ etapa: e, concluida: false, data_conclusao: null }))
   );
@@ -66,7 +73,7 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
           .eq('atendimento_id', atendimentoId),
         supabase
           .from('atendimentos')
-          .select('pos_venda_observacoes')
+          .select(observacoesField)
           .eq('id', atendimentoId)
           .maybeSingle(),
       ]);
@@ -78,11 +85,11 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
         }
       }
       setEtapas(ETAPAS.map(e => map[e] || { etapa: e, concluida: false, data_conclusao: null }));
-      setObservacoes((atData as any)?.pos_venda_observacoes || '');
+      setObservacoes((atData as any)?.[observacoesField] || '');
       setLoading(false);
     };
     load();
-  }, [open, atendimentoId]);
+  }, [open, atendimentoId, observacoesField]);
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     setEtapas(prev =>
@@ -128,7 +135,6 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Batch upsert all etapas in a single call
       const rows = etapas.map(e => ({
         atendimento_id: atendimentoId,
         etapa: e.etapa,
@@ -140,23 +146,38 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
         .from('pos_venda_processos')
         .upsert(rows as any, { onConflict: 'atendimento_id,etapa' });
 
-      // Determine pos_venda_status
-      const transferenciaFinalizada = etapas.find(e => e.etapa === 'TRANSFERÊNCIA FINALIZADA')?.concluida;
-      const docDespachante = etapas.find(e => e.etapa === 'DOCUMENTAÇÃO COM DESPACHANTE')?.concluida;
+      // Determine status
+      let newStatus = 'em_aberto';
       const anyConcluida = etapas.some(e => e.concluida);
 
-      let newStatus = 'em_aberto';
-      if (transferenciaFinalizada) {
-        newStatus = 'concluido';
-      } else if (docDespachante) {
-        newStatus = 'doc_despachante';
-      } else if (anyConcluida) {
-        newStatus = 'em_andamento';
+      if (statusRules) {
+        const concludedEtapa = statusRules.concluded ? etapas.find(e => e.etapa === statusRules.concluded)?.concluida : false;
+        const specialEtapa = statusRules.special ? etapas.find(e => e.etapa === statusRules.special!.etapa)?.concluida : false;
+
+        if (concludedEtapa) {
+          newStatus = 'concluido';
+        } else if (specialEtapa && statusRules.special) {
+          newStatus = statusRules.special.status;
+        } else if (anyConcluida) {
+          newStatus = statusRules.default || 'em_andamento';
+        }
+      } else {
+        // Default pos-venda behavior
+        const transferenciaFinalizada = etapas.find(e => e.etapa === 'TRANSFERÊNCIA FINALIZADA')?.concluida;
+        const docDespachante = etapas.find(e => e.etapa === 'DOCUMENTAÇÃO COM DESPACHANTE')?.concluida;
+
+        if (transferenciaFinalizada) {
+          newStatus = 'concluido';
+        } else if (docDespachante) {
+          newStatus = 'doc_despachante';
+        } else if (anyConcluida) {
+          newStatus = 'em_andamento';
+        }
       }
 
       await supabase
         .from('atendimentos')
-        .update({ pos_venda_status: newStatus, pos_venda_observacoes: observacoes } as any)
+        .update({ [statusField]: newStatus, [observacoesField]: observacoes } as any)
         .eq('id', atendimentoId);
 
       toast.success('Processo salvo com sucesso!');
