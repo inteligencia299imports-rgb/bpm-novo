@@ -1,0 +1,1 @@
+ALTER TABLE public.pos_venda_processos ADD CONSTRAINT pos_venda_processos_atendimento_etapa_unique UNIQUE (atendimento_id, etapa);
