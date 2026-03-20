@@ -317,24 +317,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 <div className="space-y-3">
                   <label className="text-sm font-medium">Ações</label>
                   
-                  {/* Primary action (Preparação / Aceite / Liberar) - centered and highlighted */}
-                  {visibleButtons.filter(btn => ['preparacao', 'aceite', 'liberar'].includes(btn.value)).map(btn => {
-                    const Icon = btn.icon;
-                    return (
-                      <Button
-                        key={btn.value}
-                        variant="default"
-                        disabled={saving}
-                        onClick={() => handleAction(btn.targetStatus, btn.label)}
-                        className="gap-2 w-full h-10 text-sm font-medium"
-                      >
-                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
-                        {btn.label}
-                      </Button>
-                    );
-                  })}
-
-                  {/* Secondary actions */}
+                  {/* Secondary actions (Pendente, Oficina, Serviço Externo) */}
                   {visibleButtons.filter(btn => !['preparacao', 'aceite', 'liberar'].includes(btn.value)).length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {visibleButtons.filter(btn => !['preparacao', 'aceite', 'liberar'].includes(btn.value)).map(btn => {
@@ -355,6 +338,23 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       })}
                     </div>
                   )}
+
+                  {/* Primary action (Preparação / Aceite / Liberar) - below and highlighted */}
+                  {visibleButtons.filter(btn => ['preparacao', 'aceite', 'liberar'].includes(btn.value)).map(btn => {
+                    const Icon = btn.icon;
+                    return (
+                      <Button
+                        key={btn.value}
+                        variant="default"
+                        disabled={saving}
+                        onClick={() => handleAction(btn.targetStatus, btn.label)}
+                        className="gap-2 w-full h-10 text-sm font-medium"
+                      >
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+                        {btn.label}
+                      </Button>
+                    );
+                  })}
                 </div>
               </>
             ) : (
