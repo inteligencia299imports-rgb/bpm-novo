@@ -44,6 +44,7 @@ interface Props {
     special?: { etapa: string; status: string };
     default?: string;
   };
+  onStatusChanged?: (newStatus: string) => void;
 }
 
 const ProcessoDialog: React.FC<Props> = ({ 
