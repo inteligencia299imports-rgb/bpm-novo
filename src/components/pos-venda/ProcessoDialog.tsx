@@ -53,6 +53,7 @@ const ProcessoDialog: React.FC<Props> = ({
   statusField = 'pos_venda_status',
   observacoesField = 'pos_venda_observacoes',
   statusRules,
+  onStatusChanged,
 }) => {
   const ETAPAS = customEtapas || DEFAULT_ETAPAS;
   const [etapas, setEtapas] = useState<EtapaData[]>(
