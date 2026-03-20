@@ -365,8 +365,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         toast.success('Moto registrada no estoque com sucesso!');
       }
 
-      setActiveStatus('aguardando_liberacao_estoque');
-      onStatusChanged?.('aguardando_liberacao_estoque');
+      setActiveStatus('estoque');
+      onStatusChanged?.('estoque');
       onOpenChange(false);
     } catch (err) {
       console.error(err);
