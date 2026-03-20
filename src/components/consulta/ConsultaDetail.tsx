@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -50,15 +51,25 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const [saving, setSaving] = useState(false);
   const [isConsultada, setIsConsultada] = useState(moto.consulta_realizada === true);
   const [resultadoSalvo, setResultadoSalvo] = useState<string | null>(moto.resultado_consulta || null);
+  const [loading, setLoading] = useState(true);
   
   const atendimento = moto.atendimento || moto.atendimentos;
 
   useEffect(() => {
-    if (atendimento?.id) {
-      supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
-        .then(({ data }) => setCnhUrl(data?.cnh_url || null));
-    }
-  }, [atendimento?.id]);
+    const loadAll = async () => {
+      setLoading(true);
+      const [cnhRes, histRes] = await Promise.all([
+        atendimento?.id
+          ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
+          : Promise.resolve({ data: null }),
+        supabase.from('status_history').select('*').eq('entity_type', 'consulta').eq('entity_id', moto.id).order('created_at', { ascending: true }),
+      ]);
+      setCnhUrl(cnhRes.data?.cnh_url || null);
+      setHistory(histRes.data || []);
+      setLoading(false);
+    };
+    loadAll();
+  }, [moto.id, atendimento?.id]);
 
   const fetchHistory = () => {
     supabase
@@ -69,8 +80,6 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
       .order('created_at', { ascending: true })
       .then(({ data }) => setHistory(data || []));
   };
-
-  useEffect(() => { fetchHistory(); }, [moto.id]);
 
   const handleSaveResultado = async () => {
     setSaving(true);
@@ -107,6 +116,10 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const statusColor = isConsultada ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning';
   const statusHex = isConsultada ? '#27AE60' : '#F2C94C';
   const ano = [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/');
+
+  if (loading) {
+    return <DetailSkeleton onClose={onClose} cards={3} />;
+  }
 
   return (
     <div className="space-y-4">

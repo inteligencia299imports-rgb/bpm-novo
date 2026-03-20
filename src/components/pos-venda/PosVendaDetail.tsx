@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { POS_VENDA_COLUMNS, INTERESSES } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Props {
@@ -135,6 +136,10 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
     };
     fetchRelated();
   }, [item.id]);
+
+  if (loading) {
+    return <DetailSkeleton onClose={onClose} />;
+  }
 
   return (
     <div className="space-y-4">
