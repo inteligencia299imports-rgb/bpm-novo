@@ -57,7 +57,7 @@ const TIPOS = [
 
 const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId }) => {
   const [custos, setCustos] = useState<CustoOficina[]>([]);
-  const [loading, setLoading] = useState(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
 
   // New item form
   const [responsavel, setResponsavel] = useState('');
