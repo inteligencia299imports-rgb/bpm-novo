@@ -662,6 +662,44 @@ export type Database = {
           },
         ]
       }
+      pos_venda_processos: {
+        Row: {
+          atendimento_id: string
+          concluida: boolean
+          created_at: string
+          data_conclusao: string | null
+          etapa: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          atendimento_id: string
+          concluida?: boolean
+          created_at?: string
+          data_conclusao?: string | null
+          etapa: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          atendimento_id?: string
+          concluida?: boolean
+          created_at?: string
+          data_conclusao?: string | null
+          etapa?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_venda_processos_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       status_history: {
         Row: {
           changed_by: string | null
