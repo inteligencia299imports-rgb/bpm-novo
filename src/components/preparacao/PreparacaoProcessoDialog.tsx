@@ -245,10 +245,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col px-6">
-        <DialogHeader>
+        <DialogHeader className="flex flex-row items-center justify-between pr-8">
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" /> Processo de Preparação
           </DialogTitle>
+          <Badge style={{ backgroundColor: `${getStatusHex(currentStatus)}20`, color: getStatusHex(currentStatus) }}>
+            {getStatusLabel(currentStatus)}
+          </Badge>
         </DialogHeader>
 
         {loading ? (
@@ -295,13 +298,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
               </div>
             )}
 
-            {/* Status atual */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Status atual:</span>
-              <Badge style={{ backgroundColor: `${getStatusHex(currentStatus)}20`, color: getStatusHex(currentStatus) }}>
-                {getStatusLabel(currentStatus)}
-              </Badge>
-            </div>
+            <Separator className="my-1" />
 
             {!showLiberarForm ? (
               <>
