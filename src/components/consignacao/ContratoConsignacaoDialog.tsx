@@ -463,14 +463,16 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
         {/* Bottom buttons */}
         <div className="flex flex-col gap-2 p-4 border-t shrink-0">
-          <div className="flex justify-center gap-2">
-            <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar()} disabled={generating}>
-              <Eye className="h-4 w-4 mr-1" />Visualizar
-            </Button>
-            <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar(5)} disabled={generating}>
-              <Eye className="h-4 w-4 mr-1" />Visualizar (5%)
-            </Button>
-          </div>
+          {jaGerado && (
+            <div className="flex justify-center gap-2">
+              <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar()} disabled={generating}>
+                <Eye className="h-4 w-4 mr-1" />Visualizar
+              </Button>
+              <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar(5)} disabled={generating}>
+                <Eye className="h-4 w-4 mr-1" />Visualizar (5%)
+              </Button>
+            </div>
+          )}
           <div className="flex justify-center gap-2">
             <Button variant="outline" className="min-w-[140px]" onClick={() => handleGerar()} disabled={generating}>
               <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar'}
