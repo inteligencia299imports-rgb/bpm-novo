@@ -570,50 +570,27 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
             <Separator />
 
-            {/* History */}
+            {/* History - using StatusTimeline like atendimento */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <History className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">Histórico de Movimentações</span>
               </div>
 
-              <div className="space-y-2">
-                {history.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>
-                ) : (
-                  history.map(h => (
-                    <div key={h.id} className="bg-muted/50 rounded-lg p-3 space-y-1 border border-border/50">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                          {h.entity_type !== 'preparacao' && (
-                            <span className="text-[9px] font-medium text-muted-foreground/70 uppercase mr-0.5">
-                              {ENTITY_TYPE_LABELS[h.entity_type] || h.entity_type}
-                            </span>
-                          )}
-                          <Badge variant="outline" className="text-[10px]" style={{ borderColor: getStatusHex(h.status_from), color: getStatusHex(h.status_from) }}>
-                            {getStatusLabel(h.status_from, h.entity_type)}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">→</span>
-                          <Badge className="text-[10px]" style={{ backgroundColor: `${getStatusHex(h.status_to)}20`, color: getStatusHex(h.status_to) }}>
-                            {getStatusLabel(h.status_to, h.entity_type)}
-                          </Badge>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">
-                          {format(new Date(h.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
-                        </span>
-                      </div>
-                      {h.observacoes && (
-                        <p className="text-xs text-muted-foreground">{h.observacoes}</p>
-                      )}
-                      {h.changed_by_name && (
-                        <p className="text-[10px] text-muted-foreground/70">por {h.changed_by_name}</p>
-                      )}
+              <StatusTimeline
+                history={history}
+                renderPopupExtra={(entry) => (
+                  entry.observacoes ? (
+                    <div>
+                      <span className="text-xs text-muted-foreground">Observações</span>
+                      <p className="text-sm">{entry.observacoes}</p>
                     </div>
-                  ))
+                  ) : null
                 )}
-              </div>
+              />
             </div>
           </div>
+        </div>
         )}
       </DialogContent>
     </Dialog>
