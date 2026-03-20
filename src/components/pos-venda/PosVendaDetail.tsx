@@ -134,6 +134,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
               {format(new Date(item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" onClick={() => setProcessoOpen(true)} className="gap-1.5">
+              <ClipboardList className="h-4 w-4" /> Processo
+            </Button>
+          </div>
         </div>
       </div>
 
