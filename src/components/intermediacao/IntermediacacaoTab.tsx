@@ -88,7 +88,7 @@ const IntermediacacaoTab = () => {
       </div>
 
       {/* Part 1 / Part 2 Toggle */}
-      <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit border border-border/50">
         <button
           onClick={() => setParte('parte1')}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
