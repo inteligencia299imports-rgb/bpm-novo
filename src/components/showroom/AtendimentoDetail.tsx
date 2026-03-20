@@ -722,6 +722,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           variant="outline"
                           className="gap-1.5"
                           onClick={async () => {
+                            if (!moto.crlv_url) {
+                              toast.error('Anexe o CRLV antes de solicitar avaliação');
+                              return;
+                            }
                             const { error: avError } = await supabase.from('avaliacoes').insert({
                               atendimento_id: atendimento.id,
                               moto_avaliacao_id: moto.id,

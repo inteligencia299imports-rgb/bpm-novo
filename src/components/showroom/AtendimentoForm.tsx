@@ -248,6 +248,11 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Salve o atendimento primeiro');
       return;
     }
+    const { data: motoData } = await supabase.from('motos_avaliacao').select('crlv_url').eq('id', motoAvaliacaoId).single();
+    if (!motoData?.crlv_url) {
+      toast.error('Anexe o CRLV antes de solicitar avaliação');
+      return;
+    }
     await supabase.from('motos_avaliacao').update({ enviada_avaliacao: true }).eq('id', motoAvaliacaoId);
     const { error } = await supabase.from('avaliacoes').insert({
       atendimento_id: atendimentoId!,
