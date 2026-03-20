@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Loader2, History, Clock, Wrench, Truck, CheckCircle, Package, AlertCircle } from 'lucide-react';
+import { ClipboardList, Loader2, History, Clock, Wrench, Truck, CheckCircle, Package, AlertCircle, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -39,7 +39,7 @@ const ACTION_BUTTONS = [
   { value: 'oficina', label: 'Oficina', icon: Wrench, targetStatus: 'oficina' },
   { value: 'servico_externo', label: 'Serviço Externo', icon: Truck, targetStatus: 'servico_externo' },
   { value: 'preparacao', label: 'Preparação', icon: CheckCircle, targetStatus: 'aguardando_aceite' },
-  { value: 'aceite', label: 'Aceite', icon: Package, targetStatus: 'aguardando_liberacao_estoque' },
+  { value: 'aceite', label: 'Aceite', icon: Check, targetStatus: 'aguardando_liberacao_estoque' },
   { value: 'liberar', label: 'Liberar', icon: Package, targetStatus: 'liberar' },
 ];
 
@@ -250,7 +250,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="flex flex-col gap-4 overflow-hidden">
+          <div className="flex flex-col gap-4 overflow-hidden px-0.5">
             {/* Status atual */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Status atual:</span>
