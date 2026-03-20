@@ -274,6 +274,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         if (error) console.error('Erro ao registrar histórico:', error);
       }
 
+      setJaGerado(true);
       toast.success(`Contrato de consignação ${comPercentual ? '(5%) ' : ''}gerado com sucesso!`);
     } catch (err) {
       console.error('Erro ao gerar contrato:', err);
