@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -13,6 +13,7 @@ import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ProcessoDialog from './ProcessoDialog';
 
 interface Props {
   item: any;
@@ -54,6 +55,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
   const [estoqueData, setEstoqueData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
+  const [processoOpen, setProcessoOpen] = useState(false);
 
   const moto = item.motos_avaliacao?.[0];
   const [cnhUrl, setCnhUrl] = useState<string | null>(item.cnh_url || null);
@@ -131,6 +133,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
             <p className="text-xs text-muted-foreground">
               {format(new Date(item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" onClick={() => setProcessoOpen(true)} className="gap-1.5">
+              <ClipboardList className="h-4 w-4" /> Processo
+            </Button>
           </div>
         </div>
       </div>
@@ -460,6 +467,12 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
           )}
         </DialogContent>
       </Dialog>
+
+      <ProcessoDialog
+        open={processoOpen}
+        onOpenChange={setProcessoOpen}
+        atendimentoId={item.id}
+      />
     </div>
   );
 };
