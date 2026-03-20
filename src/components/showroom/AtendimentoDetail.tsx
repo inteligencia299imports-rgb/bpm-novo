@@ -829,8 +829,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </Card>
 
           {/* Status Actions + Delete */}
-           <div className="md:col-span-2 flex justify-center">
-            <div className="flex flex-wrap justify-center gap-2">
+           <div className="md:col-span-2 flex justify-center w-full">
+            <div className="flex flex-wrap justify-center gap-2 w-full sm:w-auto">
               {[
                 { value: 'pendente' as SituacaoShowroom, label: 'Pendente', icon: <Clock className="h-4 w-4" />, color: '#F2C94C' },
                 { value: 'sinal' as SituacaoShowroom, label: 'Sinal', icon: <Sparkles className="h-4 w-4" />, color: '#9B51E0' },
