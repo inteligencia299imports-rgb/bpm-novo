@@ -156,7 +156,7 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
 
       await supabase
         .from('atendimentos')
-        .update({ pos_venda_status: newStatus } as any)
+        .update({ pos_venda_status: newStatus, pos_venda_observacoes: observacoes } as any)
         .eq('id', atendimentoId);
 
       toast.success('Processo salvo com sucesso!');
