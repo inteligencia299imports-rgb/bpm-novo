@@ -163,6 +163,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         vendido: 'Adquirida',
         adquirida: 'Adquirida',
         sinal: 'Sinal',
+        estoque: 'Moto Liberada',
         ...Object.fromEntries(PREPARACAO_COLUMNS.map(c => [c.value, c.label])),
       };
       const remapStatus = (s: string) => STATUS_REMAP[s] || s;
