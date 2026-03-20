@@ -453,7 +453,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     rows={2}
                     className="border-primary"
                   />
-                  />
                 </div>
 
                 {/* Action Buttons */}
