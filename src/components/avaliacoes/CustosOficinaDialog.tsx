@@ -277,16 +277,16 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
                 {(() => {
                   const totalPrevisto = custos.reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
                   const totalExecutado = custos.reduce((sum, c) => sum + (c.valor_executado ?? 0), 0);
-                  const diferenca = totalExecutado - totalPrevisto;
+                  const diferenca = totalPrevisto - totalExecutado;
                   return (
                     <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border">
                       <div className="bg-secondary rounded-lg p-3 text-center">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total Executado</p>
-                        <p className="text-base font-bold text-foreground mt-1">{formatCurrency(totalExecutado)}</p>
-                      </div>
-                      <div className="bg-secondary rounded-lg p-3 text-center">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total Previsto</p>
                         <p className="text-base font-bold text-foreground mt-1">{formatCurrency(totalPrevisto)}</p>
+                      </div>
+                      <div className="bg-secondary rounded-lg p-3 text-center">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total Executado</p>
+                        <p className="text-base font-bold text-foreground mt-1">{formatCurrency(totalExecutado)}</p>
                       </div>
                       <div className={`rounded-lg p-3 text-center ${diferenca > 0 ? 'bg-destructive/10' : diferenca < 0 ? 'bg-green-500/10' : 'bg-secondary'}`}>
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Diferença</p>
