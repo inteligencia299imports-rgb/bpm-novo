@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -44,15 +45,23 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
+  const [observacoes, setObservacoes] = useState('');
 
   useEffect(() => {
     if (!open) return;
     const load = async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from('pos_venda_processos')
-        .select('etapa, concluida, data_conclusao')
-        .eq('atendimento_id', atendimentoId);
+      const [{ data }, { data: atData }] = await Promise.all([
+        supabase
+          .from('pos_venda_processos')
+          .select('etapa, concluida, data_conclusao')
+          .eq('atendimento_id', atendimentoId),
+        supabase
+          .from('atendimentos')
+          .select('pos_venda_observacoes')
+          .eq('id', atendimentoId)
+          .maybeSingle(),
+      ]);
 
       const map: Record<string, EtapaData> = {};
       if (data) {
@@ -61,6 +70,7 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
         }
       }
       setEtapas(ETAPAS.map(e => map[e] || { etapa: e, concluida: false, data_conclusao: null }));
+      setObservacoes((atData as any)?.pos_venda_observacoes || '');
       setLoading(false);
     };
     load();
@@ -146,7 +156,7 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
 
       await supabase
         .from('atendimentos')
-        .update({ pos_venda_status: newStatus } as any)
+        .update({ pos_venda_status: newStatus, pos_venda_observacoes: observacoes } as any)
         .eq('id', atendimentoId);
 
       toast.success('Processo salvo com sucesso!');
@@ -248,6 +258,15 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
             ))}
 
             <Separator />
+            <div className="space-y-2 pt-3">
+              <label className="text-sm font-medium">Observações</label>
+              <Textarea
+                placeholder="Observações do processo..."
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                rows={3}
+              />
+            </div>
             <div className="flex justify-end pt-3">
               <Button onClick={handleSave} disabled={saving} className="gap-1.5">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

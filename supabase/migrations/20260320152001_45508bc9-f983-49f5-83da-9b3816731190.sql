@@ -1,0 +1,1 @@
+ALTER TABLE public.atendimentos ADD COLUMN pos_venda_observacoes text;

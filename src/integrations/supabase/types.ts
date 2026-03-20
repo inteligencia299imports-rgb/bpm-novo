@@ -27,6 +27,7 @@ export type Database = {
           nps_status: string
           observacoes: string | null
           origem: string | null
+          pos_venda_observacoes: string | null
           pos_venda_status: string
           sexo: string
           situacao: string
@@ -51,6 +52,7 @@ export type Database = {
           nps_status?: string
           observacoes?: string | null
           origem?: string | null
+          pos_venda_observacoes?: string | null
           pos_venda_status?: string
           sexo: string
           situacao?: string
@@ -75,6 +77,7 @@ export type Database = {
           nps_status?: string
           observacoes?: string | null
           origem?: string | null
+          pos_venda_observacoes?: string | null
           pos_venda_status?: string
           sexo?: string
           situacao?: string
