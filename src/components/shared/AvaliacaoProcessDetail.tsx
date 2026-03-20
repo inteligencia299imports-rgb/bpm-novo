@@ -272,6 +272,19 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           avaliacao={item}
         />
       )}
+
+      {entityType === 'preparacao' && (
+        <PreparacaoProcessoDialog
+          open={processoPreparacaoOpen}
+          onOpenChange={setProcessoPreparacaoOpen}
+          avaliacaoId={item.id}
+          currentStatus={currentPreparacaoStatus}
+          onStatusChanged={(newStatus) => {
+            setCurrentPreparacaoStatus(newStatus);
+            item.preparacao_status = newStatus;
+          }}
+        />
+      )}
     </div>
   );
 };
