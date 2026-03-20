@@ -68,6 +68,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [vendaCor, setVendaCor] = useState('');
   const [vendaPlaca, setVendaPlaca] = useState('');
   const [vendaKm, setVendaKm] = useState('');
+  const [vendaCilindrada, setVendaCilindrada] = useState('');
   const [vendaObs, setVendaObs] = useState('');
   const [motoAvaliacaoId, setMotoAvaliacaoId] = useState<string | null>(null);
   const [enviadaAvaliacao, setEnviadaAvaliacao] = useState(false);
@@ -112,6 +113,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setVendaCor(ma.cor || '');
           setVendaPlaca(ma.placa || '');
           setVendaKm(ma.km || '');
+          setVendaCilindrada((ma as any).cilindrada || '');
           setVendaObs(ma.observacoes || '');
           setEnviadaAvaliacao(ma.enviada_avaliacao || false);
         }
@@ -228,6 +230,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           ano_fabricacao: vendaAnoFab || null, ano_modelo: vendaAnoMod || null,
           categoria: vendaCategoria || null, cor: vendaCor || null,
           placa: vendaPlaca || null, km: vendaKm || null,
+          cilindrada: vendaCilindrada || null,
           observacoes: vendaObs || null,
         };
         if (motoAvaliacaoId) {
@@ -420,6 +423,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             cor={vendaCor} setCor={setVendaCor}
             placa={vendaPlaca} setPlaca={setVendaPlaca}
             km={vendaKm} setKm={setVendaKm}
+            cilindrada={vendaCilindrada} setCilindrada={setVendaCilindrada}
             obs={vendaObs} setObs={setVendaObs}
             motoAvaliacaoId={motoAvaliacaoId}
             atendimentoId={atendimentoId}
