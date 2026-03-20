@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -250,7 +250,7 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
             <Separator />
             <div className="flex justify-end pt-3">
               <Button onClick={handleSave} disabled={saving} className="gap-1.5">
-                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Salvar
               </Button>
             </div>
