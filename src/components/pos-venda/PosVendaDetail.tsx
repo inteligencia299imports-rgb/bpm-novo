@@ -18,6 +18,18 @@ import ProcessoDialog from './ProcessoDialog';
 interface Props {
   item: any;
   onClose: () => void;
+  statusColumns?: { value: string; label: string; hex: string }[];
+  statusField?: string;
+  processoProps?: {
+    customEtapas?: string[];
+    statusField?: string;
+    observacoesField?: string;
+    statusRules?: {
+      concluded?: string;
+      special?: { etapa: string; status: string };
+      default?: string;
+    };
+  };
 }
 
 const formatPhone = (value: string): string => {
