@@ -467,6 +467,12 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
           )}
         </DialogContent>
       </Dialog>
+
+      <ProcessoDialog
+        open={processoOpen}
+        onOpenChange={setProcessoOpen}
+        atendimentoId={item.id}
+      />
     </div>
   );
 };
