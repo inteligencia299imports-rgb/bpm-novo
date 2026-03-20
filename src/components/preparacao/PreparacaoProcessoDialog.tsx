@@ -96,6 +96,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [cilindrada, setCilindrada] = useState('');
   const [precoTabela, setPrecoTabela] = useState('');
   const [valorFechamento, setValorFechamento] = useState('');
+  const [obsMoto, setObsMoto] = useState('');
 
   const formatKm = (value: string): string => {
     const digits = value.replace(/\D/g, '');
