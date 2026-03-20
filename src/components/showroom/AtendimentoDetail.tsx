@@ -822,6 +822,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         const toInput = (v: number | null | undefined) => v ? formatCurrencyInput(Math.round(v * 100).toString()) : '';
                         const firstAv = motosAvaliacao.length > 0 ? avaliacoes[motosAvaliacao[0].id] : null;
                         setValorPopup({ valorSinal: toInput(atendimento.valor_sinal), valorVenda: toInput(atendimento.valor_venda), valorFechamento: toInput(firstAv?.valor_fechamento), modo: btn.value as 'sinal' | 'vendido' });
+                      } else if (btn.value === 'pendente' || btn.value === 'perdido') {
+                        setMotivoPopup({ modo: btn.value as 'pendente' | 'perdido', motivo: '' });
                       } else {
                         handleStatusChange(btn.value, btn.label);
                       }
