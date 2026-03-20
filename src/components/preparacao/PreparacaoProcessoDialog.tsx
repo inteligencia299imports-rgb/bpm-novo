@@ -509,7 +509,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             ) : (
               <>
                 {/* Liberar Form */}
-                <div className="space-y-3">
+                <div className="space-y-3 bg-primary/5 border border-primary/20 rounded-lg p-4">
                   <label className="text-sm font-medium">Dados para Registro no Estoque</label>
 
                   <div className="grid grid-cols-2 gap-3">
