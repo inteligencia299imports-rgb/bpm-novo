@@ -324,6 +324,53 @@ export type Database = {
           },
         ]
       }
+      custos_oficina: {
+        Row: {
+          avaliacao_id: string
+          created_at: string
+          detalhes: string | null
+          id: string
+          numero_os: string | null
+          responsavel: string
+          tipo: string
+          updated_at: string
+          valor_executado: number | null
+          valor_previsto: number | null
+        }
+        Insert: {
+          avaliacao_id: string
+          created_at?: string
+          detalhes?: string | null
+          id?: string
+          numero_os?: string | null
+          responsavel: string
+          tipo: string
+          updated_at?: string
+          valor_executado?: number | null
+          valor_previsto?: number | null
+        }
+        Update: {
+          avaliacao_id?: string
+          created_at?: string
+          detalhes?: string | null
+          id?: string
+          numero_os?: string | null
+          responsavel?: string
+          tipo?: string
+          updated_at?: string
+          valor_executado?: number | null
+          valor_previsto?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custos_oficina_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estoque: {
         Row: {
           ano_fabricacao: string | null

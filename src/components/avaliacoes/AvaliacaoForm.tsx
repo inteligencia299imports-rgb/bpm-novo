@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
+import CustosOficinaDialog from '@/components/avaliacoes/CustosOficinaDialog';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -100,6 +101,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const canEdit = role === 'avaliador' || role === 'gestor' || role === 'vendedor';
   const [history, setHistory] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [custosOpen, setCustosOpen] = useState(false);
 
   const handleDeleteAvaliacao = async () => {
     setDeleting(true);
@@ -374,6 +376,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <FileText className="h-4 w-4" /> Contrato
               </Button>
             )}
+            <Button size="sm" variant="outline" onClick={() => setCustosOpen(true)} className="gap-1.5">
+              <Wrench className="h-4 w-4" /> Custos
+            </Button>
             {(role === 'gestor') && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -792,6 +797,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           avaliacao={avaliacao}
         />
       )}
+
+      <CustosOficinaDialog
+        open={custosOpen}
+        onOpenChange={setCustosOpen}
+        avaliacaoId={avaliacaoId}
+      />
     </div>
   );
 };
