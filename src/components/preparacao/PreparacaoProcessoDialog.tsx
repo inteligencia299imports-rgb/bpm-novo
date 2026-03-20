@@ -32,7 +32,21 @@ interface HistoryEntry {
   created_at: string;
 }
 
-const getStatusLabel = (value: string) => PREPARACAO_COLUMNS.find(c => c.value === value)?.label || value;
+const AVALIACAO_STATUS_LABELS: Record<string, string> = {
+  sem_avaliar: 'Sem Avaliar',
+  sem_avaliacao: 'Sem Avaliação',
+  em_aberto: 'Em Aberto',
+  adquirida: 'Adquirida',
+  dispensada: 'Dispensada',
+  perdido: 'Perdido',
+  avaliacao_solicitada: 'Avaliação Solicitada',
+  avaliacao_realizada: 'Avaliação Realizada',
+};
+
+const getStatusLabel = (value: string, entityType?: string) => {
+  if (entityType === 'avaliacao') return AVALIACAO_STATUS_LABELS[value] || value;
+  return PREPARACAO_COLUMNS.find(c => c.value === value)?.label || AVALIACAO_STATUS_LABELS[value] || value;
+};
 const getStatusHex = (value: string) => PREPARACAO_COLUMNS.find(c => c.value === value)?.hex || '#888';
 
 const ACTION_BUTTONS = [
