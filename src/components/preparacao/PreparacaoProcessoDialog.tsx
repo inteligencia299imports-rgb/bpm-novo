@@ -112,7 +112,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     setLoja(avaliacaoData?.atendimento?.loja || '');
     setPlaca(avaliacaoData?.moto?.placa || '');
     setCilindrada(avaliacaoData?.moto?.cilindrada ? formatKm(avaliacaoData.moto.cilindrada) : '');
-    setPrecoTabela('');
+    const quantoPede = avaliacaoData?.quanto_pede;
+    setPrecoTabela(quantoPede != null ? formatCurrencyInput(String(Math.round(quantoPede * 100))) : '');
     const fechamento = avaliacaoData?.valor_fechamento;
     setValorFechamento(fechamento != null ? formatCurrencyInput(String(Math.round(fechamento * 100))) : '');
 
