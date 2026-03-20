@@ -638,7 +638,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <StatusTimeline history={history} />
+              <StatusTimeline history={history} formatLabel={(raw) => {
+                const remap: Record<string, string> = { vendido: 'adquirida' };
+                const mapped = remap[raw] || raw;
+                return mapped.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação');
+              }} />
             </CardContent>
           </Card>
 

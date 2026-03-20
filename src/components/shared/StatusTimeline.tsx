@@ -18,13 +18,16 @@ interface StatusTimelineProps {
   history: TimelineEntry[];
   /** Optional extra content renderer for the popup (e.g. resultado_consulta) */
   renderPopupExtra?: (entry: TimelineEntry) => React.ReactNode;
+  /** Optional custom label formatter for status_to values */
+  formatLabel?: (raw: string) => string;
 }
 
-const formatStatusLabel = (raw: string): string => {
+const defaultFormatStatusLabel = (raw: string): string => {
   return raw.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação');
 };
 
-const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExtra }) => {
+const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExtra, formatLabel }) => {
+  const formatStatusLabel = formatLabel || defaultFormatStatusLabel;
   const [selected, setSelected] = useState<TimelineEntry | null>(null);
 
   if (history.length === 0) {
