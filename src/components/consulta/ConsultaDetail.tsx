@@ -166,7 +166,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               fetchHistory();
               toast.success('Nova consulta solicitada!');
             }}>
-              <Search className="h-4 w-4" /> Nova Consulta
+              <Search className="h-4 w-4" /> <span className="hidden sm:inline">Nova Consulta</span>
             </Button>
           )}
         </div>
