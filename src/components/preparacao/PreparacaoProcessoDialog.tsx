@@ -274,26 +274,47 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 </div>
 
                 {/* Action Buttons */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <label className="text-sm font-medium">Ações</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {visibleButtons.map(btn => {
-                      const Icon = btn.icon;
-                      return (
-                        <Button
-                          key={btn.value}
-                          variant={btn.value === 'preparacao' ? 'default' : 'outline'}
-                          size="sm"
-                          disabled={saving}
-                          onClick={() => handleAction(btn.targetStatus, btn.label)}
-                          className="gap-1.5 h-9 text-xs"
-                        >
-                          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
-                          {btn.label}
-                        </Button>
-                      );
-                    })}
-                  </div>
+                  
+                  {/* Primary action (Preparação / Aceite / Liberar) - centered and highlighted */}
+                  {visibleButtons.filter(btn => ['preparacao', 'aceite', 'liberar'].includes(btn.value)).map(btn => {
+                    const Icon = btn.icon;
+                    return (
+                      <Button
+                        key={btn.value}
+                        variant="default"
+                        disabled={saving}
+                        onClick={() => handleAction(btn.targetStatus, btn.label)}
+                        className="gap-2 w-full h-10 text-sm font-medium"
+                      >
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+                        {btn.label}
+                      </Button>
+                    );
+                  })}
+
+                  {/* Secondary actions */}
+                  {visibleButtons.filter(btn => !['preparacao', 'aceite', 'liberar'].includes(btn.value)).length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {visibleButtons.filter(btn => !['preparacao', 'aceite', 'liberar'].includes(btn.value)).map(btn => {
+                        const Icon = btn.icon;
+                        return (
+                          <Button
+                            key={btn.value}
+                            variant="outline"
+                            size="sm"
+                            disabled={saving}
+                            onClick={() => handleAction(btn.targetStatus, btn.label)}
+                            className="gap-1.5 h-9 text-xs"
+                          >
+                            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
+                            {btn.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
