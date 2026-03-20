@@ -63,6 +63,11 @@ const IntermediacacaoTab = () => {
 
   const getColumnItems = (status: string) => items.filter((a: any) => ((a as any)[config.statusField] || 'em_aberto') === status);
 
+  const handleStatusChanged = useCallback((itemId: string, newStatus: string, field: string) => {
+    setItems(prev => prev.map(a => a.id === itemId ? { ...a, [field]: newStatus } : a));
+    setSelectedItem((prev: any) => prev && prev.id === itemId ? { ...prev, [field]: newStatus } : prev);
+  }, []);
+
   if (selectedItem) {
     return (
       <PosVendaDetail
@@ -76,6 +81,7 @@ const IntermediacacaoTab = () => {
           observacoesField: config.observacoesField,
           statusRules: config.statusRules,
         }}
+        onStatusChanged={handleStatusChanged}
       />
     );
   }

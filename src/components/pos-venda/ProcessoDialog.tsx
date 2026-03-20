@@ -44,6 +44,7 @@ interface Props {
     special?: { etapa: string; status: string };
     default?: string;
   };
+  onStatusChanged?: (newStatus: string) => void;
 }
 
 const ProcessoDialog: React.FC<Props> = ({ 
@@ -52,6 +53,7 @@ const ProcessoDialog: React.FC<Props> = ({
   statusField = 'pos_venda_status',
   observacoesField = 'pos_venda_observacoes',
   statusRules,
+  onStatusChanged,
 }) => {
   const ETAPAS = customEtapas || DEFAULT_ETAPAS;
   const [etapas, setEtapas] = useState<EtapaData[]>(
@@ -181,6 +183,7 @@ const ProcessoDialog: React.FC<Props> = ({
         .eq('id', atendimentoId);
 
       toast.success('Processo salvo com sucesso!');
+      onStatusChanged?.(newStatus);
       onOpenChange(false);
     } catch {
       toast.error('Erro ao salvar processo');
