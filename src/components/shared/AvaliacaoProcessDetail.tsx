@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Bike, ArrowRight, DollarSign, Tag, MessageCircle, FileText, ClipboardList } from 'lucide-react';
+import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import DocumentUpload from '@/components/showroom/DocumentUpload';
+
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
@@ -133,7 +133,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={atendimento?.nome_cliente} />
                 {atendimento?.telefone && (
@@ -151,24 +151,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
               </div>
-              {atendimento?.id && (
-                <>
-                  <Separator className="my-2" />
-                  <DocumentUpload
-                    label="CNH"
-                    currentUrl={cnhUrl}
-                    bucketPath={`docs/${atendimento.id}/cnh`}
-                    onUploaded={async (url) => {
-                      await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', atendimento.id);
-                      setCnhUrl(url);
-                    }}
-                    onRemoved={async () => {
-                      await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', atendimento.id);
-                      setCnhUrl(null);
-                    }}
-                  />
-                </>
-              )}
             </CardContent>
           </Card>
 
@@ -180,7 +162,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   <Bike className="h-4 w-4 text-primary" /> Dados da Moto
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <InfoItem label="Marca / Modelo" value={`${moto.marca} ${(moto.modelo || '').toUpperCase()}`} />
                   {moto.placa && <InfoItem label="Placa" value={moto.placa.replace(/-/g, '')} />}
@@ -195,72 +177,10 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                     <p className="text-xs text-muted-foreground italic">{moto.observacoes}</p>
                   </>
                 )}
-                <Separator className="my-2" />
-                <DocumentUpload
-                  label="CRLV"
-                  currentUrl={crlvUrl}
-                  bucketPath={`docs/${moto.id}/crlv`}
-                  onUploaded={async (url) => {
-                    await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
-                    setCrlvUrl(url);
-                  }}
-                  onRemoved={async () => {
-                    await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
-                    setCrlvUrl(null);
-                  }}
-                />
               </CardContent>
             </Card>
           )}
 
-          {/* Valores */}
-          {(item.valor_fipe != null || item.avaliacao_compra != null || item.avaliacao_consignacao != null || item.quanto_pede != null) && (
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-primary" /> Valores
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {item.valor_fipe != null && <InfoItem label="FIPE" value={formatCurrency(item.valor_fipe)} />}
-                  {item.avaliacao_compra != null && <InfoItem label="Avaliação Compra" value={formatCurrency(item.avaliacao_compra)} />}
-                  {item.avaliacao_consignacao != null && <InfoItem label="Avaliação Consignação" value={formatCurrency(item.avaliacao_consignacao)} />}
-                  {item.quanto_pede != null && <InfoItem label="Quanto Pede" value={formatCurrency(item.quanto_pede)} />}
-                  {item.quanto_vende != null && <InfoItem label="Quanto Vende" value={formatCurrency(item.quanto_vende)} />}
-                  {item.valor_fechamento != null && <InfoItem label="Valor Fechamento" value={formatCurrency(item.valor_fechamento)} />}
-                  {item.previsao_custos_loja != null && <InfoItem label="Custos Loja" value={formatCurrency(item.previsao_custos_loja)} />}
-                  {item.previsao_custos_cliente != null && <InfoItem label="Custos Cliente" value={formatCurrency(item.previsao_custos_cliente)} />}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Informações Adicionais */}
-          {(item.tipo_aquisicao || item.negociacao || item.observacao_avaliador) && (
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-primary" /> Informações Adicionais
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  {item.tipo_aquisicao && <InfoItem label="Tipo Aquisição" value={item.tipo_aquisicao === 'propria' ? 'Própria' : 'Consignada'} />}
-                  {item.negociacao && <InfoItem label="Negociação" value={item.negociacao === 'compra' ? 'Compra' : 'Consignação'} />}
-                </div>
-                {item.observacao_avaliador && (
-                  <>
-                    <Separator className="my-3" />
-                    <div>
-                      <span className="text-xs text-muted-foreground">Observação do Avaliador</span>
-                      <p className="text-sm text-muted-foreground mt-1">{item.observacao_avaliador}</p>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
         </div>
       </ScrollArea>
