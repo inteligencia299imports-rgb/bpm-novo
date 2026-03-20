@@ -144,13 +144,14 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [] as any[] });
 
-      const [prepRes, avalRes] = await Promise.all([prepPromise, avaliacaoPromise]);
+      const [prepRes, avalRes, showroomRes] = await Promise.all([prepPromise, avaliacaoPromise, showroomPromise]);
 
       const prepHistory = (prepRes.data as HistoryEntry[]) || [];
       const avalHistory = (avalRes.data as HistoryEntry[]) || [];
+      const showroomHistory = (showroomRes.data as HistoryEntry[]) || [];
       
       // Merge and sort by date descending
-      const merged = [...prepHistory, ...avalHistory].sort(
+      const merged = [...prepHistory, ...avalHistory, ...showroomHistory].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
