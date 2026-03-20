@@ -117,6 +117,10 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const statusHex = isConsultada ? '#27AE60' : '#F2C94C';
   const ano = [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/');
 
+  if (loading) {
+    return <DetailSkeleton onClose={onClose} cards={3} />;
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
