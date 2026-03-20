@@ -223,8 +223,20 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                                 {estItem.cilindrada ? ` · ${estItem.cilindrada}cc` : ''}
                               </p>
                             </div>
-                            <Badge variant="outline" className="text-xs">Estoque</Badge>
+                            {item.loja?.toLowerCase() !== 'ducati' && (
+                              <Badge variant="outline" className="text-xs">Estoque</Badge>
+                            )}
                           </div>
+                          {item.loja?.toLowerCase() === 'ducati' ? (
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                              {mi.chassi && (
+                                <>
+                                  <span className="text-muted-foreground">Chassi</span>
+                                  <span className="font-medium text-foreground">{mi.chassi}</span>
+                                </>
+                              )}
+                            </div>
+                          ) : (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                             {estItem.placa && (
                               <>
@@ -259,7 +271,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                               </>
                             )}
                           </div>
-                          {/* Prices */}
+                          )}
                           <div className="pt-2 border-t border-border space-y-2">
                             <div className="flex items-center justify-between">
                               <div>
@@ -269,7 +281,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                               {estItem.preco_acao != null && (
                                 <div className="text-right">
                                   <p className="text-xs text-muted-foreground">Preço Ação</p>
-                                  <p className="font-semibold text-green-600">{formatCurrency(estItem.preco_acao)}</p>
+                                  <p className="font-semibold text-success">{formatCurrency(estItem.preco_acao)}</p>
                                 </div>
                               )}
                             </div>
@@ -287,7 +299,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                                       {(() => {
                                         const diff = (item.valor_venda || 0) - (estItem.preco_acao || 0);
                                         return (
-                                          <p className={`font-semibold ${diff >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                                          <p className={`font-semibold ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
                                             {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
                                           </p>
                                         );
@@ -304,11 +316,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
                         </>
                       ) : (
                         <div className="grid grid-cols-2 gap-4">
-                          <InfoItem label="Origem" value="Externo" />
+                          {item.loja?.toLowerCase() !== 'ducati' && <InfoItem label="Origem" value="Externo" />}
                           <InfoItem label="Marca" value={mi.marca} />
                           <InfoItem label="Modelo" value={mi.modelo} />
                           <InfoItem label="Ano" value={mi.ano} />
-                          {mi.chassi && <InfoItem label="Chassi" value={mi.chassi} />}
+                          {item.loja?.toLowerCase() === 'ducati' && mi.chassi && <InfoItem label="Chassi" value={mi.chassi} />}
                         </div>
                       )}
                     </div>
