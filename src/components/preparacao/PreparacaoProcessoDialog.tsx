@@ -121,14 +121,26 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         .eq('entity_type', 'preparacao')
         .order('created_at', { ascending: false });
 
-      // Fetch avaliacao history - only acquisition-relevant entries
+      // Fetch avaliacao history - only acquisition entry (adquirida)
       const avaliacaoPromise = motoAvaliacaoId
         ? supabase
             .from('status_history')
             .select('*')
             .eq('entity_id', motoAvaliacaoId)
             .eq('entity_type', 'avaliacao')
-            .in('status_to', ['avaliada', 'adquirida'])
+            .in('status_to', ['adquirida'])
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] as any[] });
+
+      // Fetch showroom history - only vendido entry (for troca cases)
+      const atendimentoId = avaliacaoData?.atendimento_id;
+      const showroomPromise = atendimentoId
+        ? supabase
+            .from('status_history')
+            .select('*')
+            .eq('entity_id', atendimentoId)
+            .eq('entity_type', 'showroom')
+            .in('status_to', ['vendido'])
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [] as any[] });
 
