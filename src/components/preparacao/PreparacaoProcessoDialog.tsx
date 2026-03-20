@@ -250,7 +250,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="flex flex-col gap-4 overflow-hidden">
+          <div className="flex flex-col gap-4 overflow-hidden px-0.5">
             {/* Status atual */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Status atual:</span>
