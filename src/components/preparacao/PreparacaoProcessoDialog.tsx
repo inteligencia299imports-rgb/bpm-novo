@@ -154,6 +154,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       const STATUS_REMAP: Record<string, string> = {
         vendido: 'Vendida',
         adquirida: 'Adquirida',
+        sinal: 'Sinal',
+        ...Object.fromEntries(PREPARACAO_COLUMNS.map(c => [c.value, c.label])),
       };
       const remapStatus = (s: string) => STATUS_REMAP[s] || s;
 
