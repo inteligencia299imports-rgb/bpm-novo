@@ -590,8 +590,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
               />
             </div>
           </div>
-        </div>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );
