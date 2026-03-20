@@ -112,6 +112,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
     const loadHistory = async () => {
       setLoading(true);
+      const motoAvaliacaoId = avaliacaoData?.moto_avaliacao_id;
       
       // Fetch preparacao history
       const prepPromise = supabase
@@ -121,13 +122,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         .eq('entity_type', 'preparacao')
         .order('created_at', { ascending: false });
 
-      // Fetch avaliacao (aquisicao) history using moto_avaliacao_id
-      const avaliacaoPromise = avaliacaoData?.moto_avaliacao_id
+      // Fetch avaliacao + consulta history using moto_avaliacao_id
+      const avaliacaoPromise = motoAvaliacaoId
         ? supabase
             .from('status_history')
             .select('*')
-            .eq('entity_id', avaliacaoData.moto_avaliacao_id)
-            .eq('entity_type', 'avaliacao')
+            .eq('entity_id', motoAvaliacaoId)
+            .in('entity_type', ['avaliacao', 'consulta'])
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [] as any[] });
 
