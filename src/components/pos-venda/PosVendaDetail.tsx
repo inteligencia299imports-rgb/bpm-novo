@@ -72,7 +72,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const moto = item.motos_avaliacao?.[0];
   const [cnhUrl, setCnhUrl] = useState<string | null>(item.cnh_url || null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto?.crlv_url || null);
-  const statusCol = POS_VENDA_COLUMNS.find(c => c.value === (item.pos_venda_status || 'em_aberto'));
+  const cols = statusColumns || POS_VENDA_COLUMNS;
+  const statusCol = cols.find(c => c.value === ((item as any)[statusField] || 'em_aberto'));
   const int = INTERESSES.find(i => i.value === item.interesse);
   const whatsappUrl = item.telefone ? `https://wa.me/55${item.telefone.replace(/\D/g, '')}` : '';
 
