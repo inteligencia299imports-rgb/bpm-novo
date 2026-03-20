@@ -515,15 +515,26 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">Empresa *</label>
-                      <Select value={empresa} onValueChange={setEmpresa}>
-                        <SelectTrigger className="h-9">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="MMATOS">MMATOS</SelectItem>
-                          <SelectItem value="FAG">FAG</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant={empresa === 'FAG' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-9"
+                          onClick={() => setEmpresa('FAG')}
+                        >
+                          FAG
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={empresa === 'MMATOS' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-9"
+                          onClick={() => setEmpresa('MMATOS')}
+                        >
+                          MMATOS
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="space-y-1">
@@ -563,22 +574,30 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">Preço de Tabela *</label>
-                      <Input
-                        value={precoTabela}
-                        onChange={e => setPrecoTabela(formatCurrencyInput(e.target.value))}
-                        placeholder="0,00"
-                        className="h-9"
-                      />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                        <Input
+                          value={precoTabela}
+                          onChange={e => setPrecoTabela(formatCurrencyInput(e.target.value))}
+                          placeholder="0,00"
+                          className="h-9 pl-9"
+                          inputMode="numeric"
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">Valor de Fechamento *</label>
-                      <Input
-                        value={valorFechamento}
-                        onChange={e => setValorFechamento(formatCurrencyInput(e.target.value))}
-                        placeholder="0,00"
-                        className="h-9"
-                      />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                        <Input
+                          value={valorFechamento}
+                          onChange={e => setValorFechamento(formatCurrencyInput(e.target.value))}
+                          placeholder="0,00"
+                          className="h-9 pl-9"
+                          inputMode="numeric"
+                        />
+                      </div>
                     </div>
                   </div>
 
