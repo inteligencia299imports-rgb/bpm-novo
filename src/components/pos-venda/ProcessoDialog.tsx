@@ -206,8 +206,8 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
                         <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
                           <CalendarIcon className="h-4 w-4" />
                           {e.data_conclusao
-                            ? format(new Date(e.data_conclusao), 'dd/MM/yyyy', { locale: ptBR })
-                            : 'Data'
+                            ? format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                            : 'Data/Hora'
                           }
                         </Button>
                       </PopoverTrigger>
@@ -218,7 +218,23 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
                           onSelect={(d) => setDate(e.etapa, d)}
                           locale={ptBR}
                           initialFocus
+                          className="p-3 pointer-events-auto"
                         />
+                        <div className="flex items-center gap-2 px-3 pb-3 border-t pt-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="time"
+                            className="w-auto h-8 text-sm"
+                            value={e.data_conclusao ? format(new Date(e.data_conclusao), 'HH:mm') : format(new Date(), 'HH:mm')}
+                            onChange={(ev) => {
+                              const [h, m] = ev.target.value.split(':').map(Number);
+                              setTime(e.etapa, h, m);
+                            }}
+                          />
+                          <Button size="sm" variant="default" className="ml-auto h-8" onClick={() => setCalendarOpen(null)}>
+                            OK
+                          </Button>
+                        </div>
                       </PopoverContent>
                     </Popover>
                     {e.data_conclusao && (
