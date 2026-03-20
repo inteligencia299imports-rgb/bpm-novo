@@ -211,6 +211,11 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   };
 
   const handleAction = async (targetStatus: string, _actionLabel: string) => {
+    if (!detalhes.trim()) {
+      toast.error('Preencha os detalhes da movimentação');
+      return;
+    }
+
     if (targetStatus === 'liberar') {
       setShowLiberarForm(true);
       return;
