@@ -132,6 +132,10 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
+    if (nomeCliente.trim().split(/\s+/).length < 2) {
+      toast.error('Informe o nome completo do cliente (nome e sobrenome)');
+      return;
+    }
     if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && (!compraModelo || !compraAno)) {
       toast.error('Preencha o modelo e ano da moto Ducati');
       return;
