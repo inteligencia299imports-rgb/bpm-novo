@@ -181,54 +181,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             </Card>
           )}
 
-          {/* Valores */}
-          {(item.valor_fipe != null || item.avaliacao_compra != null || item.avaliacao_consignacao != null || item.quanto_pede != null) && (
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-primary" /> Valores
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {item.valor_fipe != null && <InfoItem label="FIPE" value={formatCurrency(item.valor_fipe)} />}
-                  {item.avaliacao_compra != null && <InfoItem label="Avaliação Compra" value={formatCurrency(item.avaliacao_compra)} />}
-                  {item.avaliacao_consignacao != null && <InfoItem label="Avaliação Consignação" value={formatCurrency(item.avaliacao_consignacao)} />}
-                  {item.quanto_pede != null && <InfoItem label="Quanto Pede" value={formatCurrency(item.quanto_pede)} />}
-                  {item.quanto_vende != null && <InfoItem label="Quanto Vende" value={formatCurrency(item.quanto_vende)} />}
-                  {item.valor_fechamento != null && <InfoItem label="Valor Fechamento" value={formatCurrency(item.valor_fechamento)} />}
-                  {item.previsao_custos_loja != null && <InfoItem label="Custos Loja" value={formatCurrency(item.previsao_custos_loja)} />}
-                  {item.previsao_custos_cliente != null && <InfoItem label="Custos Cliente" value={formatCurrency(item.previsao_custos_cliente)} />}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Informações Adicionais */}
-          {(item.tipo_aquisicao || item.negociacao || item.observacao_avaliador) && (
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-primary" /> Informações Adicionais
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  {item.tipo_aquisicao && <InfoItem label="Tipo Aquisição" value={item.tipo_aquisicao === 'propria' ? 'Própria' : 'Consignada'} />}
-                  {item.negociacao && <InfoItem label="Negociação" value={item.negociacao === 'compra' ? 'Compra' : 'Consignação'} />}
-                </div>
-                {item.observacao_avaliador && (
-                  <>
-                    <Separator className="my-3" />
-                    <div>
-                      <span className="text-xs text-muted-foreground">Observação do Avaliador</span>
-                      <p className="text-sm text-muted-foreground mt-1">{item.observacao_avaliador}</p>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
         </div>
       </ScrollArea>
