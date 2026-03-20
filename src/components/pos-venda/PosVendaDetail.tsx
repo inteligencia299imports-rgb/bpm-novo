@@ -13,6 +13,7 @@ import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ProcessoDialog from './ProcessoDialog';
 
 interface Props {
   item: any;
