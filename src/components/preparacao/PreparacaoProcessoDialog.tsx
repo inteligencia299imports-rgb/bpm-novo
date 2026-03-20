@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
