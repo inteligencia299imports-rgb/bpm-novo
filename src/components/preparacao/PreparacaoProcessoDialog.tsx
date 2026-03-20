@@ -163,6 +163,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         vendido: 'Adquirida',
         adquirida: 'Adquirida',
         sinal: 'Sinal',
+        estoque: 'Moto Liberada',
         ...Object.fromEntries(PREPARACAO_COLUMNS.map(c => [c.value, c.label])),
       };
       const remapStatus = (s: string) => STATUS_REMAP[s] || s;
@@ -339,7 +340,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       const { error: updateError } = await supabase
         .from('avaliacoes')
         .update({
-          preparacao_status: 'aguardando_liberacao_estoque',
+          preparacao_status: 'estoque',
           situacao: 'adquirida',
           valor_fechamento: fechamentoValue,
         } as any)
@@ -353,7 +354,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
       const historySaved = await insertHistory({
         statusFrom,
-        statusTo: 'aguardando_liberacao_estoque',
+        statusTo: 'estoque',
         observacoes: `MOTO LIBERADA. Empresa: ${empresa}, Loja: ${loja}, Placa: ${placa.trim().toUpperCase()}${detalhes.trim() ? `. ${detalhes.trim()}` : ''}`,
         changedBy: user.id,
         changedByName: userName,
@@ -365,8 +366,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         toast.success('Moto registrada no estoque com sucesso!');
       }
 
-      setActiveStatus('aguardando_liberacao_estoque');
-      onStatusChanged?.('aguardando_liberacao_estoque');
+      setActiveStatus('estoque');
+      onStatusChanged?.('estoque');
       onOpenChange(false);
     } catch (err) {
       console.error(err);
