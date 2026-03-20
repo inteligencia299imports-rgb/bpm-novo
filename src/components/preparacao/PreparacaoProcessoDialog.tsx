@@ -41,10 +41,20 @@ const AVALIACAO_STATUS_LABELS: Record<string, string> = {
   perdido: 'Perdido',
   avaliacao_solicitada: 'Avaliação Solicitada',
   avaliacao_realizada: 'Avaliação Realizada',
+  avaliada: 'Avaliada',
+  sem_consulta: 'Sem Consulta',
+  consulta_solicitada: 'Consulta Solicitada',
+  consulta_realizada: 'Consulta Realizada',
+};
+
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+  avaliacao: 'Avaliação',
+  consulta: 'Consulta',
+  preparacao: 'Preparação',
 };
 
 const getStatusLabel = (value: string, entityType?: string) => {
-  if (entityType === 'avaliacao') return AVALIACAO_STATUS_LABELS[value] || value;
+  if (entityType === 'avaliacao' || entityType === 'consulta') return AVALIACAO_STATUS_LABELS[value] || value;
   return PREPARACAO_COLUMNS.find(c => c.value === value)?.label || AVALIACAO_STATUS_LABELS[value] || value;
 };
 const getStatusHex = (value: string) => PREPARACAO_COLUMNS.find(c => c.value === value)?.hex || '#888';
