@@ -341,7 +341,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         .from('avaliacoes')
         .update({
           preparacao_status: 'estoque',
-          situacao: 'adquirida',
+          situacao: 'estoque',
           valor_fechamento: fechamentoValue,
         } as any)
         .eq('id', avaliacaoId);
