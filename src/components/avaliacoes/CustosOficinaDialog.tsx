@@ -147,58 +147,13 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
           <DialogTitle className="text-lg font-bold">Custos de Oficina</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 pb-6">
+        <ScrollArea className="flex-1 overflow-auto px-6 pb-6" style={{ maxHeight: 'calc(90vh - 80px)' }}>
           <div className="space-y-4 px-2">
-            {/* Existing costs */}
-            {custos.length > 0 && (
-              <div className="space-y-2">
-                {custos.map((custo) => (
-                  <div key={custo.id} className="flex items-center gap-3 rounded-lg p-3 border border-border bg-muted/30">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                        {getTipoLabel(custo.tipo)} · {getResponsavelLabel(custo.responsavel)}
-                        {custo.numero_os ? ` · OS ${custo.numero_os}` : ''}
-                      </p>
-                      <p className="text-sm font-semibold mt-0.5 uppercase truncate">
-                        {custo.detalhes || 'Sem detalhes'}
-                      </p>
-                      <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                        <span>Previsto: <span className="font-medium text-foreground">{formatCurrency(custo.valor_previsto)}</span></span>
-                        <span>Executado: <span className="font-medium text-foreground">{formatCurrency(custo.valor_executado)}</span></span>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive" onClick={() => custo.id && handleRemove(custo.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-
-                {/* Total */}
-                <div className="flex justify-end pt-1 pr-12">
-                  <p className="text-sm font-semibold">
-                    TOTAL: <span className="ml-1">{formatCurrency(custos.reduce((sum, c) => sum + (c.valor_executado ?? c.valor_previsto ?? 0), 0))}</span>
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {custos.length === 0 && !loading && (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhum custo registrado</p>
-            )}
-
-            {loading && (
-              <div className="flex justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            )}
-
-            <Separator />
-
             {/* Add new cost form */}
             <div className="space-y-3">
               <p className="text-sm font-semibold">Adicionar Custo</p>
@@ -289,6 +244,51 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
                 <Plus className="h-4 w-4" /> Adicionar Custo
               </Button>
             </div>
+
+            <Separator />
+
+            {/* Existing costs list */}
+            {custos.length > 0 && (
+              <div className="space-y-2">
+                {custos.map((custo) => (
+                  <div key={custo.id} className="flex items-center gap-3 rounded-lg p-3 border border-border bg-muted/30">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                        {getTipoLabel(custo.tipo)} · {getResponsavelLabel(custo.responsavel)}
+                        {custo.numero_os ? ` · OS ${custo.numero_os}` : ''}
+                      </p>
+                      <p className="text-sm font-semibold mt-0.5 uppercase truncate">
+                        {custo.detalhes || 'Sem detalhes'}
+                      </p>
+                      <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                        <span>Previsto: <span className="font-medium text-foreground">{formatCurrency(custo.valor_previsto)}</span></span>
+                        <span>Executado: <span className="font-medium text-foreground">{formatCurrency(custo.valor_executado)}</span></span>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive" onClick={() => custo.id && handleRemove(custo.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+
+                {/* Total */}
+                <div className="flex justify-end pt-1 pr-12">
+                  <p className="text-sm font-semibold">
+                    TOTAL: <span className="ml-1">{formatCurrency(custos.reduce((sum, c) => sum + (c.valor_executado ?? c.valor_previsto ?? 0), 0))}</span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {custos.length === 0 && !loading && (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhum custo registrado</p>
+            )}
+
+            {loading && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
           </div>
         </ScrollArea>
       </DialogContent>
