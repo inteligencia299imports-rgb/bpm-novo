@@ -68,6 +68,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [vendaCor, setVendaCor] = useState('');
   const [vendaPlaca, setVendaPlaca] = useState('');
   const [vendaKm, setVendaKm] = useState('');
+  const [vendaCilindrada, setVendaCilindrada] = useState('');
   const [vendaObs, setVendaObs] = useState('');
   const [motoAvaliacaoId, setMotoAvaliacaoId] = useState<string | null>(null);
   const [enviadaAvaliacao, setEnviadaAvaliacao] = useState(false);
