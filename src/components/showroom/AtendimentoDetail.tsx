@@ -85,26 +85,25 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   useEffect(() => {
     const fetchRelated = async () => {
       setLoading(true);
-      const [resInt, resAv, resAval] = await Promise.all([
+
+      // Fetch showroom history immediately (no dependency on motoIds)
+      const showroomHistoryPromise = supabase
+        .from('status_history')
+        .select('*')
+        .eq('entity_type', 'showroom')
+        .eq('entity_id', atendimento.id)
+        .order('created_at', { ascending: true });
+
+      const [resInt, resAv, resAval, showroomRes] = await Promise.all([
         supabase.from('motos_interesse').select('*').eq('atendimento_id', atendimento.id),
         supabase.from('motos_avaliacao').select('*').eq('atendimento_id', atendimento.id),
         supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimento.id),
+        showroomHistoryPromise,
       ]);
+
       const motosInt = (resInt.data as unknown as MotoInteresse[]) || [];
       setMotosInteresse(motosInt);
 
-      // Fetch estoque data for motos from stock
-      const estoqueIds = motosInt.filter(m => m.origem === 'estoque' && m.estoque_moto_id).map(m => m.estoque_moto_id!);
-      if (estoqueIds.length > 0) {
-        const { data: estoqueItems } = await supabase.from('estoque').select('*').in('id', estoqueIds);
-        const estoqueMap: Record<string, any> = {};
-        if (estoqueItems) {
-          for (const item of estoqueItems) {
-            estoqueMap[item.id] = item;
-          }
-        }
-        setEstoqueData(estoqueMap);
-      }
       const motosAv = (resAv.data as unknown as MotoAvaliacao[]) || [];
       setMotosAvaliacao(motosAv);
       
@@ -114,18 +113,56 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         crlvMap[m.id] = (m as any).crlv_url || null;
       }
       setCrlvUrls(crlvMap);
-      
-      // Map avaliacoes by moto_avaliacao_id and fetch avaliador names
+
+      // Set showroom history immediately so it renders fast
+      const allHistory = [...(showroomRes.data || [])];
+      allHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      setHistory(allHistory);
+      setLoading(false);
+
+      // Now fetch secondary data in parallel without blocking the UI
+      const motoIds = motosAv.map(m => m.id);
+      const estoqueIds = motosInt.filter(m => m.origem === 'estoque' && m.estoque_moto_id).map(m => m.estoque_moto_id!);
+
+      // Fetch all secondary data in parallel
+      const estoquePromise = estoqueIds.length > 0
+        ? supabase.from('estoque').select('*').in('id', estoqueIds).then(r => r)
+        : Promise.resolve({ data: null as any[] | null });
+
+      const avaliadorIds = resAval.data
+        ? [...new Set(resAval.data.map((av: any) => av.avaliador_id).filter(Boolean))]
+        : [];
+      const avaliadorPromise = avaliadorIds.length > 0
+        ? supabase.from('user_roles').select('user_id, nome').in('user_id', avaliadorIds).then(r => r)
+        : Promise.resolve({ data: null as any[] | null });
+
+      const consultaPromise = motoIds.length > 0
+        ? supabase.from('status_history').select('*').eq('entity_type', 'consulta').in('entity_id', motoIds).order('created_at', { ascending: true }).then(r => r)
+        : Promise.resolve({ data: [] as any[] });
+      const avaliacaoHistPromise = motoIds.length > 0
+        ? supabase.from('status_history').select('*').eq('entity_type', 'avaliacao').in('entity_id', motoIds).order('created_at', { ascending: true }).then(r => r)
+        : Promise.resolve({ data: [] as any[] });
+
+      const [estoqueRes, rolesRes, consultaRes, avaliacaoRes] = await Promise.all([
+        estoquePromise, avaliadorPromise, consultaPromise, avaliacaoHistPromise,
+      ]);
+
+      // Update estoque
+      if (estoqueRes.data) {
+        const estoqueMap: Record<string, any> = {};
+        for (const item of estoqueRes.data) {
+          estoqueMap[item.id] = item;
+        }
+        setEstoqueData(estoqueMap);
+      }
+
+      // Map avaliacoes with avaliador names
       const avalMap: Record<string, any> = {};
       if (resAval.data) {
-        const avaliadorIds = [...new Set(resAval.data.map((av: any) => av.avaliador_id).filter(Boolean))];
         let avaliadorNames: Record<string, string> = {};
-        if (avaliadorIds.length > 0) {
-          const { data: roles } = await supabase.from('user_roles').select('user_id, nome').in('user_id', avaliadorIds);
-          if (roles) {
-            for (const r of roles) {
-              avaliadorNames[r.user_id] = r.nome;
-            }
+        if (rolesRes.data) {
+          for (const r of rolesRes.data) {
+            avaliadorNames[r.user_id] = r.nome;
           }
         }
         for (const av of resAval.data) {
@@ -134,37 +171,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       }
       setAvaliacoes(avalMap);
 
-      // Fetch status history (showroom + consulta for related motos)
-      const motoIds = motosAv.map(m => m.id);
-      const [showroomRes, consultaRes, avaliacaoRes] = await Promise.all([
-        supabase
-          .from('status_history')
-          .select('*')
-          .eq('entity_type', 'showroom')
-          .eq('entity_id', atendimento.id)
-          .order('created_at', { ascending: true }),
-        motoIds.length > 0
-          ? supabase
-              .from('status_history')
-              .select('*')
-              .eq('entity_type', 'consulta')
-              .in('entity_id', motoIds)
-              .order('created_at', { ascending: true })
-          : Promise.resolve({ data: [] }),
-        motoIds.length > 0
-          ? supabase
-              .from('status_history')
-              .select('*')
-              .eq('entity_type', 'avaliacao')
-              .in('entity_id', motoIds)
-              .order('created_at', { ascending: true })
-          : Promise.resolve({ data: [] }),
-      ]);
-      const allHistory = [...(showroomRes.data || []), ...(consultaRes.data || []), ...(avaliacaoRes.data || [])];
-      allHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      setHistory(allHistory);
-
-      setLoading(false);
+      // Merge full history
+      const fullHistory = [
+        ...(showroomRes.data || []),
+        ...(consultaRes.data || []),
+        ...(avaliacaoRes.data || []),
+      ];
+      fullHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      setHistory(fullHistory);
     };
     fetchRelated();
   }, [atendimento.id]);
