@@ -6,7 +6,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2 } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -78,11 +79,24 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
   const setDate = (etapa: string, date: Date | undefined) => {
     if (!date) return;
     setEtapas(prev =>
-      prev.map(e =>
-        e.etapa === etapa ? { ...e, data_conclusao: date.toISOString(), concluida: true } : e
-      )
+      prev.map(e => {
+        if (e.etapa !== etapa) return e;
+        const existing = e.data_conclusao ? new Date(e.data_conclusao) : new Date();
+        date.setHours(existing.getHours(), existing.getMinutes());
+        return { ...e, data_conclusao: date.toISOString(), concluida: true };
+      })
     );
-    setCalendarOpen(null);
+  };
+
+  const setTime = (etapa: string, hours: number, minutes: number) => {
+    setEtapas(prev =>
+      prev.map(e => {
+        if (e.etapa !== etapa) return e;
+        const d = e.data_conclusao ? new Date(e.data_conclusao) : new Date();
+        d.setHours(hours, minutes);
+        return { ...e, data_conclusao: d.toISOString(), concluida: true };
+      })
+    );
   };
 
   const clearDate = (etapa: string) => {
@@ -192,8 +206,8 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
                         <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
                           <CalendarIcon className="h-4 w-4" />
                           {e.data_conclusao
-                            ? format(new Date(e.data_conclusao), 'dd/MM/yyyy', { locale: ptBR })
-                            : 'Data'
+                            ? format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                            : 'Data/Hora'
                           }
                         </Button>
                       </PopoverTrigger>
@@ -204,7 +218,23 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
                           onSelect={(d) => setDate(e.etapa, d)}
                           locale={ptBR}
                           initialFocus
+                          className="p-3 pointer-events-auto"
                         />
+                        <div className="flex items-center gap-2 px-3 pb-3 border-t pt-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="time"
+                            className="w-auto h-8 text-sm"
+                            value={e.data_conclusao ? format(new Date(e.data_conclusao), 'HH:mm') : format(new Date(), 'HH:mm')}
+                            onChange={(ev) => {
+                              const [h, m] = ev.target.value.split(':').map(Number);
+                              setTime(e.etapa, h, m);
+                            }}
+                          />
+                          <Button size="sm" variant="default" className="ml-auto h-8" onClick={() => setCalendarOpen(null)}>
+                            OK
+                          </Button>
+                        </div>
                       </PopoverContent>
                     </Popover>
                     {e.data_conclusao && (
