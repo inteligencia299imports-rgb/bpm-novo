@@ -6,9 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Loader2, History, Clock, Wrench, Truck, CheckCircle, Package, AlertCircle, Check } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check } from 'lucide-react';
+import StatusTimeline from '@/components/shared/StatusTimeline';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { PREPARACAO_COLUMNS, LOJAS } from '@/types/crm';
@@ -122,13 +121,14 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         .eq('entity_type', 'preparacao')
         .order('created_at', { ascending: false });
 
-      // Fetch avaliacao + consulta history using moto_avaliacao_id
+      // Fetch avaliacao history - only acquisition-relevant entries
       const avaliacaoPromise = motoAvaliacaoId
         ? supabase
             .from('status_history')
             .select('*')
             .eq('entity_id', motoAvaliacaoId)
-            .in('entity_type', ['avaliacao', 'consulta'])
+            .eq('entity_type', 'avaliacao')
+            .in('status_to', ['avaliada', 'adquirida'])
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [] as any[] });
 
@@ -354,10 +354,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
-  return (
+   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto px-6">
-        <DialogHeader className="flex flex-row items-center justify-between pr-8">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col px-6">
+        <DialogHeader className="flex flex-row items-center justify-between pr-8 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" /> Processo de Preparação
           </DialogTitle>
@@ -365,6 +365,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             {getStatusLabel(activeStatus)}
           </Badge>
         </DialogHeader>
+
+        <div className="overflow-y-auto flex-1 min-h-0">
 
         {loading ? (
           <div className="flex justify-center py-8">
@@ -569,51 +571,28 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
             <Separator />
 
-            {/* History */}
+            {/* History - using StatusTimeline like atendimento */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <History className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">Histórico de Movimentações</span>
               </div>
 
-              <div className="space-y-2">
-                {history.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>
-                ) : (
-                  history.map(h => (
-                    <div key={h.id} className="bg-muted/50 rounded-lg p-3 space-y-1 border border-border/50">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                          {h.entity_type !== 'preparacao' && (
-                            <span className="text-[9px] font-medium text-muted-foreground/70 uppercase mr-0.5">
-                              {ENTITY_TYPE_LABELS[h.entity_type] || h.entity_type}
-                            </span>
-                          )}
-                          <Badge variant="outline" className="text-[10px]" style={{ borderColor: getStatusHex(h.status_from), color: getStatusHex(h.status_from) }}>
-                            {getStatusLabel(h.status_from, h.entity_type)}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">→</span>
-                          <Badge className="text-[10px]" style={{ backgroundColor: `${getStatusHex(h.status_to)}20`, color: getStatusHex(h.status_to) }}>
-                            {getStatusLabel(h.status_to, h.entity_type)}
-                          </Badge>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">
-                          {format(new Date(h.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
-                        </span>
-                      </div>
-                      {h.observacoes && (
-                        <p className="text-xs text-muted-foreground">{h.observacoes}</p>
-                      )}
-                      {h.changed_by_name && (
-                        <p className="text-[10px] text-muted-foreground/70">por {h.changed_by_name}</p>
-                      )}
+              <StatusTimeline
+                history={history}
+                renderPopupExtra={(entry) => (
+                  entry.observacoes ? (
+                    <div>
+                      <span className="text-xs text-muted-foreground">Observações</span>
+                      <p className="text-sm">{entry.observacoes}</p>
                     </div>
-                  ))
+                  ) : null
                 )}
-              </div>
+              />
             </div>
           </div>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );
