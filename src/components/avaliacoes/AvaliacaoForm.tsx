@@ -101,6 +101,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const canEdit = role === 'avaliador' || role === 'gestor' || role === 'vendedor';
   const [history, setHistory] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [custosOpen, setCustosOpen] = useState(false);
 
   const handleDeleteAvaliacao = async () => {
     setDeleting(true);
