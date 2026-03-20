@@ -120,27 +120,19 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
   const handleSave = async () => {
     setSaving(true);
     try {
-      for (const e of etapas) {
-        const { data: existing } = await supabase
-          .from('pos_venda_processos')
-          .select('id')
-          .eq('atendimento_id', atendimentoId)
-          .eq('etapa', e.etapa)
-          .maybeSingle();
+      // Batch upsert all etapas in a single call
+      const rows = etapas.map(e => ({
+        atendimento_id: atendimentoId,
+        etapa: e.etapa,
+        concluida: e.concluida,
+        data_conclusao: e.data_conclusao,
+      }));
 
-        if (existing) {
-          await supabase
-            .from('pos_venda_processos')
-            .update({ concluida: e.concluida, data_conclusao: e.data_conclusao } as any)
-            .eq('id', existing.id);
-        } else {
-          await supabase
-            .from('pos_venda_processos')
-            .insert({ atendimento_id: atendimentoId, etapa: e.etapa, concluida: e.concluida, data_conclusao: e.data_conclusao } as any);
-        }
-      }
+      await supabase
+        .from('pos_venda_processos')
+        .upsert(rows as any, { onConflict: 'atendimento_id,etapa' });
 
-      // Determine pos_venda_status based on checked etapas
+      // Determine pos_venda_status
       const transferenciaFinalizada = etapas.find(e => e.etapa === 'TRANSFERÊNCIA FINALIZADA')?.concluida;
       const docDespachante = etapas.find(e => e.etapa === 'DOCUMENTAÇÃO COM DESPACHANTE')?.concluida;
       const anyConcluida = etapas.some(e => e.concluida);
