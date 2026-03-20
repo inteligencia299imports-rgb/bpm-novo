@@ -618,6 +618,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 )}
               />
             </div>
+            <div className="pb-12" />
           </div>
         )}
         </div>
