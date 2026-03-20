@@ -65,7 +65,7 @@ const PreparacaoTab = () => {
                   <div className="bg-muted/50 rounded-lg p-2.5 flex-1 min-h-[200px] space-y-2.5 border border-border/50">
                     {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => (
                       <ProcessCard key={a.id} clientName={a.atendimento?.nome_cliente || 'N/A'}
-                        motoLabel={a.moto ? [a.moto.placa?.replace(/-/g, ''), (a.moto.modelo || '').toUpperCase()].filter(Boolean).join(' - ') : undefined}
+                        motoLabel={a.moto ? [(a.moto.modelo || '').toUpperCase(), a.moto.placa?.replace(/-/g, '')].filter(Boolean).join(' - ') : undefined}
                         loja={a.atendimento?.loja} date={a.updated_at} statusColor={col.hex}
                         extraBadge={a.tipo_aquisicao ? { label: a.tipo_aquisicao === 'propria' ? 'Própria' : 'Consignada', className: 'border-green-500/30 text-green-600' } : undefined}
                         onClick={() => setSelectedItem(a)} />
