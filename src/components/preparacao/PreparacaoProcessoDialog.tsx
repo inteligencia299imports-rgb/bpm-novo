@@ -117,6 +117,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     setPrecoTabela(quantoPede != null ? formatCurrencyInput(String(Math.round(quantoPede * 100))) : '');
     const fechamento = avaliacaoData?.valor_fechamento;
     setValorFechamento(fechamento != null ? formatCurrencyInput(String(Math.round(fechamento * 100))) : '');
+    setObsMoto(avaliacaoData?.moto?.observacoes || '');
 
     const loadHistory = async () => {
       setLoading(true);
