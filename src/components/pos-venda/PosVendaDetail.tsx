@@ -30,6 +30,7 @@ interface Props {
       default?: string;
     };
   };
+  onStatusChanged?: (itemId: string, newStatus: string, field: string) => void;
 }
 
 const formatPhone = (value: string): string => {
