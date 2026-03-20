@@ -842,7 +842,7 @@ const ContratoDialog: React.FC<Props> = ({
 
         {/* Bottom buttons */}
         <div className="flex justify-end gap-2 p-4 border-t shrink-0">
-          {contratoId && (
+          {jaGerado && contratoId && (
             <Button variant="outline" onClick={handleVisualizar} disabled={viewing}>
               <Eye className="h-4 w-4 mr-1" />{viewing ? 'Abrindo...' : 'Visualizar'}
             </Button>
