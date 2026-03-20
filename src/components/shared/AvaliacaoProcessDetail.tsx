@@ -113,6 +113,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             </Button>
           </div>
         )}
+        {entityType === 'preparacao' && (
+          <div className="flex sm:hidden gap-2 justify-center">
+            <Button size="sm" onClick={() => setProcessoPreparacaoOpen(true)} className="flex-1 gap-1.5">
+              <ClipboardList className="h-4 w-4" /> Processo
+            </Button>
+          </div>
+        )}
       </div>
 
       <Separator />
