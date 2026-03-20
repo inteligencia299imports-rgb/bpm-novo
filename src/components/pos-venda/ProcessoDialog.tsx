@@ -258,6 +258,15 @@ const ProcessoDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) 
             ))}
 
             <Separator />
+            <div className="space-y-2 pt-3">
+              <label className="text-sm font-medium">Observações</label>
+              <Textarea
+                placeholder="Observações do processo..."
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                rows={3}
+              />
+            </div>
             <div className="flex justify-end pt-3">
               <Button onClick={handleSave} disabled={saving} className="gap-1.5">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
