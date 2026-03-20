@@ -519,21 +519,21 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       <div className="flex gap-2">
                         <Button
                           type="button"
-                          variant={empresa === 'FAG' ? 'default' : 'outline'}
-                          size="sm"
-                          className="flex-1 h-9"
-                          onClick={() => setEmpresa('FAG')}
-                        >
-                          FAG
-                        </Button>
-                        <Button
-                          type="button"
                           variant={empresa === 'MMATOS' ? 'default' : 'outline'}
                           size="sm"
                           className="flex-1 h-9"
                           onClick={() => setEmpresa('MMATOS')}
                         >
                           MMATOS
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={empresa === 'FAG' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-9"
+                          onClick={() => setEmpresa('FAG')}
+                        >
+                          FAG
                         </Button>
                       </div>
                     </div>
