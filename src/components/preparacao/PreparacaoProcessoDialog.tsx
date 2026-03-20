@@ -259,20 +259,38 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
           <div className="flex flex-col gap-4 overflow-hidden px-0.5">
             {/* Resumo */}
             {avaliacaoData && (
-              <div className="bg-muted/50 rounded-lg p-3 border border-border/50 space-y-1">
+              <div className="bg-muted/50 rounded-lg p-4 border border-border/50 space-y-2.5">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-sm font-semibold text-foreground">{avaliacaoData.atendimento?.nome_cliente || 'N/A'}</span>
+                  <span className="text-base font-bold text-foreground">{avaliacaoData.atendimento?.nome_cliente || 'N/A'}</span>
                   {avaliacaoData.tipo_aquisicao && (
                     <Badge variant="outline" className="text-xs border-green-500/30 text-green-600">
                       {avaliacaoData.tipo_aquisicao === 'propria' ? 'Própria' : 'Consignada'}
                     </Badge>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                  <span>{avaliacaoData.moto?.marca} {avaliacaoData.moto?.modelo}</span>
-                  {avaliacaoData.moto?.placa && <span>Placa: <span className="font-medium text-foreground">{avaliacaoData.moto.placa}</span></span>}
-                  {avaliacaoData.moto?.categoria && <span>{avaliacaoData.moto.categoria}</span>}
-                  {avaliacaoData.valor_fechamento != null && <span>Fechamento: <span className="font-medium text-foreground">{formatCurrency(avaliacaoData.valor_fechamento)}</span></span>}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-4 text-sm">
+                  <div>
+                    <span className="text-xs text-muted-foreground block">Moto</span>
+                    <span className="font-medium text-foreground">{avaliacaoData.moto?.marca} {avaliacaoData.moto?.modelo}</span>
+                  </div>
+                  {avaliacaoData.moto?.placa && (
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Placa</span>
+                      <span className="font-medium text-foreground">{avaliacaoData.moto.placa}</span>
+                    </div>
+                  )}
+                  {avaliacaoData.moto?.categoria && (
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Categoria</span>
+                      <span className="font-medium text-foreground">{avaliacaoData.moto.categoria}</span>
+                    </div>
+                  )}
+                  {avaliacaoData.valor_fechamento != null && (
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Valor Fechamento</span>
+                      <span className="font-semibold text-foreground">{formatCurrency(avaliacaoData.valor_fechamento)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
