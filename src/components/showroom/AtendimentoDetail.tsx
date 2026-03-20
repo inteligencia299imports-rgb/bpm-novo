@@ -371,7 +371,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             })()}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {atendimento.situacao === 'sinal' && (
+            {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && (
               <Button size="sm" onClick={() => setContratoOpen(true)} className="gap-1.5">
                 <FileText className="h-4 w-4" /> Contrato
               </Button>
