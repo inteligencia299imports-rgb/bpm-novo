@@ -18,6 +18,7 @@ import StatusTimeline from '@/components/shared/StatusTimeline';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
 import type { SituacaoAvaliacao, MotoFoto } from '@/types/crm';
 import { toast } from 'sonner';
+import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
