@@ -223,7 +223,7 @@ const EstoqueTab = () => {
                 {/* Header */}
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-semibold text-foreground">{item.marca} {item.modelo}</p>
+                    <p className="font-semibold text-foreground">{item.modelo}</p>
                     <p className="text-xs text-muted-foreground">
                       {[item.ano_fabricacao, item.ano_modelo].filter(Boolean).join('/')}
                       {item.cilindrada ? ` · ${item.cilindrada}cc` : ''}
