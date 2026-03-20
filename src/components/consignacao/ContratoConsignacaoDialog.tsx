@@ -89,6 +89,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [contratoId, setContratoId] = useState<string | null>(null);
+  const [jaGerado, setJaGerado] = useState(false);
 
   // Client data
   const [cpfCnpj, setCpfCnpj] = useState('');
