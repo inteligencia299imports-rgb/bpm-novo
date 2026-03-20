@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Loader2, History, Clock, Wrench, Truck, CheckCircle, Package, AlertCircle } from 'lucide-react';
+import { ClipboardList, Loader2, History, Clock, Wrench, Truck, CheckCircle, Package, AlertCircle, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
