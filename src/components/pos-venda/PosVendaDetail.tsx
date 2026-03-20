@@ -395,22 +395,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
             </Card>
           )}
 
-          {/* Valores */}
-          {(item.valor_venda != null || item.valor_sinal != null) && (
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-primary" /> Valores
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {item.valor_venda != null && <InfoItem label="Valor Venda" value={formatCurrency(item.valor_venda)} />}
-                  {item.valor_sinal != null && <InfoItem label="Valor Sinal" value={formatCurrency(item.valor_sinal)} />}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Observações */}
           {item.observacoes && (
