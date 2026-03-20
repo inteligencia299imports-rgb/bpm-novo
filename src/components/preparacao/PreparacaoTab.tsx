@@ -48,7 +48,7 @@ const PreparacaoTab = () => {
         </div>
       </div>
       {loading ? (
-        <div className="flex justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>
+        <KanbanSkeleton columns={4} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
           <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-8">
