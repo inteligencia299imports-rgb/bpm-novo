@@ -1,0 +1,2 @@
+ALTER TABLE public.avaliacoes DROP CONSTRAINT avaliacoes_situacao_check;
+ALTER TABLE public.avaliacoes ADD CONSTRAINT avaliacoes_situacao_check CHECK (situacao = ANY (ARRAY['sem_avaliar'::text, 'em_aberto'::text, 'adquirida'::text, 'dispensada'::text, 'perdido'::text, 'estoque'::text]));
