@@ -570,13 +570,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             <Separator />
 
             {/* History */}
-            <div className="space-y-2 min-h-0 flex-1 overflow-hidden">
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <History className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">Histórico de Movimentações</span>
               </div>
 
-              <div className="overflow-y-auto max-h-[200px] space-y-2 pr-1" style={{ scrollbarWidth: 'thin', scrollbarGutter: 'stable' }}>
+              <div className="space-y-2">
                 {history.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>
                 ) : (
