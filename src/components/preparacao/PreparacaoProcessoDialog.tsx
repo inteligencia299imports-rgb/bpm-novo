@@ -150,10 +150,17 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       const avalHistory = (avalRes.data as HistoryEntry[]) || [];
       const showroomHistory = (showroomRes.data as HistoryEntry[]) || [];
       
+      // Remap status labels for display
+      const STATUS_REMAP: Record<string, string> = {
+        vendido: 'Vendida',
+        adquirida: 'Adquirida',
+      };
+      const remapStatus = (s: string) => STATUS_REMAP[s] || s;
+
       // Merge and sort by date descending
-      const merged = [...prepHistory, ...avalHistory, ...showroomHistory].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      const merged = [...prepHistory, ...avalHistory, ...showroomHistory]
+        .map(h => ({ ...h, status_to: remapStatus(h.status_to), status_from: remapStatus(h.status_from) }))
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setHistory(merged);
       setLoading(false);
