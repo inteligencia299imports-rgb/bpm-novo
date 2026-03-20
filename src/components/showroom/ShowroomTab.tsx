@@ -17,6 +17,7 @@ import AtendimentoCard from './AtendimentoCard';
 import AtendimentoDetail from './AtendimentoDetail';
 import AtendimentoForm from './AtendimentoForm';
 import { toast } from 'sonner';
+import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
 const KANBAN_COLUMNS = SITUACOES_SHOWROOM;
 
