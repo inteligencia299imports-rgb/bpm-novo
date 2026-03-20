@@ -114,11 +114,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       }
       setCrlvUrls(crlvMap);
 
-      // Set showroom history immediately so it renders fast
-      const allHistory = [...(showroomRes.data || [])];
-      allHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      setHistory(allHistory);
-      setLoading(false);
+      // Store showroom history temporarily
+      const showroomHistoryData = showroomRes.data || [];
 
       // Now fetch secondary data in parallel without blocking the UI
       const motoIds = motosAv.map(m => m.id);
@@ -173,12 +170,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       // Merge full history
       const fullHistory = [
-        ...(showroomRes.data || []),
+        ...showroomHistoryData,
         ...(consultaRes.data || []),
         ...(avaliacaoRes.data || []),
       ];
       fullHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       setHistory(fullHistory);
+      setLoading(false);
     };
     fetchRelated();
   }, [atendimento.id]);
@@ -320,6 +318,34 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     const av = avaliacoes[motoId];
     return av && av.situacao !== 'sem_avaliar';
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={onClose}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1 space-y-2">
+            <div className="h-5 w-48 bg-muted animate-pulse rounded" />
+            <div className="h-3 w-32 bg-muted animate-pulse rounded" />
+          </div>
+        </div>
+        <Separator />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i}>
+              <CardContent className="p-6 space-y-3">
+                <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                <div className="h-3 w-full bg-muted animate-pulse rounded" />
+                <div className="h-3 w-3/4 bg-muted animate-pulse rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
