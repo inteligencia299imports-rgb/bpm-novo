@@ -230,7 +230,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       }
 
       const statusFrom = activeStatus || currentStatus || 'em_aberto';
-      const observacoes = detalhes.trim() || `Status alterado para ${getStatusLabel(targetStatus)}.`;
+      const observacoes = detalhes.trim();
 
       const { error: updateError } = await supabase
         .from('avaliacoes')
