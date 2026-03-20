@@ -594,7 +594,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             <Separator />
 
             {/* History - using StatusTimeline like atendimento */}
-            <div className="space-y-2">
+            <div className="space-y-2 pl-1">
               <div className="flex items-center gap-2">
                 <History className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">Histórico de Movimentações</span>
