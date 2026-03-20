@@ -48,15 +48,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      const [cnhRes, histRes] = await Promise.all([
+      const [cnhRes] = await Promise.all([
         atendimento?.id
           ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
           : Promise.resolve({ data: null }),
-        supabase.from('status_history').select('*').eq('entity_type', entityType).eq('entity_id', item.id).order('created_at', { ascending: true }),
       ]);
       setCnhUrl(cnhRes.data?.cnh_url || null);
       if (moto?.id) setCrlvUrl(moto.crlv_url || null);
-      setHistory(histRes.data || []);
       setLoading(false);
     };
     loadAll();
