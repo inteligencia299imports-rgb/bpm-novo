@@ -388,7 +388,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
           </Badge>
         </DialogHeader>
 
-        <div className="overflow-y-auto flex-1 min-h-0">
+        <div className="overflow-y-auto overflow-x-hidden flex-1 min-h-0 pr-2" style={{ scrollbarWidth: 'thin' }}>
 
         {loading ? (
           <div className="flex justify-center py-8">
