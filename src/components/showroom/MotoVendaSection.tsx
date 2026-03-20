@@ -18,6 +18,7 @@ interface Props {
   cor: string; setCor: (v: string) => void;
   placa: string; setPlaca: (v: string) => void;
   km: string; setKm: (v: string) => void;
+  cilindrada: string; setCilindrada: (v: string) => void;
   obs: string; setObs: (v: string) => void;
   motoAvaliacaoId: string | null;
   atendimentoId: string | null;
@@ -27,7 +28,7 @@ interface Props {
 const MotoVendaSection: React.FC<Props> = ({
   marca, setMarca, modelo, setModelo, anoFab, setAnoFab,
   anoMod, setAnoMod, categoria, setCategoria, cor, setCor,
-  placa, setPlaca, km, setKm, obs, setObs,
+  placa, setPlaca, km, setKm, cilindrada, setCilindrada, obs, setObs,
   motoAvaliacaoId, atendimentoId, interesse,
 }) => {
   const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
