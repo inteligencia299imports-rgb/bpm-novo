@@ -635,13 +635,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </CardContent>
           </Card>
 
-          <div className="md:col-span-2 flex justify-center w-full">
-            <div className="flex gap-2 flex-wrap justify-center w-full sm:w-auto">
+          <div className="md:col-span-2 flex flex-col items-center gap-3">
+            <div className="flex gap-2 flex-wrap justify-center">
               {statusButtons.map(btn => (
                 <Button
                   key={btn.value}
                   size="sm"
-                  className="gap-2 sm:min-w-[100px] flex-1 sm:flex-none text-white hover:opacity-90 h-9"
+                  className="gap-2 text-white hover:opacity-90"
                   style={{ backgroundColor: btn.color }}
                   onClick={() => {
                     if (btn.value === 'adquirida') {
