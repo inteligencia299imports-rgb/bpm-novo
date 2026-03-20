@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Bike, ArrowRight, DollarSign, Tag, MessageCircle, FileText } from 'lucide-react';
+import { ArrowLeft, User, Bike, ArrowRight, DollarSign, Tag, MessageCircle, FileText, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -12,6 +12,7 @@ import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
+import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 
 interface Props {
   item: any;
@@ -37,6 +38,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
+  const [processoPreparacaoOpen, setProcessoPreparacaoOpen] = useState(false);
+  const [currentPreparacaoStatus, setCurrentPreparacaoStatus] = useState(item.preparacao_status || 'em_aberto');
   const [loading, setLoading] = useState(true);
   const moto = item.moto || item.motos_avaliacao;
   const atendimento = item.atendimento || item.atendimentos;
@@ -95,11 +98,25 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               </Button>
             </div>
           )}
+          {entityType === 'preparacao' && (
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <Button size="sm" onClick={() => setProcessoPreparacaoOpen(true)} className="gap-1.5">
+                <ClipboardList className="h-4 w-4" /> Processo
+              </Button>
+            </div>
+          )}
         </div>
         {entityType === 'consignacao' && (
           <div className="flex sm:hidden gap-2 justify-center">
             <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="flex-1">
               <FileText className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        {entityType === 'preparacao' && (
+          <div className="flex sm:hidden gap-2 justify-center">
+            <Button size="sm" onClick={() => setProcessoPreparacaoOpen(true)} className="flex-1 gap-1.5">
+              <ClipboardList className="h-4 w-4" /> Processo
             </Button>
           </div>
         )}
@@ -253,6 +270,19 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           open={contratoConsignacaoOpen}
           onOpenChange={setContratoConsignacaoOpen}
           avaliacao={item}
+        />
+      )}
+
+      {entityType === 'preparacao' && (
+        <PreparacaoProcessoDialog
+          open={processoPreparacaoOpen}
+          onOpenChange={setProcessoPreparacaoOpen}
+          avaliacaoId={item.id}
+          currentStatus={currentPreparacaoStatus}
+          onStatusChanged={(newStatus) => {
+            setCurrentPreparacaoStatus(newStatus);
+            item.preparacao_status = newStatus;
+          }}
         />
       )}
     </div>
