@@ -20,6 +20,8 @@ export type Database = {
           created_at: string
           id: string
           interesse: string
+          intermediacao_parte1_status: string
+          intermediacao_parte2_status: string
           loja: string
           nome_cliente: string
           nps_enviado_at: string | null
@@ -45,6 +47,8 @@ export type Database = {
           created_at?: string
           id?: string
           interesse: string
+          intermediacao_parte1_status?: string
+          intermediacao_parte2_status?: string
           loja: string
           nome_cliente: string
           nps_enviado_at?: string | null
@@ -70,6 +74,8 @@ export type Database = {
           created_at?: string
           id?: string
           interesse?: string
+          intermediacao_parte1_status?: string
+          intermediacao_parte2_status?: string
           loja?: string
           nome_cliente?: string
           nps_enviado_at?: string | null
