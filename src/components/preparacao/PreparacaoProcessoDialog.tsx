@@ -237,6 +237,11 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     return true;
   });
 
+  const formatCurrency = (v: number | null | undefined) => {
+    if (v == null) return '—';
+    return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col px-6">
@@ -252,6 +257,26 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
           </div>
         ) : (
           <div className="flex flex-col gap-4 overflow-hidden px-0.5">
+            {/* Resumo */}
+            {avaliacaoData && (
+              <div className="bg-muted/50 rounded-lg p-3 border border-border/50 space-y-1">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-sm font-semibold text-foreground">{avaliacaoData.atendimento?.nome_cliente || 'N/A'}</span>
+                  {avaliacaoData.tipo_aquisicao && (
+                    <Badge variant="outline" className="text-xs border-green-500/30 text-green-600">
+                      {avaliacaoData.tipo_aquisicao === 'propria' ? 'Própria' : 'Consignada'}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                  <span>{avaliacaoData.moto?.marca} {avaliacaoData.moto?.modelo}</span>
+                  {avaliacaoData.moto?.placa && <span>Placa: <span className="font-medium text-foreground">{avaliacaoData.moto.placa}</span></span>}
+                  {avaliacaoData.moto?.categoria && <span>{avaliacaoData.moto.categoria}</span>}
+                  {avaliacaoData.valor_fechamento != null && <span>Fechamento: <span className="font-medium text-foreground">{formatCurrency(avaliacaoData.valor_fechamento)}</span></span>}
+                </div>
+              </div>
+            )}
+
             {/* Status atual */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Status atual:</span>

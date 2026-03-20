@@ -5,9 +5,9 @@ import { Search, X, Wrench } from 'lucide-react';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
 import type { PreparacaoStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
-import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 
 const PreparacaoTab = () => {
   const [items, setItems] = useState<any[]>([]);
@@ -32,8 +32,6 @@ const PreparacaoTab = () => {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
   const getColumnItems = (status: PreparacaoStatus) => items.filter((a: any) => (a.preparacao_status || 'em_aberto') === status);
-
-  if (selectedItem) return <AvaliacaoProcessDetail item={selectedItem} entityType="preparacao" statusColumns={PREPARACAO_COLUMNS} statusField="preparacao_status" title="Preparação" onClose={() => setSelectedItem(null)} />;
 
   return (
     <div className="space-y-5">
@@ -78,6 +76,17 @@ const PreparacaoTab = () => {
             })}
           </div>
         </div>
+      )}
+
+      {selectedItem && (
+        <PreparacaoProcessoDialog
+          open={!!selectedItem}
+          onOpenChange={(open) => { if (!open) setSelectedItem(null); }}
+          avaliacaoId={selectedItem.id}
+          currentStatus={selectedItem.preparacao_status || 'em_aberto'}
+          avaliacaoData={selectedItem}
+          onStatusChanged={() => { setSelectedItem(null); fetchItems(); }}
+        />
       )}
     </div>
   );
