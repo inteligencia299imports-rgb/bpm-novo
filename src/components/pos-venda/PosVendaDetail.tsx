@@ -136,6 +136,10 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose }) => {
     fetchRelated();
   }, [item.id]);
 
+  if (loading) {
+    return <DetailSkeleton onClose={onClose} />;
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}

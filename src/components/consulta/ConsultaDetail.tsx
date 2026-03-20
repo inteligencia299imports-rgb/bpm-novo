@@ -50,6 +50,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const [saving, setSaving] = useState(false);
   const [isConsultada, setIsConsultada] = useState(moto.consulta_realizada === true);
   const [resultadoSalvo, setResultadoSalvo] = useState<string | null>(moto.resultado_consulta || null);
+  const [loading, setLoading] = useState(true);
   
   const atendimento = moto.atendimento || moto.atendimentos;
 
