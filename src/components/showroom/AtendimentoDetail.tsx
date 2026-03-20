@@ -536,6 +536,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               </div>
                             )}
                           </div>
+                          {(atendimento as any).valor_sinal != null && (
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Valor do Sinal</p>
+                                <p className="font-semibold text-amber-600">{formatCurrency((atendimento as any).valor_sinal)}</p>
+                              </div>
+                            </div>
+                          )}
                           {(atendimento as any).valor_venda != null && (
                             <>
                               <Separator />
