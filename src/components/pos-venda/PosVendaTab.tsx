@@ -43,7 +43,12 @@ const PosVendaTab = () => {
   useEffect(() => { fetchItems(); }, [fetchItems]);
   const getColumnItems = (status: PosVendaStatus) => items.filter((a: any) => (a.pos_venda_status || 'em_aberto') === status);
 
-  if (selectedItem) return <PosVendaDetail item={selectedItem} onClose={() => setSelectedItem(null)} />;
+  const handleStatusChanged = useCallback((itemId: string, newStatus: string, field: string) => {
+    setItems(prev => prev.map(a => a.id === itemId ? { ...a, [field]: newStatus } : a));
+    setSelectedItem((prev: any) => prev && prev.id === itemId ? { ...prev, [field]: newStatus } : prev);
+  }, []);
+
+  if (selectedItem) return <PosVendaDetail item={selectedItem} onClose={() => setSelectedItem(null)} onStatusChanged={handleStatusChanged} />;
 
   return (
     <div className="space-y-5">
