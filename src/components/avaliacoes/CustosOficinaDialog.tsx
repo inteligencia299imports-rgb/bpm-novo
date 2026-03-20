@@ -277,7 +277,7 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
                 {(() => {
                   const totalPrevisto = custos.reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
                   const totalExecutado = custos.reduce((sum, c) => sum + (c.valor_executado ?? 0), 0);
-                  const diferenca = totalExecutado - totalPrevisto;
+                  const diferenca = totalPrevisto - totalExecutado;
                   return (
                     <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border">
                       <div className="bg-secondary rounded-lg p-3 text-center">
