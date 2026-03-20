@@ -12,7 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
-import { useAuth } from '@/contexts/AuthContext';
+
 
 interface Props {
   open: boolean;
