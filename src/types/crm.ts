@@ -6,6 +6,9 @@ export type SituacaoAvaliacao = 'sem_avaliar' | 'em_aberto' | 'adquirida' | 'dis
 export type SituacaoNps = 'em_aberto' | 'enviado' | 'respondido';
 export type Negociacao = 'compra' | 'consignacao';
 export type PosVendaStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
+export type PosCompraStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'pausado';
+export type ConsignacaoStatus = 'em_aberto' | 'contrato_assinado' | 'cadastro_nbs' | 'pausado';
+export type PreparacaoStatus = 'em_aberto' | 'pendente' | 'aguardando_aceite' | 'oficina' | 'servico_externo' | 'retorno' | 'servico_concluso' | 'aguardando_liberacao_estoque';
 export type IntermediacaoParte1Status = 'em_aberto' | 'em_andamento' | 'autorizacao_pagamento' | 'concluido';
 export type IntermediacaoParte2Status = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
 
