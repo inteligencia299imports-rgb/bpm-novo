@@ -324,6 +324,65 @@ export type Database = {
           },
         ]
       }
+      contratos_consignante: {
+        Row: {
+          atendimento_id: string
+          cpf_cnpj: string | null
+          created_at: string
+          dados_bancarios: string | null
+          data_contrato: string | null
+          id: string
+          nome_consignante: string | null
+          observacoes_contrato: string | null
+          observacoes_internas: string | null
+          telefone_consignante: string | null
+          titular_conta: string | null
+          updated_at: string
+          valor_fechamento: number | null
+          valor_repasse: number | null
+        }
+        Insert: {
+          atendimento_id: string
+          cpf_cnpj?: string | null
+          created_at?: string
+          dados_bancarios?: string | null
+          data_contrato?: string | null
+          id?: string
+          nome_consignante?: string | null
+          observacoes_contrato?: string | null
+          observacoes_internas?: string | null
+          telefone_consignante?: string | null
+          titular_conta?: string | null
+          updated_at?: string
+          valor_fechamento?: number | null
+          valor_repasse?: number | null
+        }
+        Update: {
+          atendimento_id?: string
+          cpf_cnpj?: string | null
+          created_at?: string
+          dados_bancarios?: string | null
+          data_contrato?: string | null
+          id?: string
+          nome_consignante?: string | null
+          observacoes_contrato?: string | null
+          observacoes_internas?: string | null
+          telefone_consignante?: string | null
+          titular_conta?: string | null
+          updated_at?: string
+          valor_fechamento?: number | null
+          valor_repasse?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_consignante_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custos_oficina: {
         Row: {
           avaliacao_id: string
@@ -367,6 +426,44 @@ export type Database = {
             columns: ["avaliacao_id"]
             isOneToOne: false
             referencedRelation: "avaliacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      custos_operacionais: {
+        Row: {
+          contrato_consignante_id: string
+          created_at: string
+          descricao: string | null
+          id: string
+          responsavel: string
+          tipo: string
+          valor: number | null
+        }
+        Insert: {
+          contrato_consignante_id: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          responsavel: string
+          tipo: string
+          valor?: number | null
+        }
+        Update: {
+          contrato_consignante_id?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          responsavel?: string
+          tipo?: string
+          valor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custos_operacionais_contrato_consignante_id_fkey"
+            columns: ["contrato_consignante_id"]
+            isOneToOne: false
+            referencedRelation: "contratos_consignante"
             referencedColumns: ["id"]
           },
         ]
