@@ -28,9 +28,10 @@ const PosVendaTab = () => {
     const atIds = (data || []).map(a => a.id);
     let filtered = data || [];
     if (atIds.length > 0) {
-      const { data: estoqueData } = await supabase.from('estoque').select('atendimento_venda_id').eq('tipo', 'propria').in('atendimento_venda_id', atIds);
-      const validIds = new Set((estoqueData || []).map((e: any) => e.atendimento_venda_id));
-      filtered = filtered.filter(a => validIds.has(a.id));
+      const { data: estoqueData } = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa').eq('tipo', 'propria').in('atendimento_venda_id', atIds);
+      const estoqueMap: Record<string, any> = {};
+      (estoqueData || []).forEach((e: any) => { estoqueMap[e.atendimento_venda_id] = e; });
+      filtered = filtered.filter(a => estoqueMap[a.id]).map(a => ({ ...a, _estoqueMoto: estoqueMap[a.id] }));
     }
     if (search.trim()) {
       const s = search.trim().toLowerCase();
@@ -81,10 +82,10 @@ const PosVendaTab = () => {
                   </div>
                   <div className="bg-muted/50 rounded-lg p-2.5 flex-1 min-h-[200px] space-y-2.5 border border-border/50">
                     {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => {
-                      const moto = a.motos_avaliacao?.[0];
+                      const est = a._estoqueMoto;
                       return (
                         <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone}
-                          motoLabel={moto ? [moto.placa?.replace(/-/g, ''), `${moto.marca} ${(moto.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
+                          motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
                           loja={a.loja} date={a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />
                       );
                     })}
