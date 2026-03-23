@@ -30,11 +30,13 @@ const ConsultaTab = () => {
       toast.error('Erro ao carregar consultas');
       console.error(error);
     } else {
-      let results = (data || []).map((d: any) => ({
-        ...d,
-        atendimento: d.atendimentos,
-        tipo_aquisicao: d.avaliacoes?.[0]?.tipo_aquisicao || null,
-      }));
+      let results = (data || [])
+        .filter((d: any) => !d.avaliacoes?.some((av: any) => av.situacao === 'estoque'))
+        .map((d: any) => ({
+          ...d,
+          atendimento: d.atendimentos,
+          tipo_aquisicao: d.avaliacoes?.[0]?.tipo_aquisicao || null,
+        }));
       if (search.trim()) {
         const s = search.trim().toLowerCase();
         results = results.filter((m: any) => {
