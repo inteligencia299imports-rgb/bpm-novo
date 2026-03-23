@@ -50,9 +50,10 @@ const IntermediacacaoTab = () => {
     const atIds = (data || []).map(a => a.id);
     let filtered = data || [];
     if (atIds.length > 0) {
-      const { data: estoqueData } = await supabase.from('estoque').select('atendimento_venda_id').eq('tipo', 'consignada').in('atendimento_venda_id', atIds);
-      const validIds = new Set((estoqueData || []).map((e: any) => e.atendimento_venda_id));
-      filtered = filtered.filter(a => validIds.has(a.id));
+      const { data: estoqueData } = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa').eq('tipo', 'consignada').in('atendimento_venda_id', atIds);
+      const estoqueMap: Record<string, any> = {};
+      (estoqueData || []).forEach((e: any) => { estoqueMap[e.atendimento_venda_id] = e; });
+      filtered = filtered.filter(a => estoqueMap[a.id]).map(a => ({ ...a, _estoqueMoto: estoqueMap[a.id] }));
     }
     if (search.trim()) { const s = search.trim().toLowerCase(); filtered = filtered.filter((a: any) => [a.nome_cliente, a.telefone, a.loja].some(f => f && String(f).toLowerCase().includes(s))); }
     setItems(filtered);
