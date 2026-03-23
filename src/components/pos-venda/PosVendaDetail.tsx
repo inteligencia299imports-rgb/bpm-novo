@@ -359,62 +359,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </Card>
           )}
 
-          {/* Moto do Cliente (troca) */}
-          {motosAvaliacao.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-primary" /> Moto do Cliente
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {motosAvaliacao.map((ma: any, idx: number) => {
-                  const av = avaliacoes[ma.id];
-                  const ano = [ma.ano_fabricacao, ma.ano_modelo].filter(Boolean).join('/');
-                  return (
-                    <div key={ma.id} className="space-y-3">
-                      {idx > 0 && <Separator className="my-3" />}
-                      <div className="grid grid-cols-2 gap-4">
-                        <InfoItem label="Marca" value={ma.marca} />
-                        <InfoItem label="Modelo" value={(ma.modelo || '').toUpperCase()} />
-                        <InfoItem label="Ano" value={ano} />
-                        <InfoItem label="Cor" value={ma.cor} />
-                        <InfoItem label="Placa" value={ma.placa?.replace(/-/g, '')} />
-                        <InfoItem label="KM" value={formatKm(ma.km)} />
-                        <InfoItem label="Categoria" value={ma.categoria} />
-                      </div>
-                      {ma.observacoes && (
-                        <div className="mt-2">
-                          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações da Moto</span>
-                          <p className="text-sm mt-1">{ma.observacoes}</p>
-                        </div>
-                      )}
-                      {/* Avaliação summary */}
-                      {av && av.situacao !== 'sem_avaliar' && (
-                        <div className="mt-2">
-                          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setViewAvaliacaoData(av)}>
-                            <Eye className="h-4 w-4" /> Ver Avaliação
-                          </Button>
-                        </div>
-                      )}
-                      <Separator className="my-2" />
-                      <DocumentUpload
-                        label="CRLV"
-                        currentUrl={ma.crlv_url || null}
-                        bucketPath={`docs/${ma.id}/crlv`}
-                        onUploaded={async (url) => {
-                          await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', ma.id);
-                        }}
-                        onRemoved={async () => {
-                          await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', ma.id);
-                        }}
-                      />
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          )}
 
 
           {/* Observações */}
