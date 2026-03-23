@@ -282,8 +282,33 @@ const ProcessoDialog: React.FC<Props> = ({
                     )}
                   </div>
                 </div>
+                {/* Botão de Pagamento ao Consignante após AUTORIZAÇÃO DE PAGAMENTO */}
+                {showContratoConsignante && e.etapa === 'AUTORIZAÇÃO DE PAGAMENTO' && (
+                  <>
+                    <Separator />
+                    <div className="flex justify-center py-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                        onClick={() => setContratoConsignanteOpen(true)}
+                      >
+                        <DollarSign className="h-4 w-4" />
+                        Pagamento ao Consignante
+                      </Button>
+                    </div>
+                  </>
+                )}
               </React.Fragment>
             ))}
+
+            {showContratoConsignante && (
+              <ContratoConsignanteDialog
+                open={contratoConsignanteOpen}
+                onOpenChange={setContratoConsignanteOpen}
+                atendimentoId={atendimentoId}
+              />
+            )}
 
             <Separator />
             <div className="space-y-2 pt-3">
