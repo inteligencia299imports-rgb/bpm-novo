@@ -67,7 +67,7 @@ const PreparacaoTab = () => {
                       <ProcessCard key={a.id} clientName={a.atendimento?.nome_cliente || 'N/A'}
                         motoLabel={a.moto ? [(a.moto.modelo || '').toUpperCase(), a.moto.placa?.replace(/-/g, '')].filter(Boolean).join(' - ') : undefined}
                         loja={a.atendimento?.loja} date={a.updated_at} statusColor={col.hex}
-                        extraBadge={a.tipo_aquisicao ? { label: a.tipo_aquisicao === 'propria' ? 'Própria' : 'Consignada', className: a.tipo_aquisicao === 'consignada' ? 'bg-purple-600 text-white border-purple-600' : 'bg-green-600 text-white border-green-600' } : undefined}
+                        extraBadge={a.tipo_aquisicao ? { label: a.tipo_aquisicao === 'propria' ? 'Própria' : 'Consignada', className: a.tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : 'border-green-500 text-green-600' } : undefined}
                         onClick={() => setSelectedItem(a)} />
                     ))}
                   </div>

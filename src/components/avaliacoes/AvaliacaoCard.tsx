@@ -106,7 +106,7 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
               </Badge>
             )}
             {avaliacao.situacao === 'adquirida' && (avaliacao as any).tipo_aquisicao && (
-              <Badge className={`text-[10px] text-white ${(avaliacao as any).tipo_aquisicao === 'consignada' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-green-600 hover:bg-green-700'}`}>
+              <Badge variant="outline" className={`text-[10px] ${(avaliacao as any).tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : 'border-green-500 text-green-600'}`}>
                 {getTipoAquisicaoLabel((avaliacao as any).tipo_aquisicao)}
               </Badge>
             )}
