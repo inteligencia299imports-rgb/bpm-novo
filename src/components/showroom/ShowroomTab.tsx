@@ -106,8 +106,8 @@ const ShowroomTab = () => {
         }
       }
 
-      // Filter out atendimentos where all motos were acquired
-      results = results.filter(a => !adquiridaSet.has(a.id));
+      // Filter out atendimentos with interesse 'vender' where all motos were acquired
+      results = results.filter(a => !(a.interesse === 'vender' && adquiridaSet.has(a.id)));
 
       if (search.trim()) {
         const s = search.trim().toLowerCase();
