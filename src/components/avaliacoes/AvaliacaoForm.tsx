@@ -778,12 +778,22 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 </Button>
               </div>
             </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Observações da Moto</label>
+              <Textarea
+                className="mt-1"
+                placeholder="Ex: Manual, chave reserva, acessórios..."
+                value={obsMotaAquisicao}
+                onChange={(e) => setObsMotaAquisicao(e.target.value.toUpperCase())}
+                rows={2}
+              />
+            </div>
             <Separator />
             <div className="flex gap-3 pt-2">
               <Button
                 variant="secondary"
                 className="flex-1 gap-2"
-                onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); }}
+                onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); }}
               >
                 <ArrowLeft className="h-4 w-4" /> Voltar
               </Button>
