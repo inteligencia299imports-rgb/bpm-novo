@@ -99,7 +99,7 @@ const ShowroomTab = () => {
             avalMap[atId].push((av as any).situacao);
           }
           for (const [atId, situacoes] of Object.entries(avalMap)) {
-            if (situacoes.length > 0 && situacoes.every(s => s === 'adquirida')) {
+            if (situacoes.length > 0 && situacoes.every(s => ['adquirida', 'estoque'].includes(s))) {
               adquiridaSet.add(atId);
             }
           }
