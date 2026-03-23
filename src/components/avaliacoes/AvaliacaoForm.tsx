@@ -297,11 +297,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       return;
     }
     setSavingAquisicao(true);
+    // Salvar observações da moto se preenchido
+    if (obsMotaAquisicao.trim() && avaliacao?.moto_avaliacao_id) {
+      await supabase.from('motos_avaliacao').update({ observacoes: obsMotaAquisicao.trim().toUpperCase() }).eq('id', avaliacao.moto_avaliacao_id);
+    }
     await handleStatusChange('adquirida', tipoSelecionado, valor && valor > 0 ? valor : undefined);
     setSavingAquisicao(false);
     setTipoAquisicaoPopup(false);
     setValorFechamentoAquisicao('');
     setTipoSelecionado(null);
+    setObsMotaAquisicao('');
   };
 
   if (loading) {
