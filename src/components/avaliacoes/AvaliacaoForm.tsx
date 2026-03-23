@@ -253,6 +253,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [valorFechamentoAquisicao, setValorFechamentoAquisicao] = useState('');
   const [tipoSelecionado, setTipoSelecionado] = useState<string | null>(null);
   const [savingAquisicao, setSavingAquisicao] = useState(false);
+  const [obsMotaAquisicao, setObsMotaAquisicao] = useState('');
 
   const handleStatusChange = async (newStatus: SituacaoAvaliacao, tipoAquisicao?: string, valorFechamento?: number) => {
     const updateData: any = { situacao: newStatus };
