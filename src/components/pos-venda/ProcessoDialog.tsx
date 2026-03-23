@@ -6,9 +6,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, DollarSign } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -45,6 +46,7 @@ interface Props {
     default?: string;
   };
   onStatusChanged?: (newStatus: string) => void;
+  showContratoConsignante?: boolean;
 }
 
 const ProcessoDialog: React.FC<Props> = ({ 
@@ -54,6 +56,7 @@ const ProcessoDialog: React.FC<Props> = ({
   observacoesField = 'pos_venda_observacoes',
   statusRules,
   onStatusChanged,
+  showContratoConsignante,
 }) => {
   const ETAPAS = customEtapas || DEFAULT_ETAPAS;
   const [etapas, setEtapas] = useState<EtapaData[]>(
@@ -63,6 +66,7 @@ const ProcessoDialog: React.FC<Props> = ({
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
   const [observacoes, setObservacoes] = useState('');
+  const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -278,8 +282,33 @@ const ProcessoDialog: React.FC<Props> = ({
                     )}
                   </div>
                 </div>
+                {/* Botão de Pagamento ao Consignante após AUTORIZAÇÃO DE PAGAMENTO */}
+                {showContratoConsignante && e.etapa === 'AUTORIZAÇÃO DE PAGAMENTO' && (
+                  <>
+                    <Separator />
+                    <div className="flex justify-center py-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                        onClick={() => setContratoConsignanteOpen(true)}
+                      >
+                        <DollarSign className="h-4 w-4" />
+                        Pagamento ao Consignante
+                      </Button>
+                    </div>
+                  </>
+                )}
               </React.Fragment>
             ))}
+
+            {showContratoConsignante && (
+              <ContratoConsignanteDialog
+                open={contratoConsignanteOpen}
+                onOpenChange={setContratoConsignanteOpen}
+                atendimentoId={atendimentoId}
+              />
+            )}
 
             <Separator />
             <div className="space-y-2 pt-3">

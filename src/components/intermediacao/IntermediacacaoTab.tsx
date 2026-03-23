@@ -81,6 +81,7 @@ const IntermediacacaoTab = () => {
           statusField: config.statusField,
           observacoesField: config.observacoesField,
           statusRules: config.statusRules,
+          showContratoConsignante: parte === 'parte1',
         }}
         onStatusChanged={handleStatusChanged}
       />

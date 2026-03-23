@@ -29,6 +29,7 @@ interface Props {
       special?: { etapa: string; status: string };
       default?: string;
     };
+    showContratoConsignante?: boolean;
   };
   onStatusChanged?: (itemId: string, newStatus: string, field: string) => void;
 }
