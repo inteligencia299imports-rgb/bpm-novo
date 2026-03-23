@@ -150,7 +150,7 @@ const EstoqueTab = () => {
                   <SelectItem value="todos">Todos</SelectItem>
                   <SelectItem value="disponivel">Disponível</SelectItem>
                   <SelectItem value="reservada">Reservada</SelectItem>
-                  <SelectItem value="vendida">Vendida</SelectItem>
+                  <SelectItem value="vendido">Vendida</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={filterMarca} onValueChange={setFilterMarca}>
