@@ -269,6 +269,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
       // Registrar no histórico
       if (avaliacao?.moto_avaliacao_id) {
+        const historyObs = newStatus === 'adquirida' && moto?.categoria ? moto.categoria : null;
         await supabase.from('status_history').insert({
           entity_type: 'avaliacao',
           entity_id: avaliacao.moto_avaliacao_id,
@@ -276,6 +277,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           status_to: newStatus,
           changed_by: user?.id,
           changed_by_name: userName || user?.email || null,
+          observacoes: historyObs,
         } as any);
       }
 
