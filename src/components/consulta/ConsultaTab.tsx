@@ -22,7 +22,7 @@ const ConsultaTab = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('motos_avaliacao')
-      .select('*, atendimentos!inner(id, nome_cliente, telefone, loja), avaliacoes(tipo_aquisicao)')
+      .select('*, atendimentos!inner(id, nome_cliente, telefone, loja), avaliacoes(tipo_aquisicao, situacao)')
       .eq('consulta_solicitada', true)
       .order('created_at', { ascending: false });
 
