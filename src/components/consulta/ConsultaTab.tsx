@@ -22,7 +22,7 @@ const ConsultaTab = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('motos_avaliacao')
-      .select('*, atendimentos!inner(id, nome_cliente, telefone, loja)')
+      .select('*, atendimentos!inner(id, nome_cliente, telefone, loja), avaliacoes(tipo_aquisicao)')
       .eq('consulta_solicitada', true)
       .order('created_at', { ascending: false });
 
@@ -30,7 +30,11 @@ const ConsultaTab = () => {
       toast.error('Erro ao carregar consultas');
       console.error(error);
     } else {
-      let results = (data || []).map((d: any) => ({ ...d, atendimento: d.atendimentos }));
+      let results = (data || []).map((d: any) => ({
+        ...d,
+        atendimento: d.atendimentos,
+        tipo_aquisicao: d.avaliacoes?.[0]?.tipo_aquisicao || null,
+      }));
       if (search.trim()) {
         const s = search.trim().toLowerCase();
         results = results.filter((m: any) => {
