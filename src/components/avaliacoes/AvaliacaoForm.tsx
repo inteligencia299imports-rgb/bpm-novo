@@ -374,7 +374,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               <h1 className="text-lg sm:text-xl font-bold truncate">{at?.nome_cliente}</h1>
               {sit && <Badge className={`${sit.color} text-[10px] shrink-0`}>{sit.label}</Badge>}
               {avaliacao?.tipo_aquisicao && (
-                <Badge className={`text-[10px] shrink-0 text-white ${avaliacao.tipo_aquisicao === 'consignada' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-green-600 hover:bg-green-700'}`}>
+                <Badge variant="outline" className={`text-[10px] shrink-0 ${avaliacao.tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : 'border-green-500 text-green-600'}`}>
                   {avaliacao.tipo_aquisicao === 'consignada' ? 'Consignada' : 'Própria'}
                 </Badge>
               )}
