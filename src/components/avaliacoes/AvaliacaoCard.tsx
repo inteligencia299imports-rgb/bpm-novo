@@ -98,13 +98,20 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
             </span>
           </div>
 
-          {/* Store badge + Tipo Aquisição */}
+          {/* Store badge + Categoria + Tipo Aquisição */}
           <div className="flex items-center justify-between gap-2">
-            {at?.loja && (
-              <Badge variant="secondary" className="text-[10px]">
-                {at.loja}
-              </Badge>
-            )}
+            <div className="flex items-center gap-1.5">
+              {at?.loja && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {at.loja}
+                </Badge>
+              )}
+              {moto?.categoria && (
+                <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-600">
+                  {moto.categoria}
+                </Badge>
+              )}
+            </div>
             {avaliacao.situacao === 'adquirida' && (avaliacao as any).tipo_aquisicao && (
               <Badge variant="outline" className="text-[10px] border-green-500/30 text-green-600">
                 {getTipoAquisicaoLabel((avaliacao as any).tipo_aquisicao)}
