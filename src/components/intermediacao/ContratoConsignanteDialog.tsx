@@ -191,21 +191,27 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       })));
     } else {
       setContratoId(null);
-      // Pre-fill from contrato_consignacao if exists
+      // Pre-fill consignante data from the original atendimento + contrato_consignacao
+      setNomeConsignante(consignanteAtendimento?.nome_cliente || '');
+      setTelefoneConsignante(consignanteAtendimento?.telefone || '');
+
       if (estoque?.avaliacao_id) {
         const { data: cc } = await supabase.from('contratos_consignacao').select('*').eq('avaliacao_id', estoque.avaliacao_id).maybeSingle();
         if (cc) {
-          setNomeConsignante('');
           setCpfCnpj(cc.cpf_cnpj || '');
+        } else {
+          setCpfCnpj('');
         }
+      } else {
+        setCpfCnpj('');
       }
+
       // Pre-fill valor_fechamento from avaliacao
       if (avaliacao?.valor_fechamento) {
         setValorFechamento(formatCurrencyInput(String(Math.round(avaliacao.valor_fechamento * 100))));
       } else {
         setValorFechamento('');
       }
-      setTelefoneConsignante('');
       setDadosBancarios('');
       setTitularConta('');
       setValorRepasse('');
