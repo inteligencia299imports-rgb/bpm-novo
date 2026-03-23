@@ -36,7 +36,7 @@ const ProcessCard: React.FC<ProcessCardProps> = ({
         <h3 className="font-semibold text-sm text-foreground">{clientName}</h3>
         {motoLabel && (
           <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-            <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" />
+            <Bike className="h-3.5 w-3.5 shrink-0" />
             <span>{motoLabel}</span>
           </div>
         )}
