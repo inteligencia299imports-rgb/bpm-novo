@@ -66,6 +66,7 @@ const ProcessoDialog: React.FC<Props> = ({
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
   const [observacoes, setObservacoes] = useState('');
+  const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
