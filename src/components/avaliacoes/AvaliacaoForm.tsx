@@ -253,6 +253,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [valorFechamentoAquisicao, setValorFechamentoAquisicao] = useState('');
   const [tipoSelecionado, setTipoSelecionado] = useState<string | null>(null);
   const [savingAquisicao, setSavingAquisicao] = useState(false);
+  const [obsMotaAquisicao, setObsMotaAquisicao] = useState('');
 
   const handleStatusChange = async (newStatus: SituacaoAvaliacao, tipoAquisicao?: string, valorFechamento?: number) => {
     const updateData: any = { situacao: newStatus };
@@ -296,11 +297,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       return;
     }
     setSavingAquisicao(true);
+    // Salvar observações da moto se preenchido
+    if (obsMotaAquisicao.trim() && avaliacao?.moto_avaliacao_id) {
+      await supabase.from('motos_avaliacao').update({ observacoes: obsMotaAquisicao.trim().toUpperCase() }).eq('id', avaliacao.moto_avaliacao_id);
+    }
     await handleStatusChange('adquirida', tipoSelecionado, valor && valor > 0 ? valor : undefined);
     setSavingAquisicao(false);
     setTipoAquisicaoPopup(false);
     setValorFechamentoAquisicao('');
     setTipoSelecionado(null);
+    setObsMotaAquisicao('');
   };
 
   if (loading) {
@@ -656,6 +662,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   style={{ backgroundColor: btn.color }}
                   onClick={() => {
                     if (btn.value === 'adquirida') {
+                      setObsMotaAquisicao(moto?.observacoes || '');
                       setTipoAquisicaoPopup(true);
                       return;
                     }
@@ -732,7 +739,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         </DialogContent>
       </Dialog>
       {/* Dialog Tipo de Aquisição */}
-      <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); } }}>
+      <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -772,12 +779,22 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 </Button>
               </div>
             </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Observações da Moto</label>
+              <Textarea
+                className="mt-1"
+                placeholder="Ex: Manual, chave reserva, acessórios..."
+                value={obsMotaAquisicao}
+                onChange={(e) => setObsMotaAquisicao(e.target.value.toUpperCase())}
+                rows={2}
+              />
+            </div>
             <Separator />
             <div className="flex gap-3 pt-2">
               <Button
                 variant="secondary"
                 className="flex-1 gap-2"
-                onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); }}
+                onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); }}
               >
                 <ArrowLeft className="h-4 w-4" /> Voltar
               </Button>
