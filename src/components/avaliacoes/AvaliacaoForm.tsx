@@ -373,6 +373,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg sm:text-xl font-bold truncate">{at?.nome_cliente}</h1>
               {sit && <Badge className={`${sit.color} text-[10px] shrink-0`}>{sit.label}</Badge>}
+              {moto?.categoria && (
+                <Badge variant="outline" className="text-[10px] shrink-0 border-blue-500/30 text-blue-600">
+                  {moto.categoria}
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               {avaliacao?.created_at && format(new Date(avaliacao.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
