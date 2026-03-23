@@ -1,6 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Calendar, ArrowLeftRight } from 'lucide-react';
+import { Phone, Calendar, Bike } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
