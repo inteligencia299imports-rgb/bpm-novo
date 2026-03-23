@@ -662,6 +662,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   style={{ backgroundColor: btn.color }}
                   onClick={() => {
                     if (btn.value === 'adquirida') {
+                      setObsMotaAquisicao(moto?.observacoes || '');
                       setTipoAquisicaoPopup(true);
                       return;
                     }
