@@ -133,6 +133,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     let avaliacao: any = null;
     let moto: any = null;
     let oficinaCosts: any[] = [];
+    let consignanteAtendimento: any = null;
 
     if (estoque?.avaliacao_id) {
       const [{ data: avalData }, { data: custosData }] = await Promise.all([
@@ -142,6 +143,16 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       avaliacao = avalData;
       moto = avalData?.motos_avaliacao;
       oficinaCosts = custosData || [];
+
+      // Fetch the original consignante's atendimento (the person who left the moto)
+      if (avalData?.atendimento_id) {
+        const { data: origAtend } = await supabase
+          .from('atendimentos')
+          .select('nome_cliente, telefone')
+          .eq('id', avalData.atendimento_id)
+          .maybeSingle();
+        consignanteAtendimento = origAtend;
+      }
     }
 
     setAvaliacaoInfo(avaliacao);
