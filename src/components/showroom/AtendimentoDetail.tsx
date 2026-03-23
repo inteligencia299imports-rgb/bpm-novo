@@ -722,7 +722,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           variant="outline"
                           className="gap-1.5"
                           onClick={async () => {
-                            if (!moto.crlv_url) {
+                            // Buscar crlv_url atualizado do banco
+                            const { data: motoData } = await supabase.from('motos_avaliacao').select('crlv_url').eq('id', moto.id).single();
+                            if (!motoData?.crlv_url) {
                               toast.error('Anexe o CRLV antes de solicitar avaliação');
                               return;
                             }
