@@ -4,10 +4,15 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, FileText, ClipboardList, Handshake, ArrowDownToLine, BookOpen, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface EstoqueItem {
   id: string;
@@ -28,6 +33,13 @@ interface EstoqueItem {
   observacoes: string | null;
   data_entrada: string;
   created_at: string;
+  atendimento_venda_id: string | null;
+  avaliacao_id: string | null;
+  moto_avaliacao_id: string | null;
+}
+
+interface EstoqueTabProps {
+  onNavigate?: (tab: string) => void;
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -41,7 +53,7 @@ const formatCurrency = (value: number | null) => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-const EstoqueTab = () => {
+const EstoqueTab = ({ onNavigate }: EstoqueTabProps) => {
   const [items, setItems] = useState<EstoqueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -53,6 +65,8 @@ const EstoqueTab = () => {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
   const [allMarcas, setAllMarcas] = useState<string[]>([]);
+  const [selectedItem, setSelectedItem] = useState<EstoqueItem | null>(null);
+  const [vendaAtendimento, setVendaAtendimento] = useState<any>(null);
 
   useEffect(() => {
     let query = supabase.from('estoque').select('marca');
@@ -96,6 +110,20 @@ const EstoqueTab = () => {
 
   useEffect(() => { fetchEstoque(); }, [fetchEstoque]);
 
+  // Fetch venda atendimento details when an item is selected
+  useEffect(() => {
+    if (!selectedItem?.atendimento_venda_id) {
+      setVendaAtendimento(null);
+      return;
+    }
+    supabase
+      .from('atendimentos')
+      .select('id, interesse, situacao, tipo_atendimento, pos_venda_status, intermediacao_parte1_status, intermediacao_parte2_status')
+      .eq('id', selectedItem.atendimento_venda_id)
+      .maybeSingle()
+      .then(({ data }) => setVendaAtendimento(data));
+  }, [selectedItem?.atendimento_venda_id]);
+
   const filtered = items.filter(item => {
     if (!search) return true;
     const s = search.toLowerCase();
@@ -108,6 +136,66 @@ const EstoqueTab = () => {
 
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [search, filterMarca, filterTipo, filterStatus]);
+
+  const getNavigationOptions = (item: EstoqueItem) => {
+    const options: { label: string; icon: React.ReactNode; tab: string }[] = [];
+
+    // Showroom (atendimento de venda) - when sold or reserved (sinal)
+    if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada')) {
+      options.push({
+        label: item.status === 'vendido' ? 'Atendimento (Venda)' : 'Atendimento (Sinal)',
+        icon: <ShoppingCart className="h-4 w-4" />,
+        tab: 'showroom',
+      });
+    }
+
+    // Pós-Venda - when sold with own stock (propria)
+    if (item.atendimento_venda_id && item.status === 'vendido' && item.tipo === 'propria') {
+      options.push({
+        label: 'Pós-Venda',
+        icon: <ClipboardList className="h-4 w-4" />,
+        tab: 'pos_venda',
+      });
+    }
+
+    // Intermediação - when sold with consigned stock
+    if (item.atendimento_venda_id && item.status === 'vendido' && item.tipo === 'consignada') {
+      options.push({
+        label: 'Intermediação',
+        icon: <Handshake className="h-4 w-4" />,
+        tab: 'intermediacao',
+      });
+    }
+
+    // Pós-Compra - when has avaliacao (acquired bike)
+    if (item.avaliacao_id) {
+      options.push({
+        label: 'Pós-Compra',
+        icon: <ArrowDownToLine className="h-4 w-4" />,
+        tab: 'pos_compra',
+      });
+    }
+
+    // Consignação - when consigned type and has avaliacao
+    if (item.avaliacao_id && item.tipo === 'consignada') {
+      options.push({
+        label: 'Consignação',
+        icon: <BookOpen className="h-4 w-4" />,
+        tab: 'consignacao',
+      });
+    }
+
+    // Preparação - when has avaliacao
+    if (item.avaliacao_id) {
+      options.push({
+        label: 'Preparação',
+        icon: <Wrench className="h-4 w-4" />,
+        tab: 'preparacao',
+      });
+    }
+
+    return options;
+  };
 
   return (
     <div className="space-y-4">
@@ -217,79 +305,111 @@ const EstoqueTab = () => {
                   <Badge variant="outline" className="text-xs">{motos.length}</Badge>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {motos.map(item => (
-            <Card key={item.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4 space-y-3">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-semibold text-foreground">{item.modelo}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {[item.ano_fabricacao, item.ano_modelo].filter(Boolean).join('/')}
-                      {item.cilindrada ? ` · ${item.cilindrada}cc` : ''}
-                    </p>
-                  </div>
-                  <Badge className={STATUS_MAP[item.status]?.color || 'bg-muted text-muted-foreground'}>
-                    {STATUS_MAP[item.status]?.label || item.status}
-                  </Badge>
-                </div>
+                  {motos.map(item => {
+                    const navOptions = getNavigationOptions(item);
+                    const hasOptions = navOptions.length > 0;
 
-                {/* Details */}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                  {item.placa && (
-                    <>
-                      <span className="text-muted-foreground">Placa</span>
-                      <span className="font-medium text-foreground">{item.placa.replace(/-/g, '')}</span>
-                    </>
-                  )}
-                  {item.cor && (
-                    <>
-                      <span className="text-muted-foreground">Cor</span>
-                      <span className="text-foreground">{item.cor}</span>
-                    </>
-                  )}
-                  {item.categoria && (
-                    <>
-                      <span className="text-muted-foreground">Categoria</span>
-                      <span className="text-foreground">{item.categoria}</span>
-                    </>
-                  )}
-                  {item.km && (
-                    <>
-                      <span className="text-muted-foreground">KM</span>
-                      <span className="text-foreground">{item.km}</span>
-                    </>
-                  )}
-                  <span className="text-muted-foreground">Tipo</span>
-                  <span className="text-foreground capitalize">{item.tipo === 'propria' ? 'Própria' : 'Consignada'}</span>
-                  {item.empresa && (
-                    <>
-                      <span className="text-muted-foreground">Empresa</span>
-                      <span className="text-foreground">{item.empresa}</span>
-                    </>
-                  )}
-                </div>
+                    const cardContent = (
+                      <Card className={`transition-shadow ${hasOptions ? 'hover:shadow-md cursor-pointer' : ''}`}>
+                        <CardContent className="p-4 space-y-3">
+                          {/* Header */}
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-semibold text-foreground">{item.modelo}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {[item.ano_fabricacao, item.ano_modelo].filter(Boolean).join('/')}
+                                {item.cilindrada ? ` · ${item.cilindrada}cc` : ''}
+                              </p>
+                            </div>
+                            <Badge className={STATUS_MAP[item.status]?.color || 'bg-muted text-muted-foreground'}>
+                              {STATUS_MAP[item.status]?.label || item.status}
+                            </Badge>
+                          </div>
 
-                {/* Price */}
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Preço</p>
-                    <p className="font-semibold text-foreground">{formatCurrency(item.preco)}</p>
-                  </div>
-                  {item.preco_acao != null && (
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Preço Ação</p>
-                      <p className="font-semibold text-success">{formatCurrency(item.preco_acao)}</p>
-                    </div>
-                  )}
-                </div>
+                          {/* Details */}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                            {item.placa && (
+                              <>
+                                <span className="text-muted-foreground">Placa</span>
+                                <span className="font-medium text-foreground">{item.placa.replace(/-/g, '')}</span>
+                              </>
+                            )}
+                            {item.cor && (
+                              <>
+                                <span className="text-muted-foreground">Cor</span>
+                                <span className="text-foreground">{item.cor}</span>
+                              </>
+                            )}
+                            {item.categoria && (
+                              <>
+                                <span className="text-muted-foreground">Categoria</span>
+                                <span className="text-foreground">{item.categoria}</span>
+                              </>
+                            )}
+                            {item.km && (
+                              <>
+                                <span className="text-muted-foreground">KM</span>
+                                <span className="text-foreground">{item.km}</span>
+                              </>
+                            )}
+                            <span className="text-muted-foreground">Tipo</span>
+                            <span className="text-foreground capitalize">{item.tipo === 'propria' ? 'Própria' : 'Consignada'}</span>
+                            {item.empresa && (
+                              <>
+                                <span className="text-muted-foreground">Empresa</span>
+                                <span className="text-foreground">{item.empresa}</span>
+                              </>
+                            )}
+                          </div>
 
-                {item.observacoes && (
-                  <p className="text-xs text-muted-foreground italic line-clamp-2">{item.observacoes}</p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                          {/* Price */}
+                          <div className="flex items-center justify-between pt-2 border-t border-border">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Preço</p>
+                              <p className="font-semibold text-foreground">{formatCurrency(item.preco)}</p>
+                            </div>
+                            {item.preco_acao != null && (
+                              <div className="text-right">
+                                <p className="text-xs text-muted-foreground">Preço Ação</p>
+                                <p className="font-semibold text-success">{formatCurrency(item.preco_acao)}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {item.observacoes && (
+                            <p className="text-xs text-muted-foreground italic line-clamp-2">{item.observacoes}</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+
+                    if (!hasOptions) return <div key={item.id}>{cardContent}</div>;
+
+                    return (
+                      <Popover key={item.id}>
+                        <PopoverTrigger asChild>
+                          {cardContent}
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-2" align="center">
+                          <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Acessar</p>
+                          <div className="flex flex-col gap-0.5">
+                            {navOptions.map(opt => (
+                              <Button
+                                key={opt.tab}
+                                variant="ghost"
+                                size="sm"
+                                className="justify-start gap-2 h-9 text-sm"
+                                onClick={() => onNavigate?.(opt.tab)}
+                              >
+                                {opt.icon}
+                                {opt.label}
+                              </Button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    );
+                  })}
                 </div>
               </div>
             ))}

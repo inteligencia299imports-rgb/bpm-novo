@@ -33,7 +33,7 @@ const Dashboard = () => {
       />
       <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in pb-20 md:pb-6">
         {activeTab === 'showroom' && <ShowroomTab />}
-        {activeTab === 'estoque' && <EstoqueTab />}
+        {activeTab === 'estoque' && <EstoqueTab onNavigate={setActiveTab} />}
         {activeTab === 'avaliacoes' && <AvaliacoesTab />}
         {activeTab === 'consulta' && <ConsultaTab />}
         {activeTab === 'pos_venda' && <PosVendaTab />}
