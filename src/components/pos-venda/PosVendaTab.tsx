@@ -17,22 +17,19 @@ const PosVendaTab = () => {
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('atendimentos')
-      .select('*, motos_interesse(*), motos_avaliacao(*)')
-      .eq('situacao', 'vendido')
-      .order('updated_at', { ascending: false });
+    // Fetch atendimentos and all estoque for vendidos in parallel
+    const [atRes, estRes] = await Promise.all([
+      supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }),
+      supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa').eq('tipo', 'propria'),
+    ]);
 
-    if (error) { toast.error('Erro ao carregar pós-venda'); setLoading(false); return; }
+    if (atRes.error) { toast.error('Erro ao carregar pós-venda'); setLoading(false); return; }
 
-    const atIds = (data || []).map(a => a.id);
-    let filtered = data || [];
-    if (atIds.length > 0) {
-      const { data: estoqueData } = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa').eq('tipo', 'propria').in('atendimento_venda_id', atIds);
-      const estoqueMap: Record<string, any> = {};
-      (estoqueData || []).forEach((e: any) => { estoqueMap[e.atendimento_venda_id] = e; });
-      filtered = filtered.filter(a => estoqueMap[a.id]).map(a => ({ ...a, _estoqueMoto: estoqueMap[a.id] }));
-    }
+    const estoqueMap: Record<string, any> = {};
+    (estRes.data || []).forEach((e: any) => { estoqueMap[e.atendimento_venda_id] = e; });
+
+    let filtered = (atRes.data || []).filter(a => estoqueMap[a.id]).map(a => ({ ...a, _estoqueMoto: estoqueMap[a.id] }));
+
     if (search.trim()) {
       const s = search.trim().toLowerCase();
       filtered = filtered.filter((a: any) => [a.nome_cliente, a.telefone, a.loja].some(f => f && String(f).toLowerCase().includes(s)));

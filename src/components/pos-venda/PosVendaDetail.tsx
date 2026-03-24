@@ -92,7 +92,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     const fetchRelated = async () => {
       setLoading(true);
 
-      // Fetch motos interesse, motos avaliacao, avaliacoes
+      // Step 1: All initial queries in parallel
       const [resInt, resAv, resAval] = await Promise.all([
         supabase.from('motos_interesse').select('*').eq('atendimento_id', item.id),
         supabase.from('motos_avaliacao').select('*').eq('atendimento_id', item.id),
@@ -101,63 +101,53 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
       const motosInt = resInt.data || [];
       setMotosInteresse(motosInt);
+      const motosAv = resAv.data || [];
+      setMotosAvaliacao(motosAv);
 
-      // Fetch estoque data for motos from stock
+      // Prepare IDs for parallel step 2
       const estoqueIds = motosInt.filter((m: any) => m.origem === 'estoque' && m.estoque_moto_id).map((m: any) => m.estoque_moto_id!);
-      if (estoqueIds.length > 0) {
-        const { data: estoqueItems } = await supabase.from('estoque').select('*').in('id', estoqueIds);
-        const estoqueMap: Record<string, any> = {};
-        if (estoqueItems) {
-          for (const est of estoqueItems) estoqueMap[est.id] = est;
-        }
-        setEstoqueData(estoqueMap);
+      const avaliadorIds = [...new Set((resAval.data || []).map((av: any) => av.avaliador_id).filter(Boolean))];
 
-        // For Intermediação Parte 1: fetch the original owner (proprietário/consignante)
-        if (processoProps?.showContratoConsignante) {
-          const consignadaEstoque = Object.values(estoqueMap).find((e: any) => e.tipo === 'consignada');
-          if (consignadaEstoque?.avaliacao_id) {
-            const { data: avalData } = await supabase
-              .from('avaliacoes')
-              .select('*, motos_avaliacao(*)')
-              .eq('id', consignadaEstoque.avaliacao_id)
-              .single();
-            if (avalData) {
-              setAvaliacaoConsignada(avalData);
-              if (avalData.motos_avaliacao) setMotoConsignada(avalData.motos_avaliacao);
-              if (avalData.atendimento_id) {
-                const { data: ownerData } = await supabase
-                  .from('atendimentos')
-                  .select('nome_cliente, telefone, loja, cnh_url')
-                  .eq('id', avalData.atendimento_id)
-                  .single();
-                if (ownerData) {
-                  setProprietario({ ...ownerData, id: avalData.atendimento_id });
-                  setCnhUrl(ownerData.cnh_url || null);
-                }
-              }
+      // Step 2: Estoque + Avaliador names in parallel
+      const [estoqueResult, rolesResult] = await Promise.all([
+        estoqueIds.length > 0 ? supabase.from('estoque').select('*').in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
+        avaliadorIds.length > 0 ? supabase.from('user_roles').select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      // Process estoque
+      const estoqueMap: Record<string, any> = {};
+      (estoqueResult.data || []).forEach((est: any) => { estoqueMap[est.id] = est; });
+      setEstoqueData(estoqueMap);
+
+      // Process avaliacoes with avaliador names
+      const avaliadorNames: Record<string, string> = {};
+      (rolesResult.data || []).forEach((r: any) => { avaliadorNames[r.user_id] = r.nome; });
+      const avalMap: Record<string, any> = {};
+      (resAval.data || []).forEach((av: any) => {
+        avalMap[av.moto_avaliacao_id] = { ...av, avaliador_nome: avaliadorNames[av.avaliador_id] || null };
+      });
+      setAvaliacoes(avalMap);
+
+      // Step 3: Consignada owner (Intermediação Parte 1) - single query with joins
+      if (processoProps?.showContratoConsignante) {
+        const consignadaEstoque = Object.values(estoqueMap).find((e: any) => e.tipo === 'consignada');
+        if (consignadaEstoque?.avaliacao_id) {
+          const { data: avalData } = await supabase
+            .from('avaliacoes')
+            .select('*, motos_avaliacao(*), atendimentos!inner(id, nome_cliente, telefone, loja, cnh_url)')
+            .eq('id', consignadaEstoque.avaliacao_id)
+            .single();
+          if (avalData) {
+            setAvaliacaoConsignada(avalData);
+            if (avalData.motos_avaliacao) setMotoConsignada(avalData.motos_avaliacao);
+            const owner = (avalData as any).atendimentos;
+            if (owner) {
+              setProprietario({ ...owner, id: owner.id || avalData.atendimento_id });
+              setCnhUrl(owner.cnh_url || null);
             }
           }
         }
       }
-
-      const motosAv = resAv.data || [];
-      setMotosAvaliacao(motosAv);
-
-      // Map avaliacoes by moto_avaliacao_id + fetch avaliador names
-      const avalMap: Record<string, any> = {};
-      if (resAval.data && resAval.data.length > 0) {
-        const avaliadorIds = [...new Set(resAval.data.map((av: any) => av.avaliador_id).filter(Boolean))];
-        let avaliadorNames: Record<string, string> = {};
-        if (avaliadorIds.length > 0) {
-          const { data: roles } = await supabase.from('user_roles').select('user_id, nome').in('user_id', avaliadorIds);
-          if (roles) for (const r of roles) avaliadorNames[r.user_id] = r.nome;
-        }
-        for (const av of resAval.data) {
-          avalMap[(av as any).moto_avaliacao_id] = { ...av, avaliador_nome: avaliadorNames[(av as any).avaliador_id] || null };
-        }
-      }
-      setAvaliacoes(avalMap);
-
 
       setLoading(false);
     };
