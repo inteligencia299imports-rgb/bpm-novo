@@ -638,13 +638,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                             <div>
                               <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Margem Prevista</span>
                               <p className={`text-lg font-bold ${margemPositiva ? 'text-green-600' : 'text-destructive'}`}>
-                                {formatCurrency(margem)}
+                                {formatCurrency(margem)}{fechamentoVal > 0 && ` (${margemPct.toFixed(1)}%)`}
                               </p>
-                              {fechamentoVal > 0 && (
-                                <span className={`text-xs font-semibold ${margemPositiva ? 'text-green-600' : 'text-destructive'}`}>
-                                  ({margemPct.toFixed(1)}%)
-                                </span>
-                              )}
                             </div>
                           </div>
                         </div>
