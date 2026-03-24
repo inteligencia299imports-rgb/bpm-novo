@@ -46,6 +46,14 @@ const formatCpfCnpj = (value: string): string => {
   );
 };
 
+const formatTelefone = (value: string): string => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
 const formatCurrency = (value: number | null) => {
   if (value === null || value === undefined) return '-';
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -170,8 +178,8 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     if (contrato) {
       setContratoId(contrato.id);
       setNomeConsignante(contrato.nome_consignante || '');
-      setTelefoneConsignante(contrato.telefone_consignante || '');
-      setCpfCnpj(contrato.cpf_cnpj || '');
+      setTelefoneConsignante(formatTelefone(contrato.telefone_consignante || ''));
+      setCpfCnpj(formatCpfCnpj(contrato.cpf_cnpj || ''));
       setDadosBancarios(contrato.dados_bancarios || '');
       setTitularConta(contrato.titular_conta || '');
       setValorFechamento(contrato.valor_fechamento ? formatCurrencyInput(String(Math.round(contrato.valor_fechamento * 100))) : '');
@@ -193,12 +201,12 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       setContratoId(null);
       // Pre-fill consignante data from the original atendimento + contrato_consignacao
       setNomeConsignante(consignanteAtendimento?.nome_cliente || '');
-      setTelefoneConsignante(consignanteAtendimento?.telefone || '');
+      setTelefoneConsignante(formatTelefone(consignanteAtendimento?.telefone || ''));
 
       if (estoque?.avaliacao_id) {
         const { data: cc } = await supabase.from('contratos_consignacao').select('*').eq('avaliacao_id', estoque.avaliacao_id).maybeSingle();
         if (cc) {
-          setCpfCnpj(cc.cpf_cnpj || '');
+          setCpfCnpj(formatCpfCnpj(cc.cpf_cnpj || ''));
         } else {
           setCpfCnpj('');
         }
@@ -444,7 +452,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                   </div>
                   <div>
                     <label className="text-sm font-medium">Telefone</label>
-                    <Input className="mt-1" value={telefoneConsignante} onChange={e => setTelefoneConsignante(e.target.value)} placeholder="(00) 00000-0000" />
+                    <Input className="mt-1" value={telefoneConsignante} onChange={e => setTelefoneConsignante(formatTelefone(e.target.value))} maxLength={15} placeholder="(00) 00000-0000" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
