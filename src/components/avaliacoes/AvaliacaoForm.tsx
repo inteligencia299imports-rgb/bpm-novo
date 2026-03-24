@@ -851,12 +851,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </div>
         </DialogContent>
       </Dialog>
-      {/* Dialog Tipo de Aquisição */}
-      <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); } }}>
+      {/* Dialog Tipo de Aquisição / Conversão */}
+      <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" /> Aquisição
+              {isConvertendo ? <ArrowLeftRight className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+              {isConvertendo ? 'Conversão' : 'Aquisição'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -876,20 +877,40 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <div>
               <label className="text-sm font-medium text-foreground">Tipo de Aquisição <span className="text-destructive">*</span></label>
               <div className="flex gap-3 mt-2">
-                <Button
-                  variant={tipoSelecionado === 'propria' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setTipoSelecionado('propria')}
-                >
-                  Própria
-                </Button>
-                <Button
-                  variant={tipoSelecionado === 'consignada' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setTipoSelecionado('consignada')}
-                >
-                  Consignada
-                </Button>
+                {isConvertendo ? (
+                  // In conversion mode, show only the opposite type
+                  (() => {
+                    const currentTipo = avaliacao?.tipo_aquisicao;
+                    const oppositeTipo = currentTipo === 'consignada' ? 'propria' : 'consignada';
+                    const oppositeLabel = currentTipo === 'consignada' ? 'Própria' : 'Consignada';
+                    return (
+                      <Button
+                        variant="default"
+                        className="flex-1"
+                        disabled
+                      >
+                        {oppositeLabel}
+                      </Button>
+                    );
+                  })()
+                ) : (
+                  <>
+                    <Button
+                      variant={tipoSelecionado === 'propria' ? 'default' : 'outline'}
+                      className="flex-1"
+                      onClick={() => setTipoSelecionado('propria')}
+                    >
+                      Própria
+                    </Button>
+                    <Button
+                      variant={tipoSelecionado === 'consignada' ? 'default' : 'outline'}
+                      className="flex-1"
+                      onClick={() => setTipoSelecionado('consignada')}
+                    >
+                      Consignada
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
             <div>
@@ -907,14 +928,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               <Button
                 variant="secondary"
                 className="flex-1 gap-2"
-                onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); }}
+                onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); }}
               >
                 <ArrowLeft className="h-4 w-4" /> Voltar
               </Button>
               {valorFechamentoAquisicao.trim() !== '' && parseCurrencyToNumber(valorFechamentoAquisicao) !== null && parseCurrencyToNumber(valorFechamentoAquisicao)! > 0 && tipoSelecionado && (
                 <Button
                   className="flex-1 gap-2"
-                  onClick={handleSaveAquisicao}
+                  onClick={isConvertendo ? handleSaveConversao : handleSaveAquisicao}
                   disabled={savingAquisicao}
                 >
                   {savingAquisicao ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
