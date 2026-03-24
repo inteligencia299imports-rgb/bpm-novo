@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList, Download, DollarSign } from 'lucide-react';
+import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
@@ -175,15 +176,25 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   </div>
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
-                {cnhUrl && (
-                  <div>
-                    <span className="text-xs text-muted-foreground">CNH</span>
-                    <a href={cnhUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline font-medium">
-                      <Download className="h-3.5 w-3.5" /> Baixar
-                    </a>
-                  </div>
-                )}
               </div>
+              <Separator className="my-2" />
+              <DocumentUpload
+                label="CNH"
+                currentUrl={cnhUrl}
+                bucketPath={atendimento?.id ? `cnh/${atendimento.id}` : ''}
+                onUploaded={(url) => {
+                  setCnhUrl(url);
+                  if (atendimento?.id) {
+                    supabase.from('atendimentos').update({ cnh_url: url }).eq('id', atendimento.id);
+                  }
+                }}
+                onRemoved={() => {
+                  setCnhUrl(null);
+                  if (atendimento?.id) {
+                    supabase.from('atendimentos').update({ cnh_url: null }).eq('id', atendimento.id);
+                  }
+                }}
+              />
             </CardContent>
           </Card>
 
@@ -203,15 +214,25 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   {ano && <InfoItem label="Ano" value={ano} />}
                   {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
                   {moto.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{moto.categoria}</span>} />}
-                  {crlvUrl && (
-                    <div>
-                      <span className="text-xs text-muted-foreground">CRLV</span>
-                      <a href={crlvUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline font-medium">
-                        <Download className="h-3.5 w-3.5" /> Baixar
-                      </a>
-                    </div>
-                  )}
                 </div>
+                <Separator className="my-2" />
+                <DocumentUpload
+                  label="CRLV"
+                  currentUrl={crlvUrl}
+                  bucketPath={moto.id ? `crlv/${moto.id}` : ''}
+                  onUploaded={(url) => {
+                    setCrlvUrl(url);
+                    if (moto.id) {
+                      supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
+                    }
+                  }}
+                  onRemoved={() => {
+                    setCrlvUrl(null);
+                    if (moto.id) {
+                      supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
+                    }
+                  }}
+                />
                 {(moto.tem_manual || moto.tem_chave_reserva) && (
                   <>
                     <Separator className="my-3" />
