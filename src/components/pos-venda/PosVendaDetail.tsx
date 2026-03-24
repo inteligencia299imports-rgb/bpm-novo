@@ -116,16 +116,20 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           if (consignadaEstoque?.avaliacao_id) {
             const { data: avalData } = await supabase
               .from('avaliacoes')
-              .select('atendimento_id')
+              .select('*, motos_avaliacao(*)')
               .eq('id', consignadaEstoque.avaliacao_id)
               .single();
-            if (avalData?.atendimento_id) {
-              const { data: ownerData } = await supabase
-                .from('atendimentos')
-                .select('nome_cliente, telefone, loja, cnh_url')
-                .eq('id', avalData.atendimento_id)
-                .single();
-              if (ownerData) setProprietario(ownerData);
+            if (avalData) {
+              setAvaliacaoConsignada(avalData);
+              if (avalData.motos_avaliacao) setMotoConsignada(avalData.motos_avaliacao);
+              if (avalData.atendimento_id) {
+                const { data: ownerData } = await supabase
+                  .from('atendimentos')
+                  .select('nome_cliente, telefone, loja, cnh_url')
+                  .eq('id', avalData.atendimento_id)
+                  .single();
+                if (ownerData) setProprietario(ownerData);
+              }
             }
           }
         }
