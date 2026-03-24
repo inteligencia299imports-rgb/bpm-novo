@@ -497,9 +497,9 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
 
               <Separator />
 
-              {/* DADOS DA MOTO + NEGOCIAÇÃO */}
+              {/* DADOS DA MOTO */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Moto e Negociação</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Moto</h3>
                 {(motoInfo || estoqueInfo) && (
                   <div className="rounded-lg border bg-muted/30 p-3">
                     <p className="font-semibold text-foreground">
@@ -508,59 +508,14 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                     <p className="text-xs text-muted-foreground">
                       Placa: {(motoInfo?.placa || estoqueInfo?.placa || '-').replace(/-/g, '')}
                     </p>
+                    <div className="mt-2 pt-2 border-t border-border/50">
+                      <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} />
+                    </div>
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-4">
+                {!(motoInfo || estoqueInfo) && (
                   <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} />
-                  <div>
-                    <label className="text-sm font-medium">Abatimentos (Oficina + Op. loja)</label>
-                    <div className="mt-1 h-10 flex items-center px-3 rounded-md border bg-muted/50 text-sm font-semibold text-destructive">
-                      {formatCurrency(abatimentos)}
-                    </div>
-                  </div>
-                </div>
-                {/* Detalhamento dos abatimentos */}
-                {abatimentos > 0 && (
-                  <div className="rounded-md border bg-muted/30 p-3 space-y-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detalhamento dos Abatimentos</span>
-                    <div className="space-y-1">
-                      {custosOficina.map((c: any) => {
-                        const val = c.valor_executado || c.valor_previsto || 0;
-                        if (val <= 0) return null;
-                        return (
-                          <div key={c.id} className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">
-                              <span className="inline-block rounded bg-primary/10 text-primary px-1.5 py-0.5 font-medium mr-1.5">Oficina</span>
-                              {(c.tipo?.toUpperCase() || '').replace('PECA', 'PEÇA').replace('SERVICO', 'SERVIÇO')}{c.detalhes ? ` - ${c.detalhes.toUpperCase()}` : ''}
-                            </span>
-                            <span className="font-semibold text-destructive">{formatCurrency(val)}</span>
-                          </div>
-                        );
-                      })}
-                      {custosOp
-                        .filter(c => c.responsavel === 'Loja')
-                        .map((c, i) => {
-                          const val = parseCurrencyInput(c.valor);
-                          if (val <= 0) return null;
-                          return (
-                            <div key={`op-${i}`} className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">
-                                <span className="inline-block rounded bg-orange-100 text-orange-700 px-1.5 py-0.5 font-medium mr-1.5">Op. Loja</span>
-                                {c.tipo?.toUpperCase()}{c.descricao ? ` - ${c.descricao.toUpperCase()}` : ''}
-                              </span>
-                              <span className="font-semibold text-destructive">{formatCurrency(val)}</span>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
                 )}
-                <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-foreground">Valor de Repasse</span>
-                  <span className={`text-lg font-bold ${repasseNum >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                    {formatCurrency(repasseNum > 0 ? repasseNum : 0)}
-                  </span>
-                </div>
               </div>
 
               <Separator />
@@ -622,6 +577,63 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* RESUMO FINANCEIRO */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Resumo Financeiro</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Total de Abatimentos</label>
+                    <div className="mt-1 h-10 flex items-center px-3 rounded-md border bg-muted/50 text-sm font-semibold text-destructive">
+                      {formatCurrency(abatimentos)}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 flex flex-col justify-center">
+                    <span className="text-xs font-semibold text-muted-foreground">Valor de Repasse</span>
+                    <span className={`text-lg font-bold ${repasseNum >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                      {formatCurrency(repasseNum > 0 ? repasseNum : 0)}
+                    </span>
+                  </div>
+                </div>
+                {/* Detalhamento dos abatimentos */}
+                {abatimentos > 0 && (
+                  <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detalhamento dos Abatimentos</span>
+                    <div className="space-y-1">
+                      {custosOficina.map((c: any) => {
+                        const val = c.valor_executado || c.valor_previsto || 0;
+                        if (val <= 0) return null;
+                        return (
+                          <div key={c.id} className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">
+                              <span className="inline-block rounded bg-primary/10 text-primary px-1.5 py-0.5 font-medium mr-1.5">Oficina</span>
+                              {(c.tipo?.toUpperCase() || '').replace('PECA', 'PEÇA').replace('SERVICO', 'SERVIÇO')}{c.detalhes ? ` - ${c.detalhes.toUpperCase()}` : ''}
+                            </span>
+                            <span className="font-semibold text-destructive">{formatCurrency(val)}</span>
+                          </div>
+                        );
+                      })}
+                      {custosOp
+                        .filter(c => c.responsavel === 'Loja')
+                        .map((c, i) => {
+                          const val = parseCurrencyInput(c.valor);
+                          if (val <= 0) return null;
+                          return (
+                            <div key={`op-${i}`} className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                <span className="inline-block rounded bg-orange-100 text-orange-700 px-1.5 py-0.5 font-medium mr-1.5">Op. Loja</span>
+                                {c.tipo?.toUpperCase()}{c.descricao ? ` - ${c.descricao.toUpperCase()}` : ''}
+                              </span>
+                              <span className="font-semibold text-destructive">{formatCurrency(val)}</span>
+                            </div>
+                          );
+                        })}
+                    </div>
                   </div>
                 )}
               </div>
