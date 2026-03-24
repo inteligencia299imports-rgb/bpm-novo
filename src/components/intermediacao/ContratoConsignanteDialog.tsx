@@ -597,7 +597,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                           return (
                             <div key={`op-${i}`} className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground">
-                                <span className="inline-block rounded bg-orange-100 text-orange-700 px-1.5 py-0.5 font-medium mr-1.5">Op. Loja</span>
+                                <span className="inline-block rounded bg-orange-100 text-orange-700 px-1.5 py-0.5 font-medium mr-1.5">Op. Cliente</span>
                                 {c.tipo?.toUpperCase()}{c.descricao ? ` - ${c.descricao.toUpperCase()}` : ''}
                               </span>
                               <span className="font-semibold text-destructive">{formatCurrency(val)}</span>
