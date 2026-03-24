@@ -77,6 +77,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto?.crlv_url || null);
   const cols = statusColumns || POS_VENDA_COLUMNS;
   const statusCol = cols.find(c => c.value === ((item as any)[statusField] || 'em_aberto'));
+  const int = INTERESSES.find(i => i.value === item.interesse);
   const isIntermParte1 = !!processoProps?.showContratoConsignante;
   const displayClient = isIntermParte1 && proprietario ? proprietario : item;
   const displayName = displayClient.nome_cliente;
