@@ -759,11 +759,14 @@ export type Database = {
           enviada_avaliacao: boolean | null
           id: string
           km: string | null
+          manutencao_em_dia: boolean | null
           marca: string
           modelo: string
           observacoes: string | null
           placa: string | null
           resultado_consulta: string | null
+          tem_chave_reserva: boolean | null
+          tem_manual: boolean | null
           updated_at: string
         }
         Insert: {
@@ -780,11 +783,14 @@ export type Database = {
           enviada_avaliacao?: boolean | null
           id?: string
           km?: string | null
+          manutencao_em_dia?: boolean | null
           marca: string
           modelo: string
           observacoes?: string | null
           placa?: string | null
           resultado_consulta?: string | null
+          tem_chave_reserva?: boolean | null
+          tem_manual?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -801,11 +807,14 @@ export type Database = {
           enviada_avaliacao?: boolean | null
           id?: string
           km?: string | null
+          manutencao_em_dia?: boolean | null
           marca?: string
           modelo?: string
           observacoes?: string | null
           placa?: string | null
           resultado_consulta?: string | null
+          tem_chave_reserva?: boolean | null
+          tem_manual?: boolean | null
           updated_at?: string
         }
         Relationships: [

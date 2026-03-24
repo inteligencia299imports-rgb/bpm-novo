@@ -8,6 +8,7 @@ import { ANOS_MOTO, CATEGORIAS_MOTO, CORES_MOTO } from '@/types/crm';
 import type { Interesse } from '@/types/crm';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import PhotoUpload from './PhotoUpload';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface Props {
   marca: string; setMarca: (v: string) => void;
@@ -20,6 +21,9 @@ interface Props {
   km: string; setKm: (v: string) => void;
   cilindrada: string; setCilindrada: (v: string) => void;
   obs: string; setObs: (v: string) => void;
+  temManual: boolean; setTemManual: (v: boolean) => void;
+  temChaveReserva: boolean; setTemChaveReserva: (v: boolean) => void;
+  manutencaoEmDia: boolean; setManutencaoEmDia: (v: boolean) => void;
   motoAvaliacaoId: string | null;
   atendimentoId: string | null;
   interesse: Interesse;
@@ -29,6 +33,8 @@ const MotoVendaSection: React.FC<Props> = ({
   marca, setMarca, modelo, setModelo, anoFab, setAnoFab,
   anoMod, setAnoMod, categoria, setCategoria, cor, setCor,
   placa, setPlaca, km, setKm, cilindrada, setCilindrada, obs, setObs,
+  temManual, setTemManual, temChaveReserva, setTemChaveReserva,
+  manutencaoEmDia, setManutencaoEmDia,
   motoAvaliacaoId, atendimentoId, interesse,
 }) => {
   const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
@@ -107,6 +113,20 @@ const MotoVendaSection: React.FC<Props> = ({
           <div className="space-y-1.5">
             <Label>Cilindrada *</Label>
             <Input value={cilindrada} onChange={e => setCilindrada(formatKm(e.target.value))} placeholder="Ex: 1.200" inputMode="numeric" />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-6 pt-1">
+          <div className="flex items-center gap-2">
+            <Checkbox id="temManual" checked={temManual} onCheckedChange={(v) => setTemManual(!!v)} />
+            <Label htmlFor="temManual" className="cursor-pointer">Manual</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="temChaveReserva" checked={temChaveReserva} onCheckedChange={(v) => setTemChaveReserva(!!v)} />
+            <Label htmlFor="temChaveReserva" className="cursor-pointer">Chave Reserva</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="manutencaoEmDia" checked={manutencaoEmDia} onCheckedChange={(v) => setManutencaoEmDia(!!v)} />
+            <Label htmlFor="manutencaoEmDia" className="cursor-pointer">Manutenção em Dia</Label>
           </div>
         </div>
         <div className="space-y-1.5">

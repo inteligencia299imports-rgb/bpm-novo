@@ -70,6 +70,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [vendaKm, setVendaKm] = useState('');
   const [vendaCilindrada, setVendaCilindrada] = useState('');
   const [vendaObs, setVendaObs] = useState('');
+  const [temManual, setTemManual] = useState(false);
+  const [temChaveReserva, setTemChaveReserva] = useState(false);
+  const [manutencaoEmDia, setManutencaoEmDia] = useState(false);
   const [motoAvaliacaoId, setMotoAvaliacaoId] = useState<string | null>(null);
   const [enviadaAvaliacao, setEnviadaAvaliacao] = useState(false);
 
@@ -115,6 +118,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setVendaKm(ma.km || '');
           setVendaCilindrada((ma as any).cilindrada || '');
           setVendaObs(ma.observacoes || '');
+          setTemManual((ma as any).tem_manual || false);
+          setTemChaveReserva((ma as any).tem_chave_reserva || false);
+          setManutencaoEmDia((ma as any).manutencao_em_dia || false);
           setEnviadaAvaliacao(ma.enviada_avaliacao || false);
         }
       }
@@ -232,6 +238,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           placa: vendaPlaca || null, km: vendaKm || null,
           cilindrada: vendaCilindrada || null,
           observacoes: vendaObs || null,
+          tem_manual: temManual,
+          tem_chave_reserva: temChaveReserva,
+          manutencao_em_dia: manutencaoEmDia,
         };
         if (motoAvaliacaoId) {
           await supabase.from('motos_avaliacao').update(maData).eq('id', motoAvaliacaoId);
@@ -425,6 +434,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             km={vendaKm} setKm={setVendaKm}
             cilindrada={vendaCilindrada} setCilindrada={setVendaCilindrada}
             obs={vendaObs} setObs={setVendaObs}
+            temManual={temManual} setTemManual={setTemManual}
+            temChaveReserva={temChaveReserva} setTemChaveReserva={setTemChaveReserva}
+            manutencaoEmDia={manutencaoEmDia} setManutencaoEmDia={setManutencaoEmDia}
             motoAvaliacaoId={motoAvaliacaoId}
             atendimentoId={atendimentoId}
             interesse={interesse}
