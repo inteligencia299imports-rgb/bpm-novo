@@ -8,6 +8,7 @@ import { ANOS_MOTO, CATEGORIAS_MOTO, CORES_MOTO } from '@/types/crm';
 import type { Interesse } from '@/types/crm';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import PhotoUpload from './PhotoUpload';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface Props {
   marca: string; setMarca: (v: string) => void;
@@ -20,6 +21,9 @@ interface Props {
   km: string; setKm: (v: string) => void;
   cilindrada: string; setCilindrada: (v: string) => void;
   obs: string; setObs: (v: string) => void;
+  temManual: boolean; setTemManual: (v: boolean) => void;
+  temChaveReserva: boolean; setTemChaveReserva: (v: boolean) => void;
+  manutencaoEmDia: boolean; setManutencaoEmDia: (v: boolean) => void;
   motoAvaliacaoId: string | null;
   atendimentoId: string | null;
   interesse: Interesse;
