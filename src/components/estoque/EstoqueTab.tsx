@@ -19,6 +19,7 @@ import AtendimentoDetail from '@/components/showroom/AtendimentoDetail';
 import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
 import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
+import AvaliacaoForm from '@/components/avaliacoes/AvaliacaoForm';
 
 // Configs
 import {
