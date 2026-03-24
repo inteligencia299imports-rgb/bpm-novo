@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ClipboardList, Handshake, ArrowDownToLine, BookOpen, Wrench, FileSearch } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -204,7 +204,7 @@ const EstoqueTab = () => {
     if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada')) {
       options.push({
         label: item.status === 'vendido' ? 'Atendimento (Venda)' : 'Atendimento (Sinal)',
-        icon: <ShoppingCart className="h-4 w-4" />,
+        icon: <Bike className="h-4 w-4" />,
         action: () => openShowroom(item.atendimento_venda_id!),
       });
     }
@@ -212,7 +212,7 @@ const EstoqueTab = () => {
     if (item.atendimento_venda_id && item.status === 'vendido' && item.tipo === 'propria') {
       options.push({
         label: 'Pós-Venda',
-        icon: <ClipboardList className="h-4 w-4" />,
+        icon: <ShoppingBag className="h-4 w-4" />,
         action: () => openPosVendaOrIntermediacao(item, 'pos_venda'),
       });
     }
@@ -228,7 +228,7 @@ const EstoqueTab = () => {
     if (item.avaliacao_id && item.tipo === 'propria') {
       options.push({
         label: 'Pós-Compra',
-        icon: <ArrowDownToLine className="h-4 w-4" />,
+        icon: <ShoppingCart className="h-4 w-4" />,
         action: () => openAvaliacaoDetail(item.avaliacao_id!, 'pos_compra'),
       });
     }
@@ -236,7 +236,7 @@ const EstoqueTab = () => {
     if (item.avaliacao_id && item.tipo === 'consignada') {
       options.push({
         label: 'Consignação',
-        icon: <BookOpen className="h-4 w-4" />,
+        icon: <FileText className="h-4 w-4" />,
         action: () => openAvaliacaoDetail(item.avaliacao_id!, 'consignacao'),
       });
     }
@@ -244,7 +244,7 @@ const EstoqueTab = () => {
     if (item.avaliacao_id) {
       options.push({
         label: 'Avaliação',
-        icon: <FileSearch className="h-4 w-4" />,
+        icon: <ClipboardCheck className="h-4 w-4" />,
         action: () => setDetailView({ type: 'avaliacao', data: { avaliacaoId: item.avaliacao_id } }),
       });
       options.push({
