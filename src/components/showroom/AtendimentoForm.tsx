@@ -70,9 +70,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [vendaKm, setVendaKm] = useState('');
   const [vendaCilindrada, setVendaCilindrada] = useState('');
   const [vendaObs, setVendaObs] = useState('');
-  const [temManual, setTemManual] = useState(false);
-  const [temChaveReserva, setTemChaveReserva] = useState(false);
-  const [manutencaoEmDia, setManutencaoEmDia] = useState(false);
+  const [temManual, setTemManual] = useState('');
+  const [temChaveReserva, setTemChaveReserva] = useState('');
+  const [manutencaoEmDia, setManutencaoEmDia] = useState('');
   const [motoAvaliacaoId, setMotoAvaliacaoId] = useState<string | null>(null);
   const [enviadaAvaliacao, setEnviadaAvaliacao] = useState(false);
 
@@ -118,9 +118,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setVendaKm(ma.km || '');
           setVendaCilindrada((ma as any).cilindrada || '');
           setVendaObs(ma.observacoes || '');
-          setTemManual((ma as any).tem_manual || false);
-          setTemChaveReserva((ma as any).tem_chave_reserva || false);
-          setManutencaoEmDia((ma as any).manutencao_em_dia || false);
+          setTemManual((ma as any).tem_manual ? 'sim' : (ma as any).tem_manual === false ? 'nao' : '');
+          setTemChaveReserva((ma as any).tem_chave_reserva ? 'sim' : (ma as any).tem_chave_reserva === false ? 'nao' : '');
+          setManutencaoEmDia((ma as any).manutencao_em_dia ? 'sim' : (ma as any).manutencao_em_dia === false ? 'nao' : '');
           setEnviadaAvaliacao(ma.enviada_avaliacao || false);
         }
       }
@@ -158,6 +158,10 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     }
     if ((interesse === 'vender' || interesse === 'trocar') && (!vendaMarca || !vendaModelo || !vendaAnoFab || !vendaAnoMod || !vendaCategoria || !vendaCor || !vendaPlaca.trim() || !vendaKm.trim() || !vendaCilindrada.trim())) {
       toast.error('Preencha todos os campos da Moto do Cliente');
+      return;
+    }
+    if ((interesse === 'vender' || interesse === 'trocar') && (!temManual || !temChaveReserva || !manutencaoEmDia)) {
+      toast.error('Informe Manual, Chave Reserva e Manutenção em Dia');
       return;
     }
     if ((interesse === 'vender' || interesse === 'trocar') && vendaPlaca.trim().length !== 7) {
@@ -238,9 +242,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           placa: vendaPlaca || null, km: vendaKm || null,
           cilindrada: vendaCilindrada || null,
           observacoes: vendaObs || null,
-          tem_manual: temManual,
-          tem_chave_reserva: temChaveReserva,
-          manutencao_em_dia: manutencaoEmDia,
+          tem_manual: temManual === 'sim',
+          tem_chave_reserva: temChaveReserva === 'sim',
+          manutencao_em_dia: manutencaoEmDia === 'sim',
         };
         if (motoAvaliacaoId) {
           await supabase.from('motos_avaliacao').update(maData).eq('id', motoAvaliacaoId);
