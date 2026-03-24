@@ -585,8 +585,8 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                       return (
                         <div key={`op-${idx}`} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
                           <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium shrink-0">Operação</span>
-                          <span className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground shrink-0">{c.responsavel}</span>
-                          <span className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground shrink-0">Processo</span>
+                          <span className="text-xs text-muted-foreground shrink-0">{(c.responsavel || '').toUpperCase()}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">PROCESSO</span>
                           <span className="flex-1 truncate text-xs font-medium">
                             {(c.descricao || '-').toUpperCase()}
                           </span>
