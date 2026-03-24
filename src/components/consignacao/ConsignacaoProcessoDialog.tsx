@@ -47,10 +47,6 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
   const [observacoes, setObservacoes] = useState('');
   const [previousStatus, setPreviousStatus] = useState('em_aberto');
-  const [cnhUrl, setCnhUrl] = useState<string | null>(null);
-  const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
-  const [quantoPede, setQuantoPede] = useState<number | null>(null);
-  const [valorFechamento, setValorFechamento] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
