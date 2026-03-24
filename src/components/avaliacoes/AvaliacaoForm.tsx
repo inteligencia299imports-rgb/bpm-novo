@@ -129,6 +129,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [prevCustosLoja, setPrevCustosLoja] = useState('');
   const [prevCustosCliente, setPrevCustosCliente] = useState('');
   const [obsAvaliador, setObsAvaliador] = useState('');
+  const [classificacao, setClassificacao] = useState('');
 
   useEffect(() => {
     const load = async () => {
