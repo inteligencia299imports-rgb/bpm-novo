@@ -238,6 +238,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           placa: vendaPlaca || null, km: vendaKm || null,
           cilindrada: vendaCilindrada || null,
           observacoes: vendaObs || null,
+          tem_manual: temManual,
+          tem_chave_reserva: temChaveReserva,
+          manutencao_em_dia: manutencaoEmDia,
         };
         if (motoAvaliacaoId) {
           await supabase.from('motos_avaliacao').update(maData).eq('id', motoAvaliacaoId);
