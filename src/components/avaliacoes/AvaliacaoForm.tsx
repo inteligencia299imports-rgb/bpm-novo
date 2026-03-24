@@ -203,7 +203,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   };
 
   const allFieldsFilled = () => {
-    return [valorFipe, menorValor, maiorValor, quantoPede, quantoVende, quantoVendeErrado, avalConsig, avalCompra, prevCustosLoja, prevCustosCliente, obsAvaliador].every(v => v.trim() !== '');
+    return [valorFipe, menorValor, maiorValor, quantoPede, quantoVende, quantoVendeErrado, avalConsig, avalCompra, prevCustosLoja, prevCustosCliente, obsAvaliador].every(v => v.trim() !== '') && classificacao !== '';
   };
 
   const handleSave = async () => {
