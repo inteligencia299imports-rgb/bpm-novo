@@ -17,7 +17,7 @@ const PARTE_CONFIG = {
     etapas: INTERMEDIACAO_PARTE1_ETAPAS,
     observacoesField: 'pos_venda_observacoes',
     statusRules: {
-      concluded: 'PREVISÃO DE PAGAMENTO',
+      concluded: 'AUTORIZAÇÃO DE PAGAMENTO',
       default: 'em_andamento',
     },
   },
@@ -77,9 +77,43 @@ const IntermediacacaoTab = () => {
     }
 
     if (search.trim()) { const s = search.trim().toLowerCase(); filtered = filtered.filter((a: any) => { const owner = a._proprietario; return [a.nome_cliente, a.telefone, a.loja, owner?.nome_cliente, owner?.telefone].some(f => f && String(f).toLowerCase().includes(s)); }); }
+
+    // Auto-transition: check autorizacao_pagamento items whose previsão date is > 1 day past
+    const autoTransitionIds = filtered
+      .filter(a => a.intermediacao_parte1_status === 'autorizacao_pagamento')
+      .map(a => a.id);
+
+    if (autoTransitionIds.length > 0) {
+      const { data: previsaoData } = await supabase
+        .from('pos_venda_processos')
+        .select('atendimento_id, data_conclusao')
+        .eq('etapa', 'PREVISÃO DE PAGAMENTO')
+        .in('atendimento_id', autoTransitionIds);
+
+      const now = new Date();
+      const idsToComplete: string[] = [];
+      (previsaoData || []).forEach((p: any) => {
+        if (p.data_conclusao) {
+          const oneDayAfter = new Date(new Date(p.data_conclusao).getTime() + 24 * 60 * 60 * 1000);
+          if (now >= oneDayAfter) idsToComplete.push(p.atendimento_id);
+        }
+      });
+
+      if (idsToComplete.length > 0) {
+        // Update in background, don't block UI
+        for (const id of idsToComplete) {
+          supabase.from('atendimentos').update({ intermediacao_parte1_status: 'concluido' } as any).eq('id', id).then();
+        }
+        filtered = filtered.map(a => idsToComplete.includes(a.id) ? { ...a, intermediacao_parte1_status: 'concluido' } : a);
+      }
+    }
+
+    // Filter out concluido items for parte1
+    filtered = filtered.filter(a => a.intermediacao_parte1_status !== 'concluido' || parte !== 'parte1');
+
     setItems(filtered);
     setLoading(false);
-  }, [search]);
+  }, [search, parte]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 

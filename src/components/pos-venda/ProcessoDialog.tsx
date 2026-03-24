@@ -161,7 +161,20 @@ const ProcessoDialog: React.FC<Props> = ({
         const specialEtapa = statusRules.special ? etapas.find(e => e.etapa === statusRules.special!.etapa)?.concluida : false;
 
         if (concludedEtapa) {
-          newStatus = 'concluido';
+          // Check if there's a "PREVISÃO DE PAGAMENTO" etapa with a date set
+          const previsaoEtapa = etapas.find(e => e.etapa === 'PREVISÃO DE PAGAMENTO');
+          if (previsaoEtapa?.data_conclusao) {
+            // If previsão date is more than 1 day past, fully concluded
+            const previsaoDate = new Date(previsaoEtapa.data_conclusao);
+            const oneDayAfter = new Date(previsaoDate.getTime() + 24 * 60 * 60 * 1000);
+            if (new Date() >= oneDayAfter) {
+              newStatus = 'concluido';
+            } else {
+              newStatus = 'autorizacao_pagamento';
+            }
+          } else {
+            newStatus = 'autorizacao_pagamento';
+          }
         } else if (specialEtapa && statusRules.special) {
           newStatus = statusRules.special.status;
         } else if (anyConcluida) {
@@ -220,25 +233,66 @@ const ProcessoDialog: React.FC<Props> = ({
               </Badge>
             </div>
 
-            {etapas.map((e, idx) => (
+            {etapas.map((e, idx) => {
+              const isPrevisaoPagamento = e.etapa === 'PREVISÃO DE PAGAMENTO';
+              return (
               <React.Fragment key={e.etapa}>
                 {idx > 0 && <Separator />}
                 <div className="flex items-center gap-3 py-3">
-                  <Checkbox
-                    checked={e.concluida}
-                    onCheckedChange={(checked) => toggleEtapa(e.etapa, !!checked)}
-                  />
+                  {isPrevisaoPagamento ? (
+                    <div className="w-4" />
+                  ) : (
+                    <Checkbox
+                      checked={e.concluida}
+                      onCheckedChange={(checked) => toggleEtapa(e.etapa, !!checked)}
+                    />
+                  )}
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold uppercase ${e.concluida ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    <p className={`text-sm font-semibold uppercase ${e.concluida || (isPrevisaoPagamento && e.data_conclusao) ? 'text-foreground' : 'text-muted-foreground'}`}>
                       {e.etapa}
                     </p>
-                    {e.concluida && e.data_conclusao && (
+                    {!isPrevisaoPagamento && e.concluida && e.data_conclusao && (
                       <p className="text-xs text-muted-foreground">
                         {format(new Date(e.data_conclusao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </p>
                     )}
+                    {isPrevisaoPagamento && e.data_conclusao && (
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(e.data_conclusao), "dd/MM/yyyy", { locale: ptBR })}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
+                    {isPrevisaoPagamento ? (
+                      <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
+                            <CalendarIcon className="h-4 w-4" />
+                            {e.data_conclusao
+                              ? format(new Date(e.data_conclusao), "dd/MM/yyyy", { locale: ptBR })
+                              : 'Definir data'
+                            }
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="end">
+                          <Calendar
+                            mode="single"
+                            selected={e.data_conclusao ? new Date(e.data_conclusao) : undefined}
+                            onSelect={(d) => {
+                              if (d) {
+                                setEtapas(prev => prev.map(et =>
+                                  et.etapa === e.etapa ? { ...et, data_conclusao: d.toISOString(), concluida: true } : et
+                                ));
+                                setCalendarOpen(null);
+                              }
+                            }}
+                            locale={ptBR}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    ) : (
                     <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
@@ -275,6 +329,7 @@ const ProcessoDialog: React.FC<Props> = ({
                         </div>
                       </PopoverContent>
                     </Popover>
+                    )}
                     {e.data_conclusao && (
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => clearDate(e.etapa)}>
                         <X className="h-3.5 w-3.5" />
@@ -283,7 +338,8 @@ const ProcessoDialog: React.FC<Props> = ({
                   </div>
                 </div>
               </React.Fragment>
-            ))}
+              );
+            })}
 
             {showContratoConsignante && (
               <ContratoConsignanteDialog
