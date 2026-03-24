@@ -157,8 +157,6 @@ const MotoVendaSection: React.FC<Props> = ({
             </RadioGroup>
           </div>
         </div>
-          </div>
-        </div>
         <div className="space-y-1.5">
           <Label>Observações da Moto *</Label>
           <Textarea value={obs} onChange={e => setObs(e.target.value.toUpperCase())} rows={3} className="uppercase" />
