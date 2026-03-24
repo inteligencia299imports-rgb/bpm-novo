@@ -212,7 +212,7 @@ const EstoqueTab = () => {
     if (item.atendimento_venda_id && item.status === 'vendido' && item.tipo === 'propria') {
       options.push({
         label: 'Pós-Venda',
-        icon: <ClipboardList className="h-4 w-4" />,
+        icon: <ShoppingBag className="h-4 w-4" />,
         action: () => openPosVendaOrIntermediacao(item, 'pos_venda'),
       });
     }
