@@ -228,7 +228,7 @@ const EstoqueTab = () => {
     if (item.avaliacao_id && item.tipo === 'propria') {
       options.push({
         label: 'Pós-Compra',
-        icon: <ArrowDownToLine className="h-4 w-4" />,
+        icon: <ShoppingCart className="h-4 w-4" />,
         action: () => openAvaliacaoDetail(item.avaliacao_id!, 'pos_compra'),
       });
     }
