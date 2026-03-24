@@ -128,7 +128,10 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   .select('nome_cliente, telefone, loja, cnh_url')
                   .eq('id', avalData.atendimento_id)
                   .single();
-                if (ownerData) setProprietario(ownerData);
+                if (ownerData) {
+                  setProprietario(ownerData);
+                  setCnhUrl(ownerData.cnh_url || null);
+                }
               }
             }
           }
