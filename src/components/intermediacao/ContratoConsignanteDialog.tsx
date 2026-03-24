@@ -559,13 +559,8 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                       const isAbatido = true; // oficina costs are always deducted
                       return (
                         <div key={c.id} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
-                          <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">Oficina</span>
-                          <span className="text-xs text-muted-foreground shrink-0">{(c.responsavel || '').toUpperCase()}</span>
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {(c.tipo || '').toUpperCase().replace('PECA', 'PEÇA').replace('SERVICO', 'SERVIÇO')}
-                          </span>
                           <span className="flex-1 truncate text-xs font-medium">
-                            {(c.detalhes || '-').toUpperCase()}
+                            OFICINA - {(c.responsavel || '').toUpperCase()} - {(c.tipo || '').toUpperCase().replace('PECA', 'PEÇA').replace('SERVICO', 'SERVIÇO')} - {(c.detalhes || '-').toUpperCase()}
                           </span>
                           <span className={`font-semibold text-sm whitespace-nowrap ${isAbatido ? 'text-destructive' : 'text-foreground'}`}>{formatCurrency(val)}</span>
                           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={async () => {
