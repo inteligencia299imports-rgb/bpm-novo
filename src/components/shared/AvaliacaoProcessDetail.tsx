@@ -176,15 +176,25 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   </div>
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
-                {cnhUrl && (
-                  <div>
-                    <span className="text-xs text-muted-foreground">CNH</span>
-                    <a href={cnhUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline font-medium">
-                      <Download className="h-3.5 w-3.5" /> Baixar
-                    </a>
-                  </div>
-                )}
               </div>
+              <Separator className="my-2" />
+              <DocumentUpload
+                label="CNH"
+                currentUrl={cnhUrl}
+                bucketPath={atendimento?.id ? `cnh/${atendimento.id}` : ''}
+                onUploaded={(url) => {
+                  setCnhUrl(url);
+                  if (atendimento?.id) {
+                    supabase.from('atendimentos').update({ cnh_url: url }).eq('id', atendimento.id);
+                  }
+                }}
+                onRemoved={() => {
+                  setCnhUrl(null);
+                  if (atendimento?.id) {
+                    supabase.from('atendimentos').update({ cnh_url: null }).eq('id', atendimento.id);
+                  }
+                }}
+              />
             </CardContent>
           </Card>
 
