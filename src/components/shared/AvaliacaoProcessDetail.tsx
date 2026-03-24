@@ -60,14 +60,17 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      const [cnhRes, avRes] = await Promise.all([
+      const [cnhRes, crlvRes, avRes] = await Promise.all([
         atendimento?.id
           ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
+          : Promise.resolve({ data: null }),
+        moto?.id
+          ? supabase.from('motos_avaliacao').select('crlv_url').eq('id', moto.id).single()
           : Promise.resolve({ data: null }),
         supabase.from('avaliacoes').select('quanto_pede, valor_fechamento').eq('id', item.id).maybeSingle(),
       ]);
       setCnhUrl(cnhRes.data?.cnh_url || null);
-      if (moto?.id) setCrlvUrl(moto.crlv_url || null);
+      setCrlvUrl(crlvRes.data?.crlv_url || null);
       setQuantoPede(avRes.data?.quanto_pede ?? null);
       setValorFechamento(avRes.data?.valor_fechamento ?? null);
       setLoading(false);
