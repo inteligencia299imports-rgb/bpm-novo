@@ -590,7 +590,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                         );
                       })}
                       {custosOp
-                        .filter(c => c.responsavel === 'Loja')
+                        .filter(c => c.responsavel === 'Cliente')
                         .map((c, i) => {
                           const val = parseCurrencyInput(c.valor);
                           if (val <= 0) return null;
