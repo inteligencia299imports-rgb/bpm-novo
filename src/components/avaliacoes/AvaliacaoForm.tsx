@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
@@ -129,6 +130,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [prevCustosLoja, setPrevCustosLoja] = useState('');
   const [prevCustosCliente, setPrevCustosCliente] = useState('');
   const [obsAvaliador, setObsAvaliador] = useState('');
+  const [classificacao, setClassificacao] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -159,6 +161,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         setPrevCustosLoja(numberToCurrencyMask(data.previsao_custos_loja));
         setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
         setObsAvaliador(data.observacao_avaliador || '');
+        setClassificacao((data as any).classificacao || '');
 
         if (data.moto_avaliacao_id) {
           const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', data.moto_avaliacao_id);
@@ -201,7 +204,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   };
 
   const allFieldsFilled = () => {
-    return [valorFipe, menorValor, maiorValor, quantoPede, quantoVende, quantoVendeErrado, avalConsig, avalCompra, prevCustosLoja, prevCustosCliente, obsAvaliador].every(v => v.trim() !== '');
+    return [valorFipe, menorValor, maiorValor, quantoPede, quantoVende, quantoVendeErrado, avalConsig, avalCompra, prevCustosLoja, prevCustosCliente, obsAvaliador].every(v => v.trim() !== '') && classificacao !== '';
   };
 
   const handleSave = async () => {
@@ -222,6 +225,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       previsao_custos_loja: parseCurrencyToNumber(prevCustosLoja),
       previsao_custos_cliente: parseCurrencyToNumber(prevCustosCliente),
       observacao_avaliador: obsAvaliador || null,
+      classificacao: classificacao || null,
       avaliador_id: user!.id,
       situacao: 'em_aberto',
     };
@@ -811,6 +815,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CurrencyField label="Avaliação Compra" value={avalCompra} onChange={handleCurrencyChange(setAvalCompra)} />
             <CurrencyField label="Previsão Custos Loja" value={prevCustosLoja} onChange={handleCurrencyChange(setPrevCustosLoja)} />
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
+            <div className="space-y-1.5">
+              <Label>Classificação da Moto <span className="text-destructive">*</span></Label>
+              <Select value={classificacao} onValueChange={setClassificacao}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {['A+', 'A', 'B', 'C'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Observação do Avaliador <span className="text-destructive">*</span></Label>
               <Textarea value={obsAvaliador} onChange={e => setObsAvaliador(e.target.value)} rows={3} placeholder="Observações sobre a avaliação..." />
