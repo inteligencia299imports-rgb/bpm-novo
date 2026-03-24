@@ -532,6 +532,14 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           onStatusChanged?.(item.id, newStatus, processoProps?.statusField || statusField);
         }}
       />
+
+      {isIntermParte1 && (
+        <ContratoConsignanteDialog
+          open={contratoConsignanteOpen}
+          onOpenChange={setContratoConsignanteOpen}
+          atendimentoId={item.id}
+        />
+      )}
     </div>
   );
 };
