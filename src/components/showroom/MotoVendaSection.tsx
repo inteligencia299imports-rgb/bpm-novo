@@ -22,9 +22,9 @@ interface Props {
   km: string; setKm: (v: string) => void;
   cilindrada: string; setCilindrada: (v: string) => void;
   obs: string; setObs: (v: string) => void;
-  temManual: boolean; setTemManual: (v: boolean) => void;
-  temChaveReserva: boolean; setTemChaveReserva: (v: boolean) => void;
-  manutencaoEmDia: boolean; setManutencaoEmDia: (v: boolean) => void;
+  temManual: string; setTemManual: (v: string) => void;
+  temChaveReserva: string; setTemChaveReserva: (v: string) => void;
+  manutencaoEmDia: string; setManutencaoEmDia: (v: string) => void;
   motoAvaliacaoId: string | null;
   atendimentoId: string | null;
   interesse: Interesse;
