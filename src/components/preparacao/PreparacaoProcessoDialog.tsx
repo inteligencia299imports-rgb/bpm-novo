@@ -473,6 +473,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         <DialogHeader className="flex flex-row items-center justify-between pr-8 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" /> Processo de Preparação
+            {isEstoqueTracking && <Badge variant="outline" className="text-[10px] border-primary text-primary ml-1">Acompanhamento</Badge>}
           </DialogTitle>
           <Badge style={{ backgroundColor: `${getStatusHex(activeStatus)}20`, color: getStatusHex(activeStatus) }}>
             {getStatusLabel(activeStatus)}
