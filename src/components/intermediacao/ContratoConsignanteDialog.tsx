@@ -520,9 +520,11 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
 
               <Separator />
 
-              {/* CUSTOS OPERACIONAIS */}
+              {/* RESUMO FINANCEIRO + CUSTOS */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Custos Operacionais</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Resumo Financeiro</h3>
+
+                {/* Add custo operacional inline */}
                 <div className="grid grid-cols-[1fr_2fr_1fr_auto] gap-2 items-end">
                   <div>
                     <label className="text-xs font-medium">Responsável</label>
@@ -548,80 +550,57 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                   <Button size="sm" className="h-9" onClick={addCustoOp}><Plus className="h-4 w-4" /></Button>
                 </div>
 
-                {custosOp.length > 0 && (
-                  <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                    {custosOp.map((c, idx) => (
-                        <div key={idx} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
-                          <span className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground">
-                            {c.responsavel}
+                {/* Unified cost list */}
+                {(custosOficina.length > 0 || custosOp.length > 0) && (
+                  <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+                    {custosOficina.map((c: any) => {
+                      const val = c.valor_executado || c.valor_previsto || 0;
+                      if (val <= 0) return null;
+                      const isAbatido = true; // oficina costs are always deducted
+                      return (
+                        <div key={c.id} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
+                          <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">Oficina</span>
+                          <span className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground shrink-0">{c.responsavel}</span>
+                          <span className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground shrink-0">
+                            {(c.tipo || '').replace(/peca/i, 'Peça').replace(/servico/i, 'Serviço')}
                           </span>
-                          <span className="flex-1 truncate text-xs">{c.descricao || '-'}</span>
-                          <span className="font-semibold text-sm whitespace-nowrap">R$ {c.valor}</span>
+                          <span className="flex-1 truncate text-xs font-medium">
+                            {(c.detalhes || '-').toUpperCase()}
+                          </span>
+                          <span className={`font-semibold text-sm whitespace-nowrap ${isAbatido ? 'text-destructive' : 'text-foreground'}`}>{formatCurrency(val)}</span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={async () => {
+                            await supabase.from('custos_oficina').delete().eq('id', c.id);
+                            setCustosOficina(prev => prev.filter((item: any) => item.id !== c.id));
+                            toast.success('Custo de oficina removido');
+                          }}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                    {custosOp.map((c, idx) => {
+                      const val = parseCurrencyInput(c.valor);
+                      if (val <= 0) return null;
+                      const isAbatido = c.responsavel === 'Cliente';
+                      return (
+                        <div key={`op-${idx}`} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
+                          <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium shrink-0">Operação</span>
+                          <span className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground shrink-0">{c.responsavel}</span>
+                          <span className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground shrink-0">Processo</span>
+                          <span className="flex-1 truncate text-xs font-medium">
+                            {(c.descricao || '-').toUpperCase()}
+                          </span>
+                          <span className={`font-semibold text-sm whitespace-nowrap ${isAbatido ? 'text-destructive' : 'text-foreground'}`}>{formatCurrency(val)}</span>
                           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeCustoOp(idx)}>
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
                         </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
-              </div>
 
-              <Separator />
-
-              {/* RESUMO FINANCEIRO */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Resumo Financeiro</h3>
-                {/* Detalhamento dos abatimentos */}
-                {(custosOficina.length > 0 || custosOp.filter(c => c.responsavel === 'Cliente').length > 0) && (
-                  <div className="space-y-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detalhamento dos Abatimentos</span>
-                    <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                      {custosOficina.map((c: any) => {
-                        const val = c.valor_executado || c.valor_previsto || 0;
-                        if (val <= 0) return null;
-                        return (
-                          <div key={c.id} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
-                            <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium">
-                              Oficina
-                            </span>
-                            <span className="flex-1 truncate text-xs">
-                              {(c.tipo?.toUpperCase() || '').replace('PECA', 'PEÇA').replace('SERVICO', 'SERVIÇO')}{c.detalhes ? ` - ${c.detalhes.toUpperCase()}` : ''}
-                            </span>
-                            <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(val)}</span>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={async () => {
-                              await supabase.from('custos_oficina').delete().eq('id', c.id);
-                              setCustosOficina(prev => prev.filter((item: any) => item.id !== c.id));
-                              toast.success('Custo de oficina removido');
-                            }}>
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                            </Button>
-                          </div>
-                        );
-                      })}
-                      {custosOp
-                        .filter(c => c.responsavel === 'Cliente')
-                        .map((c, i) => {
-                          const val = parseCurrencyInput(c.valor);
-                          if (val <= 0) return null;
-                          const realIdx = custosOp.indexOf(c);
-                          return (
-                            <div key={`op-${i}`} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
-                              <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium">
-                                Op. Cliente
-                              </span>
-                              <span className="flex-1 truncate text-xs">
-                                {c.descricao ? c.descricao.toUpperCase() : 'PROCESSO'}
-                              </span>
-                              <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(val)}</span>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeCustoOp(realIdx)}>
-                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                              </Button>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                )}
+                {/* Totals */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-3 flex flex-col justify-center">
                     <span className="text-xs font-semibold text-muted-foreground">Total de Abatimentos</span>
