@@ -545,8 +545,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       await supabase.from('avaliacoes').update({ preparacao_status: 'em_aberto' } as any).eq('id', avaliacaoId);
                       await insertHistory({
                         statusFrom: 'estoque',
-                        statusTo: 'em_aberto',
-                        observacoes: 'Moto enviada para preparação (acompanhamento)',
+                        statusTo: 'reenviada_preparacao',
+                        observacoes: 'Moto reenviada para preparação (acompanhamento)',
                         changedBy: user.id,
                         changedByName: userName,
                       });
