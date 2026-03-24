@@ -104,6 +104,7 @@ export type Database = {
           avaliacao_compra: number | null
           avaliacao_consignacao: number | null
           avaliador_id: string | null
+          classificacao: string | null
           consignacao_observacoes: string | null
           consignacao_status: string
           created_at: string
@@ -135,6 +136,7 @@ export type Database = {
           avaliacao_compra?: number | null
           avaliacao_consignacao?: number | null
           avaliador_id?: string | null
+          classificacao?: string | null
           consignacao_observacoes?: string | null
           consignacao_status?: string
           created_at?: string
@@ -166,6 +168,7 @@ export type Database = {
           avaliacao_compra?: number | null
           avaliacao_consignacao?: number | null
           avaliador_id?: string | null
+          classificacao?: string | null
           consignacao_observacoes?: string | null
           consignacao_status?: string
           created_at?: string

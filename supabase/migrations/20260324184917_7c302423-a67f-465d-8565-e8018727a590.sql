@@ -1,0 +1,1 @@
+ALTER TABLE public.avaliacoes ADD COLUMN classificacao text DEFAULT NULL;
