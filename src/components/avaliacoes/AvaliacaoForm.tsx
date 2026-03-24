@@ -617,6 +617,39 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     </div>
                     <p className="text-xs font-medium text-primary">REPASSE CLIENTE = AVALIAÇÃO - CUSTOS LOJA</p>
                     <Separator />
+                    {/* Destaque: Quanto Vende, Valor de Fechamento, Margem Prevista */}
+                    {(() => {
+                      const quantoVendeVal = avaliacao?.quanto_vende ?? 0;
+                      const fechamentoVal = avaliacao?.valor_fechamento ?? 0;
+                      const margem = quantoVendeVal - fechamentoVal;
+                      const margemPct = fechamentoVal > 0 ? (margem / fechamentoVal) * 100 : 0;
+                      const margemPositiva = margem >= 0;
+                      return (
+                        <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
+                          <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                              <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quanto Vende</span>
+                              <p className="text-lg font-bold text-foreground">{formatCurrency(quantoVendeVal)}</p>
+                            </div>
+                            <div>
+                              <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor Fechamento</span>
+                              <p className="text-lg font-bold text-foreground">{formatCurrency(fechamentoVal)}</p>
+                            </div>
+                            <div>
+                              <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Margem Prevista</span>
+                              <p className={`text-lg font-bold ${margemPositiva ? 'text-green-600' : 'text-destructive'}`}>
+                                {formatCurrency(margem)}
+                              </p>
+                              {fechamentoVal > 0 && (
+                                <span className={`text-xs font-semibold ${margemPositiva ? 'text-green-600' : 'text-destructive'}`}>
+                                  ({margemPct.toFixed(1)}%)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                   {avaliacao?.observacao_avaliador && (
                     <div className="mt-2">
