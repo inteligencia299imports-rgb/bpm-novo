@@ -23,7 +23,7 @@ interface StatusTimelineProps {
 }
 
 const defaultFormatStatusLabel = (raw: string): string => {
-  return raw.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação');
+  return raw.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação').replace(/\bpreparacao\b/gi, 'preparação').replace(/\breenviada\b/gi, 'reenviada');
 };
 
 const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExtra, formatLabel }) => {
