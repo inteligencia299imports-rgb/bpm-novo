@@ -586,20 +586,6 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
               {/* RESUMO FINANCEIRO */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Resumo Financeiro</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Total de Abatimentos</label>
-                    <div className="mt-1 h-10 flex items-center px-3 rounded-md border bg-muted/50 text-sm font-semibold text-destructive">
-                      {formatCurrency(abatimentos)}
-                    </div>
-                  </div>
-                  <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 flex flex-col justify-center">
-                    <span className="text-xs font-semibold text-muted-foreground">Valor de Repasse</span>
-                    <span className={`text-lg font-bold ${repasseNum >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                      {formatCurrency(repasseNum > 0 ? repasseNum : 0)}
-                    </span>
-                  </div>
-                </div>
                 {/* Detalhamento dos abatimentos */}
                 {abatimentos > 0 && (
                   <div className="rounded-md border bg-muted/30 p-3 space-y-2">
@@ -636,6 +622,20 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                     </div>
                   </div>
                 )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Total de Abatimentos</label>
+                    <div className="mt-1 h-10 flex items-center px-3 rounded-md border bg-muted/50 text-sm font-semibold text-destructive">
+                      {formatCurrency(abatimentos)}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 flex flex-col justify-center">
+                    <span className="text-xs font-semibold text-muted-foreground">Valor de Repasse</span>
+                    <span className={`text-lg font-bold ${repasseNum >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                      {formatCurrency(repasseNum > 0 ? repasseNum : 0)}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <Separator />
