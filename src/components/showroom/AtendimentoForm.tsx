@@ -118,6 +118,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setVendaKm(ma.km || '');
           setVendaCilindrada((ma as any).cilindrada || '');
           setVendaObs(ma.observacoes || '');
+          setTemManual((ma as any).tem_manual || false);
+          setTemChaveReserva((ma as any).tem_chave_reserva || false);
+          setManutencaoEmDia((ma as any).manutencao_em_dia || false);
           setEnviadaAvaliacao(ma.enviada_avaliacao || false);
         }
       }
