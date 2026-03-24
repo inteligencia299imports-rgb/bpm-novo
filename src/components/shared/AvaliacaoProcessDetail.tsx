@@ -175,6 +175,14 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   </div>
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
+                {cnhUrl && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">CNH</span>
+                    <a href={cnhUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline font-medium">
+                      <Download className="h-3.5 w-3.5" /> Baixar
+                    </a>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
