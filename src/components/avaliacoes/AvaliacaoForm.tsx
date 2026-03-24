@@ -687,16 +687,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                         <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
                           <div className="grid grid-cols-3 gap-4 text-center">
                             <div>
-                              <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quanto Vende</span>
-                              <p className="text-sm font-bold text-primary">{formatCurrency(quantoVendeVal)}</p>
+                              <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Quanto Vende</span>
+                              <p className="text-base font-bold text-primary">{formatCurrency(quantoVendeVal)}</p>
                             </div>
                             <div>
-                              <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor Fechamento</span>
-                              <p className="text-sm font-bold text-primary">{formatCurrency(fechamentoVal)}</p>
+                              <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Valor Fechamento</span>
+                              <p className="text-base font-bold text-primary">{formatCurrency(fechamentoVal)}</p>
                             </div>
                             <div>
-                              <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Margem Prevista</span>
-                              <p className={`text-sm font-bold ${margemPositiva ? 'text-primary' : 'text-destructive'}`}>
+                              <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Margem Prevista</span>
+                              <p className={`text-base font-bold ${margemPositiva ? 'text-primary' : 'text-destructive'}`}>
                                 {formatCurrency(margem)}{fechamentoVal > 0 && ` (${margemPct.toFixed(1)}%)`}
                               </p>
                             </div>
