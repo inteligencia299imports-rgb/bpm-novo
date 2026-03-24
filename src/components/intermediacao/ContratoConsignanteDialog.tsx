@@ -232,13 +232,13 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     setLoading(false);
   };
 
-  // Calculate abatimentos: custos oficina (all) + custos operacionais where responsavel = 'Loja'
+  // Calculate abatimentos: custos oficina (all) + custos operacionais where responsavel = 'Cliente'
   const calcAbatimentos = () => {
     const oficTotal = custosOficina.reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
-    const opLojaTotal = custosOp
-      .filter(c => c.responsavel === 'Loja')
+    const opClienteTotal = custosOp
+      .filter(c => c.responsavel === 'Cliente')
       .reduce((sum, c) => sum + parseCurrencyInput(c.valor), 0);
-    return oficTotal + opLojaTotal;
+    return oficTotal + opClienteTotal;
   };
 
   // Auto-calculate repasse
@@ -523,18 +523,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
               {/* CUSTOS OPERACIONAIS */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Custos Operacionais</h3>
-                <div className="grid grid-cols-[1fr_1fr_2fr_1fr_auto] gap-2 items-end">
-                  <div>
-                    <label className="text-xs font-medium">Tipo</label>
-                    <Select value={newCustoTipo} onValueChange={setNewCustoTipo}>
-                      <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Processo">Processo</SelectItem>
-                        <SelectItem value="Agregado">Agregado</SelectItem>
-                        <SelectItem value="Devolução">Devolução</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="grid grid-cols-[1fr_2fr_1fr_auto] gap-2 items-end">
                   <div>
                     <label className="text-xs font-medium">Responsável</label>
                     <Select value={newCustoResp} onValueChange={setNewCustoResp}>
@@ -559,13 +548,10 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                   <Button size="sm" className="h-9" onClick={addCustoOp}><Plus className="h-4 w-4" /></Button>
                 </div>
 
-                {custosOp.filter(c => c.responsavel !== 'Loja').length > 0 && (
+                {custosOp.length > 0 && (
                   <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                    {custosOp.map((c, idx) => {
-                      if (c.responsavel === 'Loja') return null;
-                      return (
+                    {custosOp.map((c, idx) => (
                         <div key={idx} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
-                          <span className="font-medium text-xs bg-muted px-2 py-0.5 rounded">{c.tipo}</span>
                           <span className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground">
                             {c.responsavel}
                           </span>
@@ -575,8 +561,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
                         </div>
-                      );
-                    })}
+                    ))}
                   </div>
                 )}
               </div>
@@ -605,14 +590,14 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                         );
                       })}
                       {custosOp
-                        .filter(c => c.responsavel === 'Loja')
+                        .filter(c => c.responsavel === 'Cliente')
                         .map((c, i) => {
                           const val = parseCurrencyInput(c.valor);
                           if (val <= 0) return null;
                           return (
                             <div key={`op-${i}`} className="flex items-center justify-between text-xs">
                               <span className="text-muted-foreground">
-                                <span className="inline-block rounded bg-orange-100 text-orange-700 px-1.5 py-0.5 font-medium mr-1.5">Op. Loja</span>
+                                <span className="inline-block rounded bg-orange-100 text-orange-700 px-1.5 py-0.5 font-medium mr-1.5">Op. Cliente</span>
                                 {c.tipo?.toUpperCase()}{c.descricao ? ` - ${c.descricao.toUpperCase()}` : ''}
                               </span>
                               <span className="font-semibold text-destructive">{formatCurrency(val)}</span>
