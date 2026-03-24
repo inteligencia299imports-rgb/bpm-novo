@@ -201,6 +201,7 @@ const EstoqueTab = () => {
   const getNavigationOptions = (item: EstoqueItem) => {
     const options: { label: string; icon: React.ReactNode; action: () => void }[] = [];
 
+    // 1. Venda
     if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada')) {
       options.push({
         label: item.status === 'vendido' ? 'Atendimento (Venda)' : 'Atendimento (Sinal)',
@@ -209,6 +210,16 @@ const EstoqueTab = () => {
       });
     }
 
+    // 2. Avaliação
+    if (item.avaliacao_id) {
+      options.push({
+        label: 'Avaliação',
+        icon: <ClipboardCheck className="h-4 w-4" />,
+        action: () => setDetailView({ type: 'avaliacao', data: { avaliacaoId: item.avaliacao_id } }),
+      });
+    }
+
+    // 3. Pós-Venda ou Intermediação
     if (item.atendimento_venda_id && item.status === 'vendido' && item.tipo === 'propria') {
       options.push({
         label: 'Pós-Venda',
@@ -225,6 +236,7 @@ const EstoqueTab = () => {
       });
     }
 
+    // 4. Pós-Compra ou Consignação
     if (item.avaliacao_id && item.tipo === 'propria') {
       options.push({
         label: 'Pós-Compra',
@@ -241,12 +253,8 @@ const EstoqueTab = () => {
       });
     }
 
+    // 5. Preparação
     if (item.avaliacao_id) {
-      options.push({
-        label: 'Avaliação',
-        icon: <ClipboardCheck className="h-4 w-4" />,
-        action: () => setDetailView({ type: 'avaliacao', data: { avaliacaoId: item.avaliacao_id } }),
-      });
       options.push({
         label: 'Preparação',
         icon: <Wrench className="h-4 w-4" />,
