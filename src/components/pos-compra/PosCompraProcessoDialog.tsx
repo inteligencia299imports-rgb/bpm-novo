@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
@@ -49,6 +49,10 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
   const [observacoes, setObservacoes] = useState('');
   const [previousStatus, setPreviousStatus] = useState('em_aberto');
+  const [cnhUrl, setCnhUrl] = useState<string | null>(null);
+  const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
+  const [quantoPede, setQuantoPede] = useState<number | null>(null);
+  const [valorFechamento, setValorFechamento] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -61,10 +65,22 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('pos_compra_observacoes, pos_compra_status')
+          .select('pos_compra_observacoes, pos_compra_status, quanto_pede, valor_fechamento, atendimento_id, moto_avaliacao_id')
           .eq('id', avaliacaoId)
           .maybeSingle(),
       ]);
+
+      // Fetch CNH and CRLV
+      if (avData?.atendimento_id) {
+        const { data: atData } = await supabase.from('atendimentos').select('cnh_url').eq('id', avData.atendimento_id).maybeSingle();
+        setCnhUrl(atData?.cnh_url || null);
+      }
+      if (avData?.moto_avaliacao_id) {
+        const { data: motoData } = await supabase.from('motos_avaliacao').select('crlv_url').eq('id', avData.moto_avaliacao_id).maybeSingle();
+        setCrlvUrl(motoData?.crlv_url || null);
+      }
+      setQuantoPede((avData as any)?.quanto_pede ?? null);
+      setValorFechamento((avData as any)?.valor_fechamento ?? null);
 
       const map: Record<string, EtapaData> = {};
       if (data) {
@@ -208,6 +224,38 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           </div>
         ) : (
           <div className="space-y-1">
+            {/* Documentos e Valores */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="rounded-md border p-3 space-y-1">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">CNH</p>
+                {cnhUrl ? (
+                  <a href={cnhUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
+                    <Download className="h-3 w-3" /> Baixar
+                  </a>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Não anexada</p>
+                )}
+              </div>
+              <div className="rounded-md border p-3 space-y-1">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">CRLV</p>
+                {crlvUrl ? (
+                  <a href={crlvUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
+                    <Download className="h-3 w-3" /> Baixar
+                  </a>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Não anexado</p>
+                )}
+              </div>
+              <div className="rounded-md border p-3 space-y-1">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quanto Pede</p>
+                <p className="text-sm font-semibold">{quantoPede ? `R$ ${quantoPede.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</p>
+              </div>
+              <div className="rounded-md border p-3 space-y-1">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor Fechamento</p>
+                <p className="text-sm font-semibold">{valorFechamento ? `R$ ${valorFechamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</p>
+              </div>
+            </div>
+
             <div className="text-center mb-4">
               <Badge variant="outline" className="text-xs">
                 {statusLabel} ({concluidas}/{ETAPAS.length})

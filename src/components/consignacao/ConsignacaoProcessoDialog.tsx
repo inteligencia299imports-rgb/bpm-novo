@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, Download, DollarSign } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
@@ -47,6 +47,10 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
   const [observacoes, setObservacoes] = useState('');
   const [previousStatus, setPreviousStatus] = useState('em_aberto');
+  const [cnhUrl, setCnhUrl] = useState<string | null>(null);
+  const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
+  const [quantoPede, setQuantoPede] = useState<number | null>(null);
+  const [valorFechamento, setValorFechamento] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -59,12 +63,12 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('consignacao_observacoes, consignacao_status')
+          .select('consignacao_observacoes, consignacao_status, quanto_pede, valor_fechamento, atendimento_id')
           .eq('id', avaliacaoId)
           .maybeSingle(),
         supabase
           .from('motos_avaliacao')
-          .select('consulta_realizada')
+          .select('consulta_realizada, crlv_url')
           .eq('id', motoAvaliacaoId)
           .maybeSingle(),
         supabase
@@ -76,6 +80,15 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .order('created_at', { ascending: false })
           .limit(1),
       ]);
+
+      // Fetch CNH from atendimento
+      if (avData?.atendimento_id) {
+        const { data: atData } = await supabase.from('atendimentos').select('cnh_url').eq('id', avData.atendimento_id).maybeSingle();
+        setCnhUrl(atData?.cnh_url || null);
+      }
+      setCrlvUrl(motoData?.crlv_url || null);
+      setQuantoPede((avData as any)?.quanto_pede ?? null);
+      setValorFechamento((avData as any)?.valor_fechamento ?? null);
 
       const map: Record<string, EtapaData> = {};
       if (processoData) {
@@ -233,6 +246,38 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           </div>
         ) : (
           <div className="space-y-1">
+            {/* Documentos e Valores */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div className="rounded-md border p-3 space-y-1">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">CNH</p>
+                {cnhUrl ? (
+                  <a href={cnhUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
+                    <Download className="h-3 w-3" /> Baixar
+                  </a>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Não anexada</p>
+                )}
+              </div>
+              <div className="rounded-md border p-3 space-y-1">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">CRLV</p>
+                {crlvUrl ? (
+                  <a href={crlvUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
+                    <Download className="h-3 w-3" /> Baixar
+                  </a>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Não anexado</p>
+                )}
+              </div>
+              <div className="rounded-md border p-3 space-y-1">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quanto Pede</p>
+                <p className="text-sm font-semibold">{quantoPede ? `R$ ${quantoPede.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</p>
+              </div>
+              <div className="rounded-md border p-3 space-y-1">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor Fechamento</p>
+                <p className="text-sm font-semibold">{valorFechamento ? `R$ ${valorFechamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</p>
+              </div>
+            </div>
+
             <div className="text-center mb-4">
               <Badge variant="outline" className="text-xs">
                 {statusLabel} ({concluidas}/{ETAPAS.length})
