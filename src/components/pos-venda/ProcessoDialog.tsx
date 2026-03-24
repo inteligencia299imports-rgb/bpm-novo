@@ -161,7 +161,20 @@ const ProcessoDialog: React.FC<Props> = ({
         const specialEtapa = statusRules.special ? etapas.find(e => e.etapa === statusRules.special!.etapa)?.concluida : false;
 
         if (concludedEtapa) {
-          newStatus = 'concluido';
+          // Check if there's a "PREVISÃO DE PAGAMENTO" etapa with a date set
+          const previsaoEtapa = etapas.find(e => e.etapa === 'PREVISÃO DE PAGAMENTO');
+          if (previsaoEtapa?.data_conclusao) {
+            // If previsão date is more than 1 day past, fully concluded
+            const previsaoDate = new Date(previsaoEtapa.data_conclusao);
+            const oneDayAfter = new Date(previsaoDate.getTime() + 24 * 60 * 60 * 1000);
+            if (new Date() >= oneDayAfter) {
+              newStatus = 'concluido';
+            } else {
+              newStatus = 'autorizacao_pagamento';
+            }
+          } else {
+            newStatus = 'autorizacao_pagamento';
+          }
         } else if (specialEtapa && statusRules.special) {
           newStatus = statusRules.special.status;
         } else if (anyConcluida) {
