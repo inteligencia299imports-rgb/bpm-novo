@@ -304,8 +304,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </Card>
           )}
 
-          {/* Moto de Interesse (a moto vendida do estoque) */}
-          {motosInteresse.length > 0 && (
+          {/* Moto de Interesse (a moto vendida do estoque) - hidden for Intermediação Parte 1 */}
+          {!isIntermParte1 && motosInteresse.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
