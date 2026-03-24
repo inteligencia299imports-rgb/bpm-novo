@@ -206,7 +206,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       if (estoque?.avaliacao_id) {
         const { data: cc } = await supabase.from('contratos_consignacao').select('*').eq('avaliacao_id', estoque.avaliacao_id).maybeSingle();
         if (cc) {
-          setCpfCnpj(cc.cpf_cnpj || '');
+          setCpfCnpj(formatCpfCnpj(cc.cpf_cnpj || ''));
         } else {
           setCpfCnpj('');
         }
