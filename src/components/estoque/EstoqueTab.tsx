@@ -204,7 +204,7 @@ const EstoqueTab = () => {
     // 1. Venda
     if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada')) {
       options.push({
-        label: item.status === 'vendido' ? 'Atendimento (Venda)' : 'Atendimento (Sinal)',
+        label: 'Venda',
         icon: <Bike className="h-4 w-4" />,
         action: () => openShowroom(item.atendimento_venda_id!),
       });
