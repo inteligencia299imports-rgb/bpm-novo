@@ -17,7 +17,7 @@ const PARTE_CONFIG = {
     etapas: INTERMEDIACAO_PARTE1_ETAPAS,
     observacoesField: 'pos_venda_observacoes',
     statusRules: {
-      concluded: 'PREVISÃO DE PAGAMENTO',
+      concluded: 'AUTORIZAÇÃO DE PAGAMENTO',
       default: 'em_andamento',
     },
   },
