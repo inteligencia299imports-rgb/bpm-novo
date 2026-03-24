@@ -637,7 +637,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                             </div>
                             <div>
                               <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Margem Prevista</span>
-                              <p className="text-sm font-bold text-primary">
+                              <p className={`text-sm font-bold ${margemPositiva ? 'text-primary' : 'text-destructive'}`}>
                                 {formatCurrency(margem)}{fechamentoVal > 0 && ` (${margemPct.toFixed(1)}%)`}
                               </p>
                             </div>
