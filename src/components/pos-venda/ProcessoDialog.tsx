@@ -282,23 +282,6 @@ const ProcessoDialog: React.FC<Props> = ({
                     )}
                   </div>
                 </div>
-                {/* Botão de Pagamento ao Consignante após AUTORIZAÇÃO DE PAGAMENTO */}
-                {showContratoConsignante && e.etapa === 'AUTORIZAÇÃO DE PAGAMENTO' && (
-                  <>
-                    <Separator />
-                    <div className="flex justify-center py-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2 border-primary/30 text-primary hover:bg-primary/10"
-                        onClick={() => setContratoConsignanteOpen(true)}
-                      >
-                        <DollarSign className="h-4 w-4" />
-                        Pagamento ao Consignante
-                      </Button>
-                    </div>
-                  </>
-                )}
               </React.Fragment>
             ))}
 
@@ -320,7 +303,17 @@ const ProcessoDialog: React.FC<Props> = ({
                 rows={3}
               />
             </div>
-            <div className="flex justify-end pt-3">
+            <div className="flex justify-end gap-2 pt-3">
+              {showContratoConsignante && (
+                <Button
+                  variant="outline"
+                  onClick={() => setContratoConsignanteOpen(true)}
+                  className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  Pagamento ao Consignante
+                </Button>
+              )}
               <Button onClick={handleSave} disabled={saving} className="gap-1.5">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Salvar
