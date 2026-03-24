@@ -8,7 +8,7 @@ export type Negociacao = 'compra' | 'consignacao';
 export type PosVendaStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
 export type PosCompraStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'pausado' | 'concluido';
 export type ConsignacaoStatus = 'em_aberto' | 'contrato_assinado' | 'cadastro_nbs' | 'pausado' | 'concluido';
-export type PreparacaoStatus = 'em_aberto' | 'pendente' | 'aguardando_aceite' | 'oficina' | 'servico_externo' | 'retorno' | 'aguardando_liberacao_estoque' | 'estoque';
+export type PreparacaoStatus = 'em_aberto' | 'pendente' | 'aguardando_aceite' | 'oficina' | 'servico_externo' | 'aguardando_liberacao_estoque' | 'estoque';
 export type IntermediacaoParte1Status = 'em_aberto' | 'em_andamento' | 'autorizacao_pagamento' | 'concluido';
 export type IntermediacaoParte2Status = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
 
@@ -67,7 +67,7 @@ export const PREPARACAO_COLUMNS: { value: PreparacaoStatus; label: string; hex: 
   { value: 'pendente', label: 'Pendente', hex: '#F2C94C' },
   { value: 'oficina', label: 'Oficina', hex: '#9B51E0' },
   { value: 'servico_externo', label: 'Serviço Externo', hex: '#E91E63' },
-  { value: 'retorno', label: 'Retorno', hex: '#00BCD4' },
+  
   { value: 'aguardando_aceite', label: 'Aguardando Aceite', hex: '#FF8C00' },
   { value: 'aguardando_liberacao_estoque', label: 'Aguardando Liberação Estoque', hex: '#607D8B' },
 ];
