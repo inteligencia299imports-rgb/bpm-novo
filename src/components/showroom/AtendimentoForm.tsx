@@ -160,6 +160,10 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Preencha todos os campos da Moto do Cliente');
       return;
     }
+    if ((interesse === 'vender' || interesse === 'trocar') && (!temManual || !temChaveReserva || !manutencaoEmDia)) {
+      toast.error('Informe Manual, Chave Reserva e Manutenção em Dia');
+      return;
+    }
     if ((interesse === 'vender' || interesse === 'trocar') && vendaPlaca.trim().length !== 7) {
       toast.error('A placa deve ter exatamente 7 caracteres');
       return;
