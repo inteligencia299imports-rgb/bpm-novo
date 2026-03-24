@@ -82,7 +82,8 @@ const parseCurrencyValue = (value: string): number | null => {
 };
 
 const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, currentStatus, avaliacaoData, onStatusChanged }) => {
-  const isEstoqueTracking = avaliacaoData?.situacao === 'estoque';
+  const isEstoqueTracking = avaliacaoData?.situacao === 'estoque' && currentStatus !== 'estoque';
+  const isEstoqueIdle = avaliacaoData?.situacao === 'estoque' && (currentStatus === 'estoque' || !currentStatus || currentStatus === 'em_aberto' && avaliacaoData?.preparacao_status === 'estoque');
   const [detalhes, setDetalhes] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
