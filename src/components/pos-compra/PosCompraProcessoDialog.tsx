@@ -49,10 +49,6 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
   const [observacoes, setObservacoes] = useState('');
   const [previousStatus, setPreviousStatus] = useState('em_aberto');
-  const [cnhUrl, setCnhUrl] = useState<string | null>(null);
-  const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
-  const [quantoPede, setQuantoPede] = useState<number | null>(null);
-  const [valorFechamento, setValorFechamento] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -65,22 +61,10 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('pos_compra_observacoes, pos_compra_status, quanto_pede, valor_fechamento, atendimento_id, moto_avaliacao_id')
+          .select('pos_compra_observacoes, pos_compra_status')
           .eq('id', avaliacaoId)
           .maybeSingle(),
       ]);
-
-      // Fetch CNH and CRLV
-      if (avData?.atendimento_id) {
-        const { data: atData } = await supabase.from('atendimentos').select('cnh_url').eq('id', avData.atendimento_id).maybeSingle();
-        setCnhUrl(atData?.cnh_url || null);
-      }
-      if (avData?.moto_avaliacao_id) {
-        const { data: motoData } = await supabase.from('motos_avaliacao').select('crlv_url').eq('id', avData.moto_avaliacao_id).maybeSingle();
-        setCrlvUrl(motoData?.crlv_url || null);
-      }
-      setQuantoPede((avData as any)?.quanto_pede ?? null);
-      setValorFechamento((avData as any)?.valor_fechamento ?? null);
 
       const map: Record<string, EtapaData> = {};
       if (data) {
