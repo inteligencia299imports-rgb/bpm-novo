@@ -62,7 +62,8 @@ type DetailView =
   | { type: 'intermediacao'; data: any; parte: 'parte1' | 'parte2' }
   | { type: 'pos_compra'; data: any }
   | { type: 'consignacao'; data: any }
-  | { type: 'preparacao'; data: any };
+  | { type: 'preparacao'; data: any }
+  | { type: 'avaliacao'; data: { avaliacaoId: string } };
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   disponivel: { label: 'Disponível', color: 'bg-success/15 text-success' },
