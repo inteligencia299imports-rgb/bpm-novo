@@ -190,7 +190,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" /> Dados do Cliente
+                <User className="h-4 w-4 text-primary" /> {isIntermParte1 ? 'Dados do Proprietário' : 'Dados do Cliente'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
