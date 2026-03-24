@@ -354,7 +354,7 @@ const EstoqueTab = () => {
         return (
           <AvaliacaoForm
             avaliacaoId={detailView.data.avaliacaoId}
-            onClose={() => setDetailView(null)}
+            onClose={() => { setDetailView(null); fetchEstoque(); }}
           />
         );
     }
