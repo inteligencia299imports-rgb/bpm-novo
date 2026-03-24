@@ -63,12 +63,12 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('consignacao_observacoes, consignacao_status')
+          .select('consignacao_observacoes, consignacao_status, quanto_pede, valor_fechamento, atendimento_id')
           .eq('id', avaliacaoId)
           .maybeSingle(),
         supabase
           .from('motos_avaliacao')
-          .select('consulta_realizada')
+          .select('consulta_realizada, crlv_url')
           .eq('id', motoAvaliacaoId)
           .maybeSingle(),
         supabase
@@ -80,6 +80,15 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .order('created_at', { ascending: false })
           .limit(1),
       ]);
+
+      // Fetch CNH from atendimento
+      if (avData?.atendimento_id) {
+        const { data: atData } = await supabase.from('atendimentos').select('cnh_url').eq('id', avData.atendimento_id).maybeSingle();
+        setCnhUrl(atData?.cnh_url || null);
+      }
+      setCrlvUrl(motoData?.crlv_url || null);
+      setQuantoPede((avData as any)?.quanto_pede ?? null);
+      setValorFechamento((avData as any)?.valor_fechamento ?? null);
 
       const map: Record<string, EtapaData> = {};
       if (processoData) {
