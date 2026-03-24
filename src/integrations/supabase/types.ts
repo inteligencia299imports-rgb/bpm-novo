@@ -258,7 +258,7 @@ export type Database = {
           data_sinal: string | null
           data_vencimento_sinal: string | null
           id: string
-          ipva_cotas: number | null
+          ipva_cotas: string | null
           ipva_tipo: string | null
           ipva_valor: number | null
           observacoes_contrato: string | null
@@ -276,7 +276,7 @@ export type Database = {
           data_sinal?: string | null
           data_vencimento_sinal?: string | null
           id?: string
-          ipva_cotas?: number | null
+          ipva_cotas?: string | null
           ipva_tipo?: string | null
           ipva_valor?: number | null
           observacoes_contrato?: string | null
@@ -294,7 +294,7 @@ export type Database = {
           data_sinal?: string | null
           data_vencimento_sinal?: string | null
           id?: string
-          ipva_cotas?: number | null
+          ipva_cotas?: string | null
           ipva_tipo?: string | null
           ipva_valor?: number | null
           observacoes_contrato?: string | null

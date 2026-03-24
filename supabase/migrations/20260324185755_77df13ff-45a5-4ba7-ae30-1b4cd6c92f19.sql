@@ -1,0 +1,1 @@
+ALTER TABLE public.contratos ALTER COLUMN ipva_cotas TYPE text USING ipva_cotas::text;

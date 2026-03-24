@@ -315,7 +315,7 @@ const ContratoDialog: React.FC<Props> = ({
       atendimento_id: atendimento.id,
       cpf_cnpj: cpfCnpj || null,
       ipva_tipo: ipvaTipo || null,
-      ipva_cotas: ipvaTipo === 'ambos' && ipvaCotas ? parseInt(ipvaCotas) : null,
+      ipva_cotas: ipvaTipo === 'ambos' && ipvaCotas ? ipvaCotas : null,
       ipva_valor: ipvaTipo === 'loja' ? parseCurrencyInput(ipvaValor) || null : null,
       transferencia_tipo: transferenciaTipo || null,
       transferencia_valor: transferenciaTipo === 'cliente' ? parseCurrencyInput(transferenciaValor) || null : null,
@@ -613,13 +613,13 @@ const ContratoDialog: React.FC<Props> = ({
                   </div>
                   {ipvaTipo === 'ambos' && (
                     <div className="mt-2">
-                      <label className="text-sm text-muted-foreground">Número de cotas</label>
+                      <label className="text-sm text-muted-foreground">Cotas</label>
                       <Input
                         className="mt-1"
-                        type="number"
+                        type="text"
                         value={ipvaCotas}
                         onChange={(e) => setIpvaCotas(e.target.value)}
-                        placeholder="Ex: 3"
+                        placeholder="Ex: 1 à 5"
                       />
                     </div>
                   )}
