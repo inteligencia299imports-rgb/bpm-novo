@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
+import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProcessoDialog';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 import PosCompraProcessoDialog from '@/components/pos-compra/PosCompraProcessoDialog';
 
@@ -39,10 +40,12 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
+  const [processoConsignacaoOpen, setProcessoConsignacaoOpen] = useState(false);
   const [processoPreparacaoOpen, setProcessoPreparacaoOpen] = useState(false);
   const [processoPosCompraOpen, setProcessoPosCompraOpen] = useState(false);
   const [currentPreparacaoStatus, setCurrentPreparacaoStatus] = useState(item.preparacao_status || 'em_aberto');
   const [currentPosCompraStatus, setCurrentPosCompraStatus] = useState(item.pos_compra_status || 'em_aberto');
+  const [currentConsignacaoStatus, setCurrentConsignacaoStatus] = useState(item.consignacao_status || 'em_aberto');
   const [loading, setLoading] = useState(true);
   const moto = item.moto || item.motos_avaliacao;
   const atendimento = item.atendimento || item.atendimentos;
@@ -96,8 +99,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           </div>
           {entityType === 'consignacao' && (
             <div className="hidden sm:flex items-center gap-2 shrink-0">
-              <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
-                <FileText className="h-4 w-4" /> Contrato
+              <Button size="sm" onClick={() => setProcessoConsignacaoOpen(true)} className="gap-1.5">
+                <ClipboardList className="h-4 w-4" /> Processo
               </Button>
             </div>
           )}
@@ -118,8 +121,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
         </div>
         {entityType === 'consignacao' && (
           <div className="flex sm:hidden gap-2 justify-center">
-            <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="flex-1">
-              <FileText className="h-4 w-4" />
+            <Button size="sm" onClick={() => setProcessoConsignacaoOpen(true)} className="flex-1 gap-1.5">
+              <ClipboardList className="h-4 w-4" /> Processo
             </Button>
           </div>
         )}
@@ -203,10 +206,15 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       </ScrollArea>
 
       {entityType === 'consignacao' && (
-        <ContratoConsignacaoDialog
-          open={contratoConsignacaoOpen}
-          onOpenChange={setContratoConsignacaoOpen}
-          avaliacao={item}
+        <ConsignacaoProcessoDialog
+          open={processoConsignacaoOpen}
+          onOpenChange={setProcessoConsignacaoOpen}
+          avaliacaoId={item.id}
+          motoAvaliacaoId={item.moto_avaliacao_id}
+          onStatusChanged={(newStatus) => {
+            setCurrentConsignacaoStatus(newStatus);
+            item.consignacao_status = newStatus;
+          }}
         />
       )}
 
