@@ -64,7 +64,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .maybeSingle(),
         supabase
           .from('motos_avaliacao')
-          .select('consulta_realizada, crlv_url')
+          .select('consulta_realizada')
           .eq('id', motoAvaliacaoId)
           .maybeSingle(),
         supabase
