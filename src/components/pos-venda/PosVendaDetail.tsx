@@ -184,6 +184,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {isIntermParte1 && (
+              <Button size="sm" variant="outline" onClick={() => setContratoConsignanteOpen(true)} className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10">
+                <DollarSign className="h-4 w-4" /> Pagamento
+              </Button>
+            )}
             <Button size="sm" onClick={() => setProcessoOpen(true)} className="gap-1.5">
               <ClipboardList className="h-4 w-4" /> Processo
             </Button>
