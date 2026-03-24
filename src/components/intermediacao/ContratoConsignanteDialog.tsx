@@ -603,7 +603,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                         .map((c, i) => {
                           const val = parseCurrencyInput(c.valor);
                           if (val <= 0) return null;
-                          const originalIdx = custosOp.findIndex((item, idx) => item === c && custosOp.slice(0, idx).filter(x => x.responsavel === 'Cliente').length === i);
+                          const realIdx = custosOp.indexOf(c);
                           return (
                             <div key={`op-${i}`} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
                               <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium">
