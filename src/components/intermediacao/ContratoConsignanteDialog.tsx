@@ -311,10 +311,33 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     let id = contratoId;
     if (id) {
       const { error } = await supabase.from('contratos_consignante').update(payload).eq('id', id);
-      if (error) { toast.error('Erro ao salvar'); setSaving(false); return null; }
+      if (error) { console.error('Erro ao salvar contrato consignante:', error); toast.error('Erro ao salvar: ' + error.message); setSaving(false); return null; }
+
+      // Save custos operacionais that don't have an id yet (added before save)
+      const unsavedCustos = custosOp.filter(c => !c.id);
+      if (unsavedCustos.length > 0) {
+        const rows = unsavedCustos.map(c => ({
+          contrato_consignante_id: id,
+          tipo: c.tipo,
+          responsavel: c.responsavel,
+          descricao: c.descricao || null,
+          valor: parseCurrencyInput(c.valor),
+        }));
+        const { data: inserted, error: errCustos } = await supabase.from('custos_operacionais').insert(rows as any).select();
+        if (errCustos) { console.error('Erro ao salvar custos operacionais:', errCustos); toast.error('Erro ao salvar custos: ' + errCustos.message); }
+        if (inserted) {
+          let insertIdx = 0;
+          setCustosOp(prev => prev.map(c => {
+            if (!c.id && insertIdx < inserted.length) {
+              return { ...c, id: inserted[insertIdx++]?.id };
+            }
+            return c;
+          }));
+        }
+      }
     } else {
       const { data, error } = await supabase.from('contratos_consignante').insert(payload).select().single();
-      if (error) { toast.error('Erro ao criar'); setSaving(false); return null; }
+      if (error) { console.error('Erro ao criar contrato consignante:', error); toast.error('Erro ao criar: ' + error.message); setSaving(false); return null; }
       id = data.id;
       setContratoId(data.id);
 
@@ -327,7 +350,8 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
           descricao: c.descricao || null,
           valor: parseCurrencyInput(c.valor),
         }));
-        const { data: inserted } = await supabase.from('custos_operacionais').insert(rows as any).select();
+        const { data: inserted, error: errCustos } = await supabase.from('custos_operacionais').insert(rows as any).select();
+        if (errCustos) { console.error('Erro ao salvar custos operacionais:', errCustos); toast.error('Erro ao salvar custos: ' + errCustos.message); }
         if (inserted) {
           setCustosOp(prev => prev.map((c, i) => ({ ...c, id: inserted[i]?.id })));
         }
