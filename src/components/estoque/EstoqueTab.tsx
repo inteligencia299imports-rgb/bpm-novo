@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ClipboardList, Handshake, ArrowDownToLine, BookOpen, Wrench } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ClipboardList, Handshake, ArrowDownToLine, BookOpen, Wrench, FileSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
