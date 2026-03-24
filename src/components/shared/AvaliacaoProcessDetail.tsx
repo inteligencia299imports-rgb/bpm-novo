@@ -206,10 +206,15 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       </ScrollArea>
 
       {entityType === 'consignacao' && (
-        <ContratoConsignacaoDialog
-          open={contratoConsignacaoOpen}
-          onOpenChange={setContratoConsignacaoOpen}
-          avaliacao={item}
+        <ConsignacaoProcessoDialog
+          open={processoConsignacaoOpen}
+          onOpenChange={setProcessoConsignacaoOpen}
+          avaliacaoId={item.id}
+          motoAvaliacaoId={item.moto_avaliacao_id}
+          onStatusChanged={(newStatus) => {
+            setCurrentConsignacaoStatus(newStatus);
+            item.consignacao_status = newStatus;
+          }}
         />
       )}
 
