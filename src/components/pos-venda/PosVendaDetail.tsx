@@ -14,6 +14,7 @@ import DocumentUpload from '@/components/showroom/DocumentUpload';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProcessoDialog from './ProcessoDialog';
+import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 
 interface Props {
   item: any;
