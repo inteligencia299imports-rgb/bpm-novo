@@ -167,7 +167,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           </Button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-xl font-bold truncate">{item.nome_cliente}</h1>
+              <h1 className="text-lg sm:text-xl font-bold truncate">{displayName}</h1>
               {statusCol && <Badge className="text-[10px] shrink-0" style={{ backgroundColor: `${statusCol.hex}20`, color: statusCol.hex }}>{statusCol.label}</Badge>}
             </div>
             <p className="text-xs text-muted-foreground">
