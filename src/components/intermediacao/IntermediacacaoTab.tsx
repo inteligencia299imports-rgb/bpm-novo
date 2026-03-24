@@ -45,35 +45,37 @@ const IntermediacacaoTab = () => {
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false });
-    if (error) { toast.error('Erro ao carregar intermediação'); setLoading(false); return; }
-    const atIds = (data || []).map(a => a.id);
-    let filtered = data || [];
-    if (atIds.length > 0) {
-      const { data: estoqueData } = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id').eq('tipo', 'consignada').in('atendimento_venda_id', atIds);
-      const estoqueMap: Record<string, any> = {};
-      (estoqueData || []).forEach((e: any) => { estoqueMap[e.atendimento_venda_id] = e; });
-      filtered = filtered.filter(a => estoqueMap[a.id]).map(a => ({ ...a, _estoqueMoto: estoqueMap[a.id] }));
+    // Fetch atendimentos and consignada estoque in parallel
+    const [atRes, estRes] = await Promise.all([
+      supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }),
+      supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id').eq('tipo', 'consignada'),
+    ]);
+    if (atRes.error) { toast.error('Erro ao carregar intermediação'); setLoading(false); return; }
 
-      // Fetch original owners (proprietários) from avaliacoes → atendimentos
-      const avaliacaoIds = Object.values(estoqueMap).map((e: any) => e.avaliacao_id).filter(Boolean);
-      if (avaliacaoIds.length > 0) {
-        const { data: avalData } = await supabase.from('avaliacoes').select('id, atendimento_id').in('id', avaliacaoIds);
-        if (avalData && avalData.length > 0) {
-          const ownerAtIds = avalData.map((a: any) => a.atendimento_id).filter(Boolean);
-          const { data: ownerData } = await supabase.from('atendimentos').select('id, nome_cliente, telefone, loja').in('id', ownerAtIds);
-          const ownerMap: Record<string, any> = {};
-          (ownerData || []).forEach((o: any) => { ownerMap[o.id] = o; });
-          const avalToOwner: Record<string, any> = {};
-          avalData.forEach((a: any) => { avalToOwner[a.id] = ownerMap[a.atendimento_id]; });
-          filtered = filtered.map(a => {
-            const est = estoqueMap[a.id];
-            const owner = est?.avaliacao_id ? avalToOwner[est.avaliacao_id] : null;
-            return { ...a, _proprietario: owner };
-          });
-        }
+    const estoqueMap: Record<string, any> = {};
+    (estRes.data || []).forEach((e: any) => { estoqueMap[e.atendimento_venda_id] = e; });
+
+    let filtered = (atRes.data || []).filter(a => estoqueMap[a.id]).map(a => ({ ...a, _estoqueMoto: estoqueMap[a.id] }));
+
+    // Fetch owners in parallel: avaliacoes → atendimentos
+    const avaliacaoIds = Object.values(estoqueMap).map((e: any) => e.avaliacao_id).filter(Boolean);
+    if (avaliacaoIds.length > 0) {
+      const { data: avalData } = await supabase.from('avaliacoes').select('id, atendimento_id').in('id', avaliacaoIds);
+      if (avalData && avalData.length > 0) {
+        const ownerAtIds = avalData.map((a: any) => a.atendimento_id).filter(Boolean);
+        const { data: ownerData } = await supabase.from('atendimentos').select('id, nome_cliente, telefone, loja').in('id', ownerAtIds);
+        const ownerMap: Record<string, any> = {};
+        (ownerData || []).forEach((o: any) => { ownerMap[o.id] = o; });
+        const avalToOwner: Record<string, any> = {};
+        avalData.forEach((a: any) => { avalToOwner[a.id] = ownerMap[a.atendimento_id]; });
+        filtered = filtered.map(a => {
+          const est = estoqueMap[a.id];
+          const owner = est?.avaliacao_id ? avalToOwner[est.avaliacao_id] : null;
+          return { ...a, _proprietario: owner };
+        });
       }
     }
+
     if (search.trim()) { const s = search.trim().toLowerCase(); filtered = filtered.filter((a: any) => { const owner = a._proprietario; return [a.nome_cliente, a.telefone, a.loja, owner?.nome_cliente, owner?.telefone].some(f => f && String(f).toLowerCase().includes(s)); }); }
     setItems(filtered);
     setLoading(false);
