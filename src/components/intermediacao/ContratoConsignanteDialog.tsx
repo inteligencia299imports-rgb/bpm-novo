@@ -613,7 +613,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                                 {c.descricao ? c.descricao.toUpperCase() : 'PROCESSO'}
                               </span>
                               <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(val)}</span>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeCustoOp(originalIdx)}>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeCustoOp(realIdx)}>
                                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
                               </Button>
                             </div>
