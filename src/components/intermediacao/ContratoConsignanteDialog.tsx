@@ -623,11 +623,11 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Total de Abatimentos</label>
-                    <div className="mt-1 h-10 flex items-center px-3 rounded-md border bg-muted/50 text-sm font-semibold text-destructive">
+                  <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-3 flex flex-col justify-center">
+                    <span className="text-xs font-semibold text-muted-foreground">Total de Abatimentos</span>
+                    <span className="text-lg font-bold text-destructive">
                       {formatCurrency(abatimentos)}
-                    </div>
+                    </span>
                   </div>
                   <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 flex flex-col justify-center">
                     <span className="text-xs font-semibold text-muted-foreground">Valor de Repasse</span>
