@@ -201,7 +201,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       setContratoId(null);
       // Pre-fill consignante data from the original atendimento + contrato_consignacao
       setNomeConsignante(consignanteAtendimento?.nome_cliente || '');
-      setTelefoneConsignante(consignanteAtendimento?.telefone || '');
+      setTelefoneConsignante(formatTelefone(consignanteAtendimento?.telefone || ''));
 
       if (estoque?.avaliacao_id) {
         const { data: cc } = await supabase.from('contratos_consignacao').select('*').eq('avaliacao_id', estoque.avaliacao_id).maybeSingle();
