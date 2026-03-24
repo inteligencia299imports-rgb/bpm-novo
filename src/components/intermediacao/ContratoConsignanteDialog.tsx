@@ -531,7 +531,6 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                     </div>
                   </div>
                 )}
-                </div>
                 <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 flex items-center justify-between">
                   <span className="text-sm font-semibold text-foreground">Valor de Repasse</span>
                   <span className={`text-lg font-bold ${repasseNum >= 0 ? 'text-primary' : 'text-destructive'}`}>
