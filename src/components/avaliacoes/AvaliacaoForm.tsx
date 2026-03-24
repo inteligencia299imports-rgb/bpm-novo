@@ -309,9 +309,61 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setValorFechamentoAquisicao('');
     setTipoSelecionado(null);
     setObsMotaAquisicao('');
+    setIsConvertendo(false);
   };
 
-  if (loading) {
+  const handleSaveConversao = async () => {
+    if (!tipoSelecionado) {
+      toast.error('Selecione o tipo de aquisição');
+      return;
+    }
+    const valor = parseCurrencyToNumber(valorFechamentoAquisicao);
+    if (!valor || valor <= 0) {
+      toast.error('Informe o valor de fechamento');
+      return;
+    }
+    setSavingAquisicao(true);
+    
+    const currentTipo = avaliacao?.tipo_aquisicao;
+    // consignada → propria = convertida; propria/convertida → consignada = consignada
+    const newTipo = (currentTipo === 'consignada') ? 'convertida' : 'consignada';
+    
+    if (obsMotaAquisicao.trim() && avaliacao?.moto_avaliacao_id) {
+      await supabase.from('motos_avaliacao').update({ observacoes: obsMotaAquisicao.trim().toUpperCase() }).eq('id', avaliacao.moto_avaliacao_id);
+    }
+    
+    const { error } = await supabase.from('avaliacoes').update({
+      tipo_aquisicao: newTipo,
+      valor_fechamento: valor,
+    }).eq('id', avaliacaoId);
+    
+    if (error) {
+      toast.error('Erro ao converter aquisição');
+    } else {
+      const tipoLabel = newTipo === 'convertida' ? 'Convertida' : 'Consignada';
+      const fromLabel = currentTipo === 'consignada' ? 'Consignada' : currentTipo === 'convertida' ? 'Convertida' : 'Própria';
+      if (avaliacao?.moto_avaliacao_id) {
+        await supabase.from('status_history').insert({
+          entity_type: 'avaliacao',
+          entity_id: avaliacao.moto_avaliacao_id,
+          status_from: fromLabel,
+          status_to: tipoLabel,
+          changed_by: user?.id,
+          changed_by_name: userName || user?.email || null,
+          observacoes: `Conversão de ${fromLabel} para ${tipoLabel}`,
+        } as any);
+      }
+      toast.success(`Moto convertida para ${tipoLabel}!`);
+      setAvaliacao((prev: any) => ({ ...prev, tipo_aquisicao: newTipo, valor_fechamento: valor }));
+    }
+    
+    setSavingAquisicao(false);
+    setTipoAquisicaoPopup(false);
+    setValorFechamentoAquisicao('');
+    setTipoSelecionado(null);
+    setObsMotaAquisicao('');
+    setIsConvertendo(false);
+  };
     return <DetailSkeleton onClose={onClose} cards={6} />;
   }
 
