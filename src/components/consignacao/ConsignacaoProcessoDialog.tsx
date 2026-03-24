@@ -77,14 +77,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .limit(1),
       ]);
 
-      // Fetch CNH from atendimento
-      if (avData?.atendimento_id) {
-        const { data: atData } = await supabase.from('atendimentos').select('cnh_url').eq('id', avData.atendimento_id).maybeSingle();
-        setCnhUrl(atData?.cnh_url || null);
-      }
-      setCrlvUrl(motoData?.crlv_url || null);
-      setQuantoPede((avData as any)?.quanto_pede ?? null);
-      setValorFechamento((avData as any)?.valor_fechamento ?? null);
+
 
       const map: Record<string, EtapaData> = {};
       if (processoData) {
