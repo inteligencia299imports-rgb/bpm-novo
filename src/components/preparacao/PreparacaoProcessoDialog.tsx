@@ -447,8 +447,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
       await insertHistory({
         statusFrom,
-        statusTo: 'estoque',
-        observacoes: `PREPARAÇÃO CONCLUÍDA (ACOMPANHAMENTO). ${detalhes.trim()}`,
+        statusTo: 'preparacao_concluida',
+        observacoes: `${detalhes.trim()}`,
         changedBy: user.id,
         changedByName: userName,
       });
