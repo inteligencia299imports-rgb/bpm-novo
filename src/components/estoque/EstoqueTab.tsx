@@ -293,7 +293,7 @@ const EstoqueTab = () => {
               statusField: 'intermediacao_parte1_status',
               etapas: INTERMEDIACAO_PARTE1_ETAPAS,
               observacoesField: 'pos_venda_observacoes',
-              statusRules: { concluded: 'AUTORIZAÇÃO DE PAGAMENTO', default: 'em_andamento' },
+              statusRules: { concluded: 'PREVISÃO DE PAGAMENTO', default: 'em_andamento' },
             }
           : {
               columns: INTERMEDIACAO_PARTE2_COLUMNS,
