@@ -214,15 +214,25 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   {ano && <InfoItem label="Ano" value={ano} />}
                   {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
                   {moto.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{moto.categoria}</span>} />}
-                  {crlvUrl && (
-                    <div>
-                      <span className="text-xs text-muted-foreground">CRLV</span>
-                      <a href={crlvUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline font-medium">
-                        <Download className="h-3.5 w-3.5" /> Baixar
-                      </a>
-                    </div>
-                  )}
                 </div>
+                <Separator className="my-2" />
+                <DocumentUpload
+                  label="CRLV"
+                  currentUrl={crlvUrl}
+                  bucketPath={moto.id ? `crlv/${moto.id}` : ''}
+                  onUploaded={(url) => {
+                    setCrlvUrl(url);
+                    if (moto.id) {
+                      supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
+                    }
+                  }}
+                  onRemoved={() => {
+                    setCrlvUrl(null);
+                    if (moto.id) {
+                      supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
+                    }
+                  }}
+                />
                 {(moto.tem_manual || moto.tem_chave_reserva) && (
                   <>
                     <Separator className="my-3" />
