@@ -250,18 +250,18 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 {(entityType === 'consignacao' || entityType === 'pos_compra') && (quantoPede != null || valorFechamento != null) && (
                   <>
                     <Separator className="my-3" />
-                    <div className="rounded-lg bg-primary/10 border border-primary/20 p-3">
+                    <div className="rounded-lg border border-border bg-muted/30 p-4">
                       <div className="grid grid-cols-2 gap-4">
                         {quantoPede != null && (
                           <div>
-                            <span className="text-xs text-primary/70">Quanto Pede</span>
-                            <p className="text-sm font-bold text-primary">{formatCurrency(quantoPede)}</p>
+                            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Quanto Pede</span>
+                            <p className="text-base font-semibold text-primary">{formatCurrency(quantoPede)}</p>
                           </div>
                         )}
                         {valorFechamento != null && (
                           <div>
-                            <span className="text-xs text-primary/70">Valor de Fechamento</span>
-                            <p className="text-sm font-bold text-primary">{formatCurrency(valorFechamento)}</p>
+                            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Valor Fechamento</span>
+                            <p className="text-base font-semibold text-primary">{formatCurrency(valorFechamento)}</p>
                           </div>
                         )}
                       </div>
