@@ -68,6 +68,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
   const [estoqueData, setEstoqueData] = useState<Record<string, any>>({});
   const [proprietario, setProprietario] = useState<any>(null);
+  const [motoConsignada, setMotoConsignada] = useState<any>(null);
+  const [avaliacaoConsignada, setAvaliacaoConsignada] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [processoOpen, setProcessoOpen] = useState(false);
@@ -114,16 +116,20 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           if (consignadaEstoque?.avaliacao_id) {
             const { data: avalData } = await supabase
               .from('avaliacoes')
-              .select('atendimento_id')
+              .select('*, motos_avaliacao(*)')
               .eq('id', consignadaEstoque.avaliacao_id)
               .single();
-            if (avalData?.atendimento_id) {
-              const { data: ownerData } = await supabase
-                .from('atendimentos')
-                .select('nome_cliente, telefone, loja, cnh_url')
-                .eq('id', avalData.atendimento_id)
-                .single();
-              if (ownerData) setProprietario(ownerData);
+            if (avalData) {
+              setAvaliacaoConsignada(avalData);
+              if (avalData.motos_avaliacao) setMotoConsignada(avalData.motos_avaliacao);
+              if (avalData.atendimento_id) {
+                const { data: ownerData } = await supabase
+                  .from('atendimentos')
+                  .select('nome_cliente, telefone, loja, cnh_url')
+                  .eq('id', avalData.atendimento_id)
+                  .single();
+                if (ownerData) setProprietario(ownerData);
+              }
             }
           }
         }
@@ -228,23 +234,75 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </CardContent>
           </Card>
 
-          {/* Dados do Atendimento */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Store className="h-4 w-4 text-primary" /> Dados do Atendimento
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <InfoItem label="Loja" value={item.loja} />
-                <InfoItem label="Tipo de Atendimento" value={item.tipo_atendimento} />
-                <InfoItem label="Interesse" value={int?.label} />
-                <InfoItem label="Origem" value={item.origem} />
-                <InfoItem label="Temperatura" value={item.temperatura} />
-              </div>
-            </CardContent>
-          </Card>
+          {/* Dados do Atendimento - hidden for Intermediação Parte 1 */}
+          {!isIntermParte1 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Store className="h-4 w-4 text-primary" /> Dados do Atendimento
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoItem label="Loja" value={item.loja} />
+                  <InfoItem label="Tipo de Atendimento" value={item.tipo_atendimento} />
+                  <InfoItem label="Interesse" value={int?.label} />
+                  <InfoItem label="Origem" value={item.origem} />
+                  <InfoItem label="Temperatura" value={item.temperatura} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Dados da Moto - for Intermediação Parte 1 (same layout as consignação) */}
+          {isIntermParte1 && motoConsignada && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Bike className="h-4 w-4 text-primary" /> Dados da Moto
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoItem label="Marca / Modelo" value={`${motoConsignada.marca} ${(motoConsignada.modelo || '').toUpperCase()}`} />
+                  {motoConsignada.placa && <InfoItem label="Placa" value={motoConsignada.placa.replace(/-/g, '')} />}
+                  {motoConsignada.km && <InfoItem label="KM" value={formatKm(motoConsignada.km)} />}
+                  {(motoConsignada.ano_fabricacao || motoConsignada.ano_modelo) && (
+                    <InfoItem label="Ano" value={[motoConsignada.ano_fabricacao, motoConsignada.ano_modelo].filter(Boolean).join('/')} />
+                  )}
+                  {motoConsignada.cor && <InfoItem label="Cor" value={<span className="uppercase">{motoConsignada.cor}</span>} />}
+                  {motoConsignada.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{motoConsignada.categoria}</span>} />}
+                </div>
+                {motoConsignada.observacoes && (
+                  <>
+                    <Separator className="my-3" />
+                    <p className="text-xs text-muted-foreground italic">{motoConsignada.observacoes}</p>
+                  </>
+                )}
+                {(avaliacaoConsignada?.quanto_pede != null || avaliacaoConsignada?.valor_fechamento != null) && (
+                  <>
+                    <Separator className="my-3" />
+                    <div className="rounded-lg border border-border bg-muted/30 p-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        {avaliacaoConsignada.quanto_pede != null && (
+                          <div>
+                            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Quanto Pede</span>
+                            <p className="text-base font-semibold text-primary">{formatCurrency(avaliacaoConsignada.quanto_pede)}</p>
+                          </div>
+                        )}
+                        {avaliacaoConsignada.valor_fechamento != null && (
+                          <div>
+                            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Valor Fechamento</span>
+                            <p className="text-base font-semibold text-primary">{formatCurrency(avaliacaoConsignada.valor_fechamento)}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Moto de Interesse (a moto vendida do estoque) */}
           {motosInteresse.length > 0 && (
