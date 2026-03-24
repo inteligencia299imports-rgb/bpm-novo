@@ -1017,57 +1017,55 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div>
-              <label className="text-sm font-medium text-foreground">Valor do Sinal (R$)</label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                <Input
-                  className="pl-10"
-                  placeholder="0,00"
-                  value={valorPopup?.valorSinal || ''}
-                  onChange={(e) => {
-                    const formatted = formatCurrencyInput(e.target.value);
-                    setValorPopup(prev => prev ? { ...prev, valorSinal: formatted } : null);
-                  }}
-                  inputMode="numeric"
-                />
-              </div>
-            </div>
-            {valorPopup?.modo === 'vendido' && (
+            {valorPopup?.modo === 'sinal' && (
               <div>
-                <label className="text-sm font-medium text-foreground">Valor da Venda (R$)</label>
+                <label className="text-sm font-medium text-foreground">Valor do Sinal (R$)</label>
                 <div className="relative mt-1">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                   <Input
                     className="pl-10"
                     placeholder="0,00"
-                    value={valorPopup?.valorVenda || ''}
+                    value={valorPopup?.valorSinal || ''}
                     onChange={(e) => {
                       const formatted = formatCurrencyInput(e.target.value);
-                      setValorPopup(prev => prev ? { ...prev, valorVenda: formatted } : null);
+                      setValorPopup(prev => prev ? { ...prev, valorSinal: formatted } : null);
                     }}
                     inputMode="numeric"
                   />
                 </div>
               </div>
             )}
-            {valorPopup?.modo === 'vendido' && atendimento.interesse === 'trocar' && (
-              <div>
-                <label className="text-sm font-medium text-foreground">Valor de Fechamento da Moto do Cliente (R$)</label>
-                <div className="relative mt-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                  <Input
-                    className="pl-10"
-                    placeholder="0,00"
-                    value={valorPopup?.valorFechamento || ''}
-                    onChange={(e) => {
-                      const formatted = formatCurrencyInput(e.target.value);
-                      setValorPopup(prev => prev ? { ...prev, valorFechamento: formatted } : null);
-                    }}
-                    inputMode="numeric"
-                  />
+            {valorPopup?.modo === 'vendido' && (
+              <>
+                {valorPopup.valorSinal && (
+                  <div className="rounded-md bg-muted/50 p-3 space-y-1">
+                    <p className="text-xs text-muted-foreground">Valor do Sinal</p>
+                    <p className="text-sm font-semibold">R$ {valorPopup.valorSinal}</p>
+                  </div>
+                )}
+                {atendimento.interesse === 'trocar' && valorPopup.valorFechamento && (
+                  <div className="rounded-md bg-muted/50 p-3 space-y-1">
+                    <p className="text-xs text-muted-foreground">Valor Fechamento (Moto do Cliente)</p>
+                    <p className="text-sm font-semibold">R$ {valorPopup.valorFechamento}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-foreground">Valor da Venda (R$) <span className="text-destructive">*</span></label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                    <Input
+                      className="pl-10"
+                      placeholder="0,00"
+                      value={valorPopup?.valorVenda || ''}
+                      onChange={(e) => {
+                        const formatted = formatCurrencyInput(e.target.value);
+                        setValorPopup(prev => prev ? { ...prev, valorVenda: formatted } : null);
+                      }}
+                      inputMode="numeric"
+                    />
+                  </div>
                 </div>
-              </div>
+              </>
             )}
             <Button
               className="w-full"
