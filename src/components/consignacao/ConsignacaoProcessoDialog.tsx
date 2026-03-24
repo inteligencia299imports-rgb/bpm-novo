@@ -246,38 +246,6 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           </div>
         ) : (
           <div className="space-y-1">
-            {/* Documentos e Valores */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-              <div className="rounded-md border p-3 space-y-1">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">CNH</p>
-                {cnhUrl ? (
-                  <a href={cnhUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
-                    <Download className="h-3 w-3" /> Baixar
-                  </a>
-                ) : (
-                  <p className="text-xs text-muted-foreground">Não anexada</p>
-                )}
-              </div>
-              <div className="rounded-md border p-3 space-y-1">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">CRLV</p>
-                {crlvUrl ? (
-                  <a href={crlvUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline font-medium">
-                    <Download className="h-3 w-3" /> Baixar
-                  </a>
-                ) : (
-                  <p className="text-xs text-muted-foreground">Não anexado</p>
-                )}
-              </div>
-              <div className="rounded-md border p-3 space-y-1">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quanto Pede</p>
-                <p className="text-sm font-semibold">{quantoPede ? `R$ ${quantoPede.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</p>
-              </div>
-              <div className="rounded-md border p-3 space-y-1">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor Fechamento</p>
-                <p className="text-sm font-semibold">{valorFechamento ? `R$ ${valorFechamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</p>
-              </div>
-            </div>
-
             <div className="text-center mb-4">
               <Badge variant="outline" className="text-xs">
                 {statusLabel} ({concluidas}/{ETAPAS.length})
