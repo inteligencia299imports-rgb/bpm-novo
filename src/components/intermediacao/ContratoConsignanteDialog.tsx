@@ -234,7 +234,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
 
   // Calculate abatimentos: custos oficina (all) + custos operacionais where responsavel = 'Cliente'
   const calcAbatimentos = () => {
-    const oficTotal = custosOficina.filter((c: any) => c.responsavel === 'Cliente').reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
+    const oficTotal = custosOficina.filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente').reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
     const opClienteTotal = custosOp
       .filter(c => c.responsavel === 'Cliente')
       .reduce((sum, c) => sum + parseCurrencyInput(c.valor), 0);
@@ -556,7 +556,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                     {custosOficina.map((c: any) => {
                       const val = c.valor_executado || c.valor_previsto || 0;
                       if (val <= 0) return null;
-                      const isAbatido = c.responsavel === 'Cliente';
+                      const isAbatido = (c.responsavel || '').toLowerCase() === 'cliente';
                       return (
                         <div key={c.id} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
                           <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">Oficina</span>
