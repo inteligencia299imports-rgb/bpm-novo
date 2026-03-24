@@ -14,6 +14,7 @@ import DocumentUpload from '@/components/showroom/DocumentUpload';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProcessoDialog from './ProcessoDialog';
+import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 
 interface Props {
   item: any;
@@ -73,6 +74,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [loading, setLoading] = useState(true);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [processoOpen, setProcessoOpen] = useState(false);
+  const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
 
   const moto = item.motos_avaliacao?.[0];
   const [cnhUrl, setCnhUrl] = useState<string | null>(item.cnh_url || null);
@@ -184,6 +186,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {isIntermParte1 && (
+              <Button size="sm" variant="outline" onClick={() => setContratoConsignanteOpen(true)} className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10">
+                <DollarSign className="h-4 w-4" /> Pagamento
+              </Button>
+            )}
             <Button size="sm" onClick={() => setProcessoOpen(true)} className="gap-1.5">
               <ClipboardList className="h-4 w-4" /> Processo
             </Button>
@@ -525,6 +532,14 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           onStatusChanged?.(item.id, newStatus, processoProps?.statusField || statusField);
         }}
       />
+
+      {isIntermParte1 && (
+        <ContratoConsignanteDialog
+          open={contratoConsignanteOpen}
+          onOpenChange={setContratoConsignanteOpen}
+          atendimentoId={item.id}
+        />
+      )}
     </div>
   );
 };
