@@ -452,7 +452,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                   </div>
                   <div>
                     <label className="text-sm font-medium">Telefone</label>
-                    <Input className="mt-1" value={telefoneConsignante} onChange={e => setTelefoneConsignante(e.target.value)} placeholder="(00) 00000-0000" />
+                    <Input className="mt-1" value={telefoneConsignante} onChange={e => setTelefoneConsignante(formatTelefone(e.target.value))} maxLength={15} placeholder="(00) 00000-0000" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
