@@ -226,23 +226,27 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                     <p className="text-xs text-muted-foreground italic">{moto.observacoes}</p>
                   </>
                 )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Valores da Avaliação */}
-          {(entityType === 'consignacao' || entityType === 'pos_compra') && (quantoPede != null || valorFechamento != null) && (
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-primary" /> Valores
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <InfoItem label="Quanto Pede" value={formatCurrency(quantoPede)} />
-                  <InfoItem label="Valor de Fechamento" value={formatCurrency(valorFechamento)} />
-                </div>
+                {(entityType === 'consignacao' || entityType === 'pos_compra') && (quantoPede != null || valorFechamento != null) && (
+                  <>
+                    <Separator className="my-3" />
+                    <div className="rounded-lg bg-primary/10 border border-primary/20 p-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        {quantoPede != null && (
+                          <div>
+                            <span className="text-xs text-primary/70">Quanto Pede</span>
+                            <p className="text-sm font-bold text-primary">{formatCurrency(quantoPede)}</p>
+                          </div>
+                        )}
+                        {valorFechamento != null && (
+                          <div>
+                            <span className="text-xs text-primary/70">Valor de Fechamento</span>
+                            <p className="text-sm font-bold text-primary">{formatCurrency(valorFechamento)}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
