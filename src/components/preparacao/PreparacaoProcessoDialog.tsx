@@ -82,7 +82,9 @@ const parseCurrencyValue = (value: string): number | null => {
 };
 
 const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, currentStatus, avaliacaoData, onStatusChanged }) => {
-  const isEstoqueTracking = avaliacaoData?.situacao === 'estoque';
+  const isInEstoque = avaliacaoData?.situacao === 'estoque';
+  const isEstoqueIdle = isInEstoque && (currentStatus === 'estoque' || !currentStatus);
+  const isEstoqueTracking = isInEstoque && !isEstoqueIdle;
   const [detalhes, setDetalhes] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -528,7 +530,43 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
             <Separator className="my-1" />
 
-            {!showLiberarForm ? (
+            {isEstoqueIdle ? (
+              /* Estoque idle: show button to send to preparação for tracking */
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Esta moto já está em estoque. Deseja enviá-la para preparação para acompanhamento de reparos?</p>
+                <Button
+                  variant="default"
+                  disabled={saving}
+                  onClick={async () => {
+                    setSaving(true);
+                    try {
+                      const { user, userName } = await getUserInfo();
+                      if (!user) { toast.error('Sessão expirada'); return; }
+                      await supabase.from('avaliacoes').update({ preparacao_status: 'em_aberto' } as any).eq('id', avaliacaoId);
+                      await insertHistory({
+                        statusFrom: 'estoque',
+                        statusTo: 'em_aberto',
+                        observacoes: 'Moto enviada para preparação (acompanhamento)',
+                        changedBy: user.id,
+                        changedByName: userName,
+                      });
+                      toast.success('Moto enviada para preparação');
+                      onStatusChanged?.('em_aberto');
+                      onOpenChange(false);
+                    } catch (err) {
+                      console.error(err);
+                      toast.error('Erro ao enviar para preparação');
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  className="gap-2 w-full h-10 text-sm font-medium"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+                  Enviar para Preparação
+                </Button>
+              </div>
+            ) : !showLiberarForm ? (
               <>
                 {/* Detalhes */}
                 <div className="space-y-2">
