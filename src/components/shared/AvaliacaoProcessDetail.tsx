@@ -203,7 +203,23 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   {ano && <InfoItem label="Ano" value={ano} />}
                   {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
                   {moto.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{moto.categoria}</span>} />}
+                  {crlvUrl && (
+                    <div>
+                      <span className="text-xs text-muted-foreground">CRLV</span>
+                      <a href={crlvUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline font-medium">
+                        <Download className="h-3.5 w-3.5" /> Baixar
+                      </a>
+                    </div>
+                  )}
                 </div>
+                {(moto.tem_manual || moto.tem_chave_reserva) && (
+                  <>
+                    <Separator className="my-3" />
+                    <p className="text-xs text-muted-foreground italic uppercase">
+                      {[moto.tem_manual && 'Manual', moto.tem_chave_reserva && 'Chave Reserva'].filter(Boolean).join(' e ')}
+                    </p>
+                  </>
+                )}
                 {moto.observacoes && (
                   <>
                     <Separator className="my-3" />
@@ -214,6 +230,22 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             </Card>
           )}
 
+          {/* Valores da Avaliação */}
+          {(entityType === 'consignacao' || entityType === 'pos_compra') && (quantoPede != null || valorFechamento != null) && (
+            <Card className="md:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-primary" /> Valores
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <InfoItem label="Quanto Pede" value={formatCurrency(quantoPede)} />
+                  <InfoItem label="Valor de Fechamento" value={formatCurrency(valorFechamento)} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
         </div>
       </ScrollArea>
