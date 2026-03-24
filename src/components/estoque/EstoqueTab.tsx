@@ -341,6 +341,13 @@ const EstoqueTab = () => {
             onStatusChanged={() => { setDetailView(null); fetchEstoque(); }}
           />
         );
+      case 'avaliacao':
+        return (
+          <AvaliacaoForm
+            avaliacaoId={detailView.data.avaliacaoId}
+            onClose={() => setDetailView(null)}
+          />
+        );
     }
   }
 
