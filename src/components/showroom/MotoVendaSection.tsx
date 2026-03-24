@@ -116,18 +116,47 @@ const MotoVendaSection: React.FC<Props> = ({
             <Input value={cilindrada} onChange={e => setCilindrada(formatKm(e.target.value))} placeholder="Ex: 1.200" inputMode="numeric" />
           </div>
         </div>
-        <div className="flex flex-wrap gap-6 pt-1">
-          <div className="flex items-center gap-2">
-            <Checkbox id="temManual" checked={temManual} onCheckedChange={(v) => setTemManual(!!v)} />
-            <Label htmlFor="temManual" className="cursor-pointer">Manual</Label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+          <div className="space-y-1.5">
+            <Label>Manual *</Label>
+            <RadioGroup value={temManual} onValueChange={setTemManual} className="flex gap-4">
+              <div className="flex items-center gap-1.5">
+                <RadioGroupItem value="sim" id="manual-sim" />
+                <Label htmlFor="manual-sim" className="cursor-pointer font-normal">Sim</Label>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <RadioGroupItem value="nao" id="manual-nao" />
+                <Label htmlFor="manual-nao" className="cursor-pointer font-normal">Não</Label>
+              </div>
+            </RadioGroup>
           </div>
-          <div className="flex items-center gap-2">
-            <Checkbox id="temChaveReserva" checked={temChaveReserva} onCheckedChange={(v) => setTemChaveReserva(!!v)} />
-            <Label htmlFor="temChaveReserva" className="cursor-pointer">Chave Reserva</Label>
+          <div className="space-y-1.5">
+            <Label>Chave Reserva *</Label>
+            <RadioGroup value={temChaveReserva} onValueChange={setTemChaveReserva} className="flex gap-4">
+              <div className="flex items-center gap-1.5">
+                <RadioGroupItem value="sim" id="chave-sim" />
+                <Label htmlFor="chave-sim" className="cursor-pointer font-normal">Sim</Label>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <RadioGroupItem value="nao" id="chave-nao" />
+                <Label htmlFor="chave-nao" className="cursor-pointer font-normal">Não</Label>
+              </div>
+            </RadioGroup>
           </div>
-          <div className="flex items-center gap-2">
-            <Checkbox id="manutencaoEmDia" checked={manutencaoEmDia} onCheckedChange={(v) => setManutencaoEmDia(!!v)} />
-            <Label htmlFor="manutencaoEmDia" className="cursor-pointer">Manutenção em Dia</Label>
+          <div className="space-y-1.5">
+            <Label>Manutenção em Dia *</Label>
+            <RadioGroup value={manutencaoEmDia} onValueChange={setManutencaoEmDia} className="flex gap-4">
+              <div className="flex items-center gap-1.5">
+                <RadioGroupItem value="sim" id="manut-sim" />
+                <Label htmlFor="manut-sim" className="cursor-pointer font-normal">Sim</Label>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <RadioGroupItem value="nao" id="manut-nao" />
+                <Label htmlFor="manut-nao" className="cursor-pointer font-normal">Não</Label>
+              </div>
+            </RadioGroup>
+          </div>
+        </div>
           </div>
         </div>
         <div className="space-y-1.5">
