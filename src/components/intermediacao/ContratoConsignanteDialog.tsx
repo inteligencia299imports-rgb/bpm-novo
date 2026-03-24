@@ -234,7 +234,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
 
   // Calculate abatimentos: custos oficina (all) + custos operacionais where responsavel = 'Cliente'
   const calcAbatimentos = () => {
-    const oficTotal = custosOficina.reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
+    const oficTotal = custosOficina.filter((c: any) => c.responsavel === 'Cliente').reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
     const opClienteTotal = custosOp
       .filter(c => c.responsavel === 'Cliente')
       .reduce((sum, c) => sum + parseCurrencyInput(c.valor), 0);
