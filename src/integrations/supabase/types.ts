@@ -115,6 +115,7 @@ export type Database = {
           nps_respondido_at: string | null
           nps_status: string
           observacao_avaliador: string | null
+          pos_compra_observacoes: string | null
           pos_compra_status: string
           preparacao_status: string
           previsao_custos_cliente: number | null
@@ -144,6 +145,7 @@ export type Database = {
           nps_respondido_at?: string | null
           nps_status?: string
           observacao_avaliador?: string | null
+          pos_compra_observacoes?: string | null
           pos_compra_status?: string
           preparacao_status?: string
           previsao_custos_cliente?: number | null
@@ -173,6 +175,7 @@ export type Database = {
           nps_respondido_at?: string | null
           nps_status?: string
           observacao_avaliador?: string | null
+          pos_compra_observacoes?: string | null
           pos_compra_status?: string
           preparacao_status?: string
           previsao_custos_cliente?: number | null
@@ -814,6 +817,44 @@ export type Database = {
             columns: ["atendimento_id"]
             isOneToOne: false
             referencedRelation: "atendimentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_compra_processos: {
+        Row: {
+          avaliacao_id: string
+          concluida: boolean
+          created_at: string
+          data_conclusao: string | null
+          etapa: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avaliacao_id: string
+          concluida?: boolean
+          created_at?: string
+          data_conclusao?: string | null
+          etapa: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          avaliacao_id?: string
+          concluida?: boolean
+          created_at?: string
+          data_conclusao?: string | null
+          etapa?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_compra_processos_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes"
             referencedColumns: ["id"]
           },
         ]

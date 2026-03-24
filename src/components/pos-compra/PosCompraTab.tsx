@@ -9,6 +9,9 @@ import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
+// Filter concluido from kanban display
+const VISIBLE_COLUMNS = POS_COMPRA_COLUMNS.filter(c => c.value !== 'concluido');
+
 const PosCompraTab = () => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +26,9 @@ const PosCompraTab = () => {
       .eq('tipo_aquisicao', 'propria')
       .order('updated_at', { ascending: false });
     if (error) { toast.error('Erro ao carregar pós-compra'); } else {
-      let mapped = (data || []).map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao }));
+      let mapped = (data || [])
+        .filter((d: any) => (d.pos_compra_status || 'em_aberto') !== 'concluido')
+        .map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       setItems(mapped);
     }
@@ -53,7 +58,7 @@ const PosCompraTab = () => {
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
           <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-4">
-            {POS_COMPRA_COLUMNS.map(col => {
+            {VISIBLE_COLUMNS.map(col => {
               const colItems = getColumnItems(col.value);
               return (
                 <div key={col.value} className="w-[300px] shrink-0 md:w-auto md:shrink flex flex-col">

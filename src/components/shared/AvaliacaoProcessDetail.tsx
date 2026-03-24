@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
+import PosCompraProcessoDialog from '@/components/pos-compra/PosCompraProcessoDialog';
 
 interface Props {
   item: any;
@@ -39,7 +40,9 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
   const [processoPreparacaoOpen, setProcessoPreparacaoOpen] = useState(false);
+  const [processoPosCompraOpen, setProcessoPosCompraOpen] = useState(false);
   const [currentPreparacaoStatus, setCurrentPreparacaoStatus] = useState(item.preparacao_status || 'em_aberto');
+  const [currentPosCompraStatus, setCurrentPosCompraStatus] = useState(item.pos_compra_status || 'em_aberto');
   const [loading, setLoading] = useState(true);
   const moto = item.moto || item.motos_avaliacao;
   const atendimento = item.atendimento || item.atendimentos;
@@ -105,6 +108,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               </Button>
             </div>
           )}
+          {entityType === 'pos_compra' && (
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <Button size="sm" onClick={() => setProcessoPosCompraOpen(true)} className="gap-1.5">
+                <ClipboardList className="h-4 w-4" /> Processo
+              </Button>
+            </div>
+          )}
         </div>
         {entityType === 'consignacao' && (
           <div className="flex sm:hidden gap-2 justify-center">
@@ -116,6 +126,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
         {entityType === 'preparacao' && (
           <div className="flex sm:hidden gap-2 justify-center">
             <Button size="sm" onClick={() => setProcessoPreparacaoOpen(true)} className="flex-1 gap-1.5">
+              <ClipboardList className="h-4 w-4" /> Processo
+            </Button>
+          </div>
+        )}
+        {entityType === 'pos_compra' && (
+          <div className="flex sm:hidden gap-2 justify-center">
+            <Button size="sm" onClick={() => setProcessoPosCompraOpen(true)} className="flex-1 gap-1.5">
               <ClipboardList className="h-4 w-4" /> Processo
             </Button>
           </div>
@@ -203,6 +220,18 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           onStatusChanged={(newStatus) => {
             setCurrentPreparacaoStatus(newStatus);
             item.preparacao_status = newStatus;
+          }}
+        />
+      )}
+
+      {entityType === 'pos_compra' && (
+        <PosCompraProcessoDialog
+          open={processoPosCompraOpen}
+          onOpenChange={setProcessoPosCompraOpen}
+          avaliacaoId={item.id}
+          onStatusChanged={(newStatus) => {
+            setCurrentPosCompraStatus(newStatus);
+            item.pos_compra_status = newStatus;
           }}
         />
       )}
