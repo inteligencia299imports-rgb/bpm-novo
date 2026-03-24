@@ -559,8 +559,9 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                       const isAbatido = true; // oficina costs are always deducted
                       return (
                         <div key={c.id} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
+                          <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">Oficina</span>
                           <span className="flex-1 truncate text-xs font-medium">
-                            OFICINA - {(c.responsavel || '').toUpperCase()} - {(c.tipo || '').toUpperCase().replace('PECA', 'PEÇA').replace('SERVICO', 'SERVIÇO')} - {(c.detalhes || '-').toUpperCase()}
+                            {(c.responsavel || '').toUpperCase()} - {(c.tipo || '').toUpperCase().replace('PECA', 'PEÇA').replace('SERVICO', 'SERVIÇO')} - {(c.detalhes || '-').toUpperCase()}
                           </span>
                           <span className={`font-semibold text-sm whitespace-nowrap ${isAbatido ? 'text-destructive' : 'text-foreground'}`}>{formatCurrency(val)}</span>
                           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={async () => {
@@ -579,8 +580,9 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                       const isAbatido = c.responsavel === 'Cliente';
                       return (
                         <div key={`op-${idx}`} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
+                          <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium shrink-0">Operação</span>
                           <span className="flex-1 truncate text-xs font-medium">
-                            OPERAÇÃO - {(c.responsavel || '').toUpperCase()} - PROCESSO - {(c.descricao || '-').toUpperCase()}
+                            {(c.responsavel || '').toUpperCase()} - PROCESSO - {(c.descricao || '-').toUpperCase()}
                           </span>
                           <span className={`font-semibold text-sm whitespace-nowrap ${isAbatido ? 'text-destructive' : 'text-foreground'}`}>{formatCurrency(val)}</span>
                           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeCustoOp(idx)}>
