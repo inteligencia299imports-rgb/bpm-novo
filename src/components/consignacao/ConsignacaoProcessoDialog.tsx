@@ -52,7 +52,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     if (!open) return;
     const load = async () => {
       setLoading(true);
-      const [{ data: processoData }, { data: avData }, { data: motoData }] = await Promise.all([
+      const [{ data: processoData }, { data: avData }, { data: motoData }, { data: consultaHistory }] = await Promise.all([
         supabase
           .from('consignacao_processos' as any)
           .select('etapa, concluida, data_conclusao')
@@ -67,6 +67,14 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .select('consulta_realizada')
           .eq('id', motoAvaliacaoId)
           .maybeSingle(),
+        supabase
+          .from('status_history')
+          .select('created_at')
+          .eq('entity_id', motoAvaliacaoId)
+          .eq('entity_type', 'consulta')
+          .eq('status_to', 'consulta_realizada')
+          .order('created_at', { ascending: false })
+          .limit(1),
       ]);
 
       const map: Record<string, EtapaData> = {};
@@ -76,12 +84,13 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         }
       }
 
-      // Build etapas, pre-filling CONSULTA REALIZADA from moto_avaliacao
+      // Build etapas, pre-filling CONSULTA REALIZADA from moto_avaliacao with actual date
       const consultaRealizada = motoData?.consulta_realizada === true;
+      const consultaDate = consultaHistory?.[0]?.created_at || null;
       const built = ETAPAS.map(e => {
         if (map[e]) return map[e];
         if (e === 'CONSULTA REALIZADA' && consultaRealizada) {
-          return { etapa: e, concluida: true, data_conclusao: new Date().toISOString() };
+          return { etapa: e, concluida: true, data_conclusao: consultaDate || new Date().toISOString() };
         }
         return { etapa: e, concluida: false, data_conclusao: null };
       });
