@@ -561,8 +561,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
                         </div>
-                      );
-                    })}
+                    ))}
                   </div>
                 )}
               </div>
