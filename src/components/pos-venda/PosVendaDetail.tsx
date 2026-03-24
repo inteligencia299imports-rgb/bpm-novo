@@ -207,8 +207,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                     )}
                   </div>
                 </div>
-                <InfoItem label="Sexo" value={item.sexo} />
-                <InfoItem label="UF" value={item.uf} />
+                {!isIntermParte1 && <InfoItem label="Sexo" value={item.sexo} />}
+                {!isIntermParte1 && <InfoItem label="UF" value={item.uf} />}
+                {isIntermParte1 && proprietario?.loja && <InfoItem label="Loja" value={proprietario.loja} />}
               </div>
               <Separator className="my-2" />
               <DocumentUpload
