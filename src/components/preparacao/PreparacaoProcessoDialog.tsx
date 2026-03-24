@@ -82,6 +82,7 @@ const parseCurrencyValue = (value: string): number | null => {
 };
 
 const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, currentStatus, avaliacaoData, onStatusChanged }) => {
+  const isEstoqueTracking = avaliacaoData?.situacao === 'estoque';
   const [detalhes, setDetalhes] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -418,11 +419,48 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
   const visibleButtons = ACTION_BUTTONS.filter(btn => {
     if (btn.targetStatus === activeStatus) return false;
+    // For estoque tracking: only allow pendente, oficina, servico_externo
+    if (isEstoqueTracking) {
+      return ['pendente', 'oficina', 'servico_externo'].includes(btn.value);
+    }
     if (btn.value === 'preparacao' && (activeStatus === 'aguardando_aceite' || activeStatus === 'aguardando_liberacao_estoque')) return false;
     if (btn.value === 'aceite' && activeStatus !== 'aguardando_aceite') return false;
     if (btn.value === 'liberar' && activeStatus !== 'aguardando_liberacao_estoque') return false;
     return true;
   });
+
+  const handlePreparacaoConcluida = async () => {
+    if (!detalhes.trim()) {
+      toast.error('Preencha os detalhes da movimentação');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { user, userName } = await getUserInfo();
+      if (!user) { toast.error('Sessão expirada'); return; }
+
+      const statusFrom = activeStatus || currentStatus || 'em_aberto';
+
+      await supabase.from('avaliacoes').update({ preparacao_status: 'estoque' } as any).eq('id', avaliacaoId);
+
+      await insertHistory({
+        statusFrom,
+        statusTo: 'estoque',
+        observacoes: `PREPARAÇÃO CONCLUÍDA (ACOMPANHAMENTO). ${detalhes.trim()}`,
+        changedBy: user.id,
+        changedByName: userName,
+      });
+
+      toast.success('Preparação concluída');
+      onStatusChanged?.('estoque');
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao concluir preparação');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const formatCurrency = (v: number | null | undefined) => {
     if (v == null) return '—';
@@ -435,6 +473,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         <DialogHeader className="flex flex-row items-center justify-between pr-8 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" /> Processo de Preparação
+            {isEstoqueTracking && <Badge variant="outline" className="text-[10px] border-primary text-primary ml-1">Acompanhamento</Badge>}
           </DialogTitle>
           <Badge style={{ backgroundColor: `${getStatusHex(activeStatus)}20`, color: getStatusHex(activeStatus) }}>
             {getStatusLabel(activeStatus)}
@@ -455,8 +494,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-base font-bold text-foreground">{avaliacaoData.atendimento?.nome_cliente || 'N/A'}</span>
                   {avaliacaoData.tipo_aquisicao && (
-                    <Badge variant="outline" className="text-xs border-green-500/30 text-green-600">
-                      {avaliacaoData.tipo_aquisicao === 'propria' ? 'Própria' : 'Consignada'}
+                    <Badge variant="outline" className={`text-xs ${avaliacaoData.tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : avaliacaoData.tipo_aquisicao === 'convertida' ? 'border-blue-800 text-blue-800' : 'border-green-500/30 text-green-600'}`}>
+                      {avaliacaoData.tipo_aquisicao === 'propria' ? 'Própria' : avaliacaoData.tipo_aquisicao === 'convertida' ? 'Convertida' : 'Consignada'}
                     </Badge>
                   )}
                 </div>
@@ -530,7 +569,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   )}
 
                   {/* Primary action (Preparação / Aceite / Liberar) - below and highlighted */}
-                  {visibleButtons.filter(btn => ['preparacao', 'aceite', 'liberar'].includes(btn.value)).map(btn => {
+                  {!isEstoqueTracking && visibleButtons.filter(btn => ['preparacao', 'aceite', 'liberar'].includes(btn.value)).map(btn => {
                     const Icon = btn.icon;
                     return (
                       <Button
@@ -545,6 +584,19 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       </Button>
                     );
                   })}
+
+                  {/* Preparação Concluída for estoque tracking */}
+                  {isEstoqueTracking && (
+                    <Button
+                      variant="default"
+                      disabled={saving}
+                      onClick={handlePreparacaoConcluida}
+                      className="gap-2 w-full h-10 text-sm font-medium"
+                    >
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                      Preparação Concluída
+                    </Button>
+                  )}
                 </div>
               </>
             ) : (
