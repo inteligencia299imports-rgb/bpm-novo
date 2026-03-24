@@ -9,6 +9,7 @@ import type { Interesse } from '@/types/crm';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import PhotoUpload from './PhotoUpload';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface Props {
   marca: string; setMarca: (v: string) => void;
