@@ -82,6 +82,7 @@ const parseCurrencyValue = (value: string): number | null => {
 };
 
 const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, currentStatus, avaliacaoData, onStatusChanged }) => {
+  const isEstoqueTracking = avaliacaoData?.situacao === 'estoque';
   const [detalhes, setDetalhes] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);

@@ -17,13 +17,22 @@ const PreparacaoTab = () => {
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    // Fetch bikes in 'adquirida' status (normal flow)
+    const { data: adquiridas, error: err1 } = await supabase
       .from('avaliacoes')
       .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes)`)
       .eq('situacao', 'adquirida')
       .order('updated_at', { ascending: false });
-    if (error) { toast.error('Erro ao carregar preparação'); } else {
-      let mapped = (data || []).map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao }));
+    // Fetch bikes in 'estoque' that re-entered preparação (preparacao_status != 'estoque')
+    const { data: estoquePrep, error: err2 } = await supabase
+      .from('avaliacoes')
+      .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes)`)
+      .eq('situacao', 'estoque')
+      .neq('preparacao_status', 'estoque')
+      .order('updated_at', { ascending: false });
+    if (err1 || err2) { toast.error('Erro ao carregar preparação'); } else {
+      const allData = [...(adquiridas || []), ...(estoquePrep || [])];
+      let mapped = allData.map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       setItems(mapped);
     }
