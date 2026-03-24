@@ -580,21 +580,24 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                   <Button size="sm" className="h-9" onClick={addCustoOp}><Plus className="h-4 w-4" /></Button>
                 </div>
 
-                {custosOp.length > 0 && (
+                {custosOp.filter(c => c.responsavel !== 'Loja').length > 0 && (
                   <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                    {custosOp.map((c, idx) => (
-                      <div key={idx} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
-                        <span className="font-medium text-xs bg-muted px-2 py-0.5 rounded">{c.tipo}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded border ${c.responsavel === 'Loja' ? 'border-destructive/30 text-destructive' : 'border-border text-muted-foreground'}`}>
-                          {c.responsavel}
-                        </span>
-                        <span className="flex-1 truncate text-xs">{c.descricao || '-'}</span>
-                        <span className="font-semibold text-sm whitespace-nowrap">R$ {c.valor}</span>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeCustoOp(idx)}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
+                    {custosOp.map((c, idx) => {
+                      if (c.responsavel === 'Loja') return null;
+                      return (
+                        <div key={idx} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
+                          <span className="font-medium text-xs bg-muted px-2 py-0.5 rounded">{c.tipo}</span>
+                          <span className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground">
+                            {c.responsavel}
+                          </span>
+                          <span className="flex-1 truncate text-xs">{c.descricao || '-'}</span>
+                          <span className="font-semibold text-sm whitespace-nowrap">R$ {c.valor}</span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeCustoOp(idx)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
