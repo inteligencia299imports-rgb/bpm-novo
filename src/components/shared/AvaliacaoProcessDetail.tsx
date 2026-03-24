@@ -99,8 +99,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           </div>
           {entityType === 'consignacao' && (
             <div className="hidden sm:flex items-center gap-2 shrink-0">
-              <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
-                <FileText className="h-4 w-4" /> Contrato
+              <Button size="sm" onClick={() => setProcessoConsignacaoOpen(true)} className="gap-1.5">
+                <ClipboardList className="h-4 w-4" /> Processo
               </Button>
             </div>
           )}
@@ -121,8 +121,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
         </div>
         {entityType === 'consignacao' && (
           <div className="flex sm:hidden gap-2 justify-center">
-            <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="flex-1">
-              <FileText className="h-4 w-4" />
+            <Button size="sm" onClick={() => setProcessoConsignacaoOpen(true)} className="flex-1 gap-1.5">
+              <ClipboardList className="h-4 w-4" /> Processo
             </Button>
           </div>
         )}
