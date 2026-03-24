@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ClipboardList, Handshake, ArrowDownToLine, BookOpen, Wrench } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ClipboardList, Handshake, ArrowDownToLine, BookOpen, Wrench, FileSearch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -19,6 +19,7 @@ import AtendimentoDetail from '@/components/showroom/AtendimentoDetail';
 import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
 import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
+import AvaliacaoForm from '@/components/avaliacoes/AvaliacaoForm';
 
 // Configs
 import {
@@ -61,7 +62,8 @@ type DetailView =
   | { type: 'intermediacao'; data: any; parte: 'parte1' | 'parte2' }
   | { type: 'pos_compra'; data: any }
   | { type: 'consignacao'; data: any }
-  | { type: 'preparacao'; data: any };
+  | { type: 'preparacao'; data: any }
+  | { type: 'avaliacao'; data: { avaliacaoId: string } };
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   disponivel: { label: 'Disponível', color: 'bg-success/15 text-success' },
@@ -241,6 +243,11 @@ const EstoqueTab = () => {
 
     if (item.avaliacao_id) {
       options.push({
+        label: 'Avaliação',
+        icon: <FileSearch className="h-4 w-4" />,
+        action: () => setDetailView({ type: 'avaliacao', data: { avaliacaoId: item.avaliacao_id } }),
+      });
+      options.push({
         label: 'Preparação',
         icon: <Wrench className="h-4 w-4" />,
         action: () => openPreparacao(item.avaliacao_id!, item),
@@ -333,6 +340,13 @@ const EstoqueTab = () => {
             currentStatus={detailView.data.preparacao_status || 'em_aberto'}
             avaliacaoData={detailView.data}
             onStatusChanged={() => { setDetailView(null); fetchEstoque(); }}
+          />
+        );
+      case 'avaliacao':
+        return (
+          <AvaliacaoForm
+            avaliacaoId={detailView.data.avaliacaoId}
+            onClose={() => setDetailView(null)}
           />
         );
     }
