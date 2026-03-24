@@ -195,11 +195,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <InfoItem label="Nome" value={item.nome_cliente} />
+                <InfoItem label="Nome" value={displayName} />
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Telefone</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-semibold">{formatPhone(item.telefone)}</span>
+                    <span className="text-sm font-semibold">{formatPhone(displayPhone)}</span>
                     {whatsappUrl && (
                       <button onClick={() => window.open(whatsappUrl, '_blank')} className="text-green-600 hover:text-green-700 transition-colors" title="Abrir WhatsApp">
                         <MessageCircle className="h-4 w-4" />
