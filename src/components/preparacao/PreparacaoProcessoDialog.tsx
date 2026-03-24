@@ -228,6 +228,43 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     }
 
     if (targetStatus === 'liberar') {
+      // Validate prerequisites before allowing stock release
+      const tipoAquisicao = avaliacaoData?.tipo_aquisicao;
+      const isConsignada = tipoAquisicao === 'consignada';
+      const isPropria = tipoAquisicao === 'propria' || tipoAquisicao === 'convertida';
+
+      const pendencias: string[] = [];
+
+      if (isPropria) {
+        // Check pos_compra_processos for NF EMITIDA and VISTORIA/CADEIA DOMINIAL
+        const { data: processos } = await supabase
+          .from('pos_compra_processos')
+          .select('etapa, concluida')
+          .eq('avaliacao_id', avaliacaoId)
+          .in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']);
+
+        const nfEmitida = processos?.find(p => p.etapa === 'NF EMITIDA');
+        const vistoria = processos?.find(p => p.etapa === 'VISTORIA/CADEIA DOMINIAL');
+
+        if (!nfEmitida?.concluida) pendencias.push('NF Emitida (Pós-Compra)');
+        if (!vistoria?.concluida) pendencias.push('Vistoria/Cadeia Dominial (Pós-Compra)');
+      } else if (isConsignada) {
+        // Check consignacao_processos for NF EMITIDA
+        const { data: processos } = await supabase
+          .from('consignacao_processos')
+          .select('etapa, concluida')
+          .eq('avaliacao_id', avaliacaoId)
+          .eq('etapa', 'NF EMITIDA');
+
+        const nfEmitida = processos?.find(p => p.etapa === 'NF EMITIDA');
+        if (!nfEmitida?.concluida) pendencias.push('NF Emitida (Consignação)');
+      }
+
+      if (pendencias.length > 0) {
+        toast.error(`Pendências para liberar estoque: ${pendencias.join(', ')}`, { duration: 5000 });
+        return;
+      }
+
       setShowLiberarForm(true);
       return;
     }
