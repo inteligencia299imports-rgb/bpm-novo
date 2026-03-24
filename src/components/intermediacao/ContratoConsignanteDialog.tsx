@@ -489,7 +489,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                 <div className="grid grid-cols-2 gap-4">
                   <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} />
                   <div>
-                    <label className="text-sm font-medium">Abatimentos (oficina + op. loja)</label>
+                    <label className="text-sm font-medium">Abatimentos (Oficina + Op. loja)</label>
                     <div className="mt-1 h-10 flex items-center px-3 rounded-md border bg-muted/50 text-sm font-semibold text-destructive">
                       {formatCurrency(abatimentos)}
                     </div>
