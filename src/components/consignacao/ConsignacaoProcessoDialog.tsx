@@ -59,7 +59,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('consignacao_observacoes, consignacao_status, quanto_pede, valor_fechamento, atendimento_id')
+          .select('consignacao_observacoes, consignacao_status')
           .eq('id', avaliacaoId)
           .maybeSingle(),
         supabase
