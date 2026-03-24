@@ -223,6 +223,18 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           }}
         />
       )}
+
+      {entityType === 'pos_compra' && (
+        <PosCompraProcessoDialog
+          open={processoPosCompraOpen}
+          onOpenChange={setProcessoPosCompraOpen}
+          avaliacaoId={item.id}
+          onStatusChanged={(newStatus) => {
+            setCurrentPosCompraStatus(newStatus);
+            item.pos_compra_status = newStatus;
+          }}
+        />
+      )}
     </div>
   );
 };

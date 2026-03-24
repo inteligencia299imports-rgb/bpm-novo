@@ -9,6 +9,9 @@ import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
+// Filter concluido from kanban display
+const VISIBLE_COLUMNS = POS_COMPRA_COLUMNS.filter(c => c.value !== 'concluido');
+
 const PosCompraTab = () => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
