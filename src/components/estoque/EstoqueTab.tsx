@@ -242,6 +242,11 @@ const EstoqueTab = () => {
 
     if (item.avaliacao_id) {
       options.push({
+        label: 'Avaliação',
+        icon: <FileSearch className="h-4 w-4" />,
+        action: () => setDetailView({ type: 'avaliacao', data: { avaliacaoId: item.avaliacao_id } }),
+      });
+      options.push({
         label: 'Preparação',
         icon: <Wrench className="h-4 w-4" />,
         action: () => openPreparacao(item.avaliacao_id!, item),
