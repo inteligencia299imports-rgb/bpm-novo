@@ -178,8 +178,8 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     if (contrato) {
       setContratoId(contrato.id);
       setNomeConsignante(contrato.nome_consignante || '');
-      setTelefoneConsignante(contrato.telefone_consignante || '');
-      setCpfCnpj(contrato.cpf_cnpj || '');
+      setTelefoneConsignante(formatTelefone(contrato.telefone_consignante || ''));
+      setCpfCnpj(formatCpfCnpj(contrato.cpf_cnpj || ''));
       setDadosBancarios(contrato.dados_bancarios || '');
       setTitularConta(contrato.titular_conta || '');
       setValorFechamento(contrato.valor_fechamento ? formatCurrencyInput(String(Math.round(contrato.valor_fechamento * 100))) : '');
