@@ -232,13 +232,13 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     setLoading(false);
   };
 
-  // Calculate abatimentos: custos oficina (all) + custos operacionais where responsavel = 'Loja'
+  // Calculate abatimentos: custos oficina (all) + custos operacionais where responsavel = 'Cliente'
   const calcAbatimentos = () => {
     const oficTotal = custosOficina.reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
-    const opLojaTotal = custosOp
-      .filter(c => c.responsavel === 'Loja')
+    const opClienteTotal = custosOp
+      .filter(c => c.responsavel === 'Cliente')
       .reduce((sum, c) => sum + parseCurrencyInput(c.valor), 0);
-    return oficTotal + opLojaTotal;
+    return oficTotal + opClienteTotal;
   };
 
   // Auto-calculate repasse
