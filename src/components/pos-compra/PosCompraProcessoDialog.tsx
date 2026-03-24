@@ -65,10 +65,22 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('pos_compra_observacoes, pos_compra_status')
+          .select('pos_compra_observacoes, pos_compra_status, quanto_pede, valor_fechamento, atendimento_id, moto_avaliacao_id')
           .eq('id', avaliacaoId)
           .maybeSingle(),
       ]);
+
+      // Fetch CNH and CRLV
+      if (avData?.atendimento_id) {
+        const { data: atData } = await supabase.from('atendimentos').select('cnh_url').eq('id', avData.atendimento_id).maybeSingle();
+        setCnhUrl(atData?.cnh_url || null);
+      }
+      if (avData?.moto_avaliacao_id) {
+        const { data: motoData } = await supabase.from('motos_avaliacao').select('crlv_url').eq('id', avData.moto_avaliacao_id).maybeSingle();
+        setCrlvUrl(motoData?.crlv_url || null);
+      }
+      setQuantoPede((avData as any)?.quanto_pede ?? null);
+      setValorFechamento((avData as any)?.valor_fechamento ?? null);
 
       const map: Record<string, EtapaData> = {};
       if (data) {
