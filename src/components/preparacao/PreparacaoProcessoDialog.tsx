@@ -419,11 +419,48 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
   const visibleButtons = ACTION_BUTTONS.filter(btn => {
     if (btn.targetStatus === activeStatus) return false;
+    // For estoque tracking: only allow pendente, oficina, servico_externo
+    if (isEstoqueTracking) {
+      return ['pendente', 'oficina', 'servico_externo'].includes(btn.value);
+    }
     if (btn.value === 'preparacao' && (activeStatus === 'aguardando_aceite' || activeStatus === 'aguardando_liberacao_estoque')) return false;
     if (btn.value === 'aceite' && activeStatus !== 'aguardando_aceite') return false;
     if (btn.value === 'liberar' && activeStatus !== 'aguardando_liberacao_estoque') return false;
     return true;
   });
+
+  const handlePreparacaoConcluida = async () => {
+    if (!detalhes.trim()) {
+      toast.error('Preencha os detalhes da movimentação');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { user, userName } = await getUserInfo();
+      if (!user) { toast.error('Sessão expirada'); return; }
+
+      const statusFrom = activeStatus || currentStatus || 'em_aberto';
+
+      await supabase.from('avaliacoes').update({ preparacao_status: 'estoque' } as any).eq('id', avaliacaoId);
+
+      await insertHistory({
+        statusFrom,
+        statusTo: 'estoque',
+        observacoes: `PREPARAÇÃO CONCLUÍDA (ACOMPANHAMENTO). ${detalhes.trim()}`,
+        changedBy: user.id,
+        changedByName: userName,
+      });
+
+      toast.success('Preparação concluída');
+      onStatusChanged?.('estoque');
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao concluir preparação');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const formatCurrency = (v: number | null | undefined) => {
     if (v == null) return '—';
