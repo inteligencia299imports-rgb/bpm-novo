@@ -745,8 +745,27 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </CardContent>
           </Card>
 
-          <div className="md:col-span-2 flex flex-col items-center gap-3">
+           <div className="md:col-span-2 flex flex-col items-center gap-3">
             <div className="flex gap-2 flex-wrap justify-center">
+              {avaliacao?.situacao === 'adquirida' && avaliacao?.tipo_aquisicao && (
+                <Button
+                  size="sm"
+                  className="gap-2 text-white hover:opacity-90"
+                  style={{ backgroundColor: '#1E3A5F' }}
+                  onClick={() => {
+                    setIsConvertendo(true);
+                    setObsMotaAquisicao('');
+                    setValorFechamentoAquisicao('');
+                    // Pre-select the only available option
+                    const currentTipo = avaliacao.tipo_aquisicao;
+                    const oppositeTipo = (currentTipo === 'consignada') ? 'propria' : 'consignada';
+                    setTipoSelecionado(oppositeTipo);
+                    setTipoAquisicaoPopup(true);
+                  }}
+                >
+                  <ArrowLeftRight className="h-4 w-4" /> Converter
+                </Button>
+              )}
               {statusButtons.map(btn => (
                 <Button
                   key={btn.value}
@@ -755,6 +774,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   style={{ backgroundColor: btn.color }}
                   onClick={() => {
                     if (btn.value === 'adquirida') {
+                      setIsConvertendo(false);
                       setObsMotaAquisicao('');
                       setTipoAquisicaoPopup(true);
                       return;
