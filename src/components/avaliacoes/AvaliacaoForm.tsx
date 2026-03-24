@@ -364,6 +364,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setObsMotaAquisicao('');
     setIsConvertendo(false);
   };
+
+  if (loading) {
     return <DetailSkeleton onClose={onClose} cards={6} />;
   }
 
