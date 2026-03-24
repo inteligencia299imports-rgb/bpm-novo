@@ -108,6 +108,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               </Button>
             </div>
           )}
+          {entityType === 'pos_compra' && (
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <Button size="sm" onClick={() => setProcessoPosCompraOpen(true)} className="gap-1.5">
+                <ClipboardList className="h-4 w-4" /> Processo
+              </Button>
+            </div>
+          )}
         </div>
         {entityType === 'consignacao' && (
           <div className="flex sm:hidden gap-2 justify-center">
@@ -119,6 +126,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
         {entityType === 'preparacao' && (
           <div className="flex sm:hidden gap-2 justify-center">
             <Button size="sm" onClick={() => setProcessoPreparacaoOpen(true)} className="flex-1 gap-1.5">
+              <ClipboardList className="h-4 w-4" /> Processo
+            </Button>
+          </div>
+        )}
+        {entityType === 'pos_compra' && (
+          <div className="flex sm:hidden gap-2 justify-center">
+            <Button size="sm" onClick={() => setProcessoPosCompraOpen(true)} className="flex-1 gap-1.5">
               <ClipboardList className="h-4 w-4" /> Processo
             </Button>
           </div>
