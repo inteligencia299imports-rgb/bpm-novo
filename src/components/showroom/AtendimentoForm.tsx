@@ -70,9 +70,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [vendaKm, setVendaKm] = useState('');
   const [vendaCilindrada, setVendaCilindrada] = useState('');
   const [vendaObs, setVendaObs] = useState('');
-  const [temManual, setTemManual] = useState(false);
-  const [temChaveReserva, setTemChaveReserva] = useState(false);
-  const [manutencaoEmDia, setManutencaoEmDia] = useState(false);
+  const [temManual, setTemManual] = useState('');
+  const [temChaveReserva, setTemChaveReserva] = useState('');
+  const [manutencaoEmDia, setManutencaoEmDia] = useState('');
   const [motoAvaliacaoId, setMotoAvaliacaoId] = useState<string | null>(null);
   const [enviadaAvaliacao, setEnviadaAvaliacao] = useState(false);
 
