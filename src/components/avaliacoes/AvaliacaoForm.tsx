@@ -412,6 +412,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     .filter(b => !(b.value === 'adquirida' && interesse === 'trocar'))
     .filter(b => !(b.value === 'adquirida' && !hasEvaluation))
     .filter(b => !(b.value === 'adquirida' && (!cnhUrl || !crlvUrl || !consultaRealizada)))
+    .filter(b => !(b.value === 'adquirida' && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque')))
     .filter(b => !(b.value === 'em_aberto' && avaliacao?.situacao !== 'dispensada' && avaliacao?.situacao !== 'perdido'));
 
 
@@ -747,7 +748,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
            <div className="md:col-span-2 flex flex-col items-center gap-3">
             <div className="flex gap-2 flex-wrap justify-center">
-              {avaliacao?.situacao === 'adquirida' && avaliacao?.tipo_aquisicao && (
+              {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao && (
                 <Button
                   size="sm"
                   className="gap-2 text-white hover:opacity-90"
