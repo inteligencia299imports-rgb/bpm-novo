@@ -568,7 +568,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   )}
 
                   {/* Primary action (Preparação / Aceite / Liberar) - below and highlighted */}
-                  {visibleButtons.filter(btn => ['preparacao', 'aceite', 'liberar'].includes(btn.value)).map(btn => {
+                  {!isEstoqueTracking && visibleButtons.filter(btn => ['preparacao', 'aceite', 'liberar'].includes(btn.value)).map(btn => {
                     const Icon = btn.icon;
                     return (
                       <Button
@@ -583,6 +583,19 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       </Button>
                     );
                   })}
+
+                  {/* Preparação Concluída for estoque tracking */}
+                  {isEstoqueTracking && (
+                    <Button
+                      variant="default"
+                      disabled={saving}
+                      onClick={handlePreparacaoConcluida}
+                      className="gap-2 w-full h-10 text-sm font-medium"
+                    >
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                      Preparação Concluída
+                    </Button>
+                  )}
                 </div>
               </>
             ) : (
