@@ -815,14 +815,20 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CurrencyField label="Avaliação Compra" value={avalCompra} onChange={handleCurrencyChange(setAvalCompra)} />
             <CurrencyField label="Previsão Custos Loja" value={prevCustosLoja} onChange={handleCurrencyChange(setPrevCustosLoja)} />
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Classificação da Moto <span className="text-destructive">*</span></Label>
-              <Select value={classificacao} onValueChange={setClassificacao}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {['A+', 'A', 'B', 'C'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                {['A+', 'A', 'B', 'C'].map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setClassificacao(c)}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium border transition-colors ${classificacao === c ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted'}`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Observação do Avaliador <span className="text-destructive">*</span></Label>
