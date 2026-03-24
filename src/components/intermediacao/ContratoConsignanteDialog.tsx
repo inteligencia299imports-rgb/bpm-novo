@@ -495,6 +495,43 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                     </div>
                   </div>
                 </div>
+                {/* Detalhamento dos abatimentos */}
+                {abatimentos > 0 && (
+                  <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detalhamento dos Abatimentos</span>
+                    <div className="space-y-1">
+                      {custosOficina.map((c: any) => {
+                        const val = c.valor_executado || c.valor_previsto || 0;
+                        if (val <= 0) return null;
+                        return (
+                          <div key={c.id} className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">
+                              <span className="inline-block rounded bg-primary/10 text-primary px-1.5 py-0.5 font-medium mr-1.5">Oficina</span>
+                              {c.tipo}{c.detalhes ? ` - ${c.detalhes}` : ''}
+                            </span>
+                            <span className="font-semibold text-destructive">{formatCurrency(val)}</span>
+                          </div>
+                        );
+                      })}
+                      {custosOp
+                        .filter(c => c.responsavel === 'Loja')
+                        .map((c, i) => {
+                          const val = parseCurrencyInput(c.valor);
+                          if (val <= 0) return null;
+                          return (
+                            <div key={`op-${i}`} className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                <span className="inline-block rounded bg-orange-100 text-orange-700 px-1.5 py-0.5 font-medium mr-1.5">Op. Loja</span>
+                                {c.tipo}{c.descricao ? ` - ${c.descricao}` : ''}
+                              </span>
+                              <span className="font-semibold text-destructive">{formatCurrency(val)}</span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+                </div>
                 <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 flex items-center justify-between">
                   <span className="text-sm font-semibold text-foreground">Valor de Repasse</span>
                   <span className={`text-lg font-bold ${repasseNum >= 0 ? 'text-primary' : 'text-destructive'}`}>
