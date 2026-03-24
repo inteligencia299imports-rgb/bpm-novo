@@ -33,6 +33,8 @@ const MotoVendaSection: React.FC<Props> = ({
   marca, setMarca, modelo, setModelo, anoFab, setAnoFab,
   anoMod, setAnoMod, categoria, setCategoria, cor, setCor,
   placa, setPlaca, km, setKm, cilindrada, setCilindrada, obs, setObs,
+  temManual, setTemManual, temChaveReserva, setTemChaveReserva,
+  manutencaoEmDia, setManutencaoEmDia,
   motoAvaliacaoId, atendimentoId, interesse,
 }) => {
   const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
