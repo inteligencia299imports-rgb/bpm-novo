@@ -548,13 +548,10 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                   <Button size="sm" className="h-9" onClick={addCustoOp}><Plus className="h-4 w-4" /></Button>
                 </div>
 
-                {custosOp.filter(c => c.responsavel !== 'Loja').length > 0 && (
+                {custosOp.length > 0 && (
                   <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
-                    {custosOp.map((c, idx) => {
-                      if (c.responsavel === 'Loja') return null;
-                      return (
+                    {custosOp.map((c, idx) => (
                         <div key={idx} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
-                          <span className="font-medium text-xs bg-muted px-2 py-0.5 rounded">{c.tipo}</span>
                           <span className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground">
                             {c.responsavel}
                           </span>
