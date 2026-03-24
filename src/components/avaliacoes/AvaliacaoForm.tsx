@@ -160,6 +160,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         setPrevCustosLoja(numberToCurrencyMask(data.previsao_custos_loja));
         setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
         setObsAvaliador(data.observacao_avaliador || '');
+        setClassificacao((data as any).classificacao || '');
 
         if (data.moto_avaliacao_id) {
           const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', data.moto_avaliacao_id);
