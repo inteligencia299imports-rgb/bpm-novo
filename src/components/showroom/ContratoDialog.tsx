@@ -613,13 +613,13 @@ const ContratoDialog: React.FC<Props> = ({
                   </div>
                   {ipvaTipo === 'ambos' && (
                     <div className="mt-2">
-                      <label className="text-sm text-muted-foreground">Número de cotas</label>
+                      <label className="text-sm text-muted-foreground">Cotas</label>
                       <Input
                         className="mt-1"
-                        type="number"
+                        type="text"
                         value={ipvaCotas}
                         onChange={(e) => setIpvaCotas(e.target.value)}
-                        placeholder="Ex: 3"
+                        placeholder="Ex: 1 à 5"
                       />
                     </div>
                   )}
