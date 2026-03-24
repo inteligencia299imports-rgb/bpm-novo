@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
+import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProcessoDialog';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 import PosCompraProcessoDialog from '@/components/pos-compra/PosCompraProcessoDialog';
 
