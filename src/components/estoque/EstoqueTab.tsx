@@ -236,7 +236,7 @@ const EstoqueTab = () => {
     if (item.avaliacao_id && item.tipo === 'consignada') {
       options.push({
         label: 'Consignação',
-        icon: <BookOpen className="h-4 w-4" />,
+        icon: <FileText className="h-4 w-4" />,
         action: () => openAvaliacaoDetail(item.avaliacao_id!, 'consignacao'),
       });
     }
