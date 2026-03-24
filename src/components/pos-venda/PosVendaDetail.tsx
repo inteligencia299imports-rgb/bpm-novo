@@ -67,6 +67,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [motosAvaliacao, setMotosAvaliacao] = useState<any[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
   const [estoqueData, setEstoqueData] = useState<Record<string, any>>({});
+  const [proprietario, setProprietario] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [processoOpen, setProcessoOpen] = useState(false);
