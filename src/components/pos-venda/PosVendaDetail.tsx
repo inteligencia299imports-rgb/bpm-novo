@@ -67,6 +67,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [motosAvaliacao, setMotosAvaliacao] = useState<any[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
   const [estoqueData, setEstoqueData] = useState<Record<string, any>>({});
+  const [proprietario, setProprietario] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [processoOpen, setProcessoOpen] = useState(false);
@@ -77,7 +78,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const cols = statusColumns || POS_VENDA_COLUMNS;
   const statusCol = cols.find(c => c.value === ((item as any)[statusField] || 'em_aberto'));
   const int = INTERESSES.find(i => i.value === item.interesse);
-  const whatsappUrl = item.telefone ? `https://wa.me/55${item.telefone.replace(/\D/g, '')}` : '';
+  const isIntermParte1 = !!processoProps?.showContratoConsignante;
+  const displayClient = isIntermParte1 && proprietario ? proprietario : item;
+  const displayName = displayClient.nome_cliente;
+  const displayPhone = displayClient.telefone;
+  const whatsappUrl = displayPhone ? `https://wa.me/55${displayPhone.replace(/\D/g, '')}` : '';
 
   useEffect(() => {
     const fetchRelated = async () => {
@@ -102,6 +107,26 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           for (const est of estoqueItems) estoqueMap[est.id] = est;
         }
         setEstoqueData(estoqueMap);
+
+        // For Intermediação Parte 1: fetch the original owner (proprietário/consignante)
+        if (processoProps?.showContratoConsignante) {
+          const consignadaEstoque = Object.values(estoqueMap).find((e: any) => e.tipo === 'consignada');
+          if (consignadaEstoque?.avaliacao_id) {
+            const { data: avalData } = await supabase
+              .from('avaliacoes')
+              .select('atendimento_id')
+              .eq('id', consignadaEstoque.avaliacao_id)
+              .single();
+            if (avalData?.atendimento_id) {
+              const { data: ownerData } = await supabase
+                .from('atendimentos')
+                .select('nome_cliente, telefone, loja, cnh_url')
+                .eq('id', avalData.atendimento_id)
+                .single();
+              if (ownerData) setProprietario(ownerData);
+            }
+          }
+        }
       }
 
       const motosAv = resAv.data || [];
@@ -142,7 +167,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           </Button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-xl font-bold truncate">{item.nome_cliente}</h1>
+              <h1 className="text-lg sm:text-xl font-bold truncate">{displayName}</h1>
               {statusCol && <Badge className="text-[10px] shrink-0" style={{ backgroundColor: `${statusCol.hex}20`, color: statusCol.hex }}>{statusCol.label}</Badge>}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -165,16 +190,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" /> Dados do Cliente
+                <User className="h-4 w-4 text-primary" /> {isIntermParte1 ? 'Dados do Proprietário' : 'Dados do Cliente'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <InfoItem label="Nome" value={item.nome_cliente} />
+                <InfoItem label="Nome" value={displayName} />
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Telefone</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-semibold">{formatPhone(item.telefone)}</span>
+                    <span className="text-sm font-semibold">{formatPhone(displayPhone)}</span>
                     {whatsappUrl && (
                       <button onClick={() => window.open(whatsappUrl, '_blank')} className="text-green-600 hover:text-green-700 transition-colors" title="Abrir WhatsApp">
                         <MessageCircle className="h-4 w-4" />
@@ -182,8 +207,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                     )}
                   </div>
                 </div>
-                <InfoItem label="Sexo" value={item.sexo} />
-                <InfoItem label="UF" value={item.uf} />
+                {!isIntermParte1 && <InfoItem label="Sexo" value={item.sexo} />}
+                {!isIntermParte1 && <InfoItem label="UF" value={item.uf} />}
+                {isIntermParte1 && proprietario?.loja && <InfoItem label="Loja" value={proprietario.loja} />}
               </div>
               <Separator className="my-2" />
               <DocumentUpload
