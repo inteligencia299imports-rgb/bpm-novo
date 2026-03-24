@@ -103,6 +103,26 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           for (const est of estoqueItems) estoqueMap[est.id] = est;
         }
         setEstoqueData(estoqueMap);
+
+        // For Intermediação Parte 1: fetch the original owner (proprietário/consignante)
+        if (processoProps?.showContratoConsignante) {
+          const consignadaEstoque = Object.values(estoqueMap).find((e: any) => e.tipo === 'consignada');
+          if (consignadaEstoque?.avaliacao_id) {
+            const { data: avalData } = await supabase
+              .from('avaliacoes')
+              .select('atendimento_id')
+              .eq('id', consignadaEstoque.avaliacao_id)
+              .single();
+            if (avalData?.atendimento_id) {
+              const { data: ownerData } = await supabase
+                .from('atendimentos')
+                .select('nome_cliente, telefone, loja, cnh_url')
+                .eq('id', avalData.atendimento_id)
+                .single();
+              if (ownerData) setProprietario(ownerData);
+            }
+          }
+        }
       }
 
       const motosAv = resAv.data || [];
