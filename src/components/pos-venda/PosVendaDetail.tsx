@@ -129,7 +129,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   .eq('id', avalData.atendimento_id)
                   .single();
                 if (ownerData) {
-                  setProprietario(ownerData);
+                  setProprietario({ ...ownerData, id: avalData.atendimento_id });
                   setCnhUrl(ownerData.cnh_url || null);
                 }
               }
