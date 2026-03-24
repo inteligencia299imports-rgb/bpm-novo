@@ -572,20 +572,29 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Resumo Financeiro</h3>
                 {/* Detalhamento dos abatimentos */}
-                {abatimentos > 0 && (
-                  <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                {(custosOficina.length > 0 || custosOp.filter(c => c.responsavel === 'Cliente').length > 0) && (
+                  <div className="space-y-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Detalhamento dos Abatimentos</span>
-                    <div className="space-y-1">
+                    <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
                       {custosOficina.map((c: any) => {
                         const val = c.valor_executado || c.valor_previsto || 0;
                         if (val <= 0) return null;
                         return (
-                          <div key={c.id} className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">
-                              <span className="inline-block rounded bg-primary/10 text-primary px-1.5 py-0.5 font-medium mr-1.5">Oficina</span>
+                          <div key={c.id} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
+                            <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                              Oficina
+                            </span>
+                            <span className="flex-1 truncate text-xs">
                               {(c.tipo?.toUpperCase() || '').replace('PECA', 'PEÇA').replace('SERVICO', 'SERVIÇO')}{c.detalhes ? ` - ${c.detalhes.toUpperCase()}` : ''}
                             </span>
-                            <span className="font-semibold text-destructive">{formatCurrency(val)}</span>
+                            <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(val)}</span>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={async () => {
+                              await supabase.from('custos_oficina').delete().eq('id', c.id);
+                              setCustosOficina(prev => prev.filter((item: any) => item.id !== c.id));
+                              toast.success('Custo de oficina removido');
+                            }}>
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
                           </div>
                         );
                       })}
@@ -594,13 +603,19 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                         .map((c, i) => {
                           const val = parseCurrencyInput(c.valor);
                           if (val <= 0) return null;
+                          const realIdx = custosOp.indexOf(c);
                           return (
-                            <div key={`op-${i}`} className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">
-                                <span className="inline-block rounded bg-orange-100 text-orange-700 px-1.5 py-0.5 font-medium mr-1.5">Op. Cliente</span>
-                                {c.tipo?.toUpperCase()}{c.descricao ? ` - ${c.descricao.toUpperCase()}` : ''}
+                            <div key={`op-${i}`} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
+                              <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium">
+                                Op. Cliente
                               </span>
-                              <span className="font-semibold text-destructive">{formatCurrency(val)}</span>
+                              <span className="flex-1 truncate text-xs">
+                                {c.descricao ? c.descricao.toUpperCase() : 'PROCESSO'}
+                              </span>
+                              <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(val)}</span>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeCustoOp(realIdx)}>
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
                             </div>
                           );
                         })}
