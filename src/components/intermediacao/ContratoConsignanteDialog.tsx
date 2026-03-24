@@ -523,18 +523,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
               {/* CUSTOS OPERACIONAIS */}
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Custos Operacionais</h3>
-                <div className="grid grid-cols-[1fr_1fr_2fr_1fr_auto] gap-2 items-end">
-                  <div>
-                    <label className="text-xs font-medium">Tipo</label>
-                    <Select value={newCustoTipo} onValueChange={setNewCustoTipo}>
-                      <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Processo">Processo</SelectItem>
-                        <SelectItem value="Agregado">Agregado</SelectItem>
-                        <SelectItem value="Devolução">Devolução</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="grid grid-cols-[1fr_2fr_1fr_auto] gap-2 items-end">
                   <div>
                     <label className="text-xs font-medium">Responsável</label>
                     <Select value={newCustoResp} onValueChange={setNewCustoResp}>
