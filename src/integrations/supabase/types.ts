@@ -104,6 +104,7 @@ export type Database = {
           avaliacao_compra: number | null
           avaliacao_consignacao: number | null
           avaliador_id: string | null
+          consignacao_observacoes: string | null
           consignacao_status: string
           created_at: string
           id: string
@@ -134,6 +135,7 @@ export type Database = {
           avaliacao_compra?: number | null
           avaliacao_consignacao?: number | null
           avaliador_id?: string | null
+          consignacao_observacoes?: string | null
           consignacao_status?: string
           created_at?: string
           id?: string
@@ -164,6 +166,7 @@ export type Database = {
           avaliacao_compra?: number | null
           avaliacao_consignacao?: number | null
           avaliador_id?: string | null
+          consignacao_observacoes?: string | null
           consignacao_status?: string
           created_at?: string
           id?: string
@@ -202,6 +205,44 @@ export type Database = {
             columns: ["moto_avaliacao_id"]
             isOneToOne: false
             referencedRelation: "motos_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consignacao_processos: {
+        Row: {
+          avaliacao_id: string
+          concluida: boolean
+          created_at: string
+          data_conclusao: string | null
+          etapa: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avaliacao_id: string
+          concluida?: boolean
+          created_at?: string
+          data_conclusao?: string | null
+          etapa: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          avaliacao_id?: string
+          concluida?: boolean
+          created_at?: string
+          data_conclusao?: string | null
+          etapa?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consignacao_processos_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes"
             referencedColumns: ["id"]
           },
         ]
