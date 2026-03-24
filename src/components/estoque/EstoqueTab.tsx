@@ -244,7 +244,7 @@ const EstoqueTab = () => {
     if (item.avaliacao_id) {
       options.push({
         label: 'Avaliação',
-        icon: <FileSearch className="h-4 w-4" />,
+        icon: <ClipboardCheck className="h-4 w-4" />,
         action: () => setDetailView({ type: 'avaliacao', data: { avaliacaoId: item.avaliacao_id } }),
       });
       options.push({
