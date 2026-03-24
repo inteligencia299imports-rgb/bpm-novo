@@ -144,7 +144,7 @@ const MotoVendaSection: React.FC<Props> = ({
             </RadioGroup>
           </div>
           <div className="space-y-1.5">
-            <Label>Manutenção em Dia *</Label>
+            <Label>Manutenção Vencida *</Label>
             <RadioGroup value={manutencaoEmDia} onValueChange={setManutencaoEmDia} className="flex gap-4">
               <div className="flex items-center gap-1.5">
                 <RadioGroupItem value="sim" id="manut-sim" />
