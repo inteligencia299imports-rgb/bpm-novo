@@ -115,6 +115,20 @@ const MotoVendaSection: React.FC<Props> = ({
             <Input value={cilindrada} onChange={e => setCilindrada(formatKm(e.target.value))} placeholder="Ex: 1.200" inputMode="numeric" />
           </div>
         </div>
+        <div className="flex flex-wrap gap-6 pt-1">
+          <div className="flex items-center gap-2">
+            <Checkbox id="temManual" checked={temManual} onCheckedChange={(v) => setTemManual(!!v)} />
+            <Label htmlFor="temManual" className="cursor-pointer">Manual</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="temChaveReserva" checked={temChaveReserva} onCheckedChange={(v) => setTemChaveReserva(!!v)} />
+            <Label htmlFor="temChaveReserva" className="cursor-pointer">Chave Reserva</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="manutencaoEmDia" checked={manutencaoEmDia} onCheckedChange={(v) => setManutencaoEmDia(!!v)} />
+            <Label htmlFor="manutencaoEmDia" className="cursor-pointer">Manutenção em Dia</Label>
+          </div>
+        </div>
         <div className="space-y-1.5">
           <Label>Observações da Moto *</Label>
           <Textarea value={obs} onChange={e => setObs(e.target.value.toUpperCase())} rows={3} className="uppercase" />

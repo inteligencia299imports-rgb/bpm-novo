@@ -434,6 +434,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             km={vendaKm} setKm={setVendaKm}
             cilindrada={vendaCilindrada} setCilindrada={setVendaCilindrada}
             obs={vendaObs} setObs={setVendaObs}
+            temManual={temManual} setTemManual={setTemManual}
+            temChaveReserva={temChaveReserva} setTemChaveReserva={setTemChaveReserva}
+            manutencaoEmDia={manutencaoEmDia} setManutencaoEmDia={setManutencaoEmDia}
             motoAvaliacaoId={motoAvaliacaoId}
             atendimentoId={atendimentoId}
             interesse={interesse}
