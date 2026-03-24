@@ -128,7 +128,10 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   .select('nome_cliente, telefone, loja, cnh_url')
                   .eq('id', avalData.atendimento_id)
                   .single();
-                if (ownerData) setProprietario(ownerData);
+                if (ownerData) {
+                  setProprietario({ ...ownerData, id: avalData.atendimento_id });
+                  setCnhUrl(ownerData.cnh_url || null);
+                }
               }
             }
           }
@@ -221,13 +224,15 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               <DocumentUpload
                 label="CNH"
                 currentUrl={cnhUrl}
-                bucketPath={`docs/${item.id}/cnh`}
+                bucketPath={`docs/${isIntermParte1 && proprietario?.id ? proprietario.id : item.id}/cnh`}
                 onUploaded={async (url) => {
-                  await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', item.id);
+                  const targetId = isIntermParte1 && proprietario?.id ? proprietario.id : item.id;
+                  await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', targetId);
                   setCnhUrl(url);
                 }}
                 onRemoved={async () => {
-                  await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', item.id);
+                  const targetId = isIntermParte1 && proprietario?.id ? proprietario.id : item.id;
+                  await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', targetId);
                   setCnhUrl(null);
                 }}
               />
