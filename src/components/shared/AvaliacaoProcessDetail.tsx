@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList } from 'lucide-react';
+import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList, Download, DollarSign } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -39,6 +39,8 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColumns, statusField, title, onClose }) => {
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
+  const [quantoPede, setQuantoPede] = useState<number | null>(null);
+  const [valorFechamento, setValorFechamento] = useState<number | null>(null);
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
   const [processoConsignacaoOpen, setProcessoConsignacaoOpen] = useState(false);
   const [processoPreparacaoOpen, setProcessoPreparacaoOpen] = useState(false);
@@ -57,13 +59,16 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      const [cnhRes] = await Promise.all([
+      const [cnhRes, avRes] = await Promise.all([
         atendimento?.id
           ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
           : Promise.resolve({ data: null }),
+        supabase.from('avaliacoes').select('quanto_pede, valor_fechamento').eq('id', item.id).maybeSingle(),
       ]);
       setCnhUrl(cnhRes.data?.cnh_url || null);
       if (moto?.id) setCrlvUrl(moto.crlv_url || null);
+      setQuantoPede(avRes.data?.quanto_pede ?? null);
+      setValorFechamento(avRes.data?.valor_fechamento ?? null);
       setLoading(false);
     };
     loadAll();
@@ -170,6 +175,14 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   </div>
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
+                {cnhUrl && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">CNH</span>
+                    <a href={cnhUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline font-medium">
+                      <Download className="h-3.5 w-3.5" /> Baixar
+                    </a>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -190,7 +203,23 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   {ano && <InfoItem label="Ano" value={ano} />}
                   {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
                   {moto.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{moto.categoria}</span>} />}
+                  {crlvUrl && (
+                    <div>
+                      <span className="text-xs text-muted-foreground">CRLV</span>
+                      <a href={crlvUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline font-medium">
+                        <Download className="h-3.5 w-3.5" /> Baixar
+                      </a>
+                    </div>
+                  )}
                 </div>
+                {(moto.tem_manual || moto.tem_chave_reserva) && (
+                  <>
+                    <Separator className="my-3" />
+                    <p className="text-xs text-muted-foreground italic uppercase">
+                      {[moto.tem_manual && 'Manual', moto.tem_chave_reserva && 'Chave Reserva'].filter(Boolean).join(' e ')}
+                    </p>
+                  </>
+                )}
                 {moto.observacoes && (
                   <>
                     <Separator className="my-3" />
@@ -201,6 +230,22 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             </Card>
           )}
 
+          {/* Valores da Avaliação */}
+          {(entityType === 'consignacao' || entityType === 'pos_compra') && (quantoPede != null || valorFechamento != null) && (
+            <Card className="md:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-primary" /> Valores
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <InfoItem label="Quanto Pede" value={formatCurrency(quantoPede)} />
+                  <InfoItem label="Valor de Fechamento" value={formatCurrency(valorFechamento)} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
         </div>
       </ScrollArea>
