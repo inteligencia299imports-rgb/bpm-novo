@@ -107,7 +107,11 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
               </Badge>
             )}
             {avaliacao.situacao === 'adquirida' && (avaliacao as any).tipo_aquisicao && (
-              <Badge variant="outline" className={`text-[10px] ${(avaliacao as any).tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : 'border-green-500 text-green-600'}`}>
+              <Badge variant="outline" className={`text-[10px] ${
+                (avaliacao as any).tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : 
+                (avaliacao as any).tipo_aquisicao === 'convertida' ? 'border-blue-800 text-blue-800' :
+                'border-green-500 text-green-600'
+              }`}>
                 {getTipoAquisicaoLabel((avaliacao as any).tipo_aquisicao)}
               </Badge>
             )}
