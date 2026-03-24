@@ -37,6 +37,7 @@ const STATUS_HEX: Record<string, string> = {
 
 const getTipoAquisicaoLabel = (tipo: string | null) => {
   if (!tipo) return null;
+  if (tipo === 'convertida') return 'Convertida';
   return tipo === 'propria' ? 'Própria' : 'Consignada';
 };
 
