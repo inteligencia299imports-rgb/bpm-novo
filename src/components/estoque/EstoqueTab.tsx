@@ -191,11 +191,6 @@ const EstoqueTab = () => {
       .maybeSingle();
     if (data) {
       const mapped = { ...data, atendimento: (data as any).atendimentos, moto: (data as any).motos_avaliacao };
-      // If bike is in stock and preparacao_status is 'estoque', set it to 'em_aberto' for tracking
-      if (mapped.situacao === 'estoque' && (mapped.preparacao_status === 'estoque' || !mapped.preparacao_status)) {
-        await supabase.from('avaliacoes').update({ preparacao_status: 'em_aberto' } as any).eq('id', avaliacaoId);
-        mapped.preparacao_status = 'em_aberto';
-      }
       setDetailView({ type: 'preparacao', data: mapped });
     } else {
       toast.error('Avaliação não encontrada');
