@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -254,7 +254,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [tipoSelecionado, setTipoSelecionado] = useState<string | null>(null);
   const [savingAquisicao, setSavingAquisicao] = useState(false);
   const [obsMotaAquisicao, setObsMotaAquisicao] = useState('');
-
+  const [isConvertendo, setIsConvertendo] = useState(false);
   const handleStatusChange = async (newStatus: SituacaoAvaliacao, tipoAquisicao?: string, valorFechamento?: number) => {
     const updateData: any = { situacao: newStatus };
     if (tipoAquisicao) updateData.tipo_aquisicao = tipoAquisicao;
@@ -309,6 +309,60 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setValorFechamentoAquisicao('');
     setTipoSelecionado(null);
     setObsMotaAquisicao('');
+    setIsConvertendo(false);
+  };
+
+  const handleSaveConversao = async () => {
+    if (!tipoSelecionado) {
+      toast.error('Selecione o tipo de aquisição');
+      return;
+    }
+    const valor = parseCurrencyToNumber(valorFechamentoAquisicao);
+    if (!valor || valor <= 0) {
+      toast.error('Informe o valor de fechamento');
+      return;
+    }
+    setSavingAquisicao(true);
+    
+    const currentTipo = avaliacao?.tipo_aquisicao;
+    // consignada → propria = convertida; propria/convertida → consignada = consignada
+    const newTipo = (currentTipo === 'consignada') ? 'convertida' : 'consignada';
+    
+    if (obsMotaAquisicao.trim() && avaliacao?.moto_avaliacao_id) {
+      await supabase.from('motos_avaliacao').update({ observacoes: obsMotaAquisicao.trim().toUpperCase() }).eq('id', avaliacao.moto_avaliacao_id);
+    }
+    
+    const { error } = await supabase.from('avaliacoes').update({
+      tipo_aquisicao: newTipo,
+      valor_fechamento: valor,
+    }).eq('id', avaliacaoId);
+    
+    if (error) {
+      toast.error('Erro ao converter aquisição');
+    } else {
+      const tipoLabel = newTipo === 'convertida' ? 'Convertida' : 'Consignada';
+      const fromLabel = currentTipo === 'consignada' ? 'Consignada' : currentTipo === 'convertida' ? 'Convertida' : 'Própria';
+      if (avaliacao?.moto_avaliacao_id) {
+        await supabase.from('status_history').insert({
+          entity_type: 'avaliacao',
+          entity_id: avaliacao.moto_avaliacao_id,
+          status_from: fromLabel,
+          status_to: tipoLabel,
+          changed_by: user?.id,
+          changed_by_name: userName || user?.email || null,
+          observacoes: `Conversão de ${fromLabel} para ${tipoLabel}`,
+        } as any);
+      }
+      toast.success(`Moto convertida para ${tipoLabel}!`);
+      setAvaliacao((prev: any) => ({ ...prev, tipo_aquisicao: newTipo, valor_fechamento: valor }));
+    }
+    
+    setSavingAquisicao(false);
+    setTipoAquisicaoPopup(false);
+    setValorFechamentoAquisicao('');
+    setTipoSelecionado(null);
+    setObsMotaAquisicao('');
+    setIsConvertendo(false);
   };
 
   if (loading) {
@@ -374,8 +428,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               <h1 className="text-lg sm:text-xl font-bold truncate">{at?.nome_cliente}</h1>
               {sit && <Badge className={`${sit.color} text-[10px] shrink-0`}>{sit.label}</Badge>}
               {avaliacao?.tipo_aquisicao && (
-                <Badge variant="outline" className={`text-[10px] shrink-0 ${avaliacao.tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : 'border-green-500 text-green-600'}`}>
-                  {avaliacao.tipo_aquisicao === 'consignada' ? 'Consignada' : 'Própria'}
+                <Badge variant="outline" className={`text-[10px] shrink-0 ${
+                  avaliacao.tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : 
+                  avaliacao.tipo_aquisicao === 'convertida' ? 'border-blue-800 text-blue-800' :
+                  'border-green-500 text-green-600'
+                }`}>
+                  {avaliacao.tipo_aquisicao === 'consignada' ? 'Consignada' : avaliacao.tipo_aquisicao === 'convertida' ? 'Convertida' : 'Própria'}
                 </Badge>
               )}
             </div>
@@ -687,8 +745,27 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </CardContent>
           </Card>
 
-          <div className="md:col-span-2 flex flex-col items-center gap-3">
+           <div className="md:col-span-2 flex flex-col items-center gap-3">
             <div className="flex gap-2 flex-wrap justify-center">
+              {avaliacao?.situacao === 'adquirida' && avaliacao?.tipo_aquisicao && (
+                <Button
+                  size="sm"
+                  className="gap-2 text-white hover:opacity-90"
+                  style={{ backgroundColor: '#1E3A5F' }}
+                  onClick={() => {
+                    setIsConvertendo(true);
+                    setObsMotaAquisicao('');
+                    setValorFechamentoAquisicao('');
+                    // Pre-select the only available option
+                    const currentTipo = avaliacao.tipo_aquisicao;
+                    const oppositeTipo = (currentTipo === 'consignada') ? 'propria' : 'consignada';
+                    setTipoSelecionado(oppositeTipo);
+                    setTipoAquisicaoPopup(true);
+                  }}
+                >
+                  <ArrowLeftRight className="h-4 w-4" /> Converter
+                </Button>
+              )}
               {statusButtons.map(btn => (
                 <Button
                   key={btn.value}
@@ -697,6 +774,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   style={{ backgroundColor: btn.color }}
                   onClick={() => {
                     if (btn.value === 'adquirida') {
+                      setIsConvertendo(false);
                       setObsMotaAquisicao('');
                       setTipoAquisicaoPopup(true);
                       return;
@@ -773,12 +851,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </div>
         </DialogContent>
       </Dialog>
-      {/* Dialog Tipo de Aquisição */}
-      <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); } }}>
+      {/* Dialog Tipo de Aquisição / Conversão */}
+      <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" /> Aquisição
+              {isConvertendo ? <ArrowLeftRight className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+              {isConvertendo ? 'Conversão' : 'Aquisição'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -798,20 +877,40 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <div>
               <label className="text-sm font-medium text-foreground">Tipo de Aquisição <span className="text-destructive">*</span></label>
               <div className="flex gap-3 mt-2">
-                <Button
-                  variant={tipoSelecionado === 'propria' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setTipoSelecionado('propria')}
-                >
-                  Própria
-                </Button>
-                <Button
-                  variant={tipoSelecionado === 'consignada' ? 'default' : 'outline'}
-                  className="flex-1"
-                  onClick={() => setTipoSelecionado('consignada')}
-                >
-                  Consignada
-                </Button>
+                {isConvertendo ? (
+                  // In conversion mode, show only the opposite type
+                  (() => {
+                    const currentTipo = avaliacao?.tipo_aquisicao;
+                    const oppositeTipo = currentTipo === 'consignada' ? 'propria' : 'consignada';
+                    const oppositeLabel = currentTipo === 'consignada' ? 'Própria' : 'Consignada';
+                    return (
+                      <Button
+                        variant="default"
+                        className="flex-1"
+                        disabled
+                      >
+                        {oppositeLabel}
+                      </Button>
+                    );
+                  })()
+                ) : (
+                  <>
+                    <Button
+                      variant={tipoSelecionado === 'propria' ? 'default' : 'outline'}
+                      className="flex-1"
+                      onClick={() => setTipoSelecionado('propria')}
+                    >
+                      Própria
+                    </Button>
+                    <Button
+                      variant={tipoSelecionado === 'consignada' ? 'default' : 'outline'}
+                      className="flex-1"
+                      onClick={() => setTipoSelecionado('consignada')}
+                    >
+                      Consignada
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
             <div>
@@ -829,14 +928,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               <Button
                 variant="secondary"
                 className="flex-1 gap-2"
-                onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); }}
+                onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); }}
               >
                 <ArrowLeft className="h-4 w-4" /> Voltar
               </Button>
               {valorFechamentoAquisicao.trim() !== '' && parseCurrencyToNumber(valorFechamentoAquisicao) !== null && parseCurrencyToNumber(valorFechamentoAquisicao)! > 0 && tipoSelecionado && (
                 <Button
                   className="flex-1 gap-2"
-                  onClick={handleSaveAquisicao}
+                  onClick={isConvertendo ? handleSaveConversao : handleSaveAquisicao}
                   disabled={savingAquisicao}
                 >
                   {savingAquisicao ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
