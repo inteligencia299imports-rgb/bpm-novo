@@ -315,7 +315,7 @@ const ContratoDialog: React.FC<Props> = ({
       atendimento_id: atendimento.id,
       cpf_cnpj: cpfCnpj || null,
       ipva_tipo: ipvaTipo || null,
-      ipva_cotas: ipvaTipo === 'ambos' && ipvaCotas ? parseInt(ipvaCotas) : null,
+      ipva_cotas: ipvaTipo === 'ambos' && ipvaCotas ? ipvaCotas : null,
       ipva_valor: ipvaTipo === 'loja' ? parseCurrencyInput(ipvaValor) || null : null,
       transferencia_tipo: transferenciaTipo || null,
       transferencia_valor: transferenciaTipo === 'cliente' ? parseCurrencyInput(transferenciaValor) || null : null,
