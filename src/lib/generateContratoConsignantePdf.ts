@@ -80,9 +80,10 @@ function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number
 
       let currentX = x;
       for (const w of words) {
+        const cleanW = w.replace(/[.,;:!?]+$/g, '');
         const isBold = boldSegments.some(seg => {
           const segWords = seg.split(/\s+/);
-          return segWords.includes(w) || w === seg;
+          return segWords.includes(w) || segWords.includes(cleanW) || w === seg || cleanW === seg;
         });
         doc.setFont('helvetica', isBold ? 'bold' : 'normal');
         doc.text(w, currentX, y);
