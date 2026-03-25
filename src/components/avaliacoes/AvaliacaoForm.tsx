@@ -959,6 +959,29 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 )}
               </div>
             </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Manual</Label>
+                <RadioGroup value={aquisManual} onValueChange={setAquisManual} className="flex gap-3">
+                  <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="aq-manual-sim" /><Label htmlFor="aq-manual-sim" className="text-xs">Sim</Label></div>
+                  <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="aq-manual-nao" /><Label htmlFor="aq-manual-nao" className="text-xs">Não</Label></div>
+                </RadioGroup>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Chave Reserva</Label>
+                <RadioGroup value={aquisChaveReserva} onValueChange={setAquisChaveReserva} className="flex gap-3">
+                  <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="aq-chave-sim" /><Label htmlFor="aq-chave-sim" className="text-xs">Sim</Label></div>
+                  <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="aq-chave-nao" /><Label htmlFor="aq-chave-nao" className="text-xs">Não</Label></div>
+                </RadioGroup>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Revisão Vencida</Label>
+                <RadioGroup value={aquisRevisaoVencida} onValueChange={setAquisRevisaoVencida} className="flex gap-3">
+                  <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="aq-rev-sim" /><Label htmlFor="aq-rev-sim" className="text-xs">Sim</Label></div>
+                  <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="aq-rev-nao" /><Label htmlFor="aq-rev-nao" className="text-xs">Não</Label></div>
+                </RadioGroup>
+              </div>
+            </div>
             <div>
               <label className="text-sm font-medium text-foreground">Observações da Moto</label>
               <Textarea
