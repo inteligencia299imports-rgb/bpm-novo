@@ -296,8 +296,9 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   y = drawJustifiedText(doc, 'Por ser verdade assino o presente recibo.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
 
   // ===== SIGNATURES =====
+  const clientSigBlockHeight = lineHeight * 5 + lineHeight * 4; // gap + signature lines
+  checkPageBreak(clientSigBlockHeight);
   y += lineHeight * 5;
-  checkPageBreak(lineHeight * 15);
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
