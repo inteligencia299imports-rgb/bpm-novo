@@ -584,6 +584,20 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <InfoItem label="Placa" value={moto?.placa?.replace(/-/g, '')} />
                 <InfoItem label="KM" value={formatKm(moto?.km)} />
               </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1">
+                  <span className={`inline-block w-2 h-2 rounded-full ${moto?.tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
+                  Manual
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className={`inline-block w-2 h-2 rounded-full ${moto?.tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
+                  Chave Reserva
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className={`inline-block w-2 h-2 rounded-full ${moto?.manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                  Revisão
+                </span>
+              </div>
               {moto?.observacoes && (
                 <div className="mt-2">
                   <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações</span>
