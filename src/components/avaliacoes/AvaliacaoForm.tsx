@@ -131,6 +131,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [prevCustosCliente, setPrevCustosCliente] = useState('');
   const [obsAvaliador, setObsAvaliador] = useState('');
   const [classificacao, setClassificacao] = useState('');
+  const [valorFechamentoEdit, setValorFechamentoEdit] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -162,6 +163,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
         setObsAvaliador(data.observacao_avaliador || '');
         setClassificacao((data as any).classificacao || '');
+        setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
 
         if (data.moto_avaliacao_id) {
           const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', data.moto_avaliacao_id);
@@ -228,6 +230,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       classificacao: classificacao || null,
       avaliador_id: user!.id,
       situacao: 'em_aberto',
+      ...(avaliacao?.situacao === 'adquirida' && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
     };
 
     const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
@@ -827,6 +830,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CurrencyField label="Avaliação Compra" value={avalCompra} onChange={handleCurrencyChange(setAvalCompra)} />
             <CurrencyField label="Previsão Custos Loja" value={prevCustosLoja} onChange={handleCurrencyChange(setPrevCustosLoja)} />
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
+            {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && (
+              <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} />
+            )}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Classificação da Moto <span className="text-destructive">*</span></Label>
               <div className="flex gap-2">
