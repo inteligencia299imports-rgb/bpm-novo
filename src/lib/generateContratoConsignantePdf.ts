@@ -282,12 +282,10 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   );
   y += 2;
   y = drawJustifiedText(doc, 'Por ser verdade assino o presente recibo.', marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
-  y += sectionGap;
 
   // ===== SIGNATURES =====
-  const signaturesBlockHeight = lineHeight * 22;
-  checkPageBreak(signaturesBlockHeight);
-  y += lineHeight * 2;
+  y += lineHeight * 5;
+  checkPageBreak(lineHeight * 15);
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
@@ -297,7 +295,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   setNormal();
   doc.text(data.nomeConsignante, marginLeft, y); y += lineHeight;
   doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y);
-  y += lineHeight * 8;
+  y += lineHeight * 5;
 
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
