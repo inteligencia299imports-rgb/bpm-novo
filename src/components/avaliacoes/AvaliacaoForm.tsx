@@ -746,6 +746,18 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 const remap: Record<string, string> = { vendido: 'adquirida' };
                 const mapped = remap[raw] || raw;
                 return mapped.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação');
+              }} renderPopupExtra={(h) => {
+                if (h.observacoes) {
+                  return (
+                    <div>
+                      <span className="text-xs text-muted-foreground">
+                        {h.status_to === 'consulta_realizada' ? 'Resultado da Consulta' : 'Observações'}
+                      </span>
+                      <p className="text-sm mt-0.5 whitespace-pre-wrap">{h.observacoes}</p>
+                    </div>
+                  );
+                }
+                return null;
               }} />
             </CardContent>
           </Card>
