@@ -663,6 +663,28 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       <InfoItem label="Placa" value={moto.placa?.replace(/-/g, '')} />
                       <InfoItem label="KM" value={formatKm(moto.km)} />
                     </div>
+                    {((moto as any).tem_manual != null || (moto as any).tem_chave_reserva != null || (moto as any).manutencao_em_dia != null) && (
+                      <div className="flex items-center gap-3 text-xs mt-3">
+                        {(moto as any).tem_manual != null && (
+                          <span className="flex items-center gap-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
+                            Manual
+                          </span>
+                        )}
+                        {(moto as any).tem_chave_reserva != null && (
+                          <span className="flex items-center gap-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
+                            Chave Reserva
+                          </span>
+                        )}
+                        {(moto as any).manutencao_em_dia != null && (
+                          <span className="flex items-center gap-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                            Revisão
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {moto.observacoes && (
                       <div className="mt-2">
                         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações da Moto</span>
