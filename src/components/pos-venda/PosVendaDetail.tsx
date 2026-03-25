@@ -499,6 +499,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </Card>
           )}
 
+        </div>
+      </ScrollArea>
+
       {/* Avaliação Popup */}
       <Dialog open={!!viewAvaliacaoData} onOpenChange={() => setViewAvaliacaoData(null)}>
         <DialogContent className="max-w-3xl">
