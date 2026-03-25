@@ -236,12 +236,29 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                     }
                   }}
                 />
-                {(moto.tem_manual || moto.tem_chave_reserva) && (
+                {(moto.tem_manual != null || moto.tem_chave_reserva != null || moto.manutencao_em_dia != null) && (
                   <>
                     <Separator className="my-3" />
-                    <p className="text-xs text-muted-foreground italic uppercase">
-                      {[moto.tem_manual && 'Manual', moto.tem_chave_reserva && 'Chave Reserva'].filter(Boolean).join(' e ')}
-                    </p>
+                    <div className="flex items-center gap-3 text-xs">
+                      {moto.tem_manual != null && (
+                        <span className="flex items-center gap-1">
+                          <span className={`inline-block w-2 h-2 rounded-full ${moto.tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
+                          Manual
+                        </span>
+                      )}
+                      {moto.tem_chave_reserva != null && (
+                        <span className="flex items-center gap-1">
+                          <span className={`inline-block w-2 h-2 rounded-full ${moto.tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
+                          Chave Reserva
+                        </span>
+                      )}
+                      {moto.manutencao_em_dia != null && (
+                        <span className="flex items-center gap-1">
+                          <span className={`inline-block w-2 h-2 rounded-full ${moto.manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                          Revisão
+                        </span>
+                      )}
+                    </div>
                   </>
                 )}
                 {moto.observacoes && (
