@@ -342,6 +342,31 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y = drawJustifiedText(doc, '§2° A Consignatária informará ao Consignante o resultado da avaliação imediatamente após sua conclusão e disponibilizará a motocicleta para a venda após conclusão dos trâmites necessários.', marginLeft, contentWidth, y, lineHeight);
   y += sectionGap;
 
+  // DA IRRETRATABILIDADE
+  sectionHeader('DA IRRETRATABILIDADE APÓS SINAL DE NEGÓCIO E RESPONSABILIDADE POR IMPEDIMENTO:');
+  setNormal();
+  checkPageBreak(20);
+  y = drawJustifiedText(doc, 'Caso haja manifestação de interesse de comprador com pagamento de sinal, o CONSIGNANTE não poderá retirar o veículo até:', marginLeft, contentWidth, y, lineHeight);
+  y += 2;
+  checkPageBreak(10);
+  y = drawJustifiedText(doc, 'a) conclusão da venda; ou b) desistência formal do comprador.', marginLeft, contentWidth, y, lineHeight);
+  y += 2;
+  checkPageBreak(10);
+  y = drawJustifiedText(doc, 'O sinal caracteriza início de vínculo contratual.', marginLeft, contentWidth, y, lineHeight);
+  y += sectionGap;
+  checkPageBreak(15);
+  y = drawJustifiedText(doc, 'Caso o CONSIGNANTE inviabilize a venda, pagará multa de 20% sobre o valor do veículo, além de perdas e danos.', marginLeft, contentWidth, y, lineHeight);
+  y += sectionGap;
+  checkPageBreak(20);
+  y = drawJustifiedText(doc, 'Durante a vigência: I – não poderá gerar ônus ou restrições; II – deverá manter regularidade do veículo; III – não poderá negociar fora da consignação.', marginLeft, contentWidth, y, lineHeight);
+  y += sectionGap;
+  checkPageBreak(10);
+  y = drawJustifiedText(doc, 'O descumprimento autoriza rescisão imediata.', marginLeft, contentWidth, y, lineHeight);
+  y += sectionGap;
+  checkPageBreak(20);
+  y = drawJustifiedText(doc, 'Parágrafo único: Caso haja impedimento no CPF do CONSIGNANTE que inviabilize a transferência, este será responsável por toda regularização, custos, despesas e prejuízos, nada podendo ser imputado à CONSIGNATÁRIA.', marginLeft, contentWidth, y, lineHeight);
+  y += sectionGap;
+
   // DO DIREITO DE IMAGEM
   sectionHeader('DO DIREITO DE IMAGEM:');
   setNormal();
