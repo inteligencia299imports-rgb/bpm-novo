@@ -266,7 +266,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [aquisChaveReserva, setAquisChaveReserva] = useState('');
   const [aquisRevisaoVencida, setAquisRevisaoVencida] = useState('');
   const [isConvertendo, setIsConvertendo] = useState(false);
-  const handleStatusChange = async (newStatus: SituacaoAvaliacao, tipoAquisicao?: string, valorFechamento?: number) => {
+  const handleStatusChange = async (newStatus: SituacaoAvaliacao, tipoAquisicao?: string, valorFechamento?: number, observacoes?: string) => {
     const updateData: any = { situacao: newStatus };
     if (tipoAquisicao) updateData.tipo_aquisicao = tipoAquisicao;
     if (valorFechamento && valorFechamento > 0) updateData.valor_fechamento = valorFechamento;
@@ -280,7 +280,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
       // Registrar no histórico
       if (avaliacao?.moto_avaliacao_id) {
-        const historyObs = newStatus === 'adquirida' && moto?.categoria ? moto.categoria : null;
+        const historyObs = observacoes?.trim() || null;
         await supabase.from('status_history').insert({
           entity_type: 'avaliacao',
           entity_id: avaliacao.moto_avaliacao_id,
@@ -321,7 +321,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', avaliacao.moto_avaliacao_id);
       }
     }
-    await handleStatusChange('adquirida', tipoSelecionado, valor && valor > 0 ? valor : undefined);
+    await handleStatusChange('adquirida', tipoSelecionado, valor && valor > 0 ? valor : undefined, obsMotaAquisicao.trim().toUpperCase() || undefined);
     setSavingAquisicao(false);
     setTipoAquisicaoPopup(false);
     setValorFechamentoAquisicao('');
