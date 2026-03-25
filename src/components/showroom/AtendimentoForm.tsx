@@ -79,52 +79,58 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   useEffect(() => {
     if (!atendimentoId) return;
     const load = async () => {
-      const { data: at } = await supabase.from('atendimentos').select('*').eq('id', atendimentoId).single();
-      if (at) {
-        setLoja(at.loja);
-        setNomeCliente(at.nome_cliente);
-        setTelefone(formatPhone(at.telefone));
-        setSexo(at.sexo);
-        setUf(at.uf);
-        setTipoAtendimento(at.tipo_atendimento);
-        setOrigem(at.origem || '');
-        setTemperatura(at.temperatura || '');
-        setObservacoes(at.observacoes || '');
-        setInteresse(at.interesse as Interesse);
-        setSituacao(at.situacao as SituacaoShowroom);
-      }
-      if (at?.interesse === 'comprar' || at?.interesse === 'trocar') {
-        const { data: mi } = await supabase.from('motos_interesse').select('*').eq('atendimento_id', atendimentoId).maybeSingle();
-        if (mi) {
-          setOrigemMoto(mi.origem);
-          setCompraMarca(mi.marca || '');
-          setCompraModelo(mi.modelo || '');
-          setCompraAno(mi.ano || '');
-          setEstoqueMotoId(mi.estoque_moto_id || '');
-          setChassi((mi as any).chassi || '');
+      try {
+        const { data: at } = await supabase.from('atendimentos').select('*').eq('id', atendimentoId).single();
+        if (at) {
+          setLoja(at.loja);
+          setNomeCliente(at.nome_cliente);
+          setTelefone(formatPhone(at.telefone));
+          setSexo(at.sexo);
+          setUf(at.uf);
+          setTipoAtendimento(at.tipo_atendimento);
+          setOrigem(at.origem || '');
+          setTemperatura(at.temperatura || '');
+          setObservacoes(at.observacoes || '');
+          setInteresse(at.interesse as Interesse);
+          setSituacao(at.situacao as SituacaoShowroom);
         }
-      }
-      if (at?.interesse === 'vender' || at?.interesse === 'trocar') {
-        const { data: ma } = await supabase.from('motos_avaliacao').select('*').eq('atendimento_id', atendimentoId).maybeSingle();
-        if (ma) {
-          setMotoAvaliacaoId(ma.id);
-          setVendaMarca(ma.marca);
-          setVendaModelo(ma.modelo);
-          setVendaAnoFab(ma.ano_fabricacao || '');
-          setVendaAnoMod(ma.ano_modelo || '');
-          setVendaCategoria(ma.categoria || '');
-          setVendaCor(ma.cor || '');
-          setVendaPlaca(ma.placa || '');
-          setVendaKm(ma.km || '');
-          setVendaCilindrada((ma as any).cilindrada || '');
-          setVendaObs(ma.observacoes || '');
-          setTemManual((ma as any).tem_manual ? 'sim' : (ma as any).tem_manual === false ? 'nao' : '');
-          setTemChaveReserva((ma as any).tem_chave_reserva ? 'sim' : (ma as any).tem_chave_reserva === false ? 'nao' : '');
-          setManutencaoEmDia((ma as any).manutencao_em_dia ? 'sim' : (ma as any).manutencao_em_dia === false ? 'nao' : '');
-          setEnviadaAvaliacao(ma.enviada_avaliacao || false);
+        if (at?.interesse === 'comprar' || at?.interesse === 'trocar') {
+          const { data: mi } = await supabase.from('motos_interesse').select('*').eq('atendimento_id', atendimentoId).maybeSingle();
+          if (mi) {
+            setOrigemMoto(mi.origem);
+            setCompraMarca(mi.marca || '');
+            setCompraModelo(mi.modelo || '');
+            setCompraAno(mi.ano || '');
+            setEstoqueMotoId(mi.estoque_moto_id || '');
+            setChassi((mi as any).chassi || '');
+          }
         }
+        if (at?.interesse === 'vender' || at?.interesse === 'trocar') {
+          const { data: ma } = await supabase.from('motos_avaliacao').select('*').eq('atendimento_id', atendimentoId).maybeSingle();
+          if (ma) {
+            setMotoAvaliacaoId(ma.id);
+            setVendaMarca(ma.marca);
+            setVendaModelo(ma.modelo);
+            setVendaAnoFab(ma.ano_fabricacao || '');
+            setVendaAnoMod(ma.ano_modelo || '');
+            setVendaCategoria(ma.categoria || '');
+            setVendaCor(ma.cor || '');
+            setVendaPlaca(ma.placa || '');
+            setVendaKm(ma.km || '');
+            setVendaCilindrada((ma as any).cilindrada || '');
+            setVendaObs(ma.observacoes || '');
+            setTemManual((ma as any).tem_manual ? 'sim' : (ma as any).tem_manual === false ? 'nao' : '');
+            setTemChaveReserva((ma as any).tem_chave_reserva ? 'sim' : (ma as any).tem_chave_reserva === false ? 'nao' : '');
+            setManutencaoEmDia((ma as any).manutencao_em_dia ? 'sim' : (ma as any).manutencao_em_dia === false ? 'nao' : '');
+            setEnviadaAvaliacao(ma.enviada_avaliacao || false);
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao carregar atendimento:', err);
+        toast.error('Erro ao carregar atendimento');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     load();
   }, [atendimentoId]);
