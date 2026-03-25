@@ -28,6 +28,7 @@ interface Props {
   motoAvaliacaoId: string | null;
   atendimentoId: string | null;
   interesse: Interesse;
+  isEditing?: boolean;
 }
 
 const MotoVendaSection: React.FC<Props> = ({
@@ -36,7 +37,7 @@ const MotoVendaSection: React.FC<Props> = ({
   placa, setPlaca, km, setKm, cilindrada, setCilindrada, obs, setObs,
   temManual, setTemManual, temChaveReserva, setTemChaveReserva,
   manutencaoEmDia, setManutencaoEmDia,
-  motoAvaliacaoId, atendimentoId, interesse,
+  motoAvaliacaoId, atendimentoId, interesse, isEditing,
 }) => {
   const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
   const marcas = getMarcaNomes();
@@ -161,7 +162,7 @@ const MotoVendaSection: React.FC<Props> = ({
           <Label>Observações da Moto *</Label>
           <Textarea value={obs} onChange={e => setObs(e.target.value.toUpperCase())} rows={3} className="uppercase" />
         </div>
-        {motoAvaliacaoId && <PhotoUpload motoAvaliacaoId={motoAvaliacaoId} />}
+        {motoAvaliacaoId && !isEditing && <PhotoUpload motoAvaliacaoId={motoAvaliacaoId} />}
       </CardContent>
     </Card>
   );
