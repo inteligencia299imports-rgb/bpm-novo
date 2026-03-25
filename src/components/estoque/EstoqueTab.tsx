@@ -525,7 +525,7 @@ const EstoqueTab = () => {
                             )}
                             {item.km && (
                               <>
-                                <span className="text-muted-foreground">KM</span>
+                                <span className="text-muted-foreground">Km</span>
                                 <span className="text-foreground">{item.km}</span>
                               </>
                             )}
