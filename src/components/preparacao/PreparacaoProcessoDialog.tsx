@@ -742,6 +742,30 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Manual</Label>
+                      <RadioGroup value={libManual} onValueChange={setLibManual} className="flex gap-3">
+                        <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="lib-manual-sim" /><Label htmlFor="lib-manual-sim" className="text-xs">Sim</Label></div>
+                        <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="lib-manual-nao" /><Label htmlFor="lib-manual-nao" className="text-xs">Não</Label></div>
+                      </RadioGroup>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Chave Reserva</Label>
+                      <RadioGroup value={libChaveReserva} onValueChange={setLibChaveReserva} className="flex gap-3">
+                        <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="lib-chave-sim" /><Label htmlFor="lib-chave-sim" className="text-xs">Sim</Label></div>
+                        <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="lib-chave-nao" /><Label htmlFor="lib-chave-nao" className="text-xs">Não</Label></div>
+                      </RadioGroup>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Revisão Vencida</Label>
+                      <RadioGroup value={libRevisaoVencida} onValueChange={setLibRevisaoVencida} className="flex gap-3">
+                        <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="lib-rev-sim" /><Label htmlFor="lib-rev-sim" className="text-xs">Sim</Label></div>
+                        <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="lib-rev-nao" /><Label htmlFor="lib-rev-nao" className="text-xs">Não</Label></div>
+                      </RadioGroup>
+                    </div>
+                  </div>
+
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">Observações da Moto</label>
                     <Textarea
