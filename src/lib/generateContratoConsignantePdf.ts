@@ -138,6 +138,14 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
     return y;
   };
 
+  const lineCheckPageBreak = (currentY: number, needed: number): number => {
+    if (currentY + needed > pageHeight - marginBottom) {
+      doc.addPage();
+      return marginTop;
+    }
+    return currentY;
+  };
+
   const sectionHeader = (title: string) => {
     checkPageBreak(10);
     setBold();
