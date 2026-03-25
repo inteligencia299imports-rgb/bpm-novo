@@ -29,7 +29,7 @@ async function loadImage(path: string): Promise<{ data: string; width: number; h
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(img, 0, 0);
-      resolve({ data: canvas.toDataURL('image/jpeg'), width: img.width, height: img.height });
+      resolve({ data: canvas.toDataURL('image/png'), width: img.width, height: img.height });
     };
     img.onerror = reject;
     img.src = path;
@@ -136,7 +136,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
     const aspect = logo.width / logo.height;
     const logoWidth = 30;
     const logoHeight = logoWidth / aspect;
-    doc.addImage(logo.data, 'JPEG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
+    doc.addImage(logo.data, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
     y += logoHeight + 6;
   } catch (e) {
     console.error('Erro ao carregar logo:', e);
