@@ -389,7 +389,15 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         return;
       }
 
-      const { error: updateError } = await supabase
+      // Update moto_avaliacao with manual/chave/revisão
+      const motoUpdate: any = {};
+      if (libManual) motoUpdate.tem_manual = libManual === 'sim';
+      if (libChaveReserva) motoUpdate.tem_chave_reserva = libChaveReserva === 'sim';
+      if (libRevisaoVencida) motoUpdate.manutencao_em_dia = libRevisaoVencida === 'sim';
+      if (Object.keys(motoUpdate).length > 0 && moto?.id) {
+        await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', moto.id);
+      }
+
         .from('avaliacoes')
         .update({
           preparacao_status: 'estoque',
