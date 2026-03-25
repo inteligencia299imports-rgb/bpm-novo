@@ -54,6 +54,10 @@ interface EstoqueItem {
   atendimento_venda_id: string | null;
   avaliacao_id: string | null;
   moto_avaliacao_id: string | null;
+  // From motos_avaliacao join
+  tem_manual?: boolean | null;
+  tem_chave_reserva?: boolean | null;
+  manutencao_em_dia?: boolean | null;
 }
 
 type DetailView =
@@ -105,14 +109,20 @@ const EstoqueTab = () => {
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('estoque').select('*').order('data_entrada', { ascending: false });
+      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_em_dia)').order('data_entrada', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
       if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
       if (filterEmpresa !== 'todas') query = query.eq('empresa', filterEmpresa);
       const { data, error } = await query;
       if (error) throw error;
-      setItems(data || []);
+      const mapped = (data || []).map((d: any) => ({
+        ...d,
+        tem_manual: d.motos_avaliacao?.tem_manual ?? null,
+        tem_chave_reserva: d.motos_avaliacao?.tem_chave_reserva ?? null,
+        manutencao_em_dia: d.motos_avaliacao?.manutencao_em_dia ?? null,
+      }));
+      setItems(mapped);
     } catch (err: any) {
       toast.error('Erro ao carregar estoque');
       console.error(err);
@@ -528,6 +538,29 @@ const EstoqueTab = () => {
                               </>
                             )}
                           </div>
+
+                          {(item.tem_manual != null || item.tem_chave_reserva != null || item.manutencao_em_dia != null) && (
+                            <div className="flex items-center gap-3 text-xs">
+                              {item.tem_manual != null && (
+                                <span className="flex items-center gap-1">
+                                  <span className={`inline-block w-2 h-2 rounded-full ${item.tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
+                                  Manual
+                                </span>
+                              )}
+                              {item.tem_chave_reserva != null && (
+                                <span className="flex items-center gap-1">
+                                  <span className={`inline-block w-2 h-2 rounded-full ${item.tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
+                                  Chave Reserva
+                                </span>
+                              )}
+                              {item.manutencao_em_dia != null && (
+                                <span className="flex items-center gap-1">
+                                  <span className={`inline-block w-2 h-2 rounded-full ${item.manutencao_em_dia ? 'bg-green-500' : 'bg-red-500'}`} />
+                                  Revisão
+                                </span>
+                              )}
+                            </div>
+                          )}
 
                           <div className="flex items-center justify-between pt-2 border-t border-border">
                             <div>
