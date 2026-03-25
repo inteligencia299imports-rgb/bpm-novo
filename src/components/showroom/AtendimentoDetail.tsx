@@ -149,7 +149,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       if (estoqueRes.data) {
         const estoqueMap: Record<string, any> = {};
         for (const item of estoqueRes.data) {
-          estoqueMap[item.id] = item;
+          estoqueMap[item.id] = {
+            ...item,
+            tem_manual: item.motos_avaliacao?.tem_manual ?? null,
+            tem_chave_reserva: item.motos_avaliacao?.tem_chave_reserva ?? null,
+            manutencao_em_dia: item.motos_avaliacao?.manutencao_em_dia ?? null,
+          };
         }
         setEstoqueData(estoqueMap);
       }
