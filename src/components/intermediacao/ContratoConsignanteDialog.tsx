@@ -373,6 +373,27 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
   const buildPdfData = () => {
     const abat = calcAbatimentos();
     const repasse = parseCurrencyInput(valorFechamento) - abat;
+
+    // Build abatimentos list (only cliente costs)
+    const abatimentosList: { descricao: string; valor: string }[] = [];
+    for (const c of custosOficina) {
+      if ((c.responsavel || '').toLowerCase() !== 'cliente') continue;
+      const val = c.valor_executado || c.valor_previsto || 0;
+      if (val <= 0) continue;
+      const desc = `${(c.tipo || '').toUpperCase().replace('PECA', 'PEÇA').replace('SERVICO', 'SERVIÇO')} - ${(c.detalhes || '-').toUpperCase()}`;
+      abatimentosList.push({ descricao: desc, valor: formatCurrency(val) });
+    }
+    for (const c of custosOp) {
+      if (c.responsavel !== 'Cliente') continue;
+      const val = parseCurrencyInput(c.valor);
+      if (val <= 0) continue;
+      abatimentosList.push({ descricao: `PROCESSO - ${(c.descricao || '-').toUpperCase()}`, valor: formatCurrency(val) });
+    }
+
+    const anoFab = motoInfo?.ano_fabricacao || estoqueInfo?.ano_fabricacao || '';
+    const anoMod = motoInfo?.ano_modelo || estoqueInfo?.ano_modelo || '';
+    const anoFabMod = anoFab && anoMod ? `${anoFab}/${anoMod}` : anoFab || anoMod || '-';
+
     return {
       nomeConsignante: nomeConsignante || '-',
       telefoneConsignante: telefoneConsignante || '-',
@@ -381,24 +402,14 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       titularConta: titularConta || '-',
       marcaMoto: motoInfo?.marca || estoqueInfo?.marca || '-',
       modeloMoto: motoInfo?.modelo || estoqueInfo?.modelo || '-',
+      anoFabMod,
       placaMoto: (motoInfo?.placa || estoqueInfo?.placa || '-').replace(/-/g, ''),
-      valorFechamento: formatCurrency(parseCurrencyInput(valorFechamento)),
+      kmMoto: motoInfo?.km || estoqueInfo?.km || '-',
+      valorConsignacao: formatCurrency(avaliacaoInfo?.valor_fechamento || parseCurrencyInput(valorFechamento)),
       totalAbatimentos: formatCurrency(abat),
       valorRepasse: formatCurrency(repasse > 0 ? repasse : 0),
-      custosOperacionais: custosOp.map(c => ({
-        tipo: c.tipo,
-        responsavel: c.responsavel,
-        descricao: c.descricao,
-        valor: formatCurrency(parseCurrencyInput(c.valor)),
-      })),
-      custosOficina: custosOficina.map((c: any) => ({
-        tipo: c.tipo,
-        responsavel: c.responsavel,
-        detalhes: c.detalhes || '',
-        valor: formatCurrency(c.valor_executado || c.valor_previsto || 0),
-      })),
+      abatimentosList,
       observacoesContrato: obsContrato || '',
-      observacoesInternas: '',
       dataContrato: dataContrato ? format(dataContrato, 'dd/MM/yyyy', { locale: ptBR }) : '-',
     };
   };
