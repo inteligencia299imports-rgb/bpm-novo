@@ -906,7 +906,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       </Dialog>
       {/* Dialog Tipo de Aquisição / Conversão */}
       <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); } }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isConvertendo ? <ArrowLeftRight className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
@@ -914,7 +914,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div>
+            <div className="space-y-1">
               <label className="text-sm font-medium text-foreground">Valor de Fechamento (R$) <span className="text-destructive">*</span></label>
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
@@ -927,9 +927,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 />
               </div>
             </div>
-            <div>
+            <div className="space-y-1">
               <label className="text-sm font-medium text-foreground">Tipo de Aquisição <span className="text-destructive">*</span></label>
-              <div className="flex gap-3 mt-2">
+              <div className="flex gap-3 mt-2.5">
                 {isConvertendo ? (
                   // In conversion mode, show only the opposite type
                   (() => {
@@ -950,38 +950,38 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   <>
                     <Button
                       variant={tipoSelecionado === 'propria' ? 'default' : 'outline'}
-                      className="flex-1"
+                      className={`flex-1 gap-2 ${tipoSelecionado === 'propria' ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' : 'border-green-500 text-green-600 hover:bg-green-50'}`}
                       onClick={() => setTipoSelecionado('propria')}
                     >
-                      Própria
+                      <ShieldCheck className="h-4 w-4" /> Própria
                     </Button>
                     <Button
                       variant={tipoSelecionado === 'consignada' ? 'default' : 'outline'}
-                      className="flex-1"
+                      className={`flex-1 gap-2 ${tipoSelecionado === 'consignada' ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600' : 'border-purple-500 text-purple-600 hover:bg-purple-50'}`}
                       onClick={() => setTipoSelecionado('consignada')}
                     >
-                      Consignada
+                      <Handshake className="h-4 w-4" /> Consignada
                     </Button>
                   </>
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
                 <Label className="text-xs">Manual</Label>
                 <RadioGroup value={aquisManual} onValueChange={setAquisManual} className="flex gap-3">
                   <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="aq-manual-sim" /><Label htmlFor="aq-manual-sim" className="text-xs">Sim</Label></div>
                   <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="aq-manual-nao" /><Label htmlFor="aq-manual-nao" className="text-xs">Não</Label></div>
                 </RadioGroup>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label className="text-xs">Chave Reserva</Label>
                 <RadioGroup value={aquisChaveReserva} onValueChange={setAquisChaveReserva} className="flex gap-3">
                   <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="aq-chave-sim" /><Label htmlFor="aq-chave-sim" className="text-xs">Sim</Label></div>
                   <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="aq-chave-nao" /><Label htmlFor="aq-chave-nao" className="text-xs">Não</Label></div>
                 </RadioGroup>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label className="text-xs">Revisão Vencida</Label>
                 <RadioGroup value={aquisRevisaoVencida} onValueChange={setAquisRevisaoVencida} className="flex gap-3">
                   <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="aq-rev-sim" /><Label htmlFor="aq-rev-sim" className="text-xs">Sim</Label></div>
