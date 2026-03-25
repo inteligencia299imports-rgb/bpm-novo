@@ -1069,29 +1069,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             )}
             {valorPopup?.modo === 'vendido' && (
               <>
-                {valorPopup.valorSinal ? (
-                  <div className="rounded-md bg-muted/50 p-3 space-y-1">
-                    <p className="text-xs text-muted-foreground">Valor do Sinal</p>
-                    <p className="text-sm font-semibold">R$ {valorPopup.valorSinal}</p>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="text-sm font-medium text-foreground">Valor do Sinal (R$)</label>
-                    <div className="relative mt-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                      <Input
-                        className="pl-10"
-                        placeholder="0,00"
-                        value={valorPopup?.valorSinal || ''}
-                        onChange={(e) => {
-                          const formatted = formatCurrencyInput(e.target.value);
-                          setValorPopup(prev => prev ? { ...prev, valorSinal: formatted } : null);
-                        }}
-                        inputMode="numeric"
-                      />
-                    </div>
-                  </div>
-                )}
                 {atendimento.interesse === 'trocar' && (
                   valorPopup.valorFechamento ? (
                     <div className="rounded-md bg-muted/50 p-3 space-y-1">
