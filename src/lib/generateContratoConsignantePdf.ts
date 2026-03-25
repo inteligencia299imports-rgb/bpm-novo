@@ -133,8 +133,11 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   // ===== LOGO =====
   try {
     const logoData = await loadImage(logoPath);
+    const img = new Image();
+    img.src = logoData;
+    const aspect = img.naturalWidth / img.naturalHeight;
     const logoWidth = 30;
-    const logoHeight = 15;
+    const logoHeight = logoWidth / aspect;
     doc.addImage(logoData, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
     y += logoHeight + 6;
   } catch {
@@ -143,10 +146,8 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
 
   // ===== TITLE =====
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
-  doc.text('AUTORIZAÇÃO PARA PAGAMENTO', pageWidth / 2, y, { align: 'center' });
-  y += 7;
-  doc.text('DE INTERMEDIAÇÃO DE VENDA', pageWidth / 2, y, { align: 'center' });
+  doc.setFontSize(12);
+  doc.text('AUTORIZAÇÃO PARA PAGAMENTO DE INTERMEDIAÇÃO DE VENDA', pageWidth / 2, y, { align: 'center', maxWidth: contentWidth });
   y += 7;
 
   // Line separator
