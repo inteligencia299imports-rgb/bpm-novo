@@ -610,6 +610,20 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         {estItem.observacoes && (
                           <p className="text-xs text-muted-foreground italic">{estItem.observacoes}</p>
                         )}
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="flex items-center gap-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
+                            Manual
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
+                            Chave Reserva
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                            Revisão
+                          </span>
+                        </div>
                       </>
                     ) : (
                     <div className="grid grid-cols-2 gap-4">
