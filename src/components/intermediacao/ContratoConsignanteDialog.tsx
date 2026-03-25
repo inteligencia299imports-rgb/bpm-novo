@@ -448,6 +448,8 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
   const handleVisualizar = async () => {
     setGenerating(true);
     try {
+      const id = await saveContrato();
+      if (!id) { setGenerating(false); return; }
       await generateContratoConsignantePdf(buildPdfData());
       toast.success('PDF visualizado!');
     } catch (err) {

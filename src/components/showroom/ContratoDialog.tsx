@@ -506,13 +506,11 @@ const ContratoDialog: React.FC<Props> = ({
 
   const handleVisualizar = async () => {
     if (!validateForGeneration()) return;
-    if (!contratoId) {
-      toast.error('Salve o contrato primeiro para poder visualizar');
-      return;
-    }
 
     setViewing(true);
     try {
+      const id = await saveContrato();
+      if (!id) { setViewing(false); return; }
       const pdfData = buildPdfData();
       if (!pdfData) throw new Error('Dados insuficientes');
       await generateContratoPdf(pdfData);
