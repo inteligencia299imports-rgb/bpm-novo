@@ -539,7 +539,29 @@ const EstoqueTab = () => {
                             )}
                           </div>
 
-                          <div className="flex items-center justify-between pt-2 border-t border-border">
+                          {(item.tem_manual != null || item.tem_chave_reserva != null || item.manutencao_em_dia != null) && (
+                            <div className="flex items-center gap-3 text-xs">
+                              {item.tem_manual != null && (
+                                <span className="flex items-center gap-1">
+                                  <span className={`inline-block w-2 h-2 rounded-full ${item.tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
+                                  Manual
+                                </span>
+                              )}
+                              {item.tem_chave_reserva != null && (
+                                <span className="flex items-center gap-1">
+                                  <span className={`inline-block w-2 h-2 rounded-full ${item.tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
+                                  Chave Reserva
+                                </span>
+                              )}
+                              {item.manutencao_em_dia != null && (
+                                <span className="flex items-center gap-1">
+                                  <span className={`inline-block w-2 h-2 rounded-full ${item.manutencao_em_dia ? 'bg-green-500' : 'bg-red-500'}`} />
+                                  Revisão
+                                </span>
+                              )}
+                            </div>
+                          )}
+
                             <div>
                               <p className="text-xs text-muted-foreground">Preço</p>
                               <p className="font-semibold text-foreground">{formatCurrency(item.preco)}</p>
