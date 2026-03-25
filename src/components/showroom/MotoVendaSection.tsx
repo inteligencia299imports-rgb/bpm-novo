@@ -28,6 +28,7 @@ interface Props {
   motoAvaliacaoId: string | null;
   atendimentoId: string | null;
   interesse: Interesse;
+  isEditing?: boolean;
 }
 
 const MotoVendaSection: React.FC<Props> = ({
