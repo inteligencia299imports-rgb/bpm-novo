@@ -103,6 +103,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [valorFechamento, setValorFechamento] = useState('');
   const [obsMoto, setObsMoto] = useState('');
 
+  const [libManual, setLibManual] = useState('');
+  const [libChaveReserva, setLibChaveReserva] = useState('');
+  const [libRevisaoVencida, setLibRevisaoVencida] = useState('');
+
   const formatKm = (value: string): string => {
     const digits = value.replace(/\D/g, '');
     return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
