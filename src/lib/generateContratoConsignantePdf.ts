@@ -276,18 +276,18 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   setNormal();
   doc.text(empresaNome, marginLeft, y); y += lineHeight;
   doc.text(cnpj, marginLeft, y);
-  y += sectionGap * 2;
+  y += lineHeight * 2;
 
-  // ===== PAGE 2: Digital signature + LGPD =====
-  doc.addPage();
-  y = marginTop;
-  setNormal();
-
+  // ===== Digital signature + LGPD (same page, after company signature) =====
   const digitalPara = 'Ao confirmar e assinar este documento por via digital, estamos em acordo de que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas de todos os envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o respectivo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º,§2.';
+  const digitalLines = doc.splitTextToSize(digitalPara, contentWidth);
+  const lgpdPara = 'A Lei Geral de Proteção de Dados será obedecida, em todos os seus termos, pela CONTRATADA, obrigando-se ela a tratar os dados da CONTRATANTE que forem eventualmente coletados, conforme sua necessidade ou obrigatoriedade. Manter e utilizar medidas de segurança administrativas, técnicas e físicas apropriadas e suficientes para proteger a confidencialidade e integridade de todos os dados pessoais mantidos ou consultados/transmitidos eletronicamente, para garantir a proteção desses dados contra acesso não autorizado, destruição, uso, modificação, divulgação ou perda acidental ou indevida, conforme a Legislação vigente sobre Proteção de Dados Pessoais e as determinações de órgãos reguladores/fiscalizadores sobre a matéria, em especial a Lei 13.709/2018.';
+  const lgpdLines = doc.splitTextToSize(lgpdPara, contentWidth);
+  const totalNeeded = (digitalLines.length + lgpdLines.length + 3) * lineHeight + 10;
+  checkPageBreak(totalNeeded);
+  setNormal();
   y = drawJustifiedText(doc, digitalPara, marginLeft, contentWidth, y, lineHeight);
   y += sectionGap;
-
-  const lgpdPara = 'A Lei Geral de Proteção de Dados será obedecida, em todos os seus termos, pela CONTRATADA, obrigando-se ela a tratar os dados da CONTRATANTE que forem eventualmente coletados, conforme sua necessidade ou obrigatoriedade. Manter e utilizar medidas de segurança administrativas, técnicas e físicas apropriadas e suficientes para proteger a confidencialidade e integridade de todos os dados pessoais mantidos ou consultados/transmitidos eletronicamente, para garantir a proteção desses dados contra acesso não autorizado, destruição, uso, modificação, divulgação ou perda acidental ou indevida, conforme a Legislação vigente sobre Proteção de Dados Pessoais e as determinações de órgãos reguladores/fiscalizadores sobre a matéria, em especial a Lei 13.709/2018.';
   y = drawJustifiedText(doc, lgpdPara, marginLeft, contentWidth, y, lineHeight);
   y += sectionGap * 3;
 
