@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -15,6 +15,7 @@ import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProcessoDialog from './ProcessoDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
+import StatusTimeline from '@/components/shared/StatusTimeline';
 
 interface Props {
   item: any;
@@ -75,6 +76,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [processoOpen, setProcessoOpen] = useState(false);
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
+  const [intermHistory, setIntermHistory] = useState<any[]>([]);
 
   const moto = item.motos_avaliacao?.[0];
   const [cnhUrl, setCnhUrl] = useState<string | null>(item.cnh_url || null);
@@ -147,6 +149,21 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             }
           }
         }
+      }
+
+      // Fetch intermediação history (sale date + contract generation)
+      if (processoProps?.showContratoConsignante) {
+        const { data: histData } = await supabase
+          .from('status_history')
+          .select('*')
+          .eq('entity_id', item.id)
+          .in('entity_type', ['showroom', 'contrato_consignante'])
+          .order('created_at', { ascending: false });
+        // Filter to only show vendido + contrato gerado events
+        const filtered = (histData || []).filter((h: any) =>
+          h.status_to === 'vendido' || h.status_to?.startsWith('CONTRATO GERADO')
+        );
+        setIntermHistory(filtered);
       }
 
       setLoading(false);
@@ -458,6 +475,26 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">{item.observacoes}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Histórico de Movimentações - Intermediação */}
+          {isIntermParte1 && intermHistory.length > 0 && (
+            <Card className="md:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" /> Histórico de Movimentações
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StatusTimeline
+                  history={intermHistory}
+                  formatLabel={(raw) => {
+                    if (raw === 'vendido') return 'VENDA REALIZADA';
+                    return raw.replace(/_/g, ' ');
+                  }}
+                />
               </CardContent>
             </Card>
           )}
