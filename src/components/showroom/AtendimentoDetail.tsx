@@ -124,7 +124,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       // Fetch all secondary data in parallel
       const estoquePromise = estoqueIds.length > 0
-        ? supabase.from('estoque').select('*').in('id', estoqueIds).then(r => r)
+        ? supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_em_dia)').in('id', estoqueIds).then(r => r)
         : Promise.resolve({ data: null as any[] | null });
 
       const avaliadorIds = resAval.data
