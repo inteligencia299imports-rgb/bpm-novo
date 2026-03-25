@@ -151,6 +151,21 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         }
       }
 
+      // Fetch intermediação history (sale date + contract generation)
+      if (processoProps?.showContratoConsignante) {
+        const { data: histData } = await supabase
+          .from('status_history')
+          .select('*')
+          .eq('entity_id', item.id)
+          .in('entity_type', ['showroom', 'contrato_consignante'])
+          .order('created_at', { ascending: false });
+        // Filter to only show vendido + contrato gerado events
+        const filtered = (histData || []).filter((h: any) =>
+          h.status_to === 'vendido' || h.status_to?.startsWith('CONTRATO GERADO')
+        );
+        setIntermHistory(filtered);
+      }
+
       setLoading(false);
     };
     fetchRelated();
