@@ -448,7 +448,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             interesse={interesse}
             isEditing={isEditing}
           />
-          {isEditing && motoAvaliacaoId && !enviadaAvaliacao && (
+          {!isEditing && motoAvaliacaoId && !enviadaAvaliacao && (
             <div className="flex justify-end">
               <Button variant="default" className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90" onClick={handleEnviarAvaliacao}>
                 <SendHorizonal className="h-4 w-4" /> Enviar para Avaliação
