@@ -109,14 +109,20 @@ const EstoqueTab = () => {
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('estoque').select('*').order('data_entrada', { ascending: false });
+      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_em_dia)').order('data_entrada', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
       if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
       if (filterEmpresa !== 'todas') query = query.eq('empresa', filterEmpresa);
       const { data, error } = await query;
       if (error) throw error;
-      setItems(data || []);
+      const mapped = (data || []).map((d: any) => ({
+        ...d,
+        tem_manual: d.motos_avaliacao?.tem_manual ?? null,
+        tem_chave_reserva: d.motos_avaliacao?.tem_chave_reserva ?? null,
+        manutencao_em_dia: d.motos_avaliacao?.manutencao_em_dia ?? null,
+      }));
+      setItems(mapped);
     } catch (err: any) {
       toast.error('Erro ao carregar estoque');
       console.error(err);
