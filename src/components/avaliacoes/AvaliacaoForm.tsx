@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -140,7 +141,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         .select(`
           *,
           atendimentos (id, nome_cliente, telefone, loja, vendedor_id, interesse, sexo, uf, tipo_atendimento, origem, temperatura, created_at, cnh_url),
-          motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, consulta_realizada)
+          motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, consulta_realizada, tem_manual, tem_chave_reserva, manutencao_em_dia)
         `)
         .eq('id', avaliacaoId)
         .single();
@@ -261,6 +262,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [tipoSelecionado, setTipoSelecionado] = useState<string | null>(null);
   const [savingAquisicao, setSavingAquisicao] = useState(false);
   const [obsMotaAquisicao, setObsMotaAquisicao] = useState('');
+  const [aquisManual, setAquisManual] = useState('');
+  const [aquisChaveReserva, setAquisChaveReserva] = useState('');
+  const [aquisRevisaoVencida, setAquisRevisaoVencida] = useState('');
   const [isConvertendo, setIsConvertendo] = useState(false);
   const handleStatusChange = async (newStatus: SituacaoAvaliacao, tipoAquisicao?: string, valorFechamento?: number) => {
     const updateData: any = { situacao: newStatus };
@@ -306,9 +310,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       return;
     }
     setSavingAquisicao(true);
-    // Salvar observações da moto se preenchido
-    if (obsMotaAquisicao.trim() && avaliacao?.moto_avaliacao_id) {
-      await supabase.from('motos_avaliacao').update({ observacoes: obsMotaAquisicao.trim().toUpperCase() }).eq('id', avaliacao.moto_avaliacao_id);
+    // Salvar dados da moto (observações + manual/chave/revisão)
+    if (avaliacao?.moto_avaliacao_id) {
+      const motoUpdate: any = {};
+      if (obsMotaAquisicao.trim()) motoUpdate.observacoes = obsMotaAquisicao.trim().toUpperCase();
+      if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
+      if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
+      if (aquisRevisaoVencida) motoUpdate.manutencao_em_dia = aquisRevisaoVencida === 'sim';
+      if (Object.keys(motoUpdate).length > 0) {
+        await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', avaliacao.moto_avaliacao_id);
+      }
     }
     await handleStatusChange('adquirida', tipoSelecionado, valor && valor > 0 ? valor : undefined);
     setSavingAquisicao(false);
@@ -796,6 +807,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     if (btn.value === 'adquirida') {
                       setIsConvertendo(false);
                       setObsMotaAquisicao('');
+                      const ma = avaliacao?.moto_avaliacao || avaliacao?.motos_avaliacao;
+                      setAquisManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
+                      setAquisChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
+                      setAquisRevisaoVencida(ma?.manutencao_em_dia ? 'sim' : ma?.manutencao_em_dia === false ? 'nao' : '');
                       setTipoAquisicaoPopup(true);
                       return;
                     }
@@ -949,6 +964,29 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     </Button>
                   </>
                 )}
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Manual</Label>
+                <RadioGroup value={aquisManual} onValueChange={setAquisManual} className="flex gap-3">
+                  <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="aq-manual-sim" /><Label htmlFor="aq-manual-sim" className="text-xs">Sim</Label></div>
+                  <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="aq-manual-nao" /><Label htmlFor="aq-manual-nao" className="text-xs">Não</Label></div>
+                </RadioGroup>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Chave Reserva</Label>
+                <RadioGroup value={aquisChaveReserva} onValueChange={setAquisChaveReserva} className="flex gap-3">
+                  <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="aq-chave-sim" /><Label htmlFor="aq-chave-sim" className="text-xs">Sim</Label></div>
+                  <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="aq-chave-nao" /><Label htmlFor="aq-chave-nao" className="text-xs">Não</Label></div>
+                </RadioGroup>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Revisão Vencida</Label>
+                <RadioGroup value={aquisRevisaoVencida} onValueChange={setAquisRevisaoVencida} className="flex gap-3">
+                  <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="aq-rev-sim" /><Label htmlFor="aq-rev-sim" className="text-xs">Sim</Label></div>
+                  <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="aq-rev-nao" /><Label htmlFor="aq-rev-nao" className="text-xs">Não</Label></div>
+                </RadioGroup>
               </div>
             </div>
             <div>
