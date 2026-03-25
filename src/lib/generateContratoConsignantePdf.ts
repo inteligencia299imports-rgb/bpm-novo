@@ -41,16 +41,19 @@ function drawJustifiedText(
   text: string,
   x: number,
   maxWidth: number,
-  y: number,
+  startY: number,
   lineHeight: number,
   boldSegments?: string[],
-  beforeLine?: (needed: number) => void,
+  pageBreakFn?: (needed: number) => number,
 ): number {
   doc.setFont('helvetica', 'normal');
   const lines = doc.splitTextToSize(text, maxWidth);
+  let y = startY;
 
   for (let i = 0; i < lines.length; i++) {
-    beforeLine?.(lineHeight);
+    if (pageBreakFn) {
+      y = pageBreakFn(lineHeight);
+    }
     const line: string = lines[i];
     const isLastLine = i === lines.length - 1;
 
@@ -132,6 +135,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
       doc.addPage();
       y = marginTop;
     }
+    return y;
   };
 
   const sectionHeader = (title: string) => {
@@ -229,16 +233,16 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
 
   const para1 = 'AUTORIZAÇÃO PARA PAGAMENTO DE INTERMEDIAÇÃO DE VENDA DE MOTOCICLETA PREVIAMENTE RECEBIDO EM CONSIGNAÇÃO, QUE ENTRE SI CELEBRAM:';
   setBold();
-  y = drawJustifiedText(doc, para1, marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
+  y = drawJustifiedText(doc, para1, marginLeft, contentWidth, y, lineHeight, undefined, (n) => { checkPageBreak(n); return y; });
   y += 2;
 
   setNormal();
   const para2 = 'De um lado: neste documento citado "vendedor" e assina no campo abaixo "assinatura do cliente", dá-se por ciente as cláusulas do contrato de consignação, anteriormente firmado estender-se até a presente venda, a qual é feita livre e desembaraçada de qualquer ônus, restrições judiciais e/ou administrativas, inclusive multas e impostos, até a presente data.';
-  y = drawJustifiedText(doc, para2, marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
+  y = drawJustifiedText(doc, para2, marginLeft, contentWidth, y, lineHeight, undefined, (n) => { checkPageBreak(n); return y; });
   y += 2;
 
   const para3 = `E de outro lado ${empresaNome} CNPJ: ${cnpj}, 299 Imports, sediada na SCIA QD 15 Conjunto 03 Loja 06 parte a Brasília–DF, denominado simplesmente intermediador, tem justo contrato o que se segue:`;
-  y = drawJustifiedText(doc, para3, marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
+  y = drawJustifiedText(doc, para3, marginLeft, contentWidth, y, lineHeight, undefined, (n) => { checkPageBreak(n); return y; });
   y += 2;
 
   const para4pre = 'Venda de uma motocicleta citada neste documento no campo "item da proposta comercial", posta à venda neste estabelecimento comercial, por meio de consignação no valor ajustado de ';
@@ -255,7 +259,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
     y,
     lineHeight,
     data.valorConsignacao.split(/\s+/),
-    checkPageBreak,
+    (n) => { checkPageBreak(n); return y; },
   );
   y += 2;
 
@@ -267,7 +271,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
     ...data.titularConta.split(/\s+/),
   ];
   checkPageBreak(30);
-  y = drawJustifiedText(doc, para5, marginLeft, contentWidth, y, lineHeight, boldSegments, checkPageBreak);
+  y = drawJustifiedText(doc, para5, marginLeft, contentWidth, y, lineHeight, boldSegments, (n) => { checkPageBreak(n); return y; });
   y += 2;
 
   y = drawJustifiedText(
@@ -278,10 +282,10 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
     y,
     lineHeight,
     undefined,
-    checkPageBreak,
+    (n) => { checkPageBreak(n); return y; },
   );
   y += 2;
-  y = drawJustifiedText(doc, 'Por ser verdade assino o presente recibo.', marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
+  y = drawJustifiedText(doc, 'Por ser verdade assino o presente recibo.', marginLeft, contentWidth, y, lineHeight, undefined, (n) => { checkPageBreak(n); return y; });
 
   // ===== SIGNATURES =====
   y += lineHeight * 5;
@@ -312,9 +316,9 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   const totalNeeded = (digitalLines.length + lgpdLines.length + 3) * lineHeight + 10;
   checkPageBreak(totalNeeded);
   setNormal();
-  y = drawJustifiedText(doc, digitalPara, marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
+  y = drawJustifiedText(doc, digitalPara, marginLeft, contentWidth, y, lineHeight, undefined, (n) => { checkPageBreak(n); return y; });
   y += sectionGap;
-  y = drawJustifiedText(doc, lgpdPara, marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
+  y = drawJustifiedText(doc, lgpdPara, marginLeft, contentWidth, y, lineHeight, undefined, (n) => { checkPageBreak(n); return y; });
   y += sectionGap * 3;
 
   // Date centered
