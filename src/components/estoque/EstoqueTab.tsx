@@ -562,6 +562,7 @@ const EstoqueTab = () => {
                             </div>
                           )}
 
+                          <div className="flex items-center justify-between pt-2 border-t border-border">
                             <div>
                               <p className="text-xs text-muted-foreground">Preço</p>
                               <p className="font-semibold text-foreground">{formatCurrency(item.preco)}</p>
