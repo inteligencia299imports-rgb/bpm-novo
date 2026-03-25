@@ -161,7 +161,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       return;
     }
     if ((interesse === 'vender' || interesse === 'trocar') && (!temManual || !temChaveReserva || !manutencaoEmDia)) {
-      toast.error('Informe Manual, Chave Reserva e Manutenção em Dia');
+      toast.error('Informe Manual, Chave Reserva e Revisão Vencida');
       return;
     }
     if ((interesse === 'vender' || interesse === 'trocar') && vendaPlaca.trim().length !== 7) {
