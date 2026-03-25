@@ -479,8 +479,25 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </Card>
           )}
 
-        </div>
-      </ScrollArea>
+          {/* Histórico de Movimentações - Intermediação */}
+          {isIntermParte1 && intermHistory.length > 0 && (
+            <Card className="md:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" /> Histórico de Movimentações
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StatusTimeline
+                  history={intermHistory}
+                  formatLabel={(raw) => {
+                    if (raw === 'vendido') return 'VENDA REALIZADA';
+                    return raw.replace(/_/g, ' ');
+                  }}
+                />
+              </CardContent>
+            </Card>
+          )}
 
       {/* Avaliação Popup */}
       <Dialog open={!!viewAvaliacaoData} onOpenChange={() => setViewAvaliacaoData(null)}>
