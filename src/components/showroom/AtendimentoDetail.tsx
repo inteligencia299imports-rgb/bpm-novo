@@ -641,8 +641,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             </Card>
           )}
 
-          {/* Motos de Avaliação (Venda/Troca) */}
-          {motosAvaliacao.length > 0 && (
+          {/* Motos de Avaliação (Venda/Troca) - ocultar quando interesse é compra */}
+          {motosAvaliacao.length > 0 && atendimento.interesse !== 'comprar' && (
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
