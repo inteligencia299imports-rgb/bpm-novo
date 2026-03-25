@@ -76,6 +76,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [processoOpen, setProcessoOpen] = useState(false);
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
+  const [intermHistory, setIntermHistory] = useState<any[]>([]);
 
   const moto = item.motos_avaliacao?.[0];
   const [cnhUrl, setCnhUrl] = useState<string | null>(item.cnh_url || null);
