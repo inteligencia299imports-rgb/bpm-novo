@@ -132,15 +132,14 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
 
   // ===== LOGO =====
   try {
-    const logoData = await loadImage(logoPath);
-    const img = new Image();
-    img.src = logoData;
-    const aspect = img.naturalWidth / img.naturalHeight;
+    const logo = await loadImage(logoPath);
+    const aspect = logo.width / logo.height;
     const logoWidth = 30;
     const logoHeight = logoWidth / aspect;
-    doc.addImage(logoData, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
+    doc.addImage(logo.data, 'JPEG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
     y += logoHeight + 6;
-  } catch {
+  } catch (e) {
+    console.error('Erro ao carregar logo:', e);
     y += 10;
   }
 
