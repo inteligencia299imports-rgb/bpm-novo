@@ -230,7 +230,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       classificacao: classificacao || null,
       avaliador_id: user!.id,
       situacao: 'em_aberto',
-      ...(isAdquirida && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
+      ...(avaliacao?.situacao === 'adquirida' && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
     };
 
     const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
