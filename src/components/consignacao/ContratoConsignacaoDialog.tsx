@@ -287,6 +287,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const handleVisualizar = async (comPercentual?: number) => {
     setGenerating(true);
     try {
+      const id = await saveContrato();
+      if (!id) { setGenerating(false); return; }
+
       const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
       const formatCurrencyValue = (val: string) => {
         const num = parseCurrencyInput(val);
