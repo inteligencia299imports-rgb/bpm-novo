@@ -19,7 +19,7 @@ interface ContratoConsignantePdfData {
   dataContrato: string;
 }
 
-async function loadImage(path: string): Promise<string> {
+async function loadImage(path: string): Promise<{ data: string; width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -29,7 +29,7 @@ async function loadImage(path: string): Promise<string> {
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
+      resolve({ data: canvas.toDataURL('image/jpeg'), width: img.width, height: img.height });
     };
     img.onerror = reject;
     img.src = path;
@@ -132,15 +132,14 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
 
   // ===== LOGO =====
   try {
-    const logoData = await loadImage(logoPath);
-    const img = new Image();
-    img.src = logoData;
-    const aspect = img.naturalWidth / img.naturalHeight;
+    const logo = await loadImage(logoPath);
+    const aspect = logo.width / logo.height;
     const logoWidth = 30;
     const logoHeight = logoWidth / aspect;
-    doc.addImage(logoData, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
+    doc.addImage(logo.data, 'JPEG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
     y += logoHeight + 6;
-  } catch {
+  } catch (e) {
+    console.error('Erro ao carregar logo:', e);
     y += 10;
   }
 
