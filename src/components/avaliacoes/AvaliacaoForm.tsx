@@ -593,7 +593,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     setCrlvUrl(null);
                   }}
                 />
-                {cnhUrl && !consultaSolicitada && !consultaRealizada && (
+                {cnhUrl && crlvUrl && !consultaSolicitada && !consultaRealizada && (
                   <Button
                     size="sm"
                     variant="outline"
