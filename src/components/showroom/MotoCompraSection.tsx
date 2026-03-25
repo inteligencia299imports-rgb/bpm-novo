@@ -51,22 +51,55 @@ const MotoCompraSection: React.FC<Props> = ({
   const [loadingEstoque, setLoadingEstoque] = useState(false);
 
   useEffect(() => {
-    if (!isDucati && origemMoto === 'estoque') {
-      setLoadingEstoque(true);
-      supabase
-        .from('estoque')
-        .select('id, modelo, cor, placa, marca')
-        .eq('status', 'disponivel')
-        .order('marca')
-        .order('modelo')
-        .then(({ data }) => {
-          setEstoque(data || []);
-          setLoadingEstoque(false);
-        });
-    }
-  }, [origemMoto, isDucati]);
+    if (isDucati || origemMoto !== 'estoque') return;
 
-  const formatEstoqueLabel = (item: EstoqueOption) => {
+    let isMounted = true;
+
+    const loadEstoque = async () => {
+      setLoadingEstoque(true);
+
+      try {
+        const { data: estoqueDisponivel } = await supabase
+          .from('estoque')
+          .select('id, modelo, cor, placa, marca')
+          .eq('status', 'disponivel')
+          .order('marca')
+          .order('modelo');
+
+        let options = estoqueDisponivel || [];
+
+        if (estoqueMotoId) {
+          const { data: estoqueSelecionado } = await supabase
+            .from('estoque')
+            .select('id, modelo, cor, placa, marca')
+            .eq('id', estoqueMotoId)
+            .maybeSingle();
+
+          if (estoqueSelecionado && !options.some((item) => item.id === estoqueSelecionado.id)) {
+            options = [estoqueSelecionado, ...options];
+          }
+        }
+
+        if (isMounted) {
+          setEstoque(options);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingEstoque(false);
+        }
+      }
+    };
+
+    loadEstoque();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [origemMoto, isDucati, estoqueMotoId]);
+
+  const formatEstoqueLabel = (item?: EstoqueOption | null) => {
+    if (!item) return 'Moto não encontrada';
+
     const parts = [item.modelo];
     if (item.cor) parts.push(item.cor);
     if (item.placa) parts.push(item.placa.replace(/-/g, ''));
@@ -79,8 +112,9 @@ const MotoCompraSection: React.FC<Props> = ({
   );
 
   const [comboOpen, setComboOpen] = useState(false);
+  const selectedItem = estoque.find(e => e.id === estoqueMotoId);
   const selectedLabel = estoqueMotoId
-    ? formatEstoqueLabel(estoque.find(e => e.id === estoqueMotoId)!)
+    ? (selectedItem ? formatEstoqueLabel(selectedItem) : 'Moto selecionada (indisponível)')
     : null;
 
   const handleChassiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
