@@ -44,15 +44,15 @@ function drawJustifiedText(
   startY: number,
   lineHeight: number,
   boldSegments?: string[],
-  pageBreakFn?: (needed: number) => number,
+  pageBreakCheck?: (currentY: number, needed: number) => number,
 ): number {
   doc.setFont('helvetica', 'normal');
   const lines = doc.splitTextToSize(text, maxWidth);
   let y = startY;
 
   for (let i = 0; i < lines.length; i++) {
-    if (pageBreakFn) {
-      y = pageBreakFn(lineHeight);
+    if (pageBreakCheck) {
+      y = pageBreakCheck(y, lineHeight);
     }
     const line: string = lines[i];
     const isLastLine = i === lines.length - 1;
