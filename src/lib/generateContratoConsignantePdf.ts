@@ -231,8 +231,13 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   y = drawJustifiedText(doc, para3, marginLeft, contentWidth, y, lineHeight);
   y += 2;
 
-  const para4 = `Venda de uma motocicleta citada neste documento no campo "item da proposta comercial", posta à venda neste estabelecimento comercial, por meio de consignação no valor ajustado de ${data.valorConsignacao}.`;
-  y = drawJustifiedText(doc, para4, marginLeft, contentWidth, y, lineHeight);
+  const para4pre = 'Venda de uma motocicleta citada neste documento no campo "item da proposta comercial", posta à venda neste estabelecimento comercial, por meio de consignação no valor ajustado de ';
+  const para4post = '.';
+  checkPageBreak(15);
+  setNormal();
+  const lines4pre = doc.splitTextToSize(para4pre + data.valorConsignacao + para4post, contentWidth);
+  // Render with bold valorConsignacao
+  y = drawJustifiedText(doc, para4pre + data.valorConsignacao + para4post, marginLeft, contentWidth, y, lineHeight, data.valorConsignacao.split(/\s+/));
   y += 2;
 
   // Paragraph with bold variables
