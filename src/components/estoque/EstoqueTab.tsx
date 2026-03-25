@@ -54,6 +54,10 @@ interface EstoqueItem {
   atendimento_venda_id: string | null;
   avaliacao_id: string | null;
   moto_avaliacao_id: string | null;
+  // From motos_avaliacao join
+  tem_manual?: boolean | null;
+  tem_chave_reserva?: boolean | null;
+  manutencao_em_dia?: boolean | null;
 }
 
 type DetailView =
