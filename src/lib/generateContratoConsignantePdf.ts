@@ -36,11 +36,21 @@ async function loadImage(path: string): Promise<{ data: string; width: number; h
   });
 }
 
-function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number, y: number, lineHeight: number, boldSegments?: string[]): number {
+function drawJustifiedText(
+  doc: jsPDF,
+  text: string,
+  x: number,
+  maxWidth: number,
+  y: number,
+  lineHeight: number,
+  boldSegments?: string[],
+  beforeLine?: (needed: number) => void,
+): number {
   doc.setFont('helvetica', 'normal');
   const lines = doc.splitTextToSize(text, maxWidth);
 
   for (let i = 0; i < lines.length; i++) {
+    beforeLine?.(lineHeight);
     const line: string = lines[i];
     const isLastLine = i === lines.length - 1;
 
@@ -219,16 +229,16 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
 
   const para1 = 'AUTORIZAÇÃO PARA PAGAMENTO DE INTERMEDIAÇÃO DE VENDA DE MOTOCICLETA PREVIAMENTE RECEBIDO EM CONSIGNAÇÃO, QUE ENTRE SI CELEBRAM:';
   setBold();
-  y = drawJustifiedText(doc, para1, marginLeft, contentWidth, y, lineHeight);
+  y = drawJustifiedText(doc, para1, marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
   y += 2;
 
   setNormal();
   const para2 = 'De um lado: neste documento citado "vendedor" e assina no campo abaixo "assinatura do cliente", dá-se por ciente as cláusulas do contrato de consignação, anteriormente firmado estender-se até a presente venda, a qual é feita livre e desembaraçada de qualquer ônus, restrições judiciais e/ou administrativas, inclusive multas e impostos, até a presente data.';
-  y = drawJustifiedText(doc, para2, marginLeft, contentWidth, y, lineHeight);
+  y = drawJustifiedText(doc, para2, marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
   y += 2;
 
   const para3 = `E de outro lado ${empresaNome} CNPJ: ${cnpj}, 299 Imports, sediada na SCIA QD 15 Conjunto 03 Loja 06 parte a Brasília–DF, denominado simplesmente intermediador, tem justo contrato o que se segue:`;
-  y = drawJustifiedText(doc, para3, marginLeft, contentWidth, y, lineHeight);
+  y = drawJustifiedText(doc, para3, marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
   y += 2;
 
   const para4pre = 'Venda de uma motocicleta citada neste documento no campo "item da proposta comercial", posta à venda neste estabelecimento comercial, por meio de consignação no valor ajustado de ';
@@ -237,7 +247,16 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   setNormal();
   const lines4pre = doc.splitTextToSize(para4pre + data.valorConsignacao + para4post, contentWidth);
   // Render with bold valorConsignacao
-  y = drawJustifiedText(doc, para4pre + data.valorConsignacao + para4post, marginLeft, contentWidth, y, lineHeight, data.valorConsignacao.split(/\s+/));
+  y = drawJustifiedText(
+    doc,
+    para4pre + data.valorConsignacao + para4post,
+    marginLeft,
+    contentWidth,
+    y,
+    lineHeight,
+    data.valorConsignacao.split(/\s+/),
+    checkPageBreak,
+  );
   y += 2;
 
   // Paragraph with bold variables
@@ -248,17 +267,27 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
     ...data.titularConta.split(/\s+/),
   ];
   checkPageBreak(30);
-  y = drawJustifiedText(doc, para5, marginLeft, contentWidth, y, lineHeight, boldSegments);
+  y = drawJustifiedText(doc, para5, marginLeft, contentWidth, y, lineHeight, boldSegments, checkPageBreak);
   y += 2;
 
-  y = drawJustifiedText(doc, 'Para maior clareza e validade do acima declarado, firmo o presente recibo conforme a lei em vigor.', marginLeft, contentWidth, y, lineHeight);
+  y = drawJustifiedText(
+    doc,
+    'Para maior clareza e validade do acima declarado, firmo o presente recibo conforme a lei em vigor.',
+    marginLeft,
+    contentWidth,
+    y,
+    lineHeight,
+    undefined,
+    checkPageBreak,
+  );
   y += 2;
-  y = drawJustifiedText(doc, 'Por ser verdade assino o presente recibo.', marginLeft, contentWidth, y, lineHeight);
+  y = drawJustifiedText(doc, 'Por ser verdade assino o presente recibo.', marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
   y += sectionGap;
 
   // ===== SIGNATURES =====
-  y += lineHeight * 5;
-  checkPageBreak(70);
+  const signaturesBlockHeight = lineHeight * 22;
+  checkPageBreak(signaturesBlockHeight);
+  y += lineHeight * 2;
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
@@ -270,7 +299,6 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y);
   y += lineHeight * 8;
 
-  checkPageBreak(20);
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
   setNormal();
@@ -286,9 +314,9 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   const totalNeeded = (digitalLines.length + lgpdLines.length + 3) * lineHeight + 10;
   checkPageBreak(totalNeeded);
   setNormal();
-  y = drawJustifiedText(doc, digitalPara, marginLeft, contentWidth, y, lineHeight);
+  y = drawJustifiedText(doc, digitalPara, marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
   y += sectionGap;
-  y = drawJustifiedText(doc, lgpdPara, marginLeft, contentWidth, y, lineHeight);
+  y = drawJustifiedText(doc, lgpdPara, marginLeft, contentWidth, y, lineHeight, undefined, checkPageBreak);
   y += sectionGap * 3;
 
   // Date centered
