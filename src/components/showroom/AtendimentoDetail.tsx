@@ -124,7 +124,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       // Fetch all secondary data in parallel
       const estoquePromise = estoqueIds.length > 0
-        ? supabase.from('estoque').select('*').in('id', estoqueIds).then(r => r)
+        ? supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_em_dia)').in('id', estoqueIds).then(r => r)
         : Promise.resolve({ data: null as any[] | null });
 
       const avaliadorIds = resAval.data
@@ -149,7 +149,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       if (estoqueRes.data) {
         const estoqueMap: Record<string, any> = {};
         for (const item of estoqueRes.data) {
-          estoqueMap[item.id] = item;
+          estoqueMap[item.id] = {
+            ...item,
+            tem_manual: item.motos_avaliacao?.tem_manual ?? null,
+            tem_chave_reserva: item.motos_avaliacao?.tem_chave_reserva ?? null,
+            manutencao_em_dia: item.motos_avaliacao?.manutencao_em_dia ?? null,
+          };
         }
         setEstoqueData(estoqueMap);
       }
@@ -605,6 +610,20 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         {estItem.observacoes && (
                           <p className="text-xs text-muted-foreground italic">{estItem.observacoes}</p>
                         )}
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="flex items-center gap-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
+                            Manual
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
+                            Chave Reserva
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                            Revisão
+                          </span>
+                        </div>
                       </>
                     ) : (
                     <div className="grid grid-cols-2 gap-4">
