@@ -5,6 +5,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check, ArrowLeft } from 'lucide-react';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -101,6 +103,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [valorFechamento, setValorFechamento] = useState('');
   const [obsMoto, setObsMoto] = useState('');
 
+  const [libManual, setLibManual] = useState('');
+  const [libChaveReserva, setLibChaveReserva] = useState('');
+  const [libRevisaoVencida, setLibRevisaoVencida] = useState('');
+
   const formatKm = (value: string): string => {
     const digits = value.replace(/\D/g, '');
     return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -121,6 +127,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     const fechamento = avaliacaoData?.valor_fechamento;
     setValorFechamento(fechamento != null ? formatCurrencyInput(String(Math.round(fechamento * 100))) : '');
     setObsMoto(avaliacaoData?.moto?.observacoes || '');
+    const ma = avaliacaoData?.moto;
+    setLibManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
+    setLibChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
+    setLibRevisaoVencida(ma?.manutencao_em_dia ? 'sim' : ma?.manutencao_em_dia === false ? 'nao' : '');
 
     const loadHistory = async () => {
       setLoading(true);
@@ -377,6 +387,15 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         console.error('Erro ao registrar no estoque:', estoqueError);
         toast.error('Erro ao registrar no estoque');
         return;
+      }
+
+      // Update moto_avaliacao with manual/chave/revisão
+      const motoUpdate: any = {};
+      if (libManual) motoUpdate.tem_manual = libManual === 'sim';
+      if (libChaveReserva) motoUpdate.tem_chave_reserva = libChaveReserva === 'sim';
+      if (libRevisaoVencida) motoUpdate.manutencao_em_dia = libRevisaoVencida === 'sim';
+      if (Object.keys(motoUpdate).length > 0 && moto?.id) {
+        await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', moto.id);
       }
 
       const { error: updateError } = await supabase
@@ -729,6 +748,30 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                           inputMode="numeric"
                         />
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Manual</Label>
+                      <RadioGroup value={libManual} onValueChange={setLibManual} className="flex gap-3">
+                        <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="lib-manual-sim" /><Label htmlFor="lib-manual-sim" className="text-xs">Sim</Label></div>
+                        <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="lib-manual-nao" /><Label htmlFor="lib-manual-nao" className="text-xs">Não</Label></div>
+                      </RadioGroup>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Chave Reserva</Label>
+                      <RadioGroup value={libChaveReserva} onValueChange={setLibChaveReserva} className="flex gap-3">
+                        <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="lib-chave-sim" /><Label htmlFor="lib-chave-sim" className="text-xs">Sim</Label></div>
+                        <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="lib-chave-nao" /><Label htmlFor="lib-chave-nao" className="text-xs">Não</Label></div>
+                      </RadioGroup>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Revisão Vencida</Label>
+                      <RadioGroup value={libRevisaoVencida} onValueChange={setLibRevisaoVencida} className="flex gap-3">
+                        <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="lib-rev-sim" /><Label htmlFor="lib-rev-sim" className="text-xs">Sim</Label></div>
+                        <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="lib-rev-nao" /><Label htmlFor="lib-rev-nao" className="text-xs">Não</Label></div>
+                      </RadioGroup>
                     </div>
                   </div>
 
