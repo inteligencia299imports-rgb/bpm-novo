@@ -398,6 +398,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', moto.id);
       }
 
+      const { error: updateError } = await supabase
         .from('avaliacoes')
         .update({
           preparacao_status: 'estoque',
