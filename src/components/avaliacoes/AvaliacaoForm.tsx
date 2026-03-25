@@ -310,9 +310,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       return;
     }
     setSavingAquisicao(true);
-    // Salvar observações da moto se preenchido
-    if (obsMotaAquisicao.trim() && avaliacao?.moto_avaliacao_id) {
-      await supabase.from('motos_avaliacao').update({ observacoes: obsMotaAquisicao.trim().toUpperCase() }).eq('id', avaliacao.moto_avaliacao_id);
+    // Salvar dados da moto (observações + manual/chave/revisão)
+    if (avaliacao?.moto_avaliacao_id) {
+      const motoUpdate: any = {};
+      if (obsMotaAquisicao.trim()) motoUpdate.observacoes = obsMotaAquisicao.trim().toUpperCase();
+      if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
+      if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
+      if (aquisRevisaoVencida) motoUpdate.manutencao_em_dia = aquisRevisaoVencida === 'sim';
+      if (Object.keys(motoUpdate).length > 0) {
+        await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', avaliacao.moto_avaliacao_id);
+      }
     }
     await handleStatusChange('adquirida', tipoSelecionado, valor && valor > 0 ? valor : undefined);
     setSavingAquisicao(false);
