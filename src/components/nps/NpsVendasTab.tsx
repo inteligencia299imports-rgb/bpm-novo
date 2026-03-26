@@ -137,22 +137,25 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                       <p className="text-xs text-muted-foreground text-center py-8">Nenhum atendimento</p>
                     ) : (
                       items.map(a => (
-                        <div key={a.id} className="space-y-1">
-                          <AtendimentoCard
-                            atendimento={a}
-                            onClick={() => onNavigateToShowroom(a.id)}
-                          />
-                          {(a.nps_status || 'em_aberto') === 'em_aberto' && (
-                            <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
-                              <Send className="h-3 w-3" /> Enviar Pesquisa
-                            </Button>
-                          )}
-                          {(a.nps_status || 'em_aberto') === 'enviado' && (
-                            <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleUpdateStatus(e, a.id, 'respondido')}>
-                              <CheckCircle2 className="h-3 w-3" /> Marcar Respondido
-                            </Button>
-                          )}
-                        </div>
+                        <AtendimentoCard
+                          key={a.id}
+                          atendimento={a}
+                          onClick={() => onNavigateToShowroom(a.id)}
+                          actions={
+                            <>
+                              {(a.nps_status || 'em_aberto') === 'em_aberto' && (
+                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
+                                  <Send className="h-3 w-3" /> Enviar Pesquisa
+                                </Button>
+                              )}
+                              {(a.nps_status || 'em_aberto') === 'enviado' && (
+                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleUpdateStatus(e, a.id, 'respondido')}>
+                                  <CheckCircle2 className="h-3 w-3" /> Marcar Respondido
+                                </Button>
+                              )}
+                            </>
+                          }
+                        />
                       ))
                     )}
                   </div>
