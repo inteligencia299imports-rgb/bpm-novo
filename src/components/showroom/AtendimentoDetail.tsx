@@ -958,8 +958,21 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           }
                         }
                         const toInput = (v: number | null | undefined) => v ? formatCurrencyInput(Math.round(v * 100).toString()) : '';
-                        const firstAv = motosAvaliacao.length > 0 ? avaliacoes[motosAvaliacao[0].id] : null;
-                        setValorPopup({ valorSinal: toInput(atendimento.valor_sinal), valorVenda: toInput(atendimento.valor_venda), valorFechamento: toInput(firstAv?.valor_fechamento), modo: btn.value as 'sinal' | 'vendido' });
+                        // Fetch latest values from DB to avoid stale data after contract save
+                        const { data: freshAtend } = await supabase.from('atendimentos').select('valor_sinal, valor_venda').eq('id', atendimento.id).maybeSingle();
+                        const freshSinal = freshAtend?.valor_sinal ?? atendimento.valor_sinal;
+                        const freshVenda = freshAtend?.valor_venda ?? atendimento.valor_venda;
+                        // Also fetch latest valor_fechamento from avaliacoes
+                        let freshFechamento: number | null = null;
+                        if (motosAvaliacao.length > 0) {
+                          const firstMotoId = motosAvaliacao[0].id;
+                          const av = avaliacoes[firstMotoId];
+                          if (av) {
+                            const { data: freshAv } = await supabase.from('avaliacoes').select('valor_fechamento').eq('id', av.id).maybeSingle();
+                            freshFechamento = freshAv?.valor_fechamento ?? av.valor_fechamento ?? null;
+                          }
+                        }
+                        setValorPopup({ valorSinal: toInput(freshSinal), valorVenda: toInput(freshVenda), valorFechamento: toInput(freshFechamento), modo: btn.value as 'sinal' | 'vendido' });
                       } else if (btn.value === 'pendente' || btn.value === 'perdido') {
                         setMotivoPopup({ modo: btn.value as 'pendente' | 'perdido', motivo: '' });
                       } else {
