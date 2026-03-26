@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import AtendimentoCard from '@/components/showroom/AtendimentoCard';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NpsAquisicoesTabProps {
   onNavigateToShowroom: (atendimentoId: string) => void;
