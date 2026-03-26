@@ -128,6 +128,8 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions }) => 
             )}
           </div>
 
+          {actions && <div className="pt-1">{actions}</div>}
+
         </div>
       </div>
     </div>
