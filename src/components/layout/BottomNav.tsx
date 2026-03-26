@@ -14,12 +14,12 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
     { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
     { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'intermediacao', label: 'Intermed.', icon: Handshake, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'consignacao', label: 'Consign.', icon: FileText, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['vendedor', 'gestor', 'avaliador'] },
+    { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['avaliador', 'gestor'] },
+    { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['avaliador', 'gestor'] },
+    { id: 'intermediacao', label: 'Intermed.', icon: Handshake, roles: ['avaliador', 'gestor'] },
+    { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['avaliador', 'gestor'] },
+    { id: 'consignacao', label: 'Consign.', icon: FileText, roles: ['avaliador', 'gestor'] },
+    { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['avaliador', 'gestor'] },
     { id: 'nps', label: 'NPS', icon: Award, roles: ['vendedor', 'gestor', 'avaliador'] },
   ].filter(t => role && t.roles.includes(role));
 
