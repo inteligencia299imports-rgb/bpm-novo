@@ -83,6 +83,23 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     }
   };
 
+  const handleEnviarPesquisa = async (e: React.MouseEvent, item: any) => {
+    e.stopPropagation();
+    const telefone = item.atendimento?.telefone?.replace(/\D/g, '') || '';
+    const atendimentoId = item.atendimento_id;
+    const url = `https://wa.me/55${telefone}?text=https%3A%2F%2Ftally.so%2Fr%2FOD4Gp7%3Fid%3D${atendimentoId}`;
+    window.open(url, '_blank');
+
+    const updates = { nps_status: 'enviado', nps_enviado_at: new Date().toISOString() };
+    const { error } = await supabase.from('avaliacoes').update(updates).eq('id', item.id);
+    if (error) {
+      toast.error('Erro ao registrar envio');
+    } else {
+      toast.success('Pesquisa enviada');
+      fetchData();
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3">
