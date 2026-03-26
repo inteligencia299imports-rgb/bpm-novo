@@ -659,9 +659,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   </Badge>
                 )}
                 {consultaRealizada && (
-                  <Badge variant="secondary" className="text-xs bg-green-500/15 text-green-600 gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs bg-green-500/15 text-green-600 gap-1 h-auto py-1 px-2 hover:bg-green-500/25"
+                    onClick={() => setShowResultadoConsulta(true)}
+                  >
                     <CheckCircle2 className="h-3 w-3" /> Consulta Realizada
-                  </Badge>
+                  </Button>
                 )}
               </div>
             </CardContent>
