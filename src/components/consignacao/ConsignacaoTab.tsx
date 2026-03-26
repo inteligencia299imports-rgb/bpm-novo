@@ -21,12 +21,15 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
   useEffect(() => {
-    if (initialAvaliacaoId && !loading && items.length > 0) {
-      const found = items.find(a => a.id === initialAvaliacaoId);
-      if (found) setSelectedItem(found);
+    if (initialAvaliacaoId) {
+      supabase.from('avaliacoes')
+        .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, observacoes)`)
+        .eq('id', initialAvaliacaoId).single().then(({ data }) => {
+          if (data) setSelectedItem({ ...data, atendimento: (data as any).atendimentos, moto: (data as any).motos_avaliacao });
+        });
       onInitialHandled?.();
     }
-  }, [initialAvaliacaoId, loading, items]);
+  }, [initialAvaliacaoId]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);

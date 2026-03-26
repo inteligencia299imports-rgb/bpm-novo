@@ -21,12 +21,17 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
   useEffect(() => {
-    if (initialAtendimentoId && !loading && items.length > 0) {
-      const found = items.find(a => a.id === initialAtendimentoId);
-      if (found) setSelectedItem(found);
+    if (initialAtendimentoId) {
+      supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
+        if (data) {
+          // Fetch estoque moto info
+          const { data: est } = await supabase.from('estoque').select('marca, modelo, placa').eq('atendimento_venda_id', data.id).eq('tipo', 'propria').maybeSingle();
+          setSelectedItem({ ...data, _estoqueMoto: est });
+        }
+      });
       onInitialHandled?.();
     }
-  }, [initialAtendimentoId, loading, items]);
+  }, [initialAtendimentoId]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
