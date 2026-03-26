@@ -14,22 +14,24 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
-// Detail views
-import AtendimentoDetail from '@/components/showroom/AtendimentoDetail';
-import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
-import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
-import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
-import AvaliacaoForm from '@/components/avaliacoes/AvaliacaoForm';
+export type EstoqueNavTarget =
+  | { tab: 'showroom'; atendimentoId: string }
+  | { tab: 'avaliacoes'; avaliacaoId: string }
+  | { tab: 'pos_venda'; atendimentoId: string }
+  | { tab: 'intermediacao'; atendimentoId: string }
+  | { tab: 'pos_compra'; avaliacaoId: string }
+  | { tab: 'consignacao'; avaliacaoId: string }
+  | { tab: 'preparacao'; avaliacaoId: string };
+
+interface EstoqueTabProps {
+  onNavigateToTab?: (target: EstoqueNavTarget) => void;
+}
 
 // Configs
 import {
   POS_VENDA_COLUMNS,
   POS_COMPRA_COLUMNS,
   CONSIGNACAO_COLUMNS,
-  INTERMEDIACAO_PARTE1_COLUMNS,
-  INTERMEDIACAO_PARTE1_ETAPAS,
-  INTERMEDIACAO_PARTE2_COLUMNS,
-  INTERMEDIACAO_PARTE2_ETAPAS,
 } from '@/types/crm';
 
 interface EstoqueItem {
