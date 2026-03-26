@@ -21,7 +21,12 @@ import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
 const KANBAN_COLUMNS = SITUACOES_SHOWROOM;
 
-const ShowroomTab = () => {
+interface ShowroomTabProps {
+  initialAtendimentoId?: string | null;
+  onInitialAtendimentoHandled?: () => void;
+}
+
+const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: ShowroomTabProps = {}) => {
   const { user, role } = useAuth();
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +40,26 @@ const ShowroomTab = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+
+  // Open detail from external navigation (e.g. NPS tab)
+  useEffect(() => {
+    if (initialAtendimentoId && !loading && atendimentos.length > 0) {
+      const found = atendimentos.find(a => a.id === initialAtendimentoId);
+      if (found) {
+        setSelectedAtendimento(found);
+        setDetailOpen(true);
+      } else {
+        // Fetch directly if not in current filtered list
+        supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(({ data }) => {
+          if (data) {
+            setSelectedAtendimento(data as unknown as Atendimento);
+            setDetailOpen(true);
+          }
+        });
+      }
+      onInitialAtendimentoHandled?.();
+    }
+  }, [initialAtendimentoId, loading, atendimentos]);
 
   const fetchAtendimentos = useCallback(async () => {
     setLoading(true);

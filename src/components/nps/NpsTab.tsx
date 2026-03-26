@@ -4,7 +4,11 @@ import { Award } from 'lucide-react';
 import NpsVendasTab from './NpsVendasTab';
 import NpsAquisicoesTab from './NpsAquisicoesTab';
 
-const NpsTab = () => {
+interface NpsTabProps {
+  onNavigateToShowroom: (atendimentoId: string) => void;
+}
+
+const NpsTab = ({ onNavigateToShowroom }: NpsTabProps) => {
   const { role } = useAuth();
   const canSeeAquisicoes = role === 'gestor' || role === 'avaliador';
   const [subTab, setSubTab] = useState<'vendas' | 'aquisicoes'>('vendas');
@@ -44,8 +48,8 @@ const NpsTab = () => {
         </div>
       )}
 
-      {subTab === 'vendas' && <NpsVendasTab />}
-      {subTab === 'aquisicoes' && canSeeAquisicoes && <NpsAquisicoesTab />}
+      {subTab === 'vendas' && <NpsVendasTab onNavigateToShowroom={onNavigateToShowroom} />}
+      {subTab === 'aquisicoes' && canSeeAquisicoes && <NpsAquisicoesTab onNavigateToShowroom={onNavigateToShowroom} />}
     </div>
   );
 };
