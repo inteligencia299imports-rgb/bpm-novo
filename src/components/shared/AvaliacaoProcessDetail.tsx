@@ -16,6 +16,7 @@ import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsigna
 import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProcessoDialog';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 import PosCompraProcessoDialog from '@/components/pos-compra/PosCompraProcessoDialog';
+import PosCompraFinanceiroDialog from '@/components/pos-compra/PosCompraFinanceiroDialog';
 
 interface Props {
   item: any;
