@@ -874,6 +874,39 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          message: string
+          read: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pos_compra_processos: {
         Row: {
           avaliacao_id: string
@@ -1041,9 +1074,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      notify_role: {
+        Args: {
+          _entity_id?: string
+          _entity_type?: string
+          _message: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _title: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
-      app_role: "vendedor" | "gestor" | "avaliador"
+      app_role: "vendedor" | "gestor" | "avaliador" | "secretaria"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1171,7 +1214,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["vendedor", "gestor", "avaliador"],
+      app_role: ["vendedor", "gestor", "avaliador", "secretaria"],
     },
   },
 } as const
