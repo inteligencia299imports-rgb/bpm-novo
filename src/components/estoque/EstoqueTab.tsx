@@ -62,14 +62,7 @@ interface EstoqueItem {
   manutencao_em_dia?: boolean | null;
 }
 
-type DetailView =
-  | { type: 'showroom'; data: any }
-  | { type: 'pos_venda'; data: any }
-  | { type: 'intermediacao'; data: any; parte: 'parte1' | 'parte2' }
-  | { type: 'pos_compra'; data: any }
-  | { type: 'consignacao'; data: any }
-  | { type: 'preparacao'; data: any }
-  | { type: 'avaliacao'; data: { avaliacaoId: string } };
+// Navigation target type removed - using EstoqueNavTarget from props
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   disponivel: { label: 'Disponível', color: 'bg-success/15 text-success' },
