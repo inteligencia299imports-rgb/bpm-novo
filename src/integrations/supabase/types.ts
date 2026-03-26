@@ -1081,6 +1081,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      moto_has_avaliacao_preparacao: {
+        Args: { _moto_avaliacao_id: string }
+        Returns: boolean
+      }
       notify_role: {
         Args: {
           _entity_id?: string
