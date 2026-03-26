@@ -152,6 +152,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                           key={a.id}
                           atendimento={a}
                           onClick={() => onNavigateToShowroom(a.id)}
+                          statusColorOverride={SITUACOES_NPS.find(s => s.value === (a.nps_status || 'em_aberto'))?.hex}
                           actions={
                             <>
                               {(a.nps_status || 'em_aberto') === 'em_aberto' && (

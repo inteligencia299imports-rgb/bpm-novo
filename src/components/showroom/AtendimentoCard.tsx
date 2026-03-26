@@ -11,6 +11,7 @@ interface Props {
   atendimento: Atendimento & { motos_interesse?: any[]; motos_avaliacao?: any[] };
   onClick: () => void;
   actions?: React.ReactNode;
+  statusColorOverride?: string;
 }
 
 const formatPhone = (value: string): string => {
@@ -56,11 +57,11 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions }) => {
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
-  const statusColor = STATUS_COLORS[atendimento.situacao as SituacaoShowroom] || '#6B7280';
+  const statusColor = statusColorOverride || STATUS_COLORS[atendimento.situacao as SituacaoShowroom] || '#6B7280';
 
 
   return (
