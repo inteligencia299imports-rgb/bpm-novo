@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
-import { Search, X } from 'lucide-react';
+import { Search, X, Send } from 'lucide-react';
 import { SITUACOES_NPS } from '@/types/crm';
 import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
