@@ -77,6 +77,13 @@ const MotoVendaSection: React.FC<Props> = ({
             </Select>
           </div>
           <div className="space-y-1.5">
+            <Label>Categoria *</Label>
+            <Select value={categoria} onValueChange={setCategoria}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>{CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
             <Label>Ano Fabricação *</Label>
             <Select value={anoFab} onValueChange={setAnoFab}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
@@ -88,13 +95,6 @@ const MotoVendaSection: React.FC<Props> = ({
             <Select value={anoMod} onValueChange={setAnoMod}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Categoria *</Label>
-            <Select value={categoria} onValueChange={setCategoria}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
