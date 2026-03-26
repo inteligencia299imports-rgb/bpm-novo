@@ -553,7 +553,9 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
             <Separator className="my-1" />
 
-            {isEstoqueIdle ? (
+            {isReadOnly ? (
+              <div className="text-sm text-muted-foreground italic py-2">Visualização somente leitura.</div>
+            ) : isEstoqueIdle ? (
               /* Estoque idle: show button to send to preparação for tracking */
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">Esta moto já está em estoque. Deseja enviá-la para preparação para acompanhamento de reparos?</p>
