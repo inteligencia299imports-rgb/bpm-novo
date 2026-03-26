@@ -89,7 +89,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     const telefone = item.atendimento?.telefone?.replace(/\D/g, '') || '';
     const atendimentoId = item.atendimento_id;
     const previousStatus = item.nps_status || 'em_aberto';
-    const url = `https://wa.me/55${telefone}?text=https%3A%2F%2Ftally.so%2Fr%2FOD4Gp7%3Fid%3D${atendimentoId}`;
+    const url = `https://wa.me/55${telefone}?text=https%3A%2F%2Ftally.so%2Fr%2FVLZ5Ej%3Fid%3D${atendimentoId}`;
     window.open(url, '_blank');
 
     const updates = { nps_status: 'enviado', nps_enviado_at: new Date().toISOString() };
