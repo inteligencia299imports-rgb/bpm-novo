@@ -14,6 +14,7 @@ interface NpsCardProps {
   date?: string;
   npsStatus: SituacaoNps;
   onUpdateStatus: (status: SituacaoNps) => void;
+  onClick?: () => void;
   accentColor: string;
   badge?: string;
 }
