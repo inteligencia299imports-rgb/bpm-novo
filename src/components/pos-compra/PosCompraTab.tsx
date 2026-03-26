@@ -12,11 +12,24 @@ import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 // Filter concluido from kanban display
 const VISIBLE_COLUMNS = POS_COMPRA_COLUMNS.filter(c => c.value !== 'concluido');
 
-const PosCompraTab = () => {
+interface PosCompraTabProps {
+  initialAvaliacaoId?: string | null;
+  onInitialHandled?: () => void;
+}
+
+const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (initialAvaliacaoId && !loading && items.length > 0) {
+      const found = items.find(a => a.id === initialAvaliacaoId);
+      if (found) setSelectedItem(found);
+      onInitialHandled?.();
+    }
+  }, [initialAvaliacaoId, loading, items]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);

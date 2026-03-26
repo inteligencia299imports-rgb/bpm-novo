@@ -9,11 +9,24 @@ import PosVendaDetail from './PosVendaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
-const PosVendaTab = () => {
+interface PosVendaTabProps {
+  initialAtendimentoId?: string | null;
+  onInitialHandled?: () => void;
+}
+
+const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (initialAtendimentoId && !loading && items.length > 0) {
+      const found = items.find(a => a.id === initialAtendimentoId);
+      if (found) setSelectedItem(found);
+      onInitialHandled?.();
+    }
+  }, [initialAtendimentoId, loading, items]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);

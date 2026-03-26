@@ -14,22 +14,24 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
-// Detail views
-import AtendimentoDetail from '@/components/showroom/AtendimentoDetail';
-import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
-import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
-import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
-import AvaliacaoForm from '@/components/avaliacoes/AvaliacaoForm';
+export type EstoqueNavTarget =
+  | { tab: 'showroom'; atendimentoId: string }
+  | { tab: 'avaliacoes'; avaliacaoId: string }
+  | { tab: 'pos_venda'; atendimentoId: string }
+  | { tab: 'intermediacao'; atendimentoId: string }
+  | { tab: 'pos_compra'; avaliacaoId: string }
+  | { tab: 'consignacao'; avaliacaoId: string }
+  | { tab: 'preparacao'; avaliacaoId: string };
+
+interface EstoqueTabProps {
+  onNavigateToTab?: (target: EstoqueNavTarget) => void;
+}
 
 // Configs
 import {
   POS_VENDA_COLUMNS,
   POS_COMPRA_COLUMNS,
   CONSIGNACAO_COLUMNS,
-  INTERMEDIACAO_PARTE1_COLUMNS,
-  INTERMEDIACAO_PARTE1_ETAPAS,
-  INTERMEDIACAO_PARTE2_COLUMNS,
-  INTERMEDIACAO_PARTE2_ETAPAS,
 } from '@/types/crm';
 
 interface EstoqueItem {
@@ -60,14 +62,7 @@ interface EstoqueItem {
   manutencao_em_dia?: boolean | null;
 }
 
-type DetailView =
-  | { type: 'showroom'; data: any }
-  | { type: 'pos_venda'; data: any }
-  | { type: 'intermediacao'; data: any; parte: 'parte1' | 'parte2' }
-  | { type: 'pos_compra'; data: any }
-  | { type: 'consignacao'; data: any }
-  | { type: 'preparacao'; data: any }
-  | { type: 'avaliacao'; data: { avaliacaoId: string } };
+// Navigation target type removed - using EstoqueNavTarget from props
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   disponivel: { label: 'Disponível', color: 'bg-success/15 text-success' },
@@ -80,7 +75,7 @@ const formatCurrency = (value: number | null) => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-const EstoqueTab = () => {
+const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [items, setItems] = useState<EstoqueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -92,8 +87,6 @@ const EstoqueTab = () => {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
   const [allMarcas, setAllMarcas] = useState<string[]>([]);
-  const [detailView, setDetailView] = useState<DetailView | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
     let query = supabase.from('estoque').select('marca');
@@ -145,96 +138,36 @@ const EstoqueTab = () => {
 
   useEffect(() => { setPage(1); }, [search, filterMarca, filterTipo, filterStatus]);
 
-  // --- Open detail handlers ---
+  // --- Navigation handlers (delegate to parent tab) ---
 
-  const openShowroom = async (atendimentoVendaId: string) => {
-    setLoadingDetail(true);
-    const { data } = await supabase.from('atendimentos').select('*').eq('id', atendimentoVendaId).maybeSingle();
-    if (data) {
-      setDetailView({ type: 'showroom', data });
-    } else {
-      toast.error('Atendimento não encontrado');
-    }
-    setLoadingDetail(false);
-  };
-
-  const openPosVendaOrIntermediacao = async (item: EstoqueItem, target: 'pos_venda' | 'intermediacao') => {
-    if (!item.atendimento_venda_id) return;
-    setLoadingDetail(true);
-    const { data } = await supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('id', item.atendimento_venda_id).maybeSingle();
-    if (data) {
-      // Attach _estoqueMoto
-      const enriched = { ...data, _estoqueMoto: { marca: item.marca, modelo: item.modelo, placa: item.placa } };
-      if (target === 'intermediacao') {
-        setDetailView({ type: 'intermediacao', data: enriched, parte: 'parte1' });
-      } else {
-        setDetailView({ type: 'pos_venda', data: enriched });
-      }
-    } else {
-      toast.error('Atendimento não encontrado');
-    }
-    setLoadingDetail(false);
-  };
-
-  const openAvaliacaoDetail = async (avaliacaoId: string, target: 'pos_compra' | 'consignacao') => {
-    setLoadingDetail(true);
-    const { data } = await supabase
-      .from('avaliacoes')
-      .select('*, atendimentos!inner(id, nome_cliente, telefone, loja), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_em_dia)')
-      .eq('id', avaliacaoId)
-      .maybeSingle();
-    if (data) {
-      const mapped = { ...data, atendimento: (data as any).atendimentos, moto: (data as any).motos_avaliacao };
-      setDetailView({ type: target, data: mapped });
-    } else {
-      toast.error('Avaliação não encontrada');
-    }
-    setLoadingDetail(false);
-  };
-
-  const openPreparacao = async (avaliacaoId: string, item: EstoqueItem) => {
-    setLoadingDetail(true);
-    const { data } = await supabase
-      .from('avaliacoes')
-      .select('*, atendimentos!inner(id, nome_cliente, telefone, loja), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes)')
-      .eq('id', avaliacaoId)
-      .maybeSingle();
-    if (data) {
-      const mapped = { ...data, atendimento: (data as any).atendimentos, moto: (data as any).motos_avaliacao };
-      setDetailView({ type: 'preparacao', data: mapped });
-    } else {
-      toast.error('Avaliação não encontrada');
-    }
-    setLoadingDetail(false);
+  const nav = (target: EstoqueNavTarget) => {
+    if (onNavigateToTab) onNavigateToTab(target);
   };
 
   const getNavigationOptions = (item: EstoqueItem) => {
     const options: { label: string; icon: React.ReactNode; action: () => void }[] = [];
 
-    // 1. Venda
     if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada')) {
       options.push({
         label: 'Venda',
         icon: <Bike className="h-4 w-4" />,
-        action: () => openShowroom(item.atendimento_venda_id!),
+        action: () => nav({ tab: 'showroom', atendimentoId: item.atendimento_venda_id! }),
       });
     }
 
-    // 2. Avaliação
     if (item.avaliacao_id) {
       options.push({
         label: 'Avaliação',
         icon: <ClipboardCheck className="h-4 w-4" />,
-        action: () => setDetailView({ type: 'avaliacao', data: { avaliacaoId: item.avaliacao_id } }),
+        action: () => nav({ tab: 'avaliacoes', avaliacaoId: item.avaliacao_id! }),
       });
     }
 
-    // 3. Pós-Venda ou Intermediação
     if (item.atendimento_venda_id && item.status === 'vendido' && item.tipo === 'propria') {
       options.push({
         label: 'Pós-Venda',
         icon: <ShoppingBag className="h-4 w-4" />,
-        action: () => openPosVendaOrIntermediacao(item, 'pos_venda'),
+        action: () => nav({ tab: 'pos_venda', atendimentoId: item.atendimento_venda_id! }),
       });
     }
 
@@ -242,16 +175,15 @@ const EstoqueTab = () => {
       options.push({
         label: 'Intermediação',
         icon: <Handshake className="h-4 w-4" />,
-        action: () => openPosVendaOrIntermediacao(item, 'intermediacao'),
+        action: () => nav({ tab: 'intermediacao', atendimentoId: item.atendimento_venda_id! }),
       });
     }
 
-    // 4. Pós-Compra ou Consignação
     if (item.avaliacao_id && item.tipo === 'propria') {
       options.push({
         label: 'Pós-Compra',
         icon: <ShoppingCart className="h-4 w-4" />,
-        action: () => openAvaliacaoDetail(item.avaliacao_id!, 'pos_compra'),
+        action: () => nav({ tab: 'pos_compra', avaliacaoId: item.avaliacao_id! }),
       });
     }
 
@@ -259,116 +191,20 @@ const EstoqueTab = () => {
       options.push({
         label: 'Consignação',
         icon: <FileText className="h-4 w-4" />,
-        action: () => openAvaliacaoDetail(item.avaliacao_id!, 'consignacao'),
+        action: () => nav({ tab: 'consignacao', avaliacaoId: item.avaliacao_id! }),
       });
     }
 
-    // 5. Preparação
     if (item.avaliacao_id) {
       options.push({
         label: 'Preparação',
         icon: <Wrench className="h-4 w-4" />,
-        action: () => openPreparacao(item.avaliacao_id!, item),
+        action: () => nav({ tab: 'preparacao', avaliacaoId: item.avaliacao_id! }),
       });
     }
 
     return options;
   };
-
-  // --- Render detail views ---
-
-  if (detailView) {
-    switch (detailView.type) {
-      case 'showroom':
-        return (
-          <AtendimentoDetail
-            atendimento={detailView.data}
-            onClose={() => setDetailView(null)}
-            onEdit={() => {}}
-            onDeleted={() => { setDetailView(null); fetchEstoque(); }}
-            onStatusUpdated={() => fetchEstoque()}
-          />
-        );
-      case 'pos_venda':
-        return (
-          <PosVendaDetail
-            item={detailView.data}
-            onClose={() => setDetailView(null)}
-          />
-        );
-      case 'intermediacao':
-        const intConfig = detailView.parte === 'parte1'
-          ? {
-              columns: INTERMEDIACAO_PARTE1_COLUMNS,
-              statusField: 'intermediacao_parte1_status',
-              etapas: INTERMEDIACAO_PARTE1_ETAPAS,
-              observacoesField: 'pos_venda_observacoes',
-              statusRules: { concluded: 'AUTORIZAÇÃO DE PAGAMENTO', default: 'em_andamento' },
-            }
-          : {
-              columns: INTERMEDIACAO_PARTE2_COLUMNS,
-              statusField: 'intermediacao_parte2_status',
-              etapas: INTERMEDIACAO_PARTE2_ETAPAS,
-              observacoesField: 'pos_venda_observacoes',
-              statusRules: { concluded: 'TRANSFERÊNCIA FINALIZADA', special: { etapa: 'DOCUMENTAÇÃO COM DESPACHANTE', status: 'doc_despachante' }, default: 'em_andamento' },
-            };
-        return (
-          <PosVendaDetail
-            item={detailView.data}
-            onClose={() => setDetailView(null)}
-            statusColumns={intConfig.columns as any}
-            statusField={intConfig.statusField}
-            processoProps={{
-              customEtapas: intConfig.etapas,
-              statusField: intConfig.statusField,
-              observacoesField: intConfig.observacoesField,
-              statusRules: intConfig.statusRules,
-              showContratoConsignante: detailView.parte === 'parte1',
-            }}
-          />
-        );
-      case 'pos_compra':
-        return (
-          <AvaliacaoProcessDetail
-            item={detailView.data}
-            entityType="pos_compra"
-            statusColumns={POS_COMPRA_COLUMNS}
-            statusField="pos_compra_status"
-            title="Pós-Compra"
-            onClose={() => setDetailView(null)}
-          />
-        );
-      case 'consignacao':
-        return (
-          <AvaliacaoProcessDetail
-            item={detailView.data}
-            entityType="consignacao"
-            statusColumns={CONSIGNACAO_COLUMNS}
-            statusField="consignacao_status"
-            title="Consignação"
-            onClose={() => setDetailView(null)}
-          />
-        );
-      case 'preparacao':
-        return (
-          <PreparacaoProcessoDialog
-            open={true}
-            onOpenChange={(open) => { if (!open) setDetailView(null); }}
-            avaliacaoId={detailView.data.id}
-            currentStatus={detailView.data.preparacao_status || 'em_aberto'}
-            avaliacaoData={detailView.data}
-            onStatusChanged={() => { setDetailView(null); fetchEstoque(); }}
-          />
-        );
-      case 'avaliacao':
-        return (
-          <AvaliacaoForm
-            avaliacaoId={detailView.data.avaliacaoId}
-            onClose={() => { setDetailView(null); fetchEstoque(); }}
-          />
-        );
-    }
-  }
 
   return (
     <div className="space-y-4">
@@ -452,11 +288,6 @@ const EstoqueTab = () => {
         )}
       </div>
 
-      {loadingDetail && (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      )}
 
       {/* List */}
       {loading ? (
