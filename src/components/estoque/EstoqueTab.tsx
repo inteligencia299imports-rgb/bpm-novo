@@ -75,7 +75,7 @@ const formatCurrency = (value: number | null) => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-const EstoqueTab = () => {
+const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [items, setItems] = useState<EstoqueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -87,8 +87,6 @@ const EstoqueTab = () => {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
   const [allMarcas, setAllMarcas] = useState<string[]>([]);
-  const [detailView, setDetailView] = useState<DetailView | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
     let query = supabase.from('estoque').select('marca');
