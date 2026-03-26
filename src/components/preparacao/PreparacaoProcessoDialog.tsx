@@ -515,19 +515,27 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
           <div className="flex flex-col gap-4 px-1">
             {/* Resumo */}
             {avaliacaoData && (
-              <div className="bg-muted/50 rounded-lg p-4 border border-border/50 space-y-2.5">
+              <div className="bg-muted/50 rounded-lg p-4 border border-border/50 space-y-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-base font-bold text-foreground">{avaliacaoData.atendimento?.nome_cliente || 'N/A'}</span>
-                  {avaliacaoData.tipo_aquisicao && (
-                    <Badge variant="outline" className={`text-xs ${avaliacaoData.tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : avaliacaoData.tipo_aquisicao === 'convertida' ? 'border-blue-800 text-blue-800' : 'border-green-500/30 text-green-600'}`}>
-                      {avaliacaoData.tipo_aquisicao === 'propria' ? 'Própria' : avaliacaoData.tipo_aquisicao === 'convertida' ? 'Convertida' : 'Consignada'}
-                    </Badge>
-                  )}
+                  <span className="text-base font-bold text-foreground">{avaliacaoData.moto?.marca} {avaliacaoData.moto?.modelo}</span>
+                  <div className="flex items-center gap-2">
+                    {avaliacaoData.tipo_aquisicao && (
+                      <Badge variant="outline" className={`text-xs ${avaliacaoData.tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : avaliacaoData.tipo_aquisicao === 'convertida' ? 'border-blue-800 text-blue-800' : 'border-green-500/30 text-green-600'}`}>
+                        {avaliacaoData.tipo_aquisicao === 'propria' ? 'Própria' : avaliacaoData.tipo_aquisicao === 'convertida' ? 'Convertida' : 'Consignada'}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
+
+                <div className="text-xs text-muted-foreground">
+                  {[avaliacaoData.moto?.ano_fabricacao, avaliacaoData.moto?.ano_modelo].filter(Boolean).join('/')}
+                  {avaliacaoData.moto?.cilindrada ? ` · ${avaliacaoData.moto.cilindrada}cc` : ''}
+                </div>
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-4 text-sm">
                   <div>
-                    <span className="text-xs text-muted-foreground block">Moto</span>
-                    <span className="font-medium text-foreground">{avaliacaoData.moto?.marca} {avaliacaoData.moto?.modelo}</span>
+                    <span className="text-xs text-muted-foreground block">Cliente</span>
+                    <span className="font-medium text-foreground">{avaliacaoData.atendimento?.nome_cliente || 'N/A'}</span>
                   </div>
                   {avaliacaoData.moto?.placa && (
                     <div>
@@ -535,10 +543,28 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       <span className="font-medium text-foreground">{avaliacaoData.moto.placa}</span>
                     </div>
                   )}
+                  {avaliacaoData.moto?.cor && (
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Cor</span>
+                      <span className="font-medium text-foreground">{avaliacaoData.moto.cor}</span>
+                    </div>
+                  )}
                   {avaliacaoData.moto?.categoria && (
                     <div>
                       <span className="text-xs text-muted-foreground block">Categoria</span>
                       <span className="font-medium text-foreground">{avaliacaoData.moto.categoria}</span>
+                    </div>
+                  )}
+                  {avaliacaoData.classificacao && (
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Classificação</span>
+                      <span className="font-medium text-foreground">{avaliacaoData.classificacao}</span>
+                    </div>
+                  )}
+                  {avaliacaoData.moto?.km && (
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Km</span>
+                      <span className="font-medium text-foreground">{avaliacaoData.moto.km}</span>
                     </div>
                   )}
                   {avaliacaoData.valor_fechamento != null && (
@@ -548,6 +574,33 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     </div>
                   )}
                 </div>
+
+                {(avaliacaoData.moto?.tem_manual != null || avaliacaoData.moto?.tem_chave_reserva != null || avaliacaoData.moto?.manutencao_em_dia != null) && (
+                  <div className="flex items-center gap-3 text-xs pt-1">
+                    {avaliacaoData.moto?.tem_manual != null && (
+                      <span className="flex items-center gap-1">
+                        <span className={`inline-block w-2 h-2 rounded-full ${avaliacaoData.moto.tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
+                        Manual
+                      </span>
+                    )}
+                    {avaliacaoData.moto?.tem_chave_reserva != null && (
+                      <span className="flex items-center gap-1">
+                        <span className={`inline-block w-2 h-2 rounded-full ${avaliacaoData.moto.tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
+                        Chave Reserva
+                      </span>
+                    )}
+                    {avaliacaoData.moto?.manutencao_em_dia != null && (
+                      <span className="flex items-center gap-1">
+                        <span className={`inline-block w-2 h-2 rounded-full ${avaliacaoData.moto.manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                        Revisão
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {avaliacaoData.moto?.observacoes && (
+                  <p className="text-xs text-muted-foreground italic">{avaliacaoData.moto.observacoes}</p>
+                )}
               </div>
             )}
 
