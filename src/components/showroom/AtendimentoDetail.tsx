@@ -79,6 +79,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [contratoOpen, setContratoOpen] = useState(false);
   const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
   const [savingMotivo, setSavingMotivo] = useState(false);
+  const [showResultadoConsulta, setShowResultadoConsulta] = useState<string | null>(null);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
