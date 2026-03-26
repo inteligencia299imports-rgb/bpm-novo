@@ -30,8 +30,8 @@ const getInteresseLabel = (interesse: string) => {
 
 const STATUS_HEX: Record<string, string> = {
   sem_avaliar: '#6B7280',
-  em_aberto: '#F2C94C',
-  adquirida: '#27AE60',
+  em_aberto: '#da6220',
+  adquirida: '#169d53',
   dispensada: '#FF3B30',
 };
 

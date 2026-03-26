@@ -14,20 +14,20 @@ export type IntermediacaoParte2Status = 'em_aberto' | 'em_andamento' | 'doc_desp
 
 export const POS_VENDA_COLUMNS: { value: PosVendaStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
-  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
-  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#9B51E0' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#da6220' },
+  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#5e3984' },
 ];
 
 export const INTERMEDIACAO_PARTE1_COLUMNS: { value: IntermediacaoParte1Status; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
-  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
-  { value: 'autorizacao_pagamento', label: 'Autorização de Pagamento', hex: '#9B51E0' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#da6220' },
+  { value: 'autorizacao_pagamento', label: 'Autorização de Pagamento', hex: '#5e3984' },
 ];
 
 export const INTERMEDIACAO_PARTE2_COLUMNS: { value: IntermediacaoParte2Status; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
-  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
-  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#9B51E0' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#da6220' },
+  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#5e3984' },
 ];
 
 export const INTERMEDIACAO_PARTE1_ETAPAS = [
@@ -51,22 +51,22 @@ export const INTERMEDIACAO_PARTE2_ETAPAS = [
 
 export const POS_COMPRA_COLUMNS: { value: PosCompraStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
-  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
-  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#9B51E0' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#da6220' },
+  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#5e3984' },
   { value: 'pausado', label: 'Pausado', hex: '#FF8C00' },
 ];
 
 export const CONSIGNACAO_COLUMNS: { value: ConsignacaoStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
-  { value: 'contrato_assinado', label: 'Contrato Assinado', hex: '#27AE60' },
-  { value: 'cadastro_nbs', label: 'Cadastro NBS', hex: '#F2C94C' },
+  { value: 'contrato_assinado', label: 'Contrato Assinado', hex: '#169d53' },
+  { value: 'cadastro_nbs', label: 'Cadastro NBS', hex: '#da6220' },
   { value: 'pausado', label: 'Pausado', hex: '#FF8C00' },
 ];
 
 export const PREPARACAO_COLUMNS: { value: PreparacaoStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
-  { value: 'pendente', label: 'Pendente', hex: '#F2C94C' },
-  { value: 'oficina', label: 'Oficina', hex: '#9B51E0' },
+  { value: 'pendente', label: 'Pendente', hex: '#da6220' },
+  { value: 'oficina', label: 'Oficina', hex: '#5e3984' },
   { value: 'servico_externo', label: 'Serviço Externo', hex: '#E91E63' },
   
   { value: 'aguardando_aceite', label: 'Aguardando Aceite', hex: '#FF8C00' },
@@ -84,25 +84,25 @@ export const INTERESSES: { value: Interesse; label: string }[] = [
 
 export const STATUS_COLORS: Record<SituacaoShowroom, string> = {
   em_aberto: '#2EC5FF',
-  pendente: '#F2C94C',
-  sinal: '#9B51E0',
+  pendente: '#da6220',
+  sinal: '#5e3984',
   perdido: '#FF3B30',
-  vendido: '#27AE60',
+  vendido: '#169d53',
   dispensada: '#FF8C00',
 };
 
 export const SITUACOES_SHOWROOM: { value: SituacaoShowroom; label: string; color: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', color: 'bg-info/15 text-info', hex: '#2EC5FF' },
-  { value: 'pendente', label: 'Pendente', color: 'bg-warning/15 text-warning', hex: '#F2C94C' },
-  { value: 'sinal', label: 'Sinal', color: 'bg-sinal/15 text-sinal', hex: '#9B51E0' },
+  { value: 'pendente', label: 'Pendente', color: 'bg-warning/15 text-warning', hex: '#da6220' },
+  { value: 'sinal', label: 'Sinal', color: 'bg-sinal/15 text-sinal', hex: '#5e3984' },
   { value: 'perdido', label: 'Perdido', color: 'bg-destructive/15 text-destructive', hex: '#FF3B30' },
   { value: 'dispensada', label: 'Dispensada', color: 'bg-orange-500/15 text-orange-500', hex: '#FF8C00' },
 ];
 
 export const SITUACOES_NPS: { value: SituacaoNps; label: string; color: string; hex: string }[] = [
-  { value: 'em_aberto', label: 'Em Aberto', color: 'bg-warning/15 text-warning', hex: '#F2C94C' },
+  { value: 'em_aberto', label: 'Em Aberto', color: 'bg-warning/15 text-warning', hex: '#da6220' },
   { value: 'enviado', label: 'Enviado', color: 'bg-info/15 text-info', hex: '#2EC5FF' },
-  { value: 'respondido', label: 'Respondido', color: 'bg-success/15 text-success', hex: '#27AE60' },
+  { value: 'respondido', label: 'Respondido', color: 'bg-success/15 text-success', hex: '#169d53' },
 ];
 export const SITUACOES_AVALIACAO: { value: SituacaoAvaliacao; label: string; color: string }[] = [
   { value: 'sem_avaliar', label: 'Sem Avaliar', color: 'bg-muted text-muted-foreground' },
