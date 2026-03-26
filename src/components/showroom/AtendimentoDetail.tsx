@@ -1183,6 +1183,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!showResultadoConsulta} onOpenChange={() => setShowResultadoConsulta(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" /> Resultado da Consulta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm whitespace-pre-wrap">{showResultadoConsulta}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
