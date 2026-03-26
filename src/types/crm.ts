@@ -1,4 +1,4 @@
-export type AppRole = 'vendedor' | 'gestor' | 'avaliador';
+export type AppRole = 'vendedor' | 'gestor' | 'avaliador' | 'secretaria';
 
 export type Interesse = 'comprar' | 'vender' | 'trocar';
 export type SituacaoShowroom = 'em_aberto' | 'pendente' | 'sinal' | 'perdido' | 'vendido' | 'dispensada';
