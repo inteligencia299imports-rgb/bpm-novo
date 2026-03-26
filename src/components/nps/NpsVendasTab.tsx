@@ -15,18 +15,25 @@ interface NpsVendasTabProps {
 }
 
 const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
-  const { user, userName } = useAuth();
+  const { user, userName, role } = useAuth();
   const [atendimentos, setAtendimentos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from('atendimentos')
       .select('*, motos_interesse(*), motos_avaliacao(*)')
       .eq('situacao', 'vendido')
-      .order('updated_at', { ascending: false });
+      .in('interesse', ['comprar', 'trocar']);
+
+    // Vendedores veem apenas os próprios; gestor vê todos
+    if (role !== 'gestor') {
+      query = query.eq('vendedor_id', user?.id || '');
+    }
+
+    const { data, error } = await query.order('updated_at', { ascending: false });
 
     if (error) {
       toast.error('Erro ao carregar NPS Vendas');

@@ -38,7 +38,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       console.error(error);
     } else {
       let mapped = (data || [])
-        .filter((a: any) => a.atendimentos?.interesse !== 'trocar')
+        .filter((a: any) => a.atendimentos?.interesse === 'vender')
         .map((d: any) => ({
           ...d,
           // Build a virtual atendimento-like object for AtendimentoCard
