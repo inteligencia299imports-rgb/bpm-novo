@@ -27,11 +27,11 @@ const formatPhone = (value: string): string => {
   return value;
 };
 
-const NpsCard: React.FC<NpsCardProps> = ({ title, subtitle, loja, date, npsStatus, onUpdateStatus, accentColor, badge }) => {
+const NpsCard: React.FC<NpsCardProps> = ({ title, subtitle, loja, date, npsStatus, onUpdateStatus, onClick, accentColor, badge }) => {
   const isPhone = /^\d{10,11}$/.test(subtitle.replace(/\D/g, ''));
 
   return (
-    <Card className="hover:shadow-md transition-shadow border-l-4" style={{ borderLeftColor: accentColor }}>
+    <Card className="hover:shadow-md transition-shadow border-l-4 cursor-pointer" style={{ borderLeftColor: accentColor }} onClick={onClick}>
       <CardContent className="p-3 space-y-2">
         <div className="flex items-center justify-between">
           <span className="font-semibold text-sm text-foreground truncate">{title}</span>
@@ -59,18 +59,13 @@ const NpsCard: React.FC<NpsCardProps> = ({ title, subtitle, loja, date, npsStatu
           </div>
         )}
 
-        <div className="flex gap-1.5 pt-1">
-          {npsStatus === 'em_aberto' && (
-            <Button size="sm" variant="outline" className="gap-1 text-xs h-7 flex-1" onClick={() => onUpdateStatus('enviado')}>
-              <Send className="h-3 w-3" /> Marcar Enviado
-            </Button>
-          )}
-          {npsStatus === 'enviado' && (
-            <Button size="sm" variant="outline" className="gap-1 text-xs h-7 flex-1" onClick={() => onUpdateStatus('respondido')}>
+        {npsStatus === 'enviado' && (
+          <div className="flex gap-1.5 pt-1">
+            <Button size="sm" variant="outline" className="gap-1 text-xs h-7 flex-1" onClick={(e) => { e.stopPropagation(); onUpdateStatus('respondido'); }}>
               <CheckCircle2 className="h-3 w-3" /> Marcar Respondido
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
