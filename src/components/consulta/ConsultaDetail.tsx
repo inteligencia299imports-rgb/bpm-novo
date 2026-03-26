@@ -115,6 +115,25 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
       _entity_id: moto.id,
       _entity_type: 'consulta',
     });
+    // Notify the user who requested the consultation
+    const { data: requestHistory } = await supabase
+      .from('status_history')
+      .select('changed_by')
+      .eq('entity_type', 'consulta')
+      .eq('entity_id', moto.id)
+      .eq('status_to', 'consulta_solicitada')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (requestHistory?.changed_by && requestHistory.changed_by !== user?.id) {
+      await supabase.from('notifications').insert({
+        user_id: requestHistory.changed_by,
+        title: 'Resultado da Consulta',
+        message: `${moto.atendimentos?.nome_cliente || ''} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''}: ${resultadoTexto}`,
+        entity_id: moto.id,
+        entity_type: 'consulta',
+      } as any);
+    }
     toast.success('Resultado salvo com sucesso!');
     setSaving(false);
     setResultadoPopup(false);
