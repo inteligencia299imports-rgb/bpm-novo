@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
-import { Search, X } from 'lucide-react';
+import { Search, X, Send } from 'lucide-react';
 import { SITUACOES_NPS } from '@/types/crm';
 import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
@@ -83,6 +83,23 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     }
   };
 
+  const handleEnviarPesquisa = async (e: React.MouseEvent, item: any) => {
+    e.stopPropagation();
+    const telefone = item.atendimento?.telefone?.replace(/\D/g, '') || '';
+    const atendimentoId = item.atendimento_id;
+    const url = `https://wa.me/55${telefone}?text=https%3A%2F%2Ftally.so%2Fr%2FOD4Gp7%3Fid%3D${atendimentoId}`;
+    window.open(url, '_blank');
+
+    const updates = { nps_status: 'enviado', nps_enviado_at: new Date().toISOString() };
+    const { error } = await supabase.from('avaliacoes').update(updates).eq('id', item.id);
+    if (error) {
+      toast.error('Erro ao registrar envio');
+    } else {
+      toast.success('Pesquisa enviada');
+      fetchData();
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3">
@@ -128,6 +145,11 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                             atendimento={a._atendimentoCard}
                             onClick={() => onNavigateToShowroom(a.atendimento_id)}
                           />
+                          {(a.nps_status || 'em_aberto') === 'em_aberto' && (
+                            <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
+                              <Send className="h-3 w-3" /> Enviar Pesquisa
+                            </Button>
+                          )}
                           {(a.nps_status || 'em_aberto') === 'enviado' && (
                             <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleUpdateStatus(e, a.id, 'respondido')}>
                               <CheckCircle2 className="h-3 w-3" /> Marcar Respondido
