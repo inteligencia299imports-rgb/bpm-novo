@@ -669,6 +669,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         <Clock className="h-3 w-3" /> Aguardando avaliação
                       </Badge>
                     )}
+                    {motosAvaliacao.some(m => avaliacoes[m.id]?.situacao === 'adquirida' && avaliacoes[m.id]?.tipo_aquisicao) && (
+                      <Badge variant="outline" className={`text-[10px] ${motosAvaliacao.some(m => avaliacoes[m.id]?.tipo_aquisicao === 'consignada') ? 'border-purple-500 text-purple-600' : 'border-green-500 text-green-600'}`}>
+                        {motosAvaliacao.some(m => avaliacoes[m.id]?.tipo_aquisicao === 'consignada') ? 'Consignada' : 'Própria'}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </CardHeader>
