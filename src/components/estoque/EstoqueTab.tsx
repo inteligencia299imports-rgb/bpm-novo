@@ -355,6 +355,12 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                                 <span className="text-foreground">{item.categoria}</span>
                               </>
                             )}
+                            {item.classificacao && (
+                              <>
+                                <span className="text-muted-foreground">Classificação</span>
+                                <span className="text-foreground">{item.classificacao}</span>
+                              </>
+                            )}
                             {item.km && (
                               <>
                                 <span className="text-muted-foreground">Km</span>
