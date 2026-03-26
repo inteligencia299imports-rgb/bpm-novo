@@ -8,8 +8,8 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
 const COLUMNS = [
-  { value: false, label: 'Pendente', hex: '#F2C94C' },
-  { value: true, label: 'Realizada', hex: '#27AE60' },
+  { value: false, label: 'Pendente', hex: '#da6220' },
+  { value: true, label: 'Realizada', hex: '#169d53' },
 ];
 
 const ConsultaTab = () => {
