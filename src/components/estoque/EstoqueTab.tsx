@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
@@ -61,6 +62,8 @@ interface EstoqueItem {
   tem_chave_reserva?: boolean | null;
   manutencao_em_dia?: boolean | null;
   classificacao?: string | null;
+  // From atendimentos join (for ownership check)
+  venda_vendedor_id?: string | null;
 }
 
 // Navigation target type removed - using EstoqueNavTarget from props
@@ -77,6 +80,7 @@ const formatCurrency = (value: number | null) => {
 };
 
 const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
+  const { role, user } = useAuth();
   const [items, setItems] = useState<EstoqueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -103,7 +107,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_em_dia)').order('data_entrada', { ascending: false });
+      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_em_dia), atendimentos:atendimento_venda_id(vendedor_id)').order('data_entrada', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
       if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
@@ -115,6 +119,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         tem_manual: d.motos_avaliacao?.tem_manual ?? null,
         tem_chave_reserva: d.motos_avaliacao?.tem_chave_reserva ?? null,
         manutencao_em_dia: d.motos_avaliacao?.manutencao_em_dia ?? null,
+        venda_vendedor_id: d.atendimentos?.vendedor_id ?? null,
       }));
       setItems(mapped);
     } catch (err: any) {
@@ -147,6 +152,20 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
   const getNavigationOptions = (item: EstoqueItem) => {
     const options: { label: string; icon: React.ReactNode; action: () => void }[] = [];
+    const isVendedor = role === 'vendedor';
+    const isOwnSale = item.venda_vendedor_id === user?.id;
+
+    // Vendedor: only show "Venda" if sold/reserved AND it's their sale
+    if (isVendedor) {
+      if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada') && isOwnSale) {
+        options.push({
+          label: 'Venda',
+          icon: <Bike className="h-4 w-4" />,
+          action: () => nav({ tab: 'showroom', atendimentoId: item.atendimento_venda_id! }),
+        });
+      }
+      return options;
+    }
 
     if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada')) {
       options.push({
