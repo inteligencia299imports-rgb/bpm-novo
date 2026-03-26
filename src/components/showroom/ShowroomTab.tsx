@@ -41,25 +41,18 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
-  // Open detail from external navigation (e.g. NPS tab)
+  // Open detail from external navigation (e.g. NPS, Estoque)
   useEffect(() => {
-    if (initialAtendimentoId && !loading && atendimentos.length > 0) {
-      const found = atendimentos.find(a => a.id === initialAtendimentoId);
-      if (found) {
-        setSelectedAtendimento(found);
-        setDetailOpen(true);
-      } else {
-        // Fetch directly if not in current filtered list
-        supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(({ data }) => {
-          if (data) {
-            setSelectedAtendimento(data as unknown as Atendimento);
-            setDetailOpen(true);
-          }
-        });
-      }
+    if (initialAtendimentoId) {
+      supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(({ data }) => {
+        if (data) {
+          setSelectedAtendimento(data as unknown as Atendimento);
+          setDetailOpen(true);
+        }
+      });
       onInitialAtendimentoHandled?.();
     }
-  }, [initialAtendimentoId, loading, atendimentos]);
+  }, [initialAtendimentoId]);
 
   const fetchAtendimentos = useCallback(async () => {
     setLoading(true);
