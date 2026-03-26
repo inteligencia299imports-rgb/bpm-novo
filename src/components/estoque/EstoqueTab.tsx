@@ -107,7 +107,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_em_dia)').order('data_entrada', { ascending: false });
+      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_em_dia), atendimentos:atendimento_venda_id(vendedor_id)').order('data_entrada', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
       if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
@@ -119,6 +119,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         tem_manual: d.motos_avaliacao?.tem_manual ?? null,
         tem_chave_reserva: d.motos_avaliacao?.tem_chave_reserva ?? null,
         manutencao_em_dia: d.motos_avaliacao?.manutencao_em_dia ?? null,
+        venda_vendedor_id: d.atendimentos?.vendedor_id ?? null,
       }));
       setItems(mapped);
     } catch (err: any) {
