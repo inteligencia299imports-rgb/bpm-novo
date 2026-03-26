@@ -57,11 +57,11 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions }) => {
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
-  const statusColor = STATUS_COLORS[atendimento.situacao as SituacaoShowroom] || '#6B7280';
+  const statusColor = statusColorOverride || STATUS_COLORS[atendimento.situacao as SituacaoShowroom] || '#6B7280';
 
 
   return (
