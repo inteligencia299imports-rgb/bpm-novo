@@ -437,7 +437,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   // Status buttons config - filter out current status
   // "Adquirida" not available if interesse is "trocar"
   const statusButtons = [
-    { value: 'em_aberto' as SituacaoAvaliacao, label: 'Em Aberto', icon: <Clock className="h-4 w-4" />, color: '#da6220' },
+    { value: 'em_aberto' as SituacaoAvaliacao, label: 'Em Aberto', icon: <Clock className="h-4 w-4" />, color: '#2EC5FF' },
     { value: 'adquirida' as SituacaoAvaliacao, label: 'Adquirida', icon: <CheckCircle className="h-4 w-4" />, color: '#169d53' },
     { value: 'dispensada' as SituacaoAvaliacao, label: 'Dispensada', icon: <XCircle className="h-4 w-4" />, color: '#FF3B30' },
   ]

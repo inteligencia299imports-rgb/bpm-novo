@@ -100,7 +100,7 @@ export const SITUACOES_SHOWROOM: { value: SituacaoShowroom; label: string; color
 ];
 
 export const SITUACOES_NPS: { value: SituacaoNps; label: string; color: string; hex: string }[] = [
-  { value: 'em_aberto', label: 'Em Aberto', color: 'bg-warning/15 text-warning', hex: '#da6220' },
+  { value: 'em_aberto', label: 'Em Aberto', color: 'bg-info/15 text-info', hex: '#2EC5FF' },
   { value: 'enviado', label: 'Enviado', color: 'bg-info/15 text-info', hex: '#2EC5FF' },
   { value: 'respondido', label: 'Respondido', color: 'bg-success/15 text-success', hex: '#169d53' },
 ];
