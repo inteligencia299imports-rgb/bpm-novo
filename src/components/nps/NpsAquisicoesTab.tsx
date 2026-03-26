@@ -152,8 +152,8 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                                 </Button>
                               )}
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
-                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleUpdateStatus(e, a.id, 'respondido')}>
-                                  <CheckCircle2 className="h-3 w-3" /> Marcar Respondido
+                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
+                                  <Send className="h-3 w-3" /> Reenviar Pesquisa
                                 </Button>
                               )}
                             </>
