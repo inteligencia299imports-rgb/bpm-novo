@@ -15,6 +15,7 @@ interface NpsAquisicoesTabProps {
 }
 
 const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
+  const { user, userName } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
