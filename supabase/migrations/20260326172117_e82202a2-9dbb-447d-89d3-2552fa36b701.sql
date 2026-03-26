@@ -1,0 +1,1 @@
+ALTER TABLE public.estoque ADD COLUMN classificacao text DEFAULT NULL;

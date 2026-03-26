@@ -60,6 +60,7 @@ interface EstoqueItem {
   tem_manual?: boolean | null;
   tem_chave_reserva?: boolean | null;
   manutencao_em_dia?: boolean | null;
+  classificacao?: string | null;
 }
 
 // Navigation target type removed - using EstoqueNavTarget from props
