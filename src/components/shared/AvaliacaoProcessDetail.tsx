@@ -16,6 +16,7 @@ import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsigna
 import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProcessoDialog';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 import PosCompraProcessoDialog from '@/components/pos-compra/PosCompraProcessoDialog';
+import PosCompraFinanceiroDialog from '@/components/pos-compra/PosCompraFinanceiroDialog';
 
 interface Props {
   item: any;
@@ -46,6 +47,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [processoConsignacaoOpen, setProcessoConsignacaoOpen] = useState(false);
   const [processoPreparacaoOpen, setProcessoPreparacaoOpen] = useState(false);
   const [processoPosCompraOpen, setProcessoPosCompraOpen] = useState(false);
+  const [financeiroOpen, setFinanceiroOpen] = useState(false);
   const [currentPreparacaoStatus, setCurrentPreparacaoStatus] = useState(item.preparacao_status || 'em_aberto');
   const [currentPosCompraStatus, setCurrentPosCompraStatus] = useState(item.pos_compra_status || 'em_aberto');
   const [currentConsignacaoStatus, setCurrentConsignacaoStatus] = useState(item.consignacao_status || 'em_aberto');
@@ -122,6 +124,9 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           )}
           {entityType === 'pos_compra' && (
             <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <Button size="sm" variant="outline" onClick={() => setFinanceiroOpen(true)} className="gap-1.5">
+                <DollarSign className="h-4 w-4" /> Financeiro
+              </Button>
               <Button size="sm" onClick={() => setProcessoPosCompraOpen(true)} className="gap-1.5">
                 <ClipboardList className="h-4 w-4" /> Processo
               </Button>
@@ -144,6 +149,9 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
         )}
         {entityType === 'pos_compra' && (
           <div className="flex sm:hidden gap-2 justify-center">
+            <Button size="sm" variant="outline" onClick={() => setFinanceiroOpen(true)} className="flex-1 gap-1.5">
+              <DollarSign className="h-4 w-4" /> Financeiro
+            </Button>
             <Button size="sm" onClick={() => setProcessoPosCompraOpen(true)} className="flex-1 gap-1.5">
               <ClipboardList className="h-4 w-4" /> Processo
             </Button>
@@ -313,15 +321,22 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       )}
 
       {entityType === 'pos_compra' && (
-        <PosCompraProcessoDialog
-          open={processoPosCompraOpen}
-          onOpenChange={setProcessoPosCompraOpen}
-          avaliacaoId={item.id}
-          onStatusChanged={(newStatus) => {
-            setCurrentPosCompraStatus(newStatus);
-            item.pos_compra_status = newStatus;
-          }}
-        />
+        <>
+          <PosCompraProcessoDialog
+            open={processoPosCompraOpen}
+            onOpenChange={setProcessoPosCompraOpen}
+            avaliacaoId={item.id}
+            onStatusChanged={(newStatus) => {
+              setCurrentPosCompraStatus(newStatus);
+              item.pos_compra_status = newStatus;
+            }}
+          />
+          <PosCompraFinanceiroDialog
+            open={financeiroOpen}
+            onOpenChange={setFinanceiroOpen}
+            avaliacaoId={item.id}
+          />
+        </>
       )}
     </div>
   );
