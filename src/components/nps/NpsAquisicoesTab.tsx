@@ -7,13 +7,15 @@ import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import NpsCard from './NpsCard';
-import AtendimentoDetail from '@/components/showroom/AtendimentoDetail';
 
-const NpsAquisicoesTab = () => {
+interface NpsAquisicoesTabProps {
+  onNavigateToShowroom: (atendimentoId: string) => void;
+}
+
+const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
   const [avaliacoes, setAvaliacoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedAtendimento, setSelectedAtendimento] = useState<any | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -71,28 +73,6 @@ const NpsAquisicoesTab = () => {
     }
   };
 
-  const handleClickAvaliacao = async (avaliacao: any) => {
-    // Fetch full atendimento to open the detail
-    const { data } = await supabase
-      .from('atendimentos')
-      .select('*')
-      .eq('id', avaliacao.atendimento_id)
-      .single();
-    if (data) setSelectedAtendimento(data);
-  };
-
-  if (selectedAtendimento) {
-    return (
-      <AtendimentoDetail
-        atendimento={selectedAtendimento}
-        onClose={() => { setSelectedAtendimento(null); fetchData(); }}
-        onEdit={() => {}}
-        onDeleted={() => { setSelectedAtendimento(null); fetchData(); }}
-        onStatusUpdated={fetchData}
-      />
-    );
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3">
@@ -141,7 +121,7 @@ const NpsAquisicoesTab = () => {
                           date={a.updated_at}
                           npsStatus={a.nps_status || 'em_aberto'}
                           onUpdateStatus={(status) => handleUpdateStatus(a.id, status)}
-                          onClick={() => handleClickAvaliacao(a)}
+                          onClick={() => onNavigateToShowroom(a.atendimento_id)}
                           accentColor="#9B51E0"
                           badge={a.tipo_aquisicao === 'consignada' ? 'Consignada' : a.tipo_aquisicao === 'convertida' ? 'Convertida' : 'Própria'}
                         />

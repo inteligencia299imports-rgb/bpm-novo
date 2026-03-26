@@ -18,10 +18,16 @@ const Dashboard = () => {
   const defaultTab = role === 'avaliador' ? 'avaliacoes' : 'showroom';
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [initialAtendimentoId, setInitialAtendimentoId] = useState<string | null>(null);
 
   useEffect(() => {
     if (role === 'avaliador' && activeTab === 'showroom') setActiveTab('showroom');
   }, [role]);
+
+  const handleNavigateToShowroom = (atendimentoId: string) => {
+    setInitialAtendimentoId(atendimentoId);
+    setActiveTab('showroom');
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -32,7 +38,12 @@ const Dashboard = () => {
         onToggle={() => setSidebarCollapsed(prev => !prev)}
       />
       <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in pb-20 md:pb-6">
-        {activeTab === 'showroom' && <ShowroomTab />}
+        {activeTab === 'showroom' && (
+          <ShowroomTab
+            initialAtendimentoId={initialAtendimentoId}
+            onInitialAtendimentoHandled={() => setInitialAtendimentoId(null)}
+          />
+        )}
         {activeTab === 'estoque' && <EstoqueTab />}
         {activeTab === 'avaliacoes' && <AvaliacoesTab />}
         {activeTab === 'consulta' && <ConsultaTab />}
@@ -41,7 +52,7 @@ const Dashboard = () => {
         {activeTab === 'pos_compra' && <PosCompraTab />}
         {activeTab === 'consignacao' && <ConsignacaoTab />}
         {activeTab === 'preparacao' && <PreparacaoTab />}
-        {activeTab === 'nps' && <NpsTab />}
+        {activeTab === 'nps' && <NpsTab onNavigateToShowroom={handleNavigateToShowroom} />}
       </main>
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>

@@ -7,13 +7,15 @@ import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import NpsCard from './NpsCard';
-import AtendimentoDetail from '@/components/showroom/AtendimentoDetail';
 
-const NpsVendasTab = () => {
+interface NpsVendasTabProps {
+  onNavigateToShowroom: (atendimentoId: string) => void;
+}
+
+const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
   const [atendimentos, setAtendimentos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedAtendimento, setSelectedAtendimento] = useState<any | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -57,18 +59,6 @@ const NpsVendasTab = () => {
       fetchData();
     }
   };
-
-  if (selectedAtendimento) {
-    return (
-      <AtendimentoDetail
-        atendimento={selectedAtendimento}
-        onClose={() => { setSelectedAtendimento(null); fetchData(); }}
-        onEdit={() => {}}
-        onDeleted={() => { setSelectedAtendimento(null); fetchData(); }}
-        onStatusUpdated={fetchData}
-      />
-    );
-  }
 
   return (
     <div className="space-y-4">
@@ -118,7 +108,7 @@ const NpsVendasTab = () => {
                           date={a.updated_at}
                           npsStatus={a.nps_status || 'em_aberto'}
                           onUpdateStatus={(status) => handleUpdateStatus(a.id, status)}
-                          onClick={() => setSelectedAtendimento(a)}
+                          onClick={() => onNavigateToShowroom(a.id)}
                           accentColor="#27AE60"
                         />
                       ))
