@@ -85,8 +85,10 @@ const NpsAquisicoesTab = () => {
     return (
       <AtendimentoDetail
         atendimento={selectedAtendimento}
-        onBack={() => { setSelectedAtendimento(null); fetchData(); }}
-        onUpdate={fetchData}
+        onClose={() => { setSelectedAtendimento(null); fetchData(); }}
+        onEdit={() => {}}
+        onDeleted={() => { setSelectedAtendimento(null); fetchData(); }}
+        onStatusUpdated={fetchData}
       />
     );
   }
