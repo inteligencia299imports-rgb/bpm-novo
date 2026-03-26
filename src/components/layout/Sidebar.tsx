@@ -82,16 +82,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
 
       {/* User info */}
       <div className="border-t border-sidebar-border px-3 py-4">
-        <div className={`flex items-center gap-2 mb-3 ${collapsed ? 'justify-center' : ''}`}>
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 shrink-0">
-            <User className="h-4 w-4 text-sidebar-foreground" />
-          </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate text-sidebar-foreground">{userName}</p>
-              <p className="text-xs text-sidebar-foreground/60">{ROLE_LABELS[role || '']}</p>
+        <div className={`flex items-center gap-2 mb-3 ${collapsed ? 'flex-col' : ''}`}>
+          <div className={`flex items-center gap-2 ${collapsed ? 'justify-center' : 'flex-1 min-w-0'}`}>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 shrink-0">
+              <User className="h-4 w-4 text-sidebar-foreground" />
             </div>
-          )}
+            {!collapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate text-sidebar-foreground">{userName}</p>
+                <p className="text-xs text-sidebar-foreground/60">{ROLE_LABELS[role || '']}</p>
+              </div>
+            )}
+          </div>
+          <NotificationBell />
         </div>
       </div>
     </aside>
