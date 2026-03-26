@@ -1058,6 +1058,10 @@ export type Database = {
         Args: { _atendimento_id: string }
         Returns: boolean
       }
+      atendimento_has_avaliacao_preparacao: {
+        Args: { _atendimento_id: string }
+        Returns: boolean
+      }
       delete_atendimento_cascade: {
         Args: { _atendimento_id: string }
         Returns: undefined
