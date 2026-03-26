@@ -100,6 +100,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
   const [consultaRealizada, setConsultaRealizada] = useState(false);
   const [consultaSolicitada, setConsultaSolicitada] = useState(false);
+  const [resultadoConsulta, setResultadoConsulta] = useState<string | null>(null);
+  const [showResultadoConsulta, setShowResultadoConsulta] = useState(false);
   const canEdit = role === 'avaliador' || role === 'gestor' || role === 'vendedor';
   const [history, setHistory] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
