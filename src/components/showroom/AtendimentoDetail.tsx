@@ -664,19 +664,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         <Clock className="h-3 w-3" /> Consulta Solicitada
                       </Badge>
                     )}
-                    {motosAvaliacao.some(m => (m as any).consulta_realizada) && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-xs bg-green-500/15 text-green-600 gap-1 h-auto py-1 px-2 hover:bg-green-500/25"
-                        onClick={() => {
-                          const motoComConsulta = motosAvaliacao.find(m => (m as any).consulta_realizada);
-                          setShowResultadoConsulta((motoComConsulta as any)?.resultado_consulta || 'Nenhum resultado registrado.');
-                        }}
-                      >
-                        <CheckCircle2 className="h-3 w-3" /> Consulta Realizada
-                      </Button>
-                    )}
                     {motosAvaliacao.some(m => m.enviada_avaliacao && !isAvaliada(m.id)) && (
                       <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
                         <Clock className="h-3 w-3" /> Aguardando avaliação
