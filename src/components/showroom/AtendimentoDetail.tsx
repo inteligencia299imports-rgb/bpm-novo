@@ -63,7 +63,7 @@ const parseCurrencyInput = (value: string): number => {
 };
 
 const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted, onStatusUpdated }) => {
-  const { user, userName } = useAuth();
+  const { user, userName, role } = useAuth();
   const [motosInteresse, setMotosInteresse] = useState<MotoInteresse[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<MotoAvaliacao[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
