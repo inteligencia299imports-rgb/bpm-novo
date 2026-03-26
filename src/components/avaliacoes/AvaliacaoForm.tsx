@@ -636,13 +636,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     setCrlvUrl(null);
                   }}
                 />
-                {cnhUrl && crlvUrl && (!consultaSolicitada || consultaRealizada) && (
+                {cnhUrl && crlvUrl && !consultaSolicitada && !consultaRealizada && (
                   <Button
                     size="sm"
                     variant="outline"
                     className="gap-1.5"
                     onClick={async () => {
-                      const previousStatus = consultaRealizada ? 'consulta_realizada' : 'sem_consulta';
                       await supabase.from('motos_avaliacao').update({ 
                         consulta_solicitada: true,
                         consulta_realizada: false,
@@ -651,14 +650,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       await supabase.from('status_history').insert({
                         entity_type: 'consulta',
                         entity_id: moto?.id,
-                        status_from: previousStatus,
+                        status_from: 'sem_consulta',
                         status_to: 'consulta_solicitada',
                         changed_by: user?.id,
                         changed_by_name: userName || user?.email || null,
                       });
                       setConsultaSolicitada(true);
-                      setConsultaRealizada(false);
-                      // Notify secretárias
                       await supabase.rpc('notify_role', {
                         _role: 'secretaria',
                         _title: 'Consulta Solicitada',
@@ -669,7 +666,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       toast.success('Consulta solicitada com sucesso!');
                     }}
                   >
-                    <Search className="h-4 w-4" /> {consultaRealizada ? 'Nova Consulta' : 'Solicitar Consulta'}
+                    <Search className="h-4 w-4" /> Solicitar Consulta
                   </Button>
                 )}
                 {consultaSolicitada && !consultaRealizada && (
@@ -685,6 +682,40 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     onClick={() => setShowResultadoConsulta(true)}
                   >
                     <CheckCircle2 className="h-3 w-3" /> Consulta Realizada
+                  </Button>
+                )}
+                {cnhUrl && crlvUrl && consultaRealizada && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={async () => {
+                      await supabase.from('motos_avaliacao').update({ 
+                        consulta_solicitada: true,
+                        consulta_realizada: false,
+                        resultado_consulta: null,
+                      } as any).eq('id', moto?.id);
+                      await supabase.from('status_history').insert({
+                        entity_type: 'consulta',
+                        entity_id: moto?.id,
+                        status_from: 'consulta_realizada',
+                        status_to: 'consulta_solicitada',
+                        changed_by: user?.id,
+                        changed_by_name: userName || user?.email || null,
+                      });
+                      setConsultaSolicitada(true);
+                      setConsultaRealizada(false);
+                      await supabase.rpc('notify_role', {
+                        _role: 'secretaria',
+                        _title: 'Consulta Solicitada',
+                        _message: `${moto?.marca} ${moto?.modelo}${moto?.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
+                        _entity_id: moto?.id,
+                        _entity_type: 'consulta',
+                      });
+                      toast.success('Consulta solicitada com sucesso!');
+                    }}
+                  >
+                    <Search className="h-4 w-4" /> Nova Consulta
                   </Button>
                 )}
               </div>
