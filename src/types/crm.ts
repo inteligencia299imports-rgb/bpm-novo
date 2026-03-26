@@ -14,19 +14,19 @@ export type IntermediacaoParte2Status = 'em_aberto' | 'em_andamento' | 'doc_desp
 
 export const POS_VENDA_COLUMNS: { value: PosVendaStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
-  { value: 'em_andamento', label: 'Em Andamento', hex: '#da6220' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#5e3984' },
 ];
 
 export const INTERMEDIACAO_PARTE1_COLUMNS: { value: IntermediacaoParte1Status; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
-  { value: 'em_andamento', label: 'Em Andamento', hex: '#da6220' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'autorizacao_pagamento', label: 'Autorização de Pagamento', hex: '#5e3984' },
 ];
 
 export const INTERMEDIACAO_PARTE2_COLUMNS: { value: IntermediacaoParte2Status; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
-  { value: 'em_andamento', label: 'Em Andamento', hex: '#da6220' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#5e3984' },
 ];
 
@@ -51,7 +51,7 @@ export const INTERMEDIACAO_PARTE2_ETAPAS = [
 
 export const POS_COMPRA_COLUMNS: { value: PosCompraStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
-  { value: 'em_andamento', label: 'Em Andamento', hex: '#da6220' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#5e3984' },
   { value: 'pausado', label: 'Pausado', hex: '#FF8C00' },
 ];
