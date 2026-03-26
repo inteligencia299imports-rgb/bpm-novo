@@ -751,7 +751,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             await supabase.rpc('notify_role', {
                               _role: 'secretaria',
                               _title: 'Consulta Solicitada',
-                              _message: `${atendimento?.nome_cliente} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''}`,
+                              _message: `${atendimento?.nome_cliente} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
                               _entity_id: moto.id,
                               _entity_type: 'consulta',
                             });
@@ -818,7 +818,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             await supabase.rpc('notify_role', {
                               _role: 'avaliador' as any,
                               _title: 'Avaliação Solicitada',
-                              _message: `Nova avaliação solicitada: ${moto.marca} ${moto.modelo} ${moto.placa ? `(${moto.placa})` : ''} - Cliente: ${atendimento.nome_cliente}`,
+                              _message: `Nova avaliação solicitada: ${moto.marca} ${moto.modelo} ${moto.placa ? `(${moto.placa})` : ''} - Cliente: ${atendimento.nome_cliente} | Por: ${userName || user?.email || 'Usuário'}`,
                               _entity_id: atendimento.id,
                               _entity_type: 'avaliacao',
                             });

@@ -260,7 +260,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         await supabase.from('notifications').insert({
           user_id: vendedorId,
           title: 'Avaliação Finalizada',
-          message: `A avaliação da moto ${motoInfo?.marca || ''} ${motoInfo?.modelo || ''} ${motoInfo?.placa ? `(${motoInfo.placa})` : ''} foi concluída.`,
+          message: `A avaliação da moto ${motoInfo?.marca || ''} ${motoInfo?.modelo || ''} ${motoInfo?.placa ? `(${motoInfo.placa})` : ''} foi concluída. | Por: ${userName || user?.email || 'Usuário'}`,
           entity_id: avaliacao?.atendimento_id || (avaliacao as any)?.atendimento?.id,
           entity_type: 'avaliacao',
         });
@@ -656,7 +656,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       await supabase.rpc('notify_role', {
                         _role: 'secretaria',
                         _title: 'Consulta Solicitada',
-                        _message: `${moto?.marca} ${moto?.modelo}${moto?.placa ? ` (${moto.placa})` : ''}`,
+                        _message: `${moto?.marca} ${moto?.modelo}${moto?.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
                         _entity_id: moto?.id,
                         _entity_type: 'consulta',
                       });
