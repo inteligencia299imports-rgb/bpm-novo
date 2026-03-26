@@ -124,6 +124,9 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           )}
           {entityType === 'pos_compra' && (
             <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <Button size="sm" variant="outline" onClick={() => setFinanceiroOpen(true)} className="gap-1.5">
+                <DollarSign className="h-4 w-4" /> Financeiro
+              </Button>
               <Button size="sm" onClick={() => setProcessoPosCompraOpen(true)} className="gap-1.5">
                 <ClipboardList className="h-4 w-4" /> Processo
               </Button>
