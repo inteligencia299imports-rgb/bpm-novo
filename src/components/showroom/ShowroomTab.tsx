@@ -21,7 +21,12 @@ import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
 const KANBAN_COLUMNS = SITUACOES_SHOWROOM;
 
-const ShowroomTab = () => {
+interface ShowroomTabProps {
+  initialAtendimentoId?: string | null;
+  onInitialAtendimentoHandled?: () => void;
+}
+
+const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: ShowroomTabProps = {}) => {
   const { user, role } = useAuth();
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
   const [loading, setLoading] = useState(true);
