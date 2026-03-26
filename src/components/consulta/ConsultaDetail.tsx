@@ -107,6 +107,14 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
     setIsConsultada(true);
     setResultadoSalvo(resultadoTexto);
     fetchHistory();
+    // Notify secretárias about concluded consulta
+    await supabase.rpc('notify_role', {
+      _role: 'secretaria',
+      _title: 'Consulta Concluída',
+      _message: `${moto.atendimentos?.nome_cliente || ''} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''}`,
+      _entity_id: moto.id,
+      _entity_type: 'consulta',
+    });
     toast.success('Resultado salvo com sucesso!');
     setSaving(false);
     setResultadoPopup(false);
