@@ -62,6 +62,8 @@ interface EstoqueItem {
   tem_chave_reserva?: boolean | null;
   manutencao_em_dia?: boolean | null;
   classificacao?: string | null;
+  // From atendimentos join (for ownership check)
+  venda_vendedor_id?: string | null;
 }
 
 // Navigation target type removed - using EstoqueNavTarget from props
