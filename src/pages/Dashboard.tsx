@@ -4,6 +4,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import BottomNav from '@/components/layout/BottomNav';
 import ShowroomTab from '@/components/showroom/ShowroomTab';
 import EstoqueTab from '@/components/estoque/EstoqueTab';
+import type { EstoqueNavTarget } from '@/components/estoque/EstoqueTab';
 import AvaliacoesTab from '@/components/avaliacoes/AvaliacoesTab';
 import NpsTab from '@/components/nps/NpsTab';
 import ConsultaTab from '@/components/consulta/ConsultaTab';
@@ -18,22 +19,42 @@ const Dashboard = () => {
   const defaultTab = role === 'avaliador' ? 'avaliacoes' : 'showroom';
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
+  // Navigation state for cross-tab deep linking
   const [initialAtendimentoId, setInitialAtendimentoId] = useState<string | null>(null);
+  const [initialAvaliacaoId, setInitialAvaliacaoId] = useState<string | null>(null);
 
   useEffect(() => {
     if (role === 'avaliador' && activeTab === 'showroom') setActiveTab('showroom');
   }, [role]);
 
+  const clearInitials = () => {
+    setInitialAtendimentoId(null);
+    setInitialAvaliacaoId(null);
+  };
+
   const handleNavigateToShowroom = (atendimentoId: string) => {
+    clearInitials();
     setInitialAtendimentoId(atendimentoId);
     setActiveTab('showroom');
+  };
+
+  const handleEstoqueNav = (target: EstoqueNavTarget) => {
+    clearInitials();
+    if ('atendimentoId' in target) {
+      setInitialAtendimentoId(target.atendimentoId);
+    }
+    if ('avaliacaoId' in target) {
+      setInitialAvaliacaoId(target.avaliacaoId);
+    }
+    setActiveTab(target.tab);
   };
 
   return (
     <div className="min-h-screen bg-background flex">
       <Sidebar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => { clearInitials(); setActiveTab(tab); }}
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(prev => !prev)}
       />
@@ -44,17 +65,49 @@ const Dashboard = () => {
             onInitialAtendimentoHandled={() => setInitialAtendimentoId(null)}
           />
         )}
-        {activeTab === 'estoque' && <EstoqueTab />}
-        {activeTab === 'avaliacoes' && <AvaliacoesTab />}
+        {activeTab === 'estoque' && (
+          <EstoqueTab onNavigateToTab={handleEstoqueNav} />
+        )}
+        {activeTab === 'avaliacoes' && (
+          <AvaliacoesTab
+            initialAvaliacaoId={initialAvaliacaoId}
+            onInitialHandled={() => setInitialAvaliacaoId(null)}
+          />
+        )}
         {activeTab === 'consulta' && <ConsultaTab />}
-        {activeTab === 'pos_venda' && <PosVendaTab />}
-        {activeTab === 'intermediacao' && <IntermediacacaoTab />}
-        {activeTab === 'pos_compra' && <PosCompraTab />}
-        {activeTab === 'consignacao' && <ConsignacaoTab />}
-        {activeTab === 'preparacao' && <PreparacaoTab />}
+        {activeTab === 'pos_venda' && (
+          <PosVendaTab
+            initialAtendimentoId={initialAtendimentoId}
+            onInitialHandled={() => setInitialAtendimentoId(null)}
+          />
+        )}
+        {activeTab === 'intermediacao' && (
+          <IntermediacacaoTab
+            initialAtendimentoId={initialAtendimentoId}
+            onInitialHandled={() => setInitialAtendimentoId(null)}
+          />
+        )}
+        {activeTab === 'pos_compra' && (
+          <PosCompraTab
+            initialAvaliacaoId={initialAvaliacaoId}
+            onInitialHandled={() => setInitialAvaliacaoId(null)}
+          />
+        )}
+        {activeTab === 'consignacao' && (
+          <ConsignacaoTab
+            initialAvaliacaoId={initialAvaliacaoId}
+            onInitialHandled={() => setInitialAvaliacaoId(null)}
+          />
+        )}
+        {activeTab === 'preparacao' && (
+          <PreparacaoTab
+            initialAvaliacaoId={initialAvaliacaoId}
+            onInitialHandled={() => setInitialAvaliacaoId(null)}
+          />
+        )}
         {activeTab === 'nps' && <NpsTab onNavigateToShowroom={handleNavigateToShowroom} />}
       </main>
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={(tab) => { clearInitials(); setActiveTab(tab); }} />
     </div>
   );
 };
