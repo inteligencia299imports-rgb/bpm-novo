@@ -16,7 +16,7 @@ import PreparacaoTab from '@/components/preparacao/PreparacaoTab';
 
 const Dashboard = () => {
   const { role } = useAuth();
-  const defaultTab = role === 'avaliador' ? 'avaliacoes' : role === 'secretaria' ? 'consulta' : 'showroom';
+  const defaultTab = role === 'avaliador' ? 'avaliacoes' : 'showroom';
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 

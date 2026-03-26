@@ -12,15 +12,15 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
   const { role, signOut } = useAuth();
 
   const tabs = [
-    { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
-    { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador'] },
+    { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador', 'secretaria'] },
+    { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor', 'secretaria'] },
+    { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador', 'secretaria'] },
     { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['avaliador', 'gestor', 'secretaria'] },
     { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['avaliador', 'gestor', 'secretaria'] },
     { id: 'intermediacao', label: 'Intermed.', icon: Handshake, roles: ['avaliador', 'gestor', 'secretaria'] },
     { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['avaliador', 'gestor', 'secretaria'] },
     { id: 'consignacao', label: 'Consign.', icon: FileText, roles: ['avaliador', 'gestor', 'secretaria'] },
-    { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['avaliador', 'gestor'] },
+    { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['avaliador', 'gestor', 'secretaria'] },
     { id: 'nps', label: 'NPS', icon: Award, roles: ['vendedor', 'gestor', 'avaliador'] },
   ].filter(t => role && t.roles.includes(role));
 
