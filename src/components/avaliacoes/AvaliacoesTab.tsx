@@ -13,12 +13,24 @@ import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
 const KANBAN_COLUMNS = SITUACOES_AVALIACAO;
 
-const AvaliacoesTab = () => {
+interface AvaliacoesTabProps {
+  initialAvaliacaoId?: string | null;
+  onInitialHandled?: () => void;
+}
+
+const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabProps = {}) => {
   const { role } = useAuth();
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    if (initialAvaliacaoId) {
+      setSelectedId(initialAvaliacaoId);
+      onInitialHandled?.();
+    }
+  }, [initialAvaliacaoId]);
 
   const fetchAvaliacoes = useCallback(async () => {
     setLoading(true);

@@ -9,11 +9,24 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 
-const PreparacaoTab = () => {
+interface PreparacaoTabProps {
+  initialAvaliacaoId?: string | null;
+  onInitialHandled?: () => void;
+}
+
+const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (initialAvaliacaoId && !loading && items.length > 0) {
+      const found = items.find(a => a.id === initialAvaliacaoId);
+      if (found) setSelectedItem(found);
+      onInitialHandled?.();
+    }
+  }, [initialAvaliacaoId, loading, items]);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);

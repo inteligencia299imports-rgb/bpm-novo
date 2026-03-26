@@ -34,12 +34,25 @@ const PARTE_CONFIG = {
   },
 };
 
-const IntermediacacaoTab = () => {
+interface IntermediacacaoTabProps {
+  initialAtendimentoId?: string | null;
+  onInitialHandled?: () => void;
+}
+
+const IntermediacacaoTab = ({ initialAtendimentoId, onInitialHandled }: IntermediacacaoTabProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [parte, setParte] = useState<Parte>('parte1');
+
+  useEffect(() => {
+    if (initialAtendimentoId && !loading && items.length > 0) {
+      const found = items.find(a => a.id === initialAtendimentoId);
+      if (found) setSelectedItem(found);
+      onInitialHandled?.();
+    }
+  }, [initialAtendimentoId, loading, items]);
 
   const config = PARTE_CONFIG[parte];
 
