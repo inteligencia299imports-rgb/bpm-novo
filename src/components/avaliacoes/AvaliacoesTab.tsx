@@ -123,7 +123,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
           <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-5">
             {KANBAN_COLUMNS.map(col => {
               const items = getColumnAvaliacoes(col.value);
-              const colHexMap: Record<string, string> = { sem_avaliar: '#6B7280', em_aberto: '#da6220', adquirida: '#169d53', dispensada: '#FF3B30', perdido: '#FF8C00' };
+              const colHexMap: Record<string, string> = { sem_avaliar: '#6B7280', em_aberto: '#2EC5FF', adquirida: '#169d53', dispensada: '#FF3B30', perdido: '#FF8C00' };
               const colHex = colHexMap[col.value] || '#6B7280';
               return (
                 <div key={col.value} className="w-[320px] shrink-0 md:w-auto md:shrink flex flex-col">
