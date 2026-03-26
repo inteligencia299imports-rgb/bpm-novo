@@ -20,7 +20,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
     { id: 'intermediacao', label: 'Intermed.', icon: Handshake, roles: ['avaliador', 'gestor', 'secretaria'] },
     { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['avaliador', 'gestor', 'secretaria'] },
     { id: 'consignacao', label: 'Consign.', icon: FileText, roles: ['avaliador', 'gestor', 'secretaria'] },
-    { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['avaliador', 'gestor', 'secretaria'] },
+    { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['vendedor', 'avaliador', 'gestor', 'secretaria'] },
     { id: 'nps', label: 'NPS', icon: Award, roles: ['vendedor', 'gestor', 'avaliador'] },
   ].filter(t => role && t.roles.includes(role));
 

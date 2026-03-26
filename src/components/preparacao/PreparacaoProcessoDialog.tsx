@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,6 +85,8 @@ const parseCurrencyValue = (value: string): number | null => {
 };
 
 const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, currentStatus, avaliacaoData, onStatusChanged }) => {
+  const { role } = useAuth();
+  const isReadOnly = role === 'vendedor';
   const isInEstoque = avaliacaoData?.situacao === 'estoque';
   const isEstoqueIdle = isInEstoque && (currentStatus === 'estoque' || !currentStatus);
   const isEstoqueTracking = isInEstoque && !isEstoqueIdle;
@@ -550,7 +553,9 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
             <Separator className="my-1" />
 
-            {isEstoqueIdle ? (
+            {isReadOnly ? (
+              <div className="text-sm text-muted-foreground italic py-2">Visualização somente leitura.</div>
+            ) : isEstoqueIdle ? (
               /* Estoque idle: show button to send to preparação for tracking */
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">Esta moto já está em estoque. Deseja enviá-la para preparação para acompanhamento de reparos?</p>
