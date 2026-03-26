@@ -1066,6 +1066,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         onOpenChange={setCustosOpen}
         avaliacaoId={avaliacaoId}
       />
+
+      <Dialog open={showResultadoConsulta} onOpenChange={setShowResultadoConsulta}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" /> Resultado da Consulta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm whitespace-pre-wrap">{resultadoConsulta || 'Nenhum resultado registrado.'}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
