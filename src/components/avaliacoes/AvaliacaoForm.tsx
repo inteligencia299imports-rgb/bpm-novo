@@ -260,7 +260,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         await supabase.from('notifications').insert({
           user_id: vendedorId,
           title: 'Avaliação Finalizada',
-          message: `A avaliação da moto ${motoInfo?.marca || ''} ${motoInfo?.modelo || ''} ${motoInfo?.placa ? `(${motoInfo.placa})` : ''} foi concluída.`,
+          message: `A avaliação da moto ${motoInfo?.marca || ''} ${motoInfo?.modelo || ''} ${motoInfo?.placa ? `(${motoInfo.placa})` : ''} foi concluída. | Por: ${userName || user?.email || 'Usuário'}`,
           entity_id: avaliacao?.atendimento_id || (avaliacao as any)?.atendimento?.id,
           entity_type: 'avaliacao',
         });
