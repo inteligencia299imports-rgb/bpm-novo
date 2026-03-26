@@ -929,7 +929,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     size="sm"
                     className="gap-2 sm:min-w-[120px] flex-1 sm:flex-none text-white hover:opacity-90 h-9"
                     style={{ backgroundColor: btn.color }}
-                    onClick={() => {
+                    onClick={async () => {
                       if (btn.value === 'sinal' || btn.value === 'vendido') {
                         // Sinal requires all motos avaliadas when it's a trade
                         if (btn.value === 'sinal' && atendimento.interesse === 'trocar') {
