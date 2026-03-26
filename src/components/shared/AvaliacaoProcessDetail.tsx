@@ -47,6 +47,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [processoConsignacaoOpen, setProcessoConsignacaoOpen] = useState(false);
   const [processoPreparacaoOpen, setProcessoPreparacaoOpen] = useState(false);
   const [processoPosCompraOpen, setProcessoPosCompraOpen] = useState(false);
+  const [financeiroOpen, setFinanceiroOpen] = useState(false);
   const [currentPreparacaoStatus, setCurrentPreparacaoStatus] = useState(item.preparacao_status || 'em_aberto');
   const [currentPosCompraStatus, setCurrentPosCompraStatus] = useState(item.pos_compra_status || 'em_aberto');
   const [currentConsignacaoStatus, setCurrentConsignacaoStatus] = useState(item.consignacao_status || 'em_aberto');
