@@ -152,6 +152,20 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
   const getNavigationOptions = (item: EstoqueItem) => {
     const options: { label: string; icon: React.ReactNode; action: () => void }[] = [];
+    const isVendedor = role === 'vendedor';
+    const isOwnSale = item.venda_vendedor_id === user?.id;
+
+    // Vendedor: only show "Venda" if sold/reserved AND it's their sale
+    if (isVendedor) {
+      if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada') && isOwnSale) {
+        options.push({
+          label: 'Venda',
+          icon: <Bike className="h-4 w-4" />,
+          action: () => nav({ tab: 'showroom', atendimentoId: item.atendimento_venda_id! }),
+        });
+      }
+      return options;
+    }
 
     if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada')) {
       options.push({
