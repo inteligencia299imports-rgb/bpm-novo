@@ -788,7 +788,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             className="gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
                             onClick={() => setViewAvaliacaoData(avaliacoes[moto.id])}
                           >
-                            <Eye className="h-4 w-4" /> Avaliada - Ver Valores
+                            <Eye className="h-4 w-4" /> Avaliada
                           </Button>
                           {avaliacoes[moto.id]?.situacao === 'adquirida' && avaliacoes[moto.id]?.tipo_aquisicao && (
                             <Badge variant="outline" className="text-[10px] border-green-500/30 text-green-600">
