@@ -80,6 +80,7 @@ const formatCurrency = (value: number | null) => {
 };
 
 const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
+  const { role, userId } = useAuth();
   const [items, setItems] = useState<EstoqueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
