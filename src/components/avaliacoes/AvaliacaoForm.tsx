@@ -253,6 +253,18 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           changed_by_name: userName || user?.email || null,
         } as any);
       }
+      // Notificar o vendedor responsável
+      const vendedorId = (avaliacao as any)?.atendimento?.vendedor_id || (avaliacao as any)?.atendimentos?.vendedor_id;
+      const motoInfo = (avaliacao as any)?.moto_avaliacao || (avaliacao as any)?.motos_avaliacao;
+      if (vendedorId && vendedorId !== user?.id) {
+        await supabase.from('notifications').insert({
+          user_id: vendedorId,
+          title: 'Avaliação Finalizada',
+          message: `A avaliação da moto ${motoInfo?.marca || ''} ${motoInfo?.modelo || ''} ${motoInfo?.placa ? `(${motoInfo.placa})` : ''} foi concluída.`,
+          entity_id: avaliacao?.atendimento_id || (avaliacao as any)?.atendimento?.id,
+          entity_type: 'avaliacao',
+        });
+      }
       toast.success('Avaliação salva!');
       setShowEvalDialog(false);
       setAvaliacao((prev: any) => ({ ...prev, ...updateData }));

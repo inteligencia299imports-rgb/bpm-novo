@@ -814,6 +814,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             if (insertedHistory) {
                               setHistory(prev => [...prev, insertedHistory].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
                             }
+                            // Notificar avaliadores
+                            await supabase.rpc('notify_role', {
+                              _role: 'avaliador' as any,
+                              _title: 'Avaliação Solicitada',
+                              _message: `Nova avaliação solicitada: ${moto.marca} ${moto.modelo} ${moto.placa ? `(${moto.placa})` : ''} - Cliente: ${atendimento.nome_cliente}`,
+                              _entity_id: atendimento.id,
+                              _entity_type: 'avaliacao',
+                            });
                             toast.success('Enviado para avaliação!');
                             setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, enviada_avaliacao: true } : m));
                           }}

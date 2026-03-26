@@ -289,6 +289,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         changed_by: user?.id,
         changed_by_name: userName || user?.email || null,
       } as any);
+      // Notificar avaliadores
+      await supabase.rpc('notify_role', {
+        _role: 'avaliador' as any,
+        _title: 'Avaliação Solicitada',
+        _message: `Nova avaliação solicitada para o atendimento`,
+        _entity_id: atendimentoId,
+        _entity_type: 'avaliacao',
+      });
       setEnviadaAvaliacao(true);
       toast.success('Moto enviada para avaliação!');
     }
