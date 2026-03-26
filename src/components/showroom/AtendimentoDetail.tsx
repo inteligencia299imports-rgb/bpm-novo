@@ -707,9 +707,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       </div>
                     )}
                     <div className="flex gap-2 mt-3 flex-wrap">
+                      {/* 1. Incluir Fotos */}
                       <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPhotoMotoId(moto.id)}>
                         <Camera className="h-4 w-4" /> Incluir Fotos
                       </Button>
+
+                      {/* 2. CRLV */}
                       <DocumentUpload
                         label="CRLV"
                         currentUrl={crlvUrls[moto.id] || null}
@@ -723,59 +726,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           setCrlvUrls(prev => ({ ...prev, [moto.id]: null }));
                         }}
                       />
-                      {cnhUrl && crlvUrls[moto.id] && (!(moto as any).consulta_solicitada || (moto as any).consulta_realizada) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1.5"
-                          onClick={async () => {
-                            const previousStatus = (moto as any).consulta_realizada ? 'consulta_realizada' : 'sem_consulta';
-                            await supabase.from('motos_avaliacao').update({ 
-                              consulta_solicitada: true, 
-                              consulta_realizada: false,
-                              resultado_consulta: null 
-                            } as any).eq('id', moto.id);
-                            const { data: insertedConsulta } = await supabase.from('status_history').insert({
-                              entity_type: 'consulta',
-                              entity_id: moto.id,
-                              status_from: previousStatus,
-                              status_to: 'consulta_solicitada',
-                              changed_by: user?.id,
-                              changed_by_name: userName || user?.email || null,
-                            }).select().single();
-                            if (insertedConsulta) {
-                              setHistory(prev => [...prev, insertedConsulta].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
-                            }
-                            setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, consulta_solicitada: true, consulta_realizada: false, resultado_consulta: null } as any : m));
-                            // Notify secretárias
-                            await supabase.rpc('notify_role', {
-                              _role: 'secretaria',
-                              _title: 'Consulta Solicitada',
-                              _message: `${atendimento?.nome_cliente} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
-                              _entity_id: moto.id,
-                              _entity_type: 'consulta',
-                            });
-                            toast.success('Consulta solicitada com sucesso!');
-                          }}
-                        >
-                          <Search className="h-4 w-4" /> {(moto as any).consulta_realizada ? 'Nova Consulta' : 'Solicitar Consulta'}
-                        </Button>
-                      )}
-                      {(moto as any).consulta_solicitada && !(moto as any).consulta_realizada && (
-                        <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1 h-7 flex items-center">
-                          <Clock className="h-3 w-3" /> Consulta Solicitada
-                        </Badge>
-                      )}
-                      {(moto as any).consulta_realizada && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
-                          onClick={() => setShowResultadoConsulta((moto as any).resultado_consulta || 'Nenhum resultado registrado.')}
-                        >
-                          <CheckCircle2 className="h-4 w-4" /> Consulta Realizada
-                        </Button>
-                      )}
+
+                      {/* 3. Avaliada / Solicitar Avaliação */}
                       {!moto.enviada_avaliacao ? (
                         <Button
                           size="sm"
@@ -844,8 +796,61 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             </Badge>
                           )}
                         </>
-                      ) : (
-                        null
+                      ) : null}
+
+                      {/* 4. Consulta Realizada / Nova Consulta */}
+                      {(moto as any).consulta_realizada && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
+                          onClick={() => setShowResultadoConsulta((moto as any).resultado_consulta || 'Nenhum resultado registrado.')}
+                        >
+                          <CheckCircle2 className="h-4 w-4" /> Consulta Realizada
+                        </Button>
+                      )}
+                      {cnhUrl && crlvUrls[moto.id] && (!(moto as any).consulta_solicitada || (moto as any).consulta_realizada) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5"
+                          onClick={async () => {
+                            const previousStatus = (moto as any).consulta_realizada ? 'consulta_realizada' : 'sem_consulta';
+                            await supabase.from('motos_avaliacao').update({ 
+                              consulta_solicitada: true, 
+                              consulta_realizada: false,
+                              resultado_consulta: null 
+                            } as any).eq('id', moto.id);
+                            const { data: insertedConsulta } = await supabase.from('status_history').insert({
+                              entity_type: 'consulta',
+                              entity_id: moto.id,
+                              status_from: previousStatus,
+                              status_to: 'consulta_solicitada',
+                              changed_by: user?.id,
+                              changed_by_name: userName || user?.email || null,
+                            }).select().single();
+                            if (insertedConsulta) {
+                              setHistory(prev => [...prev, insertedConsulta].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+                            }
+                            setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, consulta_solicitada: true, consulta_realizada: false, resultado_consulta: null } as any : m));
+                            // Notify secretárias
+                            await supabase.rpc('notify_role', {
+                              _role: 'secretaria',
+                              _title: 'Consulta Solicitada',
+                              _message: `${atendimento?.nome_cliente} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
+                              _entity_id: moto.id,
+                              _entity_type: 'consulta',
+                            });
+                            toast.success('Consulta solicitada com sucesso!');
+                          }}
+                        >
+                          <Search className="h-4 w-4" /> {(moto as any).consulta_realizada ? 'Nova Consulta' : 'Solicitar Consulta'}
+                        </Button>
+                      )}
+                      {(moto as any).consulta_solicitada && !(moto as any).consulta_realizada && (
+                        <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1 h-7 flex items-center">
+                          <Clock className="h-3 w-3" /> Consulta Solicitada
+                        </Badge>
                       )}
                     </div>
                   </div>
