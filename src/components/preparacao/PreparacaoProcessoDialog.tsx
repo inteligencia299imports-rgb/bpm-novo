@@ -381,6 +381,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         moto_avaliacao_id: moto.id,
         observacoes: obsMoto.trim() || null,
         data_entrada: new Date().toISOString(),
+        classificacao: avaliacao.classificacao || null,
       } as any);
 
       if (estoqueError) {

@@ -523,6 +523,7 @@ export type Database = {
           avaliacao_id: string | null
           categoria: string | null
           cilindrada: string | null
+          classificacao: string | null
           cor: string | null
           created_at: string
           data_entrada: string
@@ -550,6 +551,7 @@ export type Database = {
           avaliacao_id?: string | null
           categoria?: string | null
           cilindrada?: string | null
+          classificacao?: string | null
           cor?: string | null
           created_at?: string
           data_entrada?: string
@@ -577,6 +579,7 @@ export type Database = {
           avaliacao_id?: string | null
           categoria?: string | null
           cilindrada?: string | null
+          classificacao?: string | null
           cor?: string | null
           created_at?: string
           data_entrada?: string

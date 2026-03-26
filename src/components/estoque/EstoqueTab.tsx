@@ -60,6 +60,7 @@ interface EstoqueItem {
   tem_manual?: boolean | null;
   tem_chave_reserva?: boolean | null;
   manutencao_em_dia?: boolean | null;
+  classificacao?: string | null;
 }
 
 // Navigation target type removed - using EstoqueNavTarget from props
@@ -352,6 +353,12 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                               <>
                                 <span className="text-muted-foreground">Categoria</span>
                                 <span className="text-foreground">{item.categoria}</span>
+                              </>
+                            )}
+                            {item.classificacao && (
+                              <>
+                                <span className="text-muted-foreground">Classificação</span>
+                                <span className="text-foreground">{item.classificacao}</span>
                               </>
                             )}
                             {item.km && (
