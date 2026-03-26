@@ -1058,6 +1058,10 @@ export type Database = {
         Args: { _atendimento_id: string }
         Returns: boolean
       }
+      atendimento_has_avaliacao_preparacao: {
+        Args: { _atendimento_id: string }
+        Returns: boolean
+      }
       delete_atendimento_cascade: {
         Args: { _atendimento_id: string }
         Returns: undefined
@@ -1075,6 +1079,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      moto_has_avaliacao_preparacao: {
+        Args: { _moto_avaliacao_id: string }
         Returns: boolean
       }
       notify_role: {
