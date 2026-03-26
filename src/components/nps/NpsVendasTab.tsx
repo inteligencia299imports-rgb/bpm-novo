@@ -6,7 +6,9 @@ import { SITUACOES_NPS } from '@/types/crm';
 import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
-import NpsCard from './NpsCard';
+import AtendimentoCard from '@/components/showroom/AtendimentoCard';
+import { Button } from '@/components/ui/button';
+import { CheckCircle2 } from 'lucide-react';
 
 interface NpsVendasTabProps {
   onNavigateToShowroom: (atendimentoId: string) => void;
@@ -21,7 +23,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
     setLoading(true);
     const { data, error } = await supabase
       .from('atendimentos')
-      .select('*')
+      .select('*, motos_interesse(*), motos_avaliacao(*)')
       .eq('situacao', 'vendido')
       .order('updated_at', { ascending: false });
 
@@ -29,7 +31,24 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
       toast.error('Erro ao carregar NPS Vendas');
       console.error(error);
     } else {
+      // Enrich motos_interesse with estoque data
       let mapped = data || [];
+      const atIds = mapped.map((a: any) => a.id);
+      if (atIds.length > 0) {
+        const { data: estData } = await supabase.from('estoque').select('id, marca, modelo, placa, cor, atendimento_venda_id').in('atendimento_venda_id', atIds);
+        const estMap: Record<string, any> = {};
+        (estData || []).forEach((e: any) => { if (e.atendimento_venda_id) estMap[e.atendimento_venda_id] = e; });
+        mapped = mapped.map((a: any) => {
+          const est = estMap[a.id];
+          if (est && a.motos_interesse) {
+            a.motos_interesse = a.motos_interesse.map((mi: any) =>
+              mi.estoque_moto_id === est.id ? { ...mi, _estoque: est } : mi
+            );
+          }
+          return a;
+        });
+      }
+
       if (search.trim()) {
         const s = search.trim().toLowerCase();
         mapped = mapped.filter((a: any) =>
@@ -46,7 +65,8 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
   const getColumnItems = (status: SituacaoNps) =>
     atendimentos.filter(a => (a.nps_status || 'em_aberto') === status);
 
-  const handleUpdateStatus = async (id: string, newStatus: SituacaoNps) => {
+  const handleUpdateStatus = async (e: React.MouseEvent, id: string, newStatus: SituacaoNps) => {
+    e.stopPropagation();
     const updates: any = { nps_status: newStatus };
     if (newStatus === 'enviado') updates.nps_enviado_at = new Date().toISOString();
     if (newStatus === 'respondido') updates.nps_respondido_at = new Date().toISOString();
@@ -100,17 +120,17 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                       <p className="text-xs text-muted-foreground text-center py-8">Nenhum atendimento</p>
                     ) : (
                       items.map(a => (
-                        <NpsCard
-                          key={a.id}
-                          title={a.nome_cliente}
-                          subtitle={a.telefone}
-                          loja={a.loja}
-                          date={a.updated_at}
-                          npsStatus={a.nps_status || 'em_aberto'}
-                          onUpdateStatus={(status) => handleUpdateStatus(a.id, status)}
-                          onClick={() => onNavigateToShowroom(a.id)}
-                          accentColor="#27AE60"
-                        />
+                        <div key={a.id} className="space-y-1">
+                          <AtendimentoCard
+                            atendimento={a}
+                            onClick={() => onNavigateToShowroom(a.id)}
+                          />
+                          {(a.nps_status || 'em_aberto') === 'enviado' && (
+                            <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleUpdateStatus(e, a.id, 'respondido')}>
+                              <CheckCircle2 className="h-3 w-3" /> Marcar Respondido
+                            </Button>
+                          )}
+                        </div>
                       ))
                     )}
                   </div>
