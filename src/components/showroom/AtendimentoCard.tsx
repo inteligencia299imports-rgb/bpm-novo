@@ -11,6 +11,7 @@ interface Props {
   atendimento: Atendimento & { motos_interesse?: any[]; motos_avaliacao?: any[] };
   onClick: () => void;
   actions?: React.ReactNode;
+  statusColorOverride?: string;
 }
 
 const formatPhone = (value: string): string => {
