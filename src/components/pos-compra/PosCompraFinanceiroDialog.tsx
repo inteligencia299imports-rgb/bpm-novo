@@ -108,6 +108,8 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
   const handleSave = async () => {
     setSaving(true);
+    const newVf = parseCurrencyInput(valorFechamento);
+    await supabase.from('avaliacoes').update({ valor_fechamento: newVf || null } as any).eq('id', avaliacaoId);
     toast.success('Resumo financeiro salvo!');
     setSaving(false);
     onOpenChange(false);
