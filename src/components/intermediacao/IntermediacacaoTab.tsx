@@ -47,12 +47,16 @@ const IntermediacacaoTab = ({ initialAtendimentoId, onInitialHandled }: Intermed
   const [parte, setParte] = useState<Parte>('parte1');
 
   useEffect(() => {
-    if (initialAtendimentoId && !loading && items.length > 0) {
-      const found = items.find(a => a.id === initialAtendimentoId);
-      if (found) setSelectedItem(found);
+    if (initialAtendimentoId) {
+      supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
+        if (data) {
+          const { data: est } = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id').eq('atendimento_venda_id', data.id).eq('tipo', 'consignada').maybeSingle();
+          setSelectedItem({ ...data, _estoqueMoto: est });
+        }
+      });
       onInitialHandled?.();
     }
-  }, [initialAtendimentoId, loading, items]);
+  }, [initialAtendimentoId]);
 
   const config = PARTE_CONFIG[parte];
 
