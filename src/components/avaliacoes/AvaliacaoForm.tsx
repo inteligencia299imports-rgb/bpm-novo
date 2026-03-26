@@ -656,7 +656,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       await supabase.rpc('notify_role', {
                         _role: 'secretaria',
                         _title: 'Consulta Solicitada',
-                        _message: `${moto?.marca} ${moto?.modelo}${moto?.placa ? ` (${moto.placa})` : ''}`,
+                        _message: `${moto?.marca} ${moto?.modelo}${moto?.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
                         _entity_id: moto?.id,
                         _entity_type: 'consulta',
                       });

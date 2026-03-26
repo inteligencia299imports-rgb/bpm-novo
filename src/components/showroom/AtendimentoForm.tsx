@@ -293,7 +293,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       await supabase.rpc('notify_role', {
         _role: 'avaliador' as any,
         _title: 'Avaliação Solicitada',
-        _message: `Nova avaliação solicitada para o atendimento`,
+        _message: `Nova avaliação solicitada para o atendimento | Por: ${userName || user?.email || 'Usuário'}`,
         _entity_id: atendimentoId,
         _entity_type: 'avaliacao',
       });
