@@ -637,6 +637,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                         changed_by_name: userName || user?.email || null,
                       });
                       setConsultaSolicitada(true);
+                      // Notify secretárias
+                      await supabase.rpc('notify_role', {
+                        _role: 'secretaria',
+                        _title: 'Consulta Solicitada',
+                        _message: `${moto?.marca} ${moto?.modelo}${moto?.placa ? ` (${moto.placa})` : ''}`,
+                        _entity_id: moto?.id,
+                        _entity_type: 'consulta',
+                      });
                       toast.success('Consulta solicitada com sucesso!');
                     }}
                   >

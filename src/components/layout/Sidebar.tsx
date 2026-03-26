@@ -2,12 +2,14 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Award, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench } from 'lucide-react';
 import logoImg from '@/assets/logo-crm.png';
+import NotificationBell from './NotificationBell';
 import { Button } from '@/components/ui/button';
 
 const ROLE_LABELS: Record<string, string> = {
   vendedor: 'Vendedor',
   gestor: 'Gestor',
   avaliador: 'Avaliador',
+  secretaria: 'Secretária',
 };
 
 interface SidebarProps {
@@ -24,11 +26,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
     { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
     { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['avaliador', 'gestor'] },
-    { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['avaliador', 'gestor'] },
-    { id: 'intermediacao', label: 'Intermediação', icon: Handshake, roles: ['avaliador', 'gestor'] },
-    { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['avaliador', 'gestor'] },
-    { id: 'consignacao', label: 'Consignação', icon: FileText, roles: ['avaliador', 'gestor'] },
+    { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['avaliador', 'gestor', 'secretaria'] },
+    { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['avaliador', 'gestor', 'secretaria'] },
+    { id: 'intermediacao', label: 'Intermediação', icon: Handshake, roles: ['avaliador', 'gestor', 'secretaria'] },
+    { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['avaliador', 'gestor', 'secretaria'] },
+    { id: 'consignacao', label: 'Consignação', icon: FileText, roles: ['avaliador', 'gestor', 'secretaria'] },
     { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['avaliador', 'gestor'] },
     { id: 'nps', label: 'NPS', icon: Award, roles: ['vendedor', 'gestor', 'avaliador'] },
   ].filter(t => role && t.roles.includes(role));
@@ -80,16 +82,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
 
       {/* User info */}
       <div className="border-t border-sidebar-border px-3 py-4">
-        <div className={`flex items-center gap-2 mb-3 ${collapsed ? 'justify-center' : ''}`}>
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 shrink-0">
-            <User className="h-4 w-4 text-sidebar-foreground" />
-          </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate text-sidebar-foreground">{userName}</p>
-              <p className="text-xs text-sidebar-foreground/60">{ROLE_LABELS[role || '']}</p>
+        <div className={`flex items-center gap-2 mb-3 ${collapsed ? 'flex-col' : ''}`}>
+          <div className={`flex items-center gap-2 ${collapsed ? 'justify-center' : 'flex-1 min-w-0'}`}>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 shrink-0">
+              <User className="h-4 w-4 text-sidebar-foreground" />
             </div>
-          )}
+            {!collapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate text-sidebar-foreground">{userName}</p>
+                <p className="text-xs text-sidebar-foreground/60">{ROLE_LABELS[role || '']}</p>
+              </div>
+            )}
+          </div>
+          <NotificationBell />
         </div>
       </div>
     </aside>

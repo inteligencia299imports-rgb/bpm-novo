@@ -107,6 +107,14 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
     setIsConsultada(true);
     setResultadoSalvo(resultadoTexto);
     fetchHistory();
+    // Notify secretárias about concluded consulta
+    await supabase.rpc('notify_role', {
+      _role: 'secretaria',
+      _title: 'Consulta Concluída',
+      _message: `${moto.atendimentos?.nome_cliente || ''} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''}`,
+      _entity_id: moto.id,
+      _entity_type: 'consulta',
+    });
     toast.success('Resultado salvo com sucesso!');
     setSaving(false);
     setResultadoPopup(false);
@@ -164,6 +172,14 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               setResultadoSalvo(null);
               setResultadoTexto('');
               fetchHistory();
+              // Notify secretárias
+              await supabase.rpc('notify_role', {
+                _role: 'secretaria',
+                _title: 'Nova Consulta Solicitada',
+                _message: `${moto.atendimentos?.nome_cliente || ''} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''}`,
+                _entity_id: moto.id,
+                _entity_type: 'consulta',
+              });
               toast.success('Nova consulta solicitada!');
             }}>
               <Search className="h-4 w-4" /> <span className="hidden sm:inline">Nova Consulta</span>
