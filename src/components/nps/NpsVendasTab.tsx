@@ -85,6 +85,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
     e.stopPropagation();
     const telefone = atendimento.telefone?.replace(/\D/g, '') || '';
     const id = atendimento.id;
+    const previousStatus = atendimento.nps_status || 'em_aberto';
     const url = `https://wa.me/55${telefone}?text=https%3A%2F%2Ftally.so%2Fr%2FOD4Gp7%3Fid%3D${id}`;
     window.open(url, '_blank');
 
@@ -93,7 +94,16 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
     if (error) {
       toast.error('Erro ao registrar envio');
     } else {
-      toast.success('Pesquisa enviada');
+      await supabase.from('status_history').insert({
+        entity_id: id,
+        entity_type: 'nps_venda',
+        status_from: previousStatus,
+        status_to: 'enviado',
+        changed_by: user?.id,
+        changed_by_name: userName,
+        observacoes: previousStatus === 'enviado' ? 'Pesquisa reenviada' : 'Pesquisa enviada',
+      });
+      toast.success(previousStatus === 'enviado' ? 'Pesquisa reenviada' : 'Pesquisa enviada');
       fetchData();
     }
   };
