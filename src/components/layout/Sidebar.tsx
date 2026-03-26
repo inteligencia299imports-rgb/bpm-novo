@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Award, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench } from 'lucide-react';
 import logoImg from '@/assets/logo-crm.png';
+import NotificationBell from './NotificationBell';
 import { Button } from '@/components/ui/button';
 
 const ROLE_LABELS: Record<string, string> = {
