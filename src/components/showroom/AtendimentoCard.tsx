@@ -10,6 +10,7 @@ import { formatPlaca, formatModelo } from '@/lib/utils';
 interface Props {
   atendimento: Atendimento & { motos_interesse?: any[]; motos_avaliacao?: any[] };
   onClick: () => void;
+  actions?: React.ReactNode;
 }
 
 const formatPhone = (value: string): string => {
