@@ -100,6 +100,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
   const [consultaRealizada, setConsultaRealizada] = useState(false);
   const [consultaSolicitada, setConsultaSolicitada] = useState(false);
+  const [resultadoConsulta, setResultadoConsulta] = useState<string | null>(null);
+  const [showResultadoConsulta, setShowResultadoConsulta] = useState(false);
   const canEdit = role === 'avaliador' || role === 'gestor' || role === 'vendedor';
   const [history, setHistory] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
@@ -141,7 +143,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         .select(`
           *,
           atendimentos (id, nome_cliente, telefone, loja, vendedor_id, interesse, sexo, uf, tipo_atendimento, origem, temperatura, created_at, cnh_url),
-          motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, consulta_realizada, tem_manual, tem_chave_reserva, manutencao_em_dia)
+          motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, consulta_realizada, consulta_solicitada, resultado_consulta, tem_manual, tem_chave_reserva, manutencao_em_dia)
         `)
         .eq('id', avaliacaoId)
         .single();
@@ -152,6 +154,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         setCrlvUrl((data.motos_avaliacao as any)?.crlv_url || null);
         setConsultaRealizada(!!(data.motos_avaliacao as any)?.consulta_realizada);
         setConsultaSolicitada(!!(data.motos_avaliacao as any)?.consulta_solicitada);
+        setResultadoConsulta((data.motos_avaliacao as any)?.resultado_consulta || null);
         setValorFipe(numberToCurrencyMask(data.valor_fipe));
         setMenorValor(numberToCurrencyMask(data.menor_valor));
         setMaiorValor(numberToCurrencyMask(data.maior_valor));
@@ -657,9 +660,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   </Badge>
                 )}
                 {consultaRealizada && (
-                  <Badge variant="secondary" className="text-xs bg-green-500/15 text-green-600 gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs bg-green-500/15 text-green-600 gap-1 h-auto py-1 px-2 hover:bg-green-500/25"
+                    onClick={() => setShowResultadoConsulta(true)}
+                  >
                     <CheckCircle2 className="h-3 w-3" /> Consulta Realizada
-                  </Badge>
+                  </Button>
                 )}
               </div>
             </CardContent>
@@ -1058,6 +1066,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         onOpenChange={setCustosOpen}
         avaliacaoId={avaliacaoId}
       />
+
+      <Dialog open={showResultadoConsulta} onOpenChange={setShowResultadoConsulta}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" /> Resultado da Consulta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm whitespace-pre-wrap">{resultadoConsulta || 'Nenhum resultado registrado.'}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

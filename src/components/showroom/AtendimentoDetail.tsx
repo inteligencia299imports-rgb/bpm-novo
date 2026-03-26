@@ -79,6 +79,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [contratoOpen, setContratoOpen] = useState(false);
   const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
   const [savingMotivo, setSavingMotivo] = useState(false);
+  const [showResultadoConsulta, setShowResultadoConsulta] = useState<string | null>(null);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
@@ -664,9 +665,17 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       </Badge>
                     )}
                     {motosAvaliacao.some(m => (m as any).consulta_realizada) && (
-                      <Badge variant="secondary" className="text-xs bg-green-500/15 text-green-600 gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs bg-green-500/15 text-green-600 gap-1 h-auto py-1 px-2 hover:bg-green-500/25"
+                        onClick={() => {
+                          const motoComConsulta = motosAvaliacao.find(m => (m as any).consulta_realizada);
+                          setShowResultadoConsulta((motoComConsulta as any)?.resultado_consulta || 'Nenhum resultado registrado.');
+                        }}
+                      >
                         <CheckCircle2 className="h-3 w-3" /> Consulta Realizada
-                      </Badge>
+                      </Button>
                     )}
                     {motosAvaliacao.some(m => m.enviada_avaliacao && !isAvaliada(m.id)) && (
                       <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
@@ -1171,6 +1180,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             >
               {savingMotivo ? 'Salvando...' : 'Confirmar'}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!showResultadoConsulta} onOpenChange={() => setShowResultadoConsulta(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" /> Resultado da Consulta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm whitespace-pre-wrap">{showResultadoConsulta}</p>
           </div>
         </DialogContent>
       </Dialog>
