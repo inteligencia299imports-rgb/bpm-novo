@@ -10,6 +10,7 @@ import { formatPlaca, formatModelo } from '@/lib/utils';
 interface Props {
   atendimento: Atendimento & { motos_interesse?: any[]; motos_avaliacao?: any[] };
   onClick: () => void;
+  actions?: React.ReactNode;
 }
 
 const formatPhone = (value: string): string => {
@@ -55,7 +56,7 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
@@ -126,6 +127,8 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick }) => {
               </Badge>
             )}
           </div>
+
+          {actions && <div className="pt-1">{actions}</div>}
 
         </div>
       </div>
