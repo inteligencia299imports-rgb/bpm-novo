@@ -88,6 +88,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [editSexo, setEditSexo] = useState('');
   const [editUf, setEditUf] = useState('');
   const [savingCliente, setSavingCliente] = useState(false);
+  const [editCpfCnpj, setEditCpfCnpj] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editEndereco, setEditEndereco] = useState('');
+  const [editCep, setEditCep] = useState('');
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
