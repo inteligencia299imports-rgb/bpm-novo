@@ -709,11 +709,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 {consultaRealizada && (
                   <Button
                     size="sm"
-                    variant="ghost"
-                    className="text-xs bg-green-500/15 text-green-600 gap-1 h-auto py-1 px-2 hover:bg-green-500/25"
+                    variant="outline"
+                    className="gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
                     onClick={() => setShowResultadoConsulta(true)}
                   >
-                    <CheckCircle2 className="h-3 w-3" /> Consulta Realizada
+                    <CheckCircle2 className="h-4 w-4" /> Consulta Realizada ✓
                   </Button>
                 )}
                 {cnhUrl && crlvUrl && consultaRealizada && (
