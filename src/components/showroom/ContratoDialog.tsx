@@ -185,7 +185,7 @@ const ContratoDialog: React.FC<Props> = ({
           .limit(1),
         supabase
           .from('atendimentos')
-          .select('valor_sinal, valor_venda')
+          .select('valor_sinal, valor_venda, cpf_cnpj')
           .eq('id', atendimento.id)
           .maybeSingle(),
       ]);
@@ -194,10 +194,11 @@ const ContratoDialog: React.FC<Props> = ({
 
       const atSinal = freshAtendimento?.valor_sinal ?? (atendimento as any).valor_sinal;
       const atVenda = freshAtendimento?.valor_venda ?? (atendimento as any).valor_venda;
+      const atCpf = freshAtendimento?.cpf_cnpj ?? (atendimento as any).cpf_cnpj;
 
       if (contrato) {
         setContratoId(contrato.id);
-        setCpfCnpj(contrato.cpf_cnpj || '');
+        setCpfCnpj(contrato.cpf_cnpj || atCpf || '');
         setIpvaTipo(contrato.ipva_tipo || '');
         setIpvaCotas(contrato.ipva_cotas ? String(contrato.ipva_cotas) : '');
         setIpvaValor(contrato.ipva_valor ? formatCurrencyInput(String(Math.round(contrato.ipva_valor * 100))) : '');
@@ -233,7 +234,7 @@ const ContratoDialog: React.FC<Props> = ({
       } else {
         // Reset
         setContratoId(null);
-        setCpfCnpj('');
+        setCpfCnpj(atCpf || '');
         setIpvaTipo('');
         setIpvaCotas('');
         setIpvaValor('');
@@ -335,12 +336,13 @@ const ContratoDialog: React.FC<Props> = ({
       data_vencimento_sinal: dataVencimento ? format(dataVencimento, 'yyyy-MM-dd') : null,
     };
 
-    // Save valor_sinal and valor_venda to atendimento
+    // Save valor_sinal, valor_venda and cpf_cnpj to atendimento
     const atendimentoUpdate: any = {};
     const parsedSinal = parseCurrencyInput(valorSinal);
     const parsedVenda = parseCurrencyInput(valorVenda);
     if (parsedSinal !== null) atendimentoUpdate.valor_sinal = parsedSinal;
     if (parsedVenda !== null) atendimentoUpdate.valor_venda = parsedVenda;
+    if (cpfCnpj) atendimentoUpdate.cpf_cnpj = cpfCnpj;
     if (Object.keys(atendimentoUpdate).length > 0) {
       await supabase.from('atendimentos').update(atendimentoUpdate).eq('id', atendimento.id);
     }
