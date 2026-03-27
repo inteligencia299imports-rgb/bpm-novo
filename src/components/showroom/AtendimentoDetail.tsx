@@ -568,7 +568,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       <Separator />
 
       <ScrollArea className="h-[calc(100vh-14rem)]">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 pr-3">
           {/* Dados do Cliente */}
           <Card>
             <CardHeader className="pb-2">
