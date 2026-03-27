@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -62,6 +64,10 @@ interface EstoqueItem {
   tem_chave_reserva?: boolean | null;
   manutencao_em_dia?: boolean | null;
   classificacao?: string | null;
+  data_venda?: string | null;
+  valor_venda?: number | null;
+  valor_sinal?: number | null;
+  vendedor_nome?: string | null;
   // From atendimentos join (for ownership check)
   venda_vendedor_id?: string | null;
 }
@@ -114,12 +120,22 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       if (filterEmpresa !== 'todas') query = query.eq('empresa', filterEmpresa);
       const { data, error } = await query;
       if (error) throw error;
+      // Get vendedor names for items with atendimento_venda_id
+      const vendedorIds = [...new Set((data || []).map((d: any) => d.atendimentos?.vendedor_id).filter(Boolean))];
+      let vendedorMap: Record<string, string> = {};
+      if (vendedorIds.length > 0) {
+        const { data: roles } = await supabase.from('user_roles').select('user_id, nome').in('user_id', vendedorIds);
+        if (roles) {
+          for (const r of roles) vendedorMap[r.user_id] = r.nome;
+        }
+      }
       const mapped = (data || []).map((d: any) => ({
         ...d,
         tem_manual: d.motos_avaliacao?.tem_manual ?? null,
         tem_chave_reserva: d.motos_avaliacao?.tem_chave_reserva ?? null,
         manutencao_em_dia: d.motos_avaliacao?.manutencao_em_dia ?? null,
         venda_vendedor_id: d.atendimentos?.vendedor_id ?? null,
+        vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
       }));
       setItems(mapped);
     } catch (err: any) {
@@ -433,6 +449,26 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                                 <p className="text-xs text-muted-foreground">Preço Ação</p>
                                 <p className="font-semibold text-success">{formatCurrency(item.preco_acao)}</p>
                               </div>
+                            )}
+                          </div>
+
+                          {/* Datas e Vendedor */}
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground pt-1">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              Entrada: {format(new Date(item.data_entrada), 'dd/MM/yyyy', { locale: ptBR })}
+                            </span>
+                            {item.data_venda && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {item.status === 'sinal' ? 'Sinal' : 'Venda'}: {format(new Date(item.data_venda), 'dd/MM/yyyy', { locale: ptBR })}
+                              </span>
+                            )}
+                            {item.vendedor_nome && (
+                              <span className="flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                {item.vendedor_nome}
+                              </span>
                             )}
                           </div>
 
