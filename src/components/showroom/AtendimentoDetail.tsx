@@ -252,7 +252,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         
         const promises: Promise<any>[] = [
           historyPromise,
-          supabase.from('avaliacoes').update({ situacao: 'perdido' }).eq('atendimento_id', atendimento.id),
+          supabase.from('avaliacoes').update({ situacao: 'perdido' }).eq('atendimento_id', atendimento.id).then(r => r),
         ];
 
         // Record history for each avaliacao in parallel
