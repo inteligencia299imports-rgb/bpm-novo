@@ -185,7 +185,7 @@ const ContratoDialog: React.FC<Props> = ({
           .limit(1),
         supabase
           .from('atendimentos')
-          .select('valor_sinal, valor_venda')
+          .select('valor_sinal, valor_venda, cpf_cnpj')
           .eq('id', atendimento.id)
           .maybeSingle(),
       ]);
@@ -194,6 +194,7 @@ const ContratoDialog: React.FC<Props> = ({
 
       const atSinal = freshAtendimento?.valor_sinal ?? (atendimento as any).valor_sinal;
       const atVenda = freshAtendimento?.valor_venda ?? (atendimento as any).valor_venda;
+      const atCpf = freshAtendimento?.cpf_cnpj ?? (atendimento as any).cpf_cnpj;
 
       if (contrato) {
         setContratoId(contrato.id);
