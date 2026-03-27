@@ -323,6 +323,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           observacoes: historyObs,
         } as any);
       }
+      refreshHistory();
 
       // Sync: dispensada em avaliação → dispensada no showroom
       if (newStatus === 'dispensada' && avaliacao?.atendimento_id) {
