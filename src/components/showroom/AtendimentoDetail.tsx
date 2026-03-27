@@ -1339,6 +1339,39 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>CPF/CNPJ</Label>
+              <Input
+                value={editCpfCnpj}
+                onChange={e => setEditCpfCnpj(e.target.value)}
+                placeholder="000.000.000-00"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>E-mail</Label>
+              <Input
+                type="email"
+                value={editEmail}
+                onChange={e => setEditEmail(e.target.value)}
+                placeholder="cliente@email.com"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Endereço</Label>
+              <Input
+                value={editEndereco}
+                onChange={e => setEditEndereco(e.target.value)}
+                placeholder="Rua, número, bairro, cidade"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>CEP</Label>
+              <Input
+                value={editCep}
+                onChange={e => setEditCep(e.target.value)}
+                placeholder="00000-000"
+              />
+            </div>
             <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
               {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               Salvar
