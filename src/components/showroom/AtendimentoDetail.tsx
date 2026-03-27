@@ -299,7 +299,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       else if (value === 'dispensada') {
         const { data: avaliacoesData } = await supabase.from('avaliacoes').select('id, moto_avaliacao_id, situacao').eq('atendimento_id', atendimento.id);
         
-        const promises: Promise<any>[] = [
+        const promises: PromiseLike<any>[] = [
           historyPromise,
           supabase.from('avaliacoes').update({ situacao: 'dispensada' }).eq('atendimento_id', atendimento.id).then(r => r),
         ];
