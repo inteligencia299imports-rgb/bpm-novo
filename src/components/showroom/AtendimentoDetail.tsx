@@ -314,7 +314,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               changed_by: user?.id,
               changed_by_name: userName || user?.email || null,
               observacoes: observacoes || null,
-            }));
+            }).then(r => r));
           }
         }
 
