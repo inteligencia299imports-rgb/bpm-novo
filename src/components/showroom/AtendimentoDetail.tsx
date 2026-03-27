@@ -1126,17 +1126,21 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         }
                         const toInput = (v: number | null | undefined) => v ? formatCurrencyInput(Math.round(v * 100).toString()) : '';
                         // Fetch latest values from DB to avoid stale data after contract save
-                        const { data: freshAtend } = await supabase.from('atendimentos').select('valor_sinal, valor_venda').eq('id', atendimento.id).maybeSingle();
+                        const [{ data: freshAtend }, { data: freshContrato }] = await Promise.all([
+                          supabase.from('atendimentos').select('valor_sinal, valor_venda').eq('id', atendimento.id).maybeSingle(),
+                          supabase.from('contratos').select('valor_fechamento').eq('atendimento_id', atendimento.id).maybeSingle(),
+                        ]);
                         const freshSinal = freshAtend?.valor_sinal ?? atendimento.valor_sinal;
                         const freshVenda = freshAtend?.valor_venda ?? atendimento.valor_venda;
-                        // Also fetch latest valor_fechamento from avaliacoes
-                        let freshFechamento: number | null = null;
+                        // Fetch valor_fechamento: first from avaliacoes, fallback to contratos
+                        let freshFechamento: number | null = freshContrato?.valor_fechamento ?? null;
                         if (motosAvaliacao.length > 0) {
                           const firstMotoId = motosAvaliacao[0].id;
                           const av = avaliacoes[firstMotoId];
                           if (av) {
                             const { data: freshAv } = await supabase.from('avaliacoes').select('valor_fechamento').eq('id', av.id).maybeSingle();
-                            freshFechamento = freshAv?.valor_fechamento ?? av.valor_fechamento ?? null;
+                            const avFechamento = freshAv?.valor_fechamento ?? av.valor_fechamento ?? null;
+                            if (avFechamento) freshFechamento = avFechamento;
                           }
                         }
                         setValorPopup({ valorSinal: toInput(freshSinal), valorVenda: toInput(freshVenda), valorFechamento: toInput(freshFechamento), modo: btn.value as 'sinal' | 'vendido' });
