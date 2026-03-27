@@ -334,6 +334,44 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     return av && av.situacao !== 'sem_avaliar';
   };
 
+  const formatPhoneInput = (value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return `(${digits}`;
+    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
+  const openEditCliente = () => {
+    setEditNome(atendimento.nome_cliente);
+    setEditTelefone(formatPhoneInput(atendimento.telefone));
+    setEditSexo(atendimento.sexo);
+    setEditUf(atendimento.uf);
+    setEditClienteOpen(true);
+  };
+
+  const handleSaveCliente = async () => {
+    const digits = editTelefone.replace(/\D/g, '');
+    if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
+      toast.error('Preencha todos os campos corretamente');
+      return;
+    }
+    setSavingCliente(true);
+    const { error } = await supabase.from('atendimentos').update({
+      nome_cliente: editNome.trim(),
+      telefone: digits,
+      sexo: editSexo,
+      uf: editUf,
+    }).eq('id', atendimento.id);
+    setSavingCliente(false);
+    if (error) {
+      toast.error('Erro ao salvar dados do cliente');
+    } else {
+      toast.success('Dados do cliente atualizados!');
+      setEditClienteOpen(false);
+      if (onStatusUpdated) onStatusUpdated(); else onDeleted();
+    }
+  };
+
   if (loading) {
     return <DetailSkeleton onClose={onClose} />;
   }
