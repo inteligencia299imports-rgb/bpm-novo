@@ -377,12 +377,28 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           </div>
           <div className="space-y-1.5">
             <Label>Telefone *</Label>
-            <Input
-              value={telefone}
-              onChange={handlePhoneChange}
-              placeholder="(61) 90000-0000"
-              maxLength={15}
-            />
+            <div className="flex gap-2">
+              <Input
+                value={telefone}
+                onChange={handlePhoneChange}
+                onBlur={searchClientByPhone}
+                placeholder="(61) 90000-0000"
+                maxLength={15}
+                className="flex-1"
+              />
+              {!isEditing && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={searchClientByPhone}
+                  disabled={!isPhoneValid || searchingPhone}
+                  title="Buscar cliente"
+                >
+                  {searchingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                </Button>
+              )}
+            </div>
             {telefone && !isPhoneValid && (
               <p className="text-xs text-destructive">Telefone deve ter 11 dígitos</p>
             )}
