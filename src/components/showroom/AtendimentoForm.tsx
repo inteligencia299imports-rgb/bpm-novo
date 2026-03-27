@@ -172,7 +172,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     } finally {
       setSearchingPhone(false);
     }
-  }, [telefone, isEditing]);
+  }, [telefone]);
 
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
