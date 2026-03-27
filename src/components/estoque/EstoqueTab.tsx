@@ -118,12 +118,22 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       if (filterEmpresa !== 'todas') query = query.eq('empresa', filterEmpresa);
       const { data, error } = await query;
       if (error) throw error;
+      // Get vendedor names for items with atendimento_venda_id
+      const vendedorIds = [...new Set((data || []).map((d: any) => d.atendimentos?.vendedor_id).filter(Boolean))];
+      let vendedorMap: Record<string, string> = {};
+      if (vendedorIds.length > 0) {
+        const { data: roles } = await supabase.from('user_roles').select('user_id, nome').in('user_id', vendedorIds);
+        if (roles) {
+          for (const r of roles) vendedorMap[r.user_id] = r.nome;
+        }
+      }
       const mapped = (data || []).map((d: any) => ({
         ...d,
         tem_manual: d.motos_avaliacao?.tem_manual ?? null,
         tem_chave_reserva: d.motos_avaliacao?.tem_chave_reserva ?? null,
         manutencao_em_dia: d.motos_avaliacao?.manutencao_em_dia ?? null,
         venda_vendedor_id: d.atendimentos?.vendedor_id ?? null,
+        vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
       }));
       setItems(mapped);
     } catch (err: any) {
