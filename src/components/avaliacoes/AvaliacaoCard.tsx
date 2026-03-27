@@ -32,8 +32,8 @@ const STATUS_HEX: Record<string, string> = {
   sem_avaliar: '#6B7280',
   em_aberto: '#2EC5FF',
   adquirida: '#169d53',
-  dispensada: '#FF3B30',
-  perdido: '#FF8C00',
+  dispensada: '#FF8C00',
+  perdido: '#FF3B30',
 };
 
 const getTipoAquisicaoLabel = (tipo: string | null) => {
