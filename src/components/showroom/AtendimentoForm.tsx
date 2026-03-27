@@ -141,7 +141,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   };
 
   const searchClientByPhone = useCallback(async () => {
-    if (isEditing) return;
     const digits = unformatPhone(telefone);
     if (digits.length !== 11) return;
 
@@ -173,7 +172,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     } finally {
       setSearchingPhone(false);
     }
-  }, [telefone, isEditing]);
+  }, [telefone]);
 
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
@@ -392,18 +391,16 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 maxLength={15}
                 className="flex-1"
               />
-              {!isEditing && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={searchClientByPhone}
-                  disabled={!isPhoneValid || searchingPhone}
-                  title="Buscar cliente"
-                >
-                  {searchingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={searchClientByPhone}
+                disabled={!isPhoneValid || searchingPhone}
+                title="Buscar cliente"
+              >
+                {searchingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              </Button>
             </div>
             {telefone && !isPhoneValid && (
               <p className="text-xs text-destructive">Telefone deve ter 11 dígitos</p>
