@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save, Loader2, SendHorizonal } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, SendHorizonal, Search } from 'lucide-react';
 import { LOJAS, INTERESSES, TEMPERATURAS, ORIGENS, UFS, TIPOS_ATENDIMENTO, SEXOS } from '@/types/crm';
 import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
@@ -35,6 +35,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const isEditing = !!atendimentoId;
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
+  const [searchingPhone, setSearchingPhone] = useState(false);
 
   // form state
   const [loja, setLoja] = useState('');
@@ -138,6 +139,35 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTelefone(formatPhone(e.target.value));
   };
+
+  const searchClientByPhone = useCallback(async () => {
+    if (isEditing) return;
+    const digits = unformatPhone(telefone);
+    if (digits.length !== 11) return;
+
+    setSearchingPhone(true);
+    try {
+      const { data } = await supabase
+        .from('atendimentos')
+        .select('nome_cliente, sexo, uf, origem')
+        .eq('telefone', digits)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        setNomeCliente(data.nome_cliente);
+        setSexo(data.sexo);
+        setUf(data.uf);
+        if (data.origem) setOrigem(data.origem);
+        toast.success('Cliente encontrado! Dados preenchidos automaticamente.');
+      }
+    } catch (err) {
+      console.error('Erro ao buscar cliente:', err);
+    } finally {
+      setSearchingPhone(false);
+    }
+  }, [telefone, isEditing]);
 
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
@@ -347,12 +377,28 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           </div>
           <div className="space-y-1.5">
             <Label>Telefone *</Label>
-            <Input
-              value={telefone}
-              onChange={handlePhoneChange}
-              placeholder="(61) 90000-0000"
-              maxLength={15}
-            />
+            <div className="flex gap-2">
+              <Input
+                value={telefone}
+                onChange={handlePhoneChange}
+                onBlur={searchClientByPhone}
+                placeholder="(61) 90000-0000"
+                maxLength={15}
+                className="flex-1"
+              />
+              {!isEditing && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={searchClientByPhone}
+                  disabled={!isPhoneValid || searchingPhone}
+                  title="Buscar cliente"
+                >
+                  {searchingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                </Button>
+              )}
+            </div>
             {telefone && !isPhoneValid && (
               <p className="text-xs text-destructive">Telefone deve ter 11 dígitos</p>
             )}
