@@ -62,6 +62,10 @@ interface EstoqueItem {
   tem_chave_reserva?: boolean | null;
   manutencao_em_dia?: boolean | null;
   classificacao?: string | null;
+  data_venda?: string | null;
+  valor_venda?: number | null;
+  valor_sinal?: number | null;
+  vendedor_nome?: string | null;
   // From atendimentos join (for ownership check)
   venda_vendedor_id?: string | null;
 }
