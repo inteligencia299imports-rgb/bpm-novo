@@ -246,9 +246,32 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       toast.success(`Status alterado para ${label}`);
 
-      // Sync: perdido no showroom → perdido nas avaliações
+      // Sync: perdido no showroom → perdido nas avaliações + reverter estoque
       if (value === 'perdido') {
         await supabase.from('avaliacoes').update({ situacao: 'perdido' }).eq('atendimento_id', atendimento.id);
+
+        // Reverter moto de interesse no estoque para disponível (só se pertence a este atendimento)
+        for (const mi of motosInteresse) {
+          if (mi.estoque_moto_id) {
+            await supabase.from('estoque').update({
+              status: 'disponivel',
+              atendimento_venda_id: null,
+              data_venda: null,
+              valor_venda: null,
+              valor_sinal: null,
+            }).eq('id', mi.estoque_moto_id).eq('atendimento_venda_id', atendimento.id);
+          }
+        }
+
+        // Remover do estoque motos de troca que entraram via este atendimento
+        if (atendimento.interesse === 'trocar') {
+          for (const moto of motosAvaliacao) {
+            const av = avaliacoes[moto.id];
+            if (av) {
+              await supabase.from('estoque').delete().eq('avaliacao_id', av.id);
+            }
+          }
+        }
       }
       // Sync: dispensada no showroom → dispensada nas avaliações
       if (value === 'dispensada') {
