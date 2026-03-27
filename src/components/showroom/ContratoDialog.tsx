@@ -234,7 +234,7 @@ const ContratoDialog: React.FC<Props> = ({
       } else {
         // Reset
         setContratoId(null);
-        setCpfCnpj('');
+        setCpfCnpj(atCpf || '');
         setIpvaTipo('');
         setIpvaCotas('');
         setIpvaValor('');
