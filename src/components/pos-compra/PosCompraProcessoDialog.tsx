@@ -36,10 +36,11 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   avaliacaoId: string;
+  motoAvaliacaoId?: string;
   onStatusChanged?: (newStatus: string) => void;
 }
 
-const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, onStatusChanged }) => {
+const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, motoAvaliacaoId, onStatusChanged }) => {
   const { userName } = useAuth();
   const [etapas, setEtapas] = useState<EtapaData[]>(
     ETAPAS.map(e => ({ etapa: e, concluida: false, data_conclusao: null }))
@@ -54,17 +55,45 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
     if (!open) return;
     const load = async () => {
       setLoading(true);
-      const [{ data }, { data: avData }] = await Promise.all([
+
+      const queries: Promise<any>[] = [
         supabase
           .from('pos_compra_processos' as any)
           .select('etapa, concluida, data_conclusao')
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('pos_compra_observacoes, pos_compra_status')
+          .select('pos_compra_observacoes, pos_compra_status, moto_avaliacao_id')
           .eq('id', avaliacaoId)
           .maybeSingle(),
-      ]);
+      ];
+
+      const [{ data }, { data: avData }] = await Promise.all(queries);
+
+      const motoId = motoAvaliacaoId || (avData as any)?.moto_avaliacao_id;
+
+      // Fetch consultation data if we have a moto ID
+      let consultaRealizada = false;
+      let consultaDate: string | null = null;
+      if (motoId) {
+        const [{ data: motoData }, { data: consultaHistory }] = await Promise.all([
+          supabase
+            .from('motos_avaliacao')
+            .select('consulta_realizada')
+            .eq('id', motoId)
+            .maybeSingle(),
+          supabase
+            .from('status_history')
+            .select('created_at')
+            .eq('entity_id', motoId)
+            .eq('entity_type', 'consulta')
+            .eq('status_to', 'consulta_realizada')
+            .order('created_at', { ascending: false })
+            .limit(1),
+        ]);
+        consultaRealizada = motoData?.consulta_realizada === true;
+        consultaDate = consultaHistory?.[0]?.created_at || null;
+      }
 
       const map: Record<string, EtapaData> = {};
       if (data) {
@@ -72,13 +101,22 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           map[d.etapa] = d as EtapaData;
         }
       }
-      setEtapas(ETAPAS.map(e => map[e] || { etapa: e, concluida: false, data_conclusao: null }));
+
+      const built = ETAPAS.map(e => {
+        if (map[e]) return map[e];
+        if (e === 'CONSULTA REALIZADA' && consultaRealizada) {
+          return { etapa: e, concluida: true, data_conclusao: consultaDate || new Date().toISOString() };
+        }
+        return { etapa: e, concluida: false, data_conclusao: null };
+      });
+
+      setEtapas(built);
       setObservacoes((avData as any)?.pos_compra_observacoes || '');
       setPreviousStatus((avData as any)?.pos_compra_status || 'em_aberto');
       setLoading(false);
     };
     load();
-  }, [open, avaliacaoId]);
+  }, [open, avaliacaoId, motoAvaliacaoId]);
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     setEtapas(prev =>
