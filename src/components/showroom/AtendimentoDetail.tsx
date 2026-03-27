@@ -869,8 +869,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     )}
                     <div className="flex gap-2 mt-3 flex-wrap">
                       {/* 1. Incluir Fotos */}
-                      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPhotoMotoId(moto.id)}>
-                        <Camera className="h-4 w-4" /> Incluir Fotos
+                      <Button size="sm" variant="outline" className={`gap-1.5 ${(photoCountMap[moto.id] || 0) > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setPhotoMotoId(moto.id)}>
+                        <Camera className="h-4 w-4" /> {(photoCountMap[moto.id] || 0) > 0 ? `Fotos (${photoCountMap[moto.id]}) ✓` : 'Incluir Fotos'}
                       </Button>
 
                       {/* 2. CRLV */}
