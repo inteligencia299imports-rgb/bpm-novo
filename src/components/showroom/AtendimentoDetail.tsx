@@ -176,6 +176,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         setEstoqueData(estoqueMap);
       }
 
+      // Update photo counts
+      if (fotosCountRes.data) {
+        const countMap: Record<string, number> = {};
+        for (const f of fotosCountRes.data) {
+          countMap[f.moto_avaliacao_id] = (countMap[f.moto_avaliacao_id] || 0) + 1;
+        }
+        setPhotoCountMap(countMap);
+      }
+
       // Map avaliacoes with avaliador names
       const avalMap: Record<string, any> = {};
       if (resAval.data) {
