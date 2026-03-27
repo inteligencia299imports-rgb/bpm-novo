@@ -154,9 +154,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       const avaliacaoHistPromise = motoIds.length > 0
         ? supabase.from('status_history').select('*').eq('entity_type', 'avaliacao').in('entity_id', motoIds).order('created_at', { ascending: true }).then(r => r)
         : Promise.resolve({ data: [] as any[] });
+      const fotosCountPromise = motoIds.length > 0
+        ? supabase.from('moto_fotos').select('moto_avaliacao_id').in('moto_avaliacao_id', motoIds).then(r => r)
+        : Promise.resolve({ data: [] as any[] });
 
-      const [estoqueRes, rolesRes, consultaRes, avaliacaoRes] = await Promise.all([
-        estoquePromise, avaliadorPromise, consultaPromise, avaliacaoHistPromise,
+      const [estoqueRes, rolesRes, consultaRes, avaliacaoRes, fotosCountRes] = await Promise.all([
+        estoquePromise, avaliadorPromise, consultaPromise, avaliacaoHistPromise, fotosCountPromise,
       ]);
 
       // Update estoque
