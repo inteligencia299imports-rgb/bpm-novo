@@ -477,9 +477,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           {/* Dados do Cliente */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" /> Dados do Cliente
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <User className="h-4 w-4 text-primary" /> Dados do Cliente
+                </CardTitle>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={openEditCliente} title="Editar dados do cliente">
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
