@@ -651,8 +651,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 </div>
               )}
               <div className="flex gap-2 mt-3 flex-wrap">
-                <Button size="sm" variant={fotos.length > 0 ? "default" : "outline"} className={`gap-1.5 ${fotos.length > 0 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`} onClick={() => setShowPhotosDialog(true)}>
-                  <Camera className="h-4 w-4" /> Ver Fotos {fotos.length > 0 && `(${fotos.length})`}
+                <Button size="sm" variant="outline" className={`gap-1.5 ${fotos.length > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setShowPhotosDialog(true)}>
+                  <Camera className="h-4 w-4" /> {fotos.length > 0 ? `Fotos (${fotos.length}) ✓` : 'Incluir Fotos'}
                 </Button>
                 <DocumentUpload
                   label="CRLV"

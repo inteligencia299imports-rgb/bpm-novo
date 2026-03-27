@@ -75,6 +75,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [cnhUrl, setCnhUrl] = useState<string | null>(atendimento.cnh_url || null);
   const [crlvUrls, setCrlvUrls] = useState<Record<string, string | null>>({});
+  const [photoCountMap, setPhotoCountMap] = useState<Record<string, number>>({});
   const [valorPopup, setValorPopup] = useState<{ valorSinal: string; valorVenda: string; valorFechamento: string; modo: 'sinal' | 'vendido' } | null>(null);
   const [savingValor, setSavingValor] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
@@ -153,9 +154,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       const avaliacaoHistPromise = motoIds.length > 0
         ? supabase.from('status_history').select('*').eq('entity_type', 'avaliacao').in('entity_id', motoIds).order('created_at', { ascending: true }).then(r => r)
         : Promise.resolve({ data: [] as any[] });
+      const fotosCountPromise = motoIds.length > 0
+        ? supabase.from('moto_fotos').select('moto_avaliacao_id').in('moto_avaliacao_id', motoIds).then(r => r)
+        : Promise.resolve({ data: [] as any[] });
 
-      const [estoqueRes, rolesRes, consultaRes, avaliacaoRes] = await Promise.all([
-        estoquePromise, avaliadorPromise, consultaPromise, avaliacaoHistPromise,
+      const [estoqueRes, rolesRes, consultaRes, avaliacaoRes, fotosCountRes] = await Promise.all([
+        estoquePromise, avaliadorPromise, consultaPromise, avaliacaoHistPromise, fotosCountPromise,
       ]);
 
       // Update estoque
@@ -170,6 +174,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           };
         }
         setEstoqueData(estoqueMap);
+      }
+
+      // Update photo counts
+      if (fotosCountRes.data) {
+        const countMap: Record<string, number> = {};
+        for (const f of fotosCountRes.data) {
+          countMap[f.moto_avaliacao_id] = (countMap[f.moto_avaliacao_id] || 0) + 1;
+        }
+        setPhotoCountMap(countMap);
       }
 
       // Map avaliacoes with avaliador names
@@ -856,8 +869,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     )}
                     <div className="flex gap-2 mt-3 flex-wrap">
                       {/* 1. Incluir Fotos */}
-                      <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setPhotoMotoId(moto.id)}>
-                        <Camera className="h-4 w-4" /> Incluir Fotos
+                      <Button size="sm" variant="outline" className={`gap-1.5 ${(photoCountMap[moto.id] || 0) > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setPhotoMotoId(moto.id)}>
+                        <Camera className="h-4 w-4" /> {(photoCountMap[moto.id] || 0) > 0 ? `Fotos (${photoCountMap[moto.id]}) ✓` : 'Incluir Fotos'}
                       </Button>
 
                       {/* 2. CRLV */}
@@ -1144,7 +1157,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       </ScrollArea>
 
       {/* Dialog de Fotos */}
-      <Dialog open={!!photoMotoId} onOpenChange={(o) => !o && setPhotoMotoId(null)}>
+      <Dialog open={!!photoMotoId} onOpenChange={async (o) => {
+        if (!o && photoMotoId) {
+          const { data } = await supabase.from('moto_fotos').select('id').eq('moto_avaliacao_id', photoMotoId);
+          setPhotoCountMap(prev => ({ ...prev, [photoMotoId]: data?.length || 0 }));
+          setPhotoMotoId(null);
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1153,7 +1172,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </DialogHeader>
           {photoMotoId && <PhotoUpload motoAvaliacaoId={photoMotoId} />}
           <div className="flex justify-end pt-2">
-            <Button size="sm" onClick={() => setPhotoMotoId(null)}>Salvar</Button>
+            <Button size="sm" onClick={async () => {
+              if (photoMotoId) {
+                const { data } = await supabase.from('moto_fotos').select('id').eq('moto_avaliacao_id', photoMotoId);
+                setPhotoCountMap(prev => ({ ...prev, [photoMotoId]: data?.length || 0 }));
+              }
+              setPhotoMotoId(null);
+            }}>Salvar</Button>
           </div>
         </DialogContent>
       </Dialog>
