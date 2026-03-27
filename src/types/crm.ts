@@ -21,7 +21,7 @@ export const POS_VENDA_COLUMNS: { value: PosVendaStatus; label: string; hex: str
 export const INTERMEDIACAO_PARTE1_COLUMNS: { value: IntermediacaoParte1Status; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
-  { value: 'autorizacao_pagamento', label: 'Autorização de Pagamento', hex: '#5e3984' },
+  { value: 'autorizacao_pagamento', label: 'Autorização de Pagamento', hex: '#7e6597' },
 ];
 
 export const INTERMEDIACAO_PARTE2_COLUMNS: { value: IntermediacaoParte2Status; label: string; hex: string }[] = [
