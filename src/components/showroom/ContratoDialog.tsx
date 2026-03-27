@@ -198,7 +198,7 @@ const ContratoDialog: React.FC<Props> = ({
 
       if (contrato) {
         setContratoId(contrato.id);
-        setCpfCnpj(contrato.cpf_cnpj || '');
+        setCpfCnpj(contrato.cpf_cnpj || atCpf || '');
         setIpvaTipo(contrato.ipva_tipo || '');
         setIpvaCotas(contrato.ipva_cotas ? String(contrato.ipva_cotas) : '');
         setIpvaValor(contrato.ipva_valor ? formatCurrencyInput(String(Math.round(contrato.ipva_valor * 100))) : '');
