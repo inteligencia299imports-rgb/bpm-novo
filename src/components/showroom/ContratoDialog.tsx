@@ -354,6 +354,14 @@ const ContratoDialog: React.FC<Props> = ({
         setSaving(false);
         return null;
       }
+      // Sync valor_fechamento to avaliacoes
+      const parsedFechamento = parseCurrencyInput(valorFechamento);
+      if (parsedFechamento && parsedFechamento > 0 && hasTroca) {
+        const { data: avs } = await supabase.from('avaliacoes').select('id').eq('atendimento_id', atendimento.id);
+        if (avs && avs.length > 0) {
+          await Promise.all(avs.map(av => supabase.from('avaliacoes').update({ valor_fechamento: parsedFechamento }).eq('id', av.id)));
+        }
+      }
       setSaving(false);
       return contratoId;
     } else {
