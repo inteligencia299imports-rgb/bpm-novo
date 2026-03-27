@@ -907,7 +907,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             <div className="flex flex-wrap justify-center gap-2 w-full sm:w-auto">
               {[
                 { value: 'pendente' as SituacaoShowroom, label: 'Pendente', icon: <Clock className="h-4 w-4" />, color: '#da6220' },
-                { value: 'sinal' as SituacaoShowroom, label: 'Sinal', icon: <Sparkles className="h-4 w-4" />, color: '#5e3984' },
+                { value: 'sinal' as SituacaoShowroom, label: 'Sinal', icon: <Sparkles className="h-4 w-4" />, color: '#7e6597' },
                 { value: 'vendido' as SituacaoShowroom, label: 'Vendido', icon: <DollarSign className="h-4 w-4" />, color: '#169d53' },
                 { value: 'perdido' as SituacaoShowroom, label: 'Perdido', icon: <XCircle className="h-4 w-4" />, color: '#FF3B30' },
                 { value: 'dispensada' as SituacaoShowroom, label: 'Dispensada', icon: <XCircle className="h-4 w-4" />, color: '#FF8C00' },

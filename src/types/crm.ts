@@ -85,7 +85,7 @@ export const INTERESSES: { value: Interesse; label: string }[] = [
 export const STATUS_COLORS: Record<SituacaoShowroom, string> = {
   em_aberto: '#2EC5FF',
   pendente: '#da6220',
-  sinal: '#5e3984',
+  sinal: '#7e6597',
   perdido: '#FF3B30',
   vendido: '#169d53',
   dispensada: '#FF8C00',
@@ -94,14 +94,14 @@ export const STATUS_COLORS: Record<SituacaoShowroom, string> = {
 export const SITUACOES_SHOWROOM: { value: SituacaoShowroom; label: string; color: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', color: 'bg-info/15 text-info', hex: '#2EC5FF' },
   { value: 'pendente', label: 'Pendente', color: 'bg-warning/15 text-warning', hex: '#da6220' },
-  { value: 'sinal', label: 'Sinal', color: 'bg-sinal/15 text-sinal', hex: '#5e3984' },
+  { value: 'sinal', label: 'Sinal', color: 'bg-sinal/15 text-sinal', hex: '#7e6597' },
   { value: 'perdido', label: 'Perdido', color: 'bg-destructive/15 text-destructive', hex: '#FF3B30' },
   { value: 'dispensada', label: 'Dispensada', color: 'bg-orange-500/15 text-orange-500', hex: '#FF8C00' },
 ];
 
 export const SITUACOES_NPS: { value: SituacaoNps; label: string; color: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', color: 'bg-info/15 text-info', hex: '#2EC5FF' },
-  { value: 'enviado', label: 'Enviado', color: 'bg-sinal/15 text-sinal', hex: '#5e3984' },
+  { value: 'enviado', label: 'Enviado', color: 'bg-sinal/15 text-sinal', hex: '#7e6597' },
   { value: 'respondido', label: 'Respondido', color: 'bg-success/15 text-success', hex: '#169d53' },
 ];
 export const SITUACOES_AVALIACAO: { value: SituacaoAvaliacao; label: string; color: string }[] = [
