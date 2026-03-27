@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,9 +6,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil } from 'lucide-react';
 import type { Atendimento, MotoInteresse, MotoAvaliacao, SituacaoShowroom } from '@/types/crm';
-import { SITUACOES_SHOWROOM, INTERESSES } from '@/types/crm';
+import { SITUACOES_SHOWROOM, INTERESSES, SEXOS, UFS } from '@/types/crm';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -80,6 +82,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
   const [savingMotivo, setSavingMotivo] = useState(false);
   const [showResultadoConsulta, setShowResultadoConsulta] = useState<string | null>(null);
+  const [editClienteOpen, setEditClienteOpen] = useState(false);
+  const [editNome, setEditNome] = useState('');
+  const [editTelefone, setEditTelefone] = useState('');
+  const [editSexo, setEditSexo] = useState('');
+  const [editUf, setEditUf] = useState('');
+  const [savingCliente, setSavingCliente] = useState(false);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
@@ -326,6 +334,44 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     return av && av.situacao !== 'sem_avaliar';
   };
 
+  const formatPhoneInput = (value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return `(${digits}`;
+    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
+  const openEditCliente = () => {
+    setEditNome(atendimento.nome_cliente);
+    setEditTelefone(formatPhoneInput(atendimento.telefone));
+    setEditSexo(atendimento.sexo);
+    setEditUf(atendimento.uf);
+    setEditClienteOpen(true);
+  };
+
+  const handleSaveCliente = async () => {
+    const digits = editTelefone.replace(/\D/g, '');
+    if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
+      toast.error('Preencha todos os campos corretamente');
+      return;
+    }
+    setSavingCliente(true);
+    const { error } = await supabase.from('atendimentos').update({
+      nome_cliente: editNome.trim(),
+      telefone: digits,
+      sexo: editSexo,
+      uf: editUf,
+    }).eq('id', atendimento.id);
+    setSavingCliente(false);
+    if (error) {
+      toast.error('Erro ao salvar dados do cliente');
+    } else {
+      toast.success('Dados do cliente atualizados!');
+      setEditClienteOpen(false);
+      if (onStatusUpdated) onStatusUpdated(); else onDeleted();
+    }
+  };
+
   if (loading) {
     return <DetailSkeleton onClose={onClose} />;
   }
@@ -431,9 +477,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           {/* Dados do Cliente */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" /> Dados do Cliente
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <User className="h-4 w-4 text-primary" /> Dados do Cliente
+                </CardTitle>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={openEditCliente} title="Editar dados do cliente">
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -1222,6 +1273,60 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </DialogHeader>
           <div className="space-y-2">
             <p className="text-sm whitespace-pre-wrap">{showResultadoConsulta}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Dialog Editar Cliente */}
+      <Dialog open={editClienteOpen} onOpenChange={setEditClienteOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Dados do Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Nome *</Label>
+              <Input
+                value={editNome}
+                onChange={e => {
+                  const formatted = e.target.value
+                    .toLowerCase()
+                    .replace(/(?:^|\s)\S/g, match => match.toUpperCase());
+                  setEditNome(formatted);
+                }}
+                placeholder="Nome Sobrenome"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Telefone *</Label>
+              <Input
+                value={editTelefone}
+                onChange={e => setEditTelefone(formatPhoneInput(e.target.value))}
+                placeholder="(61) 90000-0000"
+                maxLength={15}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sexo *</Label>
+              <Select value={editSexo} onValueChange={setEditSexo}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>UF *</Label>
+              <Select value={editUf} onValueChange={setEditUf}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
+              {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Salvar
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
