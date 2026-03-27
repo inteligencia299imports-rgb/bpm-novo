@@ -151,6 +151,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [obsAvaliador, setObsAvaliador] = useState('');
   const [classificacao, setClassificacao] = useState('');
   const [valorFechamentoEdit, setValorFechamentoEdit] = useState('');
+  const [dispensadaMotivo, setDispensadaMotivo] = useState<string | null>(null);
+  const [savingDispensada, setSavingDispensada] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -325,9 +327,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       }
       refreshHistory();
 
-      // Sync: dispensada em avaliação → dispensada no showroom
+      // Sync: dispensada em avaliação → dispensada no showroom + registrar histórico
       if (newStatus === 'dispensada' && avaliacao?.atendimento_id) {
+        const { data: atData } = await supabase.from('atendimentos').select('situacao').eq('id', avaliacao.atendimento_id).maybeSingle();
         await supabase.from('atendimentos').update({ situacao: 'dispensada' }).eq('id', avaliacao.atendimento_id);
+        await supabase.from('status_history').insert({
+          entity_type: 'showroom',
+          entity_id: avaliacao.atendimento_id,
+          status_from: atData?.situacao || 'em_aberto',
+          status_to: 'dispensada',
+          changed_by: user?.id,
+          changed_by_name: userName || user?.email || null,
+          observacoes: observacoes || null,
+        } as any);
       }
     }
   };
@@ -914,6 +926,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       setTipoAquisicaoPopup(true);
                       return;
                     }
+                    if (btn.value === 'dispensada') {
+                      setDispensadaMotivo('');
+                      return;
+                    }
                     handleStatusChange(btn.value);
                   }}
                 >
@@ -1146,6 +1162,46 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </DialogHeader>
           <div className="space-y-2">
             <p className="text-sm whitespace-pre-wrap">{resultadoConsulta || 'Nenhum resultado registrado.'}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog motivo dispensada */}
+      <Dialog open={dispensadaMotivo !== null} onOpenChange={(open) => { if (!open) setDispensadaMotivo(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-destructive" /> Dispensar Avaliação
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Motivo <span className="text-destructive">*</span></Label>
+            <Textarea
+              value={dispensadaMotivo || ''}
+              onChange={(e) => setDispensadaMotivo(e.target.value)}
+              placeholder="Informe o motivo..."
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDispensadaMotivo(null)}>Cancelar</Button>
+              <Button
+                variant="destructive"
+                disabled={!dispensadaMotivo?.trim() || savingDispensada}
+                onClick={async () => {
+                  if (!dispensadaMotivo?.trim()) {
+                    toast.error('Informe o motivo');
+                    return;
+                  }
+                  setSavingDispensada(true);
+                  await handleStatusChange('dispensada', undefined, undefined, dispensadaMotivo.trim().toUpperCase());
+                  setSavingDispensada(false);
+                  setDispensadaMotivo(null);
+                }}
+              >
+                {savingDispensada ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Confirmar
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

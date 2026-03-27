@@ -248,7 +248,24 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       // Sync: perdido no showroom → perdido nas avaliações + reverter estoque
       if (value === 'perdido') {
+        // Get current avaliacoes before updating
+        const { data: avaliacoesData } = await supabase.from('avaliacoes').select('id, moto_avaliacao_id, situacao').eq('atendimento_id', atendimento.id);
         await supabase.from('avaliacoes').update({ situacao: 'perdido' }).eq('atendimento_id', atendimento.id);
+
+        // Record history for each avaliacao
+        if (avaliacoesData) {
+          for (const av of avaliacoesData) {
+            await supabase.from('status_history').insert({
+              entity_type: 'avaliacao',
+              entity_id: av.moto_avaliacao_id,
+              status_from: av.situacao || 'em_aberto',
+              status_to: 'perdido',
+              changed_by: user?.id,
+              changed_by_name: userName || user?.email || null,
+              observacoes: observacoes || null,
+            });
+          }
+        }
 
         // Reverter moto de interesse no estoque para disponível (só se pertence a este atendimento)
         for (const mi of motosInteresse) {
@@ -275,7 +292,22 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       }
       // Sync: dispensada no showroom → dispensada nas avaliações
       if (value === 'dispensada') {
+        const { data: avaliacoesData } = await supabase.from('avaliacoes').select('id, moto_avaliacao_id, situacao').eq('atendimento_id', atendimento.id);
         await supabase.from('avaliacoes').update({ situacao: 'dispensada' }).eq('atendimento_id', atendimento.id);
+
+        if (avaliacoesData) {
+          for (const av of avaliacoesData) {
+            await supabase.from('status_history').insert({
+              entity_type: 'avaliacao',
+              entity_id: av.moto_avaliacao_id,
+              status_from: av.situacao || 'em_aberto',
+              status_to: 'dispensada',
+              changed_by: user?.id,
+              changed_by_name: userName || user?.email || null,
+              observacoes: observacoes || null,
+            });
+          }
+        }
       }
 
       if (onStatusUpdated) {
