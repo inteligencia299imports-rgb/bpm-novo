@@ -1276,6 +1276,60 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </div>
         </DialogContent>
       </Dialog>
+      {/* Dialog Editar Cliente */}
+      <Dialog open={editClienteOpen} onOpenChange={setEditClienteOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Dados do Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Nome *</Label>
+              <Input
+                value={editNome}
+                onChange={e => {
+                  const formatted = e.target.value
+                    .toLowerCase()
+                    .replace(/(?:^|\s)\S/g, match => match.toUpperCase());
+                  setEditNome(formatted);
+                }}
+                placeholder="Nome Sobrenome"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Telefone *</Label>
+              <Input
+                value={editTelefone}
+                onChange={e => setEditTelefone(formatPhoneInput(e.target.value))}
+                placeholder="(61) 90000-0000"
+                maxLength={15}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sexo *</Label>
+              <Select value={editSexo} onValueChange={setEditSexo}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>UF *</Label>
+              <Select value={editUf} onValueChange={setEditUf}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
+              {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Salvar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
