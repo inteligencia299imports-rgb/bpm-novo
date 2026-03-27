@@ -284,6 +284,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       toast.success('Avaliação salva!');
       setShowEvalDialog(false);
       setAvaliacao((prev: any) => ({ ...prev, ...updateData }));
+      refreshHistory();
     }
     setSaving(false);
   };
