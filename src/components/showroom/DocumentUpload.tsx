@@ -83,7 +83,7 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
       <Button
         size="sm"
         variant="outline"
-        className="gap-1.5"
+        className={`gap-1.5 ${currentUrl ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`}
         disabled={uploading}
         onClick={() => {
           if (currentUrl) {
@@ -96,7 +96,7 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
         {uploading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : currentUrl ? (
-          <FileCheck className="h-4 w-4 text-green-600" />
+          <FileCheck className="h-4 w-4" />
         ) : (
           <FileUp className="h-4 w-4" />
         )}
