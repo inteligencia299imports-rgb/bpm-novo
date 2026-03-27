@@ -962,7 +962,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           className="gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
                           onClick={() => setShowResultadoConsulta((moto as any).resultado_consulta || 'Nenhum resultado registrado.')}
                         >
-                          <CheckCircle2 className="h-4 w-4" /> Consulta Realizada
+                          <CheckCircle2 className="h-4 w-4" /> Consulta Realizada ✓
                         </Button>
                       )}
                       {cnhUrl && crlvUrls[moto.id] && isAvaliada(moto.id) && (!(moto as any).consulta_solicitada || (moto as any).consulta_realizada) && (
