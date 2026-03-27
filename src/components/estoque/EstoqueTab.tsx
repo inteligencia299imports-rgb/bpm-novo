@@ -452,6 +452,26 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             )}
                           </div>
 
+                          {/* Datas e Vendedor */}
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground pt-1">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              Entrada: {format(new Date(item.data_entrada), 'dd/MM/yyyy', { locale: ptBR })}
+                            </span>
+                            {item.data_venda && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {item.status === 'sinal' ? 'Sinal' : 'Venda'}: {format(new Date(item.data_venda), 'dd/MM/yyyy', { locale: ptBR })}
+                              </span>
+                            )}
+                            {item.vendedor_nome && (
+                              <span className="flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                {item.vendedor_nome}
+                              </span>
+                            )}
+                          </div>
+
                           {item.observacoes && (
                             <p className="text-xs text-muted-foreground italic line-clamp-2">{item.observacoes}</p>
                           )}
