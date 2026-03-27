@@ -876,7 +876,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           <CheckCircle2 className="h-4 w-4" /> Consulta Realizada
                         </Button>
                       )}
-                      {cnhUrl && crlvUrls[moto.id] && (!(moto as any).consulta_solicitada || (moto as any).consulta_realizada) && (
+                      {cnhUrl && crlvUrls[moto.id] && isAvaliada(moto.id) && (!(moto as any).consulta_solicitada || (moto as any).consulta_realizada) && (
                         <Button
                           size="sm"
                           variant="outline"
