@@ -584,7 +584,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             </p>
                           </div>
                           {atendimento.loja?.toLowerCase() !== 'ducati' && (
-                            <Badge variant="outline" className="text-xs">Estoque</Badge>
+                            <Badge variant="outline" className={`text-xs ${
+                              estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
+                              estItem.status === 'sinal' ? 'border-[#7e6597] text-[#7e6597]' :
+                              ''
+                            }`}>
+                              {estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : 'Estoque'}
+                            </Badge>
                           )}
                         </div>
                         {atendimento.loja?.toLowerCase() === 'ducati' ? (
