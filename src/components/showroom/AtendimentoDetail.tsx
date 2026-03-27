@@ -82,6 +82,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
   const [savingMotivo, setSavingMotivo] = useState(false);
   const [showResultadoConsulta, setShowResultadoConsulta] = useState<string | null>(null);
+  const [editClienteOpen, setEditClienteOpen] = useState(false);
+  const [editNome, setEditNome] = useState('');
+  const [editTelefone, setEditTelefone] = useState('');
+  const [editSexo, setEditSexo] = useState('');
+  const [editUf, setEditUf] = useState('');
+  const [savingCliente, setSavingCliente] = useState(false);
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
