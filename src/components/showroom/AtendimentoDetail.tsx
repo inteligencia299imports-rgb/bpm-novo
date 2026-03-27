@@ -408,6 +408,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             vendidoPromises.push(supabase.from('avaliacoes').update(avUpdate).eq('id', av.id).then(r => r));
           }
         }
+        // Sync valor_fechamento to contratos table too
+        if (fechamento > 0) {
+          vendidoPromises.push(
+            supabase.from('contratos').update({ valor_fechamento: fechamento }).eq('atendimento_id', atendimento.id).then(r => r)
+          );
+        }
       }
       await Promise.all(vendidoPromises);
     }
