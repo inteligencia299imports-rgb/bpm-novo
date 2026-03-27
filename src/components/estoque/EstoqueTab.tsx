@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
