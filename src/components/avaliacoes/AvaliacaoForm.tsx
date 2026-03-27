@@ -916,6 +916,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       setTipoAquisicaoPopup(true);
                       return;
                     }
+                    if (btn.value === 'dispensada') {
+                      setDispensadaMotivo('');
+                      return;
+                    }
                     handleStatusChange(btn.value);
                   }}
                 >
