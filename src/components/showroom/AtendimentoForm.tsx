@@ -140,6 +140,35 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     setTelefone(formatPhone(e.target.value));
   };
 
+  const searchClientByPhone = useCallback(async () => {
+    if (isEditing) return;
+    const digits = unformatPhone(telefone);
+    if (digits.length !== 11) return;
+
+    setSearchingPhone(true);
+    try {
+      const { data } = await supabase
+        .from('atendimentos')
+        .select('nome_cliente, sexo, uf, origem')
+        .eq('telefone', digits)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        setNomeCliente(data.nome_cliente);
+        setSexo(data.sexo);
+        setUf(data.uf);
+        if (data.origem) setOrigem(data.origem);
+        toast.success('Cliente encontrado! Dados preenchidos automaticamente.');
+      }
+    } catch (err) {
+      console.error('Erro ao buscar cliente:', err);
+    } finally {
+      setSearchingPhone(false);
+    }
+  }, [telefone, isEditing]);
+
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
   const handleSave = async () => {
