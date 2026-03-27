@@ -141,7 +141,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   };
 
   const searchClientByPhone = useCallback(async () => {
-    if (isEditing) return;
     const digits = unformatPhone(telefone);
     if (digits.length !== 11) return;
 
