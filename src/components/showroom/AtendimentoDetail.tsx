@@ -279,7 +279,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               data_venda: null,
               valor_venda: null,
               valor_sinal: null,
-            }).eq('id', mi.estoque_moto_id).eq('atendimento_venda_id', atendimento.id));
+            }).eq('id', mi.estoque_moto_id).eq('atendimento_venda_id', atendimento.id).then(r => r));
           }
         }
 
