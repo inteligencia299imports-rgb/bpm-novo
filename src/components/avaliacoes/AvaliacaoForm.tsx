@@ -107,6 +107,22 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [deleting, setDeleting] = useState(false);
   const [custosOpen, setCustosOpen] = useState(false);
 
+  const refreshHistory = async () => {
+    if (!avaliacao) return;
+    const motoId = avaliacao.moto_avaliacao_id;
+    const atId = avaliacao.atendimento_id;
+    if (!motoId) return;
+    const [{ data: histAval }, { data: histShowroom }, { data: histConsignacao }] = await Promise.all([
+      supabase.from('status_history').select('*').in('entity_type', ['avaliacao', 'consulta']).eq('entity_id', motoId).order('created_at', { ascending: true }),
+      supabase.from('status_history').select('*').in('entity_type', ['showroom', 'contrato']).eq('entity_id', atId).order('created_at', { ascending: true }),
+      supabase.from('status_history').select('*').eq('entity_type', 'consignacao').eq('entity_id', avaliacao.id).order('created_at', { ascending: true }),
+    ]);
+    const merged = [...(histAval || []), ...(histShowroom || []), ...(histConsignacao || [])].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    setHistory(merged);
+  };
+
   const handleDeleteAvaliacao = async () => {
     setDeleting(true);
     try {
