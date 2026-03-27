@@ -725,6 +725,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       });
                       setConsultaSolicitada(true);
                       setConsultaRealizada(false);
+                      refreshHistory();
                       await supabase.rpc('notify_role', {
                         _role: 'secretaria',
                         _title: 'Consulta Solicitada',
