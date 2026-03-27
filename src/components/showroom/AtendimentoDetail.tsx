@@ -1294,11 +1294,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       </Dialog>
       {/* Dialog Editar Cliente */}
       <Dialog open={editClienteOpen} onOpenChange={setEditClienteOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Editar Dados do Cliente</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto flex-1 pr-1">
             <div className="space-y-1.5">
               <Label>Nome *</Label>
               <Input
