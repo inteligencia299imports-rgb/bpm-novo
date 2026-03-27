@@ -288,7 +288,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           for (const moto of motosAvaliacao) {
             const av = avaliacoes[moto.id];
             if (av) {
-              promises.push(supabase.from('estoque').delete().eq('avaliacao_id', av.id));
+              promises.push(supabase.from('estoque').delete().eq('avaliacao_id', av.id).then(r => r));
             }
           }
         }
