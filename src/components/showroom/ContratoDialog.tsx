@@ -170,7 +170,7 @@ const ContratoDialog: React.FC<Props> = ({
     if (!open) return;
     const loadContrato = async () => {
       setLoading(true);
-      const [{ data: contrato }, { data: histGerado }] = await Promise.all([
+      const [{ data: contrato }, { data: histGerado }, { data: freshAtendimento }] = await Promise.all([
         supabase
           .from('contratos')
           .select('*')
@@ -183,9 +183,17 @@ const ContratoDialog: React.FC<Props> = ({
           .eq('entity_id', atendimento.id)
           .eq('status_to', 'contrato_de_sinal')
           .limit(1),
+        supabase
+          .from('atendimentos')
+          .select('valor_sinal, valor_venda')
+          .eq('id', atendimento.id)
+          .maybeSingle(),
       ]);
 
       setJaGerado(!!(histGerado && histGerado.length > 0));
+
+      const atSinal = freshAtendimento?.valor_sinal ?? (atendimento as any).valor_sinal;
+      const atVenda = freshAtendimento?.valor_venda ?? (atendimento as any).valor_venda;
 
       if (contrato) {
         setContratoId(contrato.id);
@@ -201,8 +209,8 @@ const ContratoDialog: React.FC<Props> = ({
         setObsContrato(contrato.observacoes_contrato || '');
         setDataSinal(contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined);
         setDataVencimento(contrato.data_vencimento_sinal ? new Date(contrato.data_vencimento_sinal + 'T12:00:00') : undefined);
-        setValorSinal((atendimento as any).valor_sinal ? formatCurrencyInput(String(Math.round((atendimento as any).valor_sinal * 100))) : '');
-        setValorVenda((atendimento as any).valor_venda ? formatCurrencyInput(String(Math.round((atendimento as any).valor_venda * 100))) : '');
+        setValorSinal(atSinal ? formatCurrencyInput(String(Math.round(atSinal * 100))) : '');
+        setValorVenda(atVenda ? formatCurrencyInput(String(Math.round(atVenda * 100))) : '');
 
         // Load formas de pagamento
         const { data: formas } = await supabase
@@ -238,8 +246,8 @@ const ContratoDialog: React.FC<Props> = ({
         setDataSinal(undefined);
         setDataVencimento(undefined);
         setFormasPagamento([]);
-        setValorSinal((atendimento as any).valor_sinal ? formatCurrencyInput(String(Math.round((atendimento as any).valor_sinal * 100))) : '');
-        setValorVenda((atendimento as any).valor_venda ? formatCurrencyInput(String(Math.round((atendimento as any).valor_venda * 100))) : '');
+        setValorSinal(atSinal ? formatCurrencyInput(String(Math.round(atSinal * 100))) : '');
+        setValorVenda(atVenda ? formatCurrencyInput(String(Math.round(atVenda * 100))) : '');
       }
       setLoading(false);
     };
