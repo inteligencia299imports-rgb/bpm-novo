@@ -88,6 +88,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [editSexo, setEditSexo] = useState('');
   const [editUf, setEditUf] = useState('');
   const [savingCliente, setSavingCliente] = useState(false);
+  const [editCpfCnpj, setEditCpfCnpj] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editEndereco, setEditEndereco] = useState('');
+  const [editCep, setEditCep] = useState('');
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
@@ -346,6 +350,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setEditTelefone(formatPhoneInput(atendimento.telefone));
     setEditSexo(atendimento.sexo);
     setEditUf(atendimento.uf);
+    setEditCpfCnpj((atendimento as any).cpf_cnpj || '');
+    setEditEmail((atendimento as any).email || '');
+    setEditEndereco((atendimento as any).endereco || '');
+    setEditCep((atendimento as any).cep || '');
     setEditClienteOpen(true);
   };
 
@@ -361,7 +369,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       telefone: digits,
       sexo: editSexo,
       uf: editUf,
-    }).eq('id', atendimento.id);
+      cpf_cnpj: editCpfCnpj.trim() || null,
+      email: editEmail.trim() || null,
+      endereco: editEndereco.trim() || null,
+      cep: editCep.trim() || null,
+    } as any).eq('id', atendimento.id);
     setSavingCliente(false);
     if (error) {
       toast.error('Erro ao salvar dados do cliente');
@@ -504,6 +516,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 </div>
                 <InfoItem label="Sexo" value={atendimento.sexo} />
                 <InfoItem label="UF" value={atendimento.uf} />
+                <InfoItem label="CPF/CNPJ" value={(atendimento as any).cpf_cnpj} />
+                <InfoItem label="E-mail" value={(atendimento as any).email} />
+                <InfoItem label="Endereço" value={(atendimento as any).endereco} />
+                <InfoItem label="CEP" value={(atendimento as any).cep} />
               </div>
               <Separator className="my-2" />
               <DocumentUpload
@@ -1278,11 +1294,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       </Dialog>
       {/* Dialog Editar Cliente */}
       <Dialog open={editClienteOpen} onOpenChange={setEditClienteOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Editar Dados do Cliente</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto flex-1 pr-1">
             <div className="space-y-1.5">
               <Label>Nome *</Label>
               <Input
@@ -1322,6 +1338,39 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                   {UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>CPF/CNPJ</Label>
+              <Input
+                value={editCpfCnpj}
+                onChange={e => setEditCpfCnpj(e.target.value)}
+                placeholder="000.000.000-00"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>E-mail</Label>
+              <Input
+                type="email"
+                value={editEmail}
+                onChange={e => setEditEmail(e.target.value)}
+                placeholder="cliente@email.com"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Endereço</Label>
+              <Input
+                value={editEndereco}
+                onChange={e => setEditEndereco(e.target.value)}
+                placeholder="Rua, número, bairro, cidade"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>CEP</Label>
+              <Input
+                value={editCep}
+                onChange={e => setEditCep(e.target.value)}
+                placeholder="00000-000"
+              />
             </div>
             <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
               {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
