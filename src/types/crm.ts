@@ -113,7 +113,7 @@ export const SITUACOES_AVALIACAO: { value: SituacaoAvaliacao; label: string; col
 ];
 export const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'] as const;
 export const TIPOS_ATENDIMENTO = ['Presencial', 'Online'] as const;
-export const SEXOS = ['Masculino', 'Feminino', 'Outro'] as const;
+export const SEXOS = ['Masculino', 'Feminino'] as const;
 
 export const MARCAS_MOTO = [
   'Honda', 'Yamaha', 'Suzuki', 'Kawasaki', 'BMW', 'Ducati', 'Harley-Davidson',
