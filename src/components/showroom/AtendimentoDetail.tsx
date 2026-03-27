@@ -368,15 +368,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
     // Se vendido, vincular estoque ao atendimento e marcar como vendido
     if (newStatus === 'vendido') {
+      const vendidoPromises: PromiseLike<any>[] = [];
       for (const mi of motosInteresse) {
         if (mi.estoque_moto_id) {
-          await supabase.from('estoque').update({
+          vendidoPromises.push(supabase.from('estoque').update({
             atendimento_venda_id: atendimento.id,
             status: 'vendido',
             data_venda: new Date().toISOString(),
             valor_venda: venda > 0 ? venda : null,
             valor_sinal: sinal > 0 ? sinal : null,
-          }).eq('id', mi.estoque_moto_id);
+          }).eq('id', mi.estoque_moto_id).then(r => r));
         }
       }
 
@@ -391,10 +392,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               tipo_aquisicao: 'propria',
             };
             if (fechamento > 0) avUpdate.valor_fechamento = fechamento;
-            await supabase.from('avaliacoes').update(avUpdate).eq('id', av.id);
+            vendidoPromises.push(supabase.from('avaliacoes').update(avUpdate).eq('id', av.id).then(r => r));
           }
         }
       }
+      await Promise.all(vendidoPromises);
     }
 
     setSavingValor(false);
