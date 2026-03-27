@@ -56,7 +56,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
     const load = async () => {
       setLoading(true);
 
-      const queries: Promise<any>[] = [
+      const [{ data }, { data: avData }] = await Promise.all([
         supabase
           .from('pos_compra_processos' as any)
           .select('etapa, concluida, data_conclusao')
@@ -66,9 +66,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           .select('pos_compra_observacoes, pos_compra_status, moto_avaliacao_id')
           .eq('id', avaliacaoId)
           .maybeSingle(),
-      ];
-
-      const [{ data }, { data: avData }] = await Promise.all(queries);
+      ]);
 
       const motoId = motoAvaliacaoId || (avData as any)?.moto_avaliacao_id;
 
