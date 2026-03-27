@@ -1155,6 +1155,46 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog motivo dispensada */}
+      <Dialog open={dispensadaMotivo !== null} onOpenChange={(open) => { if (!open) setDispensadaMotivo(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-destructive" /> Dispensar Avaliação
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Motivo <span className="text-destructive">*</span></Label>
+            <Textarea
+              value={dispensadaMotivo || ''}
+              onChange={(e) => setDispensadaMotivo(e.target.value)}
+              placeholder="Informe o motivo..."
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDispensadaMotivo(null)}>Cancelar</Button>
+              <Button
+                variant="destructive"
+                disabled={!dispensadaMotivo?.trim() || savingDispensada}
+                onClick={async () => {
+                  if (!dispensadaMotivo?.trim()) {
+                    toast.error('Informe o motivo');
+                    return;
+                  }
+                  setSavingDispensada(true);
+                  await handleStatusChange('dispensada', undefined, undefined, dispensadaMotivo.trim().toUpperCase());
+                  setSavingDispensada(false);
+                  setDispensadaMotivo(null);
+                }}
+              >
+                {savingDispensada ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
