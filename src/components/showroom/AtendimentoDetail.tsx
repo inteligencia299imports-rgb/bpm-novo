@@ -949,7 +949,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             className="gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
                             onClick={() => setViewAvaliacaoData(avaliacoes[moto.id])}
                           >
-                            <Eye className="h-4 w-4" /> Avaliada
+                            <CheckCircle2 className="h-4 w-4" /> Avaliada ✓
                           </Button>
                         </>
                       ) : null}
