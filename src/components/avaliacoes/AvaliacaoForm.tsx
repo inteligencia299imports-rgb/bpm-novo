@@ -327,9 +327,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       }
       refreshHistory();
 
-      // Sync: dispensada em avaliação → dispensada no showroom
+      // Sync: dispensada em avaliação → dispensada no showroom + registrar histórico
       if (newStatus === 'dispensada' && avaliacao?.atendimento_id) {
+        const { data: atData } = await supabase.from('atendimentos').select('situacao').eq('id', avaliacao.atendimento_id).maybeSingle();
         await supabase.from('atendimentos').update({ situacao: 'dispensada' }).eq('id', avaliacao.atendimento_id);
+        await supabase.from('status_history').insert({
+          entity_type: 'showroom',
+          entity_id: avaliacao.atendimento_id,
+          status_from: atData?.situacao || 'em_aberto',
+          status_to: 'dispensada',
+          changed_by: user?.id,
+          changed_by_name: userName || user?.email || null,
+          observacoes: observacoes || null,
+        } as any);
       }
     }
   };
