@@ -584,7 +584,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             </p>
                           </div>
                           {atendimento.loja?.toLowerCase() !== 'ducati' && (
-                            <Badge variant="outline" className="text-xs">Estoque</Badge>
+                            <Badge variant="outline" className={`text-xs ${
+                              estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
+                              estItem.status === 'sinal' ? 'border-[#7e6597] text-[#7e6597]' :
+                              ''
+                            }`}>
+                              {estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : 'Estoque'}
+                            </Badge>
                           )}
                         </div>
                         {atendimento.loja?.toLowerCase() === 'ducati' ? (
@@ -987,6 +993,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                   }
                   if ((b.value === 'sinal' || b.value === 'vendido') && !motosInteresse.some(m => m.origem === 'estoque')) {
                     return false;
+                  }
+                  // Hide sinal/vendido if the estoque moto is already sold or reserved by another atendimento
+                  if ((b.value === 'sinal' || b.value === 'vendido')) {
+                    const motoEst = motosInteresse.find(m => m.origem === 'estoque' && m.estoque_moto_id);
+                    if (motoEst) {
+                      const est = estoqueData[motoEst.estoque_moto_id!];
+                      if (est && (est.status === 'vendido' || (est.status === 'sinal' && est.atendimento_venda_id && est.atendimento_venda_id !== atendimento.id))) {
+                        return false;
+                      }
+                    }
                   }
                   return true;
                 })
