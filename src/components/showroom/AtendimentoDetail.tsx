@@ -516,6 +516,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 </div>
                 <InfoItem label="Sexo" value={atendimento.sexo} />
                 <InfoItem label="UF" value={atendimento.uf} />
+                <InfoItem label="CPF/CNPJ" value={(atendimento as any).cpf_cnpj} />
+                <InfoItem label="E-mail" value={(atendimento as any).email} />
+                <InfoItem label="Endereço" value={(atendimento as any).endereco} />
+                <InfoItem label="CEP" value={(atendimento as any).cep} />
               </div>
               <Separator className="my-2" />
               <DocumentUpload
