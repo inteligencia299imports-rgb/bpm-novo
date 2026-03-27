@@ -369,7 +369,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       telefone: digits,
       sexo: editSexo,
       uf: editUf,
-    }).eq('id', atendimento.id);
+      cpf_cnpj: editCpfCnpj.trim() || null,
+      email: editEmail.trim() || null,
+      endereco: editEndereco.trim() || null,
+      cep: editCep.trim() || null,
+    } as any).eq('id', atendimento.id);
     setSavingCliente(false);
     if (error) {
       toast.error('Erro ao salvar dados do cliente');
