@@ -16,8 +16,12 @@ export type Database = {
     Tables: {
       atendimentos: {
         Row: {
+          cep: string | null
           cnh_url: string | null
+          cpf_cnpj: string | null
           created_at: string
+          email: string | null
+          endereco: string | null
           id: string
           interesse: string
           intermediacao_parte1_status: string
@@ -43,8 +47,12 @@ export type Database = {
           vendedor_id: string
         }
         Insert: {
+          cep?: string | null
           cnh_url?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
+          email?: string | null
+          endereco?: string | null
           id?: string
           interesse: string
           intermediacao_parte1_status?: string
@@ -70,8 +78,12 @@ export type Database = {
           vendedor_id: string
         }
         Update: {
+          cep?: string | null
           cnh_url?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
+          email?: string | null
+          endereco?: string | null
           id?: string
           interesse?: string
           intermediacao_parte1_status?: string
