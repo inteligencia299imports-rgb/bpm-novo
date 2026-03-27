@@ -1157,7 +1157,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       </ScrollArea>
 
       {/* Dialog de Fotos */}
-      <Dialog open={!!photoMotoId} onOpenChange={(o) => !o && setPhotoMotoId(null)}>
+      <Dialog open={!!photoMotoId} onOpenChange={async (o) => {
+        if (!o && photoMotoId) {
+          const { data } = await supabase.from('moto_fotos').select('id').eq('moto_avaliacao_id', photoMotoId);
+          setPhotoCountMap(prev => ({ ...prev, [photoMotoId]: data?.length || 0 }));
+          setPhotoMotoId(null);
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1166,7 +1172,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </DialogHeader>
           {photoMotoId && <PhotoUpload motoAvaliacaoId={photoMotoId} />}
           <div className="flex justify-end pt-2">
-            <Button size="sm" onClick={() => setPhotoMotoId(null)}>Salvar</Button>
+            <Button size="sm" onClick={async () => {
+              if (photoMotoId) {
+                const { data } = await supabase.from('moto_fotos').select('id').eq('moto_avaliacao_id', photoMotoId);
+                setPhotoCountMap(prev => ({ ...prev, [photoMotoId]: data?.length || 0 }));
+              }
+              setPhotoMotoId(null);
+            }}>Salvar</Button>
           </div>
         </DialogContent>
       </Dialog>
