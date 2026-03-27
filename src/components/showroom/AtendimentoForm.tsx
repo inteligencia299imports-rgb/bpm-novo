@@ -161,6 +161,12 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         setUf(data.uf);
         if (data.origem) setOrigem(data.origem);
         toast.success('Cliente encontrado! Dados preenchidos automaticamente.');
+      } else {
+        setNomeCliente('');
+        setSexo('');
+        setUf('DF');
+        setOrigem('');
+        toast.info('Cliente não encontrado. Preencha os dados manualmente.');
       }
     } catch (err) {
       console.error('Erro ao buscar cliente:', err);
