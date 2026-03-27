@@ -233,8 +233,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     if (error) {
       toast.error('Erro ao alterar status');
     } else {
-      // Record in status_history
-      await supabase.from('status_history').insert({
+      // Record in status_history (fire and forget for speed, await later)
+      const historyPromise = supabase.from('status_history').insert({
         entity_type: 'showroom',
         entity_id: atendimento.id,
         status_from: previousStatus,
@@ -242,20 +242,23 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         changed_by: user?.id,
         changed_by_name: userName || user?.email || null,
         observacoes: observacoes || null,
-      });
+      }).then(r => r);
 
       toast.success(`Status alterado para ${label}`);
 
       // Sync: perdido no showroom → perdido nas avaliações + reverter estoque
       if (value === 'perdido') {
-        // Get current avaliacoes before updating
         const { data: avaliacoesData } = await supabase.from('avaliacoes').select('id, moto_avaliacao_id, situacao').eq('atendimento_id', atendimento.id);
-        await supabase.from('avaliacoes').update({ situacao: 'perdido' }).eq('atendimento_id', atendimento.id);
+        
+        const promises: PromiseLike<any>[] = [
+          historyPromise,
+          supabase.from('avaliacoes').update({ situacao: 'perdido' }).eq('atendimento_id', atendimento.id).then(r => r),
+        ];
 
-        // Record history for each avaliacao
+        // Record history for each avaliacao in parallel
         if (avaliacoesData) {
           for (const av of avaliacoesData) {
-            await supabase.from('status_history').insert({
+            promises.push(supabase.from('status_history').insert({
               entity_type: 'avaliacao',
               entity_id: av.moto_avaliacao_id,
               status_from: av.situacao || 'em_aberto',
@@ -263,20 +266,20 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               changed_by: user?.id,
               changed_by_name: userName || user?.email || null,
               observacoes: observacoes || null,
-            });
+            }).then(r => r));
           }
         }
 
-        // Reverter moto de interesse no estoque para disponível (só se pertence a este atendimento)
+        // Reverter moto de interesse no estoque para disponível
         for (const mi of motosInteresse) {
           if (mi.estoque_moto_id) {
-            await supabase.from('estoque').update({
+            promises.push(supabase.from('estoque').update({
               status: 'disponivel',
               atendimento_venda_id: null,
               data_venda: null,
               valor_venda: null,
               valor_sinal: null,
-            }).eq('id', mi.estoque_moto_id).eq('atendimento_venda_id', atendimento.id);
+            }).eq('id', mi.estoque_moto_id).eq('atendimento_venda_id', atendimento.id).then(r => r));
           }
         }
 
@@ -285,19 +288,25 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           for (const moto of motosAvaliacao) {
             const av = avaliacoes[moto.id];
             if (av) {
-              await supabase.from('estoque').delete().eq('avaliacao_id', av.id);
+              promises.push(supabase.from('estoque').delete().eq('avaliacao_id', av.id).then(r => r));
             }
           }
         }
+
+        await Promise.all(promises);
       }
       // Sync: dispensada no showroom → dispensada nas avaliações
-      if (value === 'dispensada') {
+      else if (value === 'dispensada') {
         const { data: avaliacoesData } = await supabase.from('avaliacoes').select('id, moto_avaliacao_id, situacao').eq('atendimento_id', atendimento.id);
-        await supabase.from('avaliacoes').update({ situacao: 'dispensada' }).eq('atendimento_id', atendimento.id);
+        
+        const promises: PromiseLike<any>[] = [
+          historyPromise,
+          supabase.from('avaliacoes').update({ situacao: 'dispensada' }).eq('atendimento_id', atendimento.id).then(r => r),
+        ];
 
         if (avaliacoesData) {
           for (const av of avaliacoesData) {
-            await supabase.from('status_history').insert({
+            promises.push(supabase.from('status_history').insert({
               entity_type: 'avaliacao',
               entity_id: av.moto_avaliacao_id,
               status_from: av.situacao || 'em_aberto',
@@ -305,9 +314,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               changed_by: user?.id,
               changed_by_name: userName || user?.email || null,
               observacoes: observacoes || null,
-            });
+            }).then(r => r));
           }
         }
+
+        await Promise.all(promises);
+      } else {
+        await historyPromise;
       }
 
       if (onStatusUpdated) {
@@ -355,15 +368,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
     // Se vendido, vincular estoque ao atendimento e marcar como vendido
     if (newStatus === 'vendido') {
+      const vendidoPromises: PromiseLike<any>[] = [];
       for (const mi of motosInteresse) {
         if (mi.estoque_moto_id) {
-          await supabase.from('estoque').update({
+          vendidoPromises.push(supabase.from('estoque').update({
             atendimento_venda_id: atendimento.id,
             status: 'vendido',
             data_venda: new Date().toISOString(),
             valor_venda: venda > 0 ? venda : null,
             valor_sinal: sinal > 0 ? sinal : null,
-          }).eq('id', mi.estoque_moto_id);
+          }).eq('id', mi.estoque_moto_id).then(r => r));
         }
       }
 
@@ -378,10 +392,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               tipo_aquisicao: 'propria',
             };
             if (fechamento > 0) avUpdate.valor_fechamento = fechamento;
-            await supabase.from('avaliacoes').update(avUpdate).eq('id', av.id);
+            vendidoPromises.push(supabase.from('avaliacoes').update(avUpdate).eq('id', av.id).then(r => r));
           }
         }
       }
+      await Promise.all(vendidoPromises);
     }
 
     setSavingValor(false);
