@@ -27,7 +27,7 @@ export const INTERMEDIACAO_PARTE1_COLUMNS: { value: IntermediacaoParte1Status; l
 export const INTERMEDIACAO_PARTE2_COLUMNS: { value: IntermediacaoParte2Status; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
-  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#5e3984' },
+  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#7e6597' },
 ];
 
 export const INTERMEDIACAO_PARTE1_ETAPAS = [
