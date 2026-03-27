@@ -52,7 +52,7 @@ export const INTERMEDIACAO_PARTE2_ETAPAS = [
 export const POS_COMPRA_COLUMNS: { value: PosCompraStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
-  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#5e3984' },
+  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#7e6597' },
   { value: 'pausado', label: 'Pausado', hex: '#FF8C00' },
 ];
 
