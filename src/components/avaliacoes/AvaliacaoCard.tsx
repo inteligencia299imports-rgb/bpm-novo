@@ -125,6 +125,21 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen, estoqueInfo }) => {
               </Badge>
             )}
           </div>
+          {(() => {
+            const estDisplay = estoqueInfo ? ESTOQUE_STATUS_DISPLAY[estoqueInfo.status] : null;
+            if (!estDisplay) return null;
+            return (
+              <div className="space-y-1">
+                <Badge variant="outline" className={`text-[10px] gap-1 ${estDisplay.className}`}>
+                  {estDisplay.icon}
+                  {estDisplay.label}
+                </Badge>
+                {estoqueInfo?.observacoes && (
+                  <p className="text-[10px] italic text-muted-foreground line-clamp-2">{estoqueInfo.observacoes}</p>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
