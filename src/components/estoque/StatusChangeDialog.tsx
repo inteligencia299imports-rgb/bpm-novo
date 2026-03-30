@@ -16,7 +16,14 @@ interface StatusChangeDialogProps {
   onSuccess: () => void;
 }
 
-const STATUS_OPTIONS = [
+const ALL_STATUS_OPTIONS = [
+  {
+    value: 'disponivel',
+    label: 'DISPONÍVEL',
+    icon: <CircleCheck className="h-4 w-4" />,
+    colorClass: 'text-success',
+    borderClass: 'border-success/50 bg-success/5',
+  },
   {
     value: 'indisponivel_manual',
     label: 'INDISPONÍVEL',
