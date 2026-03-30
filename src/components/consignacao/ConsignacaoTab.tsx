@@ -33,15 +33,20 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('avaliacoes')
-      .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, observacoes)`)
-      .eq('tipo_aquisicao', 'consignada')
-      .order('updated_at', { ascending: false });
+    const [{ data, error }, { data: estData }] = await Promise.all([
+      supabase
+        .from('avaliacoes')
+        .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, observacoes)`)
+        .eq('tipo_aquisicao', 'consignada')
+        .order('updated_at', { ascending: false }),
+      supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null),
+    ]);
     if (error) { toast.error('Erro ao carregar consignações'); } else {
+      const estoqueMap: Record<string, { status: string; observacoes: string | null }> = {};
+      (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes }; });
       let mapped = (data || [])
         .filter((d: any) => (d.consignacao_status || 'em_aberto') !== 'concluido')
-        .map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao }));
+        .map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       setItems(mapped);
     }
@@ -86,7 +91,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
                     {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => (
                       <ProcessCard key={a.id} clientName={a.atendimento?.nome_cliente || 'N/A'} phone={a.atendimento?.telefone}
                         motoLabel={a.moto ? [a.moto.placa?.replace(/-/g, ''), `${a.moto.marca} ${(a.moto.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
-                        loja={a.atendimento?.loja} date={a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />
+                        loja={a.atendimento?.loja} date={a.updated_at} statusColor={col.hex} estoqueInfo={a._estoqueInfo} onClick={() => setSelectedItem(a)} />
                     ))}
                   </div>
                 </div>

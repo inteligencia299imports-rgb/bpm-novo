@@ -38,7 +38,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     // Fetch atendimentos and all estoque for vendidos in parallel
     const [atRes, estRes] = await Promise.all([
       supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }),
-      supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa').eq('tipo', 'propria'),
+      supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes').eq('tipo', 'propria'),
     ]);
 
     if (atRes.error) { toast.error('Erro ao carregar pós-venda'); setLoading(false); return; }
@@ -99,9 +99,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
                     {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => {
                       const est = a._estoqueMoto;
                       return (
-                        <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone}
+                         <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone}
                           motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
-                          loja={a.loja} date={a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />
+                          loja={a.loja} date={a.updated_at} statusColor={col.hex}
+                          estoqueInfo={est ? { status: est.status, observacoes: est.observacoes } : null}
+                          onClick={() => setSelectedItem(a)} />
                       );
                     })}
                   </div>

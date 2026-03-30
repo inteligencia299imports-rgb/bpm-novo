@@ -34,23 +34,30 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
 
   const fetchAvaliacoes = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('avaliacoes')
-      .select(`
-        *,
-        atendimentos!inner (id, nome_cliente, telefone, loja, vendedor_id, interesse, cpf_cnpj, email, cep, endereco),
-        motos_avaliacao!inner (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria)
-      `)
-      .order('created_at', { ascending: false });
+    const [{ data, error }, { data: estData }] = await Promise.all([
+      supabase
+        .from('avaliacoes')
+        .select(`
+          *,
+          atendimentos!inner (id, nome_cliente, telefone, loja, vendedor_id, interesse, cpf_cnpj, email, cep, endereco),
+          motos_avaliacao!inner (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria)
+        `)
+        .order('created_at', { ascending: false }),
+      supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null),
+    ]);
 
     if (error) {
       toast.error('Erro ao carregar avaliações');
       console.error(error);
     } else {
+      const estoqueMap: Record<string, { status: string; observacoes: string | null }> = {};
+      (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes }; });
+
       let mapped = (data || []).map((d: any) => ({
         ...d,
         atendimento: d.atendimentos,
         moto_avaliacao: d.motos_avaliacao,
+        _estoqueInfo: estoqueMap[d.id] || null,
       }));
       if (search.trim()) {
         const s = search.trim().toLowerCase();
@@ -143,7 +150,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
                       <p className="text-xs text-muted-foreground text-center py-8">Nenhuma avaliação</p>
                     ) : (
                       items.map(a => (
-                        <AvaliacaoCard key={a.id} avaliacao={a} onOpen={() => setSelectedId(a.id)} role={role} />
+                        <AvaliacaoCard key={a.id} avaliacao={a} onOpen={() => setSelectedId(a.id)} role={role} estoqueInfo={(a as any)._estoqueInfo} />
                       ))
                     )}
                   </div>
