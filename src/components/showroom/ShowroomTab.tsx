@@ -86,7 +86,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       if (estoqueIds.length > 0) {
         const { data: estoqueData } = await supabase
           .from('estoque')
-          .select('id, modelo, marca, cor, placa, preco, preco_acao')
+          .select('id, modelo, marca, cor, placa, preco, preco_acao, status, observacoes')
           .in('id', [...new Set(estoqueIds)]);
         if (estoqueData) {
           const estoqueMap: Record<string, any> = {};
