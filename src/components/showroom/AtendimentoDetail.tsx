@@ -379,23 +379,26 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     const label = newStatus === 'vendido' ? 'Vendido' : 'Sinal';
     await handleStatusChange(newStatus as SituacaoShowroom, label, updateData);
 
-    // Se vendido, vincular estoque ao atendimento e marcar como vendido
-    if (newStatus === 'vendido') {
+    // Se vendido ou sinal, vincular estoque ao atendimento e atualizar status
+    if (newStatus === 'vendido' || newStatus === 'sinal') {
       const vendidoPromises: PromiseLike<any>[] = [];
       for (const mi of motosInteresse) {
         if (mi.estoque_moto_id) {
-          vendidoPromises.push(supabase.from('estoque').update({
+          const estoqueUpdate: any = {
             atendimento_venda_id: atendimento.id,
-            status: 'vendido',
-            data_venda: new Date().toISOString(),
+            status: newStatus === 'vendido' ? 'vendido' : 'sinal',
             valor_venda: venda > 0 ? venda : null,
             valor_sinal: sinal > 0 ? sinal : null,
-          }).eq('id', mi.estoque_moto_id).then(r => r));
+          };
+          if (newStatus === 'vendido') {
+            estoqueUpdate.data_venda = new Date().toISOString();
+          }
+          vendidoPromises.push(supabase.from('estoque').update(estoqueUpdate).eq('id', mi.estoque_moto_id).then(r => r));
         }
       }
 
       // Se for troca e vendido, marcar todas as avaliações como adquirida/própria com valor de fechamento
-      if (atendimento.interesse === 'trocar') {
+      if (newStatus === 'vendido' && atendimento.interesse === 'trocar') {
         const fechamento = parseCurrencyInput(valorPopup.valorFechamento);
         for (const moto of motosAvaliacao) {
           const av = avaliacoes[moto.id];
