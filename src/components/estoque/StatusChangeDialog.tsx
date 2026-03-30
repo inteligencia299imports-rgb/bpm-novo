@@ -105,7 +105,7 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
 
         <div className="space-y-4 pt-2">
           <RadioGroup value={selectedStatus} onValueChange={setSelectedStatus} className="space-y-2">
-            {STATUS_OPTIONS.map((opt) => (
+            {ALL_STATUS_OPTIONS.filter(opt => opt.value !== estoqueItem?.status).map((opt) => (
               <Label
                 key={opt.value}
                 htmlFor={opt.value}
