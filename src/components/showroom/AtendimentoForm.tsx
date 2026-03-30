@@ -380,7 +380,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               <Input
                 value={telefone}
                 onChange={handlePhoneChange}
-                onBlur={searchClientByPhone}
+                
                 placeholder="(61) 90000-0000"
                 maxLength={15}
                 className="flex-1"
