@@ -4,7 +4,6 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,13 +11,7 @@ import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake,
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 import {
   Popover,
   PopoverContent,
@@ -108,8 +101,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const PAGE_SIZE = 20;
   const [allMarcas, setAllMarcas] = useState<string[]>([]);
   const [reenviarItem, setReenviarItem] = useState<EstoqueItem | null>(null);
-  const [reenviarObs, setReenviarObs] = useState('');
-  const [reenviarSaving, setReenviarSaving] = useState(false);
+  const [reenviarAvaliacaoData, setReenviarAvaliacaoData] = useState<any>(null);
+  const [reenviarLoading, setReenviarLoading] = useState(false);
 
   useEffect(() => {
     let query = supabase.from('estoque').select('marca');
@@ -176,6 +169,30 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
   const nav = (target: EstoqueNavTarget) => {
     if (onNavigateToTab) onNavigateToTab(target);
+  };
+
+  const handleOpenReenviar = async (item: EstoqueItem) => {
+    setReenviarItem(item);
+    setReenviarLoading(true);
+    try {
+      const { data: avaliacao } = await supabase
+        .from('avaliacoes')
+        .select('*, motos_avaliacao(*), atendimentos:atendimento_id(nome_cliente, loja)')
+        .eq('id', item.avaliacao_id!)
+        .single();
+      if (avaliacao) {
+        setReenviarAvaliacaoData({
+          ...avaliacao,
+          moto: avaliacao.motos_avaliacao,
+          atendimento: avaliacao.atendimentos,
+          moto_avaliacao_id: avaliacao.moto_avaliacao_id,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setReenviarLoading(false);
+    }
   };
 
   const getNavigationOptions = (item: EstoqueItem) => {
@@ -247,7 +264,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       options.push({
         label: 'Preparação',
         icon: <Wrench className="h-4 w-4" />,
-        action: () => setReenviarItem(item),
+        action: () => handleOpenReenviar(item),
       });
     } else if (item.avaliacao_id && item.status === 'indisponivel') {
       options.push({
@@ -546,95 +563,26 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       )}
     </div>
 
-      {/* Dialog Reenviar para Preparação */}
-      <Dialog open={!!reenviarItem} onOpenChange={(open) => { if (!open) { setReenviarItem(null); setReenviarObs(''); } }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-warning" />
-              Reenviar para Preparação
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              A moto <strong>{reenviarItem?.modelo}</strong> {reenviarItem?.placa ? `(${reenviarItem.placa})` : ''} será marcada como <strong>Indisponível</strong> e reenviada para preparação.
-            </p>
-            <div>
-              <label className="text-sm font-medium text-foreground">Motivo / Observação *</label>
-              <Textarea
-                placeholder="Descreva o motivo do reenvio para preparação..."
-                value={reenviarObs}
-                onChange={e => setReenviarObs(e.target.value)}
-                className="mt-1.5"
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setReenviarItem(null); setReenviarObs(''); }}>Cancelar</Button>
-            <Button
-              disabled={reenviarSaving}
-              onClick={async () => {
-                if (!reenviarObs.trim()) {
-                  toast.error('A observação é obrigatória');
-                  return;
-                }
-                if (!reenviarItem?.avaliacao_id) return;
-                setReenviarSaving(true);
-                try {
-                  const { data: { user: currentUser } } = await supabase.auth.getUser();
-                  let userName = 'Usuário';
-                  if (currentUser) {
-                    const { data: roleData } = await supabase.from('user_roles').select('nome').eq('user_id', currentUser.id).maybeSingle();
-                    if (roleData?.nome) userName = roleData.nome;
-                  }
-
-                  // Update estoque status to indisponivel and save observation
-                  const { error: estoqueErr } = await supabase.from('estoque').update({
-                    status: 'indisponivel',
-                    observacoes: reenviarObs.trim(),
-                  }).eq('id', reenviarItem.id);
-
-                  if (estoqueErr) { toast.error('Erro ao atualizar estoque'); return; }
-
-                  // Update avaliação preparacao_status back to em_aberto
-                  const { error: avalErr } = await supabase.from('avaliacoes').update({
-                    preparacao_status: 'em_aberto',
-                  } as any).eq('id', reenviarItem.avaliacao_id);
-
-                  if (avalErr) { toast.error('Erro ao atualizar preparação'); return; }
-
-                  // Record in status_history
-                  if (currentUser) {
-                    await supabase.from('status_history').insert({
-                      entity_id: reenviarItem.avaliacao_id,
-                      entity_type: 'preparacao',
-                      status_from: 'estoque',
-                      status_to: 'reenviada_preparacao',
-                      observacoes: reenviarObs.trim(),
-                      changed_by: currentUser.id,
-                      changed_by_name: userName,
-                    });
-                  }
-
-                  toast.success('Moto reenviada para preparação');
-                  setReenviarItem(null);
-                  setReenviarObs('');
-                  fetchEstoque();
-                } catch (err) {
-                  console.error(err);
-                  toast.error('Erro ao reenviar para preparação');
-                } finally {
-                  setReenviarSaving(false);
-                }
-              }}
-            >
-              <Wrench className="h-4 w-4 mr-1.5" />
-              {reenviarSaving ? 'Salvando...' : 'Confirmar Reenvio'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Dialog Reenviar para Preparação via PreparacaoProcessoDialog */}
+      {reenviarItem?.avaliacao_id && (
+        <PreparacaoProcessoDialog
+          open={!!reenviarItem}
+          onOpenChange={(open) => { if (!open) { setReenviarItem(null); setReenviarAvaliacaoData(null); } }}
+          avaliacaoId={reenviarItem.avaliacao_id}
+          currentStatus="estoque"
+          avaliacaoData={reenviarAvaliacaoData}
+          reenviarFromEstoque={{
+            estoqueItemId: reenviarItem.id,
+            modelo: reenviarItem.modelo,
+            placa: reenviarItem.placa,
+          }}
+          onReenviarSuccess={() => {
+            setReenviarItem(null);
+            setReenviarAvaliacaoData(null);
+            fetchEstoque();
+          }}
+        />
+      )}
     </>
   );
 };
