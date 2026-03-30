@@ -171,6 +171,19 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
       }));
       setItems(mapped);
+
+      // Fetch which items have history
+      const estoqueIds = (data || []).map((d: any) => d.id);
+      if (estoqueIds.length > 0) {
+        const { data: histData } = await supabase
+          .from('status_history')
+          .select('entity_id')
+          .eq('entity_type', 'estoque')
+          .in('entity_id', estoqueIds);
+        setIdsWithHistory(new Set((histData || []).map((h: any) => h.entity_id)));
+      } else {
+        setIdsWithHistory(new Set());
+      }
     } catch (err: any) {
       toast.error('Erro ao carregar estoque');
       console.error(err);
