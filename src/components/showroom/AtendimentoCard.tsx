@@ -138,24 +138,6 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
 
           {actions && <div className="pt-1">{actions}</div>}
 
-          {/* Estoque status from motos_interesse */}
-          {(() => {
-            const motoEst = atendimento.motos_interesse?.find((m: any) => m.origem === 'estoque' && m._estoque);
-            if (!motoEst?._estoque) return null;
-            const estDisplay = ESTOQUE_STATUS_DISPLAY[motoEst._estoque.status];
-            if (!estDisplay) return null;
-            return (
-              <div className="space-y-1">
-                <Badge variant="outline" className={`text-[10px] gap-1 ${estDisplay.className}`}>
-                  {estDisplay.icon}
-                  {estDisplay.label}
-                </Badge>
-                {motoEst._estoque.observacoes && (
-                  <p className="text-[10px] italic text-muted-foreground line-clamp-2">{motoEst._estoque.observacoes}</p>
-                )}
-              </div>
-            );
-          })()}
 
         </div>
       </div>
