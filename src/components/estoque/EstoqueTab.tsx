@@ -12,6 +12,7 @@ import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake,
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 import {
   Dialog,
   DialogContent,
