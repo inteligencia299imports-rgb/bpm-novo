@@ -77,7 +77,7 @@ interface EstoqueItem {
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   disponivel: { label: 'Disponível', color: 'bg-success/15 text-success' },
-  reservada: { label: 'Reservada', color: 'bg-warning/15 text-warning' },
+  sinal: { label: 'Sinal', color: 'bg-[#7e6597]/15 text-[#7e6597]' },
   vendido: { label: 'Vendida', color: 'bg-muted text-muted-foreground' },
   indisponivel: { label: 'Indisponível', color: 'bg-destructive/15 text-destructive' },
 };
