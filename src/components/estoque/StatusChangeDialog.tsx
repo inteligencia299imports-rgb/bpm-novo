@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { AlertTriangle, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, CheckCircle, Loader2 } from 'lucide-react';
 
 interface StatusChangeDialogProps {
   open: boolean;
@@ -120,7 +120,7 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
             disabled={!selectedStatus || !observacao.trim() || loading}
             className="w-full"
           >
-            {loading ? 'Salvando...' : 'Confirmar Alteração'}
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando...</> : <><CheckCircle className="h-4 w-4" /> Confirmar Alteração</>}
           </Button>
         </div>
       </DialogContent>
