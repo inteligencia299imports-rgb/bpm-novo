@@ -332,6 +332,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                   <SelectItem value="todos">Todos</SelectItem>
                   <SelectItem value="disponivel">Disponível</SelectItem>
                   <SelectItem value="indisponivel">Serviço</SelectItem>
+                  <SelectItem value="indisponivel_manual">Indisponível</SelectItem>
+                  <SelectItem value="bloqueio_juridico">Bloqueio Jurídico</SelectItem>
                   <SelectItem value="sinal">Sinal</SelectItem>
                   <SelectItem value="vendido">Vendida</SelectItem>
                 </SelectContent>
