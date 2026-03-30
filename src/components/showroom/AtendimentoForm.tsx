@@ -388,16 +388,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 maxLength={15}
                 className="flex-1"
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={searchClientByPhone}
-                disabled={!isPhoneValid || searchingPhone}
-                title="Buscar cliente"
-              >
-                {searchingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              </Button>
+              {searchingPhone && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
             {telefone && !isPhoneValid && (
               <p className="text-xs text-destructive">Telefone deve ter 11 dígitos</p>
