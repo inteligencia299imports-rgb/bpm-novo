@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { AlertTriangle, ShieldAlert, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, CheckCircle, Loader2, CircleCheck } from 'lucide-react';
 
 interface StatusChangeDialogProps {
   open: boolean;
@@ -16,7 +16,14 @@ interface StatusChangeDialogProps {
   onSuccess: () => void;
 }
 
-const STATUS_OPTIONS = [
+const ALL_STATUS_OPTIONS = [
+  {
+    value: 'disponivel',
+    label: 'DISPONÍVEL',
+    icon: <CircleCheck className="h-4 w-4" />,
+    colorClass: 'text-success',
+    borderClass: 'border-success/50 bg-success/5',
+  },
   {
     value: 'indisponivel_manual',
     label: 'INDISPONÍVEL',
@@ -41,20 +48,28 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
 
   const handleConfirm = async () => {
     if (!estoqueItem || !selectedStatus) return;
-    if (!observacao.trim()) {
+    if (selectedStatus !== 'disponivel' && !observacao.trim()) {
       toast.error('Informe uma observação');
       return;
     }
 
     setLoading(true);
     try {
-      const dbStatus = selectedStatus === 'indisponivel_manual' ? 'indisponivel_manual' : 'bloqueio_juridico';
-      const statusLabel = selectedStatus === 'indisponivel_manual' ? 'INDISPONÍVEL' : 'BLOQUEIO JURÍDICO';
+      const statusLabelMap: Record<string, string> = {
+        disponivel: 'DISPONÍVEL',
+        indisponivel_manual: 'INDISPONÍVEL',
+        bloqueio_juridico: 'BLOQUEIO JURÍDICO',
+      };
+      const statusLabel = statusLabelMap[selectedStatus] || selectedStatus;
 
-      const { error: updateErr } = await supabase.from('estoque').update({
-        status: dbStatus,
-        observacoes: observacao.trim(),
-      }).eq('id', estoqueItem.id);
+      const updateData: any = { status: selectedStatus };
+      if (selectedStatus === 'disponivel') {
+        updateData.observacoes = null;
+      } else {
+        updateData.observacoes = observacao.trim();
+      }
+
+      const { error: updateErr } = await supabase.from('estoque').update(updateData).eq('id', estoqueItem.id);
 
       if (updateErr) throw updateErr;
 
@@ -90,7 +105,7 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
 
         <div className="space-y-4 pt-2">
           <RadioGroup value={selectedStatus} onValueChange={setSelectedStatus} className="space-y-2">
-            {STATUS_OPTIONS.map((opt) => (
+            {ALL_STATUS_OPTIONS.filter(opt => opt.value !== estoqueItem?.status).map((opt) => (
               <Label
                 key={opt.value}
                 htmlFor={opt.value}
