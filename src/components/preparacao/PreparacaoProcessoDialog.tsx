@@ -629,6 +629,72 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
             {isReadOnly ? (
               <div className="text-sm text-muted-foreground italic py-2">Visualização somente leitura.</div>
+            ) : reenviarFromEstoque ? (
+              /* Reenviar from Estoque mode: only show reenviar button with alert */
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                  <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+                  <p className="text-sm text-foreground">
+                    A moto <strong>{reenviarFromEstoque.modelo}</strong> {reenviarFromEstoque.placa ? `(${reenviarFromEstoque.placa})` : ''} será marcada como <strong>Indisponível</strong> e reenviada para preparação.
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground">Motivo / Observação *</label>
+                  <Textarea
+                    placeholder="Descreva o motivo do reenvio para preparação..."
+                    value={reenviarObs}
+                    onChange={e => setReenviarObs(e.target.value)}
+                    className="mt-1.5"
+                    rows={3}
+                  />
+                </div>
+                <Button
+                  disabled={saving}
+                  onClick={async () => {
+                    if (!reenviarObs.trim()) {
+                      toast.error('A observação é obrigatória');
+                      return;
+                    }
+                    setSaving(true);
+                    try {
+                      const { user, userName } = await getUserInfo();
+                      if (!user) { toast.error('Sessão expirada'); return; }
+
+                      // Update estoque status to indisponivel
+                      const { error: estoqueErr } = await supabase.from('estoque').update({
+                        status: 'indisponivel',
+                        observacoes: reenviarObs.trim(),
+                      }).eq('id', reenviarFromEstoque.estoqueItemId);
+                      if (estoqueErr) { toast.error('Erro ao atualizar estoque'); return; }
+
+                      // Update avaliação preparacao_status back to em_aberto
+                      await supabase.from('avaliacoes').update({ preparacao_status: 'em_aberto' } as any).eq('id', avaliacaoId);
+
+                      // Record in status_history
+                      await insertHistory({
+                        statusFrom: 'estoque',
+                        statusTo: 'reenviada_preparacao',
+                        observacoes: reenviarObs.trim(),
+                        changedBy: user.id,
+                        changedByName: userName,
+                      });
+
+                      toast.success('Moto reenviada para preparação');
+                      onReenviarSuccess?.();
+                      onOpenChange(false);
+                    } catch (err) {
+                      console.error(err);
+                      toast.error('Erro ao reenviar para preparação');
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  className="gap-2 w-full h-10 text-sm font-medium"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+                  Confirmar Reenvio
+                </Button>
+              </div>
             ) : isEstoqueIdle ? (
               /* Estoque idle: show button to send to preparação for tracking */
               <div className="space-y-3">
