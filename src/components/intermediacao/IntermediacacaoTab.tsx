@@ -80,7 +80,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, onInitialHandled }: Intermed
       const { data: avalData } = await supabase.from('avaliacoes').select('id, atendimento_id').in('id', avaliacaoIds);
       if (avalData && avalData.length > 0) {
         const ownerAtIds = avalData.map((a: any) => a.atendimento_id).filter(Boolean);
-        const { data: ownerData } = await supabase.from('atendimentos').select('id, nome_cliente, telefone, loja').in('id', ownerAtIds);
+        const { data: ownerData } = await supabase.from('atendimentos').select('id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco').in('id', ownerAtIds);
         const ownerMap: Record<string, any> = {};
         (ownerData || []).forEach((o: any) => { ownerMap[o.id] = o; });
         const avalToOwner: Record<string, any> = {};
