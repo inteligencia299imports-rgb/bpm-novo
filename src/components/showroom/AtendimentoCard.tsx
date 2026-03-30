@@ -1,11 +1,18 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Bike, Calendar, ArrowLeftRight } from 'lucide-react';
+import { Phone, Bike, Calendar, ArrowLeftRight, AlertTriangle, ShieldAlert } from 'lucide-react';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import { STATUS_COLORS } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatPlaca, formatModelo } from '@/lib/utils';
+import type { EstoqueInfo } from '@/components/shared/ProcessCard';
+
+const ESTOQUE_STATUS_DISPLAY: Record<string, { label: string; className: string; icon?: React.ReactNode }> = {
+  indisponivel: { label: 'Serviço', className: 'bg-orange-500/15 text-orange-600 border-orange-500/30' },
+  indisponivel_manual: { label: 'Indisponível', className: 'bg-destructive/15 text-destructive border-destructive/30', icon: <AlertTriangle className="h-3 w-3" /> },
+  bloqueio_juridico: { label: 'Bloqueio Jurídico', className: 'bg-muted text-muted-foreground border-muted-foreground/30', icon: <ShieldAlert className="h-3 w-3" /> },
+};
 
 interface Props {
   atendimento: Atendimento & { motos_interesse?: any[]; motos_avaliacao?: any[] };
