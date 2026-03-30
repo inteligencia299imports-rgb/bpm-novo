@@ -353,7 +353,18 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                               </p>
                             </div>
                             {item.loja?.toLowerCase() !== 'ducati' && (
-                              <Badge variant="outline" className="text-xs">Estoque</Badge>
+                              <Badge variant="outline" className={`text-xs gap-1 ${
+                                estItem.status === 'indisponivel' ? 'border-orange-500 text-orange-600' :
+                                estItem.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
+                                estItem.status === 'bloqueio_juridico' ? 'border-muted-foreground text-muted-foreground' :
+                                estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
+                                estItem.status === 'sinal' ? 'border-[#7e6597] text-[#7e6597]' :
+                                ''
+                              }`}>
+                                {estItem.status === 'indisponivel_manual' && <AlertTriangle className="h-3 w-3" />}
+                                {estItem.status === 'bloqueio_juridico' && <ShieldAlert className="h-3 w-3" />}
+                                {estItem.status === 'indisponivel' ? 'Serviço' : estItem.status === 'indisponivel_manual' ? 'Indisponível' : estItem.status === 'bloqueio_juridico' ? 'Bloqueio Jurídico' : estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : 'Estoque'}
+                              </Badge>
                             )}
                           </div>
                           {item.loja?.toLowerCase() === 'ducati' ? (
