@@ -109,6 +109,27 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [reenviarAvaliacaoData, setReenviarAvaliacaoData] = useState<any>(null);
   const [reenviarLoading, setReenviarLoading] = useState(false);
   const [statusChangeItem, setStatusChangeItem] = useState<EstoqueItem | null>(null);
+  const [historyItem, setHistoryItem] = useState<EstoqueItem | null>(null);
+  const [historyEntries, setHistoryEntries] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const handleOpenHistory = async (item: EstoqueItem) => {
+    setHistoryItem(item);
+    setHistoryLoading(true);
+    try {
+      const { data } = await supabase
+        .from('status_history')
+        .select('*')
+        .eq('entity_id', item.id)
+        .eq('entity_type', 'estoque')
+        .order('created_at', { ascending: false });
+      setHistoryEntries(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   useEffect(() => {
     let query = supabase.from('estoque').select('marca');
