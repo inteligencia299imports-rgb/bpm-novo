@@ -172,7 +172,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   };
 
   const handleOpenReenviar = async (item: EstoqueItem) => {
-    setReenviarItem(item);
     setReenviarLoading(true);
     try {
       const { data: avaliacao } = await supabase
@@ -188,6 +187,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           moto_avaliacao_id: avaliacao.moto_avaliacao_id,
         });
       }
+      // Only open dialog after data is ready
+      setReenviarItem(item);
     } catch (err) {
       console.error(err);
     } finally {
