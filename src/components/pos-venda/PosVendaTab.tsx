@@ -38,7 +38,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     // Fetch atendimentos and all estoque for vendidos in parallel
     const [atRes, estRes] = await Promise.all([
       supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }),
-      supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa').eq('tipo', 'propria'),
+      supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes').eq('tipo', 'propria'),
     ]);
 
     if (atRes.error) { toast.error('Erro ao carregar pós-venda'); setLoading(false); return; }
