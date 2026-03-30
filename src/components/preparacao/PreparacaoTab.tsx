@@ -95,6 +95,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
                       <ProcessCard key={a.id} clientName={a.atendimento?.nome_cliente || 'N/A'}
                         motoLabel={a.moto ? [(a.moto.modelo || '').toUpperCase(), a.moto.placa?.replace(/-/g, '')].filter(Boolean).join(' - ') : undefined}
                         loja={a.atendimento?.loja} date={a.updated_at} statusColor={col.hex}
+                        estoqueInfo={a._estoqueInfo}
                         extraBadge={a.tipo_aquisicao ? { label: a.tipo_aquisicao === 'consignada' ? 'Consignada' : a.tipo_aquisicao === 'convertida' ? 'Convertida' : 'Própria', className: a.tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : a.tipo_aquisicao === 'convertida' ? 'border-blue-800 text-blue-800' : 'border-green-500 text-green-600' } : undefined}
                         onClick={() => setSelectedItem(a)} />
                     ))}

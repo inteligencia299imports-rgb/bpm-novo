@@ -94,7 +94,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
                     {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => (
                       <ProcessCard key={a.id} clientName={a.atendimento?.nome_cliente || 'N/A'} phone={a.atendimento?.telefone}
                         motoLabel={a.moto ? [a.moto.placa?.replace(/-/g, ''), `${a.moto.marca} ${(a.moto.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
-                        loja={a.atendimento?.loja} date={a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />
+                        loja={a.atendimento?.loja} date={a.updated_at} statusColor={col.hex} estoqueInfo={a._estoqueInfo} onClick={() => setSelectedItem(a)} />
                     ))}
                   </div>
                 </div>

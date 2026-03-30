@@ -99,9 +99,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
                     {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => {
                       const est = a._estoqueMoto;
                       return (
-                        <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone}
+                         <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone}
                           motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
-                          loja={a.loja} date={a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />
+                          loja={a.loja} date={a.updated_at} statusColor={col.hex}
+                          estoqueInfo={est ? { status: est.status, observacoes: est.observacoes } : null}
+                          onClick={() => setSelectedItem(a)} />
                       );
                     })}
                   </div>

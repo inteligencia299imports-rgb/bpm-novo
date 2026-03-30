@@ -150,7 +150,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
                       <p className="text-xs text-muted-foreground text-center py-8">Nenhuma avaliação</p>
                     ) : (
                       items.map(a => (
-                        <AvaliacaoCard key={a.id} avaliacao={a} onOpen={() => setSelectedId(a.id)} role={role} />
+                        <AvaliacaoCard key={a.id} avaliacao={a} onOpen={() => setSelectedId(a.id)} role={role} estoqueInfo={(a as any)._estoqueInfo} />
                       ))
                     )}
                   </div>
