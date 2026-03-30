@@ -243,11 +243,11 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    if (item.avaliacao_id) {
+    if (item.avaliacao_id && item.status === 'disponivel') {
       options.push({
         label: 'Preparação',
         icon: <Wrench className="h-4 w-4" />,
-        action: () => nav({ tab: 'preparacao', avaliacaoId: item.avaliacao_id! }),
+        action: () => setReenviarItem(item),
       });
     }
 
