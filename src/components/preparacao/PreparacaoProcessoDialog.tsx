@@ -126,6 +126,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     if (!open) return;
     setActiveStatus(currentStatus);
     setDetalhes('');
+    setReenviarObs('');
     setShowLiberarForm(false);
     setEmpresa('MMATOS');
     // Pre-populate from avaliação/atendimento data
