@@ -484,7 +484,10 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                           </div>
 
                           {item.observacoes && (
-                            <p className="text-xs text-muted-foreground italic line-clamp-2">{item.observacoes}</p>
+                            <div className={`text-xs italic line-clamp-2 ${item.status === 'indisponivel' ? 'flex items-start gap-1.5 text-destructive font-medium bg-destructive/10 rounded p-2' : 'text-muted-foreground'}`}>
+                              {item.status === 'indisponivel' && <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />}
+                              {item.observacoes}
+                            </div>
                           )}
                         </CardContent>
                       </Card>
