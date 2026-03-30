@@ -176,6 +176,17 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       data_contrato: dataContrato ? format(dataContrato, 'yyyy-MM-dd') : null,
     };
 
+    // Sync client data back to atendimentos
+    const atendimentoId = atendimento?.id;
+    if (atendimentoId) {
+      await supabase.from('atendimentos').update({
+        cpf_cnpj: cpfCnpj || null,
+        email: email || null,
+        endereco: endereco || null,
+        cep: cep || null,
+      }).eq('id', atendimentoId);
+    }
+
     if (contratoId) {
       const { error } = await supabase.from('contratos_consignacao').update(payload).eq('id', contratoId);
       if (error) {
