@@ -325,12 +325,14 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    // History option for all items
-    options.push({
-      label: 'Histórico',
-      icon: <History className="h-4 w-4" />,
-      action: () => handleOpenHistory(item),
-    });
+    // History option only if there's history
+    if (idsWithHistory.has(item.id)) {
+      options.push({
+        label: 'Histórico',
+        icon: <History className="h-4 w-4" />,
+        action: () => handleOpenHistory(item),
+      });
+    }
 
     return options;
   };
