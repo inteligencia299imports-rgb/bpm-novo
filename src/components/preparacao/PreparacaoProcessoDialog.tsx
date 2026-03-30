@@ -191,6 +191,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         sinal: 'Sinal',
         estoque: 'Moto Liberada',
         indisponivel: 'Serviço',
+        indisponivel_manual: 'INDISPONÍVEL',
+        bloqueio_juridico: 'BLOQUEIO JURÍDICO',
         reenviada_preparacao: 'REENVIADA PREPARAÇÃO',
         ...Object.fromEntries(PREPARACAO_COLUMNS.map(c => [c.value, c.label])),
       };
