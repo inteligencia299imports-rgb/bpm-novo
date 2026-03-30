@@ -81,6 +81,8 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   sinal: { label: 'Sinal', color: 'bg-[#7e6597]/15 text-[#7e6597]' },
   vendido: { label: 'Vendida', color: 'bg-muted text-muted-foreground' },
   indisponivel: { label: 'Serviço', color: 'bg-orange-500/15 text-orange-600' },
+  indisponivel_manual: { label: 'Indisponível', color: 'bg-destructive/15 text-destructive' },
+  bloqueio_juridico: { label: 'Bloqueio Jurídico', color: 'bg-muted text-muted-foreground' },
 };
 
 const formatCurrency = (value: number | null) => {
