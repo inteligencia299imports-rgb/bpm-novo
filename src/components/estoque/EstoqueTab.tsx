@@ -108,6 +108,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [reenviarItem, setReenviarItem] = useState<EstoqueItem | null>(null);
   const [reenviarAvaliacaoData, setReenviarAvaliacaoData] = useState<any>(null);
   const [reenviarLoading, setReenviarLoading] = useState(false);
+  const [idsWithHistory, setIdsWithHistory] = useState<Set<string>>(new Set());
   const [statusChangeItem, setStatusChangeItem] = useState<EstoqueItem | null>(null);
   const [historyItem, setHistoryItem] = useState<EstoqueItem | null>(null);
   const [historyEntries, setHistoryEntries] = useState<any[]>([]);
@@ -170,6 +171,19 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
       }));
       setItems(mapped);
+
+      // Fetch which items have history
+      const estoqueIds = (data || []).map((d: any) => d.id);
+      if (estoqueIds.length > 0) {
+        const { data: histData } = await supabase
+          .from('status_history')
+          .select('entity_id')
+          .eq('entity_type', 'estoque')
+          .in('entity_id', estoqueIds);
+        setIdsWithHistory(new Set((histData || []).map((h: any) => h.entity_id)));
+      } else {
+        setIdsWithHistory(new Set());
+      }
     } catch (err: any) {
       toast.error('Erro ao carregar estoque');
       console.error(err);
@@ -311,12 +325,14 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    // History option for all items
-    options.push({
-      label: 'Histórico',
-      icon: <History className="h-4 w-4" />,
-      action: () => handleOpenHistory(item),
-    });
+    // History option only if there's history
+    if (idsWithHistory.has(item.id)) {
+      options.push({
+        label: 'Histórico',
+        icon: <History className="h-4 w-4" />,
+        action: () => handleOpenHistory(item),
+      });
+    }
 
     return options;
   };
