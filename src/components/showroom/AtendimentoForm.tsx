@@ -122,7 +122,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             setVendaObs(ma.observacoes || '');
             setTemManual((ma as any).tem_manual ? 'sim' : (ma as any).tem_manual === false ? 'nao' : '');
             setTemChaveReserva((ma as any).tem_chave_reserva ? 'sim' : (ma as any).tem_chave_reserva === false ? 'nao' : '');
-            setManutencaoEmDia((ma as any).manutencao_em_dia ? 'nao' : (ma as any).manutencao_em_dia === false ? 'sim' : '');
+            setManutencaoEmDia((ma as any).manutencao_em_dia ? 'sim' : (ma as any).manutencao_em_dia === false ? 'nao' : '');
             setEnviadaAvaliacao(ma.enviada_avaliacao || false);
           }
         }
@@ -285,7 +285,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           observacoes: vendaObs || null,
           tem_manual: temManual === 'sim',
           tem_chave_reserva: temChaveReserva === 'sim',
-          manutencao_em_dia: manutencaoEmDia === 'nao',
+          manutencao_em_dia: manutencaoEmDia === 'sim',
         };
         if (motoAvaliacaoId) {
           await supabase.from('motos_avaliacao').update(maData).eq('id', motoAvaliacaoId);

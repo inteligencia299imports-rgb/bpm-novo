@@ -255,7 +255,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                     Chave Reserva
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className={`inline-block w-2 h-2 rounded-full ${moto.manutencao_em_dia ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <span className={`inline-block w-2 h-2 rounded-full ${moto.manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
                     Revisão
                   </span>
                 </div>
