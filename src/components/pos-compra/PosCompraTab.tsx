@@ -38,7 +38,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
     setLoading(true);
     const { data, error } = await supabase
       .from('avaliacoes')
-      .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_em_dia)`)
+      .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_em_dia)`)
       .eq('tipo_aquisicao', 'propria')
       .order('updated_at', { ascending: false });
     if (error) { toast.error('Erro ao carregar pós-compra'); } else {
