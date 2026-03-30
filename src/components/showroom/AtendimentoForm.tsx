@@ -147,8 +147,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     }
   };
 
-  const searchClientByPhone = useCallback(async () => {
-    const digits = unformatPhone(telefone);
+  const searchClientByPhoneDigits = useCallback(async (digits: string) => {
     if (digits.length !== 11) return;
 
     setSearchingPhone(true);
@@ -179,7 +178,11 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     } finally {
       setSearchingPhone(false);
     }
-  }, [telefone]);
+  }, []);
+
+  const searchClientByPhone = useCallback(async () => {
+    searchClientByPhoneDigits(unformatPhone(telefone));
+  }, [telefone, searchClientByPhoneDigits]);
 
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
