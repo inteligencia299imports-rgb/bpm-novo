@@ -180,9 +180,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     }
   }, []);
 
-  const searchClientByPhone = useCallback(async () => {
-    searchClientByPhoneDigits(unformatPhone(telefone));
-  }, [telefone, searchClientByPhoneDigits]);
 
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
