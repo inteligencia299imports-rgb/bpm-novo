@@ -18,7 +18,7 @@ const Dashboard = () => {
   const { role } = useAuth();
   const defaultTab = role === 'avaliador' ? 'avaliacoes' : 'showroom';
   const [activeTab, setActiveTab] = useState(defaultTab);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Navigation state for cross-tab deep linking
   const [initialAtendimentoId, setInitialAtendimentoId] = useState<string | null>(null);
