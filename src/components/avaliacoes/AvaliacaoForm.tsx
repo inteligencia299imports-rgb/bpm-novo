@@ -361,7 +361,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       if (obsMotaAquisicao.trim()) motoUpdate.observacoes = obsMotaAquisicao.trim().toUpperCase();
       if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
       if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
-      if (aquisRevisaoVencida) motoUpdate.manutencao_em_dia = aquisRevisaoVencida === 'nao';
+      if (aquisRevisaoVencida) motoUpdate.manutencao_em_dia = aquisRevisaoVencida === 'sim';
       if (Object.keys(motoUpdate).length > 0) {
         await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', avaliacao.moto_avaliacao_id);
       }
@@ -640,7 +640,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   Chave Reserva
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className={`inline-block w-2 h-2 rounded-full ${moto?.manutencao_em_dia ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <span className={`inline-block w-2 h-2 rounded-full ${moto?.manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
                   Revisão
                 </span>
               </div>
@@ -922,7 +922,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       const ma = avaliacao?.moto_avaliacao || avaliacao?.motos_avaliacao;
                       setAquisManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
                       setAquisChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
-                      setAquisRevisaoVencida(ma?.manutencao_em_dia ? 'nao' : ma?.manutencao_em_dia === false ? 'sim' : '');
+                      setAquisRevisaoVencida(ma?.manutencao_em_dia ? 'sim' : ma?.manutencao_em_dia === false ? 'nao' : '');
                       setTipoAquisicaoPopup(true);
                       return;
                     }
