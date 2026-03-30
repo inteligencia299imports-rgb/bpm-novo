@@ -42,7 +42,7 @@ const getTipoAquisicaoLabel = (tipo: string | null) => {
   return tipo === 'propria' ? 'Própria' : 'Consignada';
 };
 
-const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen, estoqueInfo }) => {
+const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
   const moto = avaliacao.moto_avaliacao;
   const at = avaliacao.atendimento;
   const statusColor = STATUS_HEX[avaliacao.situacao] || '#6B7280';
