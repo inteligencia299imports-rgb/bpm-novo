@@ -213,7 +213,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       return options;
     }
 
-    if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada')) {
+    if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'sinal')) {
       options.push({
         label: 'Venda',
         icon: <Bike className="h-4 w-4" />,
