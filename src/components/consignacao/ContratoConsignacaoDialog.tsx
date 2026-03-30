@@ -169,7 +169,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       email: email || null,
       endereco: endereco || null,
       cep: cep || null,
-      valor_quitacao: parseCurrencyInput(valorQuitacao) || null,
+      valor_quitacao: valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : 0,
       valor_fechamento: parseCurrencyInput(valorFechamento) || null,
       observacoes_internas: obsInternas || null,
       observacoes_contrato: obsContrato || null,
@@ -211,7 +211,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     if (!email?.trim()) { toast.error('E-mail é obrigatório'); return false; }
     if (!endereco?.trim()) { toast.error('Endereço é obrigatório'); return false; }
     if (!cep?.trim()) { toast.error('CEP é obrigatório'); return false; }
-    if (!valorQuitacao?.trim() || parseCurrencyInput(valorQuitacao) <= 0) { toast.error('Valor de Quitação é obrigatório'); return false; }
+    // Valor de quitação pode ser 0 ou vazio (assume 0)
     if (!valorFechamento?.trim() || parseCurrencyInput(valorFechamento) <= 0) { toast.error('Valor de Fechamento é obrigatório'); return false; }
     if (!dataContrato) { toast.error('Data do Contrato é obrigatória'); return false; }
     return true;
