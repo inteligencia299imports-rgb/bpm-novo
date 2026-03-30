@@ -79,7 +79,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   disponivel: { label: 'Disponível', color: 'bg-success/15 text-success' },
   sinal: { label: 'Sinal', color: 'bg-[#7e6597]/15 text-[#7e6597]' },
   vendido: { label: 'Vendida', color: 'bg-muted text-muted-foreground' },
-  indisponivel: { label: 'Indisponível', color: 'bg-destructive/15 text-destructive' },
+  indisponivel: { label: 'Serviço', color: 'bg-destructive/15 text-destructive' },
 };
 
 const formatCurrency = (value: number | null) => {
@@ -318,7 +318,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
                   <SelectItem value="disponivel">Disponível</SelectItem>
-                  <SelectItem value="indisponivel">Indisponível</SelectItem>
+                  <SelectItem value="indisponivel">Serviço</SelectItem>
                   <SelectItem value="sinal">Sinal</SelectItem>
                   <SelectItem value="vendido">Vendida</SelectItem>
                 </SelectContent>
