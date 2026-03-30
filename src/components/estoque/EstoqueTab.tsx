@@ -179,6 +179,30 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     if (onNavigateToTab) onNavigateToTab(target);
   };
 
+  const handleOpenReenviar = async (item: EstoqueItem) => {
+    setReenviarItem(item);
+    setReenviarLoading(true);
+    try {
+      const { data: avaliacao } = await supabase
+        .from('avaliacoes')
+        .select('*, motos_avaliacao(*), atendimentos:atendimento_id(nome_cliente, loja)')
+        .eq('id', item.avaliacao_id!)
+        .single();
+      if (avaliacao) {
+        setReenviarAvaliacaoData({
+          ...avaliacao,
+          moto: avaliacao.motos_avaliacao,
+          atendimento: avaliacao.atendimentos,
+          moto_avaliacao_id: avaliacao.moto_avaliacao_id,
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setReenviarLoading(false);
+    }
+  };
+
   const getNavigationOptions = (item: EstoqueItem) => {
     const options: { label: string; icon: React.ReactNode; action: () => void }[] = [];
     const isVendedor = role === 'vendedor';
