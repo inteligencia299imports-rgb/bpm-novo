@@ -567,7 +567,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           <DialogFooter>
             <Button variant="outline" onClick={() => { setReenviarItem(null); setReenviarObs(''); }}>Cancelar</Button>
             <Button
-              variant="destructive"
               disabled={reenviarSaving}
               onClick={async () => {
                 if (!reenviarObs.trim()) {
@@ -624,6 +623,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                 }
               }}
             >
+              <Wrench className="h-4 w-4 mr-1.5" />
               {reenviarSaving ? 'Salvando...' : 'Confirmar Reenvio'}
             </Button>
           </DialogFooter>
