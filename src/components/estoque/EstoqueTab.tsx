@@ -606,6 +606,16 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           }}
         />
       )}
+
+      <StatusChangeDialog
+        open={!!statusChangeItem}
+        onOpenChange={(open) => { if (!open) setStatusChangeItem(null); }}
+        estoqueItem={statusChangeItem}
+        onSuccess={() => {
+          setStatusChangeItem(null);
+          fetchEstoque();
+        }}
+      />
     </>
   );
 };
