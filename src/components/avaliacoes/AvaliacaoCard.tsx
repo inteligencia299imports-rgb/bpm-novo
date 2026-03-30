@@ -1,7 +1,8 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Bike, Calendar, ArrowLeftRight } from 'lucide-react';
+import { Phone, Bike, Calendar, ArrowLeftRight, AlertTriangle, ShieldAlert } from 'lucide-react';
 import type { Avaliacao, AppRole } from '@/types/crm';
+import type { EstoqueInfo } from '@/components/shared/ProcessCard';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
