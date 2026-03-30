@@ -29,7 +29,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         atendimentos!inner (id, nome_cliente, telefone, loja, interesse, situacao, temperatura, created_at, updated_at, nps_status, sexo, uf, tipo_atendimento, vendedor_id, origem),
         motos_avaliacao!inner (id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada)
       `)
-      .eq('situacao', 'adquirida')
+      .in('situacao', ['adquirida', 'estoque'])
       .in('tipo_aquisicao', ['propria', 'consignada'])
       .order('updated_at', { ascending: false });
 
@@ -38,6 +38,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       console.error(error);
     } else {
       let mapped = (data || [])
+        .filter((a: any) => a.atendimentos?.interesse === 'vender')
         .map((d: any) => ({
           ...d,
           // Build a virtual atendimento-like object for AtendimentoCard
