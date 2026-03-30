@@ -120,7 +120,7 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
             disabled={!selectedStatus || !observacao.trim() || loading}
             className="w-full"
           >
-            {loading ? 'Salvando...' : 'Confirmar Alteração'}
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando...</> : <><CheckCircle className="h-4 w-4" /> Confirmar Alteração</>}
           </Button>
         </div>
       </DialogContent>
