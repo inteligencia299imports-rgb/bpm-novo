@@ -377,11 +377,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     if (venda > 0) updateData.valor_venda = venda;
     const newStatus = valorPopup.modo;
     const label = newStatus === 'vendido' ? 'Vendido' : 'Sinal';
-    await handleStatusChange(newStatus as SituacaoShowroom, label, updateData);
 
-    // Se vendido ou sinal, vincular estoque ao atendimento e atualizar status
+    // Atualizar estoque ANTES de mudar o status (pois handleStatusChange pode desmontar o componente)
     if (newStatus === 'vendido' || newStatus === 'sinal') {
-      const vendidoPromises: PromiseLike<any>[] = [];
+      const estoquePromises: PromiseLike<any>[] = [];
       for (const mi of motosInteresse) {
         if (mi.estoque_moto_id) {
           const estoqueUpdate: any = {
@@ -393,7 +392,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           if (newStatus === 'vendido') {
             estoqueUpdate.data_venda = new Date().toISOString();
           }
-          vendidoPromises.push(supabase.from('estoque').update(estoqueUpdate).eq('id', mi.estoque_moto_id).then(r => r));
+          estoquePromises.push(supabase.from('estoque').update(estoqueUpdate).eq('id', mi.estoque_moto_id).then(r => r));
         }
       }
 
@@ -408,18 +407,20 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               tipo_aquisicao: 'propria',
             };
             if (fechamento > 0) avUpdate.valor_fechamento = fechamento;
-            vendidoPromises.push(supabase.from('avaliacoes').update(avUpdate).eq('id', av.id).then(r => r));
+            estoquePromises.push(supabase.from('avaliacoes').update(avUpdate).eq('id', av.id).then(r => r));
           }
         }
         // Sync valor_fechamento to contratos table too
         if (fechamento > 0) {
-          vendidoPromises.push(
+          estoquePromises.push(
             supabase.from('contratos').update({ valor_fechamento: fechamento }).eq('atendimento_id', atendimento.id).then(r => r)
           );
         }
       }
-      await Promise.all(vendidoPromises);
+      await Promise.all(estoquePromises);
     }
+
+    await handleStatusChange(newStatus as SituacaoShowroom, label, updateData);
 
     setSavingValor(false);
     setValorPopup(null);
