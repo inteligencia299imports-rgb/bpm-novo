@@ -1088,7 +1088,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     const motoEst = motosInteresse.find(m => m.origem === 'estoque' && m.estoque_moto_id);
                     if (motoEst) {
                       const est = estoqueData[motoEst.estoque_moto_id!];
-                      if (est && (est.status === 'vendido' || est.status === 'indisponivel' || (est.status === 'sinal' && est.atendimento_venda_id && est.atendimento_venda_id !== atendimento.id))) {
+                      if (est && (est.status === 'vendido' || est.status === 'indisponivel' || est.status === 'indisponivel_manual' || est.status === 'bloqueio_juridico' || (est.status === 'sinal' && est.atendimento_venda_id && est.atendimento_venda_id !== atendimento.id))) {
                         return false;
                       }
                     }

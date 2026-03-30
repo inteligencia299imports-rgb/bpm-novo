@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
+import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
 import {
   Popover,
   PopoverContent,
@@ -80,6 +81,8 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   sinal: { label: 'Sinal', color: 'bg-[#7e6597]/15 text-[#7e6597]' },
   vendido: { label: 'Vendida', color: 'bg-muted text-muted-foreground' },
   indisponivel: { label: 'Serviço', color: 'bg-orange-500/15 text-orange-600' },
+  indisponivel_manual: { label: 'Indisponível', color: 'bg-destructive/15 text-destructive' },
+  bloqueio_juridico: { label: 'Bloqueio Jurídico', color: 'bg-muted text-muted-foreground' },
 };
 
 const formatCurrency = (value: number | null) => {
@@ -103,6 +106,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [reenviarItem, setReenviarItem] = useState<EstoqueItem | null>(null);
   const [reenviarAvaliacaoData, setReenviarAvaliacaoData] = useState<any>(null);
   const [reenviarLoading, setReenviarLoading] = useState(false);
+  const [statusChangeItem, setStatusChangeItem] = useState<EstoqueItem | null>(null);
 
   useEffect(() => {
     let query = supabase.from('estoque').select('marca');
@@ -275,6 +279,15 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
+    // Option to change status (only for disponivel items)
+    if (item.status === 'disponivel') {
+      options.push({
+        label: 'Alterar Status',
+        icon: <RefreshCw className="h-4 w-4" />,
+        action: () => setStatusChangeItem(item),
+      });
+    }
+
     return options;
   };
 
@@ -319,6 +332,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                   <SelectItem value="todos">Todos</SelectItem>
                   <SelectItem value="disponivel">Disponível</SelectItem>
                   <SelectItem value="indisponivel">Serviço</SelectItem>
+                  <SelectItem value="indisponivel_manual">Indisponível</SelectItem>
+                  <SelectItem value="bloqueio_juridico">Bloqueio Jurídico</SelectItem>
                   <SelectItem value="sinal">Sinal</SelectItem>
                   <SelectItem value="vendido">Vendida</SelectItem>
                 </SelectContent>
@@ -508,8 +523,15 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                           </div>
 
                           {item.observacoes && (
-                            <div className={`text-xs italic line-clamp-2 ${item.status === 'indisponivel' ? 'flex items-start gap-1.5 text-orange-600 font-medium bg-orange-500/10 rounded p-2' : 'text-muted-foreground'}`}>
+                            <div className={`text-xs italic line-clamp-2 ${
+                              item.status === 'indisponivel' ? 'flex items-start gap-1.5 text-orange-600 font-medium bg-orange-500/10 rounded p-2' :
+                              item.status === 'indisponivel_manual' ? 'flex items-start gap-1.5 text-destructive font-medium bg-destructive/10 rounded p-2' :
+                              item.status === 'bloqueio_juridico' ? 'flex items-start gap-1.5 text-muted-foreground font-medium bg-muted rounded p-2' :
+                              'text-muted-foreground'
+                            }`}>
                               {item.status === 'indisponivel' && <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />}
+                              {item.status === 'indisponivel_manual' && <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />}
+                              {item.status === 'bloqueio_juridico' && <ShieldAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" />}
                               {item.observacoes}
                             </div>
                           )}
@@ -584,6 +606,16 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           }}
         />
       )}
+
+      <StatusChangeDialog
+        open={!!statusChangeItem}
+        onOpenChange={(open) => { if (!open) setStatusChangeItem(null); }}
+        estoqueItem={statusChangeItem}
+        onSuccess={() => {
+          setStatusChangeItem(null);
+          fetchEstoque();
+        }}
+      />
     </>
   );
 };
