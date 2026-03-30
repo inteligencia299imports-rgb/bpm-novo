@@ -10,7 +10,14 @@ interface Props {
   avaliacao: Avaliacao;
   onOpen: () => void;
   role: AppRole | null;
+  estoqueInfo?: EstoqueInfo | null;
 }
+
+const ESTOQUE_STATUS_DISPLAY: Record<string, { label: string; className: string; icon?: React.ReactNode }> = {
+  indisponivel: { label: 'Serviço', className: 'bg-orange-500/15 text-orange-600 border-orange-500/30' },
+  indisponivel_manual: { label: 'Indisponível', className: 'bg-destructive/15 text-destructive border-destructive/30', icon: <AlertTriangle className="h-3 w-3" /> },
+  bloqueio_juridico: { label: 'Bloqueio Jurídico', className: 'bg-muted text-muted-foreground border-muted-foreground/30', icon: <ShieldAlert className="h-3 w-3" /> },
+};
 
 const formatPhone = (value: string): string => {
   const digits = value.replace(/\D/g, '');
