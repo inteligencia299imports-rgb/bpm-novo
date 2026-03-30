@@ -169,7 +169,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       email: email || null,
       endereco: endereco || null,
       cep: cep || null,
-      valor_quitacao: parseCurrencyInput(valorQuitacao) || null,
+      valor_quitacao: valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : 0,
       valor_fechamento: parseCurrencyInput(valorFechamento) || null,
       observacoes_internas: obsInternas || null,
       observacoes_contrato: obsContrato || null,
