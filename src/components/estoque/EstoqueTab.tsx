@@ -646,6 +646,31 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           fetchEstoque();
         }}
       />
+
+      <Dialog open={!!historyItem} onOpenChange={(open) => { if (!open) setHistoryItem(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" /> Histórico - {historyItem?.modelo}
+            </DialogTitle>
+          </DialogHeader>
+          {historyLoading ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
+          ) : (
+            <div className="max-h-[400px] overflow-y-auto px-2">
+              <StatusTimeline
+                history={historyEntries}
+                renderPopupExtra={(entry) => entry.observacoes ? (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Observação</span>
+                    <p className="text-sm">{entry.observacoes}</p>
+                  </div>
+                ) : null}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
