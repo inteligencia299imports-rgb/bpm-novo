@@ -106,6 +106,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [reenviarItem, setReenviarItem] = useState<EstoqueItem | null>(null);
   const [reenviarAvaliacaoData, setReenviarAvaliacaoData] = useState<any>(null);
   const [reenviarLoading, setReenviarLoading] = useState(false);
+  const [statusChangeItem, setStatusChangeItem] = useState<EstoqueItem | null>(null);
 
   useEffect(() => {
     let query = supabase.from('estoque').select('marca');
