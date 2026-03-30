@@ -102,7 +102,6 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
                          <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone}
                           motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
                           loja={a.loja} date={a.updated_at} statusColor={col.hex}
-                          estoqueInfo={est ? { status: est.status, observacoes: est.observacoes } : null}
                           onClick={() => setSelectedItem(a)} />
                       );
                     })}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -353,7 +353,18 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                               </p>
                             </div>
                             {item.loja?.toLowerCase() !== 'ducati' && (
-                              <Badge variant="outline" className="text-xs">Estoque</Badge>
+                              <Badge variant="outline" className={`text-xs gap-1 ${
+                                estItem.status === 'indisponivel' ? 'border-orange-500 text-orange-600' :
+                                estItem.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
+                                estItem.status === 'bloqueio_juridico' ? 'border-muted-foreground text-muted-foreground' :
+                                estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
+                                estItem.status === 'sinal' ? 'border-[#7e6597] text-[#7e6597]' :
+                                ''
+                              }`}>
+                                {estItem.status === 'indisponivel_manual' && <AlertTriangle className="h-3 w-3" />}
+                                {estItem.status === 'bloqueio_juridico' && <ShieldAlert className="h-3 w-3" />}
+                                {estItem.status === 'indisponivel' ? 'Serviço' : estItem.status === 'indisponivel_manual' ? 'Indisponível' : estItem.status === 'bloqueio_juridico' ? 'Bloqueio Jurídico' : estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : 'Estoque'}
+                              </Badge>
                             )}
                           </div>
                           {item.loja?.toLowerCase() === 'ducati' ? (
@@ -400,6 +411,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                               </>
                             )}
                           </div>
+                          )}
+                          {/* Estoque observation for special statuses */}
+                          {estItem.observacoes && ['indisponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(estItem.status) && (
+                            <div className={`text-xs italic flex items-start gap-1.5 rounded p-2 ${
+                              estItem.status === 'indisponivel' ? 'text-orange-600 bg-orange-500/10' :
+                              estItem.status === 'indisponivel_manual' ? 'text-destructive bg-destructive/10' :
+                              'text-muted-foreground bg-muted'
+                            }`}>
+                              {estItem.observacoes}
+                            </div>
                           )}
                           <div className="pt-2 border-t border-border space-y-2">
                             <div className="flex items-center justify-between">

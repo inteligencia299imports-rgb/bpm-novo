@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList, DollarSign } from 'lucide-react';
+import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList, DollarSign, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -52,6 +52,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [currentPosCompraStatus, setCurrentPosCompraStatus] = useState(item.pos_compra_status || 'em_aberto');
   const [currentConsignacaoStatus, setCurrentConsignacaoStatus] = useState(item.consignacao_status || 'em_aberto');
   const [loading, setLoading] = useState(true);
+  const [estoqueStatus, setEstoqueStatus] = useState<{ status: string; observacoes: string | null } | null>(null);
   const moto = item.moto || item.motos_avaliacao;
   const atendimento = item.atendimento || item.atendimentos;
   const statusValue = item[statusField] || 'em_aberto';
@@ -62,7 +63,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      const [cnhRes, crlvRes, avRes] = await Promise.all([
+      const [cnhRes, crlvRes, avRes, estRes] = await Promise.all([
         atendimento?.id
           ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
           : Promise.resolve({ data: null }),
@@ -70,11 +71,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           ? supabase.from('motos_avaliacao').select('crlv_url').eq('id', moto.id).single()
           : Promise.resolve({ data: null }),
         supabase.from('avaliacoes').select('quanto_pede, valor_fechamento').eq('id', item.id).maybeSingle(),
+        supabase.from('estoque').select('status, observacoes').eq('avaliacao_id', item.id).maybeSingle(),
       ]);
       setCnhUrl(cnhRes.data?.cnh_url || null);
       setCrlvUrl(crlvRes.data?.crlv_url || null);
       setQuantoPede(avRes.data?.quanto_pede ?? null);
       setValorFechamento(avRes.data?.valor_fechamento ?? null);
+      setEstoqueStatus(estRes.data ? { status: estRes.data.status, observacoes: estRes.data.observacoes } : null);
       setLoading(false);
     };
     loadAll();
@@ -230,6 +233,30 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
                   {moto.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{moto.categoria}</span>} />}
                 </div>
+                {/* Estoque Status */}
+                {estoqueStatus && ['indisponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(estoqueStatus.status) && (
+                  <>
+                    <Separator className="my-2" />
+                    <div className="space-y-1.5">
+                      <Badge variant="outline" className={`text-xs gap-1 ${
+                        estoqueStatus.status === 'indisponivel' ? 'border-orange-500 text-orange-600' :
+                        estoqueStatus.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
+                        'border-muted-foreground text-muted-foreground'
+                      }`}>
+                        {estoqueStatus.status === 'indisponivel' && 'Serviço'}
+                        {estoqueStatus.status === 'indisponivel_manual' && <><AlertTriangle className="h-3 w-3" /> Indisponível</>}
+                        {estoqueStatus.status === 'bloqueio_juridico' && <><ShieldAlert className="h-3 w-3" /> Bloqueio Jurídico</>}
+                      </Badge>
+                      {estoqueStatus.observacoes && (
+                        <p className={`text-xs italic rounded p-2 ${
+                          estoqueStatus.status === 'indisponivel' ? 'text-orange-600 bg-orange-500/10' :
+                          estoqueStatus.status === 'indisponivel_manual' ? 'text-destructive bg-destructive/10' :
+                          'text-muted-foreground bg-muted'
+                        }`}>{estoqueStatus.observacoes}</p>
+                      )}
+                    </div>
+                  </>
+                )}
                 <Separator className="my-2" />
                 <DocumentUpload
                   label="CRLV"
