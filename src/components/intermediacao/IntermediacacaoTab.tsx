@@ -220,7 +220,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, onInitialHandled }: Intermed
                       const owner = a._proprietario;
                       const clientName = parte === 'parte1' && owner ? owner.nome_cliente : a.nome_cliente;
                       const clientPhone = parte === 'parte1' && owner ? owner.telefone : a.telefone;
-                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} date={a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />;
+                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} date={a.updated_at} statusColor={col.hex} estoqueInfo={est ? { status: est.status, observacoes: est.observacoes } : null} onClick={() => setSelectedItem(a)} />;
                     })}
                   </div>
                 </div>
