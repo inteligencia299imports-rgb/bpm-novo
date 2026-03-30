@@ -4,13 +4,21 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import {
   Popover,
   PopoverContent,
@@ -78,6 +86,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   disponivel: { label: 'Disponível', color: 'bg-success/15 text-success' },
   reservada: { label: 'Reservada', color: 'bg-warning/15 text-warning' },
   vendido: { label: 'Vendida', color: 'bg-muted text-muted-foreground' },
+  indisponivel: { label: 'Indisponível', color: 'bg-destructive/15 text-destructive' },
 };
 
 const formatCurrency = (value: number | null) => {
@@ -98,6 +107,9 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
   const [allMarcas, setAllMarcas] = useState<string[]>([]);
+  const [reenviarItem, setReenviarItem] = useState<EstoqueItem | null>(null);
+  const [reenviarObs, setReenviarObs] = useState('');
+  const [reenviarSaving, setReenviarSaving] = useState(false);
 
   useEffect(() => {
     let query = supabase.from('estoque').select('marca');
@@ -231,11 +243,11 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    if (item.avaliacao_id) {
+    if (item.avaliacao_id && item.status === 'disponivel') {
       options.push({
         label: 'Preparação',
         icon: <Wrench className="h-4 w-4" />,
-        action: () => nav({ tab: 'preparacao', avaliacaoId: item.avaliacao_id! }),
+        action: () => setReenviarItem(item),
       });
     }
 
@@ -243,8 +255,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   };
 
   return (
+    <>
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Package className="h-7 w-7 text-primary" />
@@ -282,6 +294,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                 <SelectContent>
                   <SelectItem value="todos">Todos</SelectItem>
                   <SelectItem value="disponivel">Disponível</SelectItem>
+                  <SelectItem value="indisponivel">Indisponível</SelectItem>
                   <SelectItem value="reservada">Reservada</SelectItem>
                   <SelectItem value="vendido">Vendida</SelectItem>
                 </SelectContent>
@@ -323,8 +336,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           </div>
         )}
       </div>
-
-
       {/* List */}
       {loading ? (
         <KanbanSkeleton columns={3} />
@@ -473,7 +484,10 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                           </div>
 
                           {item.observacoes && (
-                            <p className="text-xs text-muted-foreground italic line-clamp-2">{item.observacoes}</p>
+                            <div className={`text-xs italic line-clamp-2 ${item.status === 'indisponivel' ? 'flex items-start gap-1.5 text-destructive font-medium bg-destructive/10 rounded p-2' : 'text-muted-foreground'}`}>
+                              {item.status === 'indisponivel' && <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />}
+                              {item.observacoes}
+                            </div>
                           )}
                         </CardContent>
                       </Card>
@@ -525,6 +539,97 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         </div>
       )}
     </div>
+
+      {/* Dialog Reenviar para Preparação */}
+      <Dialog open={!!reenviarItem} onOpenChange={(open) => { if (!open) { setReenviarItem(null); setReenviarObs(''); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Reenviar para Preparação
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              A moto <strong>{reenviarItem?.modelo}</strong> {reenviarItem?.placa ? `(${reenviarItem.placa})` : ''} será marcada como <strong>Indisponível</strong> e reenviada para preparação.
+            </p>
+            <div>
+              <label className="text-sm font-medium text-foreground">Motivo / Observação *</label>
+              <Textarea
+                placeholder="Descreva o motivo do reenvio para preparação..."
+                value={reenviarObs}
+                onChange={e => setReenviarObs(e.target.value)}
+                className="mt-1.5"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setReenviarItem(null); setReenviarObs(''); }}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              disabled={reenviarSaving}
+              onClick={async () => {
+                if (!reenviarObs.trim()) {
+                  toast.error('A observação é obrigatória');
+                  return;
+                }
+                if (!reenviarItem?.avaliacao_id) return;
+                setReenviarSaving(true);
+                try {
+                  const { data: { user: currentUser } } = await supabase.auth.getUser();
+                  let userName = 'Usuário';
+                  if (currentUser) {
+                    const { data: roleData } = await supabase.from('user_roles').select('nome').eq('user_id', currentUser.id).maybeSingle();
+                    if (roleData?.nome) userName = roleData.nome;
+                  }
+
+                  // Update estoque status to indisponivel and save observation
+                  const { error: estoqueErr } = await supabase.from('estoque').update({
+                    status: 'indisponivel',
+                    observacoes: reenviarObs.trim(),
+                  }).eq('id', reenviarItem.id);
+
+                  if (estoqueErr) { toast.error('Erro ao atualizar estoque'); return; }
+
+                  // Update avaliação preparacao_status back to em_aberto
+                  const { error: avalErr } = await supabase.from('avaliacoes').update({
+                    preparacao_status: 'em_aberto',
+                  } as any).eq('id', reenviarItem.avaliacao_id);
+
+                  if (avalErr) { toast.error('Erro ao atualizar preparação'); return; }
+
+                  // Record in status_history
+                  if (currentUser) {
+                    await supabase.from('status_history').insert({
+                      entity_id: reenviarItem.avaliacao_id,
+                      entity_type: 'preparacao',
+                      status_from: 'estoque',
+                      status_to: 'em_aberto',
+                      observacoes: `REENVIO PARA PREPARAÇÃO: ${reenviarObs.trim()}`,
+                      changed_by: currentUser.id,
+                      changed_by_name: userName,
+                    });
+                  }
+
+                  toast.success('Moto reenviada para preparação');
+                  setReenviarItem(null);
+                  setReenviarObs('');
+                  fetchEstoque();
+                } catch (err) {
+                  console.error(err);
+                  toast.error('Erro ao reenviar para preparação');
+                } finally {
+                  setReenviarSaving(false);
+                }
+              }}
+            >
+              {reenviarSaving ? 'Salvando...' : 'Confirmar Reenvio'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
