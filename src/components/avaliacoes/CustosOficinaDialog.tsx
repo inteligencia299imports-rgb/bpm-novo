@@ -103,8 +103,8 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
   };
 
   const handleAdd = async () => {
-    if (!responsavel || !tipo) {
-      toast.error('Selecione o responsável e o tipo');
+    if (!responsavel || !tipo || !numeroOs.trim()) {
+      toast.error('Preencha o responsável, tipo e Nº OS');
       return;
     }
 
