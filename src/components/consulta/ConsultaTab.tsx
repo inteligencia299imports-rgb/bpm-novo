@@ -31,7 +31,7 @@ const ConsultaTab = () => {
       console.error(error);
     } else {
       let results = (data || [])
-        .filter((d: any) => !d.avaliacoes?.some((av: any) => av.situacao === 'estoque'))
+        .filter((d: any) => !d.avaliacoes?.some((av: any) => ['estoque', 'adquirida', 'perdido', 'dispensada'].includes(av.situacao)))
         .map((d: any) => ({
           ...d,
           atendimento: d.atendimentos,
