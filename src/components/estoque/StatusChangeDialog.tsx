@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { AlertTriangle, ShieldAlert, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, CheckCircle, Loader2, CircleCheck } from 'lucide-react';
 
 interface StatusChangeDialogProps {
   open: boolean;
