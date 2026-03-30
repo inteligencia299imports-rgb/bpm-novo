@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save, Loader2, SendHorizonal, Search } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, SendHorizonal } from 'lucide-react';
 import { LOJAS, INTERESSES, TEMPERATURAS, ORIGENS, UFS, TIPOS_ATENDIMENTO, SEXOS } from '@/types/crm';
 import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
@@ -180,9 +180,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     }
   }, []);
 
-  const searchClientByPhone = useCallback(async () => {
-    searchClientByPhoneDigits(unformatPhone(telefone));
-  }, [telefone, searchClientByPhoneDigits]);
 
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
@@ -383,21 +380,12 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               <Input
                 value={telefone}
                 onChange={handlePhoneChange}
-                onBlur={searchClientByPhone}
+                
                 placeholder="(61) 90000-0000"
                 maxLength={15}
                 className="flex-1"
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={searchClientByPhone}
-                disabled={!isPhoneValid || searchingPhone}
-                title="Buscar cliente"
-              >
-                {searchingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              </Button>
+              {searchingPhone && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
             {telefone && !isPhoneValid && (
               <p className="text-xs text-destructive">Telefone deve ter 11 dígitos</p>
