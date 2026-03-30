@@ -741,14 +741,129 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             Chave Reserva
                           </span>
                           <span className="flex items-center gap-1">
-                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.manutencao_em_dia ? 'bg-green-500' : 'bg-red-500'}`} />
                             Revisão
                           </span>
                         </div>
                         {/* Prices section */}
-...
+                        <div className="pt-2 border-t border-border space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Preço</p>
+                              <p className="font-semibold text-foreground">{formatCurrency(estItem.preco)}</p>
+                            </div>
+                            {estItem.preco_acao != null && (
+                              <div className="text-right">
+                                <p className="text-xs text-muted-foreground">Preço Ação</p>
+                                <p className="font-semibold text-success">{formatCurrency(estItem.preco_acao)}</p>
+                              </div>
+                            )}
+                          </div>
+                          {(atendimento as any).valor_sinal != null && (
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Valor do Sinal</p>
+                                <p className="font-semibold text-amber-600">{formatCurrency((atendimento as any).valor_sinal)}</p>
+                              </div>
+                            </div>
+                          )}
+                          {(atendimento as any).valor_venda != null && (
+                            <>
+                              <Separator />
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Valor de Venda</p>
+                                  <p className="font-semibold text-primary">{formatCurrency((atendimento as any).valor_venda)}</p>
+                                </div>
+                                {estItem.preco_acao != null && (
+                                  <div className="text-right">
+                                    <p className="text-xs text-muted-foreground">Diferença (Venda - Ação)</p>
+                                    {(() => {
+                                      const diff = ((atendimento as any).valor_venda || 0) - (estItem.preco_acao || 0);
+                                      return (
+                                        <p className={`font-semibold ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                          {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
+                                        </p>
+                                      );
+                                    })()}
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        {estItem.observacoes && (
+                          <p className="text-xs text-muted-foreground italic">{estItem.observacoes}</p>
+                        )}
+                      </>
+                    ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      {atendimento.loja?.toLowerCase() !== 'ducati' && <InfoItem label="Origem" value="Externo" />}
+                      <InfoItem label="Marca" value={moto.marca} />
+                      <InfoItem label="Modelo" value={moto.modelo} />
+                      <InfoItem label="Ano" value={moto.ano} />
+                      {atendimento.loja?.toLowerCase() === 'ducati' && moto.chassi && <InfoItem label="Chassi" value={moto.chassi} />}
+                    </div>
+                    )}
+                  </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Motos de Avaliação (Venda/Troca) - ocultar quando interesse é compra */}
+          {motosAvaliacao.length > 0 && atendimento.interesse !== 'comprar' && (
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-primary" /> Moto do Cliente
+                  </CardTitle>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {motosAvaliacao.some(m => (m as any).consulta_solicitada && !(m as any).consulta_realizada) && (
+                      <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
+                        <Clock className="h-3 w-3" /> Consulta Solicitada
+                      </Badge>
+                    )}
+                    {motosAvaliacao.some(m => m.enviada_avaliacao && !isAvaliada(m.id)) && (
+                      <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
+                        <Clock className="h-3 w-3" /> Aguardando avaliação
+                      </Badge>
+                    )}
+                    {motosAvaliacao.some(m => avaliacoes[m.id]?.situacao === 'adquirida' && avaliacoes[m.id]?.tipo_aquisicao) && (
+                      <Badge variant="outline" className={`text-[10px] ${motosAvaliacao.some(m => avaliacoes[m.id]?.tipo_aquisicao === 'consignada') ? 'border-purple-500 text-purple-600' : 'border-green-500 text-green-600'}`}>
+                        {motosAvaliacao.some(m => avaliacoes[m.id]?.tipo_aquisicao === 'consignada') ? 'Consignada' : 'Própria'}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {motosAvaliacao.map((moto, idx) => (
+                  <div key={moto.id} className="space-y-3">
+                    {idx > 0 && <Separator className="my-3" />}
+                    <div className="grid grid-cols-2 gap-4">
+                      <InfoItem label="Marca" value={moto.marca} />
+                      <InfoItem label="Modelo" value={(moto.modelo || '').toUpperCase()} />
+                      <InfoItem label="Ano Fabricação" value={moto.ano_fabricacao} />
+                      <InfoItem label="Ano Modelo" value={moto.ano_modelo} />
+                      <InfoItem label="Categoria" value={moto.categoria} />
+                      <InfoItem label="Cor" value={moto.cor} />
+                      <InfoItem label="Placa" value={moto.placa?.replace(/-/g, '')} />
+                      <InfoItem label="KM" value={formatKm(moto.km)} />
+                    </div>
+                    <div className="flex items-center gap-3 text-xs mt-3">
                       <span className="flex items-center gap-1">
-                        <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                        <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
+                        Manual
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
+                        Chave Reserva
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).manutencao_em_dia ? 'bg-green-500' : 'bg-red-500'}`} />
                         Revisão
                       </span>
                     </div>
