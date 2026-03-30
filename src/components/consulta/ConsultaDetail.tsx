@@ -236,6 +236,10 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                   </div>
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
+                {(atendimento as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={(atendimento as any).cpf_cnpj} />}
+                {(atendimento as any)?.email && <InfoItem label="E-mail" value={(atendimento as any).email} />}
+                {(atendimento as any)?.cep && <InfoItem label="CEP" value={(atendimento as any).cep} />}
+                {(atendimento as any)?.endereco && <InfoItem label="Endereço" value={(atendimento as any).endereco} />}
               </div>
               {atendimento?.id && (
                 <>
