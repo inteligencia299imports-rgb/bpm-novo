@@ -279,6 +279,15 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
+    // Option to change status (only for disponivel items)
+    if (item.status === 'disponivel') {
+      options.push({
+        label: 'Alterar Status',
+        icon: <RefreshCw className="h-4 w-4" />,
+        action: () => setStatusChangeItem(item),
+      });
+    }
+
     return options;
   };
 
