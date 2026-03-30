@@ -610,8 +610,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                       entity_id: reenviarItem.avaliacao_id,
                       entity_type: 'preparacao',
                       status_from: 'estoque',
-                      status_to: 'indisponivel',
-                      observacoes: `REENVIO PARA PREPARAÇÃO: ${reenviarObs.trim()}`,
+                      status_to: 'reenviada_preparacao',
+                      observacoes: reenviarObs.trim(),
                       changed_by: currentUser.id,
                       changed_by_name: userName,
                     });
