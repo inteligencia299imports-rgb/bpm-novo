@@ -90,7 +90,7 @@ const parseCurrencyValue = (value: string): number | null => {
   return isNaN(n) ? null : n;
 };
 
-const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, currentStatus, avaliacaoData, onStatusChanged }) => {
+const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, currentStatus, avaliacaoData, onStatusChanged, reenviarFromEstoque, onReenviarSuccess }) => {
   const { role } = useAuth();
   const isReadOnly = role === 'vendedor';
   const isInEstoque = avaliacaoData?.situacao === 'estoque';
