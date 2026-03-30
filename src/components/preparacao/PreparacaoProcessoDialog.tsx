@@ -397,7 +397,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       const motoUpdate: any = {};
       if (libManual) motoUpdate.tem_manual = libManual === 'sim';
       if (libChaveReserva) motoUpdate.tem_chave_reserva = libChaveReserva === 'sim';
-      if (libRevisaoVencida) motoUpdate.manutencao_em_dia = libRevisaoVencida === 'sim';
+      if (libRevisaoVencida) motoUpdate.manutencao_em_dia = libRevisaoVencida === 'nao';
       if (Object.keys(motoUpdate).length > 0 && moto?.id) {
         await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', moto.id);
       }
