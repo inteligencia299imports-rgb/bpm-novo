@@ -688,7 +688,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-300 rounded-lg dark:bg-yellow-900/20 dark:border-yellow-600/40">
                   <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 shrink-0 mt-0.5" />
                   <p className="text-sm text-yellow-800 dark:text-yellow-400">
-                    Ao reenviar a moto <strong>{reenviarFromEstoque.modelo}</strong> {reenviarFromEstoque.placa ? `(${reenviarFromEstoque.placa})` : ''} para preparação ela ficará marcada como indisponível no estoque durante esse período.
+                    Ao reenviar a moto <strong>{reenviarFromEstoque.modelo}</strong> {reenviarFromEstoque.placa ? `(${reenviarFromEstoque.placa})` : ''} para preparação ela ficará indisponível no estoque durante esse período.
                   </p>
                 </div>
               </div>
