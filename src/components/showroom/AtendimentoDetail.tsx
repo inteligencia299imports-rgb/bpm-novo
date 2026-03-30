@@ -685,6 +685,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             </Badge>
                           )}
                         </div>
+                        {/* Estoque observation for special statuses */}
+                        {estItem.observacoes && ['indisponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(estItem.status) && (
+                          <div className={`text-xs italic flex items-start gap-1.5 rounded p-2 ${
+                            estItem.status === 'indisponivel' ? 'text-orange-600 bg-orange-500/10' :
+                            estItem.status === 'indisponivel_manual' ? 'text-destructive bg-destructive/10' :
+                            'text-muted-foreground bg-muted'
+                          }`}>
+                            {estItem.observacoes}
+                          </div>
+                        )}
                         {atendimento.loja?.toLowerCase() === 'ducati' ? (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                             {moto.chassi && (
