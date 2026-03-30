@@ -79,7 +79,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   disponivel: { label: 'Disponível', color: 'bg-success/15 text-success' },
   sinal: { label: 'Sinal', color: 'bg-[#7e6597]/15 text-[#7e6597]' },
   vendido: { label: 'Vendida', color: 'bg-muted text-muted-foreground' },
-  indisponivel: { label: 'Serviço', color: 'bg-destructive/15 text-destructive' },
+  indisponivel: { label: 'Serviço', color: 'bg-orange-500/15 text-orange-600' },
 };
 
 const formatCurrency = (value: number | null) => {
@@ -508,7 +508,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                           </div>
 
                           {item.observacoes && (
-                            <div className={`text-xs italic line-clamp-2 ${item.status === 'indisponivel' ? 'flex items-start gap-1.5 text-destructive font-medium bg-destructive/10 rounded p-2' : 'text-muted-foreground'}`}>
+                            <div className={`text-xs italic line-clamp-2 ${item.status === 'indisponivel' ? 'flex items-start gap-1.5 text-orange-600 font-medium bg-orange-500/10 rounded p-2' : 'text-muted-foreground'}`}>
                               {item.status === 'indisponivel' && <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />}
                               {item.observacoes}
                             </div>
