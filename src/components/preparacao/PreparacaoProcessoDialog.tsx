@@ -133,7 +133,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     const ma = avaliacaoData?.moto;
     setLibManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
     setLibChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
-    setLibRevisaoVencida(ma?.manutencao_em_dia ? 'sim' : ma?.manutencao_em_dia === false ? 'nao' : '');
+    setLibRevisaoVencida(ma?.manutencao_em_dia ? 'nao' : ma?.manutencao_em_dia === false ? 'sim' : '');
 
     const loadHistory = async () => {
       setLoading(true);

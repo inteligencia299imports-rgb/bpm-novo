@@ -361,7 +361,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       if (obsMotaAquisicao.trim()) motoUpdate.observacoes = obsMotaAquisicao.trim().toUpperCase();
       if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
       if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
-      if (aquisRevisaoVencida) motoUpdate.manutencao_em_dia = aquisRevisaoVencida === 'sim';
+      if (aquisRevisaoVencida) motoUpdate.manutencao_em_dia = aquisRevisaoVencida === 'nao';
       if (Object.keys(motoUpdate).length > 0) {
         await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', avaliacao.moto_avaliacao_id);
       }

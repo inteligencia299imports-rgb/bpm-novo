@@ -122,7 +122,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             setVendaObs(ma.observacoes || '');
             setTemManual((ma as any).tem_manual ? 'sim' : (ma as any).tem_manual === false ? 'nao' : '');
             setTemChaveReserva((ma as any).tem_chave_reserva ? 'sim' : (ma as any).tem_chave_reserva === false ? 'nao' : '');
-            setManutencaoEmDia((ma as any).manutencao_em_dia ? 'sim' : (ma as any).manutencao_em_dia === false ? 'nao' : '');
+            setManutencaoEmDia((ma as any).manutencao_em_dia ? 'nao' : (ma as any).manutencao_em_dia === false ? 'sim' : '');
             setEnviadaAvaliacao(ma.enviada_avaliacao || false);
           }
         }
