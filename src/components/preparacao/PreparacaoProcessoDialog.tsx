@@ -632,12 +632,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             ) : reenviarFromEstoque ? (
               /* Reenviar from Estoque mode: only show reenviar button with alert */
               <div className="space-y-3">
-                <div className="flex items-start gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-                  <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
-                  <p className="text-sm text-foreground">
-                    A moto <strong>{reenviarFromEstoque.modelo}</strong> {reenviarFromEstoque.placa ? `(${reenviarFromEstoque.placa})` : ''} será marcada como <strong>Indisponível</strong> e reenviada para preparação.
-                  </p>
-                </div>
                 <div>
                   <label className="text-sm font-medium text-foreground">Motivo / Observação *</label>
                   <Textarea
@@ -647,6 +641,12 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     className="mt-1.5"
                     rows={3}
                   />
+                </div>
+                <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-300 rounded-lg dark:bg-yellow-900/20 dark:border-yellow-600/40">
+                  <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-yellow-800 dark:text-yellow-400">
+                    Ao reenviar a moto <strong>{reenviarFromEstoque.modelo}</strong> {reenviarFromEstoque.placa ? `(${reenviarFromEstoque.placa})` : ''} para preparação ela ficará marcada como indisponível no estoque durante esse período.
+                  </p>
                 </div>
                 <Button
                   disabled={saving}
@@ -660,17 +660,14 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       const { user, userName } = await getUserInfo();
                       if (!user) { toast.error('Sessão expirada'); return; }
 
-                      // Update estoque status to indisponivel
                       const { error: estoqueErr } = await supabase.from('estoque').update({
                         status: 'indisponivel',
                         observacoes: reenviarObs.trim(),
                       }).eq('id', reenviarFromEstoque.estoqueItemId);
                       if (estoqueErr) { toast.error('Erro ao atualizar estoque'); return; }
 
-                      // Update avaliação preparacao_status back to em_aberto
                       await supabase.from('avaliacoes').update({ preparacao_status: 'em_aberto' } as any).eq('id', avaliacaoId);
 
-                      // Record in status_history
                       await insertHistory({
                         statusFrom: 'estoque',
                         statusTo: 'reenviada_preparacao',
