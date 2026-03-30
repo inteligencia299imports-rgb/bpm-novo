@@ -248,7 +248,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       options.push({
         label: 'Preparação',
         icon: <Wrench className="h-4 w-4" />,
-        action: () => setReenviarItem(item),
+        action: () => handleOpenReenviar(item),
       });
     } else if (item.avaliacao_id && item.status === 'indisponivel') {
       options.push({
