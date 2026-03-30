@@ -137,11 +137,17 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   }, [atendimentoId]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTelefone(formatPhone(e.target.value));
+    const formatted = formatPhone(e.target.value);
+    setTelefone(formatted);
+    // Auto-search when phone reaches 11 digits (only for new atendimentos)
+    const digits = unformatPhone(formatted);
+    if (digits.length === 11 && !isEditing) {
+      // Trigger search after state update
+      setTimeout(() => searchClientByPhoneDigits(digits), 100);
+    }
   };
 
-  const searchClientByPhone = useCallback(async () => {
-    const digits = unformatPhone(telefone);
+  const searchClientByPhoneDigits = useCallback(async (digits: string) => {
     if (digits.length !== 11) return;
 
     setSearchingPhone(true);
@@ -172,7 +178,11 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     } finally {
       setSearchingPhone(false);
     }
-  }, [telefone]);
+  }, []);
+
+  const searchClientByPhone = useCallback(async () => {
+    searchClientByPhoneDigits(unformatPhone(telefone));
+  }, [telefone, searchClientByPhoneDigits]);
 
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
