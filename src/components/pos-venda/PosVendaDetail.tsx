@@ -412,6 +412,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                             )}
                           </div>
                           )}
+                          {/* Estoque observation for special statuses */}
+                          {estItem.observacoes && ['indisponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(estItem.status) && (
+                            <div className={`text-xs italic flex items-start gap-1.5 rounded p-2 ${
+                              estItem.status === 'indisponivel' ? 'text-orange-600 bg-orange-500/10' :
+                              estItem.status === 'indisponivel_manual' ? 'text-destructive bg-destructive/10' :
+                              'text-muted-foreground bg-muted'
+                            }`}>
+                              {estItem.observacoes}
+                            </div>
+                          )}
                           <div className="pt-2 border-t border-border space-y-2">
                             <div className="flex items-center justify-between">
                               <div>
