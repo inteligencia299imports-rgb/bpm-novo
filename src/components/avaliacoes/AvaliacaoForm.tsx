@@ -922,7 +922,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       const ma = avaliacao?.moto_avaliacao || avaliacao?.motos_avaliacao;
                       setAquisManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
                       setAquisChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
-                      setAquisRevisaoVencida(ma?.manutencao_em_dia ? 'sim' : ma?.manutencao_em_dia === false ? 'nao' : '');
+                      setAquisRevisaoVencida(ma?.manutencao_em_dia ? 'nao' : ma?.manutencao_em_dia === false ? 'sim' : '');
                       setTipoAquisicaoPopup(true);
                       return;
                     }
