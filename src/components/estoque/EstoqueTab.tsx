@@ -77,7 +77,7 @@ interface EstoqueItem {
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   disponivel: { label: 'Disponível', color: 'bg-success/15 text-success' },
-  reservada: { label: 'Reservada', color: 'bg-warning/15 text-warning' },
+  sinal: { label: 'Sinal', color: 'bg-[#7e6597]/15 text-[#7e6597]' },
   vendido: { label: 'Vendida', color: 'bg-muted text-muted-foreground' },
   indisponivel: { label: 'Indisponível', color: 'bg-destructive/15 text-destructive' },
 };
@@ -203,7 +203,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
     // Vendedor: only show "Venda" if sold/reserved AND it's their sale
     if (isVendedor) {
-      if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada') && isOwnSale) {
+      if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'sinal') && isOwnSale) {
         options.push({
           label: 'Venda',
           icon: <Bike className="h-4 w-4" />,
@@ -213,7 +213,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       return options;
     }
 
-    if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada')) {
+    if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'sinal')) {
       options.push({
         label: 'Venda',
         icon: <Bike className="h-4 w-4" />,
@@ -319,7 +319,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                   <SelectItem value="todos">Todos</SelectItem>
                   <SelectItem value="disponivel">Disponível</SelectItem>
                   <SelectItem value="indisponivel">Indisponível</SelectItem>
-                  <SelectItem value="reservada">Reservada</SelectItem>
+                  <SelectItem value="sinal">Sinal</SelectItem>
                   <SelectItem value="vendido">Vendida</SelectItem>
                 </SelectContent>
               </Select>
