@@ -334,9 +334,13 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
             )}
           </div>
         )}
-      </div>
+    </div>
+    </>
+  );
+};
 
-
+// Wrap return in fragment
+` `; // placeholder removed below
       {/* List */}
       {loading ? (
         <KanbanSkeleton columns={3} />
