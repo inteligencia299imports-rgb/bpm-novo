@@ -469,12 +469,15 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
       await supabase.from('avaliacoes').update({ preparacao_status: 'estoque' } as any).eq('id', avaliacaoId);
 
-      // If bike is in estoque (re-preparation), set stock back to disponivel and clear observations
+      // If bike was sent back from stock (indisponivel), restore to disponivel and clear the reenvio observation
       if (isInEstoque) {
-        await supabase.from('estoque').update({
-          status: 'disponivel',
-          observacoes: null,
-        }).eq('avaliacao_id', avaliacaoId);
+        const { data: estoqueData } = await supabase.from('estoque').select('status, observacoes').eq('avaliacao_id', avaliacaoId).maybeSingle();
+        if (estoqueData?.status === 'indisponivel') {
+          await supabase.from('estoque').update({
+            status: 'disponivel',
+            observacoes: null,
+          }).eq('avaliacao_id', avaliacaoId);
+        }
       }
 
       await insertHistory({
