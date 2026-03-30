@@ -22,6 +22,12 @@ interface Props {
   currentStatus: string;
   avaliacaoData?: any;
   onStatusChanged?: (newStatus: string) => void;
+  reenviarFromEstoque?: {
+    estoqueItemId: string;
+    modelo: string;
+    placa?: string | null;
+  };
+  onReenviarSuccess?: () => void;
 }
 
 interface HistoryEntry {
