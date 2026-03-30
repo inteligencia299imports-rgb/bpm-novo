@@ -576,6 +576,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 </div>
                 <InfoItem label="Sexo" value={at?.sexo} />
                 <InfoItem label="UF" value={at?.uf} />
+                {(at as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={(at as any).cpf_cnpj} />}
+                {(at as any)?.email && <InfoItem label="E-mail" value={(at as any).email} />}
+                {(at as any)?.cep && <InfoItem label="CEP" value={(at as any).cep} />}
+                {(at as any)?.endereco && <InfoItem label="Endereço" value={(at as any).endereco} />}
               </div>
               <Separator className="my-2" />
               <DocumentUpload
