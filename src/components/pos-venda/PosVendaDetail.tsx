@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
