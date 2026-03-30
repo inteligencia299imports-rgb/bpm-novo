@@ -38,7 +38,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
       .from('avaliacoes')
       .select(`
         *,
-        atendimentos!inner (id, nome_cliente, telefone, loja, vendedor_id, interesse),
+        atendimentos!inner (id, nome_cliente, telefone, loja, vendedor_id, interesse, cpf_cnpj, email, cep, endereco),
         motos_avaliacao!inner (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria)
       `)
       .order('created_at', { ascending: false });

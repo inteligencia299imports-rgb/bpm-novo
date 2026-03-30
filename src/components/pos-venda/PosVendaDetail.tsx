@@ -136,7 +136,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         if (consignadaEstoque?.avaliacao_id) {
           const { data: avalData } = await supabase
             .from('avaliacoes')
-            .select('*, motos_avaliacao(*), atendimentos!inner(id, nome_cliente, telefone, loja, cnh_url)')
+            .select('*, motos_avaliacao(*), atendimentos!inner(id, nome_cliente, telefone, loja, cnh_url, cpf_cnpj, email, cep, endereco)')
             .eq('id', consignadaEstoque.avaliacao_id)
             .single();
           if (avalData) {
