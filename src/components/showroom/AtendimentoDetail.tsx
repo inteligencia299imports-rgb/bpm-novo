@@ -676,9 +676,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             <Badge variant="outline" className={`text-xs ${
                               estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
                               estItem.status === 'sinal' ? 'border-[#7e6597] text-[#7e6597]' :
+                              estItem.status === 'indisponivel' ? 'border-orange-500 text-orange-600' :
+                              estItem.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
+                              estItem.status === 'bloqueio_juridico' ? 'border-muted-foreground text-muted-foreground' :
                               ''
                             }`}>
-                              {estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : 'Estoque'}
+                              {estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : estItem.status === 'indisponivel' ? 'Serviço' : estItem.status === 'indisponivel_manual' ? 'Indisponível' : estItem.status === 'bloqueio_juridico' ? 'Bloqueio Jurídico' : 'Estoque'}
                             </Badge>
                           )}
                         </div>
