@@ -203,7 +203,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
     // Vendedor: only show "Venda" if sold/reserved AND it's their sale
     if (isVendedor) {
-      if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'reservada') && isOwnSale) {
+      if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'sinal') && isOwnSale) {
         options.push({
           label: 'Venda',
           icon: <Bike className="h-4 w-4" />,
