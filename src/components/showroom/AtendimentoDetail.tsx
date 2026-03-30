@@ -741,7 +741,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             Chave Reserva
                           </span>
                           <span className="flex items-center gap-1">
-                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.manutencao_em_dia ? 'bg-green-500' : 'bg-red-500'}`} />
                             Revisão
                           </span>
                         </div>
