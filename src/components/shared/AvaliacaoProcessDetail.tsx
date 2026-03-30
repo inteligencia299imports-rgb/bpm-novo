@@ -233,6 +233,30 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
                   {moto.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{moto.categoria}</span>} />}
                 </div>
+                {/* Estoque Status */}
+                {estoqueStatus && ['indisponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(estoqueStatus.status) && (
+                  <>
+                    <Separator className="my-2" />
+                    <div className="space-y-1.5">
+                      <Badge variant="outline" className={`text-xs gap-1 ${
+                        estoqueStatus.status === 'indisponivel' ? 'border-orange-500 text-orange-600' :
+                        estoqueStatus.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
+                        'border-muted-foreground text-muted-foreground'
+                      }`}>
+                        {estoqueStatus.status === 'indisponivel' && 'Serviço'}
+                        {estoqueStatus.status === 'indisponivel_manual' && <><AlertTriangle className="h-3 w-3" /> Indisponível</>}
+                        {estoqueStatus.status === 'bloqueio_juridico' && <><ShieldAlert className="h-3 w-3" /> Bloqueio Jurídico</>}
+                      </Badge>
+                      {estoqueStatus.observacoes && (
+                        <p className={`text-xs italic rounded p-2 ${
+                          estoqueStatus.status === 'indisponivel' ? 'text-orange-600 bg-orange-500/10' :
+                          estoqueStatus.status === 'indisponivel_manual' ? 'text-destructive bg-destructive/10' :
+                          'text-muted-foreground bg-muted'
+                        }`}>{estoqueStatus.observacoes}</p>
+                      )}
+                    </div>
+                  </>
+                )}
                 <Separator className="my-2" />
                 <DocumentUpload
                   label="CRLV"
