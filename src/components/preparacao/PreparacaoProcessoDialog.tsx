@@ -97,6 +97,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const isEstoqueIdle = isInEstoque && (currentStatus === 'estoque' || !currentStatus);
   const isEstoqueTracking = isInEstoque && !isEstoqueIdle;
   const [detalhes, setDetalhes] = useState('');
+  const [reenviarObs, setReenviarObs] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
