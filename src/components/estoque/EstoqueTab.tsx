@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
+import StatusTimeline from '@/components/shared/StatusTimeline';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Popover,
   PopoverContent,
