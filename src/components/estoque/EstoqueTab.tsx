@@ -256,7 +256,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
   return (
     <>
-      {/* Header */}
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Package className="h-7 w-7 text-primary" />
