@@ -625,7 +625,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
 
