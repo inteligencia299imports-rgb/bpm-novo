@@ -676,9 +676,12 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       </div>
 
       {/* Lists */}
+      <div className="mt-8 mb-2">
+        <h2 className="text-base font-semibold">Listagem</h2>
+        <Separator className="mt-2" />
+      </div>
       <Card>
-        <CardHeader><CardTitle className="text-base">Listagem</CardTitle></CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           <Tabs value={listTab} onValueChange={setListTab}>
             <TabsList className="mb-3">
               <TabsTrigger value="vendidas">Vendidas ({motosVendidas.length})</TabsTrigger>
