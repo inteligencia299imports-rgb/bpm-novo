@@ -504,7 +504,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         atendimentos: qtdAtend,
         vendas: qtdVendas,
         sinais: qtdSinais,
-        conversao: qtdAtend > 0 ? +(qtdVendas / qtdAtend * 100).toFixed(1) : 0,
+        conversao: qtdAtend > 0 ? qtdVendas / qtdAtend : 0,
         faturamento,
       };
     }).filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0);
