@@ -13,6 +13,13 @@ const RelatoriosTab: React.FC = () => {
   const [dept, setDept] = useState('showroom');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const clearFnRef = useRef<(() => void) | null>(null);
+
+  const hasActiveFilters = dateFrom || dateTo;
+
+  const handleClearAll = () => {
+    clearFnRef.current?.();
+  };
 
   return (
     <div className="space-y-5">
