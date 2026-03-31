@@ -701,7 +701,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       if (!user) { toast.error('Sessão expirada'); return; }
                       await supabase.from('avaliacoes').update({ preparacao_status: 'em_aberto' } as any).eq('id', avaliacaoId);
                       await insertHistory({
-                        statusFrom: 'estoque',
                         statusTo: 'reenviada_preparacao',
                         observacoes: 'Moto reenviada para preparação (acompanhamento)',
                         changedBy: user.id,
