@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
+import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 
 const TRANSFER_COST = 445;
 
@@ -707,38 +708,36 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                     <TableRow>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Vendedor</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Modelo</TableHead>
                       <TableHead>Placa</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead>Data Venda</TableHead>
                       <TableHead className="text-right">Valor Venda</TableHead>
                       <TableHead className="text-right">Abatimentos</TableHead>
-                      <TableHead className="text-right">V. Fechamento</TableHead>
+                      <TableHead className="text-right">Valor Fechamento</TableHead>
                       <TableHead className="text-right">Margem</TableHead>
-                      <TableHead className="text-right">% Margem</TableHead>
+                      <TableHead className="text-right">%</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {motosVendidas.length === 0 ? (
-                      <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">Nenhuma moto vendida encontrada</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhuma moto vendida encontrada</TableCell></TableRow>
                     ) : motosVendidas.map((m, i) => (
                       <TableRow key={i}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
                         <TableCell className="text-xs">{m.vendedor}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-[10px]">{tipoLabel(m.tipo)}</Badge></TableCell>
+                        <TableCell><Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(m.tipo)}`}>{tipoLabel(m.tipo)}</Badge></TableCell>
                         <TableCell className="text-xs">{m.modelo}</TableCell>
                         <TableCell className="text-xs font-mono">{m.placa}</TableCell>
-                        <TableCell><Badge variant="secondary" className="text-[10px]">{m.situacao}</Badge></TableCell>
                         <TableCell className="text-xs">{m.dataVenda ? format(new Date(m.dataVenda), 'dd/MM/yy') : '-'}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.valorVenda)}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.abatimentos)}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.valorFechamento)}</TableCell>
                         <TableCell className={`text-xs text-right font-medium ${m.margemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemRealizada)}</TableCell>
-                        <TableCell className={`text-xs text-right font-medium ${m.pctMargemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtPct(m.pctMargemRealizada)}</TableCell>
+                        <TableCell className={`text-xs text-right font-medium ${m.pctMargemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{((m.pctMargemRealizada ?? 0) * 100).toFixed(1)}%</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -749,38 +748,36 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                     <TableRow>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Vendedor</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Modelo</TableHead>
                       <TableHead>Placa</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead>Data Sinal</TableHead>
                       <TableHead className="text-right">Valor Venda</TableHead>
                       <TableHead className="text-right">Abatimentos</TableHead>
-                      <TableHead className="text-right">V. Fechamento</TableHead>
+                      <TableHead className="text-right">Valor Fechamento</TableHead>
                       <TableHead className="text-right">Margem</TableHead>
-                      <TableHead className="text-right">% Margem</TableHead>
+                      <TableHead className="text-right">%</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {motosSinal.length === 0 ? (
-                      <TableRow><TableCell colSpan={12} className="text-center text-muted-foreground py-8">Nenhuma moto com sinal encontrada</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhuma moto com sinal encontrada</TableCell></TableRow>
                     ) : motosSinal.map((m, i) => (
                       <TableRow key={i}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
                         <TableCell className="text-xs">{m.vendedor}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-[10px]">{tipoLabel(m.tipo)}</Badge></TableCell>
+                        <TableCell><Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(m.tipo)}`}>{tipoLabel(m.tipo)}</Badge></TableCell>
                         <TableCell className="text-xs">{m.modelo}</TableCell>
                         <TableCell className="text-xs font-mono">{m.placa}</TableCell>
-                        <TableCell><Badge variant="secondary" className="text-[10px]">{m.situacao}</Badge></TableCell>
                         <TableCell className="text-xs">{m.dataSinal ? format(new Date(m.dataSinal), 'dd/MM/yy') : '-'}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.valorVenda)}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.abatimentos)}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.valorFechamento)}</TableCell>
                         <TableCell className={`text-xs text-right font-medium ${m.margemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemRealizada)}</TableCell>
-                        <TableCell className={`text-xs text-right font-medium ${m.pctMargemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtPct(m.pctMargemRealizada)}</TableCell>
+                        <TableCell className={`text-xs text-right font-medium ${m.pctMargemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{((m.pctMargemRealizada ?? 0) * 100).toFixed(1)}%</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
