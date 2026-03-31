@@ -502,8 +502,8 @@ const RelatorioShowroom: React.FC = () => {
       <Card>
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-4 items-end">
-            <div className="space-y-1">
-              <Label className="text-xs">Data Início</Label>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium">Data Início</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className={cn('w-36 justify-start text-left font-normal', !dateFrom && 'text-muted-foreground')}>
@@ -516,8 +516,8 @@ const RelatorioShowroom: React.FC = () => {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Data Fim</Label>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-medium">Data Fim</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className={cn('w-36 justify-start text-left font-normal', !dateTo && 'text-muted-foreground')}>
