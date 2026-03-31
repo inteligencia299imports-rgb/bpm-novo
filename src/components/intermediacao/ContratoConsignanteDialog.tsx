@@ -373,6 +373,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     const id = await saveContrato();
     if (id) {
       toast.success('Contrato salvo com sucesso!');
+      onSaved?.();
       onOpenChange(false);
     }
   };
