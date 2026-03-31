@@ -14,6 +14,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 
 const TRANSFER_COST = 445;
@@ -500,11 +501,38 @@ const RelatorioShowroom: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header with greeting and filters */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-end gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Loja pills */}
+      {/* Filters */}
+      <div className="space-y-3">
+        {/* Single row: Tipo on left, Loja + Date on right */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Tipo filter - left */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Tipo:</span>
+            {[
+              { value: 'todos', label: 'Todos' },
+              { value: 'propria', label: 'Própria' },
+              { value: 'consignada', label: 'Consignada' },
+              { value: 'test-ride', label: 'Test-Ride' },
+              { value: 'repasse', label: 'Repasse' },
+            ].map(t => (
+              <Button
+                key={t.value}
+                size="sm"
+                variant={filterTipo === t.value ? 'default' : 'outline'}
+                className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')}
+                onClick={() => setFilterTipo(t.value)}
+              >
+                {t.label}
+              </Button>
+            ))}
+            {(dateFrom || dateTo || filterLoja !== 'todos' || filterTipo !== 'todos') && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs h-7 text-muted-foreground">
+                <X className="h-3 w-3" /> Limpar
+              </Button>
+            )}
+          </div>
+          {/* Loja + Date - right */}
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
               {['todos', '299', 'Ducati'].map(loja => (
                 <Button
@@ -518,7 +546,6 @@ const RelatorioShowroom: React.FC = () => {
                 </Button>
               ))}
             </div>
-            {/* Date pickers inline */}
             <div className="flex items-center gap-1.5">
               <Popover>
                 <PopoverTrigger asChild>
@@ -546,32 +573,7 @@ const RelatorioShowroom: React.FC = () => {
             </div>
           </div>
         </div>
-        {/* Tipo filter row */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Tipo:</span>
-          {[
-            { value: 'todos', label: 'Todos' },
-            { value: 'propria', label: 'Própria' },
-            { value: 'consignada', label: 'Consignada' },
-            { value: 'test-ride', label: 'Test-Ride' },
-            { value: 'repasse', label: 'Repasse' },
-          ].map(t => (
-            <Button
-              key={t.value}
-              size="sm"
-              variant={filterTipo === t.value ? 'default' : 'outline'}
-              className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')}
-              onClick={() => setFilterTipo(t.value)}
-            >
-              {t.label}
-            </Button>
-          ))}
-          {(dateFrom || dateTo || filterLoja !== 'todos' || filterTipo !== 'todos') && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs h-7 text-muted-foreground">
-              <X className="h-3 w-3" /> Limpar
-            </Button>
-          )}
-        </div>
+        <Separator />
       </div>
 
       {/* Indicators - Line 1 */}
