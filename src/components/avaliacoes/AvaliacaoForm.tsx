@@ -1077,6 +1077,20 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     >
                       <Handshake className="h-4 w-4" /> Consignada
                     </Button>
+                    <Button
+                      variant={tipoSelecionado === 'test-ride' ? 'default' : 'outline'}
+                      className={`flex-1 gap-2 ${tipoSelecionado === 'test-ride' ? 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500' : 'border-orange-500 text-orange-600 hover:bg-orange-50'}`}
+                      onClick={() => setTipoSelecionado('test-ride')}
+                    >
+                      <Bike className="h-4 w-4" /> Test-Ride
+                    </Button>
+                    <Button
+                      variant={tipoSelecionado === 'repasse' ? 'default' : 'outline'}
+                      className={`flex-1 gap-2 ${tipoSelecionado === 'repasse' ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600' : 'border-amber-600 text-amber-700 hover:bg-amber-50'}`}
+                      onClick={() => setTipoSelecionado('repasse')}
+                    >
+                      <ArrowLeftRight className="h-4 w-4" /> Repasse
+                    </Button>
                   </>
                 )}
               </div>
