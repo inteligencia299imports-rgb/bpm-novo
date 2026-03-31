@@ -284,7 +284,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   // Helper: get custos for an avaliacao
   const getCustosLoja = (avaliacaoId: string) => {
     const custos = custosByAvaliacao[avaliacaoId] || [];
-    return custos.filter(c => c.responsavel.toLowerCase() === 'loja').reduce((sum, c) => sum + (c.valor_executado ?? 0), 0);
+    return custos.filter(c => c.responsavel.toLowerCase() === 'loja').reduce((sum, c) => sum + (c.valor_executado ?? c.valor_previsto ?? 0), 0);
   };
 
   const getCustosLojaPrevistos = (avaliacaoId: string) => {
