@@ -533,11 +533,11 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
       {/* Loja on left, Tipo on right */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-1">
           {['todos', '299', 'Ducati'].map(loja => (
             <Button
               key={loja}
@@ -550,37 +550,39 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
             </Button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Tipo:</span>
-          {[
-            { value: 'todos', label: 'Todos' },
-            { value: 'propria', label: 'Própria' },
-            { value: 'consignada', label: 'Consignada' },
-            { value: 'test-ride', label: 'Test-Ride' },
-            { value: 'repasse', label: 'Repasse' },
-          ].map(t => (
-            <Button
-              key={t.value}
-              size="sm"
-              variant={filterTipo === t.value ? 'default' : 'outline'}
-              className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')}
-              onClick={() => setFilterTipo(t.value)}
-            >
-              {t.label}
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
+          <span className="text-xs font-medium text-muted-foreground shrink-0">Tipo:</span>
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { value: 'todos', label: 'Todos' },
+              { value: 'propria', label: 'Própria' },
+              { value: 'consignada', label: 'Consignada' },
+              { value: 'test-ride', label: 'Test-Ride' },
+              { value: 'repasse', label: 'Repasse' },
+            ].map(t => (
+              <Button
+                key={t.value}
+                size="sm"
+                variant={filterTipo === t.value ? 'default' : 'outline'}
+                className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')}
+                onClick={() => setFilterTipo(t.value)}
+              >
+                {t.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Indicators - Line 1 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Atendimentos" value={indicadores.qtdAtendimentos} gradient="teal" icon={<Users className="h-5 w-5" />} />
         <IndicatorCard title="Vendas" value={indicadores.qtdVendas} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} />
         <IndicatorCard title="Sinais" value={indicadores.qtdSinais} gradient="teal" icon={<CreditCard className="h-5 w-5" />} />
         <IndicatorCard title="Taxa de Conversão" value={fmtPct(indicadores.taxaConversao)} gradient="teal" icon={<TrendingUp className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} gradient="purple" icon={<DollarSign className="h-5 w-5" />} />
         <IndicatorCard title="Margem Prevista" value={`${fmtBRL(indicadores.margemPrevista)} (${fmtPct(indicadores.pctMargemPrevista)})`} gradient="purple" icon={<Target className="h-5 w-5" />} />
         <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} gradient="emerald" icon={<BarChart3 className="h-5 w-5" />} />
@@ -626,16 +628,16 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MonthChart title="Atendimentos" data={chartByMonth} dataKey="atendimentos" />
         <Card className="border shadow-sm rounded-xl">
-          <CardHeader className="pb-4 pt-4 px-4 flex flex-row items-center justify-between">
+          <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Vendas e Taxa de Conversão</CardTitle>
-            <div className="flex items-center gap-3 text-[11px]">
+            <div className="flex flex-wrap items-center gap-3 text-[11px]">
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#2F6F84' }} />Vendas</span>
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Conversão (%)</span>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart data={chartByMonth} margin={{ top: 16, right: -20, left: -20, bottom: 0 }}>
+              <ComposedChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
@@ -668,9 +670,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           </CardContent>
         </Card>
         <Card className="border shadow-sm rounded-xl">
-          <CardHeader className="pb-4 pt-4 px-4 flex flex-row items-center justify-between">
+          <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Margem Prevista vs Realizada (%)</CardTitle>
-            <div className="flex items-center gap-3 text-[11px]">
+            <div className="flex flex-wrap items-center gap-3 text-[11px]">
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#7e6d9b' }} />Prevista</span>
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#3a8f6a' }} />Realizada</span>
             </div>
