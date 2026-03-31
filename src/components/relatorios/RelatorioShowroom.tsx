@@ -743,12 +743,18 @@ const indicatorGradients: Record<string, string> = {
   rose: 'bg-gradient-to-br from-[#e11d48] to-[#fb7185]',
 };
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: string; gradient?: string }> = ({ title, value, sub, gradient = 'teal' }) => (
-  <Card className={cn(indicatorGradients[gradient], 'border-0 text-white shadow-md')}>
+const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: string; gradient?: string; icon?: React.ReactNode; subtitle?: string }> = ({ title, value, sub, gradient = 'teal', icon, subtitle }) => (
+  <Card className={cn(indicatorGradients[gradient], 'border-0 text-white shadow-md rounded-xl')}>
     <CardContent className="pt-4 pb-3 px-4">
-      <p className="text-xs text-white/80 mb-1">{title}</p>
-      <p className="text-lg font-bold">{value}</p>
-      {sub && <p className="text-xs text-white/70">{sub}</p>}
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-white/80 mb-1">{title}</p>
+          <p className="text-xl font-bold truncate">{value}</p>
+          {subtitle && <p className="text-[11px] text-white/60 mt-0.5">{subtitle}</p>}
+          {sub && <p className="text-xs text-white/70">{sub}</p>}
+        </div>
+        {icon && <div className="ml-2 p-2 bg-white/15 rounded-lg flex-shrink-0">{icon}</div>}
+      </div>
     </CardContent>
   </Card>
 );
