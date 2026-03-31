@@ -101,7 +101,14 @@ interface VendedorInfo {
   nome: string;
 }
 
-const RelatorioShowroom: React.FC = () => {
+interface RelatorioShowroomProps {
+  dateFrom: Date | undefined;
+  dateTo: Date | undefined;
+  setDateFrom: (d: Date | undefined) => void;
+  setDateTo: (d: Date | undefined) => void;
+}
+
+const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo }) => {
   const { userName } = useAuth();
   const [loading, setLoading] = useState(true);
   const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
@@ -111,8 +118,6 @@ const RelatorioShowroom: React.FC = () => {
   const [vendedores, setVendedores] = useState<VendedorInfo[]>([]);
 
   // Filters
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [filterLoja, setFilterLoja] = useState('todos');
   const [filterTipo, setFilterTipo] = useState('todos');
 
