@@ -1375,6 +1375,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         motosAvaliacao={motosAvaliacao}
         estoqueData={estoqueData}
         avaliacoes={avaliacoes}
+        onSaved={() => { if (onStatusUpdated) onStatusUpdated(); }}
       />
       {/* Dialog de Motivo (Pendente/Perdido) */}
       <Dialog open={!!motivoPopup} onOpenChange={(o) => !o && setMotivoPopup(null)}>
