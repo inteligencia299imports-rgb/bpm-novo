@@ -141,6 +141,17 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
   useEffect(() => {
     loadData();
+
+    const channel = supabase
+      .channel('relatorio-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'atendimentos' }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'avaliacoes' }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'custos_oficina' }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos' }, () => loadData())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const loadData = async () => {
