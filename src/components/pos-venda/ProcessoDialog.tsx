@@ -58,6 +58,7 @@ const ProcessoDialog: React.FC<Props> = ({
   statusRules,
   onStatusChanged,
   showContratoConsignante,
+  onContratoSaved,
 }) => {
   const ETAPAS = customEtapas || DEFAULT_ETAPAS;
   const [etapas, setEtapas] = useState<EtapaData[]>(
