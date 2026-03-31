@@ -537,8 +537,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   <span className="text-base font-bold text-foreground">{avaliacaoData.moto?.marca} {avaliacaoData.moto?.modelo}</span>
                   <div className="flex items-center gap-2">
                     {avaliacaoData.tipo_aquisicao && (
-                      <Badge variant="outline" className={`text-xs ${avaliacaoData.tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : avaliacaoData.tipo_aquisicao === 'convertida' ? 'border-blue-800 text-blue-800' : 'border-green-500/30 text-green-600'}`}>
-                        {avaliacaoData.tipo_aquisicao === 'propria' ? 'Própria' : avaliacaoData.tipo_aquisicao === 'convertida' ? 'Convertida' : 'Consignada'}
+                      <Badge variant="outline" className={`text-xs ${getTipoAquisicaoBadgeClass(avaliacaoData.tipo_aquisicao)}`}>
+                        {getTipoAquisicaoLabel(avaliacaoData.tipo_aquisicao)}
                       </Badge>
                     )}
                   </div>

@@ -108,7 +108,7 @@ const ConsultaTab = () => {
                           loja={m.atendimento?.loja}
                           date={m.created_at}
                           statusColor={col.hex}
-                          extraBadge={m.tipo_aquisicao ? { label: m.tipo_aquisicao === 'consignada' ? 'Consignada' : m.tipo_aquisicao === 'convertida' ? 'Convertida' : 'Própria', className: m.tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : m.tipo_aquisicao === 'convertida' ? 'border-blue-800 text-blue-800' : 'border-green-500 text-green-600' } : undefined}
+                          extraBadge={m.tipo_aquisicao ? { label: getTipoAquisicaoLabel(m.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(m.tipo_aquisicao) } : undefined}
                           onClick={() => setSelectedMoto(m)}
                         />
                       ))

@@ -30,7 +30,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         motos_avaliacao!inner (id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada)
       `)
       .in('situacao', ['adquirida', 'estoque'])
-      .in('tipo_aquisicao', ['propria', 'consignada'])
+      .in('tipo_aquisicao', TODOS_TIPOS_AQUISICAO)
       .order('updated_at', { ascending: false });
 
     if (error) {
