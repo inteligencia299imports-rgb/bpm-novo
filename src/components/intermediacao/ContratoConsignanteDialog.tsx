@@ -443,6 +443,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
         });
       }
       setJaGerado(true);
+      onSaved?.();
       toast.success('Contrato gerado com sucesso!');
     } catch (err) {
       console.error(err);
