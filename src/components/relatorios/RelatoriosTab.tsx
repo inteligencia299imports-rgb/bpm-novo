@@ -40,8 +40,8 @@ const RelatoriosTab: React.FC = () => {
       </div>
       <p className="text-sm text-muted-foreground mt-0.5">Análise de desempenho e indicadores</p>
       <Tabs value={dept} onValueChange={setDept}>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="overflow-x-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-full">
+          <div className="w-full sm:w-auto overflow-x-auto">
             <TabsList className="w-max">
               <TabsTrigger value="showroom" className="gap-1.5">
                 <Bike className="h-4 w-4" /> Showroom
@@ -54,10 +54,10 @@ const RelatoriosTab: React.FC = () => {
               </TabsTrigger>
             </TabsList>
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <div className="w-full sm:w-auto flex items-center gap-2 overflow-x-auto pb-1">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap', !dateFrom && 'text-muted-foreground')}>
+                <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateFrom && 'text-muted-foreground')}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
                 </Button>
@@ -66,10 +66,10 @@ const RelatoriosTab: React.FC = () => {
                 <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
-            <span className="text-sm text-muted-foreground whitespace-nowrap">até</span>
+            <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap', !dateTo && 'text-muted-foreground')}>
+                <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateTo && 'text-muted-foreground')}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
                 </Button>
