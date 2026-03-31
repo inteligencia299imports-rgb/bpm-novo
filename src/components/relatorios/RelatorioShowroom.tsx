@@ -373,16 +373,17 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       estoques.forEach(est => {
         if (filterTipo !== 'todos' && est.tipo !== filterTipo) return;
         const aval = avaliacoes.find(av => av.id === est.avaliacao_id);
-        const custoRealOficinaLoja = aval ? getCustosLoja(aval.id) : 0;
-        const custoPrevOficinaLoja = aval ? getCustosLojaPrevistos(aval.id) : 0;
+        const custoOficinaLojaExec = aval ? getCustosLojaOficinaExecutado(aval.id) : 0;
+        const custoOficinaLojaPrev = aval ? getCustosLojaOficinaPrevisto(aval.id) : 0;
+        const custoProcessoLoja = aval ? getCustosLojaProcesso(aval.id) : 0;
         const custoRealOficinaCliente = aval ? getCustosClienteReal(aval.id) : 0;
         const custoPrevOficinaCliente = aval ? getCustosClientePrevisto(aval.id) : 0;
-        const abatimentos = TRANSFER_COST + custoRealOficinaLoja;
+        const abatimentos = TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja;
         const precoEstoque = est.preco ?? 0;
         const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
-        const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoPrevOficinaLoja - custoRealOficinaLoja);
+        const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
         const valorFechamento = aval?.valor_fechamento ?? 0;
-        const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoRealOficinaLoja);
+        const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja);
         const pctMargemRealizada = precoEstoque > 0 ? margemRealizada / precoEstoque : 0;
 
         list.push({
