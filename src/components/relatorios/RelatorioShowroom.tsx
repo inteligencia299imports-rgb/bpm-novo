@@ -516,7 +516,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           const aval = avaliacoes.find(av => av.id === est.avaliacao_id);
           if (!aval) return;
           const precoEstoque = est.preco ?? 0;
-          const valorVendaReal = est.valor_venda ?? precoEstoque;
+          const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
           const quantoVende = aval.quanto_vende ?? 0;
           const valorFechamento = aval.valor_fechamento ?? 0;
           const previsaoCustosLoja = aval.previsao_custos_loja ?? 0;
