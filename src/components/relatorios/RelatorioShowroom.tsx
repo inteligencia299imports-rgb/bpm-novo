@@ -559,7 +559,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
       {/* Section: Por Vendedor */}
       <div className="space-y-1">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Por Vendedor</h2>
+        <h2 className="text-base font-bold text-foreground">Por Vendedor</h2>
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -571,7 +571,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
       {/* Section: Resultado do Ano */}
       <div className="space-y-1">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Resultado do Ano</h2>
+        <h2 className="text-base font-bold text-foreground">Resultado do Ano</h2>
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
