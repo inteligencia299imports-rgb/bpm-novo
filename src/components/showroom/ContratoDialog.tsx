@@ -27,6 +27,7 @@ interface Props {
   motosAvaliacao: MotoAvaliacao[];
   estoqueData: Record<string, any>;
   avaliacoes: Record<string, any>;
+  onSaved?: () => void;
 }
 
 const FINANCEIRAS = ['Santander', 'Bradesco', 'Safra', 'BV', 'Pan', 'Omni', 'Volkswagen', 'C6 Bank', 'Próprio (299)'];
@@ -113,7 +114,7 @@ interface FormaPagamento {
 }
 
 const ContratoDialog: React.FC<Props> = ({
-  open, onOpenChange, atendimento, motosInteresse, motosAvaliacao, estoqueData, avaliacoes,
+  open, onOpenChange, atendimento, motosInteresse, motosAvaliacao, estoqueData, avaliacoes, onSaved,
 }) => {
   const { userName, user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -381,6 +382,7 @@ const ContratoDialog: React.FC<Props> = ({
     const id = await saveContrato();
     if (id) {
       toast.success('Contrato salvo com sucesso!');
+      onSaved?.();
       onOpenChange(false);
     }
   };
