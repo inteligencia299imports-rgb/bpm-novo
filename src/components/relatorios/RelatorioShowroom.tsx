@@ -146,7 +146,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const loadData = async () => {
     setLoading(true);
     const [atRes, avRes, esRes, coRes, vdRes] = await Promise.all([
-      supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, vendedor_id, created_at, valor_venda, valor_sinal'),
+      supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal'),
       supabase.from('avaliacoes').select('id, atendimento_id, quanto_vende, valor_fechamento, previsao_custos_loja, previsao_custos_cliente, tipo_aquisicao, moto_avaliacao_id'),
       supabase.from('estoque').select('id, avaliacao_id, atendimento_venda_id, preco, tipo, modelo, marca, placa, data_venda, valor_venda, status'),
       supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado'),
