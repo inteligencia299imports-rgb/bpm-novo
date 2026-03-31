@@ -16,7 +16,6 @@ const RelatoriosTab: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">Relatórios</h1>
       <Tabs value={dept} onValueChange={setDept}>
         <div className="flex items-center justify-between gap-4">
           <TabsList>
