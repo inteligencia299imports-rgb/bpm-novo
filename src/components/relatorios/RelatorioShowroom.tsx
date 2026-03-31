@@ -462,6 +462,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     return months.map(m => {
       // Atendimentos in this month period (by created_at)
       const atendMonth = filteredAtendimentos.filter(a => {
+        if (a.interesse !== 'comprar' && a.interesse !== 'trocar') return false;
         const d = new Date(a.created_at);
         return d >= m.start && d <= m.end;
       });
