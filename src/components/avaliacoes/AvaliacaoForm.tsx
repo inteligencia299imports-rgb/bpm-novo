@@ -161,7 +161,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         .select(`
           *,
           atendimentos (id, nome_cliente, telefone, loja, vendedor_id, interesse, sexo, uf, tipo_atendimento, origem, temperatura, created_at, cnh_url, cpf_cnpj, email, cep, endereco),
-          motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, consulta_realizada, consulta_solicitada, resultado_consulta, tem_manual, tem_chave_reserva, manutencao_em_dia)
+          motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, consulta_realizada, consulta_solicitada, resultado_consulta, tem_manual, tem_chave_reserva, manutencao_vencida)
         `)
         .eq('id', avaliacaoId)
         .single();
@@ -358,7 +358,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       if (obsMotaAquisicao.trim()) motoUpdate.observacoes = obsMotaAquisicao.trim().toUpperCase();
       if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
       if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
-      if (aquisRevisaoVencida) motoUpdate.manutencao_em_dia = aquisRevisaoVencida === 'sim';
+      if (aquisRevisaoVencida) motoUpdate.manutencao_vencida = aquisRevisaoVencida === 'sim';
       if (Object.keys(motoUpdate).length > 0) {
         await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', avaliacao.moto_avaliacao_id);
       }
@@ -640,7 +640,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   Chave Reserva
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className={`inline-block w-2 h-2 rounded-full ${moto?.manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                  <span className={`inline-block w-2 h-2 rounded-full ${moto?.manutencao_vencida ? 'bg-red-500' : 'bg-green-500'}`} />
                   Revisão
                 </span>
               </div>
@@ -920,7 +920,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       const ma = avaliacao?.moto_avaliacao || avaliacao?.motos_avaliacao;
                       setAquisManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
                       setAquisChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
-                      setAquisRevisaoVencida(ma?.manutencao_em_dia ? 'sim' : ma?.manutencao_em_dia === false ? 'nao' : '');
+                      setAquisRevisaoVencida(ma?.manutencao_vencida ? 'sim' : ma?.manutencao_vencida === false ? 'nao' : '');
                       setTipoAquisicaoPopup(true);
                       return;
                     }

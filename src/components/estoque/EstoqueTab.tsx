@@ -66,7 +66,7 @@ interface EstoqueItem {
   // From motos_avaliacao join
   tem_manual?: boolean | null;
   tem_chave_reserva?: boolean | null;
-  manutencao_em_dia?: boolean | null;
+  manutencao_vencida?: boolean | null;
   classificacao?: string | null;
   data_venda?: string | null;
   valor_venda?: number | null;
@@ -146,7 +146,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_em_dia), atendimentos:atendimento_venda_id(vendedor_id)').order('data_entrada', { ascending: false });
+      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida), atendimentos:atendimento_venda_id(vendedor_id)').order('data_entrada', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
       if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
@@ -166,7 +166,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         ...d,
         tem_manual: d.motos_avaliacao?.tem_manual ?? null,
         tem_chave_reserva: d.motos_avaliacao?.tem_chave_reserva ?? null,
-        manutencao_em_dia: d.motos_avaliacao?.manutencao_em_dia ?? null,
+        manutencao_vencida: d.motos_avaliacao?.manutencao_vencida ?? null,
         venda_vendedor_id: d.atendimentos?.vendedor_id ?? null,
         vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
       }));
@@ -512,7 +512,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             )}
                           </div>
 
-                          {(item.tem_manual != null || item.tem_chave_reserva != null || item.manutencao_em_dia != null) && (
+                          {(item.tem_manual != null || item.tem_chave_reserva != null || item.manutencao_vencida != null) && (
                             <div className="flex items-center gap-3 text-xs">
                               {item.tem_manual != null && (
                                 <span className="flex items-center gap-1">
@@ -526,9 +526,9 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                                   Chave Reserva
                                 </span>
                               )}
-                              {item.manutencao_em_dia != null && (
+                              {item.manutencao_vencida != null && (
                                 <span className="flex items-center gap-1">
-                                  <span className={`inline-block w-2 h-2 rounded-full ${item.manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                                  <span className={`inline-block w-2 h-2 rounded-full ${item.manutencao_vencida ? 'bg-red-500' : 'bg-green-500'}`} />
                                   Revisão
                                 </span>
                               )}

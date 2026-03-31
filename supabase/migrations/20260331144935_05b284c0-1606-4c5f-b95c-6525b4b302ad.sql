@@ -1,0 +1,1 @@
+ALTER TABLE public.motos_avaliacao RENAME COLUMN manutencao_em_dia TO manutencao_vencida;

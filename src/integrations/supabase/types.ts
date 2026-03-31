@@ -777,7 +777,7 @@ export type Database = {
           enviada_avaliacao: boolean | null
           id: string
           km: string | null
-          manutencao_em_dia: boolean | null
+          manutencao_vencida: boolean | null
           marca: string
           modelo: string
           observacoes: string | null
@@ -801,7 +801,7 @@ export type Database = {
           enviada_avaliacao?: boolean | null
           id?: string
           km?: string | null
-          manutencao_em_dia?: boolean | null
+          manutencao_vencida?: boolean | null
           marca: string
           modelo: string
           observacoes?: string | null
@@ -825,7 +825,7 @@ export type Database = {
           enviada_avaliacao?: boolean | null
           id?: string
           km?: string | null
-          manutencao_em_dia?: boolean | null
+          manutencao_vencida?: boolean | null
           marca?: string
           modelo?: string
           observacoes?: string | null

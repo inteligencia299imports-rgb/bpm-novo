@@ -138,7 +138,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       // Fetch all secondary data in parallel
       const estoquePromise = estoqueIds.length > 0
-        ? supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_em_dia)').in('id', estoqueIds).then(r => r)
+        ? supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida)').in('id', estoqueIds).then(r => r)
         : Promise.resolve({ data: null as any[] | null });
 
       const avaliadorIds = resAval.data
@@ -170,7 +170,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             ...item,
             tem_manual: item.motos_avaliacao?.tem_manual ?? null,
             tem_chave_reserva: item.motos_avaliacao?.tem_chave_reserva ?? null,
-            manutencao_em_dia: item.motos_avaliacao?.manutencao_em_dia ?? null,
+            manutencao_vencida: item.motos_avaliacao?.manutencao_vencida ?? null,
           };
         }
         setEstoqueData(estoqueMap);
@@ -755,7 +755,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             Chave Reserva
                           </span>
                           <span className="flex items-center gap-1">
-                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.manutencao_vencida ? 'bg-red-500' : 'bg-green-500'}`} />
                             Revisão
                           </span>
                         </div>
@@ -877,7 +877,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         Chave Reserva
                       </span>
                       <span className="flex items-center gap-1">
-                        <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).manutencao_em_dia ? 'bg-red-500' : 'bg-green-500'}`} />
+                        <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).manutencao_vencida ? 'bg-red-500' : 'bg-green-500'}`} />
                         Revisão
                       </span>
                     </div>
