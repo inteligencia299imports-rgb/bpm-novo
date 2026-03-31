@@ -101,7 +101,7 @@ interface VendedorInfo {
 }
 
 const RelatorioShowroom: React.FC = () => {
-  const [loading, setLoading] = useState(true);
+  const { userName } = useAuth();
   const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoRow[]>([]);
   const [estoqueItems, setEstoqueItems] = useState<EstoqueRow[]>([]);
