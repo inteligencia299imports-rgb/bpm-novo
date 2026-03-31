@@ -504,7 +504,7 @@ const RelatorioShowroom: React.FC = () => {
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold">Olá, {userName || 'Gestor'} 👋</h2>
+            <h2 className="text-xl font-bold">Olá, {userName || 'Gestor'}</h2>
             <p className="text-sm text-muted-foreground">Resumo do período selecionado</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
