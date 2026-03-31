@@ -1017,7 +1017,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       </Dialog>
       {/* Dialog Tipo de Aquisição / Conversão */}
       <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); } }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isConvertendo ? <ArrowLeftRight className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
