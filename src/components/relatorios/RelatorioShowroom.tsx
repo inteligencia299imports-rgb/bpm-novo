@@ -723,7 +723,7 @@ const indicatorGradients: Record<string, string> = {
   amber: 'bg-gradient-to-br from-[#da6220] to-[#f59e0b]',
   blue: 'bg-gradient-to-br from-[#2563eb] to-[#2EC5FF]',
   slate: 'bg-gradient-to-br from-[#475569] to-[#64748b]',
-  emerald: 'bg-gradient-to-br from-[#059669] to-[#34d399]',
+  emerald: 'bg-gradient-to-br from-[#115e3a] to-[#169d53]',
   rose: 'bg-gradient-to-br from-[#e11d48] to-[#fb7185]',
 };
 
