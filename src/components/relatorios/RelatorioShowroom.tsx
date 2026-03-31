@@ -628,7 +628,29 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MonthChart title="Atendimentos" data={chartByMonth} dataKey="atendimentos" />
-        <MonthChart title="Vendas" data={chartByMonth} dataKey="vendas" />
+        <Card className="border shadow-sm rounded-xl">
+          <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Vendas + Taxa de Conversão</CardTitle></CardHeader>
+          <CardContent className="px-4 pb-3 pt-0">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradConversaoMonth" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#E8913A" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#E8913A" stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: '#E8913A' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar yAxisId="left" dataKey="vendas" name="Vendas" fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
+                <Line yAxisId="right" type="monotone" dataKey="conversao" name="Conversão (%)" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
         <MonthChart title="Faturamento" data={chartByMonth} dataKey="faturamento" isCurrency />
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Margem Prevista vs Realizada (%)</CardTitle></CardHeader>
