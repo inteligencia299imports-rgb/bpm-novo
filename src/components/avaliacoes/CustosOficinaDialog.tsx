@@ -151,14 +151,14 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
-          <DialogTitle className="text-lg font-bold">Custos de Oficina</DialogTitle>
+          <DialogTitle className="text-lg font-bold">Custos Operacionais</DialogTitle>
         </DialogHeader>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 pb-6" style={{ maxHeight: 'calc(90vh - 80px)' }}>
           <div className="space-y-4 px-2">
             {/* Add new cost form */}
             <div className="space-y-3">
-              <p className="text-sm font-semibold">Adicionar Custo</p>
+              <p className="text-sm font-semibold">Adicionar Custo Oficina</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium">Responsável</label>
@@ -243,7 +243,7 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
                 />
               </div>
               <Button onClick={handleAdd} className="w-full gap-2">
-                <Plus className="h-4 w-4" /> Adicionar Custo
+                <Plus className="h-4 w-4" /> Adicionar Custo Oficina
               </Button>
             </div>
 
@@ -277,7 +277,13 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
                 {(() => {
                   const totalPrevisto = custos.reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
                   const totalExecutado = custos.reduce((sum, c) => sum + (c.valor_executado ?? 0), 0);
-                  const diferenca = totalPrevisto - totalExecutado;
+                  // Custos sem executado (processo): previsto é gasto direto (negativo)
+                  // Custos com executado (oficina): diferença = previsto - executado
+                  const custosOficina = custos.filter(c => c.valor_executado != null);
+                  const custosProcesso = custos.filter(c => c.valor_executado == null);
+                  const diferencaOficina = custosOficina.reduce((sum, c) => sum + ((c.valor_previsto ?? 0) - (c.valor_executado ?? 0)), 0);
+                  const custoProcessoTotal = custosProcesso.reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
+                  const diferenca = diferencaOficina - custoProcessoTotal;
                   return (
                     <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border">
                       <div className="bg-secondary rounded-lg p-3 text-center">
