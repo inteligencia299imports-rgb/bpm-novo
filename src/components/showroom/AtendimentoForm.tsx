@@ -240,8 +240,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       await supabase.from('status_history').insert({
         entity_type: 'showroom',
         entity_id: atId,
-        status_from: 'novo',
-        status_to: 'em_aberto',
+        status: 'em_aberto',
         changed_by: user?.id,
         changed_by_name: userName || user?.email || null,
       });
