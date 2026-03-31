@@ -766,9 +766,7 @@ const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurr
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={isCurrency ? (v: number) => `${(v / 1000).toFixed(0)}k` : undefined} />
-          <Tooltip
-            formatter={isCurrency ? (v: number) => fmtBRL(v) : undefined}
-            contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12 }}
+          <Tooltip content={<CustomTooltip isCurrency={isCurrency} />}
             cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
           />
           <Bar dataKey={dataKey} fill="#3F8DA6" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props, isCurrency)} />
