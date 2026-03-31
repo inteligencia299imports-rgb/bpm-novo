@@ -36,7 +36,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
     const [{ data, error }, { data: estData }] = await Promise.all([
       supabase
         .from('avaliacoes')
-        .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, observacoes)`)
+        .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, observacoes, tem_manual, tem_chave_reserva, manutencao_em_dia)`)
         .eq('tipo_aquisicao', 'consignada')
         .order('updated_at', { ascending: false }),
       supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null),
