@@ -616,14 +616,29 @@ const RelatorioShowroom: React.FC = () => {
             <MonthChart title="Faturamento" data={chartByMonth} dataKey="faturamento" isCurrency />
             <div>
               <p className="text-sm font-medium mb-2">Margem Prevista vs Realizada (%)</p>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={chartByMonth} barGap={4}>
-                  <XAxis dataKey="label" tick={{ fontSize: 9 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} cursor={{ fill: 'hsl(var(--muted))' }} />
-                  <Legend />
-                  <Bar dataKey="pctMargemPrevista" name="Prevista" fill="#7e6597" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, formatter: (v: number) => `${v.toFixed(1)}%` }} />
-                  <Bar dataKey="pctMargemRealizada" name="Realizada" fill="#169d53" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, formatter: (v: number) => `${v.toFixed(1)}%` }} />
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={chartByMonth} barGap={6} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="gradPrevista" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#7e6d9b" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#9b8bb8" stopOpacity={0.6} />
+                    </linearGradient>
+                    <linearGradient id="gradRealizada" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3a8f6a" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#5bb88a" stopOpacity={0.6} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    formatter={(v: number) => `${v.toFixed(1)}%`}
+                    contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12 }}
+                    cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="pctMargemPrevista" name="Prevista" fill="url(#gradPrevista)" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => `${v.toFixed(1)}%` }} />
+                  <Bar dataKey="pctMargemRealizada" name="Realizada" fill="url(#gradRealizada)" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => `${v.toFixed(1)}%` }} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
