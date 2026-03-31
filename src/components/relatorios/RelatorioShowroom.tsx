@@ -533,11 +533,11 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-full">
       <Separator className="my-2" />
       {/* Loja on left, Tipo on right */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-1">
           {['todos', '299', 'Ducati'].map(loja => (
             <Button
               key={loja}
@@ -550,37 +550,39 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
             </Button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Tipo:</span>
-          {[
-            { value: 'todos', label: 'Todos' },
-            { value: 'propria', label: 'Própria' },
-            { value: 'consignada', label: 'Consignada' },
-            { value: 'test-ride', label: 'Test-Ride' },
-            { value: 'repasse', label: 'Repasse' },
-          ].map(t => (
-            <Button
-              key={t.value}
-              size="sm"
-              variant={filterTipo === t.value ? 'default' : 'outline'}
-              className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')}
-              onClick={() => setFilterTipo(t.value)}
-            >
-              {t.label}
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2 max-w-full">
+          <span className="text-xs font-medium text-muted-foreground shrink-0">Tipo:</span>
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { value: 'todos', label: 'Todos' },
+              { value: 'propria', label: 'Própria' },
+              { value: 'consignada', label: 'Consignada' },
+              { value: 'test-ride', label: 'Test-Ride' },
+              { value: 'repasse', label: 'Repasse' },
+            ].map(t => (
+              <Button
+                key={t.value}
+                size="sm"
+                variant={filterTipo === t.value ? 'default' : 'outline'}
+                className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')}
+                onClick={() => setFilterTipo(t.value)}
+              >
+                {t.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Indicators - Line 1 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Atendimentos" value={indicadores.qtdAtendimentos} gradient="teal" icon={<Users className="h-5 w-5" />} />
         <IndicatorCard title="Vendas" value={indicadores.qtdVendas} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} />
         <IndicatorCard title="Sinais" value={indicadores.qtdSinais} gradient="teal" icon={<CreditCard className="h-5 w-5" />} />
         <IndicatorCard title="Taxa de Conversão" value={fmtPct(indicadores.taxaConversao)} gradient="teal" icon={<TrendingUp className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} gradient="purple" icon={<DollarSign className="h-5 w-5" />} />
         <IndicatorCard title="Margem Prevista" value={`${fmtBRL(indicadores.margemPrevista)} (${fmtPct(indicadores.pctMargemPrevista)})`} gradient="purple" icon={<Target className="h-5 w-5" />} />
         <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} gradient="emerald" icon={<BarChart3 className="h-5 w-5" />} />
