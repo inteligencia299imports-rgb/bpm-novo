@@ -54,7 +54,7 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
 
               <div className="flex-1 min-w-0">
                 <span className={`text-sm uppercase ${isLatest ? 'font-bold text-primary' : ''}`}>
-                  {formatStatusLabel(h.status_to)}
+                  {formatStatusLabel(h.status)}
                 </span>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                   <span className="text-xs text-muted-foreground">
