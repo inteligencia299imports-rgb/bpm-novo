@@ -500,7 +500,7 @@ const RelatorioShowroom: React.FC = () => {
     <div className="space-y-6">
       {/* Filters */}
       <Card>
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 space-y-3">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="space-y-1">
               <Label className="text-xs">Data Início</Label>
@@ -530,6 +530,8 @@ const RelatorioShowroom: React.FC = () => {
                 </PopoverContent>
               </Popover>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-4 items-end">
             <div className="space-y-1">
               <Label className="text-xs">Loja</Label>
               <Select value={filterLoja} onValueChange={setFilterLoja}>
