@@ -72,7 +72,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .select('created_at')
           .eq('entity_id', motoAvaliacaoId)
           .eq('entity_type', 'consulta')
-          .eq('status_to', 'consulta_realizada')
+          .eq('status', 'consulta_realizada')
           .order('created_at', { ascending: false })
           .limit(1),
       ]);
