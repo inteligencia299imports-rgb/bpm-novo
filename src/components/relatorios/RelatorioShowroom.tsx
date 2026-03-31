@@ -612,13 +612,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Vendas e Taxa de Conversão</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gradConversaoMonth" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#E8913A" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#E8913A" stopOpacity={0.05} />
-                  </linearGradient>
-                </defs>
+              <ComposedChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
@@ -627,7 +621,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar yAxisId="left" dataKey="vendas" name="Vendas" fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
                 <Line yAxisId="right" type="monotone" dataKey="conversao" name="Conversão (%)" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
-              </BarChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
