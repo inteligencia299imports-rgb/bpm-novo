@@ -22,7 +22,7 @@ function getCustomMonthLabel(startDate: Date): string {
   const endDate = new Date(startDate);
   endDate.setMonth(endDate.getMonth() + 1);
   endDate.setDate(endDate.getDate() - 1);
-  return `${format(startDate, 'dd/MM', { locale: ptBR })} - ${format(endDate, 'dd/MM/yy', { locale: ptBR })}`;
+  return `${format(startDate, 'dd/MM', { locale: ptBR })} - ${format(endDate, 'dd/MM', { locale: ptBR })}`;
 }
 
 function generateCustomMonths(): { start: Date; end: Date; label: string }[] {
