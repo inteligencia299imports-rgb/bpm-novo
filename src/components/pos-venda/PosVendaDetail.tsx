@@ -598,6 +598,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         onStatusChanged={(newStatus) => {
           onStatusChanged?.(item.id, newStatus, processoProps?.statusField || statusField);
         }}
+        onContratoSaved={refreshConsignada}
       />
 
       {isIntermParte1 && (
