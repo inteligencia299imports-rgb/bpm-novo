@@ -78,7 +78,7 @@ interface CustoOperacional {
   valor: string;
 }
 
-const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) => {
+const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId, onSaved }) => {
   const { user, userName } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
