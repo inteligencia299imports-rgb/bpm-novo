@@ -601,7 +601,8 @@ const RelatorioShowroom: React.FC = () => {
               <p className="text-sm font-medium mb-2">Margem Prevista vs Realizada (%)</p>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={chartByMonth} barGap={4}>
-                  <XAxis dataKey="label" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 9 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} cursor={{ fill: 'hsl(var(--muted))' }} />
                   <Legend />
                   <Bar dataKey="pctMargemPrevista" name="Prevista" fill="#7e6597" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, formatter: (v: number) => `${v.toFixed(1)}%` }} />
@@ -751,7 +752,8 @@ const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ 
     <p className="text-sm font-medium mb-2">{title}</p>
     <ResponsiveContainer width="100%" height={250}>
       <BarChart data={data} barCategoryGap="20%">
-        <XAxis dataKey="nome" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+        <XAxis dataKey="nome" tick={{ fontSize: 10 }} />
+        <YAxis tick={{ fontSize: 10 }} />
         <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} />
         <Bar dataKey={dataKey} fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} label={(props: any) => renderBarLabel(props)} />
       </BarChart>
@@ -764,7 +766,8 @@ const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurr
     <p className="text-sm font-medium mb-2">{title}</p>
     <ResponsiveContainer width="100%" height={250}>
       <BarChart data={data} barCategoryGap="20%">
-        <XAxis dataKey="label" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+        <XAxis dataKey="label" tick={{ fontSize: 9 }} />
+        <YAxis tick={{ fontSize: 10 }} tickFormatter={isCurrency ? (v: number) => `${(v / 1000).toFixed(0)}k` : undefined} />
         <Tooltip formatter={isCurrency ? (v: number) => fmtBRL(v) : undefined} cursor={{ fill: 'hsl(var(--muted))' }} />
         <Bar dataKey={dataKey} fill="#3F8DA6" radius={[6, 6, 0, 0]} label={(props: any) => renderBarLabel(props, isCurrency)} />
       </BarChart>
