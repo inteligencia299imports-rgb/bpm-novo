@@ -122,6 +122,16 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
   const [listTab, setListTab] = useState('vendidas');
 
+  // Register clear function
+  useEffect(() => {
+    onRegisterClear?.(() => {
+      setFilterLoja('todos');
+      setFilterTipo('todos');
+      setDateFrom(undefined);
+      setDateTo(undefined);
+    });
+  }, [onRegisterClear, setDateFrom, setDateTo]);
+
   useEffect(() => {
     loadData();
   }, []);
