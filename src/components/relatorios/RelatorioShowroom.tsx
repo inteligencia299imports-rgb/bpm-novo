@@ -452,7 +452,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     });
 
     const pctMargemPrevista = totalQuantoVende > 0 ? margemPrevista / totalQuantoVende : 0;
-    const pctMargemRealizada = totalPrecoEstoque > 0 ? margemRealizada / totalPrecoEstoque : 0;
+    const pctMargemRealizada = faturamentoRealizado > 0 ? margemRealizada / faturamentoRealizado : 0;
 
     return {
       qtdAtendimentos, qtdVendas, qtdSinais, taxaConversao,
