@@ -561,15 +561,18 @@ const RelatorioShowroom: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Indicators */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      {/* Indicators - Line 1 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <IndicatorCard title="Atendimentos" value={indicadores.qtdAtendimentos} />
         <IndicatorCard title="Vendas" value={indicadores.qtdVendas} />
         <IndicatorCard title="Sinais" value={indicadores.qtdSinais} />
-        <IndicatorCard title="Taxa Conversão" value={fmtPct(indicadores.taxaConversao)} />
-        <IndicatorCard title="Fat. Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} />
-        <IndicatorCard title="Fat. Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} />
+        <IndicatorCard title="Taxa de Conversão" value={fmtPct(indicadores.taxaConversao)} />
+      </div>
+      {/* Indicators - Line 2 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} />
         <IndicatorCard title="Margem Prevista" value={fmtBRL(indicadores.margemPrevista)} sub={fmtPct(indicadores.pctMargemPrevista)} />
+        <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} />
         <IndicatorCard title="Margem Realizada" value={fmtBRL(indicadores.margemRealizada)} sub={fmtPct(indicadores.pctMargemRealizada)} />
       </div>
 
