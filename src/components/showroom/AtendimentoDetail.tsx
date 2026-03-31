@@ -250,8 +250,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       const historyPromise = supabase.from('status_history').insert({
         entity_type: 'showroom',
         entity_id: atendimento.id,
-        status_from: previousStatus,
-        status_to: value,
+        status: value,
         changed_by: user?.id,
         changed_by_name: userName || user?.email || null,
         observacoes: observacoes || null,
