@@ -559,7 +559,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         conversao,
         faturamento,
         pctMargemPrevista: totalQV > 0 ? +(margemPrevista / totalQV * 100).toFixed(1) : 0,
-        pctMargemRealizada: totalPE > 0 ? +(margemRealizada / totalPE * 100).toFixed(1) : 0,
+        pctMargemRealizada: faturamento > 0 ? +(margemRealizada / faturamento * 100).toFixed(1) : 0,
       };
     });
   }, [filteredAtendimentos, estoqueByAtendimentoVenda, avaliacoes, custosByAvaliacao, filterTipo]);
