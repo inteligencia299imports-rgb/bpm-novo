@@ -913,7 +913,7 @@ const CustomTooltip = ({ active, payload, label, isCurrency }: any) => {
 const renderBarLabel = (props: any, isCurrency?: boolean) => {
   const { x, y, width, value } = props;
   if (value == null || value === 0) return null;
-  const formatted = isCurrency ? fmtBRL(value) : typeof value === 'number' && value % 1 !== 0 ? `${value.toFixed(1)}%` : String(value);
+  const formatted = isCurrency ? fmtBRL(value) : String(value);
   return (
     <text x={x + width / 2} y={y - 6} fill="hsl(var(--foreground))" fontSize={10} fontWeight={600} textAnchor="middle">
       {formatted}
