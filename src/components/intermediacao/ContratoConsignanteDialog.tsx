@@ -358,6 +358,12 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       }
     }
 
+    // Update valor_fechamento on the avaliacao linked to this estoque item
+    const vfParsed = parseCurrencyInput(valorFechamento);
+    if (estoqueInfo?.avaliacao_id && vfParsed > 0) {
+      await supabase.from('avaliacoes').update({ valor_fechamento: vfParsed }).eq('id', estoqueInfo.avaliacao_id);
+    }
+
     setSaving(false);
     return id;
   };
