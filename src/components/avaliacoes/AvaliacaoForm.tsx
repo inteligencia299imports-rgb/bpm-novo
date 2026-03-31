@@ -894,6 +894,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     setIsConvertendo(true);
                     setObsMotaAquisicao('');
                     setValorFechamentoAquisicao('');
+                    const ma = avaliacao?.moto_avaliacao || (avaliacao as any)?.motos_avaliacao;
+                    setAquisManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
+                    setAquisChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
+                    setAquisRevisaoVencida(ma?.manutencao_vencida ? 'sim' : ma?.manutencao_vencida === false ? 'nao' : '');
                     // Pre-select the only available option
                     const currentTipo = avaliacao.tipo_aquisicao;
                     const oppositeTipo = (currentTipo === 'consignada') ? 'propria' : 'consignada';
