@@ -49,8 +49,10 @@ function generateCustomMonths(): { start: Date; end: Date; label: string }[] {
 
 const fmtBRL = (v: number | null | undefined) =>
   (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const fmtPct = (v: number | null | undefined) =>
-  `${((v ?? 0) * 100).toFixed(1)}%`;
+const fmtPct = (v: number | null | undefined) => {
+  const raw = (v ?? 0) * 100;
+  return `${(Math.round(raw * 10) / 10).toFixed(1)}%`;
+};
 
 interface AtendimentoRow {
   id: string;
@@ -502,7 +504,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         atendimentos: qtdAtend,
         vendas: qtdVendas,
         sinais: qtdSinais,
-        conversao: qtdAtend > 0 ? +(qtdVendas / qtdAtend * 100).toFixed(1) : 0,
+        conversao: qtdAtend > 0 ? qtdVendas / qtdAtend : 0,
         faturamento,
       };
     }).filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0);
@@ -566,7 +568,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         });
       });
 
-      const conversao = atendMonth.length > 0 ? +(vendidosMonth.length / atendMonth.length * 100).toFixed(1) : 0;
+      const conversao = atendMonth.length > 0 ? vendidosMonth.length / atendMonth.length : 0;
 
       return {
         label: m.label,
@@ -574,8 +576,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         vendas: vendidosMonth.length,
         conversao,
         faturamento,
-        pctMargemPrevista: totalQV > 0 ? +(margemPrevista / totalQV * 100).toFixed(1) : 0,
-        pctMargemRealizada: faturamento > 0 ? +(margemRealizada / faturamento * 100).toFixed(1) : 0,
+        pctMargemPrevista: totalQV > 0 ? margemPrevista / totalQV : 0,
+        pctMargemRealizada: faturamento > 0 ? margemRealizada / faturamento : 0,
       };
     });
   }, [filteredAtendimentos, estoqueByAtendimentoVenda, avaliacoes, custosByAvaliacao, filterTipo]);
@@ -675,9 +677,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="nome" tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`} />
                 <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--muted))', strokeWidth: 1 }} />
-                <Area type="monotone" dataKey="conversao" stroke="#2F6F84" strokeWidth={2.5} fill="url(#gradConversao)" dot={{ r: 5, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--foreground))', fontWeight: 600, formatter: (v: number) => `${v.toFixed(1)}%` }} />
+                <Area type="monotone" dataKey="conversao" stroke="#2F6F84" strokeWidth={2.5} fill="url(#gradConversao)" dot={{ r: 5, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--foreground))', fontWeight: 600, formatter: (v: number) => fmtPct(v) }} />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
@@ -705,7 +707,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: '#E8913A' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: '#E8913A' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtPct(v)} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
                 <Bar yAxisId="left" dataKey="vendas" name="Vendas" fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
                 <Line yAxisId="right" type="monotone" dataKey="conversao" name="Conversão (%)" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
@@ -746,12 +748,12 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
               <ComposedChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtPct(v)} />
                 <Tooltip content={<CustomTooltip />}
                   cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
                 />
-                <Line type="monotone" dataKey="pctMargemPrevista" name="Prevista" stroke="#7e6d9b" strokeWidth={2.5} dot={{ r: 4, fill: '#7e6d9b' }} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => `${v.toFixed(1)}%` }} />
-                <Line type="monotone" dataKey="pctMargemRealizada" name="Realizada" stroke="#3a8f6a" strokeWidth={2.5} dot={{ r: 4, fill: '#3a8f6a' }} label={{ position: 'bottom', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => `${v.toFixed(1)}%` }} />
+                <Line type="monotone" dataKey="pctMargemPrevista" name="Prevista" stroke="#7e6d9b" strokeWidth={2.5} dot={{ r: 4, fill: '#7e6d9b' }} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => fmtPct(v) }} />
+                <Line type="monotone" dataKey="pctMargemRealizada" name="Realizada" stroke="#3a8f6a" strokeWidth={2.5} dot={{ r: 4, fill: '#3a8f6a' }} label={{ position: 'bottom', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => fmtPct(v) }} />
               </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
@@ -803,11 +805,11 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                         <TableCell className="text-xs">{m.dataVenda ? format(new Date(m.dataVenda), 'dd/MM/yy') : '-'}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.quantoVende)}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.valorFechamento)}</TableCell>
-                        <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)} ({((m.pctMargemPrevista ?? 0) * 100).toFixed(1)}%)</TableCell>
+                        <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)} ({fmtPct(m.pctMargemPrevista)})</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.valorVenda)}</TableCell>
                         <TableCell className={`text-xs text-right ${m.margemOficina >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemOficina)}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.abatimentos)}</TableCell>
-                        <TableCell className={`text-xs text-right font-medium ${m.margemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemRealizada)} ({((m.pctMargemRealizada ?? 0) * 100).toFixed(1)}%)</TableCell>
+                        <TableCell className={`text-xs text-right font-medium ${m.margemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemRealizada)} ({fmtPct(m.pctMargemRealizada)})</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -847,11 +849,11 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                         <TableCell className="text-xs">{m.dataSinal ? format(new Date(m.dataSinal), 'dd/MM/yy') : '-'}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.quantoVende)}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.valorFechamento)}</TableCell>
-                        <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)} ({((m.pctMargemPrevista ?? 0) * 100).toFixed(1)}%)</TableCell>
+                        <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)} ({fmtPct(m.pctMargemPrevista)})</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.valorVenda)}</TableCell>
                         <TableCell className={`text-xs text-right ${m.margemOficina >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemOficina)}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.abatimentos)}</TableCell>
-                        <TableCell className={`text-xs text-right font-medium ${m.margemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemRealizada)} ({((m.pctMargemRealizada ?? 0) * 100).toFixed(1)}%)</TableCell>
+                        <TableCell className={`text-xs text-right font-medium ${m.margemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemRealizada)} ({fmtPct(m.pctMargemRealizada)})</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -888,16 +890,22 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: str
   </Card>
 );
 
+const pctKeys = ['conversao', 'pctMargemPrevista', 'pctMargemRealizada'];
+
 const CustomTooltip = ({ active, payload, label, isCurrency }: any) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12, background: 'hsl(var(--background))', padding: '8px 12px' }}>
       <p style={{ fontWeight: 700, marginBottom: 4 }}>{label}</p>
-      {payload.map((entry: any, i: number) => (
-        <p key={i} style={{ color: entry.color, margin: 0 }}>
-          {capitalize(entry.name)}: {isCurrency ? fmtBRL(entry.value) : typeof entry.value === 'number' && entry.value % 1 !== 0 ? `${entry.value.toFixed(1)}%` : entry.value}
-        </p>
-      ))}
+      {payload.map((entry: any, i: number) => {
+        const isPct = pctKeys.includes(entry.dataKey);
+        const formatted = isCurrency ? fmtBRL(entry.value) : isPct ? fmtPct(entry.value) : entry.value;
+        return (
+          <p key={i} style={{ color: entry.color, margin: 0 }}>
+            {capitalize(entry.name)}: {formatted}
+          </p>
+        );
+      })}
     </div>
   );
 };
@@ -905,7 +913,7 @@ const CustomTooltip = ({ active, payload, label, isCurrency }: any) => {
 const renderBarLabel = (props: any, isCurrency?: boolean) => {
   const { x, y, width, value } = props;
   if (value == null || value === 0) return null;
-  const formatted = isCurrency ? fmtBRL(value) : typeof value === 'number' && value % 1 !== 0 ? `${value.toFixed(1)}%` : String(value);
+  const formatted = isCurrency ? fmtBRL(value) : String(value);
   return (
     <text x={x + width / 2} y={y - 6} fill="hsl(var(--foreground))" fontSize={10} fontWeight={600} textAnchor="middle">
       {formatted}

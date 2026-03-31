@@ -836,7 +836,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       const quantoVendeVal = avaliacao?.quanto_vende ?? 0;
                       const fechamentoVal = avaliacao?.valor_fechamento ?? 0;
                       const margem = quantoVendeVal - fechamentoVal;
-                      const margemPct = quantoVendeVal > 0 ? (margem / quantoVendeVal) * 100 : 0;
+                      const margemPct = quantoVendeVal > 0 ? Math.round((margem / quantoVendeVal) * 1000) / 10 : 0;
                       const margemPositiva = margem >= 0;
                       return (
                         <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
