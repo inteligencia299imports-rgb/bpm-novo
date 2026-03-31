@@ -568,7 +568,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         });
       });
 
-      const conversao = atendMonth.length > 0 ? +(vendidosMonth.length / atendMonth.length * 100).toFixed(1) : 0;
+      const conversao = atendMonth.length > 0 ? vendidosMonth.length / atendMonth.length : 0;
 
       return {
         label: m.label,
@@ -576,8 +576,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         vendas: vendidosMonth.length,
         conversao,
         faturamento,
-        pctMargemPrevista: totalQV > 0 ? +(margemPrevista / totalQV * 100).toFixed(1) : 0,
-        pctMargemRealizada: faturamento > 0 ? +(margemRealizada / faturamento * 100).toFixed(1) : 0,
+        pctMargemPrevista: totalQV > 0 ? margemPrevista / totalQV : 0,
+        pctMargemRealizada: faturamento > 0 ? margemRealizada / faturamento : 0,
       };
     });
   }, [filteredAtendimentos, estoqueByAtendimentoVenda, avaliacoes, custosByAvaliacao, filterTipo]);
