@@ -502,47 +502,10 @@ const RelatorioShowroom: React.FC = () => {
   return (
     <div className="space-y-4">
       <Separator className="my-1" />
-      {/* Filters: Tipo on left, Loja + Date on right */}
+      {/* Filters: Date + Loja on left, Tipo on right */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Tipo:</span>
-          {[
-            { value: 'todos', label: 'Todos' },
-            { value: 'propria', label: 'Própria' },
-            { value: 'consignada', label: 'Consignada' },
-            { value: 'test-ride', label: 'Test-Ride' },
-            { value: 'repasse', label: 'Repasse' },
-          ].map(t => (
-            <Button
-              key={t.value}
-              size="sm"
-              variant={filterTipo === t.value ? 'default' : 'outline'}
-              className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')}
-              onClick={() => setFilterTipo(t.value)}
-            >
-              {t.label}
-            </Button>
-          ))}
-          {(dateFrom || dateTo || filterLoja !== 'todos' || filterTipo !== 'todos') && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs h-7 text-muted-foreground">
-              <X className="h-3 w-3" /> Limpar
-            </Button>
-          )}
-        </div>
+        {/* Date + Loja - left */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            {['todos', '299', 'Ducati'].map(loja => (
-              <Button
-                key={loja}
-                size="sm"
-                variant={filterLoja === loja ? 'default' : 'outline'}
-                className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')}
-                onClick={() => setFilterLoja(loja)}
-              >
-                {loja === 'todos' ? 'Todas Lojas' : loja}
-              </Button>
-            ))}
-          </div>
           <div className="flex items-center gap-1.5">
             <Popover>
               <PopoverTrigger asChild>
@@ -568,6 +531,45 @@ const RelatorioShowroom: React.FC = () => {
               </PopoverContent>
             </Popover>
           </div>
+          <div className="flex items-center gap-1">
+            {['todos', '299', 'Ducati'].map(loja => (
+              <Button
+                key={loja}
+                size="sm"
+                variant={filterLoja === loja ? 'default' : 'outline'}
+                className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')}
+                onClick={() => setFilterLoja(loja)}
+              >
+                {loja === 'todos' ? 'Todas Lojas' : loja}
+              </Button>
+            ))}
+          </div>
+        </div>
+        {/* Tipo - right */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Tipo:</span>
+          {[
+            { value: 'todos', label: 'Todos' },
+            { value: 'propria', label: 'Própria' },
+            { value: 'consignada', label: 'Consignada' },
+            { value: 'test-ride', label: 'Test-Ride' },
+            { value: 'repasse', label: 'Repasse' },
+          ].map(t => (
+            <Button
+              key={t.value}
+              size="sm"
+              variant={filterTipo === t.value ? 'default' : 'outline'}
+              className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')}
+              onClick={() => setFilterTipo(t.value)}
+            >
+              {t.label}
+            </Button>
+          ))}
+          {(dateFrom || dateTo || filterLoja !== 'todos' || filterTipo !== 'todos') && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs h-7 text-muted-foreground">
+              <X className="h-3 w-3" /> Limpar
+            </Button>
+          )}
         </div>
       </div>
 
