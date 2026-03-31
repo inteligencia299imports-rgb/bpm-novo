@@ -600,15 +600,13 @@ const RelatorioShowroom: React.FC = () => {
             <div>
               <p className="text-sm font-medium mb-2">Margem Prevista vs Realizada (%)</p>
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={chartByMonth}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
+                <BarChart data={chartByMonth} barGap={4}>
+                  <XAxis dataKey="label" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                  <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} cursor={{ fill: 'hsl(var(--muted))' }} />
                   <Legend />
-                  <Line type="monotone" dataKey="pctMargemPrevista" name="Prevista" stroke="hsl(var(--primary))" strokeWidth={2} />
-                  <Line type="monotone" dataKey="pctMargemRealizada" name="Realizada" stroke="hsl(var(--chart-2))" strokeWidth={2} />
-                </LineChart>
+                  <Bar dataKey="pctMargemPrevista" name="Prevista" fill="#7e6597" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, formatter: (v: number) => `${v.toFixed(1)}%` }} />
+                  <Bar dataKey="pctMargemRealizada" name="Realizada" fill="#169d53" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, formatter: (v: number) => `${v.toFixed(1)}%` }} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
