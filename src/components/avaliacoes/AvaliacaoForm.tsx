@@ -389,8 +389,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     // consignada → convertida; any propria-like → consignada
     const newTipo = isTipoConsignada(currentTipo) ? 'convertida' : 'consignada';
     
-    if (obsMotaAquisicao.trim() && avaliacao?.moto_avaliacao_id) {
-      await supabase.from('motos_avaliacao').update({ observacoes: obsMotaAquisicao.trim().toUpperCase() }).eq('id', avaliacao.moto_avaliacao_id);
+    if (avaliacao?.moto_avaliacao_id) {
+      const motoUpdate: any = {};
+      if (obsMotaAquisicao.trim()) motoUpdate.observacoes = obsMotaAquisicao.trim().toUpperCase();
+      if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
+      if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
+      if (aquisRevisaoVencida) motoUpdate.manutencao_vencida = aquisRevisaoVencida === 'sim';
+      if (Object.keys(motoUpdate).length > 0) {
+        await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', avaliacao.moto_avaliacao_id);
+      }
     }
     
     const { error } = await supabase.from('avaliacoes').update({
@@ -894,6 +901,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     setIsConvertendo(true);
                     setObsMotaAquisicao('');
                     setValorFechamentoAquisicao('');
+                    const ma = avaliacao?.moto_avaliacao || (avaliacao as any)?.motos_avaliacao;
+                    setAquisManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
+                    setAquisChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
+                    setAquisRevisaoVencida(ma?.manutencao_vencida ? 'sim' : ma?.manutencao_vencida === false ? 'nao' : '');
                     // Pre-select the only available option
                     const currentTipo = avaliacao.tipo_aquisicao;
                     const oppositeTipo = (currentTipo === 'consignada') ? 'propria' : 'consignada';
