@@ -763,21 +763,23 @@ const renderBarLabel = (props: any, isCurrency?: boolean) => {
 };
 
 const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ title, data, dataKey }) => (
-  <div>
-    <p className="text-sm font-medium mb-2">{title}</p>
-    <ResponsiveContainer width="100%" height={280}>
-      <BarChart data={data} barCategoryGap="25%" margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-        <XAxis dataKey="nome" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-        <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-        <Tooltip
-          contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12 }}
-          cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
-        />
-        <Bar dataKey={dataKey} fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
-      </BarChart>
-    </ResponsiveContainer>
-  </div>
+  <Card className="border shadow-sm rounded-xl">
+    <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
+    <CardContent>
+      <ResponsiveContainer width="100%" height={280}>
+        <BarChart data={data} barCategoryGap="25%" margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+          <XAxis dataKey="nome" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+          <Tooltip
+            contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12 }}
+            cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
+          />
+          <Bar dataKey={dataKey} fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
+        </BarChart>
+      </ResponsiveContainer>
+    </CardContent>
+  </Card>
 );
 
 const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurrency?: boolean }> = ({ title, data, dataKey, isCurrency }) => (
