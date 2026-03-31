@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { useAuth } from '@/contexts/AuthContext';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
 import CustosOficinaDialog from '@/components/avaliacoes/CustosOficinaDialog';
