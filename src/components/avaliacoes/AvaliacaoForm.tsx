@@ -332,8 +332,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         await supabase.from('status_history').insert({
           entity_type: 'showroom',
           entity_id: avaliacao.atendimento_id,
-          status_from: atData?.situacao || 'em_aberto',
-          status_to: 'dispensada',
+          status: 'dispensada',
           changed_by: user?.id,
           changed_by_name: userName || user?.email || null,
           observacoes: observacoes || null,
