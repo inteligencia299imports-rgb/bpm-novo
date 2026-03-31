@@ -501,79 +501,74 @@ const RelatorioShowroom: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="space-y-3">
-        {/* Single row: Tipo on left, Loja + Date on right */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Tipo filter - left */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Tipo:</span>
-            {[
-              { value: 'todos', label: 'Todos' },
-              { value: 'propria', label: 'Própria' },
-              { value: 'consignada', label: 'Consignada' },
-              { value: 'test-ride', label: 'Test-Ride' },
-              { value: 'repasse', label: 'Repasse' },
-            ].map(t => (
+      <Separator className="my-1" />
+      {/* Filters: Tipo on left, Loja + Date on right */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Tipo:</span>
+          {[
+            { value: 'todos', label: 'Todos' },
+            { value: 'propria', label: 'Própria' },
+            { value: 'consignada', label: 'Consignada' },
+            { value: 'test-ride', label: 'Test-Ride' },
+            { value: 'repasse', label: 'Repasse' },
+          ].map(t => (
+            <Button
+              key={t.value}
+              size="sm"
+              variant={filterTipo === t.value ? 'default' : 'outline'}
+              className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')}
+              onClick={() => setFilterTipo(t.value)}
+            >
+              {t.label}
+            </Button>
+          ))}
+          {(dateFrom || dateTo || filterLoja !== 'todos' || filterTipo !== 'todos') && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs h-7 text-muted-foreground">
+              <X className="h-3 w-3" /> Limpar
+            </Button>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            {['todos', '299', 'Ducati'].map(loja => (
               <Button
-                key={t.value}
+                key={loja}
                 size="sm"
-                variant={filterTipo === t.value ? 'default' : 'outline'}
-                className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')}
-                onClick={() => setFilterTipo(t.value)}
+                variant={filterLoja === loja ? 'default' : 'outline'}
+                className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')}
+                onClick={() => setFilterLoja(loja)}
               >
-                {t.label}
+                {loja === 'todos' ? 'Todas Lojas' : loja}
               </Button>
             ))}
-            {(dateFrom || dateTo || filterLoja !== 'todos' || filterTipo !== 'todos') && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs h-7 text-muted-foreground">
-                <X className="h-3 w-3" /> Limpar
-              </Button>
-            )}
           </div>
-          {/* Loja + Date - right */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              {['todos', '299', 'Ducati'].map(loja => (
-                <Button
-                  key={loja}
-                  size="sm"
-                  variant={filterLoja === loja ? 'default' : 'outline'}
-                  className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')}
-                  onClick={() => setFilterLoja(loja)}
-                >
-                  {loja === 'todos' ? 'Todas Lojas' : loja}
+          <div className="flex items-center gap-1.5">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn('rounded-full h-8 px-3 text-xs font-normal', !dateFrom && 'text-muted-foreground')}>
+                  <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                  {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
                 </Button>
-              ))}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn('rounded-full h-8 px-3 text-xs font-normal', !dateFrom && 'text-muted-foreground')}>
-                    <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-                    {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
-              <span className="text-xs text-muted-foreground">até</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn('rounded-full h-8 px-3 text-xs font-normal', !dateTo && 'text-muted-foreground')}>
-                    <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-                    {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} locale={ptBR} className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
-            </div>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+            <span className="text-xs text-muted-foreground">até</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn('rounded-full h-8 px-3 text-xs font-normal', !dateTo && 'text-muted-foreground')}>
+                  <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                  {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} locale={ptBR} className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
-        <Separator />
       </div>
 
       {/* Indicators - Line 1 */}
