@@ -37,7 +37,7 @@ export const getTipoAquisicaoBadgeClass = (tipo: string | null | undefined): str
     case 'consignada': return 'border-purple-500 text-purple-600';
     case 'convertida': return 'border-blue-800 text-blue-800';
     case 'test-ride': return 'border-orange-500 text-orange-600';
-    case 'repasse': return 'border-amber-600 text-amber-700';
+    case 'repasse': return 'border-gray-500 text-gray-600';
     default: return 'border-green-500 text-green-600'; // propria
   }
 };

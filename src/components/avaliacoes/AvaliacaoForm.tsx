@@ -1082,7 +1082,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     </Button>
                     <Button
                       variant={tipoSelecionado === 'repasse' ? 'default' : 'outline'}
-                      className={`flex-1 gap-2 ${tipoSelecionado === 'repasse' ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600' : 'border-amber-600 text-amber-700 hover:bg-amber-50'}`}
+                      className={`flex-1 gap-2 ${tipoSelecionado === 'repasse' ? 'bg-gray-600 hover:bg-gray-700 text-white border-gray-600' : 'border-gray-500 text-gray-600 hover:bg-gray-50'}`}
                       onClick={() => setTipoSelecionado('repasse')}
                     >
                       <ArrowLeftRight className="h-4 w-4" /> Repasse
