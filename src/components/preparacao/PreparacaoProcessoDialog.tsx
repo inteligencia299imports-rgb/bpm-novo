@@ -199,7 +199,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
       // Merge and sort by date descending
       const merged = [...prepHistory, ...avalHistory, ...showroomHistory]
-        .map(h => ({ ...h, status_to: remapStatus(h.status_to), status_from: remapStatus(h.status_from) }))
+        .map(h => ({ ...h, status: remapStatus(h.status) }))
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setHistory(merged);
