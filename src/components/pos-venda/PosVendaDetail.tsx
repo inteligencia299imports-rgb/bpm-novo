@@ -605,6 +605,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           open={contratoConsignanteOpen}
           onOpenChange={setContratoConsignanteOpen}
           atendimentoId={item.id}
+          onSaved={refreshConsignada}
         />
       )}
     </div>

@@ -348,6 +348,7 @@ const ProcessoDialog: React.FC<Props> = ({
                 open={contratoConsignanteOpen}
                 onOpenChange={setContratoConsignanteOpen}
                 atendimentoId={atendimentoId}
+                onSaved={onContratoSaved}
               />
             )}
 
