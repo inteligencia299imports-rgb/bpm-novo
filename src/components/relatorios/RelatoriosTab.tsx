@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3 } from 'lucide-react';
+import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -13,6 +13,13 @@ const RelatoriosTab: React.FC = () => {
   const [dept, setDept] = useState('showroom');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const clearFnRef = useRef<(() => void) | null>(null);
+
+  const hasActiveFilters = dateFrom || dateTo;
+
+  const handleClearAll = () => {
+    clearFnRef.current?.();
+  };
 
   return (
     <div className="space-y-5">
@@ -57,10 +64,19 @@ const RelatoriosTab: React.FC = () => {
                 <Calendar mode="single" selected={dateTo} onSelect={setDateTo} locale={ptBR} className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-full h-9 px-3 text-sm text-muted-foreground hover:text-foreground"
+              onClick={handleClearAll}
+            >
+              <X className="h-4 w-4 mr-1" />
+              Limpar filtros
+            </Button>
           </div>
         </div>
         <TabsContent value="showroom">
-          <RelatorioShowroom dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} />
+          <RelatorioShowroom dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { clearFnRef.current = fn; }} />
         </TabsContent>
         <TabsContent value="avaliacoes">
           <p className="text-muted-foreground text-sm p-4">Em breve...</p>
