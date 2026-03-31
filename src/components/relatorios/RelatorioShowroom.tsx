@@ -344,7 +344,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
         const valorFechamento = aval?.valor_fechamento ?? 0;
         const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja);
-        const pctMargemRealizada = precoEstoque > 0 ? margemRealizada / precoEstoque : 0;
+        const pctMargemRealizada = faturamentoRealizado > 0 ? margemRealizada / faturamentoRealizado : 0;
         
         list.push({
           nomeCliente: atend.nome_cliente,
@@ -384,7 +384,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
         const valorFechamento = aval?.valor_fechamento ?? 0;
         const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja);
-        const pctMargemRealizada = precoEstoque > 0 ? margemRealizada / precoEstoque : 0;
+        const pctMargemRealizada = faturamentoRealizado > 0 ? margemRealizada / faturamentoRealizado : 0;
 
         list.push({
           nomeCliente: atend.nome_cliente,
@@ -452,7 +452,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     });
 
     const pctMargemPrevista = totalQuantoVende > 0 ? margemPrevista / totalQuantoVende : 0;
-    const pctMargemRealizada = totalPrecoEstoque > 0 ? margemRealizada / totalPrecoEstoque : 0;
+    const pctMargemRealizada = faturamentoRealizado > 0 ? margemRealizada / faturamentoRealizado : 0;
 
     return {
       qtdAtendimentos, qtdVendas, qtdSinais, taxaConversao,
@@ -559,7 +559,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         conversao,
         faturamento,
         pctMargemPrevista: totalQV > 0 ? +(margemPrevista / totalQV * 100).toFixed(1) : 0,
-        pctMargemRealizada: totalPE > 0 ? +(margemRealizada / totalPE * 100).toFixed(1) : 0,
+        pctMargemRealizada: faturamento > 0 ? +(margemRealizada / faturamento * 100).toFixed(1) : 0,
       };
     });
   }, [filteredAtendimentos, estoqueByAtendimentoVenda, avaliacoes, custosByAvaliacao, filterTipo]);
