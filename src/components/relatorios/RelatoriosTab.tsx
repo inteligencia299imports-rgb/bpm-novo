@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
