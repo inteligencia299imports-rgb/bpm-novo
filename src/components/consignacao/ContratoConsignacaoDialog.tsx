@@ -127,7 +127,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .select('id')
           .eq('entity_type', 'consignacao')
           .eq('entity_id', avaliacao.id)
-          .like('status_to', 'CONTRATO GERADO%')
+          .like('status', 'CONTRATO GERADO%')
           .limit(1),
       ]);
 
