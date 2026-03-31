@@ -533,6 +533,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       });
 
       let faturamento = 0;
+      let faturamentoReal = 0;
       let margemPrevista = 0;
       let margemRealizada = 0;
       let totalQV = 0;
@@ -552,7 +553,6 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
           const quantoVende = aval.quanto_vende ?? 0;
           const valorFechamento = aval.valor_fechamento ?? 0;
-          const previsaoCustosLoja = aval.previsao_custos_loja ?? 0;
           const custoPrevCliente = getCustosClientePrevisto(aval.id);
           const custoRealCliente = getCustosClienteReal(aval.id);
           const custoOficinaLojaExec = getCustosLojaOficinaExecutado(aval.id);
@@ -564,6 +564,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           totalPE += precoEstoque;
           margemPrevista += quantoVende - valorFechamento;
           const fatReal = valorVendaReal + (custoPrevCliente - custoRealCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
+          faturamentoReal += fatReal;
           margemRealizada += fatReal - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja);
         });
       });
@@ -577,7 +578,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         conversao,
         faturamento,
         pctMargemPrevista: totalQV > 0 ? margemPrevista / totalQV : 0,
-        pctMargemRealizada: faturamento > 0 ? margemRealizada / faturamento : 0,
+        pctMargemRealizada: faturamentoReal > 0 ? margemRealizada / faturamentoReal : 0,
       };
     });
   }, [filteredAtendimentos, estoqueByAtendimentoVenda, avaliacoes, custosByAvaliacao, filterTipo]);
