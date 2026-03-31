@@ -386,8 +386,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setSavingAquisicao(true);
     
     const currentTipo = avaliacao?.tipo_aquisicao;
-    // consignada → propria = convertida; propria/convertida → consignada = consignada
-    const newTipo = (currentTipo === 'consignada') ? 'convertida' : 'consignada';
+    // consignada → convertida; any propria-like → consignada
+    const newTipo = isTipoConsignada(currentTipo) ? 'convertida' : 'consignada';
     
     if (obsMotaAquisicao.trim() && avaliacao?.moto_avaliacao_id) {
       await supabase.from('motos_avaliacao').update({ observacoes: obsMotaAquisicao.trim().toUpperCase() }).eq('id', avaliacao.moto_avaliacao_id);
