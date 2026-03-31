@@ -173,7 +173,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             .select('*')
             .eq('entity_id', atendimentoId)
             .eq('entity_type', 'showroom')
-            .in('status_to', ['vendido'])
+            .in('status', ['vendido'])
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [] as any[] });
 
