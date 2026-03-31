@@ -299,12 +299,13 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         // Find avaliacao linked to this estoque
         const aval = avaliacoes.find(av => av.id === est.avaliacao_id);
         const custoRealOficinaLoja = aval ? getCustosLoja(aval.id) : 0;
+        const custoPrevOficinaLoja = aval ? getCustosLojaPrevistos(aval.id) : 0;
         const custoRealOficinaCliente = aval ? getCustosClienteReal(aval.id) : 0;
         const custoPrevOficinaCliente = aval ? getCustosClientePrevisto(aval.id) : 0;
         const abatimentos = TRANSFER_COST + custoRealOficinaLoja;
         const precoEstoque = est.preco ?? 0;
         const valorVendaReal = est.valor_venda ?? precoEstoque;
-        const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente);
+        const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoPrevOficinaLoja - custoRealOficinaLoja);
         const valorFechamento = aval?.valor_fechamento ?? 0;
         const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoRealOficinaLoja);
         const pctMargemRealizada = precoEstoque > 0 ? margemRealizada / precoEstoque : 0;
@@ -337,12 +338,13 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         if (filterTipo !== 'todos' && est.tipo !== filterTipo) return;
         const aval = avaliacoes.find(av => av.id === est.avaliacao_id);
         const custoRealOficinaLoja = aval ? getCustosLoja(aval.id) : 0;
+        const custoPrevOficinaLoja = aval ? getCustosLojaPrevistos(aval.id) : 0;
         const custoRealOficinaCliente = aval ? getCustosClienteReal(aval.id) : 0;
         const custoPrevOficinaCliente = aval ? getCustosClientePrevisto(aval.id) : 0;
         const abatimentos = TRANSFER_COST + custoRealOficinaLoja;
         const precoEstoque = est.preco ?? 0;
         const valorVendaReal = est.valor_venda ?? precoEstoque;
-        const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente);
+        const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoPrevOficinaLoja - custoRealOficinaLoja);
         const valorFechamento = aval?.valor_fechamento ?? 0;
         const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoRealOficinaLoja);
         const pctMargemRealizada = precoEstoque > 0 ? margemRealizada / precoEstoque : 0;
@@ -396,11 +398,12 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const custoPrevCliente = getCustosClientePrevisto(aval.id);
         const custoRealCliente = getCustosClienteReal(aval.id);
         const custoRealLoja = getCustosLoja(aval.id);
+        const custoPrevLoja = getCustosLojaPrevistos(aval.id);
 
         faturamentoPrevisto += quantoVende;
         totalQuantoVende += quantoVende;
         
-        const fatReal = valorVendaReal + (custoPrevCliente - custoRealCliente);
+        const fatReal = valorVendaReal + (custoPrevCliente - custoRealCliente) + (custoPrevLoja - custoRealLoja);
         faturamentoRealizado += fatReal;
         totalPrecoEstoque += precoEstoque;
 
@@ -496,12 +499,13 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           const custoPrevCliente = getCustosClientePrevisto(aval.id);
           const custoRealCliente = getCustosClienteReal(aval.id);
           const custoRealLoja = getCustosLoja(aval.id);
+          const custoPrevLoja = getCustosLojaPrevistos(aval.id);
 
           faturamento += valorVendaReal;
           totalQV += quantoVende;
           totalPE += valorVendaReal;
           margemPrevista += quantoVende - (valorFechamento + previsaoCustosLoja);
-          const fatReal = valorVendaReal + (custoPrevCliente - custoRealCliente);
+          const fatReal = valorVendaReal + (custoPrevCliente - custoRealCliente) + (custoPrevLoja - custoRealLoja);
           margemRealizada += fatReal - (valorFechamento + TRANSFER_COST + custoRealLoja);
         });
       });
