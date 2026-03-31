@@ -475,10 +475,13 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         });
       });
 
+      const conversao = atendMonth.length > 0 ? +(vendidosMonth.length / atendMonth.length * 100).toFixed(1) : 0;
+
       return {
         label: m.label,
         atendimentos: atendMonth.length,
         vendas: vendidosMonth.length,
+        conversao,
         faturamento,
         pctMargemPrevista: totalQV > 0 ? +(margemPrevista / totalQV * 100).toFixed(1) : 0,
         pctMargemRealizada: totalPE > 0 ? +(margemRealizada / totalPE * 100).toFixed(1) : 0,
