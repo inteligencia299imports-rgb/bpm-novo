@@ -80,7 +80,7 @@ const RelatoriosTab: React.FC = () => {
             </Popover>
           </div>
         </div>
-        <TabsContent value="showroom">
+        <TabsContent value="showroom" className="w-full max-w-full overflow-x-hidden">
           <RelatorioShowroom dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
         </TabsContent>
         <TabsContent value="avaliacoes">

@@ -670,9 +670,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           </CardContent>
         </Card>
         <Card className="border shadow-sm rounded-xl">
-          <CardHeader className="pb-4 pt-4 px-4 flex flex-row items-center justify-between">
+          <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Margem Prevista vs Realizada (%)</CardTitle>
-            <div className="flex items-center gap-3 text-[11px]">
+            <div className="flex flex-wrap items-center gap-3 text-[11px]">
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#7e6d9b' }} />Prevista</span>
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#3a8f6a' }} />Realizada</span>
             </div>
