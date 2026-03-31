@@ -155,73 +155,95 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [dispensadaMotivo, setDispensadaMotivo] = useState<string | null>(null);
   const [savingDispensada, setSavingDispensada] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from('avaliacoes')
-        .select(`
-          *,
-          atendimentos (id, nome_cliente, telefone, loja, vendedor_id, interesse, sexo, uf, tipo_atendimento, origem, temperatura, created_at, cnh_url, cpf_cnpj, email, cep, endereco),
-          motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, consulta_realizada, consulta_solicitada, resultado_consulta, tem_manual, tem_chave_reserva, manutencao_vencida)
-        `)
-        .eq('id', avaliacaoId)
-        .single();
+  const loadAvaliacao = async () => {
+    const { data } = await supabase
+      .from('avaliacoes')
+      .select(`
+        *,
+        atendimentos (id, nome_cliente, telefone, loja, vendedor_id, interesse, sexo, uf, tipo_atendimento, origem, temperatura, created_at, cnh_url, cpf_cnpj, email, cep, endereco),
+        motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, consulta_realizada, consulta_solicitada, resultado_consulta, tem_manual, tem_chave_reserva, manutencao_vencida)
+      `)
+      .eq('id', avaliacaoId)
+      .single();
 
-      if (data) {
-        setAvaliacao({ ...data, atendimento: data.atendimentos, moto_avaliacao: data.motos_avaliacao });
-        setCnhUrl((data.atendimentos as any)?.cnh_url || null);
-        setCrlvUrl((data.motos_avaliacao as any)?.crlv_url || null);
-        setConsultaRealizada(!!(data.motos_avaliacao as any)?.consulta_realizada);
-        setConsultaSolicitada(!!(data.motos_avaliacao as any)?.consulta_solicitada);
-        setResultadoConsulta((data.motos_avaliacao as any)?.resultado_consulta || null);
-        setValorFipe(numberToCurrencyMask(data.valor_fipe));
-        setMenorValor(numberToCurrencyMask(data.menor_valor));
-        setMaiorValor(numberToCurrencyMask(data.maior_valor));
-        setQuantoPede(numberToCurrencyMask(data.quanto_pede));
-        setQuantoVende(numberToCurrencyMask(data.quanto_vende));
-        setQuantoVendeErrado(numberToCurrencyMask(data.quanto_vende_errado));
-        setAvalConsig(numberToCurrencyMask(data.avaliacao_consignacao));
-        setAvalCompra(numberToCurrencyMask(data.avaliacao_compra));
-        setPrevCustosLoja(numberToCurrencyMask(data.previsao_custos_loja));
-        setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
-        setObsAvaliador(data.observacao_avaliador || '');
-        setClassificacao((data as any).classificacao || '');
-        setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
+    if (data) {
+      setAvaliacao({ ...data, atendimento: data.atendimentos, moto_avaliacao: data.motos_avaliacao });
+      setCnhUrl((data.atendimentos as any)?.cnh_url || null);
+      setCrlvUrl((data.motos_avaliacao as any)?.crlv_url || null);
+      setConsultaRealizada(!!(data.motos_avaliacao as any)?.consulta_realizada);
+      setConsultaSolicitada(!!(data.motos_avaliacao as any)?.consulta_solicitada);
+      setResultadoConsulta((data.motos_avaliacao as any)?.resultado_consulta || null);
+      setValorFipe(numberToCurrencyMask(data.valor_fipe));
+      setMenorValor(numberToCurrencyMask(data.menor_valor));
+      setMaiorValor(numberToCurrencyMask(data.maior_valor));
+      setQuantoPede(numberToCurrencyMask(data.quanto_pede));
+      setQuantoVende(numberToCurrencyMask(data.quanto_vende));
+      setQuantoVendeErrado(numberToCurrencyMask(data.quanto_vende_errado));
+      setAvalConsig(numberToCurrencyMask(data.avaliacao_consignacao));
+      setAvalCompra(numberToCurrencyMask(data.avaliacao_compra));
+      setPrevCustosLoja(numberToCurrencyMask(data.previsao_custos_loja));
+      setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
+      setObsAvaliador(data.observacao_avaliador || '');
+      setClassificacao((data as any).classificacao || '');
+      setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
 
-        if (data.moto_avaliacao_id) {
-          const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', data.moto_avaliacao_id);
-          if (fotosData) setFotos(fotosData);
+      if (data.moto_avaliacao_id) {
+        const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', data.moto_avaliacao_id);
+        if (fotosData) setFotos(fotosData);
 
-          // Fetch history: avaliacao + consulta (by moto_avaliacao_id) + showroom (by atendimento_id)
-          const [{ data: histAval }, { data: histShowroom }, { data: histConsignacao }] = await Promise.all([
-            supabase
-              .from('status_history')
-              .select('*')
-              .in('entity_type', ['avaliacao', 'consulta'])
-              .eq('entity_id', data.moto_avaliacao_id)
-              .order('created_at', { ascending: true }),
-            supabase
-              .from('status_history')
-              .select('*')
-              .in('entity_type', ['showroom', 'contrato'])
-              .eq('entity_id', data.atendimento_id)
-              .order('created_at', { ascending: true }),
-            supabase
-              .from('status_history')
-              .select('*')
-              .eq('entity_type', 'consignacao')
-              .eq('entity_id', data.id)
-              .order('created_at', { ascending: true }),
-          ]);
-          const merged = [...(histAval || []), ...(histShowroom || []), ...(histConsignacao || [])].sort(
-            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
-          setHistory(merged);
-        }
+        // Fetch history: avaliacao + consulta (by moto_avaliacao_id) + showroom (by atendimento_id)
+        const [{ data: histAval }, { data: histShowroom }, { data: histConsignacao }] = await Promise.all([
+          supabase
+            .from('status_history')
+            .select('*')
+            .in('entity_type', ['avaliacao', 'consulta'])
+            .eq('entity_id', data.moto_avaliacao_id)
+            .order('created_at', { ascending: true }),
+          supabase
+            .from('status_history')
+            .select('*')
+            .in('entity_type', ['showroom', 'contrato'])
+            .eq('entity_id', data.atendimento_id)
+            .order('created_at', { ascending: true }),
+          supabase
+            .from('status_history')
+            .select('*')
+            .eq('entity_type', 'consignacao')
+            .eq('entity_id', data.id)
+            .order('created_at', { ascending: true }),
+        ]);
+        const merged = [...(histAval || []), ...(histShowroom || []), ...(histConsignacao || [])].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        setHistory(merged);
       }
-      setLoading(false);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadAvaliacao();
+  }, [avaliacaoId]);
+
+  // Realtime: atualizar quando valor_fechamento ou outros campos mudarem externamente
+  useEffect(() => {
+    const channel = supabase
+      .channel(`avaliacao-${avaliacaoId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'avaliacoes',
+        filter: `id=eq.${avaliacaoId}`,
+      }, (payload) => {
+        const newData = payload.new as any;
+        setAvaliacao((prev: any) => prev ? { ...prev, ...newData } : prev);
+        setValorFechamentoEdit(numberToCurrencyMask(newData.valor_fechamento));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-    load();
   }, [avaliacaoId]);
 
   const handleCurrencyChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
