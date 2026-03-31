@@ -564,16 +564,16 @@ const RelatorioShowroom: React.FC = () => {
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <IndicatorCard title="Atendimentos" value={indicadores.qtdAtendimentos} gradient="teal" />
-        <IndicatorCard title="Vendas" value={indicadores.qtdVendas} gradient="green" />
-        <IndicatorCard title="Sinais" value={indicadores.qtdSinais} gradient="purple" />
-        <IndicatorCard title="Taxa de Conversão" value={fmtPct(indicadores.taxaConversao)} gradient="amber" />
+        <IndicatorCard title="Vendas" value={indicadores.qtdVendas} gradient="teal" />
+        <IndicatorCard title="Sinais" value={indicadores.qtdSinais} gradient="teal" />
+        <IndicatorCard title="Taxa de Conversão" value={fmtPct(indicadores.taxaConversao)} gradient="teal" />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} gradient="blue" />
-        <IndicatorCard title="Margem Prevista" value={`${fmtBRL(indicadores.margemPrevista)} (${fmtPct(indicadores.pctMargemPrevista)})`} gradient="emerald" />
-        <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} gradient="slate" />
-        <IndicatorCard title="Margem Realizada" value={`${fmtBRL(indicadores.margemRealizada)} (${fmtPct(indicadores.pctMargemRealizada)})`} gradient="rose" />
+        <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} gradient="purple" />
+        <IndicatorCard title="Margem Prevista" value={`${fmtBRL(indicadores.margemPrevista)} (${fmtPct(indicadores.pctMargemPrevista)})`} gradient="purple" />
+        <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} gradient="emerald" />
+        <IndicatorCard title="Margem Realizada" value={`${fmtBRL(indicadores.margemRealizada)} (${fmtPct(indicadores.pctMargemRealizada)})`} gradient="emerald" />
       </div>
 
       {/* Charts by Vendedor */}
@@ -723,7 +723,7 @@ const indicatorGradients: Record<string, string> = {
   amber: 'bg-gradient-to-br from-[#da6220] to-[#f59e0b]',
   blue: 'bg-gradient-to-br from-[#2563eb] to-[#2EC5FF]',
   slate: 'bg-gradient-to-br from-[#475569] to-[#64748b]',
-  emerald: 'bg-gradient-to-br from-[#059669] to-[#34d399]',
+  emerald: 'bg-gradient-to-br from-[#115e3a] to-[#169d53]',
   rose: 'bg-gradient-to-br from-[#e11d48] to-[#fb7185]',
 };
 
