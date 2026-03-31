@@ -735,16 +735,25 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: str
   </Card>
 );
 
+const renderBarLabel = (props: any, isCurrency?: boolean) => {
+  const { x, y, width, value } = props;
+  if (value == null || value === 0) return null;
+  const formatted = isCurrency ? fmtBRL(value) : typeof value === 'number' && value % 1 !== 0 ? `${value.toFixed(1)}%` : String(value);
+  return (
+    <text x={x + width / 2} y={y - 6} fill="hsl(var(--foreground))" fontSize={10} fontWeight={600} textAnchor="middle">
+      {formatted}
+    </text>
+  );
+};
+
 const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ title, data, dataKey }) => (
   <div>
     <p className="text-sm font-medium mb-2">{title}</p>
     <ResponsiveContainer width="100%" height={250}>
-      <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="nome" tick={{ fontSize: 10 }} />
-        <YAxis tick={{ fontSize: 10 }} />
-        <Tooltip />
-        <Bar dataKey={dataKey} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+      <BarChart data={data} barCategoryGap="20%">
+        <XAxis dataKey="nome" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+        <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} />
+        <Bar dataKey={dataKey} fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} label={(props: any) => renderBarLabel(props)} />
       </BarChart>
     </ResponsiveContainer>
   </div>
@@ -754,12 +763,10 @@ const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurr
   <div>
     <p className="text-sm font-medium mb-2">{title}</p>
     <ResponsiveContainer width="100%" height={250}>
-      <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="label" tick={{ fontSize: 9 }} />
-        <YAxis tick={{ fontSize: 10 }} tickFormatter={isCurrency ? (v: number) => `${(v / 1000).toFixed(0)}k` : undefined} />
-        <Tooltip formatter={isCurrency ? (v: number) => fmtBRL(v) : undefined} />
-        <Bar dataKey={dataKey} fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+      <BarChart data={data} barCategoryGap="20%">
+        <XAxis dataKey="label" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+        <Tooltip formatter={isCurrency ? (v: number) => fmtBRL(v) : undefined} cursor={{ fill: 'hsl(var(--muted))' }} />
+        <Bar dataKey={dataKey} fill="#3F8DA6" radius={[6, 6, 0, 0]} label={(props: any) => renderBarLabel(props, isCurrency)} />
       </BarChart>
     </ResponsiveContainer>
   </div>
