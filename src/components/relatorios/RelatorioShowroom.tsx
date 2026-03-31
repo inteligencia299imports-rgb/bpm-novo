@@ -327,7 +327,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const custoPrevOficinaCliente = aval ? getCustosClientePrevisto(aval.id) : 0;
         const abatimentos = TRANSFER_COST + custoRealOficinaLoja;
         const precoEstoque = est.preco ?? 0;
-        const valorVendaReal = est.valor_venda ?? precoEstoque;
+        const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
         const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoPrevOficinaLoja - custoRealOficinaLoja);
         const valorFechamento = aval?.valor_fechamento ?? 0;
         const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoRealOficinaLoja);
@@ -341,7 +341,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           placa: est.placa || '-',
           situacao: atend.situacao,
           dataVenda: est.data_venda,
-          valorVenda: est.valor_venda ?? precoEstoque,
+          valorVenda: atend.valor_venda ?? est.valor_venda ?? precoEstoque,
           abatimentos,
           valorFechamento,
           margemRealizada,
@@ -366,7 +366,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const custoPrevOficinaCliente = aval ? getCustosClientePrevisto(aval.id) : 0;
         const abatimentos = TRANSFER_COST + custoRealOficinaLoja;
         const precoEstoque = est.preco ?? 0;
-        const valorVendaReal = est.valor_venda ?? precoEstoque;
+        const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
         const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoPrevOficinaLoja - custoRealOficinaLoja);
         const valorFechamento = aval?.valor_fechamento ?? 0;
         const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoRealOficinaLoja);
@@ -380,7 +380,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           placa: est.placa || '-',
           situacao: atend.situacao,
           dataSinal: atend.created_at,
-          valorVenda: est.valor_venda ?? precoEstoque,
+          valorVenda: atend.valor_venda ?? est.valor_venda ?? precoEstoque,
           abatimentos,
           valorFechamento,
           margemRealizada,
@@ -417,7 +417,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const valorFechamento = aval.valor_fechamento ?? 0;
         const previsaoCustosLoja = aval.previsao_custos_loja ?? 0;
         const precoEstoque = est.preco ?? 0;
-        const valorVendaReal = est.valor_venda ?? precoEstoque;
+        const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
         const custoPrevCliente = getCustosClientePrevisto(aval.id);
         const custoRealCliente = getCustosClienteReal(aval.id);
         const custoRealLoja = getCustosLoja(aval.id);
@@ -516,7 +516,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           const aval = avaliacoes.find(av => av.id === est.avaliacao_id);
           if (!aval) return;
           const precoEstoque = est.preco ?? 0;
-          const valorVendaReal = est.valor_venda ?? precoEstoque;
+          const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
           const quantoVende = aval.quanto_vende ?? 0;
           const valorFechamento = aval.valor_fechamento ?? 0;
           const previsaoCustosLoja = aval.previsao_custos_loja ?? 0;
