@@ -407,7 +407,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         faturamentoRealizado += fatReal;
         totalPrecoEstoque += precoEstoque;
 
-        margemPrevista += quantoVende - (valorFechamento + previsaoCustosLoja);
+        margemPrevista += quantoVende - valorFechamento;
 
         margemRealizada += fatReal - (valorFechamento + TRANSFER_COST + custoRealLoja);
       });
