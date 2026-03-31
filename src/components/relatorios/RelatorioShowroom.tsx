@@ -104,9 +104,10 @@ interface RelatorioShowroomProps {
   dateTo: Date | undefined;
   setDateFrom: (d: Date | undefined) => void;
   setDateTo: (d: Date | undefined) => void;
+  onRegisterClear?: (fn: () => void) => void;
 }
 
-const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo }) => {
+const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear }) => {
   const { userName } = useAuth();
   const [loading, setLoading] = useState(true);
   const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
