@@ -382,6 +382,7 @@ const ContratoDialog: React.FC<Props> = ({
     const id = await saveContrato();
     if (id) {
       toast.success('Contrato salvo com sucesso!');
+      onSaved?.();
       onOpenChange(false);
     }
   };
