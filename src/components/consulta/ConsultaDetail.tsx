@@ -121,7 +121,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
       .select('changed_by')
       .eq('entity_type', 'consulta')
       .eq('entity_id', moto.id)
-      .eq('status_to', 'consulta_solicitada')
+      .eq('status', 'consulta_solicitada')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
