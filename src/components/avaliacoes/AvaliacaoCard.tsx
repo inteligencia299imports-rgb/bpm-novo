@@ -4,6 +4,7 @@ import { Phone, Bike, Calendar, ArrowLeftRight } from 'lucide-react';
 import type { Avaliacao, AppRole } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 
 interface Props {
   avaliacao: Avaliacao;
@@ -36,11 +37,7 @@ const STATUS_HEX: Record<string, string> = {
   perdido: '#FF3B30',
 };
 
-const getTipoAquisicaoLabel = (tipo: string | null) => {
-  if (!tipo) return null;
-  if (tipo === 'convertida') return 'Convertida';
-  return tipo === 'propria' ? 'Própria' : 'Consignada';
-};
+// Using centralized getTipoAquisicaoLabel from lib
 
 const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
   const moto = avaliacao.moto_avaliacao;
@@ -108,11 +105,7 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
               </Badge>
             )}
             {avaliacao.situacao === 'adquirida' && (avaliacao as any).tipo_aquisicao && (
-              <Badge variant="outline" className={`text-[10px] ${
-                (avaliacao as any).tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : 
-                (avaliacao as any).tipo_aquisicao === 'convertida' ? 'border-blue-800 text-blue-800' :
-                'border-green-500 text-green-600'
-              }`}>
+              <Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass((avaliacao as any).tipo_aquisicao)}`}>
                 {getTipoAquisicaoLabel((avaliacao as any).tipo_aquisicao)}
               </Badge>
             )}

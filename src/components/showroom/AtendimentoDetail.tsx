@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -733,8 +734,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           )}
                           <span className="text-muted-foreground">Tipo</span>
                           <span className="text-foreground capitalize">
-                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${estItem.tipo === 'consignada' ? 'border-purple-500 text-purple-600' : 'border-green-500 text-green-600'}`}>
-                              {estItem.tipo === 'propria' ? 'Própria' : 'Consignada'}
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(estItem.tipo)}`}>
+                              {getTipoAquisicaoLabel(estItem.tipo) || estItem.tipo}
                             </Badge>
                           </span>
                           {estItem.empresa && (
@@ -846,8 +847,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       </Badge>
                     )}
                     {motosAvaliacao.some(m => avaliacoes[m.id]?.situacao === 'adquirida' && avaliacoes[m.id]?.tipo_aquisicao) && (
-                      <Badge variant="outline" className={`text-[10px] ${motosAvaliacao.some(m => avaliacoes[m.id]?.tipo_aquisicao === 'consignada') ? 'border-purple-500 text-purple-600' : 'border-green-500 text-green-600'}`}>
-                        {motosAvaliacao.some(m => avaliacoes[m.id]?.tipo_aquisicao === 'consignada') ? 'Consignada' : 'Própria'}
+                      <Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(motosAvaliacao.find(m => avaliacoes[m.id]?.situacao === 'adquirida')?.id ? avaliacoes[motosAvaliacao.find(m => avaliacoes[m.id]?.situacao === 'adquirida')!.id]?.tipo_aquisicao : null)}`}>
+                        {getTipoAquisicaoLabel(motosAvaliacao.find(m => avaliacoes[m.id]?.situacao === 'adquirida')?.id ? avaliacoes[motosAvaliacao.find(m => avaliacoes[m.id]?.situacao === 'adquirida')!.id]?.tipo_aquisicao : null) || 'Própria'}
                       </Badge>
                     )}
                   </div>

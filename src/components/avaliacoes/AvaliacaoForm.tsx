@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { useAuth } from '@/contexts/AuthContext';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
 import CustosOficinaDialog from '@/components/avaliacoes/CustosOficinaDialog';
@@ -14,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight, ShieldCheck, Handshake } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight, ShieldCheck, Handshake, Bike } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -385,8 +386,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setSavingAquisicao(true);
     
     const currentTipo = avaliacao?.tipo_aquisicao;
-    // consignada → propria = convertida; propria/convertida → consignada = consignada
-    const newTipo = (currentTipo === 'consignada') ? 'convertida' : 'consignada';
+    // consignada → convertida; any propria-like → consignada
+    const newTipo = isTipoConsignada(currentTipo) ? 'convertida' : 'consignada';
     
     if (obsMotaAquisicao.trim() && avaliacao?.moto_avaliacao_id) {
       await supabase.from('motos_avaliacao').update({ observacoes: obsMotaAquisicao.trim().toUpperCase() }).eq('id', avaliacao.moto_avaliacao_id);
@@ -400,8 +401,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     if (error) {
       toast.error('Erro ao converter aquisição');
     } else {
-      const tipoLabel = newTipo === 'convertida' ? 'Convertida' : 'Consignada';
-      const fromLabel = currentTipo === 'consignada' ? 'Consignada' : currentTipo === 'convertida' ? 'Convertida' : 'Própria';
+      const tipoLabel = getTipoAquisicaoLabel(newTipo) || newTipo;
+      const fromLabel = getTipoAquisicaoLabel(currentTipo) || currentTipo;
       if (avaliacao?.moto_avaliacao_id) {
         await supabase.from('status_history').insert({
           entity_type: 'avaliacao',
@@ -489,12 +490,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               <h1 className="text-lg sm:text-xl font-bold truncate">{at?.nome_cliente}</h1>
               {sit && <Badge className={`${sit.color} text-[10px] shrink-0`}>{sit.label}</Badge>}
               {avaliacao?.tipo_aquisicao && (
-                <Badge variant="outline" className={`text-[10px] shrink-0 ${
-                  avaliacao.tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : 
-                  avaliacao.tipo_aquisicao === 'convertida' ? 'border-blue-800 text-blue-800' :
-                  'border-green-500 text-green-600'
-                }`}>
-                  {avaliacao.tipo_aquisicao === 'consignada' ? 'Consignada' : avaliacao.tipo_aquisicao === 'convertida' ? 'Convertida' : 'Própria'}
+                <Badge variant="outline" className={`text-[10px] shrink-0 ${getTipoAquisicaoBadgeClass(avaliacao.tipo_aquisicao)}`}>
+                  {getTipoAquisicaoLabel(avaliacao.tipo_aquisicao)}
                 </Badge>
               )}
             </div>
@@ -1075,6 +1072,20 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       onClick={() => setTipoSelecionado('consignada')}
                     >
                       <Handshake className="h-4 w-4" /> Consignada
+                    </Button>
+                    <Button
+                      variant={tipoSelecionado === 'test-ride' ? 'default' : 'outline'}
+                      className={`flex-1 gap-2 ${tipoSelecionado === 'test-ride' ? 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500' : 'border-orange-500 text-orange-600 hover:bg-orange-50'}`}
+                      onClick={() => setTipoSelecionado('test-ride')}
+                    >
+                      <Bike className="h-4 w-4" /> Test-Ride
+                    </Button>
+                    <Button
+                      variant={tipoSelecionado === 'repasse' ? 'default' : 'outline'}
+                      className={`flex-1 gap-2 ${tipoSelecionado === 'repasse' ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-600' : 'border-amber-600 text-amber-700 hover:bg-amber-50'}`}
+                      onClick={() => setTipoSelecionado('repasse')}
+                    >
+                      <ArrowLeftRight className="h-4 w-4" /> Repasse
                     </Button>
                   </>
                 )}

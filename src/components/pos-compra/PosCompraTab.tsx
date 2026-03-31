@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { TIPOS_PROPRIA } from '@/lib/tipoAquisicao';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
 import { Search, X, ShoppingCart } from 'lucide-react';
@@ -40,7 +41,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
       supabase
         .from('avaliacoes')
         .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`)
-        .eq('tipo_aquisicao', 'propria')
+        .in('tipo_aquisicao', TIPOS_PROPRIA)
         .order('updated_at', { ascending: false }),
       supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null),
     ]);

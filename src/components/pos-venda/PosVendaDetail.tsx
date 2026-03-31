@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -418,7 +419,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                               </>
                             )}
                             <span className="text-muted-foreground">Tipo</span>
-                            <span className="text-foreground capitalize">{estItem.tipo === 'propria' ? 'Própria' : 'Consignada'}</span>
+                            <span className="text-foreground capitalize">{getTipoAquisicaoLabel(estItem.tipo) || estItem.tipo}</span>
                             {estItem.empresa && (
                               <>
                                 <span className="text-muted-foreground">Empresa</span>

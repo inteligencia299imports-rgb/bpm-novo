@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
 import { Search, X, Wrench } from 'lucide-react';
@@ -95,7 +96,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
                       <ProcessCard key={a.id} clientName={a.atendimento?.nome_cliente || 'N/A'}
                         motoLabel={a.moto ? [(a.moto.modelo || '').toUpperCase(), a.moto.placa?.replace(/-/g, '')].filter(Boolean).join(' - ') : undefined}
                         loja={a.atendimento?.loja} date={a.updated_at} statusColor={col.hex}
-                        extraBadge={a.tipo_aquisicao ? { label: a.tipo_aquisicao === 'consignada' ? 'Consignada' : a.tipo_aquisicao === 'convertida' ? 'Convertida' : 'Própria', className: a.tipo_aquisicao === 'consignada' ? 'border-purple-500 text-purple-600' : a.tipo_aquisicao === 'convertida' ? 'border-blue-800 text-blue-800' : 'border-green-500 text-green-600' } : undefined}
+                        extraBadge={a.tipo_aquisicao ? { label: getTipoAquisicaoLabel(a.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(a.tipo_aquisicao) } : undefined}
                         onClick={() => setSelectedItem(a)} />
                     ))}
                   </div>
