@@ -777,7 +777,7 @@ const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurr
           <Tooltip content={<CustomTooltip isCurrency={isCurrency} />}
             cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
           />
-          <Bar dataKey={dataKey} fill="#3F8DA6" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props, isCurrency)} />
+          <Bar dataKey={dataKey} fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props, isCurrency)} />
         </BarChart>
       </ResponsiveContainer>
     </CardContent>
