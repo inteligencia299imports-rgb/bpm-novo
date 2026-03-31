@@ -344,7 +344,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
         const valorFechamento = aval?.valor_fechamento ?? 0;
         const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja);
-        const pctMargemRealizada = precoEstoque > 0 ? margemRealizada / precoEstoque : 0;
+        const pctMargemRealizada = faturamentoRealizado > 0 ? margemRealizada / faturamentoRealizado : 0;
         
         list.push({
           nomeCliente: atend.nome_cliente,
