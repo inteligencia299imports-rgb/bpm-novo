@@ -393,10 +393,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       await supabase.from('motos_avaliacao').update({ observacoes: obsMotaAquisicao.trim().toUpperCase() }).eq('id', avaliacao.moto_avaliacao_id);
     }
     
-    const { error } = await supabase.from('avaliacoes').update({
+    // When converting consignada → convertida, skip preparação and NPS (already done)
+    const updatePayload: any = {
       tipo_aquisicao: newTipo,
       valor_fechamento: valor,
-    }).eq('id', avaliacaoId);
+    };
+    if (newTipo === 'convertida') {
+      updatePayload.preparacao_status = 'estoque';
+    }
+    const { error } = await supabase.from('avaliacoes').update(updatePayload).eq('id', avaliacaoId);
     
     if (error) {
       toast.error('Erro ao converter aquisição');
@@ -414,7 +419,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         } as any);
       }
       toast.success(`Moto convertida para ${tipoLabel}!`);
-      setAvaliacao((prev: any) => ({ ...prev, tipo_aquisicao: newTipo, valor_fechamento: valor }));
+      setAvaliacao((prev: any) => ({ ...prev, ...updatePayload }));
       refreshHistory();
     }
     
