@@ -836,7 +836,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       const quantoVendeVal = avaliacao?.quanto_vende ?? 0;
                       const fechamentoVal = avaliacao?.valor_fechamento ?? 0;
                       const margem = quantoVendeVal - fechamentoVal;
-                      const margemPct = fechamentoVal > 0 ? (margem / fechamentoVal) * 100 : 0;
+                      const margemPct = quantoVendeVal > 0 ? (margem / quantoVendeVal) * 100 : 0;
                       const margemPositiva = margem >= 0;
                       return (
                         <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
@@ -852,7 +852,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                             <div>
                               <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Margem Prevista</span>
                               <p className={`text-base font-bold ${margemPositiva ? 'text-primary' : 'text-destructive'}`}>
-                                {formatCurrency(margem)}{fechamentoVal > 0 && ` (${margemPct.toFixed(1)}%)`}
+                                {formatCurrency(margem)}{quantoVendeVal > 0 && ` (${margemPct.toFixed(1)}%)`}
                               </p>
                             </div>
                           </div>
