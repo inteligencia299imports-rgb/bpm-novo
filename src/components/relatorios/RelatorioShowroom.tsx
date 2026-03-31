@@ -244,6 +244,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   // Atendimentos filtered by date (created_at in same period)
   const atendimentosFiltradosPorData = useMemo(() => {
     return filteredAtendimentos.filter(a => {
+      // Só considerar clientes interessados em comprar ou trocar
+      if (a.interesse !== 'comprar' && a.interesse !== 'trocar') return false;
       if (dateFrom) {
         const d = new Date(a.created_at);
         if (d < dateFrom) return false;
