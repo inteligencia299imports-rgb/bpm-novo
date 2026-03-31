@@ -118,8 +118,11 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const [vendedores, setVendedores] = useState<VendedorInfo[]>([]);
 
   // Filters
-  const [filterLoja, setFilterLoja] = useState('todos');
-  const [filterTipo, setFilterTipo] = useState('todos');
+  const [filterLoja, setFilterLojaState] = useState('todos');
+  const [filterTipo, setFilterTipoState] = useState('todos');
+
+  const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v, filterTipo); };
+  const setFilterTipo = (v: string) => { setFilterTipoState(v); onFilterChange?.(filterLoja, v); };
 
   const [listTab, setListTab] = useState('vendidas');
 
