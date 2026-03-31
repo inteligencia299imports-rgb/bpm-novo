@@ -20,6 +20,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   atendimentoId: string;
+  onSaved?: () => void;
 }
 
 const formatCurrencyInput = (value: string): string => {
