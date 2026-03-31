@@ -499,7 +499,7 @@ const RelatorioShowroom: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header with greeting and filters */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -579,14 +579,14 @@ const RelatorioShowroom: React.FC = () => {
       </div>
 
       {/* Indicators - Line 1 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Atendimentos" value={indicadores.qtdAtendimentos} gradient="teal" icon={<Users className="h-5 w-5" />} subtitle="total do período" />
         <IndicatorCard title="Vendas" value={indicadores.qtdVendas} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} subtitle="motos vendidas" />
         <IndicatorCard title="Sinais" value={indicadores.qtdSinais} gradient="teal" icon={<CreditCard className="h-5 w-5" />} subtitle="sinais recebidos" />
         <IndicatorCard title="Taxa de Conversão" value={fmtPct(indicadores.taxaConversao)} gradient="teal" icon={<TrendingUp className="h-5 w-5" />} subtitle="vendas / atendimentos" />
       </div>
       {/* Indicators - Line 2 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} gradient="purple" icon={<DollarSign className="h-5 w-5" />} />
         <IndicatorCard title="Margem Prevista" value={`${fmtBRL(indicadores.margemPrevista)} (${fmtPct(indicadores.pctMargemPrevista)})`} gradient="purple" icon={<Target className="h-5 w-5" />} />
         <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} gradient="emerald" icon={<BarChart3 className="h-5 w-5" />} />
@@ -594,7 +594,7 @@ const RelatorioShowroom: React.FC = () => {
       </div>
 
       {/* Charts by Vendedor */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartCard title="Atendimentos por Vendedor" data={[...chartByVendedor].sort((a, b) => b.atendimentos - a.atendimentos)} dataKey="atendimentos" />
         <ChartCard title="Vendas por Vendedor" data={[...chartByVendedor].sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" />
         <ChartCard title="Sinais por Vendedor" data={[...chartByVendedor].sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" />
@@ -602,7 +602,7 @@ const RelatorioShowroom: React.FC = () => {
       </div>
 
       {/* Charts by Month */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MonthChart title="Atendimentos por Mês" data={chartByMonth} dataKey="atendimentos" />
         <MonthChart title="Vendas por Mês" data={chartByMonth} dataKey="vendas" />
         <MonthChart title="Faturamento por Mês" data={chartByMonth} dataKey="faturamento" isCurrency />
