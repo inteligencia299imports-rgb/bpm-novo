@@ -129,8 +129,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   // Register clear function
   useEffect(() => {
     onRegisterClear?.(() => {
-      setFilterLoja('todos');
-      setFilterTipo('todos');
+      setFilterLojaState('todos');
+      setFilterTipoState('todos');
+      onFilterChange?.('todos', 'todos');
       setDateFrom(undefined);
       setDateTo(undefined);
     });
