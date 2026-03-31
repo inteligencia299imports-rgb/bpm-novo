@@ -501,8 +501,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             )}
                             <span className="text-muted-foreground">Tipo</span>
                             <span className="text-foreground capitalize">
-                              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${item.tipo === 'consignada' ? 'border-purple-500 text-purple-600' : 'border-green-500 text-green-600'}`}>
-                                {item.tipo === 'propria' ? 'Própria' : 'Consignada'}
+                              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(item.tipo)}`}>
+                                {getTipoAquisicaoLabel(item.tipo) || item.tipo}
                               </Badge>
                             </span>
                             {item.empresa && (
