@@ -49,8 +49,10 @@ function generateCustomMonths(): { start: Date; end: Date; label: string }[] {
 
 const fmtBRL = (v: number | null | undefined) =>
   (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const fmtPct = (v: number | null | undefined) =>
-  `${((v ?? 0) * 100).toFixed(1)}%`;
+const fmtPct = (v: number | null | undefined) => {
+  const raw = (v ?? 0) * 100;
+  return `${(Math.round(raw * 10) / 10).toFixed(1)}%`;
+};
 
 interface AtendimentoRow {
   id: string;
