@@ -701,15 +701,13 @@ const iconColorMap: Record<string, string> = {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: string; gradient?: string; icon?: React.ReactNode; subtitle?: string }> = ({ title, value, sub, gradient = 'teal', icon, subtitle }) => (
+const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: string; gradient?: string; icon?: React.ReactNode; subtitle?: string }> = ({ title, value, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
-    <CardContent className="pt-4 pb-3 px-4 min-h-[100px] flex items-start">
-      <div className="flex items-start justify-between w-full">
+    <CardContent className="px-4 min-h-[100px] flex items-center justify-center py-0">
+      <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}</p>
-          {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5 capitalize">{capitalize(subtitle)}</p>}
-          {sub && <p className="text-xs text-muted-foreground capitalize">{capitalize(sub)}</p>}
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap[gradient] || iconColorMap.teal)}>{icon}</div>}
       </div>
