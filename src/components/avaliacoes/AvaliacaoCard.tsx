@@ -4,6 +4,7 @@ import { Phone, Bike, Calendar, ArrowLeftRight } from 'lucide-react';
 import type { Avaliacao, AppRole } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 
 interface Props {
   avaliacao: Avaliacao;
