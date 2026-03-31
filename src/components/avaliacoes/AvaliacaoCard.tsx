@@ -37,11 +37,7 @@ const STATUS_HEX: Record<string, string> = {
   perdido: '#FF3B30',
 };
 
-const getTipoAquisicaoLabel = (tipo: string | null) => {
-  if (!tipo) return null;
-  if (tipo === 'convertida') return 'Convertida';
-  return tipo === 'propria' ? 'Própria' : 'Consignada';
-};
+// Using centralized getTipoAquisicaoLabel from lib
 
 const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
   const moto = avaliacao.moto_avaliacao;
