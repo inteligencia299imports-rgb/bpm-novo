@@ -676,9 +676,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       </div>
 
       {/* Lists */}
-      <div className="mt-8 mb-2">
-        <h2 className="text-base font-semibold">Listagem</h2>
-        <Separator className="mt-2" />
+      <div className="space-y-1 !mt-8">
+        <h2 className="text-lg font-bold text-foreground">Listagem</h2>
+        <Separator />
       </div>
       <Card>
         <CardContent className="pt-4">
