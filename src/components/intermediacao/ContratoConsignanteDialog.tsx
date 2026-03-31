@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateContratoConsignantePdf } from '@/lib/generateContratoConsignantePdf';
 
+/** Props for ContratoConsignanteDialog */
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
