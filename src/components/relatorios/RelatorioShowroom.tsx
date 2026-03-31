@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, X } from 'lucide-react';
+import { CalendarIcon, X, Users, ShoppingCart, CreditCard, TrendingUp, DollarSign, Target, BarChart3, PieChart } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
 
 const TRANSFER_COST = 445;
 
@@ -100,6 +101,7 @@ interface VendedorInfo {
 }
 
 const RelatorioShowroom: React.FC = () => {
+  const { userName } = useAuth();
   const [loading, setLoading] = useState(true);
   const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoRow[]>([]);
@@ -498,82 +500,97 @@ const RelatorioShowroom: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex flex-col gap-1">
-              <Label className="text-xs font-medium">Data Início</Label>
+      {/* Header with greeting and filters */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold">Olá, {userName || 'Gestor'} 👋</h2>
+            <p className="text-sm text-muted-foreground">Resumo do período selecionado</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Loja pills */}
+            <div className="flex items-center gap-1">
+              {['todos', '299', 'Ducati'].map(loja => (
+                <Button
+                  key={loja}
+                  size="sm"
+                  variant={filterLoja === loja ? 'default' : 'outline'}
+                  className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')}
+                  onClick={() => setFilterLoja(loja)}
+                >
+                  {loja === 'todos' ? 'Todas Lojas' : loja}
+                </Button>
+              ))}
+            </div>
+            {/* Date pickers inline */}
+            <div className="flex items-center gap-1.5">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn('w-36 justify-start text-left font-normal', !dateFrom && 'text-muted-foreground')}>
+                  <Button variant="outline" size="sm" className={cn('rounded-full h-8 px-3 text-xs font-normal', !dateFrom && 'text-muted-foreground')}>
                     <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-                    {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Selecionar'}
+                    {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
-            </div>
-            <div className="flex flex-col gap-1">
-              <Label className="text-xs font-medium">Data Fim</Label>
+              <span className="text-xs text-muted-foreground">até</span>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn('w-36 justify-start text-left font-normal', !dateTo && 'text-muted-foreground')}>
+                  <Button variant="outline" size="sm" className={cn('rounded-full h-8 px-3 text-xs font-normal', !dateTo && 'text-muted-foreground')}>
                     <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-                    {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Selecionar'}
+                    {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0" align="end">
                   <Calendar mode="single" selected={dateTo} onSelect={setDateTo} locale={ptBR} className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Loja</Label>
-              <Select value={filterLoja} onValueChange={setFilterLoja}>
-                <SelectTrigger className="w-32 h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="299">299</SelectItem>
-                  <SelectItem value="Ducati">Ducati</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Tipo</Label>
-              <Select value={filterTipo} onValueChange={setFilterTipo}>
-                <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="propria">Própria</SelectItem>
-                  <SelectItem value="consignada">Consignada</SelectItem>
-                  <SelectItem value="test-ride">Test-Ride</SelectItem>
-                  <SelectItem value="repasse">Repasse</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs">
-              <X className="h-3.5 w-3.5" /> Limpar
-            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        {/* Tipo filter row */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Tipo:</span>
+          {[
+            { value: 'todos', label: 'Todos' },
+            { value: 'propria', label: 'Própria' },
+            { value: 'consignada', label: 'Consignada' },
+            { value: 'test-ride', label: 'Test-Ride' },
+            { value: 'repasse', label: 'Repasse' },
+          ].map(t => (
+            <Button
+              key={t.value}
+              size="sm"
+              variant={filterTipo === t.value ? 'default' : 'outline'}
+              className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')}
+              onClick={() => setFilterTipo(t.value)}
+            >
+              {t.label}
+            </Button>
+          ))}
+          {(dateFrom || dateTo || filterLoja !== 'todos' || filterTipo !== 'todos') && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs h-7 text-muted-foreground">
+              <X className="h-3 w-3" /> Limpar
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <IndicatorCard title="Atendimentos" value={indicadores.qtdAtendimentos} gradient="teal" />
-        <IndicatorCard title="Vendas" value={indicadores.qtdVendas} gradient="teal" />
-        <IndicatorCard title="Sinais" value={indicadores.qtdSinais} gradient="teal" />
-        <IndicatorCard title="Taxa de Conversão" value={fmtPct(indicadores.taxaConversao)} gradient="teal" />
+        <IndicatorCard title="Atendimentos" value={indicadores.qtdAtendimentos} gradient="teal" icon={<Users className="h-5 w-5" />} subtitle="total do período" />
+        <IndicatorCard title="Vendas" value={indicadores.qtdVendas} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} subtitle="motos vendidas" />
+        <IndicatorCard title="Sinais" value={indicadores.qtdSinais} gradient="teal" icon={<CreditCard className="h-5 w-5" />} subtitle="sinais recebidos" />
+        <IndicatorCard title="Taxa de Conversão" value={fmtPct(indicadores.taxaConversao)} gradient="teal" icon={<TrendingUp className="h-5 w-5" />} subtitle="vendas / atendimentos" />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} gradient="purple" />
-        <IndicatorCard title="Margem Prevista" value={`${fmtBRL(indicadores.margemPrevista)} (${fmtPct(indicadores.pctMargemPrevista)})`} gradient="purple" />
-        <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} gradient="emerald" />
-        <IndicatorCard title="Margem Realizada" value={`${fmtBRL(indicadores.margemRealizada)} (${fmtPct(indicadores.pctMargemRealizada)})`} gradient="emerald" />
+        <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} gradient="purple" icon={<DollarSign className="h-5 w-5" />} />
+        <IndicatorCard title="Margem Prevista" value={`${fmtBRL(indicadores.margemPrevista)} (${fmtPct(indicadores.pctMargemPrevista)})`} gradient="purple" icon={<Target className="h-5 w-5" />} />
+        <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} gradient="emerald" icon={<BarChart3 className="h-5 w-5" />} />
+        <IndicatorCard title="Margem Realizada" value={`${fmtBRL(indicadores.margemRealizada)} (${fmtPct(indicadores.pctMargemRealizada)})`} gradient="emerald" icon={<PieChart className="h-5 w-5" />} />
       </div>
 
       {/* Charts by Vendedor */}
@@ -726,12 +743,18 @@ const indicatorGradients: Record<string, string> = {
   rose: 'bg-gradient-to-br from-[#e11d48] to-[#fb7185]',
 };
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: string; gradient?: string }> = ({ title, value, sub, gradient = 'teal' }) => (
-  <Card className={cn(indicatorGradients[gradient], 'border-0 text-white shadow-md')}>
+const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: string; gradient?: string; icon?: React.ReactNode; subtitle?: string }> = ({ title, value, sub, gradient = 'teal', icon, subtitle }) => (
+  <Card className={cn(indicatorGradients[gradient], 'border-0 text-white shadow-md rounded-xl')}>
     <CardContent className="pt-4 pb-3 px-4">
-      <p className="text-xs text-white/80 mb-1">{title}</p>
-      <p className="text-lg font-bold">{value}</p>
-      {sub && <p className="text-xs text-white/70">{sub}</p>}
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-white/80 mb-1">{title}</p>
+          <p className="text-xl font-bold truncate">{value}</p>
+          {subtitle && <p className="text-[11px] text-white/60 mt-0.5">{subtitle}</p>}
+          {sub && <p className="text-xs text-white/70">{sub}</p>}
+        </div>
+        {icon && <div className="ml-2 p-2 bg-white/15 rounded-lg flex-shrink-0">{icon}</div>}
+      </div>
     </CardContent>
   </Card>
 );
