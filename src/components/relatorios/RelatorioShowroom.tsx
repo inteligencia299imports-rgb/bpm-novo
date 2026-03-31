@@ -607,10 +607,10 @@ const RelatorioShowroom: React.FC = () => {
         <MonthChart title="Vendas por Mês" data={chartByMonth} dataKey="vendas" />
         <MonthChart title="Faturamento por Mês" data={chartByMonth} dataKey="faturamento" isCurrency />
         <Card className="border shadow-sm rounded-xl">
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Margem Prevista vs Realizada (%)</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={chartByMonth} barGap={6} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
+          <CardHeader className="pb-1 pt-4 px-4"><CardTitle className="text-sm font-semibold">Margem Prevista vs Realizada (%)</CardTitle></CardHeader>
+          <CardContent className="px-4 pb-3 pt-0">
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={chartByMonth} barGap={6} margin={{ top: 16, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
