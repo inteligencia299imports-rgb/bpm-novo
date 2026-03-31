@@ -78,6 +78,21 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
   const [intermHistory, setIntermHistory] = useState<any[]>([]);
 
+  const refreshConsignada = async () => {
+    const consignadaEstoque = Object.values(estoqueData).find((e: any) => e.tipo === 'consignada');
+    if (consignadaEstoque?.avaliacao_id) {
+      const { data: avalData } = await supabase
+        .from('avaliacoes')
+        .select('*, motos_avaliacao(*), atendimentos!inner(id, nome_cliente, telefone, loja, cnh_url, cpf_cnpj, email, cep, endereco)')
+        .eq('id', consignadaEstoque.avaliacao_id)
+        .single();
+      if (avalData) {
+        setAvaliacaoConsignada(avalData);
+        if (avalData.motos_avaliacao) setMotoConsignada(avalData.motos_avaliacao);
+      }
+    }
+  };
+
   const moto = item.motos_avaliacao?.[0];
   const [cnhUrl, setCnhUrl] = useState<string | null>(item.cnh_url || null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto?.crlv_url || null);
