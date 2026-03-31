@@ -393,15 +393,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       await supabase.from('motos_avaliacao').update({ observacoes: obsMotaAquisicao.trim().toUpperCase() }).eq('id', avaliacao.moto_avaliacao_id);
     }
     
-    // When converting consignada → convertida, skip preparação and NPS (already done)
-    const updatePayload: any = {
+    const { error } = await supabase.from('avaliacoes').update({
       tipo_aquisicao: newTipo,
       valor_fechamento: valor,
-    };
-    if (newTipo === 'convertida') {
-      updatePayload.preparacao_status = 'estoque';
-    }
-    const { error } = await supabase.from('avaliacoes').update(updatePayload).eq('id', avaliacaoId);
+    }).eq('id', avaliacaoId);
     
     if (error) {
       toast.error('Erro ao converter aquisição');
