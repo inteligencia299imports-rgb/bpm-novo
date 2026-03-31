@@ -734,8 +734,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           )}
                           <span className="text-muted-foreground">Tipo</span>
                           <span className="text-foreground capitalize">
-                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${estItem.tipo === 'consignada' ? 'border-purple-500 text-purple-600' : 'border-green-500 text-green-600'}`}>
-                              {estItem.tipo === 'propria' ? 'Própria' : 'Consignada'}
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(estItem.tipo)}`}>
+                              {getTipoAquisicaoLabel(estItem.tipo) || estItem.tipo}
                             </Badge>
                           </span>
                           {estItem.empresa && (
