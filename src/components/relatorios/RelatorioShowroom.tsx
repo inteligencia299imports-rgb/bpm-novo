@@ -128,7 +128,7 @@ const RelatorioShowroom: React.FC = () => {
       supabase.from('avaliacoes').select('id, atendimento_id, quanto_vende, valor_fechamento, previsao_custos_loja, previsao_custos_cliente, tipo_aquisicao, moto_avaliacao_id'),
       supabase.from('estoque').select('id, avaliacao_id, atendimento_venda_id, preco, tipo, modelo, marca, placa, data_venda, valor_venda, status'),
       supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado'),
-      supabase.from('user_roles').select('user_id, nome').eq('role', 'vendedor'),
+      supabase.from('user_roles').select('user_id, nome'),
     ]);
     setAtendimentos((atRes.data || []) as AtendimentoRow[]);
     setAvaliacoes((avRes.data || []) as AvaliacaoRow[]);
