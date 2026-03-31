@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -139,23 +139,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     });
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
-  useEffect(() => {
-    loadData();
-
-    const channel = supabase
-      .channel('relatorio-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'atendimentos' }, () => loadData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'avaliacoes' }, () => loadData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, () => loadData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'custos_oficina' }, () => loadData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos' }, () => loadData())
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async () => {
     const [atRes, avRes, esRes, coRes, vdRes] = await Promise.all([
       supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal'),
       supabase.from('avaliacoes').select('id, atendimento_id, quanto_vende, valor_fechamento, previsao_custos_loja, previsao_custos_cliente, tipo_aquisicao, moto_avaliacao_id'),
@@ -169,7 +153,32 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     setCustosOficina((coRes.data || []) as CustoOficinaRow[]);
     setVendedores((vdRes.data || []) as VendedorInfo[]);
     setLoading(false);
-  };
+  }, []);
+
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debouncedLoad = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => loadData(), 500);
+  }, [loadData]);
+
+  useEffect(() => {
+    setLoading(true);
+    loadData();
+
+    const channel = supabase
+      .channel('relatorio-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'atendimentos' }, debouncedLoad)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'avaliacoes' }, debouncedLoad)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, debouncedLoad)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'custos_oficina' }, debouncedLoad)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos' }, debouncedLoad)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [loadData, debouncedLoad]);
 
   // Helper maps
   const avaliacaoByAtendimento = useMemo(() => {
