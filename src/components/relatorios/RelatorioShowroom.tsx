@@ -705,7 +705,7 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: str
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
-          <p className="text-xl font-bold text-foreground truncate">{value}</p>
+          <p className="text-xl font-semibold text-foreground/80 truncate">{value}</p>
           {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
           {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
         </div>
