@@ -1017,7 +1017,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       </Dialog>
       {/* Dialog Tipo de Aquisição / Conversão */}
       <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); } }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="w-[96vw] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isConvertendo ? <ArrowLeftRight className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
@@ -1040,17 +1040,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium text-foreground">Tipo de Aquisição <span className="text-destructive">*</span></label>
-              <div className="flex gap-3 mt-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-2.5">
                 {isConvertendo ? (
-                  // In conversion mode, show only the opposite type
                   (() => {
                     const currentTipo = avaliacao?.tipo_aquisicao;
-                    const oppositeTipo = currentTipo === 'consignada' ? 'propria' : 'consignada';
                     const oppositeLabel = currentTipo === 'consignada' ? 'Própria' : 'Consignada';
                     return (
                       <Button
                         variant="default"
-                        className="flex-1"
+                        className="col-span-2 sm:col-span-4"
                         disabled
                       >
                         {oppositeLabel}
@@ -1061,28 +1059,28 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   <>
                     <Button
                       variant={tipoSelecionado === 'propria' ? 'default' : 'outline'}
-                      className={`flex-1 gap-2 ${tipoSelecionado === 'propria' ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' : 'border-green-500 text-green-600 hover:bg-green-50'}`}
+                      className={`w-full gap-2 ${tipoSelecionado === 'propria' ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' : 'border-green-500 text-green-600 hover:bg-green-50'}`}
                       onClick={() => setTipoSelecionado('propria')}
                     >
                       <ShieldCheck className="h-4 w-4" /> Própria
                     </Button>
                     <Button
                       variant={tipoSelecionado === 'consignada' ? 'default' : 'outline'}
-                      className={`flex-1 gap-2 ${tipoSelecionado === 'consignada' ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600' : 'border-purple-500 text-purple-600 hover:bg-purple-50'}`}
+                      className={`w-full gap-2 ${tipoSelecionado === 'consignada' ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600' : 'border-purple-500 text-purple-600 hover:bg-purple-50'}`}
                       onClick={() => setTipoSelecionado('consignada')}
                     >
                       <Handshake className="h-4 w-4" /> Consignada
                     </Button>
                     <Button
                       variant={tipoSelecionado === 'test-ride' ? 'default' : 'outline'}
-                      className={`flex-1 gap-2 ${tipoSelecionado === 'test-ride' ? 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500' : 'border-orange-500 text-orange-600 hover:bg-orange-50'}`}
+                      className={`w-full gap-2 ${tipoSelecionado === 'test-ride' ? 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500' : 'border-orange-500 text-orange-600 hover:bg-orange-50'}`}
                       onClick={() => setTipoSelecionado('test-ride')}
                     >
                       <Bike className="h-4 w-4" /> Test-Ride
                     </Button>
                     <Button
                       variant={tipoSelecionado === 'repasse' ? 'default' : 'outline'}
-                      className={`flex-1 gap-2 ${tipoSelecionado === 'repasse' ? 'bg-gray-600 hover:bg-gray-700 text-white border-gray-600' : 'border-gray-500 text-gray-600 hover:bg-gray-50'}`}
+                      className={`w-full gap-2 ${tipoSelecionado === 'repasse' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-background border-muted-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}
                       onClick={() => setTipoSelecionado('repasse')}
                     >
                       <ArrowLeftRight className="h-4 w-4" /> Repasse
@@ -1091,7 +1089,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs">Manual</Label>
                 <RadioGroup value={aquisManual} onValueChange={setAquisManual} className="flex gap-3">
@@ -1125,17 +1123,17 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               />
             </div>
             <Separator />
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <Button
                 variant="secondary"
-                className="flex-1 gap-2"
+                className="w-full sm:flex-1 gap-2"
                 onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); }}
               >
                 <ArrowLeft className="h-4 w-4" /> Voltar
               </Button>
               {valorFechamentoAquisicao.trim() !== '' && parseCurrencyToNumber(valorFechamentoAquisicao) !== null && parseCurrencyToNumber(valorFechamentoAquisicao)! > 0 && tipoSelecionado && (
                 <Button
-                  className="flex-1 gap-2"
+                  className="w-full sm:flex-1 gap-2"
                   onClick={isConvertendo ? handleSaveConversao : handleSaveAquisicao}
                   disabled={savingAquisicao}
                 >
