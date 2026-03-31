@@ -594,7 +594,7 @@ const RelatorioShowroom: React.FC = () => {
       </div>
 
       {/* Charts by Vendedor */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartCard title="Atendimentos por Vendedor" data={[...chartByVendedor].sort((a, b) => b.atendimentos - a.atendimentos)} dataKey="atendimentos" />
         <ChartCard title="Vendas por Vendedor" data={[...chartByVendedor].sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" />
         <ChartCard title="Sinais por Vendedor" data={[...chartByVendedor].sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" />
