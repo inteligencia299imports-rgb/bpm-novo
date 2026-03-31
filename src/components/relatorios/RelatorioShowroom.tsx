@@ -751,7 +751,8 @@ const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ 
     <p className="text-sm font-medium mb-2">{title}</p>
     <ResponsiveContainer width="100%" height={250}>
       <BarChart data={data} barCategoryGap="20%">
-        <XAxis dataKey="nome" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+        <XAxis dataKey="nome" tick={{ fontSize: 10 }} />
+        <YAxis tick={{ fontSize: 10 }} />
         <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} />
         <Bar dataKey={dataKey} fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} label={(props: any) => renderBarLabel(props)} />
       </BarChart>
