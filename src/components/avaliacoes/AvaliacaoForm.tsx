@@ -265,8 +265,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         await supabase.from('status_history').insert({
           entity_type: 'avaliacao',
           entity_id: avaliacao.moto_avaliacao_id,
-          status_from: 'avaliacao_solicitada',
-          status_to: 'avaliada',
+          status: 'avaliada',
           changed_by: user?.id,
           changed_by_name: userName || user?.email || null,
         } as any);
