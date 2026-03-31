@@ -618,16 +618,6 @@ const RelatorioShowroom: React.FC = () => {
               <p className="text-sm font-medium mb-2">Margem Prevista vs Realizada (%)</p>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={chartByMonth} barGap={6} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="gradPrevista" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#7e6d9b" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="#9b8bb8" stopOpacity={0.6} />
-                    </linearGradient>
-                    <linearGradient id="gradRealizada" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#3a8f6a" stopOpacity={0.9} />
-                      <stop offset="100%" stopColor="#5bb88a" stopOpacity={0.6} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
@@ -637,8 +627,8 @@ const RelatorioShowroom: React.FC = () => {
                     cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
                   />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="pctMargemPrevista" name="Prevista" fill="url(#gradPrevista)" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => `${v.toFixed(1)}%` }} />
-                  <Bar dataKey="pctMargemRealizada" name="Realizada" fill="url(#gradRealizada)" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => `${v.toFixed(1)}%` }} />
+                  <Bar dataKey="pctMargemPrevista" name="Prevista" fill="#7e6d9b" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => `${v.toFixed(1)}%` }} />
+                  <Bar dataKey="pctMargemRealizada" name="Realizada" fill="#3a8f6a" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => `${v.toFixed(1)}%` }} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -785,12 +775,6 @@ const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ 
     <p className="text-sm font-medium mb-2">{title}</p>
     <ResponsiveContainer width="100%" height={280}>
       <BarChart data={data} barCategoryGap="25%" margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-        <defs>
-          <linearGradient id="gradPrimary" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2F6F84" stopOpacity={0.9} />
-            <stop offset="100%" stopColor="#3F8DA6" stopOpacity={0.5} />
-          </linearGradient>
-        </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
         <XAxis dataKey="nome" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
@@ -798,7 +782,7 @@ const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ 
           contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12 }}
           cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
         />
-        <Bar dataKey={dataKey} fill="url(#gradPrimary)" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
+        <Bar dataKey={dataKey} fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
       </BarChart>
     </ResponsiveContainer>
   </div>
@@ -809,12 +793,6 @@ const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurr
     <p className="text-sm font-medium mb-2">{title}</p>
     <ResponsiveContainer width="100%" height={280}>
       <BarChart data={data} barCategoryGap="25%" margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-        <defs>
-          <linearGradient id="gradMonth" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3F8DA6" stopOpacity={0.9} />
-            <stop offset="100%" stopColor="#2F6F84" stopOpacity={0.5} />
-          </linearGradient>
-        </defs>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
         <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={isCurrency ? (v: number) => `${(v / 1000).toFixed(0)}k` : undefined} />
@@ -823,7 +801,7 @@ const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurr
           contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12 }}
           cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
         />
-        <Bar dataKey={dataKey} fill="url(#gradMonth)" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props, isCurrency)} />
+        <Bar dataKey={dataKey} fill="#3F8DA6" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props, isCurrency)} />
       </BarChart>
     </ResponsiveContainer>
   </div>
