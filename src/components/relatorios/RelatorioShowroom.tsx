@@ -765,7 +765,8 @@ const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurr
     <p className="text-sm font-medium mb-2">{title}</p>
     <ResponsiveContainer width="100%" height={250}>
       <BarChart data={data} barCategoryGap="20%">
-        <XAxis dataKey="label" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+        <XAxis dataKey="label" tick={{ fontSize: 9 }} />
+        <YAxis tick={{ fontSize: 10 }} tickFormatter={isCurrency ? (v: number) => `${(v / 1000).toFixed(0)}k` : undefined} />
         <Tooltip formatter={isCurrency ? (v: number) => fmtBRL(v) : undefined} cursor={{ fill: 'hsl(var(--muted))' }} />
         <Bar dataKey={dataKey} fill="#3F8DA6" radius={[6, 6, 0, 0]} label={(props: any) => renderBarLabel(props, isCurrency)} />
       </BarChart>
