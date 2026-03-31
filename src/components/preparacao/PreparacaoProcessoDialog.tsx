@@ -161,7 +161,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             .select('*')
             .eq('entity_id', motoAvaliacaoId)
             .eq('entity_type', 'avaliacao')
-            .in('status_to', ['adquirida'])
+            .in('status', ['adquirida'])
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [] as any[] });
 
