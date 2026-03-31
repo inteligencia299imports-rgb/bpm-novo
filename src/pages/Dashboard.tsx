@@ -17,7 +17,7 @@ import RelatoriosTab from '@/components/relatorios/RelatoriosTab';
 
 const Dashboard = () => {
   const { role } = useAuth();
-  const defaultTab = role === 'avaliador' ? 'avaliacoes' : 'showroom';
+  const defaultTab = role === 'gestor' ? 'relatorios' : role === 'avaliador' ? 'avaliacoes' : 'showroom';
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
