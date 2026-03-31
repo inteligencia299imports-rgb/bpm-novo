@@ -57,6 +57,7 @@ interface AtendimentoRow {
   nome_cliente: string;
   situacao: string;
   loja: string;
+  interesse: string;
   vendedor_id: string;
   created_at: string;
   valor_venda: number | null;
