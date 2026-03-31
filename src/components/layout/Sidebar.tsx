@@ -33,6 +33,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
     { id: 'consignacao', label: 'Consignação', icon: FileText, roles: ['avaliador', 'gestor', 'secretaria'] },
     { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['vendedor', 'avaliador', 'gestor', 'secretaria'] },
     { id: 'nps', label: 'NPS', icon: Award, roles: ['vendedor', 'gestor', 'avaliador'] },
+    { id: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: ['gestor'] },
   ].filter(t => role && t.roles.includes(role));
 
   return (
