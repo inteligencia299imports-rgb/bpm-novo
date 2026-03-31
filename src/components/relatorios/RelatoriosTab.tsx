@@ -76,17 +76,6 @@ const RelatoriosTab: React.FC = () => {
                 <Calendar mode="single" selected={dateTo} onSelect={setDateTo} locale={ptBR} className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full h-9 px-3 text-sm text-muted-foreground hover:text-foreground"
-                onClick={handleClearAll}
-              >
-                <X className="h-4 w-4 mr-1" />
-                Limpar filtros
-              </Button>
-            )}
           </div>
         </div>
         <TabsContent value="showroom">
