@@ -105,9 +105,10 @@ interface RelatorioShowroomProps {
   setDateFrom: (d: Date | undefined) => void;
   setDateTo: (d: Date | undefined) => void;
   onRegisterClear?: (fn: () => void) => void;
+  onFilterChange?: (loja: string, tipo: string) => void;
 }
 
-const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear }) => {
+const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
   const { userName } = useAuth();
   const [loading, setLoading] = useState(true);
   const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
@@ -117,16 +118,20 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const [vendedores, setVendedores] = useState<VendedorInfo[]>([]);
 
   // Filters
-  const [filterLoja, setFilterLoja] = useState('todos');
-  const [filterTipo, setFilterTipo] = useState('todos');
+  const [filterLoja, setFilterLojaState] = useState('todos');
+  const [filterTipo, setFilterTipoState] = useState('todos');
+
+  const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v, filterTipo); };
+  const setFilterTipo = (v: string) => { setFilterTipoState(v); onFilterChange?.(filterLoja, v); };
 
   const [listTab, setListTab] = useState('vendidas');
 
   // Register clear function
   useEffect(() => {
     onRegisterClear?.(() => {
-      setFilterLoja('todos');
-      setFilterTipo('todos');
+      setFilterLojaState('todos');
+      setFilterTipoState('todos');
+      onFilterChange?.('todos', 'todos');
       setDateFrom(undefined);
       setDateTo(undefined);
     });
