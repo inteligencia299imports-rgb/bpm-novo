@@ -533,7 +533,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }
 
   return (
-    <div className="space-y-4 max-w-full">
+    <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
       {/* Loja on left, Tipo on right */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
