@@ -938,8 +938,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             const historyEntry = {
                               entity_type: 'avaliacao',
                               entity_id: moto.id,
-                              status_from: 'sem_avaliacao',
-                              status_to: 'avaliacao_solicitada',
+                              status: 'avaliacao_solicitada',
                               changed_by: user?.id,
                               changed_by_name: userName || user?.email || null,
                             };

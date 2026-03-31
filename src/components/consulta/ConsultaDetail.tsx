@@ -97,8 +97,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
     await supabase.from('status_history').insert({
       entity_type: 'consulta',
       entity_id: moto.id,
-      status_from: 'consulta_solicitada',
-      status_to: 'consulta_realizada',
+      status: 'consulta_realizada',
       changed_by: user?.id,
       changed_by_name: userName || user?.email || null,
       observacoes: resultadoTexto || null,

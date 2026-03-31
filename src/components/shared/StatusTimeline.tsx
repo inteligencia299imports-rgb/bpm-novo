@@ -17,7 +17,7 @@ interface StatusTimelineProps {
   history: TimelineEntry[];
   /** Optional extra content renderer for the popup (e.g. resultado_consulta) */
   renderPopupExtra?: (entry: TimelineEntry) => React.ReactNode;
-  /** Optional custom label formatter for status_to values */
+  /** Optional custom label formatter for status values */
   formatLabel?: (raw: string) => string;
 }
 
