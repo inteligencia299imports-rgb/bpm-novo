@@ -401,8 +401,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     if (error) {
       toast.error('Erro ao converter aquisição');
     } else {
-      const tipoLabel = newTipo === 'convertida' ? 'Convertida' : 'Consignada';
-      const fromLabel = currentTipo === 'consignada' ? 'Consignada' : currentTipo === 'convertida' ? 'Convertida' : 'Própria';
+      const tipoLabel = getTipoAquisicaoLabel(newTipo) || newTipo;
+      const fromLabel = getTipoAquisicaoLabel(currentTipo) || currentTipo;
       if (avaliacao?.moto_avaliacao_id) {
         await supabase.from('status_history').insert({
           entity_type: 'avaliacao',
