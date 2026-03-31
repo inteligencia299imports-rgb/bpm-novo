@@ -63,12 +63,13 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('pos_compra_observacoes, pos_compra_status, moto_avaliacao_id')
+          .select('pos_compra_observacoes, pos_compra_status, moto_avaliacao_id, tipo_aquisicao')
           .eq('id', avaliacaoId)
           .maybeSingle(),
       ]);
 
       const motoId = motoAvaliacaoId || (avData as any)?.moto_avaliacao_id;
+      const tipoAquisicao = (avData as any)?.tipo_aquisicao;
 
       // Fetch consultation data if we have a moto ID
       let consultaRealizada = false;
@@ -93,6 +94,20 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         consultaDate = consultaHistory?.[0]?.created_at || null;
       }
 
+      // If convertida, fetch consignacao process dates to pre-fill matching etapas
+      const consignacaoMap: Record<string, EtapaData> = {};
+      if (tipoAquisicao === 'convertida') {
+        const { data: consigData } = await supabase
+          .from('consignacao_processos' as any)
+          .select('etapa, concluida, data_conclusao')
+          .eq('avaliacao_id', avaliacaoId);
+        if (consigData) {
+          for (const d of consigData as any[]) {
+            consignacaoMap[d.etapa] = d as EtapaData;
+          }
+        }
+      }
+
       const map: Record<string, EtapaData> = {};
       if (data) {
         for (const d of data as any[]) {
@@ -101,7 +116,12 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       }
 
       const built = ETAPAS.map(e => {
+        // Existing pos_compra data takes priority
         if (map[e]) return map[e];
+        // For convertida, pull matching dates from consignação process
+        if (tipoAquisicao === 'convertida' && consignacaoMap[e] && consignacaoMap[e].concluida) {
+          return { etapa: e, concluida: true, data_conclusao: consignacaoMap[e].data_conclusao };
+        }
         if (e === 'CONSULTA REALIZADA' && consultaRealizada) {
           return { etapa: e, concluida: true, data_conclusao: consultaDate || new Date().toISOString() };
         }
