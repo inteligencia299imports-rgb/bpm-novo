@@ -744,8 +744,8 @@ const indicatorGradients: Record<string, string> = {
 };
 
 const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: string; gradient?: string; icon?: React.ReactNode; subtitle?: string }> = ({ title, value, sub, gradient = 'teal', icon, subtitle }) => (
-  <Card className={cn(indicatorGradients[gradient], 'border-0 text-white shadow-md rounded-xl')}>
-    <CardContent className="pt-4 pb-3 px-4">
+  <Card className={cn(indicatorGradients[gradient], 'border-0 text-white shadow-md rounded-xl h-full')}>
+    <CardContent className="pt-4 pb-3 px-4 h-full">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-white/80 mb-1">{title}</p>
