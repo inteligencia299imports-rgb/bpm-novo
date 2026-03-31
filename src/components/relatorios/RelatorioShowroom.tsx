@@ -570,7 +570,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       </div>
 
       {/* Section: Resultado do Ano */}
-      <div className="space-y-1 mt-12">
+      <div className="space-y-1 !mt-8">
         <h2 className="text-base font-bold text-foreground">Resultado do Ano</h2>
         <Separator />
       </div>
