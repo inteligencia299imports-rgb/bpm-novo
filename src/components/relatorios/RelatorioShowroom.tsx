@@ -571,7 +571,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         <MonthChart title="Vendas por Mês" data={chartByMonth} dataKey="vendas" />
         <MonthChart title="Faturamento por Mês" data={chartByMonth} dataKey="faturamento" isCurrency />
         <Card className="border shadow-sm rounded-xl">
-          <CardHeader className="pb-3 pt-4 px-4"><CardTitle className="text-sm font-semibold">Margem Prevista vs Realizada (%)</CardTitle></CardHeader>
+          <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Margem Prevista vs Realizada (%)</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartByMonth} barGap={6} margin={{ top: 16, right: 10, left: 0, bottom: 0 }}>
@@ -728,7 +728,7 @@ const renderBarLabel = (props: any, isCurrency?: boolean) => {
 
 const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ title, data, dataKey }) => (
   <Card className="border shadow-sm rounded-xl">
-    <CardHeader className="pb-3 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
+    <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-3 pt-0">
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: 0, bottom: 0 }}>
@@ -748,7 +748,7 @@ const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ 
 
 const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurrency?: boolean }> = ({ title, data, dataKey, isCurrency }) => (
   <Card className="border shadow-sm rounded-xl">
-    <CardHeader className="pb-3 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
+    <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-3 pt-0">
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: 0, bottom: 0 }}>
