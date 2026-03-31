@@ -180,6 +180,16 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     };
   }, [loadData, debouncedLoad]);
 
+  // Helper maps
+  const avaliacaoByAtendimento = useMemo(() => {
+    const map: Record<string, AvaliacaoRow[]> = {};
+    avaliacoes.forEach(a => {
+      if (!map[a.atendimento_id]) map[a.atendimento_id] = [];
+      map[a.atendimento_id].push(a);
+    });
+    return map;
+  }, [avaliacoes]);
+
   const estoqueByAvaliacao = useMemo(() => {
     const map: Record<string, EstoqueRow> = {};
     estoqueItems.forEach(e => { if (e.avaliacao_id) map[e.avaliacao_id] = e; });
