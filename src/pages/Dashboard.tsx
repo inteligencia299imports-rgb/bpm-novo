@@ -13,6 +13,7 @@ import IntermediacacaoTab from '@/components/intermediacao/IntermediacacaoTab';
 import PosCompraTab from '@/components/pos-compra/PosCompraTab';
 import ConsignacaoTab from '@/components/consignacao/ConsignacaoTab';
 import PreparacaoTab from '@/components/preparacao/PreparacaoTab';
+import RelatoriosTab from '@/components/relatorios/RelatoriosTab';
 
 const Dashboard = () => {
   const { role } = useAuth();
@@ -106,6 +107,7 @@ const Dashboard = () => {
           />
         )}
         {activeTab === 'nps' && <NpsTab onNavigateToShowroom={handleNavigateToShowroom} />}
+        {activeTab === 'relatorios' && <RelatoriosTab />}
       </main>
       <BottomNav activeTab={activeTab} onTabChange={(tab) => { clearInitials(); setActiveTab(tab); }} />
     </div>
