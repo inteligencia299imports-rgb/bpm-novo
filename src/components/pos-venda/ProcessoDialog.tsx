@@ -47,6 +47,7 @@ interface Props {
   };
   onStatusChanged?: (newStatus: string) => void;
   showContratoConsignante?: boolean;
+  onContratoSaved?: () => void;
 }
 
 const ProcessoDialog: React.FC<Props> = ({ 
@@ -57,6 +58,7 @@ const ProcessoDialog: React.FC<Props> = ({
   statusRules,
   onStatusChanged,
   showContratoConsignante,
+  onContratoSaved,
 }) => {
   const ETAPAS = customEtapas || DEFAULT_ETAPAS;
   const [etapas, setEtapas] = useState<EtapaData[]>(
@@ -346,6 +348,7 @@ const ProcessoDialog: React.FC<Props> = ({
                 open={contratoConsignanteOpen}
                 onOpenChange={setContratoConsignanteOpen}
                 atendimentoId={atendimentoId}
+                onSaved={onContratoSaved}
               />
             )}
 

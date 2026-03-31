@@ -20,6 +20,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   atendimentoId: string;
+  onSaved?: () => void;
 }
 
 const formatCurrencyInput = (value: string): string => {
@@ -77,7 +78,7 @@ interface CustoOperacional {
   valor: string;
 }
 
-const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId }) => {
+const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendimentoId, onSaved }) => {
   const { user, userName } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -372,6 +373,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     const id = await saveContrato();
     if (id) {
       toast.success('Contrato salvo com sucesso!');
+      onSaved?.();
       onOpenChange(false);
     }
   };
@@ -441,6 +443,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
         });
       }
       setJaGerado(true);
+      onSaved?.();
       toast.success('Contrato gerado com sucesso!');
     } catch (err) {
       console.error(err);
