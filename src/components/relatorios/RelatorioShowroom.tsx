@@ -581,10 +581,10 @@ const RelatorioShowroom: React.FC = () => {
         <CardHeader><CardTitle className="text-base">Por Vendedor</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ChartCard title="Atendimentos" data={chartByVendedor} dataKey="atendimentos" />
-            <ChartCard title="Vendas" data={chartByVendedor} dataKey="vendas" />
-            <ChartCard title="Sinais" data={chartByVendedor} dataKey="sinais" />
-            <ChartCard title="Taxa Conversão (%)" data={chartByVendedor} dataKey="conversao" />
+            <ChartCard title="Atendimentos" data={[...chartByVendedor].sort((a, b) => b.atendimentos - a.atendimentos)} dataKey="atendimentos" />
+            <ChartCard title="Vendas" data={[...chartByVendedor].sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" />
+            <ChartCard title="Sinais" data={[...chartByVendedor].sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" />
+            <ChartCard title="Taxa Conversão (%)" data={[...chartByVendedor].sort((a, b) => b.conversao - a.conversao)} dataKey="conversao" />
           </div>
         </CardContent>
       </Card>
