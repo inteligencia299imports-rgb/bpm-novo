@@ -1,0 +1,1 @@
+ALTER PUBLICATION supabase_realtime ADD TABLE public.atendimentos, public.estoque, public.custos_oficina, public.contratos;
