@@ -628,16 +628,16 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MonthChart title="Atendimentos" data={chartByMonth} dataKey="atendimentos" />
         <Card className="border shadow-sm rounded-xl">
-          <CardHeader className="pb-4 pt-4 px-4 flex flex-row items-center justify-between">
+          <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Vendas e Taxa de Conversão</CardTitle>
-            <div className="flex items-center gap-3 text-[11px]">
+            <div className="flex flex-wrap items-center gap-3 text-[11px]">
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#2F6F84' }} />Vendas</span>
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Conversão (%)</span>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart data={chartByMonth} margin={{ top: 16, right: -20, left: -20, bottom: 0 }}>
+              <ComposedChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
