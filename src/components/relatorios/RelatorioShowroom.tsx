@@ -602,7 +602,7 @@ const RelatorioShowroom: React.FC = () => {
       </div>
 
       {/* Charts by Month */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MonthChart title="Atendimentos por Mês" data={chartByMonth} dataKey="atendimentos" />
         <MonthChart title="Vendas por Mês" data={chartByMonth} dataKey="vendas" />
         <MonthChart title="Faturamento por Mês" data={chartByMonth} dataKey="faturamento" isCurrency />
