@@ -411,15 +411,25 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       const qtdAtend = vendAtend.length;
       const qtdVendas = vendVendas.length;
       const qtdSinais = vendSinais.length;
+      // Faturamento por vendedor
+      let faturamento = 0;
+      vendVendas.forEach(a => {
+        const estoques = estoqueByAtendimentoVenda[a.id] || [];
+        estoques.forEach(e => {
+          if (filterTipo !== 'todos' && e.tipo !== filterTipo) return;
+          faturamento += e.preco || 0;
+        });
+      });
       return {
         nome: vendedorMap[vid] || 'Desconhecido',
         atendimentos: qtdAtend,
         vendas: qtdVendas,
         sinais: qtdSinais,
         conversao: qtdAtend > 0 ? +(qtdVendas / qtdAtend * 100).toFixed(1) : 0,
+        faturamento,
       };
     }).filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0);
-  }, [filteredAtendimentos, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap]);
+  }, [filteredAtendimentos, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap, estoqueByAtendimentoVenda, filterTipo]);
 
   // ===== Charts by custom month =====
   const chartByMonth = useMemo(() => {
@@ -475,10 +485,13 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         });
       });
 
+      const conversao = atendMonth.length > 0 ? +(vendidosMonth.length / atendMonth.length * 100).toFixed(1) : 0;
+
       return {
         label: m.label,
         atendimentos: atendMonth.length,
         vendas: vendidosMonth.length,
+        conversao,
         faturamento,
         pctMargemPrevista: totalQV > 0 ? +(margemPrevista / totalQV * 100).toFixed(1) : 0,
         pctMargemRealizada: totalPE > 0 ? +(margemRealizada / totalPE * 100).toFixed(1) : 0,
@@ -567,6 +580,26 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         <ChartCard title="Vendas" data={[...chartByVendedor].sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" />
         <ChartCard title="Sinais" data={[...chartByVendedor].sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" />
         <Card className="border shadow-sm rounded-xl">
+          <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Faturamento</CardTitle></CardHeader>
+          <CardContent className="px-4 pb-3 pt-0">
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={[...chartByVendedor].sort((a, b) => b.faturamento - a.faturamento)} margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradFatVendedor" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2F6F84" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#2F6F84" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="nome" tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
+                <Tooltip content={<CustomTooltip isCurrency />} cursor={{ stroke: 'hsl(var(--muted))', strokeWidth: 1 }} />
+                <Area type="monotone" dataKey="faturamento" stroke="#2F6F84" strokeWidth={2.5} fill="url(#gradFatVendedor)" dot={{ r: 5, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--foreground))', fontWeight: 600, formatter: (v: number) => fmtBRL(v) }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Taxa de Conversão (%)</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={300}>
@@ -595,7 +628,29 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MonthChart title="Atendimentos" data={chartByMonth} dataKey="atendimentos" />
-        <MonthChart title="Vendas" data={chartByMonth} dataKey="vendas" />
+        <Card className="border shadow-sm rounded-xl">
+          <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Vendas + Taxa de Conversão</CardTitle></CardHeader>
+          <CardContent className="px-4 pb-3 pt-0">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradConversaoMonth" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#E8913A" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#E8913A" stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: '#E8913A' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar yAxisId="left" dataKey="vendas" name="Vendas" fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
+                <Line yAxisId="right" type="monotone" dataKey="conversao" name="Conversão (%)" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
         <MonthChart title="Faturamento" data={chartByMonth} dataKey="faturamento" isCurrency />
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Margem Prevista vs Realizada (%)</CardTitle></CardHeader>
