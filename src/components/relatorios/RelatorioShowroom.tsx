@@ -500,57 +500,54 @@ const RelatorioShowroom: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Page title */}
-      <div>
-        <div className="flex items-center gap-2">
-          <BarChart3 className="h-7 w-7 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground">Relatórios</h1>
-        </div>
-        <p className="text-sm text-muted-foreground mt-0.5">Resumo do período selecionado</p>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Loja pills */}
-          <div className="flex items-center gap-1">
-            {['todos', '299', 'Ducati'].map(loja => (
-              <Button
-                key={loja}
-                size="sm"
-                variant={filterLoja === loja ? 'default' : 'outline'}
-                className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')}
-                onClick={() => setFilterLoja(loja)}
-              >
-                {loja === 'todos' ? 'Todas Lojas' : loja}
-              </Button>
-            ))}
+      {/* Header with greeting and filters */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold">Olá, {userName || 'Gestor'}</h2>
+            <p className="text-sm text-muted-foreground">Resumo do período selecionado</p>
           </div>
-          {/* Date pickers inline */}
-          <div className="flex items-center gap-1.5">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('rounded-full h-8 px-3 text-xs font-normal', !dateFrom && 'text-muted-foreground')}>
-                  <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-                  {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Loja pills */}
+            <div className="flex items-center gap-1">
+              {['todos', '299', 'Ducati'].map(loja => (
+                <Button
+                  key={loja}
+                  size="sm"
+                  variant={filterLoja === loja ? 'default' : 'outline'}
+                  className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')}
+                  onClick={() => setFilterLoja(loja)}
+                >
+                  {loja === 'todos' ? 'Todas Lojas' : loja}
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
-            <span className="text-xs text-muted-foreground">até</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('rounded-full h-8 px-3 text-xs font-normal', !dateTo && 'text-muted-foreground')}>
-                  <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-                  {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} locale={ptBR} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
+              ))}
+            </div>
+            {/* Date pickers inline */}
+            <div className="flex items-center gap-1.5">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn('rounded-full h-8 px-3 text-xs font-normal', !dateFrom && 'text-muted-foreground')}>
+                    <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                    {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+              <span className="text-xs text-muted-foreground">até</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn('rounded-full h-8 px-3 text-xs font-normal', !dateTo && 'text-muted-foreground')}>
+                    <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                    {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} locale={ptBR} className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
         </div>
         {/* Tipo filter row */}
