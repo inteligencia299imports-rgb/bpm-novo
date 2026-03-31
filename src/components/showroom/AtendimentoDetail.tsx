@@ -320,8 +320,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             promises.push(supabase.from('status_history').insert({
               entity_type: 'avaliacao',
               entity_id: av.moto_avaliacao_id,
-              status_from: av.situacao || 'em_aberto',
-              status_to: 'dispensada',
+              status: 'dispensada',
               changed_by: user?.id,
               changed_by_name: userName || user?.email || null,
               observacoes: observacoes || null,
