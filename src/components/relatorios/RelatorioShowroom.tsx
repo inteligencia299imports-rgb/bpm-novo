@@ -732,28 +732,23 @@ const RelatorioShowroom: React.FC = () => {
 };
 
 // Sub-components
-const indicatorGradients: Record<string, string> = {
-  teal: 'bg-gradient-to-br from-[#2F6F84] to-[#3F8DA6]',
-  green: 'bg-gradient-to-br from-[#169d53] to-[#20c76a]',
-  purple: 'bg-gradient-to-br from-[#7e6d9b] to-[#9b8bb8]',
-  amber: 'bg-gradient-to-br from-[#da6220] to-[#f59e0b]',
-  blue: 'bg-gradient-to-br from-[#2563eb] to-[#2EC5FF]',
-  slate: 'bg-gradient-to-br from-[#475569] to-[#64748b]',
-  emerald: 'bg-gradient-to-br from-[#3a8f6a] to-[#5bb88a]',
-  rose: 'bg-gradient-to-br from-[#e11d48] to-[#fb7185]',
+const iconColorMap: Record<string, string> = {
+  teal: 'bg-[#2F6F84]/10 text-[#2F6F84]',
+  purple: 'bg-[#7e6d9b]/10 text-[#7e6d9b]',
+  emerald: 'bg-[#3a8f6a]/10 text-[#3a8f6a]',
 };
 
 const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: string; gradient?: string; icon?: React.ReactNode; subtitle?: string }> = ({ title, value, sub, gradient = 'teal', icon, subtitle }) => (
-  <Card className={cn(indicatorGradients[gradient], 'border-0 text-white shadow-md rounded-xl h-full')}>
+  <Card className="border shadow-sm rounded-xl h-full">
     <CardContent className="pt-4 pb-3 px-4 h-full">
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-white/80 mb-1">{title}</p>
-          <p className="text-xl font-bold truncate">{value}</p>
-          {subtitle && <p className="text-[11px] text-white/60 mt-0.5">{subtitle}</p>}
-          {sub && <p className="text-xs text-white/70">{sub}</p>}
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
+          <p className="text-xl font-bold text-foreground truncate">{value}</p>
+          {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
+          {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
         </div>
-        {icon && <div className="ml-2 p-2 bg-white/15 rounded-lg flex-shrink-0">{icon}</div>}
+        {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap[gradient] || iconColorMap.teal)}>{icon}</div>}
       </div>
     </CardContent>
   </Card>
