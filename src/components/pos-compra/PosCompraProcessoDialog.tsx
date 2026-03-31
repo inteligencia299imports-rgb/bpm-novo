@@ -85,7 +85,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
             .select('created_at')
             .eq('entity_id', motoId)
             .eq('entity_type', 'consulta')
-            .eq('status_to', 'consulta_realizada')
+            .eq('status', 'consulta_realizada')
             .order('created_at', { ascending: false })
             .limit(1),
         ]);
