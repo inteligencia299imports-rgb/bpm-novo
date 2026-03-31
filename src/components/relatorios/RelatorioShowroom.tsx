@@ -716,12 +716,23 @@ const RelatorioShowroom: React.FC = () => {
 };
 
 // Sub-components
-const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: string }> = ({ title, value, sub }) => (
-  <Card>
+const indicatorGradients: Record<string, string> = {
+  teal: 'bg-gradient-to-br from-[#2F6F84] to-[#3F8DA6]',
+  green: 'bg-gradient-to-br from-[#169d53] to-[#20c76a]',
+  purple: 'bg-gradient-to-br from-[#7e6597] to-[#9b84b3]',
+  amber: 'bg-gradient-to-br from-[#da6220] to-[#f59e0b]',
+  blue: 'bg-gradient-to-br from-[#2563eb] to-[#2EC5FF]',
+  slate: 'bg-gradient-to-br from-[#475569] to-[#64748b]',
+  emerald: 'bg-gradient-to-br from-[#059669] to-[#34d399]',
+  rose: 'bg-gradient-to-br from-[#e11d48] to-[#fb7185]',
+};
+
+const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: string; gradient?: string }> = ({ title, value, sub, gradient = 'teal' }) => (
+  <Card className={cn(indicatorGradients[gradient], 'border-0 text-white shadow-md')}>
     <CardContent className="pt-4 pb-3 px-4">
-      <p className="text-xs text-muted-foreground mb-1">{title}</p>
+      <p className="text-xs text-white/80 mb-1">{title}</p>
       <p className="text-lg font-bold">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+      {sub && <p className="text-xs text-white/70">{sub}</p>}
     </CardContent>
   </Card>
 );
