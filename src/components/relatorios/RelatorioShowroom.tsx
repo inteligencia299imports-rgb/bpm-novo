@@ -557,19 +557,27 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         <IndicatorCard title="Margem Realizada" value={`${fmtBRL(indicadores.margemRealizada)} (${fmtPct(indicadores.pctMargemRealizada)})`} gradient="emerald" icon={<PieChart className="h-5 w-5" />} />
       </div>
 
-      {/* Charts by Vendedor */}
+      {/* Section: Por Vendedor */}
+      <div className="space-y-1">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Por Vendedor</h2>
+        <Separator />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Atendimentos por Vendedor" data={[...chartByVendedor].sort((a, b) => b.atendimentos - a.atendimentos)} dataKey="atendimentos" />
-        <ChartCard title="Vendas por Vendedor" data={[...chartByVendedor].sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" />
-        <ChartCard title="Sinais por Vendedor" data={[...chartByVendedor].sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" />
-        <ChartCard title="Taxa Conversão (%) por Vendedor" data={[...chartByVendedor].sort((a, b) => b.conversao - a.conversao)} dataKey="conversao" />
+        <ChartCard title="Atendimentos" data={[...chartByVendedor].sort((a, b) => b.atendimentos - a.atendimentos)} dataKey="atendimentos" />
+        <ChartCard title="Vendas" data={[...chartByVendedor].sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" />
+        <ChartCard title="Sinais" data={[...chartByVendedor].sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" />
+        <ChartCard title="Taxa de Conversão (%)" data={[...chartByVendedor].sort((a, b) => b.conversao - a.conversao)} dataKey="conversao" />
       </div>
 
-      {/* Charts by Month */}
+      {/* Section: Resultado do Ano */}
+      <div className="space-y-1">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">Resultado do Ano</h2>
+        <Separator />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <MonthChart title="Atendimentos por Mês" data={chartByMonth} dataKey="atendimentos" />
-        <MonthChart title="Vendas por Mês" data={chartByMonth} dataKey="vendas" />
-        <MonthChart title="Faturamento por Mês" data={chartByMonth} dataKey="faturamento" isCurrency />
+        <MonthChart title="Atendimentos" data={chartByMonth} dataKey="atendimentos" />
+        <MonthChart title="Vendas" data={chartByMonth} dataKey="vendas" />
+        <MonthChart title="Faturamento" data={chartByMonth} dataKey="faturamento" isCurrency />
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Margem Prevista vs Realizada (%)</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
