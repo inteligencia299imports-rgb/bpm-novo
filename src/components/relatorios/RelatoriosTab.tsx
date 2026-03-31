@@ -14,8 +14,9 @@ const RelatoriosTab: React.FC = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const clearFnRef = useRef<(() => void) | null>(null);
+  const [hasInternalFilters, setHasInternalFilters] = useState(false);
 
-  const hasActiveFilters = dateFrom || dateTo;
+  const hasActiveFilters = !!(dateFrom || dateTo || hasInternalFilters);
 
   const handleClearAll = () => {
     clearFnRef.current?.();
