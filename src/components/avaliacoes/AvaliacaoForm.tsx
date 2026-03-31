@@ -419,7 +419,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         } as any);
       }
       toast.success(`Moto convertida para ${tipoLabel}!`);
-      setAvaliacao((prev: any) => ({ ...prev, tipo_aquisicao: newTipo, valor_fechamento: valor }));
+      setAvaliacao((prev: any) => ({ ...prev, ...updatePayload }));
       refreshHistory();
     }
     
