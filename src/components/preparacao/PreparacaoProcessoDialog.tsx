@@ -426,7 +426,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       }
 
       const historySaved = await insertHistory({
-        statusFrom,
         statusTo: 'estoque',
         observacoes: `MOTO LIBERADA. Empresa: ${empresa}, Loja: ${loja}, Placa: ${placa.trim().toUpperCase()}${detalhes.trim() ? `. ${detalhes.trim()}` : ''}`,
         changedBy: user.id,
