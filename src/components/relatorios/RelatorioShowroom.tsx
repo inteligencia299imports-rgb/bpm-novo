@@ -571,9 +571,9 @@ const RelatorioShowroom: React.FC = () => {
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} />
-        <IndicatorCard title="Margem Prevista" value={fmtBRL(indicadores.margemPrevista)} sub={fmtPct(indicadores.pctMargemPrevista)} />
+        <IndicatorCard title="Margem Prevista" value={`${fmtBRL(indicadores.margemPrevista)} (${fmtPct(indicadores.pctMargemPrevista)})`} />
         <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} />
-        <IndicatorCard title="Margem Realizada" value={fmtBRL(indicadores.margemRealizada)} sub={fmtPct(indicadores.pctMargemRealizada)} />
+        <IndicatorCard title="Margem Realizada" value={`${fmtBRL(indicadores.margemRealizada)} (${fmtPct(indicadores.pctMargemRealizada)})`} />
       </div>
 
       {/* Charts by Vendedor */}
