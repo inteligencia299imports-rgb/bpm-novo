@@ -255,8 +255,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     if (targetStatus === 'liberar') {
       // Validate prerequisites before allowing stock release
       const tipoAquisicao = avaliacaoData?.tipo_aquisicao;
-      const isConsignada = tipoAquisicao === 'consignada';
-      const isPropria = tipoAquisicao === 'propria' || tipoAquisicao === 'convertida';
+      const isConsignada = isTipoConsignada(tipoAquisicao);
+      const isPropria = isTipoPropria(tipoAquisicao);
 
       const pendencias: string[] = [];
 
