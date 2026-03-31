@@ -317,7 +317,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       }
 
       const historySaved = await insertHistory({
-        statusFrom,
         statusTo: targetStatus,
         observacoes,
         changedBy: user.id,
