@@ -7,8 +7,7 @@ import { Separator } from '@/components/ui/separator';
 
 interface TimelineEntry {
   id: string;
-  status_from: string;
-  status_to: string;
+  status: string;
   created_at: string;
   changed_by_name?: string | null;
   [key: string]: any;
