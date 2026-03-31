@@ -277,7 +277,13 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
                 {(() => {
                   const totalPrevisto = custos.reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
                   const totalExecutado = custos.reduce((sum, c) => sum + (c.valor_executado ?? 0), 0);
-                  const diferenca = totalPrevisto - totalExecutado;
+                  // Custos sem executado (processo): previsto é gasto direto (negativo)
+                  // Custos com executado (oficina): diferença = previsto - executado
+                  const custosOficina = custos.filter(c => c.valor_executado != null);
+                  const custosProcesso = custos.filter(c => c.valor_executado == null);
+                  const diferencaOficina = custosOficina.reduce((sum, c) => sum + ((c.valor_previsto ?? 0) - (c.valor_executado ?? 0)), 0);
+                  const custoProcessoTotal = custosProcesso.reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
+                  const diferenca = diferencaOficina - custoProcessoTotal;
                   return (
                     <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-border">
                       <div className="bg-secondary rounded-lg p-3 text-center">
