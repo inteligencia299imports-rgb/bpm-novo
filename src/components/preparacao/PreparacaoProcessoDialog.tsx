@@ -375,7 +375,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
       // Insert into estoque
       const { error: estoqueError } = await supabase.from('estoque').insert({
-        tipo: avaliacao.tipo_aquisicao === 'consignada' ? 'consignada' : 'propria',
+        tipo: isTipoConsignada(avaliacao.tipo_aquisicao) ? 'consignada' : 'propria',
         marca: moto.marca,
         categoria: moto.categoria || null,
         modelo: moto.modelo,
