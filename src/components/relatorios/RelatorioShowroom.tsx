@@ -849,11 +849,11 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                         <TableCell className="text-xs">{m.dataSinal ? format(new Date(m.dataSinal), 'dd/MM/yy') : '-'}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.quantoVende)}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.valorFechamento)}</TableCell>
-                        <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)} ({((m.pctMargemPrevista ?? 0) * 100).toFixed(1)}%)</TableCell>
+                        <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)} ({fmtPct(m.pctMargemPrevista)})</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.valorVenda)}</TableCell>
                         <TableCell className={`text-xs text-right ${m.margemOficina >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemOficina)}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.abatimentos)}</TableCell>
-                        <TableCell className={`text-xs text-right font-medium ${m.margemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemRealizada)} ({((m.pctMargemRealizada ?? 0) * 100).toFixed(1)}%)</TableCell>
+                        <TableCell className={`text-xs text-right font-medium ${m.margemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemRealizada)} ({fmtPct(m.pctMargemRealizada)})</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
