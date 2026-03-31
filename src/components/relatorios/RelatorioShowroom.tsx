@@ -398,11 +398,12 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const custoPrevCliente = getCustosClientePrevisto(aval.id);
         const custoRealCliente = getCustosClienteReal(aval.id);
         const custoRealLoja = getCustosLoja(aval.id);
+        const custoPrevLoja = getCustosLojaPrevistos(aval.id);
 
         faturamentoPrevisto += quantoVende;
         totalQuantoVende += quantoVende;
         
-        const fatReal = valorVendaReal + (custoPrevCliente - custoRealCliente);
+        const fatReal = valorVendaReal + (custoPrevCliente - custoRealCliente) + (custoPrevLoja - custoRealLoja);
         faturamentoRealizado += fatReal;
         totalPrecoEstoque += precoEstoque;
 
