@@ -200,8 +200,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         await supabase.from('status_history').insert({
           entity_id: avaliacaoId,
           entity_type: 'consignacao',
-          status_from: statusLabels[previousStatus] || previousStatus,
-          status_to: statusLabels[newStatus] || newStatus,
+          status: statusLabels[newStatus] || newStatus,
           changed_by: user?.id,
           changed_by_name: userName || 'Sistema',
         });

@@ -875,7 +875,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   return (
                     <div>
                       <span className="text-xs text-muted-foreground">
-                        {h.status_to === 'consulta_realizada' ? 'Resultado da Consulta' : 'Observações'}
+                        {h.status === 'consulta_realizada' ? 'Resultado da Consulta' : 'Observações'}
                       </span>
                       <p className="text-sm mt-0.5 whitespace-pre-wrap">{h.observacoes}</p>
                     </div>

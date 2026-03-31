@@ -77,8 +77,7 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
       await supabase.from('status_history').insert({
         entity_id: estoqueItem.id,
         entity_type: 'estoque',
-        status_from: estoqueItem.status,
-        status_to: statusLabel,
+        status: statusLabel,
         changed_by: user?.id || null,
         changed_by_name: userName || null,
         observacoes: observacao.trim(),

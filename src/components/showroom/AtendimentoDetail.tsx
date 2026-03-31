@@ -1000,8 +1000,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             const { data: insertedConsulta } = await supabase.from('status_history').insert({
                               entity_type: 'consulta',
                               entity_id: moto.id,
-                              status_from: previousStatus,
-                              status_to: 'consulta_solicitada',
+                              status: 'consulta_solicitada',
                               changed_by: user?.id,
                               changed_by_name: userName || user?.email || null,
                             }).select().single();

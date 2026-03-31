@@ -224,7 +224,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   };
 
   const insertHistory = async (params: {
-    statusFrom: string;
     statusTo: string;
     observacoes: string | null;
     changedBy: string;
@@ -233,8 +232,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     const { error } = await supabase.from('status_history').insert({
       entity_id: avaliacaoId,
       entity_type: 'preparacao',
-      status_from: params.statusFrom,
-      status_to: params.statusTo,
+      status: params.statusTo,
       observacoes: params.observacoes,
       changed_by: params.changedBy,
       changed_by_name: params.changedByName,

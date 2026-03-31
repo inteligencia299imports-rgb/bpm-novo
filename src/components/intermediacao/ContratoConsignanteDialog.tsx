@@ -429,8 +429,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
         await supabase.from('status_history').insert({
           entity_type: 'contrato_consignante',
           entity_id: atendimentoId,
-          status_from: 'em_aberto',
-          status_to: 'CONTRATO GERADO',
+          status: 'CONTRATO GERADO',
           changed_by: user.id,
           changed_by_name: userName || 'Vendedor',
         });

@@ -277,8 +277,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         const { error } = await supabase.from('status_history').insert({
           entity_type: 'consignacao',
           entity_id: avaliacao.id,
-          status_from: avaliacao.consignacao_status || 'em_aberto',
-          status_to: comPercentual ? 'CONTRATO GERADO (5%)' : 'CONTRATO GERADO',
+          status: comPercentual ? 'CONTRATO GERADO (5%)' : 'CONTRATO GERADO',
           changed_by: user.id,
           changed_by_name: userName || 'Vendedor',
         });

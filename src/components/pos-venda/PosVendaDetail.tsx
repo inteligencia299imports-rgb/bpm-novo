@@ -161,7 +161,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           .order('created_at', { ascending: false });
         // Filter to only show vendido + contrato gerado events
         const filtered = (histData || []).filter((h: any) =>
-          h.status_to === 'vendido' || h.status_to?.startsWith('CONTRATO GERADO')
+          h.status === 'vendido' || h.status?.startsWith('CONTRATO GERADO')
         );
         setIntermHistory(filtered);
       }
