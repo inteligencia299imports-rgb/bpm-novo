@@ -609,7 +609,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MonthChart title="Atendimentos" data={chartByMonth} dataKey="atendimentos" />
         <Card className="border shadow-sm rounded-xl">
-          <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Vendas + Taxa de Conversão</CardTitle></CardHeader>
+          <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Vendas e Taxa de Conversão</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
