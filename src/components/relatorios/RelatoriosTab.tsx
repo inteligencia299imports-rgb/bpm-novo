@@ -30,7 +30,7 @@ const RelatoriosTab: React.FC = () => {
           <Button
             variant="ghost"
             size="sm"
-            className="rounded-full h-9 px-3 text-sm text-muted-foreground hover:text-foreground"
+            className="rounded-full h-9 px-3 text-sm text-primary hover:text-primary/80 hover:bg-primary/10"
             onClick={handleClearAll}
           >
             <X className="h-4 w-4 mr-1" />
