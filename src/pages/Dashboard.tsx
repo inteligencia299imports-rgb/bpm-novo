@@ -107,6 +107,7 @@ const Dashboard = () => {
           />
         )}
         {activeTab === 'nps' && <NpsTab onNavigateToShowroom={handleNavigateToShowroom} />}
+        {activeTab === 'relatorios' && <RelatoriosTab />}
       </main>
       <BottomNav activeTab={activeTab} onTabChange={(tab) => { clearInitials(); setActiveTab(tab); }} />
     </div>
