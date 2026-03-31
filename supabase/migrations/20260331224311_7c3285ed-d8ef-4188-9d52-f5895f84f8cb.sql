@@ -1,0 +1,1 @@
+UPDATE public.avaliacoes SET situacao = 'adquirida' WHERE id = 'a493a4e7-7f84-4692-9c6e-e8e7f5777388';
