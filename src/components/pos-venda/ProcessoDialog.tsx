@@ -47,6 +47,7 @@ interface Props {
   };
   onStatusChanged?: (newStatus: string) => void;
   showContratoConsignante?: boolean;
+  onContratoSaved?: () => void;
 }
 
 const ProcessoDialog: React.FC<Props> = ({ 
