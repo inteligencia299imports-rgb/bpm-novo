@@ -252,7 +252,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       observacao_avaliador: obsAvaliador || null,
       classificacao: classificacao || null,
       avaliador_id: user!.id,
-      situacao: 'em_aberto',
+      situacao: avaliacao?.situacao === 'sem_avaliar' ? 'em_aberto' : avaliacao?.situacao ?? 'em_aberto',
       ...(avaliacao?.situacao === 'adquirida' && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
     };
 
