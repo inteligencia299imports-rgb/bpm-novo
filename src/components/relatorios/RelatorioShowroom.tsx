@@ -506,39 +506,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
   return (
     <div className="space-y-4">
-      <Separator className="my-1" />
-      {/* Row 1: Date on left */}
-      <div className="flex items-center gap-1.5">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className={cn('rounded-full h-8 px-3 text-xs font-normal', !dateFrom && 'text-muted-foreground')}>
-              <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-              {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" />
-          </PopoverContent>
-        </Popover>
-        <span className="text-xs text-muted-foreground">até</span>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className={cn('rounded-full h-8 px-3 text-xs font-normal', !dateTo && 'text-muted-foreground')}>
-              <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-              {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
-            <Calendar mode="single" selected={dateTo} onSelect={setDateTo} locale={ptBR} className="p-3 pointer-events-auto" />
-          </PopoverContent>
-        </Popover>
-        {(dateFrom || dateTo || filterLoja !== 'todos' || filterTipo !== 'todos') && (
-          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-xs h-7 text-muted-foreground">
-            <X className="h-3 w-3" /> Limpar
-          </Button>
-        )}
-      </div>
-      {/* Row 2: Loja on left, Tipo on right */}
+      <Separator className="my-2" />
+      {/* Loja on left, Tipo on right */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1">
           {['todos', '299', 'Ducati'].map(loja => (
