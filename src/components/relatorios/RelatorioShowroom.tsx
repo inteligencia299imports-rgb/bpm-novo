@@ -594,47 +594,39 @@ const RelatorioShowroom: React.FC = () => {
       </div>
 
       {/* Charts by Vendedor */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Por Vendedor</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ChartCard title="Atendimentos" data={[...chartByVendedor].sort((a, b) => b.atendimentos - a.atendimentos)} dataKey="atendimentos" />
-            <ChartCard title="Vendas" data={[...chartByVendedor].sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" />
-            <ChartCard title="Sinais" data={[...chartByVendedor].sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" />
-            <ChartCard title="Taxa Conversão (%)" data={[...chartByVendedor].sort((a, b) => b.conversao - a.conversao)} dataKey="conversao" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ChartCard title="Atendimentos por Vendedor" data={[...chartByVendedor].sort((a, b) => b.atendimentos - a.atendimentos)} dataKey="atendimentos" />
+        <ChartCard title="Vendas por Vendedor" data={[...chartByVendedor].sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" />
+        <ChartCard title="Sinais por Vendedor" data={[...chartByVendedor].sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" />
+        <ChartCard title="Taxa Conversão (%) por Vendedor" data={[...chartByVendedor].sort((a, b) => b.conversao - a.conversao)} dataKey="conversao" />
+      </div>
 
       {/* Charts by Month */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Por Mês (a partir de 21/12/2025)</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <MonthChart title="Atendimentos" data={chartByMonth} dataKey="atendimentos" />
-            <MonthChart title="Vendas" data={chartByMonth} dataKey="vendas" />
-            <MonthChart title="Faturamento" data={chartByMonth} dataKey="faturamento" isCurrency />
-            <div>
-              <p className="text-sm font-medium mb-2">Margem Prevista vs Realizada (%)</p>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={chartByMonth} barGap={6} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    formatter={(v: number) => `${v.toFixed(1)}%`}
-                    contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12 }}
-                    cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="pctMargemPrevista" name="Prevista" fill="#7e6d9b" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => `${v.toFixed(1)}%` }} />
-                  <Bar dataKey="pctMargemRealizada" name="Realizada" fill="#3a8f6a" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => `${v.toFixed(1)}%` }} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <MonthChart title="Atendimentos por Mês" data={chartByMonth} dataKey="atendimentos" />
+        <MonthChart title="Vendas por Mês" data={chartByMonth} dataKey="vendas" />
+        <MonthChart title="Faturamento por Mês" data={chartByMonth} dataKey="faturamento" isCurrency />
+        <Card className="border shadow-sm rounded-xl">
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Margem Prevista vs Realizada (%)</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={chartByMonth} barGap={6} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  formatter={(v: number) => `${v.toFixed(1)}%`}
+                  contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12 }}
+                  cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="pctMargemPrevista" name="Prevista" fill="#7e6d9b" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => `${v.toFixed(1)}%` }} />
+                <Bar dataKey="pctMargemRealizada" name="Realizada" fill="#3a8f6a" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => `${v.toFixed(1)}%` }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Lists */}
       <Card>
