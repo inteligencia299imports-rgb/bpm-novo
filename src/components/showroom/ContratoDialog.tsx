@@ -27,6 +27,7 @@ interface Props {
   motosAvaliacao: MotoAvaliacao[];
   estoqueData: Record<string, any>;
   avaliacoes: Record<string, any>;
+  onSaved?: () => void;
 }
 
 const FINANCEIRAS = ['Santander', 'Bradesco', 'Safra', 'BV', 'Pan', 'Omni', 'Volkswagen', 'C6 Bank', 'Próprio (299)'];
