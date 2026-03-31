@@ -57,6 +57,7 @@ interface AtendimentoRow {
   nome_cliente: string;
   situacao: string;
   loja: string;
+  interesse: string;
   vendedor_id: string;
   created_at: string;
   valor_venda: number | null;
@@ -145,7 +146,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const loadData = async () => {
     setLoading(true);
     const [atRes, avRes, esRes, coRes, vdRes] = await Promise.all([
-      supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, vendedor_id, created_at, valor_venda, valor_sinal'),
+      supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal'),
       supabase.from('avaliacoes').select('id, atendimento_id, quanto_vende, valor_fechamento, previsao_custos_loja, previsao_custos_cliente, tipo_aquisicao, moto_avaliacao_id'),
       supabase.from('estoque').select('id, avaliacao_id, atendimento_venda_id, preco, tipo, modelo, marca, placa, data_venda, valor_venda, status'),
       supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado'),
@@ -244,6 +245,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   // Atendimentos filtered by date (created_at in same period)
   const atendimentosFiltradosPorData = useMemo(() => {
     return filteredAtendimentos.filter(a => {
+      // Só considerar clientes interessados em comprar ou trocar
+      if (a.interesse !== 'comprar' && a.interesse !== 'trocar') return false;
       if (dateFrom) {
         const d = new Date(a.created_at);
         if (d < dateFrom) return false;
@@ -460,6 +463,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     return months.map(m => {
       // Atendimentos in this month period (by created_at)
       const atendMonth = filteredAtendimentos.filter(a => {
+        if (a.interesse !== 'comprar' && a.interesse !== 'trocar') return false;
         const d = new Date(a.created_at);
         return d >= m.start && d <= m.end;
       });
