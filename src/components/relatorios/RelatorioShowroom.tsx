@@ -504,7 +504,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           faturamento += valorVendaReal;
           totalQV += quantoVende;
           totalPE += valorVendaReal;
-          margemPrevista += quantoVende - (valorFechamento + previsaoCustosLoja);
+          margemPrevista += quantoVende - valorFechamento;
           const fatReal = valorVendaReal + (custoPrevCliente - custoRealCliente) + (custoPrevLoja - custoRealLoja);
           margemRealizada += fatReal - (valorFechamento + TRANSFER_COST + custoRealLoja);
         });
