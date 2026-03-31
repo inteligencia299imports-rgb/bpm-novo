@@ -243,7 +243,7 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
                 />
               </div>
               <Button onClick={handleAdd} className="w-full gap-2">
-                <Plus className="h-4 w-4" /> Adicionar Custo
+                <Plus className="h-4 w-4" /> Adicionar Custo Oficina
               </Button>
             </div>
 
