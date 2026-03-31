@@ -715,6 +715,20 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: str
   </Card>
 );
 
+const CustomTooltip = ({ active, payload, label, isCurrency }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12, background: 'hsl(var(--background))', padding: '8px 12px' }}>
+      <p style={{ fontWeight: 700, marginBottom: 4 }}>{label}</p>
+      {payload.map((entry: any, i: number) => (
+        <p key={i} style={{ color: entry.color, margin: 0 }}>
+          {capitalize(entry.name)}: {isCurrency ? fmtBRL(entry.value) : typeof entry.value === 'number' && entry.value % 1 !== 0 ? `${entry.value.toFixed(1)}%` : entry.value}
+        </p>
+      ))}
+    </div>
+  );
+};
+
 const renderBarLabel = (props: any, isCurrency?: boolean) => {
   const { x, y, width, value } = props;
   if (value == null || value === 0) return null;
