@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, ClipboardCheck, Package, Award, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench } from 'lucide-react';
+import { Bike, ClipboardCheck, Package, Award, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, BarChart3 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
 interface BottomNavProps {
