@@ -601,7 +601,8 @@ const RelatorioShowroom: React.FC = () => {
               <p className="text-sm font-medium mb-2">Margem Prevista vs Realizada (%)</p>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={chartByMonth} barGap={4}>
-                  <XAxis dataKey="label" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 9 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} cursor={{ fill: 'hsl(var(--muted))' }} />
                   <Legend />
                   <Bar dataKey="pctMargemPrevista" name="Prevista" fill="#7e6597" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 10, formatter: (v: number) => `${v.toFixed(1)}%` }} />
