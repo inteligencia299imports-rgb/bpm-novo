@@ -158,7 +158,7 @@ const CustosOficinaDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId 
           <div className="space-y-4 px-2">
             {/* Add new cost form */}
             <div className="space-y-3">
-              <p className="text-sm font-semibold">Adicionar Custo</p>
+              <p className="text-sm font-semibold">Adicionar Custo Oficina</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-medium">Responsável</label>
