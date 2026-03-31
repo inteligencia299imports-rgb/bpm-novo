@@ -495,7 +495,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               {format(new Date(atendimento.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
             {atendimento.situacao === 'pendente' && (() => {
-              const lastPendente = [...history].reverse().find(h => h.entity_type === 'showroom' && h.status_to === 'pendente' && h.observacoes);
+              const lastPendente = [...history].reverse().find(h => h.entity_type === 'showroom' && h.status === 'pendente' && h.observacoes);
               return lastPendente ? (
                 <p className="text-xs text-yellow-600 mt-0.5 italic">Motivo: {lastPendente.observacoes}</p>
               ) : null;
