@@ -282,14 +282,26 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }, [filteredAtendimentos, dateFrom, dateTo]);
 
   // Helper: get custos for an avaliacao
-  const getCustosLoja = (avaliacaoId: string) => {
+  // Custos de oficina (têm valor_executado) - usam lógica previsto vs realizado
+  const getCustosLojaOficinaExecutado = (avaliacaoId: string) => {
     const custos = custosByAvaliacao[avaliacaoId] || [];
-    return custos.filter(c => c.responsavel.toLowerCase() === 'loja').reduce((sum, c) => sum + (c.valor_executado ?? c.valor_previsto ?? 0), 0);
+    return custos.filter(c => c.responsavel.toLowerCase() === 'loja' && c.valor_executado != null).reduce((sum, c) => sum + (c.valor_executado ?? 0), 0);
   };
 
-  const getCustosLojaPrevistos = (avaliacaoId: string) => {
+  const getCustosLojaOficinaPrevisto = (avaliacaoId: string) => {
     const custos = custosByAvaliacao[avaliacaoId] || [];
-    return custos.filter(c => c.responsavel.toLowerCase() === 'loja').reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
+    return custos.filter(c => c.responsavel.toLowerCase() === 'loja' && c.valor_executado != null).reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
+  };
+
+  // Custos de processo (sem valor_executado) - sempre negativos, abatidos direto
+  const getCustosLojaProcesso = (avaliacaoId: string) => {
+    const custos = custosByAvaliacao[avaliacaoId] || [];
+    return custos.filter(c => c.responsavel.toLowerCase() === 'loja' && c.valor_executado == null).reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
+  };
+
+  // Total de custos loja (para abatimentos na listagem)
+  const getCustosLoja = (avaliacaoId: string) => {
+    return getCustosLojaOficinaExecutado(avaliacaoId) + getCustosLojaProcesso(avaliacaoId);
   };
 
   const getCustosClientePrevisto = (avaliacaoId: string) => {
