@@ -15,7 +15,11 @@ const RelatoriosTab: React.FC = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <div>
+        <div className="flex items-center gap-2"><BarChart3 className="h-7 w-7 text-primary" /><h1 className="text-2xl font-bold text-foreground">Relatórios</h1></div>
+        <p className="text-sm text-muted-foreground mt-0.5">Análise de desempenho e indicadores</p>
+      </div>
       <Tabs value={dept} onValueChange={setDept}>
         <div className="flex items-center justify-between gap-4">
           <TabsList>
