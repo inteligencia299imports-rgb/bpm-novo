@@ -719,7 +719,7 @@ const RelatorioShowroom: React.FC = () => {
 const indicatorGradients: Record<string, string> = {
   teal: 'bg-gradient-to-br from-[#2F6F84] to-[#3F8DA6]',
   green: 'bg-gradient-to-br from-[#169d53] to-[#20c76a]',
-  purple: 'bg-gradient-to-br from-[#7e6597] to-[#9b84b3]',
+  purple: 'bg-gradient-to-br from-[#4a2d6b] to-[#7e6597]',
   amber: 'bg-gradient-to-br from-[#da6220] to-[#f59e0b]',
   blue: 'bg-gradient-to-br from-[#2563eb] to-[#2EC5FF]',
   slate: 'bg-gradient-to-br from-[#475569] to-[#64748b]',
