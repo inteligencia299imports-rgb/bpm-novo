@@ -265,8 +265,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         await supabase.from('status_history').insert({
           entity_type: 'avaliacao',
           entity_id: avaliacao.moto_avaliacao_id,
-          status_from: 'avaliacao_solicitada',
-          status_to: 'avaliada',
+          status: 'avaliada',
           changed_by: user?.id,
           changed_by_name: userName || user?.email || null,
         } as any);
@@ -318,8 +317,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         await supabase.from('status_history').insert({
           entity_type: 'avaliacao',
           entity_id: avaliacao.moto_avaliacao_id,
-          status_from: avaliacao.situacao || 'em_aberto',
-          status_to: newStatus,
+          status: newStatus,
           changed_by: user?.id,
           changed_by_name: userName || user?.email || null,
           observacoes: historyObs,
@@ -334,8 +332,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         await supabase.from('status_history').insert({
           entity_type: 'showroom',
           entity_id: avaliacao.atendimento_id,
-          status_from: atData?.situacao || 'em_aberto',
-          status_to: 'dispensada',
+          status: 'dispensada',
           changed_by: user?.id,
           changed_by_name: userName || user?.email || null,
           observacoes: observacoes || null,
@@ -409,8 +406,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         await supabase.from('status_history').insert({
           entity_type: 'avaliacao',
           entity_id: avaliacao.moto_avaliacao_id,
-          status_from: fromLabel,
-          status_to: tipoLabel,
+          status: tipoLabel,
           changed_by: user?.id,
           changed_by_name: userName || user?.email || null,
           observacoes: `Conversão de ${fromLabel} para ${tipoLabel}`,
@@ -685,8 +681,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       await supabase.from('status_history').insert({
                         entity_type: 'consulta',
                         entity_id: moto?.id,
-                        status_from: 'sem_consulta',
-                        status_to: 'consulta_solicitada',
+                        status: 'consulta_solicitada',
                         changed_by: user?.id,
                         changed_by_name: userName || user?.email || null,
                       });
@@ -734,8 +729,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       await supabase.from('status_history').insert({
                         entity_type: 'consulta',
                         entity_id: moto?.id,
-                        status_from: 'consulta_realizada',
-                        status_to: 'consulta_solicitada',
+                        status: 'consulta_solicitada',
                         changed_by: user?.id,
                         changed_by_name: userName || user?.email || null,
                       });
@@ -881,7 +875,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   return (
                     <div>
                       <span className="text-xs text-muted-foreground">
-                        {h.status_to === 'consulta_realizada' ? 'Resultado da Consulta' : 'Observações'}
+                        {h.status === 'consulta_realizada' ? 'Resultado da Consulta' : 'Observações'}
                       </span>
                       <p className="text-sm mt-0.5 whitespace-pre-wrap">{h.observacoes}</p>
                     </div>

@@ -72,7 +72,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .select('created_at')
           .eq('entity_id', motoAvaliacaoId)
           .eq('entity_type', 'consulta')
-          .eq('status_to', 'consulta_realizada')
+          .eq('status', 'consulta_realizada')
           .order('created_at', { ascending: false })
           .limit(1),
       ]);
@@ -200,8 +200,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         await supabase.from('status_history').insert({
           entity_id: avaliacaoId,
           entity_type: 'consignacao',
-          status_from: statusLabels[previousStatus] || previousStatus,
-          status_to: statusLabels[newStatus] || newStatus,
+          status: statusLabels[newStatus] || newStatus,
           changed_by: user?.id,
           changed_by_name: userName || 'Sistema',
         });

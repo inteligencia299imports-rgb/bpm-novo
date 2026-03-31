@@ -7,8 +7,7 @@ import { Separator } from '@/components/ui/separator';
 
 interface TimelineEntry {
   id: string;
-  status_from: string;
-  status_to: string;
+  status: string;
   created_at: string;
   changed_by_name?: string | null;
   [key: string]: any;
@@ -18,7 +17,7 @@ interface StatusTimelineProps {
   history: TimelineEntry[];
   /** Optional extra content renderer for the popup (e.g. resultado_consulta) */
   renderPopupExtra?: (entry: TimelineEntry) => React.ReactNode;
-  /** Optional custom label formatter for status_to values */
+  /** Optional custom label formatter for status values */
   formatLabel?: (raw: string) => string;
 }
 
@@ -55,7 +54,7 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
 
               <div className="flex-1 min-w-0">
                 <span className={`text-sm uppercase ${isLatest ? 'font-bold text-primary' : ''}`}>
-                  {formatStatusLabel(h.status_to)}
+                  {formatStatusLabel(h.status)}
                 </span>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                   <span className="text-xs text-muted-foreground">
@@ -86,7 +85,7 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <span className="text-xs text-muted-foreground">Movimentação</span>
-                  <p className="text-sm font-medium uppercase">{formatStatusLabel(selected.status_to)}</p>
+                  <p className="text-sm font-medium uppercase">{formatStatusLabel(selected.status)}</p>
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground">Data / Hora</span>

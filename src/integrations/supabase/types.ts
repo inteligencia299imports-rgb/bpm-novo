@@ -1007,8 +1007,7 @@ export type Database = {
           entity_type: string
           id: string
           observacoes: string | null
-          status_from: string
-          status_to: string
+          status: string
         }
         Insert: {
           changed_by?: string | null
@@ -1018,8 +1017,7 @@ export type Database = {
           entity_type: string
           id?: string
           observacoes?: string | null
-          status_from: string
-          status_to: string
+          status: string
         }
         Update: {
           changed_by?: string | null
@@ -1029,8 +1027,7 @@ export type Database = {
           entity_type?: string
           id?: string
           observacoes?: string | null
-          status_from?: string
-          status_to?: string
+          status?: string
         }
         Relationships: []
       }

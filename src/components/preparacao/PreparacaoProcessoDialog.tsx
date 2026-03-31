@@ -33,8 +33,7 @@ interface Props {
 interface HistoryEntry {
   id: string;
   entity_type: string;
-  status_from: string;
-  status_to: string;
+  status: string;
   observacoes: string | null;
   changed_by_name: string | null;
   created_at: string;
@@ -162,7 +161,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             .select('*')
             .eq('entity_id', motoAvaliacaoId)
             .eq('entity_type', 'avaliacao')
-            .in('status_to', ['adquirida'])
+            .in('status', ['adquirida'])
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [] as any[] });
 
@@ -174,7 +173,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             .select('*')
             .eq('entity_id', atendimentoId)
             .eq('entity_type', 'showroom')
-            .in('status_to', ['vendido'])
+            .in('status', ['vendido'])
             .order('created_at', { ascending: false })
         : Promise.resolve({ data: [] as any[] });
 
@@ -200,7 +199,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
       // Merge and sort by date descending
       const merged = [...prepHistory, ...avalHistory, ...showroomHistory]
-        .map(h => ({ ...h, status_to: remapStatus(h.status_to), status_from: remapStatus(h.status_from) }))
+        .map(h => ({ ...h, status: remapStatus(h.status) }))
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setHistory(merged);
@@ -225,7 +224,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   };
 
   const insertHistory = async (params: {
-    statusFrom: string;
     statusTo: string;
     observacoes: string | null;
     changedBy: string;
@@ -234,8 +232,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     const { error } = await supabase.from('status_history').insert({
       entity_id: avaliacaoId,
       entity_type: 'preparacao',
-      status_from: params.statusFrom,
-      status_to: params.statusTo,
+      status: params.statusTo,
       observacoes: params.observacoes,
       changed_by: params.changedBy,
       changed_by_name: params.changedByName,
@@ -320,7 +317,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       }
 
       const historySaved = await insertHistory({
-        statusFrom,
         statusTo: targetStatus,
         observacoes,
         changedBy: user.id,
@@ -430,7 +426,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       }
 
       const historySaved = await insertHistory({
-        statusFrom,
         statusTo: 'estoque',
         observacoes: `MOTO LIBERADA. Empresa: ${empresa}, Loja: ${loja}, Placa: ${placa.trim().toUpperCase()}${detalhes.trim() ? `. ${detalhes.trim()}` : ''}`,
         changedBy: user.id,
@@ -492,7 +487,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       }
 
       await insertHistory({
-        statusFrom,
         statusTo: 'preparacao_concluida',
         observacoes: `${detalhes.trim()}`,
         changedBy: user.id,
@@ -665,7 +659,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       await supabase.from('avaliacoes').update({ preparacao_status: 'em_aberto' } as any).eq('id', avaliacaoId);
 
                       await insertHistory({
-                        statusFrom: 'estoque',
                         statusTo: 'reenviada_preparacao',
                         observacoes: reenviarObs.trim(),
                         changedBy: user.id,
@@ -708,7 +701,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       if (!user) { toast.error('Sessão expirada'); return; }
                       await supabase.from('avaliacoes').update({ preparacao_status: 'em_aberto' } as any).eq('id', avaliacaoId);
                       await insertHistory({
-                        statusFrom: 'estoque',
                         statusTo: 'reenviada_preparacao',
                         observacoes: 'Moto reenviada para preparação (acompanhamento)',
                         changedBy: user.id,

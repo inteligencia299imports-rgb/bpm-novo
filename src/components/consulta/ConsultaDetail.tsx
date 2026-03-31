@@ -97,8 +97,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
     await supabase.from('status_history').insert({
       entity_type: 'consulta',
       entity_id: moto.id,
-      status_from: 'consulta_solicitada',
-      status_to: 'consulta_realizada',
+      status: 'consulta_realizada',
       changed_by: user?.id,
       changed_by_name: userName || user?.email || null,
       observacoes: resultadoTexto || null,
@@ -121,7 +120,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
       .select('changed_by')
       .eq('entity_type', 'consulta')
       .eq('entity_id', moto.id)
-      .eq('status_to', 'consulta_solicitada')
+      .eq('status', 'consulta_solicitada')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -182,8 +181,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               await supabase.from('status_history').insert({
                 entity_type: 'consulta',
                 entity_id: moto.id,
-                status_from: 'consulta_realizada',
-                status_to: 'consulta_solicitada',
+                status: 'consulta_solicitada',
                 changed_by: user?.id,
                 changed_by_name: userName || user?.email || null,
               });

@@ -170,7 +170,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     // Load existing contrato_consignante
     const [{ data: contrato }, { data: histGerado }] = await Promise.all([
       supabase.from('contratos_consignante').select('*').eq('atendimento_id', atendimentoId).maybeSingle(),
-      supabase.from('status_history').select('id').eq('entity_type', 'contrato_consignante').eq('entity_id', atendimentoId).like('status_to', 'CONTRATO GERADO%').limit(1),
+      supabase.from('status_history').select('id').eq('entity_type', 'contrato_consignante').eq('entity_id', atendimentoId).like('status', 'CONTRATO GERADO%').limit(1),
     ]);
 
     setJaGerado(!!(histGerado && histGerado.length > 0));
@@ -429,8 +429,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
         await supabase.from('status_history').insert({
           entity_type: 'contrato_consignante',
           entity_id: atendimentoId,
-          status_from: 'em_aberto',
-          status_to: 'CONTRATO GERADO',
+          status: 'CONTRATO GERADO',
           changed_by: user.id,
           changed_by_name: userName || 'Vendedor',
         });

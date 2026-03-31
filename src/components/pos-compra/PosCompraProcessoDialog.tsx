@@ -85,7 +85,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
             .select('created_at')
             .eq('entity_id', motoId)
             .eq('entity_type', 'consulta')
-            .eq('status_to', 'consulta_realizada')
+            .eq('status', 'consulta_realizada')
             .order('created_at', { ascending: false })
             .limit(1),
         ]);
@@ -209,8 +209,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         await supabase.from('status_history').insert({
           entity_id: avaliacaoId,
           entity_type: 'pos_compra',
-          status_from: statusLabels[previousStatus] || previousStatus,
-          status_to: statusLabels[newStatus] || newStatus,
+          status: statusLabels[newStatus] || newStatus,
           changed_by: user?.id,
           changed_by_name: userName || 'Sistema',
         });

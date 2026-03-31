@@ -100,8 +100,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       await supabase.from('status_history').insert({
         entity_id: atendimentoId,
         entity_type: 'nps_aquisicao',
-        status_from: previousStatus,
-        status_to: 'enviado',
+        status: 'enviado',
         changed_by: user?.id,
         changed_by_name: userName,
         observacoes: previousStatus === 'enviado' ? 'Pesquisa reenviada' : 'Pesquisa enviada',

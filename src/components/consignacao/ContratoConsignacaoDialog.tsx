@@ -127,7 +127,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .select('id')
           .eq('entity_type', 'consignacao')
           .eq('entity_id', avaliacao.id)
-          .like('status_to', 'CONTRATO GERADO%')
+          .like('status', 'CONTRATO GERADO%')
           .limit(1),
       ]);
 
@@ -277,8 +277,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         const { error } = await supabase.from('status_history').insert({
           entity_type: 'consignacao',
           entity_id: avaliacao.id,
-          status_from: avaliacao.consignacao_status || 'em_aberto',
-          status_to: comPercentual ? 'CONTRATO GERADO (5%)' : 'CONTRATO GERADO',
+          status: comPercentual ? 'CONTRATO GERADO (5%)' : 'CONTRATO GERADO',
           changed_by: user.id,
           changed_by_name: userName || 'Vendedor',
         });

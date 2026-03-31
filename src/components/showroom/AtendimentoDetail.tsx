@@ -250,8 +250,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       const historyPromise = supabase.from('status_history').insert({
         entity_type: 'showroom',
         entity_id: atendimento.id,
-        status_from: previousStatus,
-        status_to: value,
+        status: value,
         changed_by: user?.id,
         changed_by_name: userName || user?.email || null,
         observacoes: observacoes || null,
@@ -274,8 +273,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             promises.push(supabase.from('status_history').insert({
               entity_type: 'avaliacao',
               entity_id: av.moto_avaliacao_id,
-              status_from: av.situacao || 'em_aberto',
-              status_to: 'perdido',
+              status: 'perdido',
               changed_by: user?.id,
               changed_by_name: userName || user?.email || null,
               observacoes: observacoes || null,
@@ -322,8 +320,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             promises.push(supabase.from('status_history').insert({
               entity_type: 'avaliacao',
               entity_id: av.moto_avaliacao_id,
-              status_from: av.situacao || 'em_aberto',
-              status_to: 'dispensada',
+              status: 'dispensada',
               changed_by: user?.id,
               changed_by_name: userName || user?.email || null,
               observacoes: observacoes || null,
@@ -498,7 +495,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               {format(new Date(atendimento.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
             {atendimento.situacao === 'pendente' && (() => {
-              const lastPendente = [...history].reverse().find(h => h.entity_type === 'showroom' && h.status_to === 'pendente' && h.observacoes);
+              const lastPendente = [...history].reverse().find(h => h.entity_type === 'showroom' && h.status === 'pendente' && h.observacoes);
               return lastPendente ? (
                 <p className="text-xs text-yellow-600 mt-0.5 italic">Motivo: {lastPendente.observacoes}</p>
               ) : null;
@@ -941,8 +938,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             const historyEntry = {
                               entity_type: 'avaliacao',
                               entity_id: moto.id,
-                              status_from: 'sem_avaliacao',
-                              status_to: 'avaliacao_solicitada',
+                              status: 'avaliacao_solicitada',
                               changed_by: user?.id,
                               changed_by_name: userName || user?.email || null,
                             };
@@ -1003,8 +999,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             const { data: insertedConsulta } = await supabase.from('status_history').insert({
                               entity_type: 'consulta',
                               entity_id: moto.id,
-                              status_from: previousStatus,
-                              status_to: 'consulta_solicitada',
+                              status: 'consulta_solicitada',
                               changed_by: user?.id,
                               changed_by_name: userName || user?.email || null,
                             }).select().single();

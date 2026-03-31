@@ -181,7 +181,7 @@ const ContratoDialog: React.FC<Props> = ({
           .select('id')
           .eq('entity_type', 'contrato')
           .eq('entity_id', atendimento.id)
-          .eq('status_to', 'contrato_de_sinal')
+          .eq('status', 'contrato_de_sinal')
           .limit(1),
         supabase
           .from('atendimentos')
@@ -503,8 +503,7 @@ const ContratoDialog: React.FC<Props> = ({
         await supabase.from('status_history').insert({
           entity_type: 'showroom',
           entity_id: atendimento.id,
-          status_from: atendimento.situacao,
-          status_to: 'contrato_de_sinal',
+          status: 'contrato_de_sinal',
           changed_by: user.id,
           changed_by_name: userName || 'Vendedor',
         });
