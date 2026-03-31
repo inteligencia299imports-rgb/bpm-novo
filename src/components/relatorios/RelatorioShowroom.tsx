@@ -745,8 +745,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
               </div>
             </TabsContent>
             <TabsContent value="sinais">
-              <div className="overflow-x-auto">
-                <Table>
+              <div className="overflow-x-auto -mx-4 px-4 pb-2">
+                <Table className="min-w-[900px]">
                   <TableHeader>
                      <TableRow>
                       <TableHead>Cliente</TableHead>
