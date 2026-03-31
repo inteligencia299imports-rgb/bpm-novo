@@ -429,7 +429,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         faturamento,
       };
     }).filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0);
-  }, [filteredAtendimentos, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap]);
+  }, [filteredAtendimentos, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap, estoqueByAtendimentoVenda, filterTipo]);
 
   // ===== Charts by custom month =====
   const chartByMonth = useMemo(() => {
