@@ -825,16 +825,18 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                       <TableHead>Modelo</TableHead>
                       <TableHead>Placa</TableHead>
                       <TableHead>Data Sinal</TableHead>
+                      <TableHead className="text-right">Quanto Vende</TableHead>
+                      <TableHead className="text-right">V. Fechamento</TableHead>
+                      <TableHead className="text-right">Margem Prev.</TableHead>
                       <TableHead className="text-right">Valor Venda</TableHead>
+                      <TableHead className="text-right">M. Oficina</TableHead>
                       <TableHead className="text-right">Abatimentos</TableHead>
-                      <TableHead className="text-right">Valor Fechamento</TableHead>
-                      <TableHead className="text-right">Margem</TableHead>
-                      <TableHead className="text-right">%</TableHead>
+                      <TableHead className="text-right">Margem Real.</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {motosSinal.length === 0 ? (
-                      <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhuma moto com sinal encontrada</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">Nenhuma moto com sinal encontrada</TableCell></TableRow>
                     ) : motosSinal.map((m, i) => (
                       <TableRow key={i}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
@@ -843,11 +845,13 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                         <TableCell className="text-xs">{m.modelo}</TableCell>
                         <TableCell className="text-xs font-mono">{m.placa}</TableCell>
                         <TableCell className="text-xs">{m.dataSinal ? format(new Date(m.dataSinal), 'dd/MM/yy') : '-'}</TableCell>
-                        <TableCell className="text-xs text-right">{fmtBRL(m.valorVenda)}</TableCell>
-                        <TableCell className="text-xs text-right">{fmtBRL(m.abatimentos)}</TableCell>
+                        <TableCell className="text-xs text-right">{fmtBRL(m.quantoVende)}</TableCell>
                         <TableCell className="text-xs text-right">{fmtBRL(m.valorFechamento)}</TableCell>
-                        <TableCell className={`text-xs text-right font-medium ${m.margemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemRealizada)}</TableCell>
-                        <TableCell className={`text-xs text-right font-medium ${m.pctMargemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{((m.pctMargemRealizada ?? 0) * 100).toFixed(1)}%</TableCell>
+                        <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)} ({((m.pctMargemPrevista ?? 0) * 100).toFixed(1)}%)</TableCell>
+                        <TableCell className="text-xs text-right">{fmtBRL(m.valorVenda)}</TableCell>
+                        <TableCell className={`text-xs text-right ${m.margemOficina >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemOficina)}</TableCell>
+                        <TableCell className="text-xs text-right">{fmtBRL(m.abatimentos)}</TableCell>
+                        <TableCell className={`text-xs text-right font-medium ${m.margemRealizada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemRealizada)} ({((m.pctMargemRealizada ?? 0) * 100).toFixed(1)}%)</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
