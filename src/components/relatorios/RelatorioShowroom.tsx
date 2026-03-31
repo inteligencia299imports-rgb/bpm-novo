@@ -609,7 +609,7 @@ const RelatorioShowroom: React.FC = () => {
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-1 pt-4 px-4"><CardTitle className="text-sm font-semibold">Margem Prevista vs Realizada (%)</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
-            <ResponsiveContainer width="100%" height={240}>
+            <ResponsiveContainer width="100%" height={260}>
               <BarChart data={chartByMonth} barGap={6} margin={{ top: 16, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
@@ -766,7 +766,7 @@ const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ 
   <Card className="border shadow-sm rounded-xl">
     <CardHeader className="pb-1 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-3 pt-0">
-      <ResponsiveContainer width="100%" height={240}>
+      <ResponsiveContainer width="100%" height={260}>
         <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
           <XAxis dataKey="nome" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
@@ -786,7 +786,7 @@ const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurr
   <Card className="border shadow-sm rounded-xl">
     <CardHeader className="pb-1 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-3 pt-0">
-      <ResponsiveContainer width="100%" height={240}>
+      <ResponsiveContainer width="100%" height={260}>
         <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
