@@ -411,12 +411,22 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       const qtdAtend = vendAtend.length;
       const qtdVendas = vendVendas.length;
       const qtdSinais = vendSinais.length;
+      // Faturamento por vendedor
+      let faturamento = 0;
+      vendVendas.forEach(a => {
+        const estoques = estoqueByAtendimentoVenda[a.id] || [];
+        estoques.forEach(e => {
+          if (filterTipo !== 'todos' && e.tipo !== filterTipo) return;
+          faturamento += e.preco || 0;
+        });
+      });
       return {
         nome: vendedorMap[vid] || 'Desconhecido',
         atendimentos: qtdAtend,
         vendas: qtdVendas,
         sinais: qtdSinais,
         conversao: qtdAtend > 0 ? +(qtdVendas / qtdAtend * 100).toFixed(1) : 0,
+        faturamento,
       };
     }).filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0);
   }, [filteredAtendimentos, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap]);
