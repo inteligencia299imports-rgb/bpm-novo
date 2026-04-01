@@ -185,7 +185,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const avaliadorIds = [...new Set(filtered.map(a => a.avaliador_id).filter(Boolean))] as string[];
     return avaliadorIds.map(aid => {
       const avAvaliacoes = filtered.filter(a => a.avaliador_id === aid);
-      const avAquisicoes = avAvaliacoes.filter(a => a.situacao === 'adquirida');
+      const avAquisicoes = avAvaliacoes.filter(a => !!a.tipo_aquisicao);
       const aqTrocar = avAquisicoes.filter(a => atendimentoMap[a.atendimento_id]?.interesse === 'trocar').length;
       const aqVender = avAquisicoes.filter(a => atendimentoMap[a.atendimento_id]?.interesse === 'vender').length;
       return {
