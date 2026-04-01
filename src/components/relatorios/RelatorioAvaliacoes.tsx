@@ -282,7 +282,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Qtd de Avaliações" data={[...chartByAvaliador].sort((a, b) => b.avaliacoes - a.avaliacoes)} dataKey="avaliacoes" />
+        <ChartCard title="Qtd de Avaliações" data={[...chartByAvaliador].sort((a, b) => b.avaliacoes - a.avaliacoes)} dataKey="avaliacoes" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Qtd Aquisições</CardTitle>
