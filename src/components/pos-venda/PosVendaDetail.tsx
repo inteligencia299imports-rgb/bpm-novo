@@ -541,6 +541,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </Card>
           )}
 
+          {/* Observações do Processo */}
+          <ObservacoesProcesso
+            entityId={item.id}
+            entityType={
+              isIntermParte1 ? 'intermediacao_parte1' :
+              statusField === 'intermediacao_parte2_status' ? 'intermediacao_parte2' :
+              'pos_venda'
+            }
+          />
+
         </div>
       </ScrollArea>
 
