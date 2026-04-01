@@ -264,7 +264,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Convertidas" value={indicadores.qtdConvertidas} gradient="purple" icon={<Repeat className="h-5 w-5" />} />
-        <IndicatorCard title="Retiradas" value={indicadores.qtdRetiradas} gradient="purple" icon={<RotateCcw className="h-5 w-5" />} />
+        <IndicatorCard title="Retiradas" value={indicadores.qtdRetiradas} gradient="purple" icon={<XCircle className="h-5 w-5" />} />
         <IndicatorCard title="Entrada Direta" value={indicadores.qtdEntradaDireta} gradient="emerald" icon={<Truck className="h-5 w-5" />} />
         <IndicatorCard title="Troca" value={indicadores.qtdTroca} gradient="emerald" icon={<ArrowRightLeft className="h-5 w-5" />} />
       </div>
