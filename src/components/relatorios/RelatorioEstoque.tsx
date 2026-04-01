@@ -49,6 +49,7 @@ interface AvaliacaoPrep {
   id: string;
   situacao: string;
   quanto_pede: number | null;
+  created_at: string;
 }
 
 interface RelatorioEstoqueProps {
