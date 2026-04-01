@@ -286,9 +286,8 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
       {/* Indicators - only own data for vendedor, all for gestor */}
       {myIndicadores && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <IndicatorCard title="Atendimentos" value={myIndicadores.qtdAtendimentos} icon={<Users className="h-5 w-5" />} />
-          <IndicatorCard title="Sinais" value={myIndicadores.qtdSinais} icon={<CreditCard className="h-5 w-5" />} />
           <IndicatorCard
             title="Vendas"
             value={`${myIndicadores.qtdVendas} (${fmtPctInt(myIndicadores.taxaConversao)})`}
@@ -305,7 +304,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ChartCard title="Atendimentos" data={[...chartByVendedor].sort((a, b) => b.atendimentos - a.atendimentos)} dataKey="atendimentos" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
         <ChartCard title="Vendas" data={[...chartByVendedor].sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
-        <ChartCard title="Sinais" data={[...chartByVendedor].sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
+        
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Taxa de Conversão (%)</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
@@ -357,7 +356,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
             </ResponsiveContainer>
           </CardContent>
         </Card>
-        <MonthChart title="Sinais" data={chartByMonth} dataKey="sinais" chartH={chartH} xTickProps={xTickProps} chartMarginBottom={chartMarginBottom} />
+        
       </div>
     </div>
   );
