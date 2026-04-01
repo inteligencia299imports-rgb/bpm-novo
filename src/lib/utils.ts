@@ -11,6 +11,14 @@ export function formatPlaca(placa: string | null | undefined): string | null {
   return placa.replace(/-/g, '').toUpperCase();
 }
 
+/** Abbreviate name: "João Silva" → "João S." */
+export function abbreviateName(name: string): string {
+  if (!name) return '';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length <= 1) return name;
+  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+}
+
 /** Uppercase model name */
 export function formatModelo(modelo: string | null | undefined): string {
   if (!modelo) return '';
