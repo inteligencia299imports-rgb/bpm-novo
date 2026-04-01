@@ -258,7 +258,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Avaliações" value={indicadores.qtdAvaliacoes} gradient="teal" icon={<ClipboardCheck className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições" value={indicadores.qtdAquisicoes} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições" value={indicadores.qtdAquisicoes} subtitle={`(${indicadores.qtdAvaliacoes > 0 ? Math.floor((indicadores.qtdAquisicoes / indicadores.qtdAvaliacoes) * 100) : 0}%)`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
         <IndicatorCard title="Aquisições Próprias" value={indicadores.qtdProprias} gradient="teal" icon={<Package className="h-5 w-5" />} />
         <IndicatorCard title="Aquisições Consignadas" value={indicadores.qtdConsignadas} gradient="teal" icon={<ArrowDownUp className="h-5 w-5" />} />
       </div>
