@@ -712,9 +712,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Atendimentos" data={[...chartByVendedor].sort((a, b) => b.atendimentos - a.atendimentos)} dataKey="atendimentos" />
-        <ChartCard title="Vendas" data={[...chartByVendedor].sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" />
-        <ChartCard title="Sinais" data={[...chartByVendedor].sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" />
+        <ChartCard title="Atendimentos" data={[...chartByVendedor].sort((a, b) => b.atendimentos - a.atendimentos)} dataKey="atendimentos" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
+        <ChartCard title="Vendas" data={[...chartByVendedor].sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
+        <ChartCard title="Sinais" data={[...chartByVendedor].sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Taxa de Conversão (%)</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
