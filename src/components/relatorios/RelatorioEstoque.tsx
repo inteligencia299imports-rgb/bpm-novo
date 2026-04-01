@@ -185,16 +185,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         return venda > m.end;
       }).length;
 
-      // Giro: saidas / estoque at start of month
-      const estoqueInicio = estoque.filter(e => {
-        const entrada = new Date(e.data_entrada);
-        if (entrada >= m.start) return false;
-        if (!e.data_venda) return true;
-        const venda = new Date(e.data_venda);
-        return venda >= m.start;
-      }).length;
-
-      const giro = estoqueInicio > 0 ? (saidas / estoqueInicio) * 100 : 0;
+      // Giro: saidas / estoque disponível no fim do ciclo
+      const giro = disponiveis > 0 ? (saidas / disponiveis) * 100 : 0;
 
       // Patrimônio disponível at end of month
       const patrimonioDisp = estoque.filter(e => {
