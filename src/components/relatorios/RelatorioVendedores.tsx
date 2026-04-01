@@ -298,7 +298,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
       {/* Section: Por Vendedor */}
       <div className="space-y-1 !mt-8">
-        <h2 className="text-lg font-bold text-foreground">Por Vendedor</h2>
+        <h2 className="text-lg font-bold text-foreground">Resultado da Equipe</h2>
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
