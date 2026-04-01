@@ -257,7 +257,8 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
               <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Loja" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas as lojas</SelectItem>
-                {LOJAS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                <SelectItem value="299">299</SelectItem>
+                <SelectItem value="Ducati">Ducati</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterInteresse} onValueChange={setFilterInteresse}>
