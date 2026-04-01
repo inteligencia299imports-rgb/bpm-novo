@@ -130,22 +130,25 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const patrimonioParado = sumPreco(bloqueio) + sumPreco(indisponivel) + sumPreco(servico);
 
     const now = new Date();
-    const mediaDias = motosEstoque.length > 0
-      ? Math.round(motosEstoque.reduce((s, e) => {
-          const entrada = new Date(e.data_entrada);
-          return s + Math.max(0, Math.floor((now.getTime() - entrada.getTime()) / (1000 * 60 * 60 * 24)));
-        }, 0) / motosEstoque.length)
+    const avgDays = (items: EstoqueRow[]) =>
+      items.length > 0
+        ? Math.round(items.reduce((s, e) => s + Math.max(0, Math.floor((now.getTime() - new Date(e.data_entrada).getTime()) / 86400000)), 0) / items.length)
+        : 0;
+
+    const avgDaysPrep = preparacao.length > 0
+      ? Math.round(preparacao.reduce((s, a) => s + Math.max(0, Math.floor((now.getTime() - new Date(a.created_at).getTime()) / 86400000)), 0) / preparacao.length)
       : 0;
 
     return {
       total,
-      mediaDias,
-      disponivel: { qtd: disponivel.length, pct: total > 0 ? (disponivel.length / total) * 100 : 0, soma: sumPreco(disponivel) },
-      bloqueio: { qtd: bloqueio.length, pct: total > 0 ? (bloqueio.length / total) * 100 : 0, soma: sumPreco(bloqueio) },
-      indisponivel: { qtd: indisponivel.length, pct: total > 0 ? (indisponivel.length / total) * 100 : 0, soma: sumPreco(indisponivel) },
-      servico: { qtd: servico.length, pct: total > 0 ? (servico.length / total) * 100 : 0, soma: sumPreco(servico) },
+      mediaDias: avgDays(motosEstoque),
+      disponivel: { qtd: disponivel.length, pct: total > 0 ? (disponivel.length / total) * 100 : 0, soma: sumPreco(disponivel), mediaDias: avgDays(disponivel) },
+      bloqueio: { qtd: bloqueio.length, pct: total > 0 ? (bloqueio.length / total) * 100 : 0, soma: sumPreco(bloqueio), mediaDias: avgDays(bloqueio) },
+      indisponivel: { qtd: indisponivel.length, pct: total > 0 ? (indisponivel.length / total) * 100 : 0, soma: sumPreco(indisponivel), mediaDias: avgDays(indisponivel) },
+      servico: { qtd: servico.length, pct: total > 0 ? (servico.length / total) * 100 : 0, soma: sumPreco(servico), mediaDias: avgDays(servico) },
       qtdPreparacao,
       somaQuantoPede,
+      mediaDiasPrep: avgDaysPrep,
       patrimonioDisponivel,
       patrimonioParado,
     };
