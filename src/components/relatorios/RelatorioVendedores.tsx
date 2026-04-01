@@ -228,16 +228,18 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     }).filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0);
   }, [filteredAtendimentos, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap]);
 
-  // ===== Charts by month =====
+  // ===== Charts by month (only my data) =====
   const chartByMonth = useMemo(() => {
+    if (!user) return [];
     const months = generateCustomMonths();
+    const myAtendimentos = filteredAtendimentos.filter(a => a.vendedor_id === user.id);
     return months.map(m => {
-      const atendMonth = filteredAtendimentos.filter(a => {
+      const atendMonth = myAtendimentos.filter(a => {
         if (a.interesse !== 'comprar' && a.interesse !== 'trocar') return false;
         const d = new Date(a.created_at);
         return d >= m.start && d <= m.end;
       });
-      const vendidosMonth = filteredAtendimentos.filter(a => {
+      const vendidosMonth = myAtendimentos.filter(a => {
         if (a.situacao !== 'vendido') return false;
         const estoques = estoqueByAtendimentoVenda[a.id] || [];
         return estoques.some(e => {
@@ -246,21 +248,15 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
           return dv >= m.start && dv <= m.end;
         });
       });
-      const sinaisMonth = filteredAtendimentos.filter(a => {
-        if (a.situacao !== 'sinal') return false;
-        const d = new Date(a.created_at);
-        return d >= m.start && d <= m.end;
-      });
       const conversao = atendMonth.length > 0 ? vendidosMonth.length / atendMonth.length : 0;
       return {
         label: m.label,
         atendimentos: atendMonth.length,
         vendas: vendidosMonth.length,
-        sinais: sinaisMonth.length,
         conversao,
       };
     });
-  }, [filteredAtendimentos, estoqueByAtendimentoVenda]);
+  }, [user, filteredAtendimentos, estoqueByAtendimentoVenda]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
