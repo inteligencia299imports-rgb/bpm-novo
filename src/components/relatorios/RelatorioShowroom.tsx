@@ -972,14 +972,14 @@ const renderBarLabel = (props: any, isCurrency?: boolean) => {
   );
 };
 
-const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ title, data, dataKey }) => (
+const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string; chartH?: number; xTickProps?: any; chartMarginBottom?: number }> = ({ title, data, dataKey, chartH = 300, xTickProps = { fontSize: 10, fill: 'hsl(var(--foreground))' }, chartMarginBottom = 0 }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-3 pt-0">
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={chartH}>
+        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-          <XAxis dataKey="nome" tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
+          <XAxis dataKey="nome" tick={xTickProps} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />}
             cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
@@ -991,14 +991,14 @@ const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ 
   </Card>
 );
 
-const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurrency?: boolean }> = ({ title, data, dataKey, isCurrency }) => (
+const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurrency?: boolean; chartH?: number; xTickProps?: any; chartMarginBottom?: number }> = ({ title, data, dataKey, isCurrency, chartH = 300, xTickProps = { fontSize: 9, fill: 'hsl(var(--foreground))' }, chartMarginBottom = 0 }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-3 pt-0">
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={chartH}>
+        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
+          <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={isCurrency ? (v: number) => `${(v / 1000).toFixed(0)}k` : undefined} />
           <Tooltip content={<CustomTooltip isCurrency={isCurrency} />}
             cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
