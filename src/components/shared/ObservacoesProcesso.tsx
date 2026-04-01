@@ -55,7 +55,7 @@ const ObservacoesProcesso: React.FC<Props> = ({ entityId, entityType }) => {
       entity_type: entityType,
       texto: texto.trim(),
       usuario_id: user?.id || '',
-      usuario_nome: nome || 'Usuário',
+      usuario_nome: userName || 'Usuário',
     });
     setSaving(false);
     if (error) {
