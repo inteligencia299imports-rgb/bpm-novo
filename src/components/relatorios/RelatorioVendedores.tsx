@@ -356,7 +356,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
             </ResponsiveContainer>
           </CardContent>
         </Card>
-        <MonthChart title="Sinais" data={chartByMonth} dataKey="sinais" chartH={chartH} xTickProps={xTickProps} chartMarginBottom={chartMarginBottom} />
+        
       </div>
     </div>
   );
