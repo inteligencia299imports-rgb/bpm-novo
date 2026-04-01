@@ -13,6 +13,7 @@ import { POS_VENDA_COLUMNS, INTERESSES } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
+import ObservacoesProcesso from '@/components/shared/ObservacoesProcesso';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProcessoDialog from './ProcessoDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
@@ -539,6 +540,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               </CardContent>
             </Card>
           )}
+
+          {/* Observações do Processo */}
+          <ObservacoesProcesso
+            entityId={item.id}
+            entityType={
+              isIntermParte1 ? 'intermediacao_parte1' :
+              statusField === 'intermediacao_parte2_status' ? 'intermediacao_parte2' :
+              'pos_venda'
+            }
+          />
 
         </div>
       </ScrollArea>

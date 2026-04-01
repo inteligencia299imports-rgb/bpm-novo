@@ -12,6 +12,7 @@ import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
+import ObservacoesProcesso from '@/components/shared/ObservacoesProcesso';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
 import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProcessoDialog';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
@@ -320,6 +321,9 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               </CardContent>
             </Card>
           )}
+
+          {/* Observações do Processo */}
+          <ObservacoesProcesso entityId={item.id} entityType={entityType} />
 
         </div>
       </ScrollArea>
