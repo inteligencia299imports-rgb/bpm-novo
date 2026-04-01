@@ -214,7 +214,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         const d = new Date(av.created_at);
         return d >= m.start && d <= m.end;
       });
-      const aquisicoes = inMonth.filter(a => a.situacao === 'adquirida');
+      const aquisicoes = inMonth.filter(a => !!a.tipo_aquisicao);
       const proprias = aquisicoes.filter(a => isTipoPropria(a.tipo_aquisicao)).length;
       const consignadas = aquisicoes.filter(a => isTipoConsignada(a.tipo_aquisicao)).length;
       const negTrocar = inMonth.filter(a => atendimentoMap[a.atendimento_id]?.interesse === 'trocar').length;
