@@ -146,6 +146,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   // Filtered avaliacoes: by loja, date, and interesse (trocar/vender)
   const filtered = useMemo(() => {
     return avaliacoes.filter(av => {
+      if (av.situacao === 'sem_avaliar') return false;
       const atend = atendimentoMap[av.atendimento_id];
       if (!atend) return false;
       if (atend.interesse !== 'trocar' && atend.interesse !== 'vender') return false;
