@@ -153,10 +153,9 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     });
   }, [atendimentos, filterLoja]);
 
-  // Only comprar/trocar, filtered by date
+  // All interests, filtered by date
   const atendimentosFiltradosPorData = useMemo(() => {
     return filteredAtendimentos.filter(a => {
-      if (a.interesse !== 'comprar' && a.interesse !== 'trocar') return false;
       if (dateFrom) {
         const d = new Date(a.created_at);
         if (d < dateFrom) return false;
