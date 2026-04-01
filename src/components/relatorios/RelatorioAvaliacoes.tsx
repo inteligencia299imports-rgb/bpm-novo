@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, Truck, Repeat, Package } from 'lucide-react';
+import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, ArrowDownToLine, Repeat, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -264,8 +264,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Convertidas" value={indicadores.qtdConvertidas} gradient="purple" icon={<Repeat className="h-5 w-5" />} />
-        <IndicatorCard title="Retiradas" value={indicadores.qtdRetiradas} gradient="purple" icon={<XCircle className="h-5 w-5" />} />
-        <IndicatorCard title="Entrada Direta" value={indicadores.qtdEntradaDireta} gradient="emerald" icon={<Truck className="h-5 w-5" />} />
+        <IndicatorCard title="Retiradas" value={indicadores.qtdRetiradas} gradient="red" icon={<XCircle className="h-5 w-5" />} />
+        <IndicatorCard title="Entrada Direta" value={indicadores.qtdEntradaDireta} gradient="emerald" icon={<ArrowDownToLine className="h-5 w-5" />} />
         <IndicatorCard title="Troca" value={indicadores.qtdTroca} gradient="emerald" icon={<ArrowRightLeft className="h-5 w-5" />} />
       </div>
 
@@ -361,6 +361,7 @@ const iconColorMap: Record<string, string> = {
   teal: 'bg-[#2F6F84]/10 text-[#2F6F84]',
   purple: 'bg-[#7e6d9b]/10 text-[#7e6d9b]',
   emerald: 'bg-[#3a8f6a]/10 text-[#3a8f6a]',
+  red: 'bg-red-500/10 text-red-500',
 };
 
 const IndicatorCard: React.FC<{ title: string; value: string | number; gradient?: string; icon?: React.ReactNode }> = ({ title, value, gradient = 'teal', icon }) => (
