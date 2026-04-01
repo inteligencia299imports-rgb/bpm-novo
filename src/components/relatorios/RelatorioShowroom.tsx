@@ -54,6 +54,7 @@ const fmtPct = (v: number | null | undefined) => {
   const raw = (v ?? 0) * 100;
   return `${(Math.round(raw * 10) / 10).toFixed(1)}%`;
 };
+const fmtPctInt = (v: number | null | undefined) => `${Math.round((v ?? 0) * 100)}%`;
 
 interface AtendimentoRow {
   id: string;
