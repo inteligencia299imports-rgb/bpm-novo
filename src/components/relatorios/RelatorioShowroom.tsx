@@ -130,6 +130,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoRow[]>([]);
   const [estoqueItems, setEstoqueItems] = useState<EstoqueRow[]>([]);
   const [custosOficina, setCustosOficina] = useState<CustoOficinaRow[]>([]);
+  const [contratosConsignante, setContratosConsignante] = useState<ContratoConsignanteRow[]>([]);
+  const [custosOperacionais, setCustosOperacionais] = useState<CustoOperacionalRow[]>([]);
   const [vendedores, setVendedores] = useState<VendedorInfo[]>([]);
 
   // Filters
