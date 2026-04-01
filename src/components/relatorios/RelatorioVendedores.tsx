@@ -369,7 +369,7 @@ const iconColorMap: Record<string, string> = {
   teal: 'bg-[#2F6F84]/10 text-[#2F6F84]',
 };
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; icon?: React.ReactNode }> = ({ title, value, icon }) => (
+const IndicatorCard: React.FC<{ title: string; value: string | number; icon?: React.ReactNode; iconClass?: string }> = ({ title, value, icon, iconClass }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
@@ -377,7 +377,7 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; icon?: Re
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}</p>
         </div>
-        {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap.teal)}>{icon}</div>}
+        {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconClass || iconColorMap.teal)}>{icon}</div>}
       </div>
     </CardContent>
   </Card>
