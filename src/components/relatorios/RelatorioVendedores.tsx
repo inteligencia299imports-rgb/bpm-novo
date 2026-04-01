@@ -243,7 +243,6 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const myAtendimentos = filteredAtendimentos.filter(a => a.vendedor_id === user.id);
     return months.map(m => {
       const atendMonth = myAtendimentos.filter(a => {
-        if (a.interesse !== 'comprar' && a.interesse !== 'trocar') return false;
         const d = new Date(a.created_at);
         return d >= m.start && d <= m.end;
       });
