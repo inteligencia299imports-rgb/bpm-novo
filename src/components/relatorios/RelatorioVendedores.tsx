@@ -286,12 +286,14 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
       {/* Indicators - only own data for vendedor, all for gestor */}
       {myIndicadores && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <IndicatorCard title="Atendimentos" value={myIndicadores.qtdAtendimentos} icon={<Users className="h-5 w-5" />} />
+          <IndicatorCard title="Sinais" value={myIndicadores.qtdSinais} icon={<CreditCard className="h-5 w-5" />} />
           <IndicatorCard
             title="Vendas"
             value={`${myIndicadores.qtdVendas} (${fmtPctInt(myIndicadores.taxaConversao)})`}
-            icon={<ShoppingCart className="h-5 w-5" />}
+            icon={<Check className="h-5 w-5 text-green-600" />}
+            iconClass="bg-green-100 text-green-600"
           />
         </div>
       )}
