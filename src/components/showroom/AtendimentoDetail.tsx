@@ -1008,9 +1008,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               setHistory(prev => [...prev, insertedConsulta].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
                             }
                             setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, consulta_solicitada: true, consulta_realizada: false, resultado_consulta: null } as any : m));
-                            // Notify gestores
-                            await supabase.rpc('notify_role', {
-                              _role: 'gestor',
+                            // Notify users flagged for consultation
+                            await supabase.rpc('notify_consulta', {
                               _title: 'Consulta Solicitada',
                               _message: `${atendimento?.nome_cliente} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
                               _entity_id: moto.id,

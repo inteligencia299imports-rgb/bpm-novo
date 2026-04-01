@@ -1037,6 +1037,7 @@ export type Database = {
           id: string
           loja: string | null
           nome: string
+          recebe_notif_consulta: boolean
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
@@ -1045,6 +1046,7 @@ export type Database = {
           id?: string
           loja?: string | null
           nome?: string
+          recebe_notif_consulta?: boolean
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
@@ -1053,6 +1055,7 @@ export type Database = {
           id?: string
           loja?: string | null
           nome?: string
+          recebe_notif_consulta?: boolean
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
@@ -1093,6 +1096,15 @@ export type Database = {
       moto_has_avaliacao_preparacao: {
         Args: { _moto_avaliacao_id: string }
         Returns: boolean
+      }
+      notify_consulta: {
+        Args: {
+          _entity_id?: string
+          _entity_type?: string
+          _message: string
+          _title: string
+        }
+        Returns: undefined
       }
       notify_role: {
         Args: {
