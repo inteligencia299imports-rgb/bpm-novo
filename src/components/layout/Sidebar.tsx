@@ -23,7 +23,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
   const { role, userName, signOut } = useAuth();
 
   const tabs = [
-    { id: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: ['gestor'] },
+    { id: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: ['gestor', 'vendedor'] },
     { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador', 'secretaria'] },
     { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor', 'secretaria'] },
     { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador', 'secretaria'] },

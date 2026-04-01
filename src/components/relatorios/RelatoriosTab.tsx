@@ -1,15 +1,17 @@
 import React, { useState, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X } from 'lucide-react';
+import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 import RelatorioShowroom from './RelatorioShowroom';
 import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
+import RelatorioVendedores from './RelatorioVendedores';
 
 function getCurrentCycleRange(): { start: Date; end: Date } {
   const now = new Date();
@@ -24,8 +26,10 @@ function getCurrentCycleRange(): { start: Date; end: Date } {
 }
 
 const RelatoriosTab: React.FC = () => {
+  const { role } = useAuth();
+  const isGestor = role === 'gestor';
   const cycle = getCurrentCycleRange();
-  const [dept, setDept] = useState('showroom');
+  const [dept, setDept] = useState(isGestor ? 'showroom' : 'vendedores');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(cycle.start);
   const [dateTo, setDateTo] = useState<Date | undefined>(cycle.end);
   const clearFnRef = useRef<(() => void) | null>(null);
@@ -58,14 +62,21 @@ const RelatoriosTab: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-full">
           <div className="w-full sm:w-auto overflow-x-auto">
             <TabsList className="w-max">
-              <TabsTrigger value="showroom" className="gap-1.5">
-                <Bike className="h-4 w-4" /> Showroom
-              </TabsTrigger>
-              <TabsTrigger value="avaliacoes" className="gap-1.5">
-                <ClipboardCheck className="h-4 w-4" /> Avaliações
-              </TabsTrigger>
-              <TabsTrigger value="estoque" className="gap-1.5">
-                <Package className="h-4 w-4" /> Estoque
+              {isGestor && (
+                <>
+                  <TabsTrigger value="showroom" className="gap-1.5">
+                    <Bike className="h-4 w-4" /> Showroom
+                  </TabsTrigger>
+                  <TabsTrigger value="avaliacoes" className="gap-1.5">
+                    <ClipboardCheck className="h-4 w-4" /> Avaliações
+                  </TabsTrigger>
+                  <TabsTrigger value="estoque" className="gap-1.5">
+                    <Package className="h-4 w-4" /> Estoque
+                  </TabsTrigger>
+                </>
+              )}
+              <TabsTrigger value="vendedores" className="gap-1.5">
+                <UserCheck className="h-4 w-4" /> Vendedores
               </TabsTrigger>
             </TabsList>
           </div>
@@ -95,14 +106,21 @@ const RelatoriosTab: React.FC = () => {
             </Popover>
           </div>
         </div>
-        <TabsContent value="showroom" className="w-full max-w-full overflow-x-hidden">
-          <RelatorioShowroom dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
-        </TabsContent>
-        <TabsContent value="avaliacoes">
-          <RelatorioAvaliacoes dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'avaliacoes') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
-        </TabsContent>
-        <TabsContent value="estoque">
-          <RelatorioEstoque dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
+        {isGestor && (
+          <>
+            <TabsContent value="showroom" className="w-full max-w-full overflow-x-hidden">
+              <RelatorioShowroom dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
+            </TabsContent>
+            <TabsContent value="avaliacoes">
+              <RelatorioAvaliacoes dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'avaliacoes') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
+            </TabsContent>
+            <TabsContent value="estoque">
+              <RelatorioEstoque dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
+            </TabsContent>
+          </>
+        )}
+        <TabsContent value="vendedores">
+          <RelatorioVendedores dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'vendedores') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
         </TabsContent>
       </Tabs>
     </div>
