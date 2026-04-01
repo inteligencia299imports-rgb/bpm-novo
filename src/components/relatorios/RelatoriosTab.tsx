@@ -60,26 +60,24 @@ const RelatoriosTab: React.FC = () => {
       <p className="text-sm text-muted-foreground mt-0.5">Análise de desempenho e indicadores</p>
       <Tabs value={dept} onValueChange={setDept}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-full">
-          <div className="w-full sm:w-auto overflow-x-auto">
-            <TabsList className="w-max">
-              {isGestor && (
-                <>
-                  <TabsTrigger value="showroom" className="gap-1.5">
-                    <Bike className="h-4 w-4" /> Showroom
-                  </TabsTrigger>
-                  <TabsTrigger value="avaliacoes" className="gap-1.5">
-                    <ClipboardCheck className="h-4 w-4" /> Avaliações
-                  </TabsTrigger>
-                  <TabsTrigger value="estoque" className="gap-1.5">
-                    <Package className="h-4 w-4" /> Estoque
-                  </TabsTrigger>
-                </>
-              )}
-              <TabsTrigger value="vendedores" className="gap-1.5">
-                <UserCheck className="h-4 w-4" /> Vendedores
-              </TabsTrigger>
-            </TabsList>
-          </div>
+          {isGestor && (
+            <div className="w-full sm:w-auto overflow-x-auto">
+              <TabsList className="w-max">
+                <TabsTrigger value="showroom" className="gap-1.5">
+                  <Bike className="h-4 w-4" /> Showroom
+                </TabsTrigger>
+                <TabsTrigger value="avaliacoes" className="gap-1.5">
+                  <ClipboardCheck className="h-4 w-4" /> Avaliações
+                </TabsTrigger>
+                <TabsTrigger value="estoque" className="gap-1.5">
+                  <Package className="h-4 w-4" /> Estoque
+                </TabsTrigger>
+                <TabsTrigger value="vendedores" className="gap-1.5">
+                  <UserCheck className="h-4 w-4" /> Vendedores
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          )}
           <div className="w-full sm:w-auto flex items-center gap-2 overflow-x-auto pb-1">
             <Popover>
               <PopoverTrigger asChild>
