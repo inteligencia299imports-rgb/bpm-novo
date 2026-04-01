@@ -361,6 +361,7 @@ const iconColorMap: Record<string, string> = {
   teal: 'bg-[#2F6F84]/10 text-[#2F6F84]',
   purple: 'bg-[#7e6d9b]/10 text-[#7e6d9b]',
   emerald: 'bg-[#3a8f6a]/10 text-[#3a8f6a]',
+  red: 'bg-red-500/10 text-red-500',
 };
 
 const IndicatorCard: React.FC<{ title: string; value: string | number; gradient?: string; icon?: React.ReactNode }> = ({ title, value, gradient = 'teal', icon }) => (
