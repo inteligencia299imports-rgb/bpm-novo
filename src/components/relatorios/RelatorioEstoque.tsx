@@ -233,7 +233,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Motos no Estoque" value={indicadores.total} gradient="teal" icon={<Package className="h-5 w-5" />} />
+        <IndicatorCard title="Motos no Estoque" value={indicadores.total} subline={`Média: ${indicadores.mediaDias} dias`} gradient="teal" icon={<Package className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Disponível" value={indicadores.disponivel.qtd} subtitle={`(${fmtPct(indicadores.disponivel.pct)})`} subline={fmtBRL(indicadores.disponivel.soma)} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Bloqueio Jurídico" value={indicadores.bloqueio.qtd} subtitle={`(${fmtPct(indicadores.bloqueio.pct)})`} subline={fmtBRL(indicadores.bloqueio.soma)} gradient="gray" icon={<ShieldAlert className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Indisponível" value={indicadores.indisponivel.qtd} subtitle={`(${fmtPct(indicadores.indisponivel.pct)})`} subline={fmtBRL(indicadores.indisponivel.soma)} gradient="red" icon={<Ban className="h-5 w-5" />} />
