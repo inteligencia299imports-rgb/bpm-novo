@@ -816,7 +816,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         <h2 className="text-lg font-bold text-foreground">Listagem</h2>
         <Separator />
       </div>
-      <Card>
+      <Card className="overflow-hidden">
         <CardContent className="pt-4">
           <Tabs value={listTab} onValueChange={setListTab}>
             <TabsList className="mb-3">
