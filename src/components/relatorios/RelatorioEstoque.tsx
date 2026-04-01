@@ -128,8 +128,17 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const patrimonioDisponivel = sumPreco(disponivel);
     const patrimonioParado = sumPreco(bloqueio) + sumPreco(indisponivel) + sumPreco(servico);
 
+    const now = new Date();
+    const mediaDias = motosEstoque.length > 0
+      ? Math.round(motosEstoque.reduce((s, e) => {
+          const entrada = new Date(e.data_entrada);
+          return s + Math.max(0, Math.floor((now.getTime() - entrada.getTime()) / (1000 * 60 * 60 * 24)));
+        }, 0) / motosEstoque.length)
+      : 0;
+
     return {
       total,
+      mediaDias,
       disponivel: { qtd: disponivel.length, pct: total > 0 ? (disponivel.length / total) * 100 : 0, soma: sumPreco(disponivel) },
       bloqueio: { qtd: bloqueio.length, pct: total > 0 ? (bloqueio.length / total) * 100 : 0, soma: sumPreco(bloqueio) },
       indisponivel: { qtd: indisponivel.length, pct: total > 0 ? (indisponivel.length / total) * 100 : 0, soma: sumPreco(indisponivel) },
