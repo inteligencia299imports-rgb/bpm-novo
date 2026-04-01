@@ -23,15 +23,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
 
   const tabs = [
     { id: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: ['gestor', 'vendedor'] },
-    { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador', 'secretaria'] },
-    { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor', 'secretaria'] },
-    { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador', 'secretaria'] },
-    { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['avaliador', 'gestor', 'secretaria'] },
-    { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['avaliador', 'gestor', 'secretaria'] },
-    { id: 'intermediacao', label: 'Intermediação', icon: Handshake, roles: ['avaliador', 'gestor', 'secretaria'] },
-    { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['avaliador', 'gestor', 'secretaria'] },
-    { id: 'consignacao', label: 'Consignação', icon: FileText, roles: ['avaliador', 'gestor', 'secretaria'] },
-    { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['vendedor', 'avaliador', 'gestor', 'secretaria'] },
+    { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador'] },
+    { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
+    { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador'] },
+    { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['avaliador', 'gestor'] },
+    { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['avaliador', 'gestor'] },
+    { id: 'intermediacao', label: 'Intermediação', icon: Handshake, roles: ['avaliador', 'gestor'] },
+    { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['avaliador', 'gestor'] },
+    { id: 'consignacao', label: 'Consignação', icon: FileText, roles: ['avaliador', 'gestor'] },
+    { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['vendedor', 'avaliador', 'gestor'] },
     { id: 'nps', label: 'NPS', icon: Award, roles: ['vendedor', 'gestor', 'avaliador'] },
   ].filter(t => role && t.roles.includes(role));
 

@@ -189,9 +189,9 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               setResultadoSalvo(null);
               setResultadoTexto('');
               fetchHistory();
-              // Notify secretárias
+              // Notify gestores
               await supabase.rpc('notify_role', {
-                _role: 'secretaria',
+                _role: 'gestor',
                 _title: 'Nova Consulta Solicitada',
                 _message: `${moto.atendimentos?.nome_cliente || ''} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
                 _entity_id: moto.id,
