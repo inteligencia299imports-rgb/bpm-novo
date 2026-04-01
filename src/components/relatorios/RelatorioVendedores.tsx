@@ -96,7 +96,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
   const loadData = useCallback(async () => {
     const [atRes, esRes, vdRes] = await Promise.all([
-      supabase.from('atendimentos').select('id, situacao, loja, interesse, vendedor_id, created_at'),
+      supabase.from('atendimentos').select('id, situacao, loja, interesse, vendedor_id, created_at, updated_at'),
       supabase.from('estoque').select('id, atendimento_venda_id, data_venda, tipo'),
       supabase.from('user_roles').select('user_id, nome').eq('role', 'vendedor'),
     ]);
