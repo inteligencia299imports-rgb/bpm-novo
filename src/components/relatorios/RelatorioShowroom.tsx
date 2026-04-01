@@ -98,6 +98,17 @@ interface CustoOficinaRow {
   valor_executado: number | null;
 }
 
+interface ContratoConsignanteRow {
+  id: string;
+  atendimento_id: string;
+}
+
+interface CustoOperacionalRow {
+  contrato_consignante_id: string;
+  responsavel: string;
+  valor: number | null;
+}
+
 interface VendedorInfo {
   user_id: string;
   nome: string;
@@ -119,6 +130,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoRow[]>([]);
   const [estoqueItems, setEstoqueItems] = useState<EstoqueRow[]>([]);
   const [custosOficina, setCustosOficina] = useState<CustoOficinaRow[]>([]);
+  const [contratosConsignante, setContratosConsignante] = useState<ContratoConsignanteRow[]>([]);
+  const [custosOperacionais, setCustosOperacionais] = useState<CustoOperacionalRow[]>([]);
   const [vendedores, setVendedores] = useState<VendedorInfo[]>([]);
 
   // Filters
@@ -142,17 +155,21 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const [atRes, avRes, esRes, coRes, vdRes] = await Promise.all([
+    const [atRes, avRes, esRes, coRes, vdRes, ccRes, copRes] = await Promise.all([
       supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal'),
       supabase.from('avaliacoes').select('id, atendimento_id, quanto_vende, valor_fechamento, previsao_custos_loja, previsao_custos_cliente, tipo_aquisicao, moto_avaliacao_id'),
       supabase.from('estoque').select('id, avaliacao_id, atendimento_venda_id, preco, tipo, modelo, marca, placa, data_venda, valor_venda, status'),
       supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado'),
       supabase.from('user_roles').select('user_id, nome'),
+      supabase.from('contratos_consignante').select('id, atendimento_id'),
+      supabase.from('custos_operacionais').select('contrato_consignante_id, responsavel, valor'),
     ]);
     setAtendimentos((atRes.data || []) as AtendimentoRow[]);
     setAvaliacoes((avRes.data || []) as AvaliacaoRow[]);
     setEstoqueItems((esRes.data || []) as EstoqueRow[]);
     setCustosOficina((coRes.data || []) as CustoOficinaRow[]);
+    setContratosConsignante((ccRes.data || []) as ContratoConsignanteRow[]);
+    setCustosOperacionais((copRes.data || []) as CustoOperacionalRow[]);
     setVendedores((vdRes.data || []) as VendedorInfo[]);
     setLoading(false);
   }, []);
@@ -174,6 +191,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, debouncedLoad)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'custos_oficina' }, debouncedLoad)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos' }, debouncedLoad)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'custos_operacionais' }, debouncedLoad)
       .subscribe();
 
     return () => {
@@ -217,6 +235,26 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     });
     return map;
   }, [custosOficina]);
+
+  // Map custos operacionais (intermediação) by atendimento_id
+  const custosOpByAtendimento = useMemo(() => {
+    const ccMap: Record<string, string> = {};
+    contratosConsignante.forEach(cc => { ccMap[cc.id] = cc.atendimento_id; });
+    const map: Record<string, CustoOperacionalRow[]> = {};
+    custosOperacionais.forEach(co => {
+      const atendId = ccMap[co.contrato_consignante_id];
+      if (atendId) {
+        if (!map[atendId]) map[atendId] = [];
+        map[atendId].push(co);
+      }
+    });
+    return map;
+  }, [contratosConsignante, custosOperacionais]);
+
+  const getCustosOpLoja = (atendimentoId: string) => {
+    const custos = custosOpByAtendimento[atendimentoId] || [];
+    return custos.filter(c => c.responsavel.toLowerCase() === 'loja').reduce((sum, c) => sum + (c.valor ?? 0), 0);
+  };
 
   const vendedorMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -340,7 +378,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const custoProcessoLoja = aval ? getCustosLojaProcesso(aval.id) : 0;
         const custoRealOficinaCliente = aval ? getCustosClienteReal(aval.id) : 0;
         const custoPrevOficinaCliente = aval ? getCustosClientePrevisto(aval.id) : 0;
-        const abatimentos = TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja;
+        const custoOpLoja = getCustosOpLoja(atend.id);
+        const abatimentos = TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja;
         const precoEstoque = est.preco ?? 0;
         const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
         const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
@@ -349,7 +388,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const margemPrevista = quantoVende - valorFechamento;
         const pctMargemPrevista = quantoVende > 0 ? margemPrevista / quantoVende : 0;
         const margemOficina = (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
-        const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja);
+        const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja);
         const pctMargemRealizada = faturamentoRealizado > 0 ? margemRealizada / faturamentoRealizado : 0;
         
         list.push({
@@ -388,7 +427,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const custoProcessoLoja = aval ? getCustosLojaProcesso(aval.id) : 0;
         const custoRealOficinaCliente = aval ? getCustosClienteReal(aval.id) : 0;
         const custoPrevOficinaCliente = aval ? getCustosClientePrevisto(aval.id) : 0;
-        const abatimentos = TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja;
+        const custoOpLoja = getCustosOpLoja(atend.id);
+        const abatimentos = TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja;
         const precoEstoque = est.preco ?? 0;
         const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
         const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
@@ -397,7 +437,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const margemPrevista = quantoVende - valorFechamento;
         const pctMargemPrevista = quantoVende > 0 ? margemPrevista / quantoVende : 0;
         const margemOficina = (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
-        const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja);
+        const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja);
         const pctMargemRealizada = faturamentoRealizado > 0 ? margemRealizada / faturamentoRealizado : 0;
 
         list.push({
@@ -455,6 +495,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const custoOficinaLojaExec = getCustosLojaOficinaExecutado(aval.id);
         const custoOficinaLojaPrev = getCustosLojaOficinaPrevisto(aval.id);
         const custoProcessoLoja = getCustosLojaProcesso(aval.id);
+        const custoOpLoja = getCustosOpLoja(atend.id);
 
         faturamentoPrevisto += quantoVende;
         totalQuantoVende += quantoVende;
@@ -465,7 +506,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
         margemPrevista += quantoVende - valorFechamento;
 
-        margemRealizada += fatReal - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja);
+        margemRealizada += fatReal - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja);
       });
     });
 
@@ -558,6 +599,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           const custoOficinaLojaExec = getCustosLojaOficinaExecutado(aval.id);
           const custoOficinaLojaPrev = getCustosLojaOficinaPrevisto(aval.id);
           const custoProcessoLoja = getCustosLojaProcesso(aval.id);
+          const custoOpLoja = getCustosOpLoja(atend.id);
 
           faturamento += valorVendaReal;
           totalQV += quantoVende;
@@ -565,7 +607,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           margemPrevista += quantoVende - valorFechamento;
           const fatReal = valorVendaReal + (custoPrevCliente - custoRealCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
           faturamentoReal += fatReal;
-          margemRealizada += fatReal - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja);
+          margemRealizada += fatReal - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja);
         });
       });
 
