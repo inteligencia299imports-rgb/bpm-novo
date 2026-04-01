@@ -10,10 +10,23 @@ import { cn } from '@/lib/utils';
 import RelatorioShowroom from './RelatorioShowroom';
 import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 
+function getCurrentCycleRange(): { start: Date; end: Date } {
+  const now = new Date();
+  let start: Date;
+  if (now.getDate() >= 21) {
+    start = new Date(now.getFullYear(), now.getMonth(), 21);
+  } else {
+    start = new Date(now.getFullYear(), now.getMonth() - 1, 21);
+  }
+  const end = new Date(start.getFullYear(), start.getMonth() + 1, 20, 23, 59, 59, 999);
+  return { start, end };
+}
+
 const RelatoriosTab: React.FC = () => {
+  const cycle = getCurrentCycleRange();
   const [dept, setDept] = useState('showroom');
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(cycle.start);
+  const [dateTo, setDateTo] = useState<Date | undefined>(cycle.end);
   const clearFnRef = useRef<(() => void) | null>(null);
   const [hasInternalFilters, setHasInternalFilters] = useState(false);
 
