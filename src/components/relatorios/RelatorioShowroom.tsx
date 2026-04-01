@@ -313,8 +313,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   // Atendimentos filtered by date (created_at in same period)
   const atendimentosFiltradosPorData = useMemo(() => {
     return filteredAtendimentos.filter(a => {
-      // Só considerar clientes interessados em comprar ou trocar
-      if (a.interesse !== 'comprar' && a.interesse !== 'trocar') return false;
+      // Considerar todos os interesses (comprar, trocar, vender)
       if (dateFrom) {
         const d = new Date(a.created_at);
         if (d < dateFrom) return false;
@@ -563,9 +562,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const chartByMonth = useMemo(() => {
     const months = generateCustomMonths();
     return months.map(m => {
-      // Atendimentos in this month period (by created_at)
       const atendMonth = filteredAtendimentos.filter(a => {
-        if (a.interesse !== 'comprar' && a.interesse !== 'trocar') return false;
         const d = new Date(a.created_at);
         return d >= m.start && d <= m.end;
       });
