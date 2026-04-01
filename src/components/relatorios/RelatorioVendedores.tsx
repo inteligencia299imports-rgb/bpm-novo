@@ -344,12 +344,11 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MonthChart title="Atendimentos" data={chartByMonth} dataKey="atendimentos" chartH={chartH} xTickProps={xTickProps} chartMarginBottom={chartMarginBottom} />
-        <MonthChart title="Vendas" data={chartByMonth} dataKey="vendas" chartH={chartH} xTickProps={xTickProps} chartMarginBottom={chartMarginBottom} />
         <Card className="border shadow-sm rounded-xl">
-          <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Taxa de Conversão</CardTitle></CardHeader>
+          <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Vendas / Taxa de Conversão</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={chartH}>
-              <AreaChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
+              <ComposedChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
                 <defs>
                   <linearGradient id="gradConversaoAno" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#E8913A" stopOpacity={0.3} />
@@ -358,10 +357,12 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtPctInt(v)} />
+                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtPctInt(v)} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Area type="monotone" dataKey="conversao" name="Conversão (%)" stroke="#E8913A" strokeWidth={2.5} fill="url(#gradConversaoAno)" dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
-              </AreaChart>
+                <Bar yAxisId="left" dataKey="vendas" name="Vendas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={28} />
+                <Area yAxisId="right" type="monotone" dataKey="conversao" name="Conversão (%)" stroke="#E8913A" strokeWidth={2.5} fill="url(#gradConversaoAno)" dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
+              </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
