@@ -45,6 +45,7 @@ interface AtendimentoRow {
   interesse: string;
   vendedor_id: string;
   created_at: string;
+  updated_at: string;
 }
 
 interface EstoqueRow {
