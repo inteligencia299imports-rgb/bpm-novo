@@ -261,9 +261,12 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       const vendidosMonth = myAtendimentos.filter(a => {
         if (a.situacao !== 'vendido') return false;
         const estoques = estoqueByAtendimentoVenda[a.id] || [];
+        if (estoques.length === 0) {
+          const dRef = new Date(a.updated_at);
+          return dRef >= m.start && dRef <= m.end;
+        }
         return estoques.some(e => {
-          if (!e.data_venda) return false;
-          const dv = new Date(e.data_venda);
+          const dv = e.data_venda ? new Date(e.data_venda) : new Date(a.updated_at);
           return dv >= m.start && dv <= m.end;
         });
       });
