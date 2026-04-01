@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const TRANSFER_COST = 445;
 
