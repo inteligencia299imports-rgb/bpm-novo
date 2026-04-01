@@ -1092,7 +1092,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                   if (atendimento.interesse === 'vender' && (b.value === 'sinal' || b.value === 'vendido')) {
                     return false;
                   }
-                  if ((b.value === 'sinal' || b.value === 'vendido') && !motosInteresse.some(m => m.origem === 'estoque')) {
+                  const isDucati = atendimento.loja?.toLowerCase() === 'ducati';
+                  if ((b.value === 'sinal' || b.value === 'vendido') && !isDucati && !motosInteresse.some(m => m.origem === 'estoque')) {
                     return false;
                   }
                   // Hide sinal/vendido if the estoque moto is already sold or reserved by another atendimento
