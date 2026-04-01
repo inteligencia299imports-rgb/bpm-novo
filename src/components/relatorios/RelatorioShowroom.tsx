@@ -191,6 +191,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, debouncedLoad)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'custos_oficina' }, debouncedLoad)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos' }, debouncedLoad)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'custos_operacionais' }, debouncedLoad)
       .subscribe();
 
     return () => {
