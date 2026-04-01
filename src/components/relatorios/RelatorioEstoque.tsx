@@ -8,6 +8,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 function getCustomMonthLabel(startDate: Date): string {
   const endDate = new Date(startDate);
@@ -62,6 +63,10 @@ interface RelatorioEstoqueProps {
 }
 
 const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
+  const isMobile = useIsMobile();
+  const chartH = isMobile ? 220 : 300;
+  const xTickProps = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 9, fill: 'hsl(var(--foreground))' };
+  const chartMarginBottom = isMobile ? 40 : 0;
   const [loading, setLoading] = useState(true);
   const [estoque, setEstoque] = useState<EstoqueRow[]>([]);
   const [preparacao, setPreparacao] = useState<AvaliacaoPrep[]>([]);
@@ -268,10 +273,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
-            <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart data={chartByMonth} margin={{ top: 16, right: 10, left: -10, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={chartH}>
+              <ComposedChart data={chartByMonth} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
@@ -294,10 +299,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
-            <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart data={patrimonioGrowth} margin={{ top: 16, right: 10, left: -10, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={chartH}>
+              <ComposedChart data={patrimonioGrowth} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
                 <Tooltip content={<PatrimonioTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />

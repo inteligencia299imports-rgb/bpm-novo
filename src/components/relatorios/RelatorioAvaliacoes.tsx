@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Reuse custom month logic from Showroom
 function getCustomMonthLabel(startDate: Date): string {
@@ -74,6 +75,11 @@ interface RelatorioAvaliacoesProps {
 }
 
 const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
+  const isMobile = useIsMobile();
+  const chartH = isMobile ? 220 : 300;
+  const xTickProps = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 9, fill: 'hsl(var(--foreground))' };
+  const xTickPropsName = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 10, fill: 'hsl(var(--foreground))' };
+  const chartMarginBottom = isMobile ? 40 : 0;
   const [loading, setLoading] = useState(true);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoRow[]>([]);
   const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
@@ -276,7 +282,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Qtd de Avaliações" data={[...chartByAvaliador].sort((a, b) => b.avaliacoes - a.avaliacoes)} dataKey="avaliacoes" />
+        <ChartCard title="Qtd de Avaliações" data={[...chartByAvaliador].sort((a, b) => b.avaliacoes - a.avaliacoes)} dataKey="avaliacoes" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Qtd Aquisições</CardTitle>
@@ -286,10 +292,10 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={[...chartByAvaliador].sort((a, b) => (b.aqTrocar + b.aqVender) - (a.aqTrocar + a.aqVender))} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={chartH}>
+              <BarChart data={[...chartByAvaliador].sort((a, b) => (b.aqTrocar + b.aqVender) - (a.aqTrocar + a.aqVender))} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="nome" tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="nome" tick={xTickPropsName} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
                 <Bar dataKey="aqTrocar" name="Trocar" fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
@@ -306,8 +312,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <MonthChart title="Avaliações" data={chartByMonth} dataKey="avaliacoes" />
-        <MonthChart title="Aquisições" data={chartByMonth} dataKey="aquisicoes" />
+        <MonthChart title="Avaliações" data={chartByMonth} dataKey="avaliacoes" chartH={chartH} xTickProps={xTickProps} chartMarginBottom={chartMarginBottom} />
+        <MonthChart title="Aquisições" data={chartByMonth} dataKey="aquisicoes" chartH={chartH} xTickProps={xTickProps} chartMarginBottom={chartMarginBottom} />
         {/* Próprias e Consignadas - Line chart */}
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -318,10 +324,10 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={chartH}>
+              <LineChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--muted))', strokeWidth: 1 }} />
                 <Line type="monotone" dataKey="proprias" name="Próprias" stroke="#2F6F84" strokeWidth={2.5} dot={{ r: 4, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--foreground))', fontWeight: 600 }} />
@@ -340,10 +346,10 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartByMonth} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={chartH}>
+              <BarChart data={chartByMonth} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
                 <Bar dataKey="negTrocar" name="Trocar" fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
@@ -405,14 +411,14 @@ const renderBarLabel = (props: any) => {
   );
 };
 
-const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ title, data, dataKey }) => (
+const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string; chartH?: number; xTickProps?: any; chartMarginBottom?: number }> = ({ title, data, dataKey, chartH = 300, xTickProps = { fontSize: 10, fill: 'hsl(var(--foreground))' }, chartMarginBottom = 0 }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-3 pt-0">
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={chartH}>
+        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-          <XAxis dataKey="nome" tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
+          <XAxis dataKey="nome" tick={xTickProps} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
           <Bar dataKey={dataKey} fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
@@ -422,14 +428,14 @@ const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ 
   </Card>
 );
 
-const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string }> = ({ title, data, dataKey }) => (
+const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; chartH?: number; xTickProps?: any; chartMarginBottom?: number }> = ({ title, data, dataKey, chartH = 300, xTickProps = { fontSize: 9, fill: 'hsl(var(--foreground))' }, chartMarginBottom = 0 }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-3 pt-0">
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={chartH}>
+        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 9, fill: 'hsl(var(--foreground))' }} axisLine={false} tickLine={false} />
+          <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
           <Bar dataKey={dataKey} fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
