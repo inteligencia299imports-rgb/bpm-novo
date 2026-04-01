@@ -81,7 +81,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const loadData = useCallback(async () => {
     const [estoqueRes, avalRes] = await Promise.all([
       supabase.from('estoque').select('id, status, preco, data_entrada, data_venda'),
-      supabase.from('avaliacoes').select('id, situacao, quanto_pede'),
+      supabase.from('avaliacoes').select('id, situacao, quanto_pede, created_at'),
     ]);
     setEstoque((estoqueRes.data || []) as EstoqueRow[]);
     setPreparacao(((avalRes.data || []) as AvaliacaoPrep[]).filter(a => a.situacao === 'adquirida'));
