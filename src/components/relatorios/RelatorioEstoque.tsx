@@ -63,6 +63,10 @@ interface RelatorioEstoqueProps {
 }
 
 const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
+  const isMobile = useIsMobile();
+  const chartH = isMobile ? 220 : 300;
+  const xTickProps = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 9, fill: 'hsl(var(--foreground))' };
+  const chartMarginBottom = isMobile ? 40 : 0;
   const [loading, setLoading] = useState(true);
   const [estoque, setEstoque] = useState<EstoqueRow[]>([]);
   const [preparacao, setPreparacao] = useState<AvaliacaoPrep[]>([]);

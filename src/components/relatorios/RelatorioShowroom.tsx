@@ -128,6 +128,11 @@ interface RelatorioShowroomProps {
 
 const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
   const { userName } = useAuth();
+  const isMobile = useIsMobile();
+  const chartH = isMobile ? 220 : 300;
+  const xTickProps = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 9, fill: 'hsl(var(--foreground))' };
+  const xTickPropsName = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 10, fill: 'hsl(var(--foreground))' };
+  const chartMarginBottom = isMobile ? 40 : 0;
   const [loading, setLoading] = useState(true);
   const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoRow[]>([]);
