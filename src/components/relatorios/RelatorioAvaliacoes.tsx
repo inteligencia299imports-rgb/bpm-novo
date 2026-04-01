@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ClipboardCheck, ShoppingCart, ArrowDownUp, ArrowRightLeft, RotateCcw, Truck, Repeat, Package } from 'lucide-react';
+import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, Truck, Repeat, Package } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -257,14 +257,14 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Avaliações" value={indicadores.qtdAvaliacoes} gradient="teal" icon={<ClipboardCheck className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições" value={indicadores.qtdAquisicoes} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições" value={indicadores.qtdAquisicoes} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
         <IndicatorCard title="Aquisições Próprias" value={indicadores.qtdProprias} gradient="teal" icon={<Package className="h-5 w-5" />} />
         <IndicatorCard title="Aquisições Consignadas" value={indicadores.qtdConsignadas} gradient="teal" icon={<ArrowDownUp className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Convertidas" value={indicadores.qtdConvertidas} gradient="purple" icon={<Repeat className="h-5 w-5" />} />
-        <IndicatorCard title="Retiradas" value={indicadores.qtdRetiradas} gradient="purple" icon={<RotateCcw className="h-5 w-5" />} />
+        <IndicatorCard title="Retiradas" value={indicadores.qtdRetiradas} gradient="purple" icon={<XCircle className="h-5 w-5" />} />
         <IndicatorCard title="Entrada Direta" value={indicadores.qtdEntradaDireta} gradient="emerald" icon={<Truck className="h-5 w-5" />} />
         <IndicatorCard title="Troca" value={indicadores.qtdTroca} gradient="emerald" icon={<ArrowRightLeft className="h-5 w-5" />} />
       </div>
