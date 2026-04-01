@@ -7,8 +7,13 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
-const NotificationBell: React.FC = () => {
+interface NotificationBellProps {
+  className?: string;
+}
+
+const NotificationBell: React.FC<NotificationBellProps> = ({ className }) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
@@ -42,7 +47,7 @@ const NotificationBell: React.FC = () => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="relative p-2 rounded-lg hover:bg-sidebar-accent transition-colors text-sidebar-foreground">
+        <button className={cn("relative p-2 rounded-lg hover:bg-sidebar-accent transition-colors text-sidebar-foreground", className)}>
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">

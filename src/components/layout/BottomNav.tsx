@@ -43,7 +43,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
           </button>
         ))}
         <div className="flex flex-col items-center justify-center min-w-[60px] px-2 h-full text-primary">
-          <NotificationBell />
+          <NotificationBell className="text-primary" />
         </div>
       </div>
     </nav>
