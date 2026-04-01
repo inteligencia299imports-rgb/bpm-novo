@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Reuse custom month logic from Showroom
 function getCustomMonthLabel(startDate: Date): string {
