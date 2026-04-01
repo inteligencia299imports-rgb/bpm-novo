@@ -4,7 +4,7 @@ import { abbreviateName } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Users, ShoppingCart, CreditCard, TrendingUp } from 'lucide-react';
+import { Users, Check, CreditCard, TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -286,12 +286,14 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
       {/* Indicators - only own data for vendedor, all for gestor */}
       {myIndicadores && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <IndicatorCard title="Atendimentos" value={myIndicadores.qtdAtendimentos} icon={<Users className="h-5 w-5" />} />
+          <IndicatorCard title="Sinais" value={myIndicadores.qtdSinais} icon={<CreditCard className="h-5 w-5" />} />
           <IndicatorCard
             title="Vendas"
             value={`${myIndicadores.qtdVendas} (${fmtPctInt(myIndicadores.taxaConversao)})`}
-            icon={<ShoppingCart className="h-5 w-5" />}
+            icon={<Check className="h-5 w-5 text-green-600" />}
+            iconClass="bg-green-100 text-green-600"
           />
         </div>
       )}
@@ -367,7 +369,7 @@ const iconColorMap: Record<string, string> = {
   teal: 'bg-[#2F6F84]/10 text-[#2F6F84]',
 };
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; icon?: React.ReactNode }> = ({ title, value, icon }) => (
+const IndicatorCard: React.FC<{ title: string; value: string | number; icon?: React.ReactNode; iconClass?: string }> = ({ title, value, icon, iconClass }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
@@ -375,7 +377,7 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; icon?: Re
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}</p>
         </div>
-        {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap.teal)}>{icon}</div>}
+        {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconClass || iconColorMap.teal)}>{icon}</div>}
       </div>
     </CardContent>
   </Card>
