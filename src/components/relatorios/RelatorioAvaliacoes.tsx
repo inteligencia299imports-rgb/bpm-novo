@@ -258,7 +258,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Avaliações" value={indicadores.qtdAvaliacoes} gradient="teal" icon={<ClipboardCheck className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições" value={indicadores.qtdAquisicoes} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições" value={indicadores.qtdAquisicoes} subtitle={`(${indicadores.qtdAvaliacoes > 0 ? Math.floor((indicadores.qtdAquisicoes / indicadores.qtdAvaliacoes) * 100) : 0}%)`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
         <IndicatorCard title="Aquisições Próprias" value={indicadores.qtdProprias} gradient="teal" icon={<Package className="h-5 w-5" />} />
         <IndicatorCard title="Aquisições Consignadas" value={indicadores.qtdConsignadas} gradient="teal" icon={<ArrowDownUp className="h-5 w-5" />} />
       </div>
@@ -365,13 +365,13 @@ const iconColorMap: Record<string, string> = {
   red: 'bg-red-500/10 text-red-500',
 };
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; gradient?: string; icon?: React.ReactNode }> = ({ title, value, gradient = 'teal', icon }) => (
+const IndicatorCard: React.FC<{ title: string; value: string | number; subtitle?: string; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subtitle, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
-          <p className="text-xl font-semibold text-foreground/80 truncate">{value}</p>
+          <p className="text-xl font-semibold text-foreground/80 truncate">{value}{subtitle && <span className="text-sm font-medium text-muted-foreground ml-1">{subtitle}</span>}</p>
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap[gradient] || iconColorMap.teal)}>{icon}</div>}
       </div>
