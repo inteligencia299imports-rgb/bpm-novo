@@ -85,7 +85,7 @@ const RelatoriosTab: React.FC = () => {
           <RelatorioShowroom dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
         </TabsContent>
         <TabsContent value="avaliacoes">
-          <p className="text-muted-foreground text-sm p-4">Em breve...</p>
+          <RelatorioAvaliacoes dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'avaliacoes') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
         </TabsContent>
         <TabsContent value="estoque">
           <p className="text-muted-foreground text-sm p-4">Em breve...</p>
