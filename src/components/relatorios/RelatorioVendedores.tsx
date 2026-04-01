@@ -275,6 +275,20 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
+      {/* Loja filter */}
+      <div className="flex flex-wrap items-center gap-1">
+        {['todos', '299', 'Ducati'].map(loja => (
+          <Button
+            key={loja}
+            size="sm"
+            variant={filterLoja === loja ? 'default' : 'outline'}
+            className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')}
+            onClick={() => setFilterLoja(loja)}
+          >
+            {loja === 'todos' ? 'Todas Lojas' : loja}
+          </Button>
+        ))}
+      </div>
 
       {/* Indicators - only own data for vendedor, all for gestor */}
       {myIndicadores && (
