@@ -42,7 +42,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
             <span className="text-[10px] font-medium">{tab.label}</span>
           </button>
         ))}
-        <div className="flex flex-col items-center justify-center min-w-[60px] px-2 h-full text-muted-foreground">
+        <div className="flex flex-col items-center justify-center min-w-[60px] px-2 h-full text-primary">
           <NotificationBell />
         </div>
       </div>
