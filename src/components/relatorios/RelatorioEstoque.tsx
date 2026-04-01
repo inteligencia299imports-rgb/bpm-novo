@@ -128,8 +128,17 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const patrimonioDisponivel = sumPreco(disponivel);
     const patrimonioParado = sumPreco(bloqueio) + sumPreco(indisponivel) + sumPreco(servico);
 
+    const now = new Date();
+    const mediaDias = motosEstoque.length > 0
+      ? Math.round(motosEstoque.reduce((s, e) => {
+          const entrada = new Date(e.data_entrada);
+          return s + Math.max(0, Math.floor((now.getTime() - entrada.getTime()) / (1000 * 60 * 60 * 24)));
+        }, 0) / motosEstoque.length)
+      : 0;
+
     return {
       total,
+      mediaDias,
       disponivel: { qtd: disponivel.length, pct: total > 0 ? (disponivel.length / total) * 100 : 0, soma: sumPreco(disponivel) },
       bloqueio: { qtd: bloqueio.length, pct: total > 0 ? (bloqueio.length / total) * 100 : 0, soma: sumPreco(bloqueio) },
       indisponivel: { qtd: indisponivel.length, pct: total > 0 ? (indisponivel.length / total) * 100 : 0, soma: sumPreco(indisponivel) },
@@ -224,7 +233,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Motos no Estoque" value={indicadores.total} gradient="teal" icon={<Package className="h-5 w-5" />} />
+        <IndicatorCard title="Motos no Estoque" value={indicadores.total} subline={`Média: ${indicadores.mediaDias} dias`} gradient="teal" icon={<Package className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Disponível" value={indicadores.disponivel.qtd} subtitle={`(${fmtPct(indicadores.disponivel.pct)})`} subline={fmtBRL(indicadores.disponivel.soma)} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Bloqueio Jurídico" value={indicadores.bloqueio.qtd} subtitle={`(${fmtPct(indicadores.bloqueio.pct)})`} subline={fmtBRL(indicadores.bloqueio.soma)} gradient="gray" icon={<ShieldAlert className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Indisponível" value={indicadores.indisponivel.qtd} subtitle={`(${fmtPct(indicadores.indisponivel.pct)})`} subline={fmtBRL(indicadores.indisponivel.soma)} gradient="red" icon={<Ban className="h-5 w-5" />} />
@@ -309,13 +318,14 @@ const iconColorMap: Record<string, string> = {
   gray: 'bg-gray-500/10 text-gray-500',
 };
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; gradient?: string; icon?: React.ReactNode }> = ({ title, value, gradient = 'teal', icon }) => (
+const IndicatorCard: React.FC<{ title: string; value: string | number; subline?: string; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subline, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}</p>
+          {subline && <p className="text-xs text-muted-foreground truncate">{subline}</p>}
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap[gradient] || iconColorMap.teal)}>{icon}</div>}
       </div>
