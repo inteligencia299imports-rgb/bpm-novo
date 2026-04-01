@@ -58,7 +58,11 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     setLoading(true);
     let query = supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').order('created_at', { ascending: false });
 
-    if (filterLoja !== 'todas') query = query.eq('loja', filterLoja);
+    if (filterLoja === 'Ducati') {
+      query = query.eq('loja', 'Ducati');
+    } else if (filterLoja === '299') {
+      query = query.in('loja', ['299i', '299s', 'Aventura']);
+    }
     if (filterInteresse !== 'todos') query = query.eq('interesse', filterInteresse);
     if (dateFrom) {
       query = query.gte('created_at', dateFrom.toISOString());
