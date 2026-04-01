@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { abbreviateName } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -541,7 +542,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         });
       });
       return {
-        nome: vendedorMap[vid] || 'Desconhecido',
+        nome: abbreviateName(vendedorMap[vid] || 'Desconhecido'),
         atendimentos: qtdAtend,
         vendas: qtdVendas,
         sinais: qtdSinais,
