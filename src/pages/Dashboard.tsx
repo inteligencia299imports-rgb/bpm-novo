@@ -63,7 +63,7 @@ const Dashboard = () => {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(prev => !prev)}
       />
-      <main className="flex-1 p-3 md:p-4 lg:p-6 animate-fade-in pb-20 md:pb-6">
+      <main className="flex-1 p-3 md:p-4 lg:p-6 animate-fade-in pb-20 md:pb-6 overflow-x-hidden">
         {activeTab === 'showroom' && (
           <ShowroomTab
             initialAtendimentoId={initialAtendimentoId}
