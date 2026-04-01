@@ -160,7 +160,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   // Indicators
   const indicadores = useMemo(() => {
     const qtdAvaliacoes = filtered.length;
-    const aquisicoes = filtered.filter(a => a.situacao === 'adquirida');
+    const aquisicoes = filtered.filter(a => !!a.tipo_aquisicao);
     const qtdAquisicoes = aquisicoes.length;
     const qtdProprias = aquisicoes.filter(a => isTipoPropria(a.tipo_aquisicao) && a.tipo_aquisicao !== 'convertida').length;
     const qtdConsignadas = aquisicoes.filter(a => isTipoConsignada(a.tipo_aquisicao)).length;
@@ -185,7 +185,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const avaliadorIds = [...new Set(filtered.map(a => a.avaliador_id).filter(Boolean))] as string[];
     return avaliadorIds.map(aid => {
       const avAvaliacoes = filtered.filter(a => a.avaliador_id === aid);
-      const avAquisicoes = avAvaliacoes.filter(a => a.situacao === 'adquirida');
+      const avAquisicoes = avAvaliacoes.filter(a => !!a.tipo_aquisicao);
       const aqTrocar = avAquisicoes.filter(a => atendimentoMap[a.atendimento_id]?.interesse === 'trocar').length;
       const aqVender = avAquisicoes.filter(a => atendimentoMap[a.atendimento_id]?.interesse === 'vender').length;
       return {
@@ -214,7 +214,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         const d = new Date(av.created_at);
         return d >= m.start && d <= m.end;
       });
-      const aquisicoes = inMonth.filter(a => a.situacao === 'adquirida');
+      const aquisicoes = inMonth.filter(a => !!a.tipo_aquisicao);
       const proprias = aquisicoes.filter(a => isTipoPropria(a.tipo_aquisicao)).length;
       const consignadas = aquisicoes.filter(a => isTipoConsignada(a.tipo_aquisicao)).length;
       const negTrocar = inMonth.filter(a => atendimentoMap[a.atendimento_id]?.interesse === 'trocar').length;
