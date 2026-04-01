@@ -922,6 +922,36 @@ export type Database = {
         }
         Relationships: []
       }
+      observacoes_processo: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          texto: string
+          usuario_id: string
+          usuario_nome: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          texto: string
+          usuario_id: string
+          usuario_nome: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          texto?: string
+          usuario_id?: string
+          usuario_nome?: string
+        }
+        Relationships: []
+      }
       pos_compra_processos: {
         Row: {
           avaliacao_id: string
