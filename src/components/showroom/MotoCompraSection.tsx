@@ -146,7 +146,7 @@ const MotoCompraSection: React.FC<Props> = ({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Chassi *</Label>
+              <Label>Chassi</Label>
               <Input
                 value={chassi}
                 onChange={handleChassiChange}

@@ -196,7 +196,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Preencha o modelo e ano da moto Ducati');
       return;
     }
-    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && (chassi.replace(/\s/g, '').length < 6 || chassi.replace(/\s/g, '').length > 17)) {
+    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && chassi.replace(/\s/g, '').length > 0 && (chassi.replace(/\s/g, '').length < 6 || chassi.replace(/\s/g, '').length > 17)) {
       toast.error('O chassi deve ter entre 6 e 17 caracteres');
       return;
     }
