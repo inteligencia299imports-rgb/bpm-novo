@@ -17,17 +17,21 @@ import RelatoriosTab from '@/components/relatorios/RelatoriosTab';
 
 const Dashboard = () => {
   const { role } = useAuth();
-  const defaultTab = role === 'gestor' ? 'relatorios' : role === 'avaliador' ? 'avaliacoes' : 'showroom';
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  const getDefaultTab = (r: string | null) => r === 'gestor' ? 'relatorios' : r === 'avaliador' ? 'avaliacoes' : 'showroom';
+  const [activeTab, setActiveTab] = useState(getDefaultTab(role));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [hasSetInitialTab, setHasSetInitialTab] = useState(false);
 
   // Navigation state for cross-tab deep linking
   const [initialAtendimentoId, setInitialAtendimentoId] = useState<string | null>(null);
   const [initialAvaliacaoId, setInitialAvaliacaoId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (role === 'avaliador' && activeTab === 'showroom') setActiveTab('showroom');
-  }, [role]);
+    if (role && !hasSetInitialTab) {
+      setActiveTab(getDefaultTab(role));
+      setHasSetInitialTab(true);
+    }
+  }, [role, hasSetInitialTab]);
 
   const clearInitials = () => {
     setInitialAtendimentoId(null);
