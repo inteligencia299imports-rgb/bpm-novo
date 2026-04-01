@@ -201,18 +201,8 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   }, [filteredAtendimentos, estoqueByAtendimentoVenda, dateFrom, dateTo]);
 
   const sinais = useMemo(() => {
-    return filteredAtendimentos.filter(a => {
-      if (a.situacao !== 'sinal') return false;
-      const dRef = new Date(a.updated_at);
-      if (dateFrom && dRef < dateFrom) return false;
-      if (dateTo) {
-        const endOfDay = new Date(dateTo);
-        endOfDay.setHours(23, 59, 59, 999);
-        if (dRef > endOfDay) return false;
-      }
-      return true;
-    });
-  }, [filteredAtendimentos, dateFrom, dateTo]);
+    return filteredAtendimentos.filter(a => a.situacao === 'sinal');
+  }, [filteredAtendimentos]);
 
   // ===== MY indicators (for vendedor role) =====
   const myIndicadores = useMemo(() => {
