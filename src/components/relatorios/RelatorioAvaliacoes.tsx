@@ -160,7 +160,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   // Indicators
   const indicadores = useMemo(() => {
     const qtdAvaliacoes = filtered.length;
-    const aquisicoes = filtered.filter(a => a.situacao === 'adquirida');
+    const aquisicoes = filtered.filter(a => !!a.tipo_aquisicao);
     const qtdAquisicoes = aquisicoes.length;
     const qtdProprias = aquisicoes.filter(a => isTipoPropria(a.tipo_aquisicao) && a.tipo_aquisicao !== 'convertida').length;
     const qtdConsignadas = aquisicoes.filter(a => isTipoConsignada(a.tipo_aquisicao)).length;
