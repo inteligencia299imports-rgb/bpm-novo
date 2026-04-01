@@ -94,7 +94,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const [avRes, atRes, urRes] = await Promise.all([
       supabase.from('avaliacoes').select('id, atendimento_id, situacao, tipo_aquisicao, avaliador_id, created_at, negociacao'),
       supabase.from('atendimentos').select('id, nome_cliente, interesse, loja, vendedor_id'),
-      supabase.from('user_roles').select('user_id, nome').eq('role', 'avaliador'),
+      supabase.from('user_roles').select('user_id, nome'),
     ]);
     setAvaliacoes((avRes.data || []) as AvaliacaoRow[]);
     setAtendimentos((atRes.data || []) as AtendimentoRow[]);
