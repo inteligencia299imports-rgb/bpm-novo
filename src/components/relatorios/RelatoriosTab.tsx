@@ -9,6 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import RelatorioShowroom from './RelatorioShowroom';
 import RelatorioAvaliacoes from './RelatorioAvaliacoes';
+import RelatorioEstoque from './RelatorioEstoque';
 
 function getCurrentCycleRange(): { start: Date; end: Date } {
   const now = new Date();
@@ -63,7 +64,7 @@ const RelatoriosTab: React.FC = () => {
               <TabsTrigger value="avaliacoes" className="gap-1.5">
                 <ClipboardCheck className="h-4 w-4" /> Avaliações
               </TabsTrigger>
-              <TabsTrigger value="estoque" className="gap-1.5" disabled>
+              <TabsTrigger value="estoque" className="gap-1.5">
                 <Package className="h-4 w-4" /> Estoque
               </TabsTrigger>
             </TabsList>
@@ -101,7 +102,7 @@ const RelatoriosTab: React.FC = () => {
           <RelatorioAvaliacoes dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'avaliacoes') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
         </TabsContent>
         <TabsContent value="estoque">
-          <p className="text-muted-foreground text-sm p-4">Em breve...</p>
+          <RelatorioEstoque dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
         </TabsContent>
       </Tabs>
     </div>
