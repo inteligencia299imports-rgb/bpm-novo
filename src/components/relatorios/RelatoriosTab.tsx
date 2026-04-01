@@ -9,6 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import RelatorioShowroom from './RelatorioShowroom';
 import RelatorioAvaliacoes from './RelatorioAvaliacoes';
+import RelatorioEstoque from './RelatorioEstoque';
 
 function getCurrentCycleRange(): { start: Date; end: Date } {
   const now = new Date();
