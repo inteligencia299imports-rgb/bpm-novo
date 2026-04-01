@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import RelatorioShowroom from './RelatorioShowroom';
+import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 
 const RelatoriosTab: React.FC = () => {
   const [dept, setDept] = useState('showroom');
@@ -46,7 +47,7 @@ const RelatoriosTab: React.FC = () => {
               <TabsTrigger value="showroom" className="gap-1.5">
                 <Bike className="h-4 w-4" /> Showroom
               </TabsTrigger>
-              <TabsTrigger value="avaliacoes" className="gap-1.5" disabled>
+              <TabsTrigger value="avaliacoes" className="gap-1.5">
                 <ClipboardCheck className="h-4 w-4" /> Avaliações
               </TabsTrigger>
               <TabsTrigger value="estoque" className="gap-1.5" disabled>
@@ -84,7 +85,7 @@ const RelatoriosTab: React.FC = () => {
           <RelatorioShowroom dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
         </TabsContent>
         <TabsContent value="avaliacoes">
-          <p className="text-muted-foreground text-sm p-4">Em breve...</p>
+          <RelatorioAvaliacoes dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'avaliacoes') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
         </TabsContent>
         <TabsContent value="estoque">
           <p className="text-muted-foreground text-sm p-4">Em breve...</p>
