@@ -371,7 +371,7 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; subtitle?
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
-          <p className="text-xl font-semibold text-foreground/80 truncate">{value}{subtitle && <span className="text-sm font-medium text-muted-foreground ml-1">{subtitle}</span>}</p>
+          <p className="text-xl font-semibold text-foreground/80 truncate">{value}{subtitle && <span className="ml-1">{subtitle}</span>}</p>
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap[gradient] || iconColorMap.teal)}>{icon}</div>}
       </div>
