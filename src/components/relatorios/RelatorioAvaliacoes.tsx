@@ -209,6 +209,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   const chartByMonth = useMemo(() => {
     // Use all avaliacoes (not date-filtered) for monthly breakdown
     const allFiltered = avaliacoes.filter(av => {
+      if (av.situacao === 'sem_avaliar') return false;
       const atend = atendimentoMap[av.atendimento_id];
       if (!atend) return false;
       if (atend.interesse !== 'trocar' && atend.interesse !== 'vender') return false;
