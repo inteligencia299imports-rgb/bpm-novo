@@ -378,7 +378,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const custoProcessoLoja = aval ? getCustosLojaProcesso(aval.id) : 0;
         const custoRealOficinaCliente = aval ? getCustosClienteReal(aval.id) : 0;
         const custoPrevOficinaCliente = aval ? getCustosClientePrevisto(aval.id) : 0;
-        const abatimentos = TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja;
+        const custoOpLoja = getCustosOpLoja(atend.id);
+        const abatimentos = TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja;
         const precoEstoque = est.preco ?? 0;
         const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
         const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
@@ -387,7 +388,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         const margemPrevista = quantoVende - valorFechamento;
         const pctMargemPrevista = quantoVende > 0 ? margemPrevista / quantoVende : 0;
         const margemOficina = (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
-        const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja);
+        const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja);
         const pctMargemRealizada = faturamentoRealizado > 0 ? margemRealizada / faturamentoRealizado : 0;
         
         list.push({
