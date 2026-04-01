@@ -171,18 +171,26 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     });
   }, [filteredAtendimentos, dateFrom, dateTo]);
 
-  // Vendidos filtered by data_venda in estoque
+  // Vendidos filtered by data_venda in estoque (fallback to updated_at)
   const vendidos = useMemo(() => {
     return filteredAtendimentos.filter(a => {
       if (a.situacao !== 'vendido') return false;
       const estoques = estoqueByAtendimentoVenda[a.id] || [];
-      return estoques.some(e => {
-        if (dateFrom && e.data_venda) {
-          const dv = new Date(e.data_venda);
-          if (dv < dateFrom) return false;
+      // Use data_venda from estoque if linked, otherwise fallback to atendimento updated_at
+      if (estoques.length === 0) {
+        const dRef = new Date(a.updated_at);
+        if (dateFrom && dRef < dateFrom) return false;
+        if (dateTo) {
+          const endOfDay = new Date(dateTo);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (dRef > endOfDay) return false;
         }
-        if (dateTo && e.data_venda) {
-          const dv = new Date(e.data_venda);
+        return true;
+      }
+      return estoques.some(e => {
+        const dv = e.data_venda ? new Date(e.data_venda) : new Date(a.updated_at);
+        if (dateFrom && dv < dateFrom) return false;
+        if (dateTo) {
           const endOfDay = new Date(dateTo);
           endOfDay.setHours(23, 59, 59, 999);
           if (dv > endOfDay) return false;
@@ -193,8 +201,18 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   }, [filteredAtendimentos, estoqueByAtendimentoVenda, dateFrom, dateTo]);
 
   const sinais = useMemo(() => {
-    return filteredAtendimentos.filter(a => a.situacao === 'sinal');
-  }, [filteredAtendimentos]);
+    return filteredAtendimentos.filter(a => {
+      if (a.situacao !== 'sinal') return false;
+      const dRef = new Date(a.updated_at);
+      if (dateFrom && dRef < dateFrom) return false;
+      if (dateTo) {
+        const endOfDay = new Date(dateTo);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (dRef > endOfDay) return false;
+      }
+      return true;
+    });
+  }, [filteredAtendimentos, dateFrom, dateTo]);
 
   // ===== MY indicators (for vendedor role) =====
   const myIndicadores = useMemo(() => {
