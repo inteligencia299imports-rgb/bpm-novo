@@ -284,7 +284,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       {myIndicadores && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <IndicatorCard title="Atendimentos" value={myIndicadores.qtdAtendimentos} icon={<Users className="h-5 w-5" />} />
-          <IndicatorCard title="Sinais" value={myIndicadores.qtdSinais} icon={<CreditCard className="h-5 w-5" />} />
+          <IndicatorCard title="Sinais" value={myIndicadores.qtdSinais} icon={<CreditCard className="h-5 w-5" />} iconClass="bg-purple-100 text-purple-600" />
           <IndicatorCard
             title="Vendas"
             value={`${myIndicadores.qtdVendas} (${fmtPctInt(myIndicadores.taxaConversao)})`}
