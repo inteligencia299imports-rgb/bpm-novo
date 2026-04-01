@@ -49,6 +49,7 @@ interface AvaliacaoPrep {
   id: string;
   situacao: string;
   quanto_pede: number | null;
+  created_at: string;
 }
 
 interface RelatorioEstoqueProps {
@@ -80,7 +81,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const loadData = useCallback(async () => {
     const [estoqueRes, avalRes] = await Promise.all([
       supabase.from('estoque').select('id, status, preco, data_entrada, data_venda'),
-      supabase.from('avaliacoes').select('id, situacao, quanto_pede'),
+      supabase.from('avaliacoes').select('id, situacao, quanto_pede, created_at'),
     ]);
     setEstoque((estoqueRes.data || []) as EstoqueRow[]);
     setPreparacao(((avalRes.data || []) as AvaliacaoPrep[]).filter(a => a.situacao === 'adquirida'));
@@ -129,22 +130,25 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const patrimonioParado = sumPreco(bloqueio) + sumPreco(indisponivel) + sumPreco(servico);
 
     const now = new Date();
-    const mediaDias = motosEstoque.length > 0
-      ? Math.round(motosEstoque.reduce((s, e) => {
-          const entrada = new Date(e.data_entrada);
-          return s + Math.max(0, Math.floor((now.getTime() - entrada.getTime()) / (1000 * 60 * 60 * 24)));
-        }, 0) / motosEstoque.length)
+    const avgDays = (items: EstoqueRow[]) =>
+      items.length > 0
+        ? Math.round(items.reduce((s, e) => s + Math.max(0, Math.floor((now.getTime() - new Date(e.data_entrada).getTime()) / 86400000)), 0) / items.length)
+        : 0;
+
+    const avgDaysPrep = preparacao.length > 0
+      ? Math.round(preparacao.reduce((s, a) => s + Math.max(0, Math.floor((now.getTime() - new Date(a.created_at).getTime()) / 86400000)), 0) / preparacao.length)
       : 0;
 
     return {
       total,
-      mediaDias,
-      disponivel: { qtd: disponivel.length, pct: total > 0 ? (disponivel.length / total) * 100 : 0, soma: sumPreco(disponivel) },
-      bloqueio: { qtd: bloqueio.length, pct: total > 0 ? (bloqueio.length / total) * 100 : 0, soma: sumPreco(bloqueio) },
-      indisponivel: { qtd: indisponivel.length, pct: total > 0 ? (indisponivel.length / total) * 100 : 0, soma: sumPreco(indisponivel) },
-      servico: { qtd: servico.length, pct: total > 0 ? (servico.length / total) * 100 : 0, soma: sumPreco(servico) },
+      mediaDias: avgDays(motosEstoque),
+      disponivel: { qtd: disponivel.length, pct: total > 0 ? (disponivel.length / total) * 100 : 0, soma: sumPreco(disponivel), mediaDias: avgDays(disponivel) },
+      bloqueio: { qtd: bloqueio.length, pct: total > 0 ? (bloqueio.length / total) * 100 : 0, soma: sumPreco(bloqueio), mediaDias: avgDays(bloqueio) },
+      indisponivel: { qtd: indisponivel.length, pct: total > 0 ? (indisponivel.length / total) * 100 : 0, soma: sumPreco(indisponivel), mediaDias: avgDays(indisponivel) },
+      servico: { qtd: servico.length, pct: total > 0 ? (servico.length / total) * 100 : 0, soma: sumPreco(servico), mediaDias: avgDays(servico) },
       qtdPreparacao,
       somaQuantoPede,
+      mediaDiasPrep: avgDaysPrep,
       patrimonioDisponivel,
       patrimonioParado,
     };
@@ -234,14 +238,14 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Motos no Estoque" value={indicadores.total} subline={`Média: ${indicadores.mediaDias} dias`} gradient="teal" icon={<Package className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Disponível" value={indicadores.disponivel.qtd} subtitle={`(${fmtPct(indicadores.disponivel.pct)})`} subline={fmtBRL(indicadores.disponivel.soma)} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Bloqueio Jurídico" value={indicadores.bloqueio.qtd} subtitle={`(${fmtPct(indicadores.bloqueio.pct)})`} subline={fmtBRL(indicadores.bloqueio.soma)} gradient="gray" icon={<ShieldAlert className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Indisponível" value={indicadores.indisponivel.qtd} subtitle={`(${fmtPct(indicadores.indisponivel.pct)})`} subline={fmtBRL(indicadores.indisponivel.soma)} gradient="red" icon={<Ban className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Disponível" value={indicadores.disponivel.qtd} subtitle={`(${fmtPct(indicadores.disponivel.pct)})`} subline={`Média: ${indicadores.disponivel.mediaDias} dias (${fmtBRL(indicadores.disponivel.soma)})`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Bloqueio Jurídico" value={indicadores.bloqueio.qtd} subtitle={`(${fmtPct(indicadores.bloqueio.pct)})`} subline={`Média: ${indicadores.bloqueio.mediaDias} dias (${fmtBRL(indicadores.bloqueio.soma)})`} gradient="gray" icon={<ShieldAlert className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Indisponível" value={indicadores.indisponivel.qtd} subtitle={`(${fmtPct(indicadores.indisponivel.pct)})`} subline={`Média: ${indicadores.indisponivel.mediaDias} dias (${fmtBRL(indicadores.indisponivel.soma)})`} gradient="red" icon={<Ban className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCardWithSub title="Serviço" value={indicadores.servico.qtd} subtitle={`(${fmtPct(indicadores.servico.pct)})`} subline={fmtBRL(indicadores.servico.soma)} gradient="orange" icon={<Wrench className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Em Preparação" value={indicadores.qtdPreparacao} subline={fmtBRL(indicadores.somaQuantoPede)} gradient="purple" icon={<Clock className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Serviço" value={indicadores.servico.qtd} subtitle={`(${fmtPct(indicadores.servico.pct)})`} subline={`Média: ${indicadores.servico.mediaDias} dias (${fmtBRL(indicadores.servico.soma)})`} gradient="orange" icon={<Wrench className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Em Preparação" value={indicadores.qtdPreparacao} subline={`Média: ${indicadores.mediaDiasPrep} dias (${fmtBRL(indicadores.somaQuantoPede)})`} gradient="purple" icon={<Clock className="h-5 w-5" />} />
         <IndicatorCard title="Patrimônio Disponível" value={fmtBRL(indicadores.patrimonioDisponivel)} gradient="teal" icon={<DollarSign className="h-5 w-5" />} />
         <IndicatorCard title="Patrimônio Parado" value={fmtBRL(indicadores.patrimonioParado)} gradient="red" icon={<TrendingDown className="h-5 w-5" />} />
       </div>
