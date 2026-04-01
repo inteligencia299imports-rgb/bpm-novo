@@ -322,6 +322,9 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             </Card>
           )}
 
+          {/* Observações do Processo */}
+          <ObservacoesProcesso entityId={item.id} entityType={entityType} />
+
         </div>
       </ScrollArea>
 
