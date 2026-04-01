@@ -28,9 +28,6 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card safe-area-bottom overflow-x-auto">
       <div className="flex items-center h-16 min-w-max px-1">
-        <div className="flex items-center justify-center px-2">
-          <NotificationBell />
-        </div>
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -45,6 +42,9 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
             <span className="text-[10px] font-medium">{tab.label}</span>
           </button>
         ))}
+        <div className="flex items-center justify-center px-2">
+          <NotificationBell />
+        </div>
       </div>
     </nav>
   );
