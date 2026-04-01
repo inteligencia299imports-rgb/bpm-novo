@@ -155,17 +155,21 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const [atRes, avRes, esRes, coRes, vdRes] = await Promise.all([
+    const [atRes, avRes, esRes, coRes, vdRes, ccRes, copRes] = await Promise.all([
       supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal'),
       supabase.from('avaliacoes').select('id, atendimento_id, quanto_vende, valor_fechamento, previsao_custos_loja, previsao_custos_cliente, tipo_aquisicao, moto_avaliacao_id'),
       supabase.from('estoque').select('id, avaliacao_id, atendimento_venda_id, preco, tipo, modelo, marca, placa, data_venda, valor_venda, status'),
       supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado'),
       supabase.from('user_roles').select('user_id, nome'),
+      supabase.from('contratos_consignante').select('id, atendimento_id'),
+      supabase.from('custos_operacionais').select('contrato_consignante_id, responsavel, valor'),
     ]);
     setAtendimentos((atRes.data || []) as AtendimentoRow[]);
     setAvaliacoes((avRes.data || []) as AvaliacaoRow[]);
     setEstoqueItems((esRes.data || []) as EstoqueRow[]);
     setCustosOficina((coRes.data || []) as CustoOficinaRow[]);
+    setContratosConsignante((ccRes.data || []) as ContratoConsignanteRow[]);
+    setCustosOperacionais((copRes.data || []) as CustoOperacionalRow[]);
     setVendedores((vdRes.data || []) as VendedorInfo[]);
     setLoading(false);
   }, []);
