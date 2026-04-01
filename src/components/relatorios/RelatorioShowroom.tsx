@@ -236,6 +236,26 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     return map;
   }, [custosOficina]);
 
+  // Map custos operacionais (intermediação) by atendimento_id
+  const custosOpByAtendimento = useMemo(() => {
+    const ccMap: Record<string, string> = {};
+    contratosConsignante.forEach(cc => { ccMap[cc.id] = cc.atendimento_id; });
+    const map: Record<string, CustoOperacionalRow[]> = {};
+    custosOperacionais.forEach(co => {
+      const atendId = ccMap[co.contrato_consignante_id];
+      if (atendId) {
+        if (!map[atendId]) map[atendId] = [];
+        map[atendId].push(co);
+      }
+    });
+    return map;
+  }, [contratosConsignante, custosOperacionais]);
+
+  const getCustosOpLoja = (atendimentoId: string) => {
+    const custos = custosOpByAtendimento[atendimentoId] || [];
+    return custos.filter(c => c.responsavel.toLowerCase() === 'loja').reduce((sum, c) => sum + (c.valor ?? 0), 0);
+  };
+
   const vendedorMap = useMemo(() => {
     const map: Record<string, string> = {};
     vendedores.forEach(v => { map[v.user_id] = v.nome; });
