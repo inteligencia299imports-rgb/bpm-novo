@@ -190,7 +190,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       const aqTrocar = avAquisicoes.filter(a => atendimentoMap[a.atendimento_id]?.interesse === 'trocar').length;
       const aqVender = avAquisicoes.filter(a => atendimentoMap[a.atendimento_id]?.interesse === 'vender').length;
       return {
-        nome: avaliadorMap[aid] || 'Desconhecido',
+        nome: abbreviateName(avaliadorMap[aid] || 'Desconhecido'),
         avaliacoes: avAvaliacoes.length,
         aqTrocar,
         aqVender,

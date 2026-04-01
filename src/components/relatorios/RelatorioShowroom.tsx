@@ -542,7 +542,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         });
       });
       return {
-        nome: vendedorMap[vid] || 'Desconhecido',
+        nome: abbreviateName(vendedorMap[vid] || 'Desconhecido'),
         atendimentos: qtdAtend,
         vendas: qtdVendas,
         sinais: qtdSinais,
