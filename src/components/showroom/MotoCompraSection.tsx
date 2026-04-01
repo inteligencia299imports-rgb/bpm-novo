@@ -139,7 +139,7 @@ const MotoCompraSection: React.FC<Props> = ({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Ano *</Label>
+              <Label>Ano Modelo *</Label>
               <Select value={ano} onValueChange={setAno}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
