@@ -98,6 +98,17 @@ interface CustoOficinaRow {
   valor_executado: number | null;
 }
 
+interface ContratoConsignanteRow {
+  id: string;
+  atendimento_id: string;
+}
+
+interface CustoOperacionalRow {
+  contrato_consignante_id: string;
+  responsavel: string;
+  valor: number | null;
+}
+
 interface VendedorInfo {
   user_id: string;
   nome: string;
