@@ -915,7 +915,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </Card>
 
           {/* Observações */}
-          {avaliacaoId && <ObservacoesProcesso entityId={avaliacaoId} entityType="avaliacao" />}
+          {avaliacaoId && <ObservacoesProcesso entityId={avaliacaoId} entityType="avaliacao" title="Observações do Atendimento" />}
 
           {/* Histórico de Movimentações */}
           <Card className="md:col-span-2">
