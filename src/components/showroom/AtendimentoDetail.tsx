@@ -125,12 +125,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       const motosAv = (resAv.data as unknown as MotoAvaliacao[]) || [];
       setMotosAvaliacao(motosAv);
       
-      // Init CRLV URLs from fetched data
+      // Init document URLs from fetched data
       const crlvMap: Record<string, string | null> = {};
+      const atpvMap: Record<string, string | null> = {};
+      const procuracaoMap: Record<string, string | null> = {};
       for (const m of motosAv) {
         crlvMap[m.id] = (m as any).crlv_url || null;
+        atpvMap[m.id] = (m as any).atpv_url || null;
+        procuracaoMap[m.id] = (m as any).procuracao_url || null;
       }
       setCrlvUrls(crlvMap);
+      setAtpvUrls(atpvMap);
+      setProcuracaoUrls(procuracaoMap);
 
       // Store showroom history temporarily
       const showroomHistoryData = showroomRes.data || [];
