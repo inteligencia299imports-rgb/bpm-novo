@@ -642,7 +642,7 @@ const ContratoDialog: React.FC<Props> = ({
                   )}
                   {ipvaTipo === 'loja' && (
                     <div className="mt-2">
-                      <CurrencyField label="Valor do IPVA" value={ipvaValor} onChange={setIpvaValor} />
+                      <CurrencyField label="Valor do IPVA" value={ipvaValor} onChange={setIpvaValor} required />
                     </div>
                   )}
                 </div>
