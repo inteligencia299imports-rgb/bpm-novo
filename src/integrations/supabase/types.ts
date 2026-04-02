@@ -767,6 +767,7 @@ export type Database = {
           ano_fabricacao: string | null
           ano_modelo: string | null
           atendimento_id: string
+          atpv_url: string | null
           categoria: string | null
           cilindrada: string | null
           consulta_realizada: boolean | null
@@ -782,6 +783,7 @@ export type Database = {
           modelo: string
           observacoes: string | null
           placa: string | null
+          procuracao_url: string | null
           resultado_consulta: string | null
           tem_chave_reserva: boolean | null
           tem_manual: boolean | null
@@ -791,6 +793,7 @@ export type Database = {
           ano_fabricacao?: string | null
           ano_modelo?: string | null
           atendimento_id: string
+          atpv_url?: string | null
           categoria?: string | null
           cilindrada?: string | null
           consulta_realizada?: boolean | null
@@ -806,6 +809,7 @@ export type Database = {
           modelo: string
           observacoes?: string | null
           placa?: string | null
+          procuracao_url?: string | null
           resultado_consulta?: string | null
           tem_chave_reserva?: boolean | null
           tem_manual?: boolean | null
@@ -815,6 +819,7 @@ export type Database = {
           ano_fabricacao?: string | null
           ano_modelo?: string | null
           atendimento_id?: string
+          atpv_url?: string | null
           categoria?: string | null
           cilindrada?: string | null
           consulta_realizada?: boolean | null
@@ -830,6 +835,7 @@ export type Database = {
           modelo?: string
           observacoes?: string | null
           placa?: string | null
+          procuracao_url?: string | null
           resultado_consulta?: string | null
           tem_chave_reserva?: boolean | null
           tem_manual?: boolean | null
