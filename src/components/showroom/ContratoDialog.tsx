@@ -566,7 +566,7 @@ const ContratoDialog: React.FC<Props> = ({
                   <InfoDisplay label="Telefone" value={formatPhone(atendimento.telefone)} />
                 </div>
                 <div className="w-1/2">
-                  <label className="text-sm font-medium text-foreground">CPF/CNPJ</label>
+                  <label className="text-sm font-medium text-foreground">CPF/CNPJ<span className="text-destructive ml-0.5">*</span></label>
                   <Input
                     className="mt-1"
                     placeholder="000.000.000-00"
