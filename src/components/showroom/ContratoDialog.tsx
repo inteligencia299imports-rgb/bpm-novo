@@ -630,7 +630,7 @@ const ContratoDialog: React.FC<Props> = ({
                   </div>
                   {ipvaTipo === 'ambos' && (
                     <div className="mt-2">
-                      <label className="text-sm text-muted-foreground">Cotas</label>
+                      <label className="text-sm text-muted-foreground">Cotas<span className="text-destructive ml-0.5">*</span></label>
                       <Input
                         className="mt-1"
                         type="text"
