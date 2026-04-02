@@ -69,9 +69,9 @@ const formatCpfCnpj = (value: string): string => {
   );
 };
 
-const CurrencyField = ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) => (
+const CurrencyField = ({ label, value, onChange, required }: { label: string; value: string; onChange: (v: string) => void; required?: boolean }) => (
   <div>
-    <label className="text-sm font-medium text-foreground">{label}</label>
+    <label className="text-sm font-medium text-foreground">{label}{required && <span className="text-destructive ml-0.5">*</span>}</label>
     <div className="relative mt-1">
       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
       <Input
