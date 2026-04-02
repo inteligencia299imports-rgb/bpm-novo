@@ -664,7 +664,7 @@ const ContratoDialog: React.FC<Props> = ({
                   </div>
                   {transferenciaTipo === 'cliente' && (
                     <div className="mt-2">
-                      <CurrencyField label="Valor da Transferência" value={transferenciaValor} onChange={setTransferenciaValor} />
+                      <CurrencyField label="Valor da Transferência" value={transferenciaValor} onChange={setTransferenciaValor} required />
                     </div>
                   )}
                 </div>
