@@ -99,6 +99,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
+  const [atpvUrl, setAtpvUrl] = useState<string | null>(null);
+  const [procuracaoUrl, setProcuracaoUrl] = useState<string | null>(null);
   const [consultaRealizada, setConsultaRealizada] = useState(false);
   const [consultaSolicitada, setConsultaSolicitada] = useState(false);
   const [resultadoConsulta, setResultadoConsulta] = useState<string | null>(null);
