@@ -1086,6 +1086,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             </Card>
           )}
 
+          {/* Observações */}
+          <ObservacoesProcesso entityId={atendimento.id} entityType="showroom" />
+
           {/* Histórico de Movimentações */}
           <Card className="md:col-span-2">
             <CardHeader className="pb-2">
