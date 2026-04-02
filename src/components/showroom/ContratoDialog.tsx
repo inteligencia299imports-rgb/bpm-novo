@@ -818,7 +818,7 @@ const ContratoDialog: React.FC<Props> = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-foreground">Data do Sinal</label>
+                    <label className="text-sm font-medium text-foreground">Data do Sinal<span className="text-destructive ml-0.5">*</span></label>
                     <Popover open={sinalCalOpen} onOpenChange={setSinalCalOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !dataSinal && "text-muted-foreground")}>
