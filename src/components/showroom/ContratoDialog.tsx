@@ -608,8 +608,8 @@ const ContratoDialog: React.FC<Props> = ({
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
-                  <CurrencyField label="Valor do Sinal" value={valorSinal} onChange={setValorSinal} />
-                  <CurrencyField label="Valor da Venda" value={valorVenda} onChange={setValorVenda} />
+                  <CurrencyField label="Valor do Sinal" value={valorSinal} onChange={setValorSinal} required />
+                  <CurrencyField label="Valor da Venda" value={valorVenda} onChange={setValorVenda} required />
                 </div>
 
                 {/* IPVA */}
