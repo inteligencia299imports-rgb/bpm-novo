@@ -24,7 +24,7 @@ interface Props {
   title?: string;
 }
 
-const ObservacoesProcesso: React.FC<Props> = ({ entityId, entityType }) => {
+const ObservacoesProcesso: React.FC<Props> = ({ entityId, entityType, title = 'Observações do Processo' }) => {
   const { user, userName } = useAuth();
   const [observacoes, setObservacoes] = useState<Observacao[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
