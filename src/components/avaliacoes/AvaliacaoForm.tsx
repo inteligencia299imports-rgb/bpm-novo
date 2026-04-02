@@ -172,6 +172,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setAvaliacao({ ...data, atendimento: data.atendimentos, moto_avaliacao: data.motos_avaliacao });
       setCnhUrl((data.atendimentos as any)?.cnh_url || null);
       setCrlvUrl((data.motos_avaliacao as any)?.crlv_url || null);
+      setAtpvUrl((data.motos_avaliacao as any)?.atpv_url || null);
+      setProcuracaoUrl((data.motos_avaliacao as any)?.procuracao_url || null);
       setConsultaRealizada(!!(data.motos_avaliacao as any)?.consulta_realizada);
       setConsultaSolicitada(!!(data.motos_avaliacao as any)?.consulta_solicitada);
       setResultadoConsulta((data.motos_avaliacao as any)?.resultado_consulta || null);
