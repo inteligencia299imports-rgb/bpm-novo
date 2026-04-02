@@ -21,6 +21,7 @@ interface Observacao {
 interface Props {
   entityId: string;
   entityType: string;
+  title?: string;
 }
 
 const ObservacoesProcesso: React.FC<Props> = ({ entityId, entityType }) => {
