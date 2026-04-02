@@ -1087,7 +1087,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           )}
 
           {/* Observações */}
-          <ObservacoesProcesso entityId={atendimento.id} entityType="showroom" />
+          <ObservacoesProcesso entityId={atendimento.id} entityType="showroom" title="Observações do Atendimento" />
 
           {/* Histórico de Movimentações */}
           <Card className="md:col-span-2">

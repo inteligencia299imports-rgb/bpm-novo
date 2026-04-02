@@ -21,9 +21,10 @@ interface Observacao {
 interface Props {
   entityId: string;
   entityType: string;
+  title?: string;
 }
 
-const ObservacoesProcesso: React.FC<Props> = ({ entityId, entityType }) => {
+const ObservacoesProcesso: React.FC<Props> = ({ entityId, entityType, title = 'Observações do Processo' }) => {
   const { user, userName } = useAuth();
   const [observacoes, setObservacoes] = useState<Observacao[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -83,7 +84,7 @@ const ObservacoesProcesso: React.FC<Props> = ({ entityId, entityType }) => {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-primary" /> Observações do Processo
+              <MessageSquare className="h-4 w-4 text-primary" /> {title}
             </CardTitle>
             <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)} className="gap-1.5 h-7 text-xs">
               <MessageSquarePlus className="h-3.5 w-3.5" /> Adicionar
