@@ -180,7 +180,7 @@ const ContratoDialog: React.FC<Props> = ({
         supabase
           .from('status_history')
           .select('id')
-          .eq('entity_type', 'contrato')
+          .eq('entity_type', 'showroom')
           .eq('entity_id', atendimento.id)
           .eq('status', 'contrato_de_sinal')
           .limit(1),
