@@ -813,7 +813,7 @@ const ContratoDialog: React.FC<Props> = ({
                   <Textarea className="mt-1" rows={3} value={obsInternas} onChange={(e) => setObsInternas(e.target.value)} placeholder="Observações internas..." />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground">Observações do Contrato</label>
+                  <label className="text-sm font-medium text-foreground">Observações do Contrato<span className="text-destructive ml-0.5">*</span></label>
                   <Textarea className="mt-1" rows={3} value={obsContrato} onChange={(e) => setObsContrato(e.target.value)} placeholder="Observações do contrato..." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
