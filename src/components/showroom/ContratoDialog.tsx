@@ -69,9 +69,9 @@ const formatCpfCnpj = (value: string): string => {
   );
 };
 
-const CurrencyField = ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) => (
+const CurrencyField = ({ label, value, onChange, required }: { label: string; value: string; onChange: (v: string) => void; required?: boolean }) => (
   <div>
-    <label className="text-sm font-medium text-foreground">{label}</label>
+    <label className="text-sm font-medium text-foreground">{label}{required && <span className="text-destructive ml-0.5">*</span>}</label>
     <div className="relative mt-1">
       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
       <Input
@@ -180,7 +180,7 @@ const ContratoDialog: React.FC<Props> = ({
         supabase
           .from('status_history')
           .select('id')
-          .eq('entity_type', 'contrato')
+          .eq('entity_type', 'showroom')
           .eq('entity_id', atendimento.id)
           .eq('status', 'contrato_de_sinal')
           .limit(1),
@@ -566,7 +566,7 @@ const ContratoDialog: React.FC<Props> = ({
                   <InfoDisplay label="Telefone" value={formatPhone(atendimento.telefone)} />
                 </div>
                 <div className="w-1/2">
-                  <label className="text-sm font-medium text-foreground">CPF/CNPJ</label>
+                  <label className="text-sm font-medium text-foreground">CPF/CNPJ<span className="text-destructive ml-0.5">*</span></label>
                   <Input
                     className="mt-1"
                     placeholder="000.000.000-00"
@@ -608,13 +608,13 @@ const ContratoDialog: React.FC<Props> = ({
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
-                  <CurrencyField label="Valor do Sinal" value={valorSinal} onChange={setValorSinal} />
-                  <CurrencyField label="Valor da Venda" value={valorVenda} onChange={setValorVenda} />
+                  <CurrencyField label="Valor do Sinal" value={valorSinal} onChange={setValorSinal} required />
+                  <CurrencyField label="Valor da Venda" value={valorVenda} onChange={setValorVenda} required />
                 </div>
 
                 {/* IPVA */}
                 <div>
-                  <label className="text-sm font-medium text-foreground">IPVA</label>
+                  <label className="text-sm font-medium text-foreground">IPVA<span className="text-destructive ml-0.5">*</span></label>
                   <div className="flex gap-2 mt-1 flex-wrap">
                     {['loja', 'cliente', 'ambos'].map(opt => (
                       <Button
@@ -630,7 +630,7 @@ const ContratoDialog: React.FC<Props> = ({
                   </div>
                   {ipvaTipo === 'ambos' && (
                     <div className="mt-2">
-                      <label className="text-sm text-muted-foreground">Cotas</label>
+                      <label className="text-sm text-muted-foreground">Cotas<span className="text-destructive ml-0.5">*</span></label>
                       <Input
                         className="mt-1"
                         type="text"
@@ -642,14 +642,14 @@ const ContratoDialog: React.FC<Props> = ({
                   )}
                   {ipvaTipo === 'loja' && (
                     <div className="mt-2">
-                      <CurrencyField label="Valor do IPVA" value={ipvaValor} onChange={setIpvaValor} />
+                      <CurrencyField label="Valor do IPVA" value={ipvaValor} onChange={setIpvaValor} required />
                     </div>
                   )}
                 </div>
 
                 {/* Transferência */}
                 <div>
-                  <label className="text-sm font-medium text-foreground">Transferência</label>
+                  <label className="text-sm font-medium text-foreground">Transferência<span className="text-destructive ml-0.5">*</span></label>
                   <div className="flex gap-2 mt-1 flex-wrap">
                     {['loja', 'cliente', 'outra_uf'].map(opt => (
                       <Button
@@ -664,7 +664,7 @@ const ContratoDialog: React.FC<Props> = ({
                   </div>
                   {transferenciaTipo === 'cliente' && (
                     <div className="mt-2">
-                      <CurrencyField label="Valor da Transferência" value={transferenciaValor} onChange={setTransferenciaValor} />
+                      <CurrencyField label="Valor da Transferência" value={transferenciaValor} onChange={setTransferenciaValor} required />
                     </div>
                   )}
                 </div>
@@ -813,12 +813,12 @@ const ContratoDialog: React.FC<Props> = ({
                   <Textarea className="mt-1" rows={3} value={obsInternas} onChange={(e) => setObsInternas(e.target.value)} placeholder="Observações internas..." />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground">Observações do Contrato</label>
+                  <label className="text-sm font-medium text-foreground">Observações do Contrato<span className="text-destructive ml-0.5">*</span></label>
                   <Textarea className="mt-1" rows={3} value={obsContrato} onChange={(e) => setObsContrato(e.target.value)} placeholder="Observações do contrato..." />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-foreground">Data do Sinal</label>
+                    <label className="text-sm font-medium text-foreground">Data do Sinal<span className="text-destructive ml-0.5">*</span></label>
                     <Popover open={sinalCalOpen} onOpenChange={setSinalCalOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !dataSinal && "text-muted-foreground")}>
@@ -835,7 +835,7 @@ const ContratoDialog: React.FC<Props> = ({
                     </Popover>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">Data Vencimento do Sinal</label>
+                    <label className="text-sm font-medium text-foreground">Data Vencimento do Sinal<span className="text-destructive ml-0.5">*</span></label>
                     <Popover open={vencCalOpen} onOpenChange={setVencCalOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !dataVencimento && "text-muted-foreground")}>
