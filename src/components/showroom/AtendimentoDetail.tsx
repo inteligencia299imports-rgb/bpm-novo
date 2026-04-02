@@ -76,6 +76,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [cnhUrl, setCnhUrl] = useState<string | null>(atendimento.cnh_url || null);
   const [crlvUrls, setCrlvUrls] = useState<Record<string, string | null>>({});
+  const [atpvUrls, setAtpvUrls] = useState<Record<string, string | null>>({});
+  const [procuracaoUrls, setProcuracaoUrls] = useState<Record<string, string | null>>({});
   const [photoCountMap, setPhotoCountMap] = useState<Record<string, number>>({});
   const [valorPopup, setValorPopup] = useState<{ valorSinal: string; valorVenda: string; valorFechamento: string; modo: 'sinal' | 'vendido' } | null>(null);
   const [savingValor, setSavingValor] = useState(false);
@@ -123,12 +125,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       const motosAv = (resAv.data as unknown as MotoAvaliacao[]) || [];
       setMotosAvaliacao(motosAv);
       
-      // Init CRLV URLs from fetched data
+      // Init document URLs from fetched data
       const crlvMap: Record<string, string | null> = {};
+      const atpvMap: Record<string, string | null> = {};
+      const procuracaoMap: Record<string, string | null> = {};
       for (const m of motosAv) {
         crlvMap[m.id] = (m as any).crlv_url || null;
+        atpvMap[m.id] = (m as any).atpv_url || null;
+        procuracaoMap[m.id] = (m as any).procuracao_url || null;
       }
       setCrlvUrls(crlvMap);
+      setAtpvUrls(atpvMap);
+      setProcuracaoUrls(procuracaoMap);
 
       // Store showroom history temporarily
       const showroomHistoryData = showroomRes.data || [];
@@ -906,6 +914,36 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         onRemoved={async () => {
                           await supabase.from('motos_avaliacao').update({ crlv_url: null } as any).eq('id', moto.id);
                           setCrlvUrls(prev => ({ ...prev, [moto.id]: null }));
+                        }}
+                      />
+
+                      {/* ATPV */}
+                      <DocumentUpload
+                        label="ATPV"
+                        currentUrl={atpvUrls[moto.id] || null}
+                        bucketPath={`docs/${moto.id}/atpv`}
+                        onUploaded={async (url) => {
+                          await supabase.from('motos_avaliacao').update({ atpv_url: url } as any).eq('id', moto.id);
+                          setAtpvUrls(prev => ({ ...prev, [moto.id]: url }));
+                        }}
+                        onRemoved={async () => {
+                          await supabase.from('motos_avaliacao').update({ atpv_url: null } as any).eq('id', moto.id);
+                          setAtpvUrls(prev => ({ ...prev, [moto.id]: null }));
+                        }}
+                      />
+
+                      {/* Procuração */}
+                      <DocumentUpload
+                        label="Procuração"
+                        currentUrl={procuracaoUrls[moto.id] || null}
+                        bucketPath={`docs/${moto.id}/procuracao`}
+                        onUploaded={async (url) => {
+                          await supabase.from('motos_avaliacao').update({ procuracao_url: url } as any).eq('id', moto.id);
+                          setProcuracaoUrls(prev => ({ ...prev, [moto.id]: url }));
+                        }}
+                        onRemoved={async () => {
+                          await supabase.from('motos_avaliacao').update({ procuracao_url: null } as any).eq('id', moto.id);
+                          setProcuracaoUrls(prev => ({ ...prev, [moto.id]: null }));
                         }}
                       />
 

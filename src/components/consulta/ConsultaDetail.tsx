@@ -46,6 +46,8 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto.crlv_url || null);
+  const [atpvUrl, setAtpvUrl] = useState<string | null>((moto as any).atpv_url || null);
+  const [procuracaoUrl, setProcuracaoUrl] = useState<string | null>((moto as any).procuracao_url || null);
   const [resultadoPopup, setResultadoPopup] = useState(false);
   const [resultadoTexto, setResultadoTexto] = useState<string>(moto.resultado_consulta || '');
   const [saving, setSaving] = useState(false);
@@ -282,19 +284,47 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 </>
               )}
               <Separator className="my-2" />
-              <DocumentUpload
-                label="CRLV"
-                currentUrl={crlvUrl}
-                bucketPath={`docs/${moto.id}/crlv`}
-                onUploaded={async (url) => {
-                  await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
-                  setCrlvUrl(url);
-                }}
-                onRemoved={async () => {
-                  await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
-                  setCrlvUrl(null);
-                }}
-              />
+              <div className="flex gap-2 flex-wrap">
+                <DocumentUpload
+                  label="CRLV"
+                  currentUrl={crlvUrl}
+                  bucketPath={`docs/${moto.id}/crlv`}
+                  onUploaded={async (url) => {
+                    await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
+                    setCrlvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
+                    setCrlvUrl(null);
+                  }}
+                />
+                <DocumentUpload
+                  label="ATPV"
+                  currentUrl={atpvUrl}
+                  bucketPath={`docs/${moto.id}/atpv`}
+                  onUploaded={async (url) => {
+                    await supabase.from('motos_avaliacao').update({ atpv_url: url } as any).eq('id', moto.id);
+                    setAtpvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('motos_avaliacao').update({ atpv_url: null } as any).eq('id', moto.id);
+                    setAtpvUrl(null);
+                  }}
+                />
+                <DocumentUpload
+                  label="Procuração"
+                  currentUrl={procuracaoUrl}
+                  bucketPath={`docs/${moto.id}/procuracao`}
+                  onUploaded={async (url) => {
+                    await supabase.from('motos_avaliacao').update({ procuracao_url: url } as any).eq('id', moto.id);
+                    setProcuracaoUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('motos_avaliacao').update({ procuracao_url: null } as any).eq('id', moto.id);
+                    setProcuracaoUrl(null);
+                  }}
+                />
+              </div>
             </CardContent>
           </Card>
 

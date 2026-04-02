@@ -99,6 +99,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
+  const [atpvUrl, setAtpvUrl] = useState<string | null>(null);
+  const [procuracaoUrl, setProcuracaoUrl] = useState<string | null>(null);
   const [consultaRealizada, setConsultaRealizada] = useState(false);
   const [consultaSolicitada, setConsultaSolicitada] = useState(false);
   const [resultadoConsulta, setResultadoConsulta] = useState<string | null>(null);
@@ -161,7 +163,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       .select(`
         *,
         atendimentos (id, nome_cliente, telefone, loja, vendedor_id, interesse, sexo, uf, tipo_atendimento, origem, temperatura, created_at, cnh_url, cpf_cnpj, email, cep, endereco),
-        motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, consulta_realizada, consulta_solicitada, resultado_consulta, tem_manual, tem_chave_reserva, manutencao_vencida)
+        motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, atpv_url, procuracao_url, consulta_realizada, consulta_solicitada, resultado_consulta, tem_manual, tem_chave_reserva, manutencao_vencida)
       `)
       .eq('id', avaliacaoId)
       .single();
@@ -170,6 +172,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setAvaliacao({ ...data, atendimento: data.atendimentos, moto_avaliacao: data.motos_avaliacao });
       setCnhUrl((data.atendimentos as any)?.cnh_url || null);
       setCrlvUrl((data.motos_avaliacao as any)?.crlv_url || null);
+      setAtpvUrl((data.motos_avaliacao as any)?.atpv_url || null);
+      setProcuracaoUrl((data.motos_avaliacao as any)?.procuracao_url || null);
       setConsultaRealizada(!!(data.motos_avaliacao as any)?.consulta_realizada);
       setConsultaSolicitada(!!(data.motos_avaliacao as any)?.consulta_solicitada);
       setResultadoConsulta((data.motos_avaliacao as any)?.resultado_consulta || null);
@@ -692,6 +696,32 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   onRemoved={async () => {
                     await supabase.from('motos_avaliacao').update({ crlv_url: null } as any).eq('id', moto?.id);
                     setCrlvUrl(null);
+                  }}
+                />
+                <DocumentUpload
+                  label="ATPV"
+                  currentUrl={atpvUrl}
+                  bucketPath={`docs/${moto?.id}/atpv`}
+                  onUploaded={async (url) => {
+                    await supabase.from('motos_avaliacao').update({ atpv_url: url } as any).eq('id', moto?.id);
+                    setAtpvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('motos_avaliacao').update({ atpv_url: null } as any).eq('id', moto?.id);
+                    setAtpvUrl(null);
+                  }}
+                />
+                <DocumentUpload
+                  label="Procuração"
+                  currentUrl={procuracaoUrl}
+                  bucketPath={`docs/${moto?.id}/procuracao`}
+                  onUploaded={async (url) => {
+                    await supabase.from('motos_avaliacao').update({ procuracao_url: url } as any).eq('id', moto?.id);
+                    setProcuracaoUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('motos_avaliacao').update({ procuracao_url: null } as any).eq('id', moto?.id);
+                    setProcuracaoUrl(null);
                   }}
                 />
                 {cnhUrl && crlvUrl && hasEvaluation && !consultaSolicitada && !consultaRealizada && (
