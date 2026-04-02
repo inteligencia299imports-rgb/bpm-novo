@@ -46,6 +46,8 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto.crlv_url || null);
+  const [atpvUrl, setAtpvUrl] = useState<string | null>((moto as any).atpv_url || null);
+  const [procuracaoUrl, setProcuracaoUrl] = useState<string | null>((moto as any).procuracao_url || null);
   const [resultadoPopup, setResultadoPopup] = useState(false);
   const [resultadoTexto, setResultadoTexto] = useState<string>(moto.resultado_consulta || '');
   const [saving, setSaving] = useState(false);
