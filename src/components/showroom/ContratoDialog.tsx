@@ -614,7 +614,7 @@ const ContratoDialog: React.FC<Props> = ({
 
                 {/* IPVA */}
                 <div>
-                  <label className="text-sm font-medium text-foreground">IPVA</label>
+                  <label className="text-sm font-medium text-foreground">IPVA<span className="text-destructive ml-0.5">*</span></label>
                   <div className="flex gap-2 mt-1 flex-wrap">
                     {['loja', 'cliente', 'ambos'].map(opt => (
                       <Button
