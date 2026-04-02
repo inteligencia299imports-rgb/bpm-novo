@@ -917,6 +917,36 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         }}
                       />
 
+                      {/* ATPV */}
+                      <DocumentUpload
+                        label="ATPV"
+                        currentUrl={atpvUrls[moto.id] || null}
+                        bucketPath={`docs/${moto.id}/atpv`}
+                        onUploaded={async (url) => {
+                          await supabase.from('motos_avaliacao').update({ atpv_url: url } as any).eq('id', moto.id);
+                          setAtpvUrls(prev => ({ ...prev, [moto.id]: url }));
+                        }}
+                        onRemoved={async () => {
+                          await supabase.from('motos_avaliacao').update({ atpv_url: null } as any).eq('id', moto.id);
+                          setAtpvUrls(prev => ({ ...prev, [moto.id]: null }));
+                        }}
+                      />
+
+                      {/* Procuração */}
+                      <DocumentUpload
+                        label="Procuração"
+                        currentUrl={procuracaoUrls[moto.id] || null}
+                        bucketPath={`docs/${moto.id}/procuracao`}
+                        onUploaded={async (url) => {
+                          await supabase.from('motos_avaliacao').update({ procuracao_url: url } as any).eq('id', moto.id);
+                          setProcuracaoUrls(prev => ({ ...prev, [moto.id]: url }));
+                        }}
+                        onRemoved={async () => {
+                          await supabase.from('motos_avaliacao').update({ procuracao_url: null } as any).eq('id', moto.id);
+                          setProcuracaoUrls(prev => ({ ...prev, [moto.id]: null }));
+                        }}
+                      />
+
                       {/* 3. Avaliada / Solicitar Avaliação */}
                       {!moto.enviada_avaliacao ? (
                         <Button

@@ -698,6 +698,32 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     setCrlvUrl(null);
                   }}
                 />
+                <DocumentUpload
+                  label="ATPV"
+                  currentUrl={atpvUrl}
+                  bucketPath={`docs/${moto?.id}/atpv`}
+                  onUploaded={async (url) => {
+                    await supabase.from('motos_avaliacao').update({ atpv_url: url } as any).eq('id', moto?.id);
+                    setAtpvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('motos_avaliacao').update({ atpv_url: null } as any).eq('id', moto?.id);
+                    setAtpvUrl(null);
+                  }}
+                />
+                <DocumentUpload
+                  label="Procuração"
+                  currentUrl={procuracaoUrl}
+                  bucketPath={`docs/${moto?.id}/procuracao`}
+                  onUploaded={async (url) => {
+                    await supabase.from('motos_avaliacao').update({ procuracao_url: url } as any).eq('id', moto?.id);
+                    setProcuracaoUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('motos_avaliacao').update({ procuracao_url: null } as any).eq('id', moto?.id);
+                    setProcuracaoUrl(null);
+                  }}
+                />
                 {cnhUrl && crlvUrl && hasEvaluation && !consultaSolicitada && !consultaRealizada && (
                   <Button
                     size="sm"
