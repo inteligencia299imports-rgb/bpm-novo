@@ -22,6 +22,7 @@ import PhotoUpload from './PhotoUpload';
 import DocumentUpload from './DocumentUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import ObservacoesProcesso from '@/components/shared/ObservacoesProcesso';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import ContratoDialog from './ContratoDialog';
 
@@ -1084,6 +1085,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               </CardContent>
             </Card>
           )}
+
+          {/* Observações */}
+          <ObservacoesProcesso entityId={atendimento.id} entityType="showroom" />
 
           {/* Histórico de Movimentações */}
           <Card className="md:col-span-2">

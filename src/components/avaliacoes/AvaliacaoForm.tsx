@@ -19,6 +19,7 @@ import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, M
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import ObservacoesProcesso from '@/components/shared/ObservacoesProcesso';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
 import type { SituacaoAvaliacao, MotoFoto } from '@/types/crm';
 import { toast } from 'sonner';
@@ -912,6 +913,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               )}
             </CardContent>
           </Card>
+
+          {/* Observações */}
+          {avaliacaoId && <ObservacoesProcesso entityId={avaliacaoId} entityType="avaliacao" />}
 
           {/* Histórico de Movimentações */}
           <Card className="md:col-span-2">
