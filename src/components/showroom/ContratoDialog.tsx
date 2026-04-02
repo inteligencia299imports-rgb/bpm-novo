@@ -835,7 +835,7 @@ const ContratoDialog: React.FC<Props> = ({
                     </Popover>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">Data Vencimento do Sinal</label>
+                    <label className="text-sm font-medium text-foreground">Data Vencimento do Sinal<span className="text-destructive ml-0.5">*</span></label>
                     <Popover open={vencCalOpen} onOpenChange={setVencCalOpen}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !dataVencimento && "text-muted-foreground")}>
