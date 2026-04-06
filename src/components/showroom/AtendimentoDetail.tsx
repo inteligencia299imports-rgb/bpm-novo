@@ -87,6 +87,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
   const [savingMotivo, setSavingMotivo] = useState(false);
   const [showResultadoConsulta, setShowResultadoConsulta] = useState<string | null>(null);
+  const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
   const [editNome, setEditNome] = useState('');
   const [editTelefone, setEditTelefone] = useState('');
