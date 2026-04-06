@@ -77,8 +77,8 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
 
           {/* Moto reference */}
           {motoLabel && (
-            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-              <ArrowLeftRight className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-xs font-medium text-primary min-w-0">
+              <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{motoLabel}</span>
             </div>
           )}
