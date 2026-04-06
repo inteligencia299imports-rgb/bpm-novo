@@ -110,7 +110,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
   const [custosOpen, setCustosOpen] = useState(false);
-
+  const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const refreshHistory = async () => {
     if (!avaliacao) return;
     const motoId = avaliacao.moto_avaliacao_id;
