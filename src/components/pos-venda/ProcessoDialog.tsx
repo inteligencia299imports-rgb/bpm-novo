@@ -201,10 +201,15 @@ const ProcessoDialog: React.FC<Props> = ({
         }
       }
 
-      await supabase
+      const { error: updateError } = await supabase
         .from('atendimentos')
         .update({ [statusField]: newStatus, [observacoesField]: observacoes } as any)
         .eq('id', atendimentoId);
+
+      if (updateError) {
+        toast.error('Erro ao atualizar status: ' + updateError.message);
+        return;
+      }
 
       toast.success('Processo salvo com sucesso!');
       onStatusChanged?.(newStatus);

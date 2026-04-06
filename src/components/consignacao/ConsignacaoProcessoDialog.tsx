@@ -186,10 +186,15 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       }
 
       // Update avaliacoes
-      await supabase
+      const { error: updateError } = await supabase
         .from('avaliacoes')
         .update({ consignacao_status: newStatus, consignacao_observacoes: observacoes } as any)
         .eq('id', avaliacaoId);
+
+      if (updateError) {
+        toast.error('Erro ao atualizar status: ' + updateError.message);
+        return;
+      }
 
       // Record status history
       if (newStatus !== previousStatus) {
