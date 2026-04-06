@@ -156,9 +156,14 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         data_conclusao: e.data_conclusao,
       }));
 
-      await supabase
+      const { error: upsertError } = await supabase
         .from('consignacao_processos' as any)
         .upsert(rows as any, { onConflict: 'avaliacao_id,etapa' });
+
+      if (upsertError) {
+        toast.error('Erro ao salvar checks: ' + upsertError.message);
+        return;
+      }
 
       // Determine status based on etapas
       let newStatus = 'em_aberto';
