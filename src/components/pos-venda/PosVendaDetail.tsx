@@ -129,10 +129,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       const avaliadorIds = [...new Set((resAval.data || []).map((av: any) => av.avaliador_id).filter(Boolean))];
 
       // Step 2: Estoque + Avaliador names in parallel
-      const [estoqueResult, rolesResult] = await Promise.all([
+      const vendedorPromise = item.vendedor_id
+        ? supabase.from('user_roles').select('nome').eq('user_id', item.vendedor_id).single()
+        : Promise.resolve({ data: null as any });
+      const [estoqueResult, rolesResult, vendedorResult] = await Promise.all([
         estoqueIds.length > 0 ? supabase.from('estoque').select('*').in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
         avaliadorIds.length > 0 ? supabase.from('user_roles').select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
+        vendedorPromise,
       ]);
+
+      if (vendedorResult.data?.nome) setVendedorNome(vendedorResult.data.nome);
 
       // Process estoque
       const estoqueMap: Record<string, any> = {};
