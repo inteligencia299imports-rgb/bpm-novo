@@ -192,6 +192,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setClassificacao((data as any).classificacao || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
 
+      // Fetch vendedor name
+      const vendedorId = (data.atendimentos as any)?.vendedor_id;
+      if (vendedorId) {
+        const { data: vendedorData } = await supabase.from('user_roles').select('nome').eq('user_id', vendedorId).single();
+        if (vendedorData?.nome) setVendedorNome(vendedorData.nome);
+      }
+
       if (data.moto_avaliacao_id) {
         const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', data.moto_avaliacao_id);
         if (fotosData) setFotos(fotosData);
