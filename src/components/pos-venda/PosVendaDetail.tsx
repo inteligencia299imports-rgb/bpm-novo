@@ -3,7 +3,7 @@ import { getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -292,7 +292,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               <CardContent>
                 {vendedorNome && (
                   <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
-                    <User className="h-4 w-4 text-primary" />
+                    <IdCard className="h-4 w-4 text-primary" />
                     <span className="text-sm font-semibold text-primary">{vendedorNome}</span>
                   </div>
                 )}
