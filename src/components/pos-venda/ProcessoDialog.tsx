@@ -150,9 +150,14 @@ const ProcessoDialog: React.FC<Props> = ({
         data_conclusao: e.data_conclusao,
       }));
 
-      await supabase
+      const { error: upsertError } = await supabase
         .from('pos_venda_processos')
         .upsert(rows as any, { onConflict: 'atendimento_id,etapa' });
+
+      if (upsertError) {
+        toast.error('Erro ao salvar checks: ' + upsertError.message);
+        return;
+      }
 
       // Determine status
       let newStatus = 'em_aberto';
