@@ -157,7 +157,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       setAtendimentos(results);
     }
     setLoading(false);
-  }, [filterLoja, filterInteresse, search, dateFrom, dateTo]);
+  }, [filterLoja, filterInteresse, filterVendedor, search, dateFrom, dateTo]);
 
   useEffect(() => { fetchAtendimentos(); }, [fetchAtendimentos]);
 
