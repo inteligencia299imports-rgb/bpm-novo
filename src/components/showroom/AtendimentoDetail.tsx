@@ -173,9 +173,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         ? supabase.from('moto_fotos').select('moto_avaliacao_id').in('moto_avaliacao_id', motoIds).then(r => r)
         : Promise.resolve({ data: [] as any[] });
 
-      const [estoqueRes, rolesRes, consultaRes, avaliacaoRes, fotosCountRes] = await Promise.all([
-        estoquePromise, avaliadorPromise, consultaPromise, avaliacaoHistPromise, fotosCountPromise,
+      const [estoqueRes, rolesRes, consultaRes, avaliacaoRes, fotosCountRes, vendedorRes] = await Promise.all([
+        estoquePromise, avaliadorPromise, consultaPromise, avaliacaoHistPromise, fotosCountPromise, vendedorPromise,
       ]);
+
+      if (vendedorRes.data?.nome) setVendedorNome(vendedorRes.data.nome);
 
       // Update estoque
       if (estoqueRes.data) {
