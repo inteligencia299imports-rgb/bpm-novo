@@ -655,7 +655,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             <CardContent>
               {vendedorNome && (
                 <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
-                  <User className="h-4 w-4 text-primary" />
+                  <IdCard className="h-4 w-4 text-primary" />
                   <span className="text-sm font-semibold text-primary">{vendedorNome}</span>
                 </div>
               )}
