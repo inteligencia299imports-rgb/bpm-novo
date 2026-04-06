@@ -37,9 +37,17 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   const [search, setSearch] = useState('');
   const [filterLoja, setFilterLoja] = useState('todas');
   const [filterInteresse, setFilterInteresse] = useState('todos');
+  const [filterVendedor, setFilterVendedor] = useState('todos');
+  const [vendedores, setVendedores] = useState<{ user_id: string; nome: string }[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+
+  useEffect(() => {
+    supabase.from('user_roles').select('user_id, nome').eq('role', 'vendedor').order('nome').then(({ data }) => {
+      if (data) setVendedores(data);
+    });
+  }, []);
 
   // Open detail from external navigation (e.g. NPS, Estoque)
   useEffect(() => {
