@@ -71,7 +71,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     } else if (filterLoja === '299') {
       query = query.in('loja', ['299i', '299s', 'Aventura']);
     }
-    if (filterInteresse !== 'todos') query = query.eq('interesse', filterInteresse);
+    if (filterVendedor !== 'todos') query = query.eq('vendedor_id', filterVendedor);
     if (dateFrom) {
       query = query.gte('created_at', dateFrom.toISOString());
     }
