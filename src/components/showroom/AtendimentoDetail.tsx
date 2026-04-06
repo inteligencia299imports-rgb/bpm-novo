@@ -653,6 +653,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {vendedorNome && (
+                <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
+                  <User className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-primary">{vendedorNome}</span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Loja" value={atendimento.loja} />
                 <InfoItem label="Tipo de Atendimento" value={atendimento.tipo_atendimento} />
