@@ -281,7 +281,13 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
               </SelectContent>
             </Select>
 
-            {/* Date From */}
+            <Select value={filterVendedor} onValueChange={setFilterVendedor}>
+              <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Vendedor" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os vendedores</SelectItem>
+                {vendedores.map(v => <SelectItem key={v.user_id} value={v.user_id}>{v.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className={cn("justify-start text-left font-normal bg-card border-border", !dateFrom && "text-muted-foreground")}>
