@@ -187,9 +187,15 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         data_conclusao: e.data_conclusao,
       }));
 
-      await supabase
+      const { error: upsertError } = await supabase
         .from('pos_compra_processos' as any)
         .upsert(rows as any, { onConflict: 'avaliacao_id,etapa' });
+
+      if (upsertError) {
+        toast.error(`Erro ao salvar checks: ${upsertError.message}`);
+        setSaving(false);
+        return;
+      }
 
       // Determine status
       let newStatus = 'em_aberto';
@@ -209,10 +215,16 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       }
 
       // Update avaliacoes
-      await supabase
+      const { error: updateError } = await supabase
         .from('avaliacoes')
         .update({ pos_compra_status: newStatus, pos_compra_observacoes: observacoes } as any)
         .eq('id', avaliacaoId);
+
+      if (updateError) {
+        toast.error(`Erro ao atualizar status: ${updateError.message}`);
+        setSaving(false);
+        return;
+      }
 
       // Record status history for special transitions
       const specialEtapas = ['DOCUMENTAÇÃO COM DESPACHANTE', 'PROCESSO PAUSADO', 'TRANSFERÊNCIA CONCLUÍDA'];
