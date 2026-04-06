@@ -37,9 +37,17 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   const [search, setSearch] = useState('');
   const [filterLoja, setFilterLoja] = useState('todas');
   const [filterInteresse, setFilterInteresse] = useState('todos');
+  const [filterVendedor, setFilterVendedor] = useState('todos');
+  const [vendedores, setVendedores] = useState<{ user_id: string; nome: string }[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+
+  useEffect(() => {
+    supabase.from('user_roles').select('user_id, nome').eq('role', 'vendedor').order('nome').then(({ data }) => {
+      if (data) setVendedores(data);
+    });
+  }, []);
 
   // Open detail from external navigation (e.g. NPS, Estoque)
   useEffect(() => {
@@ -63,7 +71,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     } else if (filterLoja === '299') {
       query = query.in('loja', ['299i', '299s', 'Aventura']);
     }
-    if (filterInteresse !== 'todos') query = query.eq('interesse', filterInteresse);
+    if (filterVendedor !== 'todos') query = query.eq('vendedor_id', filterVendedor);
     if (dateFrom) {
       query = query.gte('created_at', dateFrom.toISOString());
     }
@@ -149,7 +157,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       setAtendimentos(results);
     }
     setLoading(false);
-  }, [filterLoja, filterInteresse, search, dateFrom, dateTo]);
+  }, [filterLoja, filterInteresse, filterVendedor, search, dateFrom, dateTo]);
 
   useEffect(() => { fetchAtendimentos(); }, [fetchAtendimentos]);
 
@@ -273,7 +281,13 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
               </SelectContent>
             </Select>
 
-            {/* Date From */}
+            <Select value={filterVendedor} onValueChange={setFilterVendedor}>
+              <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Vendedor" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os vendedores</SelectItem>
+                {vendedores.map(v => <SelectItem key={v.user_id} value={v.user_id}>{v.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className={cn("justify-start text-left font-normal bg-card border-border", !dateFrom && "text-muted-foreground")}>
@@ -320,12 +334,12 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
               </PopoverContent>
             </Popover>
             </div>
-            {(filterLoja !== 'todas' || filterInteresse !== 'todos' || dateFrom || dateTo) && (
+            {(filterLoja !== 'todas' || filterInteresse !== 'todos' || filterVendedor !== 'todos' || dateFrom || dateTo) && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                onClick={() => { setFilterLoja('todas'); setFilterInteresse('todos'); setDateFrom(undefined); setDateTo(undefined); }}
+                onClick={() => { setFilterLoja('todas'); setFilterInteresse('todos'); setFilterVendedor('todos'); setDateFrom(undefined); setDateTo(undefined); }}
               >
                 <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
               </Button>
