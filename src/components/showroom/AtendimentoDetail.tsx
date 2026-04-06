@@ -87,6 +87,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
   const [savingMotivo, setSavingMotivo] = useState(false);
   const [showResultadoConsulta, setShowResultadoConsulta] = useState<string | null>(null);
+  const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
   const [editNome, setEditNome] = useState('');
   const [editTelefone, setEditTelefone] = useState('');
@@ -154,6 +155,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       const avaliadorIds = resAval.data
         ? [...new Set(resAval.data.map((av: any) => av.avaliador_id).filter(Boolean))]
         : [];
+      const vendedorPromise = atendimento.vendedor_id
+        ? supabase.from('user_roles').select('nome').eq('user_id', atendimento.vendedor_id).single().then(r => r)
+        : Promise.resolve({ data: null as any });
+      const allRoleIds = [...new Set([...avaliadorIds, atendimento.vendedor_id].filter(Boolean))];
       const avaliadorPromise = avaliadorIds.length > 0
         ? supabase.from('user_roles').select('user_id, nome').in('user_id', avaliadorIds).then(r => r)
         : Promise.resolve({ data: null as any[] | null });
@@ -168,9 +173,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         ? supabase.from('moto_fotos').select('moto_avaliacao_id').in('moto_avaliacao_id', motoIds).then(r => r)
         : Promise.resolve({ data: [] as any[] });
 
-      const [estoqueRes, rolesRes, consultaRes, avaliacaoRes, fotosCountRes] = await Promise.all([
-        estoquePromise, avaliadorPromise, consultaPromise, avaliacaoHistPromise, fotosCountPromise,
+      const [estoqueRes, rolesRes, consultaRes, avaliacaoRes, fotosCountRes, vendedorRes] = await Promise.all([
+        estoquePromise, avaliadorPromise, consultaPromise, avaliacaoHistPromise, fotosCountPromise, vendedorPromise,
       ]);
+
+      if (vendedorRes.data?.nome) setVendedorNome(vendedorRes.data.nome);
 
       // Update estoque
       if (estoqueRes.data) {
@@ -646,6 +653,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {vendedorNome && (
+                <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
+                  <User className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-primary">{vendedorNome}</span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Loja" value={atendimento.loja} />
                 <InfoItem label="Tipo de Atendimento" value={atendimento.tipo_atendimento} />

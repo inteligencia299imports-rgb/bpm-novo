@@ -110,7 +110,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
   const [custosOpen, setCustosOpen] = useState(false);
-
+  const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const refreshHistory = async () => {
     if (!avaliacao) return;
     const motoId = avaliacao.moto_avaliacao_id;
@@ -191,6 +191,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setObsAvaliador(data.observacao_avaliador || '');
       setClassificacao((data as any).classificacao || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
+
+      // Fetch vendedor name
+      const vendedorId = (data.atendimentos as any)?.vendedor_id;
+      if (vendedorId) {
+        const { data: vendedorData } = await supabase.from('user_roles').select('nome').eq('user_id', vendedorId).single();
+        if (vendedorData?.nome) setVendedorNome(vendedorData.nome);
+      }
 
       if (data.moto_avaliacao_id) {
         const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', data.moto_avaliacao_id);
@@ -634,6 +641,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {vendedorNome && (
+                <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
+                  <Store className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-primary">{vendedorNome}</span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Loja" value={at?.loja} />
                 <InfoItem label="Tipo" value={at?.tipo_atendimento} />

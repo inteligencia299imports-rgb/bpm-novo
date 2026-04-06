@@ -79,6 +79,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [processoOpen, setProcessoOpen] = useState(false);
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
   const [intermHistory, setIntermHistory] = useState<any[]>([]);
+  const [vendedorNome, setVendedorNome] = useState<string | null>(null);
 
   const refreshConsignada = async () => {
     const consignadaEstoque = Object.values(estoqueData).find((e: any) => e.tipo === 'consignada');
@@ -128,10 +129,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       const avaliadorIds = [...new Set((resAval.data || []).map((av: any) => av.avaliador_id).filter(Boolean))];
 
       // Step 2: Estoque + Avaliador names in parallel
-      const [estoqueResult, rolesResult] = await Promise.all([
+      const vendedorPromise = item.vendedor_id
+        ? supabase.from('user_roles').select('nome').eq('user_id', item.vendedor_id).single()
+        : Promise.resolve({ data: null as any });
+      const [estoqueResult, rolesResult, vendedorResult] = await Promise.all([
         estoqueIds.length > 0 ? supabase.from('estoque').select('*').in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
         avaliadorIds.length > 0 ? supabase.from('user_roles').select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
+        vendedorPromise,
       ]);
+
+      if (vendedorResult.data?.nome) setVendedorNome(vendedorResult.data.nome);
 
       // Process estoque
       const estoqueMap: Record<string, any> = {};
@@ -283,6 +290,12 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {vendedorNome && (
+                  <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
+                    <User className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold text-primary">{vendedorNome}</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <InfoItem label="Loja" value={item.loja} />
                   <InfoItem label="Tipo de Atendimento" value={item.tipo_atendimento} />
