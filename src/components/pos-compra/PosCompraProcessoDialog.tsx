@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
+import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -27,6 +28,7 @@ const ETAPAS = [
 ];
 
 interface EtapaData {
+  id?: string;
   etapa: string;
   concluida: boolean;
   data_conclusao: string | null;
@@ -59,7 +61,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       const [{ data }, { data: avData }] = await Promise.all([
         supabase
           .from('pos_compra_processos' as any)
-          .select('etapa, concluida, data_conclusao')
+          .select('id, etapa, concluida, data_conclusao')
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
@@ -181,18 +183,20 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
     setSaving(true);
     try {
       const rows = etapas.map(e => ({
+        id: e.id,
         avaliacao_id: avaliacaoId,
         etapa: e.etapa,
         concluida: e.concluida,
         data_conclusao: e.data_conclusao,
       }));
 
-      const { error: upsertError } = await supabase
-        .from('pos_compra_processos' as any)
-        .upsert(rows as any, { onConflict: 'avaliacao_id,etapa' });
+      const { error: persistError } = await persistChecklistRows({
+        table: 'pos_compra_processos',
+        rows,
+      });
 
-      if (upsertError) {
-        toast.error(`Erro ao salvar checks: ${upsertError.message}`);
+      if (persistError) {
+        toast.error(`Erro ao salvar checks: ${persistError.message}`);
         setSaving(false);
         return;
       }

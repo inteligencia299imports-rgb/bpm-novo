@@ -13,6 +13,7 @@ import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsig
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
+import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { toast } from 'sonner';
 
 const DEFAULT_ETAPAS = [
@@ -28,6 +29,7 @@ const DEFAULT_ETAPAS = [
 ];
 
 interface EtapaData {
+  id?: string;
   etapa: string;
   concluida: boolean;
   data_conclusao: string | null;
@@ -77,7 +79,7 @@ const ProcessoDialog: React.FC<Props> = ({
       const [{ data }, { data: atData }] = await Promise.all([
         supabase
           .from('pos_venda_processos')
-          .select('etapa, concluida, data_conclusao')
+          .select('id, etapa, concluida, data_conclusao')
           .eq('atendimento_id', atendimentoId),
         supabase
           .from('atendimentos')
@@ -144,18 +146,20 @@ const ProcessoDialog: React.FC<Props> = ({
     setSaving(true);
     try {
       const rows = etapas.map(e => ({
+        id: e.id,
         atendimento_id: atendimentoId,
         etapa: e.etapa,
         concluida: e.concluida,
         data_conclusao: e.data_conclusao,
       }));
 
-      const { error: upsertError } = await supabase
-        .from('pos_venda_processos')
-        .upsert(rows as any, { onConflict: 'atendimento_id,etapa' });
+      const { error: persistError } = await persistChecklistRows({
+        table: 'pos_venda_processos',
+        rows,
+      });
 
-      if (upsertError) {
-        toast.error('Erro ao salvar checks: ' + upsertError.message);
+      if (persistError) {
+        toast.error('Erro ao salvar checks: ' + persistError.message);
         return;
       }
 
