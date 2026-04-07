@@ -121,7 +121,7 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
                 variant="secondary"
                 className={`text-[10px] ${
                   atendimento.temperatura === 'Quente' ? 'bg-destructive/10 text-destructive' :
-                  atendimento.temperatura === 'Morno' ? 'bg-warning/10 text-warning' :
+                  atendimento.temperatura === 'Morno' ? 'bg-yellow-100 text-yellow-700' :
                   'bg-info/10 text-info'
                 }`}
               >
