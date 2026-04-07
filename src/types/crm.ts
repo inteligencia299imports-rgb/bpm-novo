@@ -84,11 +84,11 @@ export const INTERESSES: { value: Interesse; label: string }[] = [
 
 export const STATUS_COLORS: Record<SituacaoShowroom, string> = {
   em_aberto: '#2EC5FF',
-  pendente: '#da6220',
+  pendente: '#ff8c00',
   sinal: '#b376c4',
   perdido: '#FF3B30',
   vendido: '#169d53',
-  dispensada: '#FF8C00',
+  dispensada: '#6B7280',
 };
 
 export const SITUACOES_SHOWROOM: { value: SituacaoShowroom; label: string; color: string; hex: string }[] = [
