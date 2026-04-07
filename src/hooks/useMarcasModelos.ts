@@ -19,12 +19,32 @@ export function useMarcasModelos() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [{ data: marcasData }, { data: modelosData }] = await Promise.all([
-        supabase.from('marcas_motos').select('id, nome').order('nome'),
-        supabase.from('modelos_motos').select('id, marca_id, nome').order('nome').limit(5000),
-      ]);
+      // Fetch all modelos in pages to bypass the 1000-row default limit
+      const { data: marcasData } = await supabase.from('marcas_motos').select('id, nome').order('nome');
+      
+      let allModelos: Modelo[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let keepFetching = true;
+      
+      while (keepFetching) {
+        const { data } = await supabase
+          .from('modelos_motos')
+          .select('id, marca_id, nome')
+          .order('nome')
+          .range(from, from + pageSize - 1);
+        
+        if (data && data.length > 0) {
+          allModelos = [...allModelos, ...data];
+          from += pageSize;
+          if (data.length < pageSize) keepFetching = false;
+        } else {
+          keepFetching = false;
+        }
+      }
+      
       setMarcas(marcasData || []);
-      setModelos(modelosData || []);
+      setModelos(allModelos);
       setLoading(false);
     };
     fetchData();
