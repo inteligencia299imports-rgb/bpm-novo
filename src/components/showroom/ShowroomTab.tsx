@@ -64,24 +64,23 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
 
   const fetchAtendimentos = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').order('created_at', { ascending: false }).limit(200);
 
-    if (filterLoja === 'Ducati') {
-      query = query.eq('loja', 'Ducati');
-    } else if (filterLoja === '299') {
-      query = query.in('loja', ['299i', '299s', 'Aventura']);
-    }
-    if (filterVendedor !== 'todos') query = query.eq('vendedor_id', filterVendedor);
-    if (dateFrom) {
-      query = query.gte('created_at', dateFrom.toISOString());
-    }
-    if (dateTo) {
-      const end = new Date(dateTo);
-      end.setHours(23, 59, 59, 999);
-      query = query.lte('created_at', end.toISOString());
-    }
+    const PER_STATUS_LIMIT = 50;
+    const statuses = KANBAN_COLUMNS.map(c => c.value);
 
-    const { data, error } = await query;
+    const buildQuery = (status: string) => {
+      let q = supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', status).order('created_at', { ascending: false }).limit(PER_STATUS_LIMIT);
+      if (filterLoja === 'Ducati') q = q.eq('loja', 'Ducati');
+      else if (filterLoja === '299') q = q.in('loja', ['299i', '299s', 'Aventura']);
+      if (filterVendedor !== 'todos') q = q.eq('vendedor_id', filterVendedor);
+      if (dateFrom) q = q.gte('created_at', dateFrom.toISOString());
+      if (dateTo) { const end = new Date(dateTo); end.setHours(23, 59, 59, 999); q = q.lte('created_at', end.toISOString()); }
+      return q;
+    };
+
+    const results = await Promise.all(statuses.map(s => buildQuery(s)));
+    const error = results.find(r => r.error)?.error;
+    const data = results.flatMap(r => r.data || []);
     if (error) {
       toast.error('Erro ao carregar atendimentos');
       console.error(error);
