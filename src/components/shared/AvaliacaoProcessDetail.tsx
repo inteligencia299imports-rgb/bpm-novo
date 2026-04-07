@@ -277,20 +277,28 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   }}
                 />
                 <Separator className="my-3" />
+                {(moto.tem_manual != null || moto.tem_chave_reserva != null || moto.manutencao_vencida != null) && (
                 <div className="flex items-center gap-3 text-xs">
+                  {moto.tem_manual != null && (
                   <span className="flex items-center gap-1">
                     <span className={`inline-block w-2 h-2 rounded-full ${moto.tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
                     Manual
                   </span>
+                  )}
+                  {moto.tem_chave_reserva != null && (
                   <span className="flex items-center gap-1">
                     <span className={`inline-block w-2 h-2 rounded-full ${moto.tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
                     Chave Reserva
                   </span>
+                  )}
+                  {moto.manutencao_vencida != null && (
                   <span className="flex items-center gap-1">
                     <span className={`inline-block w-2 h-2 rounded-full ${moto.manutencao_vencida ? 'bg-red-500' : 'bg-green-500'}`} />
                     Revisão
                   </span>
+                  )}
                 </div>
+                )}
                 {moto.observacoes && (
                   <>
                     <Separator className="my-3" />
