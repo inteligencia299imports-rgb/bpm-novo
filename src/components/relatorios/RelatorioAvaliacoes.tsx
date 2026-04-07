@@ -99,8 +99,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
   const loadData = useCallback(async () => {
     const [avRes, atRes, urRes] = await Promise.all([
-      supabase.from('avaliacoes').select('id, atendimento_id, situacao, tipo_aquisicao, avaliador_id, created_at, negociacao').limit(5000),
-      supabase.from('atendimentos').select('id, nome_cliente, interesse, loja, vendedor_id').limit(5000),
+      supabase.from('avaliacoes').select('id, atendimento_id, situacao, tipo_aquisicao, avaliador_id, created_at, negociacao').limit(10000),
+      supabase.from('atendimentos').select('id, nome_cliente, interesse, loja, vendedor_id').limit(10000),
       supabase.from('user_roles').select('user_id, nome'),
     ]);
     setAvaliacoes((avRes.data || []) as AvaliacaoRow[]);
