@@ -1057,6 +1057,21 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && (
               <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} />
             )}
+            {avaliacao?.situacao === 'estoque' && estoqueId && (
+              <div className="space-y-1.5">
+                <Label>Preço Ação</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <Input
+                    value={precoAcaoEdit}
+                    onChange={handleCurrencyChange(setPrecoAcaoEdit)}
+                    className="pl-10"
+                    placeholder="0,00"
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+            )}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Classificação da Moto <span className="text-destructive">*</span></Label>
               <div className="flex gap-2">
