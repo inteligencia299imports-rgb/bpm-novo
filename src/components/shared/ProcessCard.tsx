@@ -37,7 +37,7 @@ const ProcessCard: React.FC<ProcessCardProps> = ({
   >
     <div className="flex">
       <div className="w-1 shrink-0 rounded-l-lg" style={{ backgroundColor: statusColor }} />
-      <div className="flex-1 p-3 space-y-2 min-w-0">
+      <div className="flex-1 p-3 space-y-2 min-w-0 overflow-hidden">
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">{clientName}</h3>
           {extraBadge && (
