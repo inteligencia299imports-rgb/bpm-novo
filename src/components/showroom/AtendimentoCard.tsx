@@ -76,26 +76,26 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
 
         <div className="flex-1 p-3 space-y-2">
           {/* Header: name + interest badge */}
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="font-semibold text-sm text-foreground truncate">
+          <div className="flex items-center gap-2 min-w-0">
+            <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">
               {atendimento.nome_cliente}
             </h3>
-            <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary">
+            <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary whitespace-nowrap">
               {getInteresseLabel(atendimento.interesse)}
             </Badge>
           </div>
 
           {/* Moto reference */}
           {motoInteresse && (
-            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-              <Bike className="h-3.5 w-3.5" />
-              <span className="truncate">{motoInteresse}</span>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-primary min-w-0">
+              <Bike className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate min-w-0">{motoInteresse}</span>
             </div>
           )}
           {motoCliente && (
-            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-              <ArrowLeftRight className="h-3.5 w-3.5" />
-              <span className="truncate">{motoCliente}</span>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-primary min-w-0">
+              <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate min-w-0">{motoCliente}</span>
             </div>
           )}
 
