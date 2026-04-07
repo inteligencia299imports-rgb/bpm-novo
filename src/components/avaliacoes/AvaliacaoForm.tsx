@@ -306,6 +306,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     if (error) {
       toast.error('Erro ao salvar avaliação');
     } else {
+      // Atualizar preço ação no estoque se aplicável
+      if (avaliacao?.situacao === 'estoque' && estoqueId && precoAcaoEdit.trim() !== '') {
+        await supabase.from('estoque').update({ preco_acao: parseCurrencyToNumber(precoAcaoEdit) }).eq('id', estoqueId);
+      }
       // Registrar no histórico
       const isFirstEvaluation = avaliacao?.situacao === 'sem_avaliar';
       if (avaliacao?.moto_avaliacao_id) {
