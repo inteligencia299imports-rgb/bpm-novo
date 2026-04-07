@@ -62,14 +62,19 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
         {/* Status bar */}
         <div className="w-1 shrink-0 rounded-l-lg" style={{ backgroundColor: statusColor }} />
 
-        <div className="flex-1 p-3 space-y-2">
-          {/* Header: client name + interesse badge */}
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="font-semibold text-sm text-foreground truncate">
+        <div className="flex-1 p-3 space-y-2 min-w-0">
+          {/* Header: client name + badges */}
+          <div className="flex items-center gap-2 min-w-0">
+            <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">
               {at?.nome_cliente}
             </h3>
+            {avaliacao.situacao === 'adquirida' && (avaliacao as any).tipo_aquisicao && (
+              <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ${getTipoAquisicaoBadgeClass((avaliacao as any).tipo_aquisicao)}`}>
+                {getTipoAquisicaoLabel((avaliacao as any).tipo_aquisicao)}
+              </Badge>
+            )}
             {at?.interesse && (
-              <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary">
+              <Badge variant="outline" className="text-[10px] shrink-0 whitespace-nowrap border-primary/30 text-primary">
                 {getInteresseLabel(at.interesse)}
               </Badge>
             )}
@@ -79,7 +84,7 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
           {motoLabel && (
             <div className="flex items-center gap-1.5 text-xs font-medium text-primary min-w-0">
               <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{motoLabel}</span>
+              <span className="truncate min-w-0">{motoLabel}</span>
             </div>
           )}
 
@@ -97,19 +102,14 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
             </span>
           </div>
 
-          {/* Store badge + Tipo Aquisição */}
-          <div className="flex items-center justify-between gap-2">
-            {at?.loja && (
+          {/* Store badge */}
+          {at?.loja && (
+            <div className="flex items-center">
               <Badge variant="secondary" className="text-[10px]">
                 {at.loja}
               </Badge>
-            )}
-            {avaliacao.situacao === 'adquirida' && (avaliacao as any).tipo_aquisicao && (
-              <Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass((avaliacao as any).tipo_aquisicao)}`}>
-                {getTipoAquisicaoLabel((avaliacao as any).tipo_aquisicao)}
-              </Badge>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
