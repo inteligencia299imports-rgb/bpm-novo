@@ -164,13 +164,13 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
   const loadData = useCallback(async () => {
     const [atRes, avRes, esRes, coRes, vdRes, ccRes, copRes] = await Promise.all([
-      supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal').limit(5000),
-      supabase.from('avaliacoes').select('id, atendimento_id, quanto_vende, valor_fechamento, previsao_custos_loja, previsao_custos_cliente, tipo_aquisicao, moto_avaliacao_id').limit(5000),
-      supabase.from('estoque').select('id, avaliacao_id, atendimento_venda_id, preco, tipo, modelo, marca, placa, data_venda, valor_venda, status').limit(5000),
-      supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado').limit(5000),
+      supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal').limit(10000),
+      supabase.from('avaliacoes').select('id, atendimento_id, quanto_vende, valor_fechamento, previsao_custos_loja, previsao_custos_cliente, tipo_aquisicao, moto_avaliacao_id').limit(10000),
+      supabase.from('estoque').select('id, avaliacao_id, atendimento_venda_id, preco, tipo, modelo, marca, placa, data_venda, valor_venda, status').limit(10000),
+      supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado').limit(10000),
       supabase.from('user_roles').select('user_id, nome'),
-      supabase.from('contratos_consignante').select('id, atendimento_id').limit(5000),
-      supabase.from('custos_operacionais').select('contrato_consignante_id, responsavel, valor').limit(5000),
+      supabase.from('contratos_consignante').select('id, atendimento_id').limit(10000),
+      supabase.from('custos_operacionais').select('contrato_consignante_id, responsavel, valor').limit(10000),
     ]);
     setAtendimentos((atRes.data || []) as AtendimentoRow[]);
     setAvaliacoes((avRes.data || []) as AvaliacaoRow[]);
