@@ -388,7 +388,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                                 estItem.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
                                 estItem.status === 'bloqueio_juridico' ? 'border-muted-foreground text-muted-foreground' :
                                 estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
-                                estItem.status === 'sinal' ? 'border-[#7e6597] text-[#7e6597]' :
+                                estItem.status === 'sinal' ? 'border-[#8700ac] text-[#8700ac]' :
                                 ''
                               }`}>
                                 {estItem.status === 'indisponivel_manual' && <AlertTriangle className="h-3 w-3" />}
