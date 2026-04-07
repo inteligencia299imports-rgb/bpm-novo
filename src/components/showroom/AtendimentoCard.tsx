@@ -74,7 +74,7 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
         {/* Status bar */}
         <div className="w-1 shrink-0 rounded-l-lg" style={{ backgroundColor: statusColor }} />
 
-        <div className="flex-1 p-3 space-y-2">
+        <div className="flex-1 p-3 space-y-2 min-w-0 overflow-hidden">
           {/* Header: name + interest badge */}
           <div className="flex items-center gap-2 min-w-0">
             <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">
