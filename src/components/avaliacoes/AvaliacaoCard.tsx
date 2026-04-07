@@ -98,14 +98,14 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
           </div>
 
           {/* Store badge */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
             {at?.loja && (
               <Badge variant="secondary" className="text-[10px]">
                 {at.loja}
               </Badge>
             )}
             {avaliacao.situacao === 'adquirida' && (avaliacao as any).tipo_aquisicao && (
-              <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ${getTipoAquisicaoBadgeClass((avaliacao as any).tipo_aquisicao)}`}>
+              <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ml-auto ${getTipoAquisicaoBadgeClass((avaliacao as any).tipo_aquisicao)}`}>
                 {getTipoAquisicaoLabel((avaliacao as any).tipo_aquisicao)}
               </Badge>
             )}

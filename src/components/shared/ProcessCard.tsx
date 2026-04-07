@@ -59,12 +59,12 @@ const ProcessCard: React.FC<ProcessCardProps> = ({
             {format(new Date(date), 'dd/MM HH:mm', { locale: ptBR })}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
           {loja && (
             <Badge variant="secondary" className="text-[10px]">{loja}</Badge>
           )}
           {extraBadge && (
-            <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ${extraBadge.className || ''}`}>
+            <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ml-auto ${extraBadge.className || ''}`}>
               {extraBadge.label}
             </Badge>
           )}
