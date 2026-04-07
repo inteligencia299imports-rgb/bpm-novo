@@ -768,20 +768,28 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           )}
                         </div>
                         )}
-                        <div className="flex items-center gap-3 text-xs">
-                          <span className="flex items-center gap-1">
-                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
-                            Manual
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
-                            Chave Reserva
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className={`inline-block w-2 h-2 rounded-full ${estItem.manutencao_vencida ? 'bg-red-500' : 'bg-green-500'}`} />
-                            Revisão
-                          </span>
-                        </div>
+                        {(estItem.tem_manual != null || estItem.tem_chave_reserva != null || estItem.manutencao_vencida != null) && (
+                          <div className="flex items-center gap-3 text-xs">
+                            {estItem.tem_manual != null && (
+                              <span className="flex items-center gap-1">
+                                <span className={`inline-block w-2 h-2 rounded-full ${estItem.tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
+                                Manual
+                              </span>
+                            )}
+                            {estItem.tem_chave_reserva != null && (
+                              <span className="flex items-center gap-1">
+                                <span className={`inline-block w-2 h-2 rounded-full ${estItem.tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
+                                Chave Reserva
+                              </span>
+                            )}
+                            {estItem.manutencao_vencida != null && (
+                              <span className="flex items-center gap-1">
+                                <span className={`inline-block w-2 h-2 rounded-full ${estItem.manutencao_vencida ? 'bg-red-500' : 'bg-green-500'}`} />
+                                Revisão
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {/* Prices section */}
                         <div className="pt-2 border-t border-border space-y-2">
                           <div className="flex items-center justify-between">
@@ -890,20 +898,28 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       <InfoItem label="Placa" value={moto.placa?.replace(/-/g, '')} />
                       <InfoItem label="KM" value={formatKm(moto.km)} />
                     </div>
-                    <div className="flex items-center gap-3 text-xs mt-3">
-                      <span className="flex items-center gap-1">
-                        <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
-                        Manual
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
-                        Chave Reserva
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).manutencao_vencida ? 'bg-red-500' : 'bg-green-500'}`} />
-                        Revisão
-                      </span>
-                    </div>
+                    {((moto as any).tem_manual != null || (moto as any).tem_chave_reserva != null || (moto as any).manutencao_vencida != null) && (
+                      <div className="flex items-center gap-3 text-xs mt-3">
+                        {(moto as any).tem_manual != null && (
+                          <span className="flex items-center gap-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
+                            Manual
+                          </span>
+                        )}
+                        {(moto as any).tem_chave_reserva != null && (
+                          <span className="flex items-center gap-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
+                            Chave Reserva
+                          </span>
+                        )}
+                        {(moto as any).manutencao_vencida != null && (
+                          <span className="flex items-center gap-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${(moto as any).manutencao_vencida ? 'bg-red-500' : 'bg-green-500'}`} />
+                            Revisão
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {moto.observacoes && (
                       <div className="mt-2">
                         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações da Moto</span>
