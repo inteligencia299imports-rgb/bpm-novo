@@ -21,7 +21,7 @@ export function useMarcasModelos() {
     const fetchData = async () => {
       const [{ data: marcasData }, { data: modelosData }] = await Promise.all([
         supabase.from('marcas_motos').select('id, nome').order('nome'),
-        supabase.from('modelos_motos').select('id, marca_id, nome').order('nome'),
+        supabase.from('modelos_motos').select('id, marca_id, nome').order('nome').limit(5000),
       ]);
       setMarcas(marcasData || []);
       setModelos(modelosData || []);
