@@ -155,6 +155,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [obsAvaliador, setObsAvaliador] = useState('');
   const [classificacao, setClassificacao] = useState('');
   const [valorFechamentoEdit, setValorFechamentoEdit] = useState('');
+  const [precoAcaoEdit, setPrecoAcaoEdit] = useState('');
+  const [estoqueId, setEstoqueId] = useState<string | null>(null);
   const [dispensadaMotivo, setDispensadaMotivo] = useState<string | null>(null);
   const [savingDispensada, setSavingDispensada] = useState(false);
 
@@ -191,6 +193,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setObsAvaliador(data.observacao_avaliador || '');
       setClassificacao((data as any).classificacao || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
+
+      // Fetch estoque data if moto is in estoque
+      if (data.situacao === 'estoque' && data.id) {
+        const { data: estoqueData } = await supabase.from('estoque').select('id, preco_acao').eq('avaliacao_id', data.id).maybeSingle();
+        if (estoqueData) {
+          setEstoqueId(estoqueData.id);
+          setPrecoAcaoEdit(numberToCurrencyMask(estoqueData.preco_acao));
+        }
+      }
 
       // Fetch vendedor name
       const vendedorId = (data.atendimentos as any)?.vendedor_id;
@@ -287,7 +298,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       classificacao: classificacao || null,
       avaliador_id: user!.id,
       situacao: avaliacao?.situacao === 'sem_avaliar' ? 'em_aberto' : avaliacao?.situacao ?? 'em_aberto',
-      ...(avaliacao?.situacao === 'adquirida' && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
+      ...((avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
     };
 
     const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
@@ -295,6 +306,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     if (error) {
       toast.error('Erro ao salvar avaliação');
     } else {
+      // Atualizar preço ação no estoque se aplicável
+      if (avaliacao?.situacao === 'estoque' && estoqueId && precoAcaoEdit.trim() !== '') {
+        await supabase.from('estoque').update({ preco_acao: parseCurrencyToNumber(precoAcaoEdit) }).eq('id', estoqueId);
+      }
       // Registrar no histórico
       const isFirstEvaluation = avaliacao?.situacao === 'sem_avaliar';
       if (avaliacao?.moto_avaliacao_id) {
@@ -1045,6 +1060,21 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
             {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && (
               <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} />
+            )}
+            {avaliacao?.situacao === 'estoque' && estoqueId && (
+              <div className="space-y-1.5">
+                <Label>Preço Ação</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <Input
+                    value={precoAcaoEdit}
+                    onChange={handleCurrencyChange(setPrecoAcaoEdit)}
+                    className="pl-10"
+                    placeholder="0,00"
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
             )}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Classificação da Moto <span className="text-destructive">*</span></Label>
