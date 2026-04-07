@@ -64,7 +64,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
 
   const fetchAtendimentos = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').order('created_at', { ascending: false });
+    let query = supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').order('created_at', { ascending: false }).limit(200);
 
     if (filterLoja === 'Ducati') {
       query = query.eq('loja', 'Ducati');

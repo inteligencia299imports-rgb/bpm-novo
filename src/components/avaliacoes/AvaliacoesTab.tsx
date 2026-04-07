@@ -42,7 +42,8 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
           atendimentos!inner (id, nome_cliente, telefone, loja, vendedor_id, interesse, cpf_cnpj, email, cep, endereco),
           motos_avaliacao!inner (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria)
         `)
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false })
+        .limit(200),
       supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null),
     ]);
 

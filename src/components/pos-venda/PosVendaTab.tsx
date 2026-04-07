@@ -37,7 +37,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     setLoading(true);
     // Fetch atendimentos and all estoque for vendidos in parallel
     const [atRes, estRes] = await Promise.all([
-      supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }),
+      supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }).limit(200),
       supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes').eq('tipo', 'propria'),
     ]);
 

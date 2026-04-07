@@ -65,7 +65,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     setLoading(true);
     // Fetch atendimentos and consignada estoque in parallel
     const [atRes, estRes] = await Promise.all([
-      supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }),
+      supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }).limit(200),
       supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id, status, observacoes').eq('tipo', 'consignada'),
     ]);
     if (atRes.error) { toast.error('Erro ao carregar intermediação'); setLoading(false); return; }
