@@ -15,19 +15,19 @@ export type IntermediacaoParte2Status = 'em_aberto' | 'em_andamento' | 'doc_desp
 export const POS_VENDA_COLUMNS: { value: PosVendaStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
-  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#8700ac' },
+  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#b734db' },
 ];
 
 export const INTERMEDIACAO_PARTE1_COLUMNS: { value: IntermediacaoParte1Status; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
-  { value: 'autorizacao_pagamento', label: 'Autorização de Pagamento', hex: '#8700ac' },
+  { value: 'autorizacao_pagamento', label: 'Autorização de Pagamento', hex: '#b734db' },
 ];
 
 export const INTERMEDIACAO_PARTE2_COLUMNS: { value: IntermediacaoParte2Status; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
-  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#8700ac' },
+  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#b734db' },
 ];
 
 export const INTERMEDIACAO_PARTE1_ETAPAS = [
@@ -52,7 +52,7 @@ export const INTERMEDIACAO_PARTE2_ETAPAS = [
 export const POS_COMPRA_COLUMNS: { value: PosCompraStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
-  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#8700ac' },
+  { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#b734db' },
   { value: 'pausado', label: 'Pausado', hex: '#FF8C00' },
 ];
 
@@ -66,7 +66,7 @@ export const CONSIGNACAO_COLUMNS: { value: ConsignacaoStatus; label: string; hex
 export const PREPARACAO_COLUMNS: { value: PreparacaoStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'pendente', label: 'Pendente', hex: '#da6220' },
-  { value: 'oficina', label: 'Oficina', hex: '#8700ac' },
+  { value: 'oficina', label: 'Oficina', hex: '#b734db' },
   { value: 'servico_externo', label: 'Serviço Externo', hex: '#E91E63' },
   
   { value: 'aguardando_aceite', label: 'Aguardando Aceite', hex: '#FF8C00' },
@@ -85,7 +85,7 @@ export const INTERESSES: { value: Interesse; label: string }[] = [
 export const STATUS_COLORS: Record<SituacaoShowroom, string> = {
   em_aberto: '#2EC5FF',
   pendente: '#da6220',
-  sinal: '#8700ac',
+  sinal: '#b734db',
   perdido: '#FF3B30',
   vendido: '#169d53',
   dispensada: '#FF8C00',
@@ -94,14 +94,14 @@ export const STATUS_COLORS: Record<SituacaoShowroom, string> = {
 export const SITUACOES_SHOWROOM: { value: SituacaoShowroom; label: string; color: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', color: 'bg-info/15 text-info', hex: '#2EC5FF' },
   { value: 'pendente', label: 'Pendente', color: 'bg-[#ff8c00]/15 text-[#ff8c00]', hex: '#ff8c00' },
-  { value: 'sinal', label: 'Sinal', color: 'bg-sinal/15 text-sinal', hex: '#8700ac' },
+  { value: 'sinal', label: 'Sinal', color: 'bg-sinal/15 text-sinal', hex: '#b734db' },
   { value: 'dispensada', label: 'Dispensada', color: 'bg-gray-500/15 text-gray-500', hex: '#6B7280' },
   { value: 'perdido', label: 'Perdido', color: 'bg-destructive/15 text-destructive', hex: '#FF3B30' },
 ];
 
 export const SITUACOES_NPS: { value: SituacaoNps; label: string; color: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', color: 'bg-info/15 text-info', hex: '#2EC5FF' },
-  { value: 'enviado', label: 'Enviado', color: 'bg-sinal/15 text-sinal', hex: '#8700ac' },
+  { value: 'enviado', label: 'Enviado', color: 'bg-sinal/15 text-sinal', hex: '#b734db' },
   { value: 'respondido', label: 'Respondido', color: 'bg-success/15 text-success', hex: '#169d53' },
 ];
 export const SITUACOES_AVALIACAO: { value: SituacaoAvaliacao; label: string; color: string }[] = [
