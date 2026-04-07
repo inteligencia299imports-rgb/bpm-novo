@@ -44,7 +44,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
-    supabase.from('user_roles').select('user_id, nome').eq('role', 'vendedor').order('nome').then(({ data }) => {
+    supabase.from('user_roles').select('user_id, nome').order('nome').then(({ data }) => {
       if (data) setVendedores(data);
     });
   }, []);
