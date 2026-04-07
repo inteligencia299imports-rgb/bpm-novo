@@ -94,7 +94,8 @@ const Dashboard = () => {
         {activeTab === 'intermediacao' && (
           <IntermediacacaoTab
             initialAtendimentoId={initialAtendimentoId}
-            onInitialHandled={() => setInitialAtendimentoId(null)}
+            initialParte={initialParte}
+            onInitialHandled={() => { setInitialAtendimentoId(null); setInitialParte(null); }}
           />
         )}
         {activeTab === 'pos_compra' && (
