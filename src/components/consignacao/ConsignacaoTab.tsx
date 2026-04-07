@@ -33,20 +33,21 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const [{ data, error }, { data: estData }] = await Promise.all([
-      supabase
-        .from('avaliacoes')
-        .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`)
-        .eq('tipo_aquisicao', 'consignada')
-        .order('updated_at', { ascending: false })
-        .limit(200),
+    const PER_STATUS_LIMIT = 50;
+    const statuses = CONSIGNACAO_COLUMNS.map(c => c.value);
+    const selectStr = `*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`;
+
+    const allResults = await Promise.all([
+      ...statuses.map(s => supabase.from('avaliacoes').select(selectStr).eq('tipo_aquisicao', 'consignada').eq('consignacao_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)),
       supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null),
     ]);
+    const error = allResults.slice(0, statuses.length).find(r => r.error)?.error;
+    const data = allResults.slice(0, statuses.length).flatMap(r => r.data || []);
+    const estData = allResults[statuses.length].data;
     if (error) { toast.error('Erro ao carregar consignações'); } else {
       const estoqueMap: Record<string, { status: string; observacoes: string | null }> = {};
       (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes }; });
       let mapped = (data || [])
-        .filter((d: any) => (d.consignacao_status || 'em_aberto') !== 'concluido')
         .map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       setItems(mapped);

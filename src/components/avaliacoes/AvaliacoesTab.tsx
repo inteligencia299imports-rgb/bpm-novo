@@ -34,18 +34,18 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
 
   const fetchAvaliacoes = useCallback(async () => {
     setLoading(true);
-    const [{ data, error }, { data: estData }] = await Promise.all([
-      supabase
-        .from('avaliacoes')
-        .select(`
-          *,
-          atendimentos!inner (id, nome_cliente, telefone, loja, vendedor_id, interesse, cpf_cnpj, email, cep, endereco),
-          motos_avaliacao!inner (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(200),
+    const PER_STATUS_LIMIT = 50;
+    const statuses = KANBAN_COLUMNS.map(c => c.value);
+    const selectStr = `*, atendimentos!inner (id, nome_cliente, telefone, loja, vendedor_id, interesse, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria)`;
+
+    const allResults = await Promise.all([
+      ...statuses.map(s => supabase.from('avaliacoes').select(selectStr).eq('situacao', s).order('created_at', { ascending: false }).limit(PER_STATUS_LIMIT)),
       supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null),
     ]);
+
+    const error = allResults.slice(0, statuses.length).find(r => r.error)?.error;
+    const data = allResults.slice(0, statuses.length).flatMap(r => r.data || []);
+    const estData = allResults[statuses.length].data;
 
     if (error) {
       toast.error('Erro ao carregar avaliações');
