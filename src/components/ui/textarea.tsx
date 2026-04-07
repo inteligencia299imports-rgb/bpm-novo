@@ -6,7 +6,9 @@ export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextArea
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(({ className, onChange, ...props }, ref) => {
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const { selectionStart, selectionEnd } = e.target;
     e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(selectionStart, selectionEnd);
     onChange?.(e);
   };
 
