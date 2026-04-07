@@ -64,6 +64,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
   const fetchItems = useCallback(async () => {
     setLoading(true);
     const PER_STATUS_LIMIT = 50;
+    const statuses = config.columns.map((c: any) => c.value);
     const statusField = config.statusField as 'intermediacao_parte1_status' | 'intermediacao_parte2_status';
     // Fetch atendimentos per status and consignada estoque in parallel
     const [statusResults, estRes] = await Promise.all([
