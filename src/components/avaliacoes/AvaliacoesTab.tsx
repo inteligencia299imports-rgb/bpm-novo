@@ -35,16 +35,22 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
   const fetchAvaliacoes = useCallback(async () => {
     setLoading(true);
     const PER_STATUS_LIMIT = 50;
+    const isSearching = search.trim().length > 0;
     const statuses = KANBAN_COLUMNS.map(c => c.value);
     const selectStr = `*, atendimentos!inner (id, nome_cliente, telefone, loja, vendedor_id, interesse, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria)`;
 
-    const [statusResults, estResult] = await Promise.all([
-      Promise.all(statuses.map(s => supabase.from('avaliacoes').select(selectStr).eq('situacao', s).order('created_at', { ascending: false }).limit(PER_STATUS_LIMIT))),
-      supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null),
-    ]);
-
-    const error = statusResults.find(r => r.error)?.error;
-    const data = statusResults.flatMap(r => r.data || []);
+    let data: any[];
+    let error: any;
+    const estResult = await supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null);
+    if (isSearching) {
+      const result = await supabase.from('avaliacoes').select(selectStr).order('created_at', { ascending: false });
+      error = result.error;
+      data = result.data || [];
+    } else {
+      const statusResults = await Promise.all(statuses.map(s => supabase.from('avaliacoes').select(selectStr).eq('situacao', s).order('created_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
+      error = statusResults.find(r => r.error)?.error;
+      data = statusResults.flatMap(r => r.data || []);
+    }
     const estData = estResult.data;
 
     if (error) {

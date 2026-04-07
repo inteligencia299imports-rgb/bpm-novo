@@ -36,16 +36,22 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
   const fetchItems = useCallback(async () => {
     setLoading(true);
     const PER_STATUS_LIMIT = 50;
+    const isSearching = search.trim().length > 0;
     const statuses = POS_VENDA_COLUMNS.map(c => c.value);
-    // Fetch atendimentos per pos_venda_status and estoque in parallel
-    const [estRes, ...statusResults] = await Promise.all([
-      supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes').eq('tipo', 'propria'),
-      ...statuses.map(s => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)),
-    ]);
+    const estRes = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes').eq('tipo', 'propria');
 
-    const atError = statusResults.find(r => r.error)?.error;
+    let atData: any[];
+    let atError: any;
+    if (isSearching) {
+      const result = await supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false });
+      atError = result.error;
+      atData = result.data || [];
+    } else {
+      const statusResults = await Promise.all(statuses.map(s => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
+      atError = statusResults.find(r => r.error)?.error;
+      atData = statusResults.flatMap(r => r.data || []);
+    }
     if (atError) { toast.error('Erro ao carregar pós-venda'); setLoading(false); return; }
-    const atData = statusResults.flatMap(r => r.data || []);
 
     const estoqueMap: Record<string, any> = {};
     (estRes.data || []).forEach((e: any) => { estoqueMap[e.atendimento_venda_id] = e; });
