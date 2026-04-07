@@ -68,11 +68,6 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
             <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">
               {at?.nome_cliente}
             </h3>
-            {avaliacao.situacao === 'adquirida' && (avaliacao as any).tipo_aquisicao && (
-              <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ${getTipoAquisicaoBadgeClass((avaliacao as any).tipo_aquisicao)}`}>
-                {getTipoAquisicaoLabel((avaliacao as any).tipo_aquisicao)}
-              </Badge>
-            )}
             {at?.interesse && (
               <Badge variant="outline" className="text-[10px] shrink-0 whitespace-nowrap border-primary/30 text-primary">
                 {getInteresseLabel(at.interesse)}
@@ -103,13 +98,18 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
           </div>
 
           {/* Store badge */}
-          {at?.loja && (
-            <div className="flex items-center">
+          <div className="flex items-center gap-2">
+            {at?.loja && (
               <Badge variant="secondary" className="text-[10px]">
                 {at.loja}
               </Badge>
-            </div>
-          )}
+            )}
+            {avaliacao.situacao === 'adquirida' && (avaliacao as any).tipo_aquisicao && (
+              <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ${getTipoAquisicaoBadgeClass((avaliacao as any).tipo_aquisicao)}`}>
+                {getTipoAquisicaoLabel((avaliacao as any).tipo_aquisicao)}
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
     </div>

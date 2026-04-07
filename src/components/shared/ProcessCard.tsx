@@ -40,11 +40,6 @@ const ProcessCard: React.FC<ProcessCardProps> = ({
       <div className="flex-1 p-3 space-y-2 min-w-0 overflow-hidden">
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">{clientName}</h3>
-          {extraBadge && (
-            <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ${extraBadge.className || ''}`}>
-              {extraBadge.label}
-            </Badge>
-          )}
         </div>
         {motoLabel && (
           <div className="flex items-center gap-1.5 text-xs font-medium text-primary min-w-0">
@@ -64,11 +59,16 @@ const ProcessCard: React.FC<ProcessCardProps> = ({
             {format(new Date(date), 'dd/MM HH:mm', { locale: ptBR })}
           </span>
         </div>
-        {loja && (
-          <div className="flex items-center">
+        <div className="flex items-center gap-2">
+          {loja && (
             <Badge variant="secondary" className="text-[10px]">{loja}</Badge>
-          </div>
-        )}
+          )}
+          {extraBadge && (
+            <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ${extraBadge.className || ''}`}>
+              {extraBadge.label}
+            </Badge>
+          )}
+        </div>
       </div>
     </div>
   </div>
