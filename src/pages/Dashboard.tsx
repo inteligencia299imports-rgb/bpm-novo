@@ -25,6 +25,7 @@ const Dashboard = () => {
   // Navigation state for cross-tab deep linking
   const [initialAtendimentoId, setInitialAtendimentoId] = useState<string | null>(null);
   const [initialAvaliacaoId, setInitialAvaliacaoId] = useState<string | null>(null);
+  const [initialParte, setInitialParte] = useState<'parte1' | 'parte2' | null>(null);
 
   useEffect(() => {
     if (role && !hasSetInitialTab) {
@@ -36,6 +37,7 @@ const Dashboard = () => {
   const clearInitials = () => {
     setInitialAtendimentoId(null);
     setInitialAvaliacaoId(null);
+    setInitialParte(null);
   };
 
   const handleNavigateToShowroom = (atendimentoId: string) => {
@@ -51,6 +53,9 @@ const Dashboard = () => {
     }
     if ('avaliacaoId' in target) {
       setInitialAvaliacaoId(target.avaliacaoId);
+    }
+    if ('parte' in target && target.parte) {
+      setInitialParte(target.parte);
     }
     setActiveTab(target.tab);
   };
@@ -89,7 +94,8 @@ const Dashboard = () => {
         {activeTab === 'intermediacao' && (
           <IntermediacacaoTab
             initialAtendimentoId={initialAtendimentoId}
-            onInitialHandled={() => setInitialAtendimentoId(null)}
+            initialParte={initialParte}
+            onInitialHandled={() => { setInitialAtendimentoId(null); setInitialParte(null); }}
           />
         )}
         {activeTab === 'pos_compra' && (
