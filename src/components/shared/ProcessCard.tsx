@@ -69,7 +69,6 @@ const ProcessCard: React.FC<ProcessCardProps> = ({
             <Badge variant="secondary" className="text-[10px]">{loja}</Badge>
           </div>
         )}
-        </div>
       </div>
     </div>
   </div>
