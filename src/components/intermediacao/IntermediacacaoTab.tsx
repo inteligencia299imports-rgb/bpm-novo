@@ -36,15 +36,16 @@ const PARTE_CONFIG = {
 
 interface IntermediacacaoTabProps {
   initialAtendimentoId?: string | null;
+  initialParte?: 'parte1' | 'parte2' | null;
   onInitialHandled?: () => void;
 }
 
-const IntermediacacaoTab = ({ initialAtendimentoId, onInitialHandled }: IntermediacacaoTabProps = {}) => {
+const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandled }: IntermediacacaoTabProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
-  const [parte, setParte] = useState<Parte>('parte1');
+  const [parte, setParte] = useState<Parte>(initialParte || 'parte1');
 
   useEffect(() => {
     if (initialAtendimentoId) {

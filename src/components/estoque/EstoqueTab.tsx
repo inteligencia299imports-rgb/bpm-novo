@@ -26,7 +26,7 @@ export type EstoqueNavTarget =
   | { tab: 'showroom'; atendimentoId: string }
   | { tab: 'avaliacoes'; avaliacaoId: string }
   | { tab: 'pos_venda'; atendimentoId: string }
-  | { tab: 'intermediacao'; atendimentoId: string }
+  | { tab: 'intermediacao'; atendimentoId: string; parte?: 'parte1' | 'parte2' }
   | { tab: 'pos_compra'; avaliacaoId: string }
   | { tab: 'consignacao'; avaliacaoId: string }
   | { tab: 'preparacao'; avaliacaoId: string };
@@ -281,9 +281,14 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
     if (item.atendimento_venda_id && item.status === 'vendido' && item.tipo === 'consignada') {
       options.push({
-        label: 'Intermediação',
+        label: 'Intermediação 1',
         icon: <Handshake className="h-4 w-4" />,
-        action: () => nav({ tab: 'intermediacao', atendimentoId: item.atendimento_venda_id! }),
+        action: () => nav({ tab: 'intermediacao', atendimentoId: item.atendimento_venda_id!, parte: 'parte1' }),
+      });
+      options.push({
+        label: 'Intermediação 2',
+        icon: <Handshake className="h-4 w-4" />,
+        action: () => nav({ tab: 'intermediacao', atendimentoId: item.atendimento_venda_id!, parte: 'parte2' }),
       });
     }
 
