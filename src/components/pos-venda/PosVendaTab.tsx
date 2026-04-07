@@ -38,7 +38,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
     const statuses = POS_VENDA_COLUMNS.map(c => c.value);
-    const estRes = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes').eq('tipo', 'propria');
+    const estRes = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes, tipo');
 
     let atData: any[];
     let atError: any;
@@ -53,10 +53,24 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     }
     if (atError) { toast.error('Erro ao carregar pós-venda'); setLoading(false); return; }
 
-    const estoqueMap: Record<string, any> = {};
-    (estRes.data || []).forEach((e: any) => { estoqueMap[e.atendimento_venda_id] = e; });
+    // Build estoque map: própria entries by atendimento_venda_id
+    const estoquePropria: Record<string, any> = {};
+    const estoqueConsignada = new Set<string>();
+    (estRes.data || []).forEach((e: any) => {
+      if (e.tipo === 'propria' && e.atendimento_venda_id) estoquePropria[e.atendimento_venda_id] = e;
+      if (e.tipo === 'consignada' && e.atendimento_venda_id) estoqueConsignada.add(e.atendimento_venda_id);
+    });
 
-    let filtered = atData.filter(a => estoqueMap[a.id]).map(a => ({ ...a, _estoqueMoto: estoqueMap[a.id] }));
+    // Include: atendimentos with própria estoque OR without any estoque (Ducati/externas) but NOT consignada-only
+    let filtered = atData
+      .filter(a => estoquePropria[a.id] || (!estoquePropria[a.id] && !estoqueConsignada.has(a.id)))
+      .map(a => {
+        const est = estoquePropria[a.id];
+        if (est) return { ...a, _estoqueMoto: est };
+        // Fallback: use first moto_interesse info
+        const mi = a.motos_interesse?.[0];
+        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null };
+      });
 
     if (search.trim()) {
       const s = search.trim().toLowerCase();
