@@ -64,10 +64,10 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
   const fetchItems = useCallback(async () => {
     setLoading(true);
     const PER_STATUS_LIMIT = 50;
-    const statuses = config.columns.map((c: any) => c.value);
+    const statusField = config.statusField as 'intermediacao_parte1_status' | 'intermediacao_parte2_status';
     // Fetch atendimentos per status and consignada estoque in parallel
     const [statusResults, estRes] = await Promise.all([
-      Promise.all(statuses.map(s => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').eq(config.statusField, s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT))),
+      Promise.all(statuses.map((s: string) => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').eq(statusField, s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT))),
       supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id, status, observacoes').eq('tipo', 'consignada'),
     ]);
     const atError = statusResults.find(r => r.error)?.error;
@@ -77,7 +77,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     const estoqueMap: Record<string, any> = {};
     (estRes.data || []).forEach((e: any) => { estoqueMap[e.atendimento_venda_id] = e; });
 
-    let filtered = (atRes.data || []).filter(a => estoqueMap[a.id]).map(a => ({ ...a, _estoqueMoto: estoqueMap[a.id] }));
+    let filtered = atData.filter(a => estoqueMap[a.id]).map(a => ({ ...a, _estoqueMoto: estoqueMap[a.id] }));
 
     // Fetch owners in parallel: avaliacoes → atendimentos
     const avaliacaoIds = Object.values(estoqueMap).map((e: any) => e.avaliacao_id).filter(Boolean);
