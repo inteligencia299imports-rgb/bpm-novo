@@ -194,6 +194,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setClassificacao((data as any).classificacao || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
 
+      // Fetch estoque data if moto is in estoque
+      if (data.situacao === 'estoque' && data.id) {
+        const { data: estoqueData } = await supabase.from('estoque').select('id, preco_acao').eq('avaliacao_id', data.id).maybeSingle();
+        if (estoqueData) {
+          setEstoqueId(estoqueData.id);
+          setPrecoAcaoEdit(numberToCurrencyMask(estoqueData.preco_acao));
+        }
+      }
+
       // Fetch vendedor name
       const vendedorId = (data.atendimentos as any)?.vendedor_id;
       if (vendedorId) {
