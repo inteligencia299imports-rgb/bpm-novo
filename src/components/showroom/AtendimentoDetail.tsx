@@ -467,6 +467,28 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setEditClienteOpen(true);
   };
 
+  const openEntrega = () => {
+    setEntregaDate((atendimento as any).data_entrega || '');
+    setEntregaOpen(true);
+  };
+
+  const handleSaveEntrega = async () => {
+    if (!entregaDate) {
+      toast.error('Informe a data de entrega');
+      return;
+    }
+    setSavingEntrega(true);
+    const { error } = await supabase.from('atendimentos').update({ data_entrega: entregaDate } as any).eq('id', atendimento.id);
+    setSavingEntrega(false);
+    if (error) {
+      toast.error('Erro ao salvar data de entrega');
+    } else {
+      toast.success('Data de entrega salva!');
+      setEntregaOpen(false);
+      if (onStatusUpdated) onStatusUpdated(); else onDeleted();
+    }
+  };
+
   const handleSaveCliente = async () => {
     const digits = editTelefone.replace(/\D/g, '');
     if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
