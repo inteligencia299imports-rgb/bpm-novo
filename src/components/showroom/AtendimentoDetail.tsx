@@ -423,7 +423,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           if (newStatus === 'vendido') {
             estoqueUpdate.data_venda = new Date().toISOString();
           }
-          estoquePromises.push(supabase.from('estoque').update(estoqueUpdate).eq('id', mi.estoque_moto_id).then(r => r));
+          console.log('[Estoque Update] moto_id:', mi.estoque_moto_id, 'update:', estoqueUpdate);
+          estoquePromises.push(
+            supabase.from('estoque').update(estoqueUpdate).eq('id', mi.estoque_moto_id)
+              .then(r => {
+                if (r.error) {
+                  console.error('[Estoque Update ERROR]', r.error);
+                  toast.error(`Erro ao atualizar estoque: ${r.error.message}`);
+                } else {
+                  console.log('[Estoque Update OK] rows affected:', r.count);
+                }
+                return r;
+              })
+          );
         }
       }
 
