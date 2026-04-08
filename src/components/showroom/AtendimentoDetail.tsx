@@ -1610,7 +1610,31 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               Salvar
             </Button>
+      {/* Dialog Data de Entrega */}
+      <Dialog open={entregaOpen} onOpenChange={setEntregaOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5" /> Data de Entrega
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Data de Entrega *</Label>
+              <Input
+                type="date"
+                value={entregaDate}
+                onChange={e => setEntregaDate(e.target.value)}
+              />
+            </div>
+            <Button onClick={handleSaveEntrega} disabled={savingEntrega} className="w-full gap-2">
+              {savingEntrega ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Salvar
+            </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+    </div>
         </DialogContent>
       </Dialog>
     </div>
