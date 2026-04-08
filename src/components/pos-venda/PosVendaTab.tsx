@@ -62,7 +62,9 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     });
 
     // Include: atendimentos with própria estoque OR without any estoque (Ducati/externas) but NOT consignada-only
+    // Exclude Ducati store sales entirely
     let filtered = atData
+      .filter(a => a.loja?.toLowerCase() !== 'ducati')
       .filter(a => estoquePropria[a.id] || (!estoquePropria[a.id] && !estoqueConsignada.has(a.id)))
       .map(a => {
         const est = estoquePropria[a.id];
