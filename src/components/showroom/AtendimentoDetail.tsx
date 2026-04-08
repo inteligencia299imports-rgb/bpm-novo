@@ -86,7 +86,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [contratoOpen, setContratoOpen] = useState(false);
   const [entregaOpen, setEntregaOpen] = useState(false);
   const [entregaDate, setEntregaDate] = useState('');
-  const [entregaTime, setEntregaTime] = useState('');
   const [savingEntrega, setSavingEntrega] = useState(false);
   const [entregaDataConclusao, setEntregaDataConclusao] = useState<string | null>(null);
   const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
@@ -493,10 +492,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     if (row?.data_conclusao) {
       const d = new Date(row.data_conclusao);
       setEntregaDate(d.toISOString().slice(0, 10));
-      setEntregaTime(d.toISOString().slice(11, 16));
     } else {
       setEntregaDate('');
-      setEntregaTime('');
     }
     setEntregaOpen(true);
   };
@@ -507,9 +504,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       return;
     }
     setSavingEntrega(true);
-    const dataConclusao = entregaTime
-      ? `${entregaDate}T${entregaTime}:00`
-      : `${entregaDate}T00:00:00`;
+    const dataConclusao = `${entregaDate}T12:00:00`;
 
     // Check if the ENTREGA DA MOTO step already exists
     const { data: existing } = await supabase
