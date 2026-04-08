@@ -1692,14 +1692,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 onChange={e => setEntregaDate(e.target.value)}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label>Hora</Label>
-              <Input
-                type="time"
-                value={entregaTime}
-                onChange={e => setEntregaTime(e.target.value)}
-              />
-            </div>
             <Button onClick={handleSaveEntrega} disabled={savingEntrega} className="w-full gap-2">
               {savingEntrega ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               Salvar
