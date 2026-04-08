@@ -230,6 +230,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       ];
       fullHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       setHistory(fullHistory);
+
+      // Fetch entrega data from pos_venda_processos
+      if (atendimento.situacao === 'vendido') {
+        const { data: entregaRow } = await supabase
+          .from('pos_venda_processos')
+          .select('data_conclusao')
+          .eq('atendimento_id', atendimento.id)
+          .eq('etapa', 'ENTREGA DA MOTO')
+          .eq('concluida', true)
+          .maybeSingle();
+        setEntregaDataConclusao(entregaRow?.data_conclusao || null);
+      }
+
       setLoading(false);
     };
     fetchRelated();
