@@ -1,0 +1,1 @@
+ALTER TABLE public.atendimentos DROP COLUMN IF EXISTS data_entrega;
