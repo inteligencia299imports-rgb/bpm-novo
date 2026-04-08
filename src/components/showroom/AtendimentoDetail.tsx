@@ -550,6 +550,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <FileText className="h-4 w-4" /> Contrato
               </Button>
             )}
+            {atendimento.situacao === 'vendido' && (
+              <Button size="sm" variant="outline" onClick={openEntrega} className="gap-1.5">
+                <Truck className="h-4 w-4" /> Entrega
+              </Button>
+            )}
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onEdit(atendimento.id)}>
               <Edit className="h-4 w-4" /> Editar
             </Button>
