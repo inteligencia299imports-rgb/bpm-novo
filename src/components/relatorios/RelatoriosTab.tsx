@@ -29,9 +29,8 @@ const RelatoriosTab: React.FC = () => {
   const { role } = useAuth();
   const isGestor = role === 'gestor';
   const cycle = getCurrentCycleRange();
-  const minDate = new Date(2026, 3, 6);
   const [dept, setDept] = useState(isGestor ? 'showroom' : 'vendedores');
-  const initFrom = cycle.start < minDate ? minDate : cycle.start;
+  const initFrom = cycle.start;
   initFrom.setHours(0, 0, 0, 0);
   const initTo = cycle.end;
   initTo.setHours(23, 59, 59, 999);
