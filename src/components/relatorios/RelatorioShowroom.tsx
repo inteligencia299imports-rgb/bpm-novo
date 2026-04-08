@@ -19,6 +19,7 @@ import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const TRANSFER_COST = 445;
+const MIN_DATE_ISO = '2026-04-06T00:00:00.000Z';
 
 // Custom month logic: month starts on 21st, ends on 20th of next month
 function getCustomMonthLabel(startDate: Date): string {
@@ -174,11 +175,11 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     // Query 1: Atendimentos filtered by loja + date (for counting atendimentos no período)
     let atPeriodoQuery = supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal');
     atPeriodoQuery = applyLojaFilter(atPeriodoQuery, filterLoja);
-    if (dateFrom) {
-      const start = new Date(dateFrom);
-      start.setHours(0, 0, 0, 0);
-      atPeriodoQuery = atPeriodoQuery.gte('created_at', start.toISOString());
-    }
+    // Apply minimum date or user-selected dateFrom (whichever is later)
+    const effectiveDateFrom = dateFrom ? new Date(Math.max(dateFrom.getTime(), new Date(MIN_DATE_ISO).getTime())) : new Date(MIN_DATE_ISO);
+    const start = new Date(effectiveDateFrom);
+    start.setHours(0, 0, 0, 0);
+    atPeriodoQuery = atPeriodoQuery.gte('created_at', start.toISOString());
     if (dateTo) {
       const end = new Date(dateTo);
       end.setHours(23, 59, 59, 999);
@@ -188,7 +189,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
     // Query 2: All atendimentos filtered by loja only (for vendidos, sinais, chartByMonth)
     let atAllQuery = supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal');
-    atAllQuery = applyLojaFilter(atAllQuery, filterLoja).limit(5000);
+    atAllQuery = applyLojaFilter(atAllQuery, filterLoja).gte('created_at', MIN_DATE_ISO).limit(5000);
 
     const [atPeriodoRes, atAllRes, avRes, esRes, coRes, vdRes, ccRes, copRes] = await Promise.all([
       atPeriodoQuery,
