@@ -7,7 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil, IdCard } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil, IdCard, Truck } from 'lucide-react';
 import type { Atendimento, MotoInteresse, MotoAvaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES, SEXOS, UFS } from '@/types/crm';
 import { Label } from '@/components/ui/label';
@@ -84,6 +84,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [savingValor, setSavingValor] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [contratoOpen, setContratoOpen] = useState(false);
+  const [entregaOpen, setEntregaOpen] = useState(false);
+  const [entregaDate, setEntregaDate] = useState('');
+  const [savingEntrega, setSavingEntrega] = useState(false);
   const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
   const [savingMotivo, setSavingMotivo] = useState(false);
   const [showResultadoConsulta, setShowResultadoConsulta] = useState<string | null>(null);
