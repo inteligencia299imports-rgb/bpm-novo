@@ -19,6 +19,7 @@ import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const TRANSFER_COST = 445;
+const MIN_DATE_ISO = '2026-04-06T00:00:00.000Z';
 
 // Custom month logic: month starts on 21st, ends on 20th of next month
 function getCustomMonthLabel(startDate: Date): string {

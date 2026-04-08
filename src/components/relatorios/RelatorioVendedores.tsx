@@ -37,6 +37,7 @@ function generateCustomMonths(): { start: Date; end: Date; label: string }[] {
 }
 
 const fmtPctInt = (v: number | null | undefined) => `${Math.round((v ?? 0) * 100)}%`;
+const MIN_DATE_ISO = '2026-04-06T00:00:00.000Z';
 
 interface AtendimentoRow {
   id: string;
