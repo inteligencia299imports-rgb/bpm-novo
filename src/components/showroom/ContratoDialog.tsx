@@ -471,9 +471,10 @@ const ContratoDialog: React.FC<Props> = ({
     if (!motoInt && !estItem) errors.push('Moto de Interesse');
     if (!transferenciaTipo) errors.push('Transferência');
     if (transferenciaTipo === 'cliente' && !transferenciaValor) errors.push('Valor da Transferência');
-    if (!ipvaTipo) errors.push('IPVA');
-    if (ipvaTipo === 'ambos' && !ipvaCotas) errors.push('Número de Cotas do IPVA');
-    if (ipvaTipo === 'loja' && !ipvaValor) errors.push('Valor do IPVA');
+    const isDucati = atendimento.loja?.toLowerCase() === 'ducati';
+    if (!isDucati && !ipvaTipo) errors.push('IPVA');
+    if (!isDucati && ipvaTipo === 'ambos' && !ipvaCotas) errors.push('Número de Cotas do IPVA');
+    if (!isDucati && ipvaTipo === 'loja' && !ipvaValor) errors.push('Valor do IPVA');
     if (hasTroca && !valorQuitacao && !valorFechamento) errors.push('Valor de Quitação ou Fechamento da moto do cliente');
     if (!obsContrato && !obsContrato.trim()) errors.push('Observações do Contrato');
 
