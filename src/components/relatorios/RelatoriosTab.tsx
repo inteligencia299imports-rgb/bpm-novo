@@ -30,7 +30,8 @@ const RelatoriosTab: React.FC = () => {
   const isGestor = role === 'gestor';
   const cycle = getCurrentCycleRange();
   const [dept, setDept] = useState(isGestor ? 'showroom' : 'vendedores');
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(cycle.start);
+  const minDate = new Date(2026, 3, 6);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(cycle.start < minDate ? minDate : cycle.start);
   const [dateTo, setDateTo] = useState<Date | undefined>(cycle.end);
   const clearFnRef = useRef<(() => void) | null>(null);
   const [hasInternalFilters, setHasInternalFilters] = useState(false);
