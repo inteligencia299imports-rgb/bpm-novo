@@ -78,8 +78,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   const chartMarginBottom = isMobile ? 40 : 0;
 
   const [loading, setLoading] = useState(true);
-  const [atendimentosPeriodo, setAtendimentosPeriodo] = useState<AtendimentoRow[]>([]);
-  const [atendimentosAll, setAtendimentosAll] = useState<AtendimentoRow[]>([]);
+  const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
   const [estoqueItems, setEstoqueItems] = useState<EstoqueRow[]>([]);
   const [vendedores, setVendedores] = useState<VendedorInfo[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
@@ -95,45 +94,17 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     });
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
-  // Helper: apply loja filter to a Supabase query
-  const applyLojaFilter = useCallback((query: any, loja: string) => {
-    if (loja === 'Ducati') return query.ilike('loja', '%ducati%');
-    if (loja === '299') return query.not('loja', 'ilike', '%ducati%');
-    return query;
-  }, []);
-
   const loadData = useCallback(async () => {
-    // Query 1: Atendimentos filtered by loja + date (for counting)
-    let atPeriodoQuery = supabase.from('atendimentos').select('id, situacao, loja, interesse, vendedor_id, created_at, updated_at');
-    atPeriodoQuery = applyLojaFilter(atPeriodoQuery, filterLoja);
-    if (dateFrom) {
-      const start = new Date(dateFrom);
-      start.setHours(0, 0, 0, 0);
-      atPeriodoQuery = atPeriodoQuery.gte('created_at', start.toISOString());
-    }
-    if (dateTo) {
-      const end = new Date(dateTo);
-      end.setHours(23, 59, 59, 999);
-      atPeriodoQuery = atPeriodoQuery.lte('created_at', end.toISOString());
-    }
-    atPeriodoQuery = atPeriodoQuery.limit(10000);
-
-    // Query 2: All atendimentos filtered by loja only (for vendidos, sinais, chartByMonth)
-    let atAllQuery = supabase.from('atendimentos').select('id, situacao, loja, interesse, vendedor_id, created_at, updated_at');
-    atAllQuery = applyLojaFilter(atAllQuery, filterLoja).limit(10000);
-
-    const [atPeriodoRes, atAllRes, esRes, vdRes] = await Promise.all([
-      atPeriodoQuery,
-      atAllQuery,
+    const [atRes, esRes, vdRes] = await Promise.all([
+      supabase.from('atendimentos').select('id, situacao, loja, interesse, vendedor_id, created_at, updated_at').limit(10000),
       supabase.from('estoque').select('id, atendimento_venda_id, data_venda, tipo').limit(10000),
       supabase.from('user_roles').select('user_id, nome').eq('role', 'vendedor'),
     ]);
-    setAtendimentosPeriodo((atPeriodoRes.data || []) as AtendimentoRow[]);
-    setAtendimentosAll((atAllRes.data || []) as AtendimentoRow[]);
+    setAtendimentos((atRes.data || []) as AtendimentoRow[]);
     setEstoqueItems((esRes.data || []) as EstoqueRow[]);
     setVendedores((vdRes.data || []) as VendedorInfo[]);
     setLoading(false);
-  }, [dateFrom, dateTo, filterLoja, applyLojaFilter]);
+  }, []);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
@@ -174,48 +145,63 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     return map;
   }, [estoqueItems]);
 
-  // atendimentosFiltradosPorData = already loaded with date+loja filter from server
-  const atendimentosFiltradosPorData = atendimentosPeriodo;
+  // Filter by loja
+  const filteredAtendimentos = useMemo(() => {
+    return atendimentos.filter(a => {
+      if (filterLoja !== 'todos' && normLoja(a.loja) !== filterLoja) return false;
+      return true;
+    });
+  }, [atendimentos, filterLoja]);
 
-  // Vendidos filtered by data_venda in estoque (using atendimentosAll - loja already filtered server-side)
+  // All interests, filtered by date
+  const atendimentosFiltradosPorData = useMemo(() => {
+    return filteredAtendimentos.filter(a => {
+      if (dateFrom) {
+        const d = new Date(a.created_at);
+        if (d < dateFrom) return false;
+      }
+      if (dateTo) {
+        const d = new Date(a.created_at);
+        const endOfDay = new Date(dateTo);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (d > endOfDay) return false;
+      }
+      return true;
+    });
+  }, [filteredAtendimentos, dateFrom, dateTo]);
+
+  // Vendidos filtered by data_venda in estoque (fallback to updated_at)
   const vendidos = useMemo(() => {
-    return atendimentosAll.filter(a => {
+    return filteredAtendimentos.filter(a => {
       if (a.situacao !== 'vendido') return false;
       const estoques = estoqueByAtendimentoVenda[a.id] || [];
+      // Use data_venda from estoque if linked, otherwise fallback to atendimento updated_at
       if (estoques.length === 0) {
         const dRef = new Date(a.updated_at);
-        if (dateFrom) {
-          const start = new Date(dateFrom);
-          start.setHours(0, 0, 0, 0);
-          if (dRef < start) return false;
-        }
+        if (dateFrom && dRef < dateFrom) return false;
         if (dateTo) {
-          const end = new Date(dateTo);
-          end.setHours(23, 59, 59, 999);
-          if (dRef > end) return false;
+          const endOfDay = new Date(dateTo);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (dRef > endOfDay) return false;
         }
         return true;
       }
       return estoques.some(e => {
         const dv = e.data_venda ? new Date(e.data_venda) : new Date(a.updated_at);
-        if (dateFrom) {
-          const start = new Date(dateFrom);
-          start.setHours(0, 0, 0, 0);
-          if (dv < start) return false;
-        }
+        if (dateFrom && dv < dateFrom) return false;
         if (dateTo) {
-          const end = new Date(dateTo);
-          end.setHours(23, 59, 59, 999);
-          if (dv > end) return false;
+          const endOfDay = new Date(dateTo);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (dv > endOfDay) return false;
         }
         return true;
       });
     });
-  }, [atendimentosAll, estoqueByAtendimentoVenda, dateFrom, dateTo]);
+  }, [filteredAtendimentos, estoqueByAtendimentoVenda, dateFrom, dateTo]);
 
   const sinais = useMemo(() => {
-    return atendimentosAll.filter(a => a.situacao === 'sinal');
-  }, [atendimentosAll]);
+    return filteredAtendimentos.filter(a => a.situacao === 'sinal');
+  }, [filteredAtendimentos]);
 
   // ===== MY indicators (for vendedor role) =====
   const myIndicadores = useMemo(() => {
@@ -232,7 +218,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
   // ===== Charts by vendedor =====
   const chartByVendedor = useMemo(() => {
-    const vendedorIds = [...new Set(atendimentosAll.map(a => a.vendedor_id))].filter(vid => vendedorMap[vid]);
+    const vendedorIds = [...new Set(filteredAtendimentos.map(a => a.vendedor_id))].filter(vid => vendedorMap[vid]);
     return vendedorIds.map(vid => {
       const vendAtend = atendimentosFiltradosPorData.filter(a => a.vendedor_id === vid);
       const vendVendas = vendidos.filter(a => a.vendedor_id === vid);
@@ -248,13 +234,13 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         conversao: qtdAtend > 0 ? qtdVendas / qtdAtend : 0,
       };
     }).filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0);
-  }, [atendimentosAll, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap]);
+  }, [filteredAtendimentos, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap]);
 
   // ===== Charts by month (only my data) =====
   const chartByMonth = useMemo(() => {
     if (!user) return [];
     const months = generateCustomMonths();
-    const myAtendimentos = atendimentosAll.filter(a => a.vendedor_id === user.id);
+    const myAtendimentos = filteredAtendimentos.filter(a => a.vendedor_id === user.id);
     return months.map(m => {
       const atendMonth = myAtendimentos.filter(a => {
         const d = new Date(a.created_at);
@@ -280,7 +266,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         conversao,
       };
     });
-  }, [user, atendimentosAll, estoqueByAtendimentoVenda]);
+  }, [user, filteredAtendimentos, estoqueByAtendimentoVenda]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
