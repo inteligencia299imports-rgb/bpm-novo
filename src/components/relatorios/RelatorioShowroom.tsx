@@ -1,15 +1,13 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { abbreviateName } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { X, Users, ShoppingCart, CreditCard, TrendingUp, DollarSign, Target, BarChart3, PieChart } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { Users, ShoppingCart, CreditCard, TrendingUp, DollarSign, Target, BarChart3, PieChart } from 'lucide-react';
+import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, AreaChart, Area, ComposedChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, AreaChart, Area, ComposedChart } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -18,37 +16,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-const TRANSFER_COST = 445;
-
-// Custom month logic: month starts on 21st, ends on 20th of next month
-function getCustomMonthLabel(startDate: Date): string {
-  const endDate = new Date(startDate);
-  endDate.setMonth(endDate.getMonth() + 1);
-  endDate.setDate(endDate.getDate() - 1);
-  return `${format(startDate, 'dd/MM', { locale: ptBR })} - ${format(endDate, 'dd/MM', { locale: ptBR })}`;
-}
-
-function generateCustomMonths(): { start: Date; end: Date; label: string }[] {
-  const months: { start: Date; end: Date; label: string }[] = [];
-  const now = new Date();
-  let current = new Date(2025, 11, 21); // 21/12/2025
-
-  while (current <= now) {
-    const end = new Date(current);
-    end.setMonth(end.getMonth() + 1);
-    end.setDate(20);
-    end.setHours(23, 59, 59, 999);
-    months.push({
-      start: new Date(current),
-      end,
-      label: getCustomMonthLabel(current),
-    });
-    current = new Date(current);
-    current.setMonth(current.getMonth() + 1);
-  }
-  return months;
-}
-
 const fmtBRL = (v: number | null | undefined) =>
   (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtPct = (v: number | null | undefined) => {
@@ -56,66 +23,6 @@ const fmtPct = (v: number | null | undefined) => {
   return `${(Math.round(raw * 10) / 10).toFixed(1)}%`;
 };
 const fmtPctInt = (v: number | null | undefined) => `${Math.round((v ?? 0) * 100)}%`;
-
-interface AtendimentoRow {
-  id: string;
-  nome_cliente: string;
-  situacao: string;
-  loja: string;
-  interesse: string;
-  vendedor_id: string;
-  created_at: string;
-  valor_venda: number | null;
-  valor_sinal: number | null;
-}
-
-interface AvaliacaoRow {
-  id: string;
-  atendimento_id: string;
-  quanto_vende: number | null;
-  valor_fechamento: number | null;
-  previsao_custos_loja: number | null;
-  previsao_custos_cliente: number | null;
-  tipo_aquisicao: string | null;
-  moto_avaliacao_id: string;
-}
-
-interface EstoqueRow {
-  id: string;
-  avaliacao_id: string | null;
-  atendimento_venda_id: string | null;
-  preco: number | null;
-  tipo: string;
-  modelo: string;
-  marca: string;
-  placa: string | null;
-  data_venda: string | null;
-  valor_venda: number | null;
-  status: string;
-}
-
-interface CustoOficinaRow {
-  avaliacao_id: string;
-  responsavel: string;
-  valor_previsto: number | null;
-  valor_executado: number | null;
-}
-
-interface ContratoConsignanteRow {
-  id: string;
-  atendimento_id: string;
-}
-
-interface CustoOperacionalRow {
-  contrato_consignante_id: string;
-  responsavel: string;
-  valor: number | null;
-}
-
-interface VendedorInfo {
-  user_id: string;
-  nome: string;
-}
 
 interface RelatorioShowroomProps {
   dateFrom: Date | undefined;
@@ -133,25 +40,21 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const xTickProps = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 9, fill: 'hsl(var(--foreground))' };
   const xTickPropsName = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 10, fill: 'hsl(var(--foreground))' };
   const chartMarginBottom = isMobile ? 40 : 0;
-  const [loading, setLoading] = useState(true);
-  const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
-  const [avaliacoes, setAvaliacoes] = useState<AvaliacaoRow[]>([]);
-  const [estoqueItems, setEstoqueItems] = useState<EstoqueRow[]>([]);
-  const [custosOficina, setCustosOficina] = useState<CustoOficinaRow[]>([]);
-  const [contratosConsignante, setContratosConsignante] = useState<ContratoConsignanteRow[]>([]);
-  const [custosOperacionais, setCustosOperacionais] = useState<CustoOperacionalRow[]>([]);
-  const [vendedores, setVendedores] = useState<VendedorInfo[]>([]);
 
-  // Filters
+  const [loading, setLoading] = useState(true);
+  const [indicadores, setIndicadores] = useState<any>({});
+  const [chartByVendedor, setChartByVendedor] = useState<any[]>([]);
+  const [motosVendidas, setMotosVendidas] = useState<any[]>([]);
+  const [motosSinal, setMotosSinal] = useState<any[]>([]);
+  const [chartByMonth, setChartByMonth] = useState<any[]>([]);
+
   const [filterLoja, setFilterLojaState] = useState('todos');
   const [filterTipo, setFilterTipoState] = useState('todos');
+  const [listTab, setListTab] = useState('vendidas');
 
   const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v, filterTipo); };
   const setFilterTipo = (v: string) => { setFilterTipoState(v); onFilterChange?.(filterLoja, v); };
 
-  const [listTab, setListTab] = useState('vendidas');
-
-  // Register clear function
   useEffect(() => {
     onRegisterClear?.(() => {
       setFilterLojaState('todos');
@@ -163,24 +66,25 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const [atRes, avRes, esRes, coRes, vdRes, ccRes, copRes] = await Promise.all([
-      supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal').limit(5000),
-      supabase.from('avaliacoes').select('id, atendimento_id, quanto_vende, valor_fechamento, previsao_custos_loja, previsao_custos_cliente, tipo_aquisicao, moto_avaliacao_id').limit(5000),
-      supabase.from('estoque').select('id, avaliacao_id, atendimento_venda_id, preco, tipo, modelo, marca, placa, data_venda, valor_venda, status').limit(5000),
-      supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado').limit(5000),
-      supabase.from('user_roles').select('user_id, nome'),
-      supabase.from('contratos_consignante').select('id, atendimento_id').limit(5000),
-      supabase.from('custos_operacionais').select('contrato_consignante_id, responsavel, valor').limit(5000),
+    const dfParam = dateFrom ? dateFrom.toISOString() : null;
+    const dtParam = dateTo ? dateTo.toISOString() : null;
+
+    const [kpisRes, vendedoresRes, vendidasRes, sinaisRes, mensalRes] = await Promise.all([
+      supabase.rpc('relatorio_showroom_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja, _tipo: filterTipo }),
+      supabase.rpc('relatorio_showroom_vendedores', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja, _tipo: filterTipo }),
+      supabase.rpc('relatorio_showroom_vendidas', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja, _tipo: filterTipo }),
+      supabase.rpc('relatorio_showroom_sinais', { _loja: filterLoja, _tipo: filterTipo }),
+      supabase.rpc('relatorio_showroom_mensal', { _loja: filterLoja, _tipo: filterTipo }),
     ]);
-    setAtendimentos((atRes.data || []) as AtendimentoRow[]);
-    setAvaliacoes((avRes.data || []) as AvaliacaoRow[]);
-    setEstoqueItems((esRes.data || []) as EstoqueRow[]);
-    setCustosOficina((coRes.data || []) as CustoOficinaRow[]);
-    setContratosConsignante((ccRes.data || []) as ContratoConsignanteRow[]);
-    setCustosOperacionais((copRes.data || []) as CustoOperacionalRow[]);
-    setVendedores((vdRes.data || []) as VendedorInfo[]);
+
+    setIndicadores(kpisRes.data || {});
+    const vendedoresData = (vendedoresRes.data || []) as any[];
+    setChartByVendedor(vendedoresData.map((v: any) => ({ ...v, nome: abbreviateName(v.nome || 'Desconhecido') })));
+    setMotosVendidas((vendidasRes.data || []) as any[]);
+    setMotosSinal((sinaisRes.data || []) as any[]);
+    setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
-  }, []);
+  }, [dateFrom, dateTo, filterLoja, filterTipo]);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
@@ -208,434 +112,6 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     };
   }, [loadData, debouncedLoad]);
 
-  // Helper maps
-  const avaliacaoByAtendimento = useMemo(() => {
-    const map: Record<string, AvaliacaoRow[]> = {};
-    avaliacoes.forEach(a => {
-      if (!map[a.atendimento_id]) map[a.atendimento_id] = [];
-      map[a.atendimento_id].push(a);
-    });
-    return map;
-  }, [avaliacoes]);
-
-  const estoqueByAvaliacao = useMemo(() => {
-    const map: Record<string, EstoqueRow> = {};
-    estoqueItems.forEach(e => { if (e.avaliacao_id) map[e.avaliacao_id] = e; });
-    return map;
-  }, [estoqueItems]);
-
-  const estoqueByAtendimentoVenda = useMemo(() => {
-    const map: Record<string, EstoqueRow[]> = {};
-    estoqueItems.forEach(e => {
-      if (e.atendimento_venda_id) {
-        if (!map[e.atendimento_venda_id]) map[e.atendimento_venda_id] = [];
-        map[e.atendimento_venda_id].push(e);
-      }
-    });
-    return map;
-  }, [estoqueItems]);
-
-  const custosByAvaliacao = useMemo(() => {
-    const map: Record<string, CustoOficinaRow[]> = {};
-    custosOficina.forEach(c => {
-      if (!map[c.avaliacao_id]) map[c.avaliacao_id] = [];
-      map[c.avaliacao_id].push(c);
-    });
-    return map;
-  }, [custosOficina]);
-
-  // Map custos operacionais (intermediação) by atendimento_id
-  const custosOpByAtendimento = useMemo(() => {
-    const ccMap: Record<string, string> = {};
-    contratosConsignante.forEach(cc => { ccMap[cc.id] = cc.atendimento_id; });
-    const map: Record<string, CustoOperacionalRow[]> = {};
-    custosOperacionais.forEach(co => {
-      const atendId = ccMap[co.contrato_consignante_id];
-      if (atendId) {
-        if (!map[atendId]) map[atendId] = [];
-        map[atendId].push(co);
-      }
-    });
-    return map;
-  }, [contratosConsignante, custosOperacionais]);
-
-  const getCustosOpLoja = (atendimentoId: string) => {
-    const custos = custosOpByAtendimento[atendimentoId] || [];
-    return custos.filter(c => c.responsavel.toLowerCase() === 'loja').reduce((sum, c) => sum + (c.valor ?? 0), 0);
-  };
-
-  const vendedorMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    vendedores.forEach(v => { map[v.user_id] = v.nome; });
-    return map;
-  }, [vendedores]);
-
-  // Normalize loja
-  const normLoja = (loja: string) => loja?.toUpperCase().includes('DUCATI') ? 'Ducati' : '299';
-
-  // Filter atendimentos
-  const filteredAtendimentos = useMemo(() => {
-    return atendimentos.filter(a => {
-      if (filterLoja !== 'todos' && normLoja(a.loja) !== filterLoja) return false;
-      return true;
-    });
-  }, [atendimentos, filterLoja]);
-
-  // Vendidos filtered by date and tipo
-  const vendidos = useMemo(() => {
-    return filteredAtendimentos.filter(a => {
-      if (a.situacao !== 'vendido') return false;
-      // Find estoque with data_venda
-      const estoques = estoqueByAtendimentoVenda[a.id] || [];
-      if (estoques.length === 0) return false;
-      const hasMatchingEstoque = estoques.some(e => {
-        if (!e.data_venda) return false;
-        if (filterTipo !== 'todos' && e.tipo !== filterTipo) return false;
-        const dv = new Date(e.data_venda);
-        if (dateFrom && dv < dateFrom) return false;
-        if (dateTo) {
-          const endOfDay = new Date(dateTo);
-          endOfDay.setHours(23, 59, 59, 999);
-          if (dv > endOfDay) return false;
-        }
-        return true;
-      });
-      return hasMatchingEstoque;
-    });
-  }, [filteredAtendimentos, estoqueByAtendimentoVenda, dateFrom, dateTo, filterTipo]);
-
-  // Sinais filtered only by loja (no date filter, no tipo filter for counts)
-  const sinais = useMemo(() => {
-    return filteredAtendimentos.filter(a => a.situacao === 'sinal');
-  }, [filteredAtendimentos]);
-
-  // Atendimentos filtered by date (created_at in same period)
-  const atendimentosFiltradosPorData = useMemo(() => {
-    return filteredAtendimentos.filter(a => {
-      // Considerar todos os interesses (comprar, trocar, vender)
-      if (dateFrom) {
-        const d = new Date(a.created_at);
-        if (d < dateFrom) return false;
-      }
-      if (dateTo) {
-        const d = new Date(a.created_at);
-        const endOfDay = new Date(dateTo);
-        endOfDay.setHours(23, 59, 59, 999);
-        if (d > endOfDay) return false;
-      }
-      return true;
-    });
-  }, [filteredAtendimentos, dateFrom, dateTo]);
-
-  // Helper: get custos for an avaliacao
-  // Custos de oficina (têm valor_executado) - usam lógica previsto vs realizado
-  const getCustosLojaOficinaExecutado = (avaliacaoId: string) => {
-    const custos = custosByAvaliacao[avaliacaoId] || [];
-    return custos.filter(c => c.responsavel.toLowerCase() === 'loja' && c.valor_executado != null).reduce((sum, c) => sum + (c.valor_executado ?? 0), 0);
-  };
-
-  const getCustosLojaOficinaPrevisto = (avaliacaoId: string) => {
-    const custos = custosByAvaliacao[avaliacaoId] || [];
-    return custos.filter(c => c.responsavel.toLowerCase() === 'loja' && c.valor_executado != null).reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
-  };
-
-  // Custos de processo (sem valor_executado) - sempre negativos, abatidos direto
-  const getCustosLojaProcesso = (avaliacaoId: string) => {
-    const custos = custosByAvaliacao[avaliacaoId] || [];
-    return custos.filter(c => c.responsavel.toLowerCase() === 'loja' && c.valor_executado == null).reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
-  };
-
-  // Total de custos loja (para abatimentos na listagem)
-  const getCustosLoja = (avaliacaoId: string) => {
-    return getCustosLojaOficinaExecutado(avaliacaoId) + getCustosLojaProcesso(avaliacaoId);
-  };
-
-  const getCustosClientePrevisto = (avaliacaoId: string) => {
-    const custos = custosByAvaliacao[avaliacaoId] || [];
-    return custos.filter(c => c.responsavel.toLowerCase() === 'cliente').reduce((sum, c) => sum + (c.valor_previsto ?? 0), 0);
-  };
-
-  const getCustosClienteReal = (avaliacaoId: string) => {
-    const custos = custosByAvaliacao[avaliacaoId] || [];
-    return custos.filter(c => c.responsavel.toLowerCase() === 'cliente').reduce((sum, c) => sum + (c.valor_executado ?? 0), 0);
-  };
-
-  // Build moto list for vendidas
-  const motosVendidas = useMemo(() => {
-    const list: any[] = [];
-    vendidos.forEach(atend => {
-      const estoques = estoqueByAtendimentoVenda[atend.id] || [];
-      estoques.forEach(est => {
-        if (filterTipo !== 'todos' && est.tipo !== filterTipo) return;
-        if (dateFrom && est.data_venda) {
-          const dv = new Date(est.data_venda);
-          if (dv < dateFrom) return;
-        }
-        if (dateTo && est.data_venda) {
-          const dv = new Date(est.data_venda);
-          const endOfDay = new Date(dateTo);
-          endOfDay.setHours(23, 59, 59, 999);
-          if (dv > endOfDay) return;
-        }
-        // Find avaliacao linked to this estoque
-        const aval = avaliacoes.find(av => av.id === est.avaliacao_id);
-        const custoOficinaLojaExec = aval ? getCustosLojaOficinaExecutado(aval.id) : 0;
-        const custoOficinaLojaPrev = aval ? getCustosLojaOficinaPrevisto(aval.id) : 0;
-        const custoProcessoLoja = aval ? getCustosLojaProcesso(aval.id) : 0;
-        const custoRealOficinaCliente = aval ? getCustosClienteReal(aval.id) : 0;
-        const custoPrevOficinaCliente = aval ? getCustosClientePrevisto(aval.id) : 0;
-        const custoOpLoja = getCustosOpLoja(atend.id);
-        const abatimentos = TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja;
-        const precoEstoque = est.preco ?? 0;
-        const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
-        const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
-        const valorFechamento = aval?.valor_fechamento ?? 0;
-        const quantoVende = aval?.quanto_vende ?? 0;
-        const margemPrevista = quantoVende - valorFechamento;
-        const pctMargemPrevista = quantoVende > 0 ? margemPrevista / quantoVende : 0;
-        const margemOficina = (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
-        const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja);
-        const pctMargemRealizada = faturamentoRealizado > 0 ? margemRealizada / faturamentoRealizado : 0;
-        
-        list.push({
-          nomeCliente: atend.nome_cliente,
-          vendedor: vendedorMap[atend.vendedor_id] || '-',
-          tipo: est.tipo,
-          modelo: `${est.marca} ${est.modelo}`,
-          placa: est.placa || '-',
-          situacao: atend.situacao,
-          dataVenda: est.data_venda,
-          quantoVende,
-          valorFechamento,
-          margemPrevista,
-          pctMargemPrevista,
-          valorVenda: atend.valor_venda ?? est.valor_venda ?? precoEstoque,
-          margemOficina,
-          abatimentos,
-          margemRealizada,
-          pctMargemRealizada,
-        });
-      });
-    });
-    return list;
-  }, [vendidos, estoqueByAtendimentoVenda, avaliacoes, custosByAvaliacao, vendedorMap, filterTipo, dateFrom, dateTo]);
-
-  // Build moto list for sinais
-  const motosSinal = useMemo(() => {
-    const list: any[] = [];
-    sinais.forEach(atend => {
-      const estoques = estoqueByAtendimentoVenda[atend.id] || [];
-      estoques.forEach(est => {
-        if (filterTipo !== 'todos' && est.tipo !== filterTipo) return;
-        const aval = avaliacoes.find(av => av.id === est.avaliacao_id);
-        const custoOficinaLojaExec = aval ? getCustosLojaOficinaExecutado(aval.id) : 0;
-        const custoOficinaLojaPrev = aval ? getCustosLojaOficinaPrevisto(aval.id) : 0;
-        const custoProcessoLoja = aval ? getCustosLojaProcesso(aval.id) : 0;
-        const custoRealOficinaCliente = aval ? getCustosClienteReal(aval.id) : 0;
-        const custoPrevOficinaCliente = aval ? getCustosClientePrevisto(aval.id) : 0;
-        const custoOpLoja = getCustosOpLoja(atend.id);
-        const abatimentos = TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja;
-        const precoEstoque = est.preco ?? 0;
-        const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
-        const faturamentoRealizado = valorVendaReal + (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
-        const valorFechamento = aval?.valor_fechamento ?? 0;
-        const quantoVende = aval?.quanto_vende ?? 0;
-        const margemPrevista = quantoVende - valorFechamento;
-        const pctMargemPrevista = quantoVende > 0 ? margemPrevista / quantoVende : 0;
-        const margemOficina = (custoPrevOficinaCliente - custoRealOficinaCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
-        const margemRealizada = faturamentoRealizado - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja);
-        const pctMargemRealizada = faturamentoRealizado > 0 ? margemRealizada / faturamentoRealizado : 0;
-
-        list.push({
-          nomeCliente: atend.nome_cliente,
-          vendedor: vendedorMap[atend.vendedor_id] || '-',
-          tipo: est.tipo,
-          modelo: `${est.marca} ${est.modelo}`,
-          placa: est.placa || '-',
-          situacao: atend.situacao,
-          dataSinal: atend.created_at,
-          quantoVende,
-          valorFechamento,
-          margemPrevista,
-          pctMargemPrevista,
-          valorVenda: atend.valor_venda ?? est.valor_venda ?? precoEstoque,
-          margemOficina,
-          abatimentos,
-          margemRealizada,
-          pctMargemRealizada,
-        });
-      });
-    });
-    return list;
-  }, [sinais, estoqueByAtendimentoVenda, avaliacoes, custosByAvaliacao, vendedorMap, filterTipo]);
-
-  // ===== Indicadores =====
-  const indicadores = useMemo(() => {
-    const qtdAtendimentos = atendimentosFiltradosPorData.length;
-    const qtdVendas = vendidos.length;
-    const qtdSinais = sinais.length;
-    const taxaConversao = qtdAtendimentos > 0 ? qtdVendas / qtdAtendimentos : 0;
-
-    // For financial metrics, iterate vendidos with their avaliacoes
-    let faturamentoPrevisto = 0;
-    let faturamentoRealizado = 0;
-    let margemPrevista = 0;
-    let margemRealizada = 0;
-    let totalQuantoVende = 0;
-    let totalPrecoEstoque = 0;
-
-    vendidos.forEach(atend => {
-      const estoques = estoqueByAtendimentoVenda[atend.id] || [];
-      estoques.forEach(est => {
-        if (filterTipo !== 'todos' && est.tipo !== filterTipo) return;
-        const aval = avaliacoes.find(av => av.id === est.avaliacao_id);
-        if (!aval) return;
-
-        const quantoVende = aval.quanto_vende ?? 0;
-        const valorFechamento = aval.valor_fechamento ?? 0;
-        const previsaoCustosLoja = aval.previsao_custos_loja ?? 0;
-        const precoEstoque = est.preco ?? 0;
-        const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
-        const custoPrevCliente = getCustosClientePrevisto(aval.id);
-        const custoRealCliente = getCustosClienteReal(aval.id);
-        const custoOficinaLojaExec = getCustosLojaOficinaExecutado(aval.id);
-        const custoOficinaLojaPrev = getCustosLojaOficinaPrevisto(aval.id);
-        const custoProcessoLoja = getCustosLojaProcesso(aval.id);
-        const custoOpLoja = getCustosOpLoja(atend.id);
-
-        faturamentoPrevisto += quantoVende;
-        totalQuantoVende += quantoVende;
-        
-        const fatReal = valorVendaReal + (custoPrevCliente - custoRealCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
-        faturamentoRealizado += fatReal;
-        totalPrecoEstoque += precoEstoque;
-
-        margemPrevista += quantoVende - valorFechamento;
-
-        margemRealizada += fatReal - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja);
-      });
-    });
-
-    const pctMargemPrevista = totalQuantoVende > 0 ? margemPrevista / totalQuantoVende : 0;
-    const pctMargemRealizada = faturamentoRealizado > 0 ? margemRealizada / faturamentoRealizado : 0;
-
-    return {
-      qtdAtendimentos, qtdVendas, qtdSinais, taxaConversao,
-      faturamentoPrevisto, faturamentoRealizado,
-      margemPrevista, pctMargemPrevista,
-      margemRealizada, pctMargemRealizada,
-    };
-  }, [atendimentosFiltradosPorData, vendidos, sinais, estoqueByAtendimentoVenda, avaliacoes, custosByAvaliacao, filterTipo]);
-
-  // ===== Charts by vendedor =====
-  const chartByVendedor = useMemo(() => {
-    const vendedorIds = [...new Set(filteredAtendimentos.map(a => a.vendedor_id))];
-    return vendedorIds.map(vid => {
-      const vendAtend = atendimentosFiltradosPorData.filter(a => a.vendedor_id === vid);
-      const vendVendas = vendidos.filter(a => a.vendedor_id === vid);
-      const vendSinais = sinais.filter(a => a.vendedor_id === vid);
-      const qtdAtend = vendAtend.length;
-      const qtdVendas = vendVendas.length;
-      const qtdSinais = vendSinais.length;
-      // Faturamento por vendedor
-      let faturamento = 0;
-      vendVendas.forEach(a => {
-        const estoques = estoqueByAtendimentoVenda[a.id] || [];
-        estoques.forEach(e => {
-          if (filterTipo !== 'todos' && e.tipo !== filterTipo) return;
-          faturamento += e.preco || 0;
-        });
-      });
-      return {
-        nome: abbreviateName(vendedorMap[vid] || 'Desconhecido'),
-        atendimentos: qtdAtend,
-        vendas: qtdVendas,
-        sinais: qtdSinais,
-        conversao: qtdAtend > 0 ? qtdVendas / qtdAtend : 0,
-        faturamento,
-      };
-    }).filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0);
-  }, [filteredAtendimentos, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap, estoqueByAtendimentoVenda, filterTipo]);
-
-  // ===== Charts by custom month =====
-  const chartByMonth = useMemo(() => {
-    const months = generateCustomMonths();
-    return months.map(m => {
-      const atendMonth = filteredAtendimentos.filter(a => {
-        const d = new Date(a.created_at);
-        return d >= m.start && d <= m.end;
-      });
-      // Vendidos in this month period (by data_venda from estoque)
-      const vendidosMonth = filteredAtendimentos.filter(a => {
-        if (a.situacao !== 'vendido') return false;
-        const estoques = estoqueByAtendimentoVenda[a.id] || [];
-        return estoques.some(e => {
-          if (filterTipo !== 'todos' && e.tipo !== filterTipo) return false;
-          if (!e.data_venda) return false;
-          const dv = new Date(e.data_venda);
-          return dv >= m.start && dv <= m.end;
-        });
-      });
-
-      let faturamento = 0;
-      let faturamentoReal = 0;
-      let margemPrevista = 0;
-      let margemRealizada = 0;
-      let totalQV = 0;
-      let totalPE = 0;
-
-      vendidosMonth.forEach(atend => {
-        const estoques = estoqueByAtendimentoVenda[atend.id] || [];
-        estoques.forEach(est => {
-          if (filterTipo !== 'todos' && est.tipo !== filterTipo) return;
-          if (!est.data_venda) return;
-          const dv = new Date(est.data_venda);
-          if (dv < m.start || dv > m.end) return;
-
-          const aval = avaliacoes.find(av => av.id === est.avaliacao_id);
-          if (!aval) return;
-          const precoEstoque = est.preco ?? 0;
-          const valorVendaReal = atend.valor_venda ?? est.valor_venda ?? precoEstoque;
-          const quantoVende = aval.quanto_vende ?? 0;
-          const valorFechamento = aval.valor_fechamento ?? 0;
-          const custoPrevCliente = getCustosClientePrevisto(aval.id);
-          const custoRealCliente = getCustosClienteReal(aval.id);
-          const custoOficinaLojaExec = getCustosLojaOficinaExecutado(aval.id);
-          const custoOficinaLojaPrev = getCustosLojaOficinaPrevisto(aval.id);
-          const custoProcessoLoja = getCustosLojaProcesso(aval.id);
-          const custoOpLoja = getCustosOpLoja(atend.id);
-
-          faturamento += valorVendaReal;
-          totalQV += quantoVende;
-          totalPE += precoEstoque;
-          margemPrevista += quantoVende - valorFechamento;
-          const fatReal = valorVendaReal + (custoPrevCliente - custoRealCliente) + (custoOficinaLojaPrev - custoOficinaLojaExec);
-          faturamentoReal += fatReal;
-          margemRealizada += fatReal - (valorFechamento + TRANSFER_COST + custoOficinaLojaExec + custoProcessoLoja + custoOpLoja);
-        });
-      });
-
-      const conversao = atendMonth.length > 0 ? vendidosMonth.length / atendMonth.length : 0;
-
-      return {
-        label: m.label,
-        atendimentos: atendMonth.length,
-        vendas: vendidosMonth.length,
-        conversao,
-        faturamento,
-        pctMargemPrevista: totalQV > 0 ? margemPrevista / totalQV : 0,
-        pctMargemRealizada: faturamentoReal > 0 ? margemRealizada / faturamentoReal : 0,
-      };
-    });
-  }, [filteredAtendimentos, estoqueByAtendimentoVenda, avaliacoes, custosByAvaliacao, filterTipo]);
-
-  const clearFilters = () => {
-    setDateFrom(undefined);
-    setDateTo(undefined);
-    setFilterLoja('todos');
-    setFilterTipo('todos');
-  };
-
   const tipoLabel = (t: string) => {
     const map: Record<string, string> = { propria: 'Própria', consignada: 'Consignada', 'test-ride': 'Test-Ride', repasse: 'Repasse', convertida: 'Convertida' };
     return map[t] || t;
@@ -648,17 +124,10 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      {/* Loja on left, Tipo on right */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-1">
           {['todos', '299', 'Ducati'].map(loja => (
-            <Button
-              key={loja}
-              size="sm"
-              variant={filterLoja === loja ? 'default' : 'outline'}
-              className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')}
-              onClick={() => setFilterLoja(loja)}
-            >
+            <Button key={loja} size="sm" variant={filterLoja === loja ? 'default' : 'outline'} className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')} onClick={() => setFilterLoja(loja)}>
               {loja === 'todos' ? 'Todas Lojas' : loja}
             </Button>
           ))}
@@ -666,20 +135,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         <div className="flex flex-wrap items-center gap-2 max-w-full">
           <span className="text-xs font-medium text-muted-foreground shrink-0">Tipo:</span>
           <div className="flex flex-wrap items-center gap-2">
-            {[
-              { value: 'todos', label: 'Todos' },
-              { value: 'propria', label: 'Própria' },
-              { value: 'consignada', label: 'Consignada' },
-              { value: 'test-ride', label: 'Test-Ride' },
-              { value: 'repasse', label: 'Repasse' },
-            ].map(t => (
-              <Button
-                key={t.value}
-                size="sm"
-                variant={filterTipo === t.value ? 'default' : 'outline'}
-                className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')}
-                onClick={() => setFilterTipo(t.value)}
-              >
+            {[{ value: 'todos', label: 'Todos' }, { value: 'propria', label: 'Própria' }, { value: 'consignada', label: 'Consignada' }, { value: 'test-ride', label: 'Test-Ride' }, { value: 'repasse', label: 'Repasse' }].map(t => (
+              <Button key={t.value} size="sm" variant={filterTipo === t.value ? 'default' : 'outline'} className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')} onClick={() => setFilterTipo(t.value)}>
                 {t.label}
               </Button>
             ))}
@@ -689,10 +146,10 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Atendimentos" value={indicadores.qtdAtendimentos} gradient="teal" icon={<Users className="h-5 w-5" />} />
-        <IndicatorCard title="Vendas" value={indicadores.qtdVendas} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} />
-        <IndicatorCard title="Sinais" value={indicadores.qtdSinais} gradient="teal" icon={<CreditCard className="h-5 w-5" />} />
-        <IndicatorCard title="Taxa de Conversão" value={fmtPctInt(indicadores.taxaConversao)} gradient="teal" icon={<TrendingUp className="h-5 w-5" />} />
+        <IndicatorCard title="Atendimentos" value={indicadores.qtdAtendimentos ?? 0} gradient="teal" icon={<Users className="h-5 w-5" />} />
+        <IndicatorCard title="Vendas" value={indicadores.qtdVendas ?? 0} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} />
+        <IndicatorCard title="Sinais" value={indicadores.qtdSinais ?? 0} gradient="teal" icon={<CreditCard className="h-5 w-5" />} />
+        <IndicatorCard title="Taxa de Conversão" value={fmtPctInt(indicadores.taxaConversao ?? 0)} gradient="teal" icon={<TrendingUp className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -796,9 +253,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v) => fmtPct(v)} />
-                <Tooltip content={<CustomTooltip />}
-                  cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
-                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
                 <Line type="monotone" dataKey="pctMargemPrevista" name="Prevista" stroke="#7e6d9b" strokeWidth={2.5} dot={{ r: 4, fill: '#7e6d9b' }} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => fmtPct(v) }} />
                 <Line type="monotone" dataKey="pctMargemRealizada" name="Realizada" stroke="#3a8f6a" strokeWidth={2.5} dot={{ r: 4, fill: '#3a8f6a' }} label={{ position: 'bottom', fontSize: 10, fill: 'hsl(var(--muted-foreground))', formatter: (v: number) => fmtPct(v) }} />
               </ComposedChart>
@@ -823,7 +278,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
               <div className="overflow-x-auto pb-2">
                 <Table className="min-w-[900px]">
                   <TableHeader>
-                     <TableRow>
+                    <TableRow>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Vendedor</TableHead>
                       <TableHead>Tipo</TableHead>
@@ -842,7 +297,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                   <TableBody>
                     {motosVendidas.length === 0 ? (
                       <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">Nenhuma moto vendida encontrada</TableCell></TableRow>
-                    ) : motosVendidas.map((m, i) => (
+                    ) : motosVendidas.map((m: any, i: number) => (
                       <TableRow key={i}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
                         <TableCell className="text-xs">{m.vendedor}</TableCell>
@@ -867,7 +322,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
               <div className="overflow-x-auto pb-2">
                 <Table className="min-w-[900px]">
                   <TableHeader>
-                     <TableRow>
+                    <TableRow>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Vendedor</TableHead>
                       <TableHead>Tipo</TableHead>
@@ -886,7 +341,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                   <TableBody>
                     {motosSinal.length === 0 ? (
                       <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">Nenhuma moto com sinal encontrada</TableCell></TableRow>
-                    ) : motosSinal.map((m, i) => (
+                    ) : motosSinal.map((m: any, i: number) => (
                       <TableRow key={i}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
                         <TableCell className="text-xs">{m.vendedor}</TableCell>
@@ -923,7 +378,7 @@ const iconColorMap: Record<string, string> = {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; sub?: string; gradient?: string; icon?: React.ReactNode; subtitle?: string }> = ({ title, value, gradient = 'teal', icon }) => (
+const IndicatorCard: React.FC<{ title: string; value: string | number; gradient?: string; icon?: React.ReactNode }> = ({ title, value, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
@@ -977,9 +432,7 @@ const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string; chartH?
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
           <XAxis dataKey="nome" tick={xTickProps} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-          <Tooltip content={<CustomTooltip />}
-            cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
-          />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
           <Bar dataKey={dataKey} fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
         </BarChart>
       </ResponsiveContainer>
@@ -996,9 +449,7 @@ const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; isCurr
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
           <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={isCurrency ? (v: number) => `${(v / 1000).toFixed(0)}k` : undefined} />
-          <Tooltip content={<CustomTooltip isCurrency={isCurrency} />}
-            cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
-          />
+          <Tooltip content={<CustomTooltip isCurrency={isCurrency} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
           <Bar dataKey={dataKey} fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props, isCurrency)} />
         </BarChart>
       </ResponsiveContainer>

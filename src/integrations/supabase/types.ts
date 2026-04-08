@@ -1133,6 +1133,7 @@ export type Database = {
         Args: { _moto_avaliacao_id: string }
         Returns: boolean
       }
+      norm_loja: { Args: { _loja: string }; Returns: string }
       notify_consulta: {
         Args: {
           _entity_id?: string
@@ -1151,6 +1152,69 @@ export type Database = {
           _title: string
         }
         Returns: undefined
+      }
+      relatorio_avaliacoes_avaliadores: {
+        Args: { _date_from?: string; _date_to?: string; _loja?: string }
+        Returns: Json
+      }
+      relatorio_avaliacoes_kpis: {
+        Args: { _date_from?: string; _date_to?: string; _loja?: string }
+        Returns: Json
+      }
+      relatorio_avaliacoes_mensal: { Args: { _loja?: string }; Returns: Json }
+      relatorio_estoque_kpis: { Args: never; Returns: Json }
+      relatorio_estoque_mensal: { Args: never; Returns: Json }
+      relatorio_showroom_kpis: {
+        Args: {
+          _date_from?: string
+          _date_to?: string
+          _loja?: string
+          _tipo?: string
+        }
+        Returns: Json
+      }
+      relatorio_showroom_mensal: {
+        Args: { _loja?: string; _tipo?: string }
+        Returns: Json
+      }
+      relatorio_showroom_sinais: {
+        Args: { _loja?: string; _tipo?: string }
+        Returns: Json
+      }
+      relatorio_showroom_vendedores: {
+        Args: {
+          _date_from?: string
+          _date_to?: string
+          _loja?: string
+          _tipo?: string
+        }
+        Returns: Json
+      }
+      relatorio_showroom_vendidas: {
+        Args: {
+          _date_from?: string
+          _date_to?: string
+          _loja?: string
+          _tipo?: string
+        }
+        Returns: Json
+      }
+      relatorio_vendedor_equipe: {
+        Args: { _date_from?: string; _date_to?: string; _loja?: string }
+        Returns: Json
+      }
+      relatorio_vendedor_kpis: {
+        Args: {
+          _date_from?: string
+          _date_to?: string
+          _loja?: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      relatorio_vendedor_mensal: {
+        Args: { _loja?: string; _user_id: string }
+        Returns: Json
       }
     }
     Enums: {

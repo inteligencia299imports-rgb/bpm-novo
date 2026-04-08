@@ -1,64 +1,16 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { abbreviateName } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Users, Check, CreditCard, TrendingUp } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ComposedChart, Line } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-function getCustomMonthLabel(startDate: Date): string {
-  const endDate = new Date(startDate);
-  endDate.setMonth(endDate.getMonth() + 1);
-  endDate.setDate(endDate.getDate() - 1);
-  return `${format(startDate, 'dd/MM', { locale: ptBR })} - ${format(endDate, 'dd/MM', { locale: ptBR })}`;
-}
-
-function generateCustomMonths(): { start: Date; end: Date; label: string }[] {
-  const months: { start: Date; end: Date; label: string }[] = [];
-  const now = new Date();
-  let current = new Date(2025, 11, 21);
-  while (current <= now) {
-    const end = new Date(current);
-    end.setMonth(end.getMonth() + 1);
-    end.setDate(20);
-    end.setHours(23, 59, 59, 999);
-    months.push({ start: new Date(current), end, label: getCustomMonthLabel(current) });
-    current = new Date(current);
-    current.setMonth(current.getMonth() + 1);
-  }
-  return months;
-}
-
 const fmtPctInt = (v: number | null | undefined) => `${Math.round((v ?? 0) * 100)}%`;
-
-interface AtendimentoRow {
-  id: string;
-  situacao: string;
-  loja: string;
-  interesse: string;
-  vendedor_id: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface EstoqueRow {
-  id: string;
-  atendimento_venda_id: string | null;
-  data_venda: string | null;
-  tipo: string;
-}
-
-interface VendedorInfo {
-  user_id: string;
-  nome: string;
-}
 
 interface Props {
   dateFrom: Date | undefined;
@@ -78,9 +30,9 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   const chartMarginBottom = isMobile ? 40 : 0;
 
   const [loading, setLoading] = useState(true);
-  const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
-  const [estoqueItems, setEstoqueItems] = useState<EstoqueRow[]>([]);
-  const [vendedores, setVendedores] = useState<VendedorInfo[]>([]);
+  const [myIndicadores, setMyIndicadores] = useState<any>(null);
+  const [chartByVendedor, setChartByVendedor] = useState<any[]>([]);
+  const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
 
   const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v); };
@@ -95,16 +47,22 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const [atRes, esRes, vdRes] = await Promise.all([
-      supabase.from('atendimentos').select('id, situacao, loja, interesse, vendedor_id, created_at, updated_at').limit(10000),
-      supabase.from('estoque').select('id, atendimento_venda_id, data_venda, tipo').limit(10000),
-      supabase.from('user_roles').select('user_id, nome').eq('role', 'vendedor'),
+    if (!user) return;
+    const dfParam = dateFrom ? dateFrom.toISOString() : null;
+    const dtParam = dateTo ? dateTo.toISOString() : null;
+
+    const [myKpisRes, equipeRes, mensalRes] = await Promise.all([
+      supabase.rpc('relatorio_vendedor_kpis', { _user_id: user.id, _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
+      supabase.rpc('relatorio_vendedor_equipe', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
+      supabase.rpc('relatorio_vendedor_mensal', { _user_id: user.id, _loja: filterLoja }),
     ]);
-    setAtendimentos((atRes.data || []) as AtendimentoRow[]);
-    setEstoqueItems((esRes.data || []) as EstoqueRow[]);
-    setVendedores((vdRes.data || []) as VendedorInfo[]);
+
+    setMyIndicadores(myKpisRes.data || {});
+    const equipeData = (equipeRes.data || []) as any[];
+    setChartByVendedor(equipeData.map((v: any) => ({ ...v, nome: abbreviateName(v.nome || 'Desconhecido') })));
+    setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
-  }, []);
+  }, [user, dateFrom, dateTo, filterLoja]);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
@@ -126,148 +84,6 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     };
   }, [loadData, debouncedLoad]);
 
-  const normLoja = (loja: string) => loja?.toUpperCase().includes('DUCATI') ? 'Ducati' : '299';
-
-  const vendedorMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    vendedores.forEach(v => { map[v.user_id] = v.nome; });
-    return map;
-  }, [vendedores]);
-
-  const estoqueByAtendimentoVenda = useMemo(() => {
-    const map: Record<string, EstoqueRow[]> = {};
-    estoqueItems.forEach(e => {
-      if (e.atendimento_venda_id) {
-        if (!map[e.atendimento_venda_id]) map[e.atendimento_venda_id] = [];
-        map[e.atendimento_venda_id].push(e);
-      }
-    });
-    return map;
-  }, [estoqueItems]);
-
-  // Filter by loja
-  const filteredAtendimentos = useMemo(() => {
-    return atendimentos.filter(a => {
-      if (filterLoja !== 'todos' && normLoja(a.loja) !== filterLoja) return false;
-      return true;
-    });
-  }, [atendimentos, filterLoja]);
-
-  // All interests, filtered by date
-  const atendimentosFiltradosPorData = useMemo(() => {
-    return filteredAtendimentos.filter(a => {
-      if (dateFrom) {
-        const d = new Date(a.created_at);
-        if (d < dateFrom) return false;
-      }
-      if (dateTo) {
-        const d = new Date(a.created_at);
-        const endOfDay = new Date(dateTo);
-        endOfDay.setHours(23, 59, 59, 999);
-        if (d > endOfDay) return false;
-      }
-      return true;
-    });
-  }, [filteredAtendimentos, dateFrom, dateTo]);
-
-  // Vendidos filtered by data_venda in estoque (fallback to updated_at)
-  const vendidos = useMemo(() => {
-    return filteredAtendimentos.filter(a => {
-      if (a.situacao !== 'vendido') return false;
-      const estoques = estoqueByAtendimentoVenda[a.id] || [];
-      // Use data_venda from estoque if linked, otherwise fallback to atendimento updated_at
-      if (estoques.length === 0) {
-        const dRef = new Date(a.updated_at);
-        if (dateFrom && dRef < dateFrom) return false;
-        if (dateTo) {
-          const endOfDay = new Date(dateTo);
-          endOfDay.setHours(23, 59, 59, 999);
-          if (dRef > endOfDay) return false;
-        }
-        return true;
-      }
-      return estoques.some(e => {
-        const dv = e.data_venda ? new Date(e.data_venda) : new Date(a.updated_at);
-        if (dateFrom && dv < dateFrom) return false;
-        if (dateTo) {
-          const endOfDay = new Date(dateTo);
-          endOfDay.setHours(23, 59, 59, 999);
-          if (dv > endOfDay) return false;
-        }
-        return true;
-      });
-    });
-  }, [filteredAtendimentos, estoqueByAtendimentoVenda, dateFrom, dateTo]);
-
-  const sinais = useMemo(() => {
-    return filteredAtendimentos.filter(a => a.situacao === 'sinal');
-  }, [filteredAtendimentos]);
-
-  // ===== MY indicators (for vendedor role) =====
-  const myIndicadores = useMemo(() => {
-    if (!user) return null;
-    const myAtend = atendimentosFiltradosPorData.filter(a => a.vendedor_id === user.id);
-    const myVendas = vendidos.filter(a => a.vendedor_id === user.id);
-    const mySinais = sinais.filter(a => a.vendedor_id === user.id);
-    const qtdAtendimentos = myAtend.length;
-    const qtdVendas = myVendas.length;
-    const qtdSinais = mySinais.length;
-    const taxaConversao = qtdAtendimentos > 0 ? qtdVendas / qtdAtendimentos : 0;
-    return { qtdAtendimentos, qtdVendas, qtdSinais, taxaConversao };
-  }, [user, atendimentosFiltradosPorData, vendidos, sinais]);
-
-  // ===== Charts by vendedor =====
-  const chartByVendedor = useMemo(() => {
-    const vendedorIds = [...new Set(filteredAtendimentos.map(a => a.vendedor_id))].filter(vid => vendedorMap[vid]);
-    return vendedorIds.map(vid => {
-      const vendAtend = atendimentosFiltradosPorData.filter(a => a.vendedor_id === vid);
-      const vendVendas = vendidos.filter(a => a.vendedor_id === vid);
-      const vendSinais = sinais.filter(a => a.vendedor_id === vid);
-      const qtdAtend = vendAtend.length;
-      const qtdVendas = vendVendas.length;
-      const qtdSinais = vendSinais.length;
-      return {
-        nome: abbreviateName(vendedorMap[vid] || 'Desconhecido'),
-        atendimentos: qtdAtend,
-        vendas: qtdVendas,
-        sinais: qtdSinais,
-        conversao: qtdAtend > 0 ? qtdVendas / qtdAtend : 0,
-      };
-    }).filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0);
-  }, [filteredAtendimentos, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap]);
-
-  // ===== Charts by month (only my data) =====
-  const chartByMonth = useMemo(() => {
-    if (!user) return [];
-    const months = generateCustomMonths();
-    const myAtendimentos = filteredAtendimentos.filter(a => a.vendedor_id === user.id);
-    return months.map(m => {
-      const atendMonth = myAtendimentos.filter(a => {
-        const d = new Date(a.created_at);
-        return d >= m.start && d <= m.end;
-      });
-      const vendidosMonth = myAtendimentos.filter(a => {
-        if (a.situacao !== 'vendido') return false;
-        const estoques = estoqueByAtendimentoVenda[a.id] || [];
-        if (estoques.length === 0) {
-          const dRef = new Date(a.updated_at);
-          return dRef >= m.start && dRef <= m.end;
-        }
-        return estoques.some(e => {
-          const dv = e.data_venda ? new Date(e.data_venda) : new Date(a.updated_at);
-          return dv >= m.start && dv <= m.end;
-        });
-      });
-      const conversao = atendMonth.length > 0 ? vendidosMonth.length / atendMonth.length : 0;
-      return {
-        label: m.label,
-        atendimentos: atendMonth.length,
-        vendas: vendidosMonth.length,
-        conversao,
-      };
-    });
-  }, [user, filteredAtendimentos, estoqueByAtendimentoVenda]);
-
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
   }
@@ -275,36 +91,27 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      {/* Loja filter */}
       <div className="flex flex-wrap items-center gap-1">
         {['todos', '299', 'Ducati'].map(loja => (
-          <Button
-            key={loja}
-            size="sm"
-            variant={filterLoja === loja ? 'default' : 'outline'}
-            className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')}
-            onClick={() => setFilterLoja(loja)}
-          >
+          <Button key={loja} size="sm" variant={filterLoja === loja ? 'default' : 'outline'} className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')} onClick={() => setFilterLoja(loja)}>
             {loja === 'todos' ? 'Todas Lojas' : loja}
           </Button>
         ))}
       </div>
 
-      {/* Indicators - only own data for vendedor, all for gestor */}
       {myIndicadores && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <IndicatorCard title="Atendimentos" value={myIndicadores.qtdAtendimentos} icon={<Users className="h-5 w-5" />} />
-          <IndicatorCard title="Sinais" value={myIndicadores.qtdSinais} icon={<CreditCard className="h-5 w-5" />} iconClass="bg-purple-100 text-purple-600" />
+          <IndicatorCard title="Atendimentos" value={myIndicadores.qtdAtendimentos ?? 0} icon={<Users className="h-5 w-5" />} />
+          <IndicatorCard title="Sinais" value={myIndicadores.qtdSinais ?? 0} icon={<CreditCard className="h-5 w-5" />} iconClass="bg-purple-100 text-purple-600" />
           <IndicatorCard
             title="Vendas"
-            value={`${myIndicadores.qtdVendas} (${fmtPctInt(myIndicadores.taxaConversao)})`}
+            value={`${myIndicadores.qtdVendas ?? 0} (${fmtPctInt(myIndicadores.taxaConversao ?? 0)})`}
             icon={<Check className="h-5 w-5 text-green-600" />}
             iconClass="bg-green-100 text-green-600"
           />
         </div>
       )}
 
-      {/* Section: Por Vendedor */}
       <div className="space-y-1 !mt-8">
         <h2 className="text-lg font-bold text-foreground">Resultado da Equipe</h2>
         <Separator />
@@ -335,7 +142,6 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         </Card>
       </div>
 
-      {/* Section: Resultado do Ano */}
       <div className="space-y-1 !mt-8">
         <h2 className="text-lg font-bold text-foreground">Seus Resultados no Ano</h2>
         <Separator />
