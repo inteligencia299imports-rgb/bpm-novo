@@ -871,6 +871,17 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               </div>
                             </>
                           )}
+                          {(atendimento as any).data_entrega && (
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs text-muted-foreground">Data de Entrega</p>
+                                <p className="font-semibold text-foreground flex items-center gap-1.5">
+                                  <Truck className="h-3.5 w-3.5" />
+                                  {format(new Date((atendimento as any).data_entrega + 'T00:00:00'), "dd/MM/yyyy")}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                         {estItem.observacoes && (
                           <p className="text-xs text-muted-foreground italic">{estItem.observacoes}</p>
