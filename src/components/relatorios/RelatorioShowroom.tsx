@@ -287,21 +287,20 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       if (a.situacao !== 'vendido') return false;
       // Find estoque with data_venda
       const estoques = estoqueByAtendimentoVenda[a.id] || [];
+      if (estoques.length === 0) return false;
       const hasMatchingEstoque = estoques.some(e => {
+        if (!e.data_venda) return false;
         if (filterTipo !== 'todos' && e.tipo !== filterTipo) return false;
-        if (dateFrom && e.data_venda) {
-          const dv = new Date(e.data_venda);
-          if (dv < dateFrom) return false;
-        }
-        if (dateTo && e.data_venda) {
-          const dv = new Date(e.data_venda);
+        const dv = new Date(e.data_venda);
+        if (dateFrom && dv < dateFrom) return false;
+        if (dateTo) {
           const endOfDay = new Date(dateTo);
           endOfDay.setHours(23, 59, 59, 999);
           if (dv > endOfDay) return false;
         }
         return true;
       });
-      return estoques.length === 0 || hasMatchingEstoque;
+      return hasMatchingEstoque;
     });
   }, [filteredAtendimentos, estoqueByAtendimentoVenda, dateFrom, dateTo, filterTipo]);
 
