@@ -30,7 +30,7 @@ const formatPhone = (value: string): string => {
 };
 
 const ProcessCard: React.FC<ProcessCardProps> = ({
-  clientName, phone, motoLabel, loja, date, statusColor, extraBadge, onClick,
+  clientName, phone, motoLabel, loja, date, statusColor, extraBadge, readyIndicator, onClick,
 }) => (
   <div
     className="bg-card rounded-lg border border-border shadow-soft hover:shadow-card hover:bg-surface-hover transition-all cursor-pointer group overflow-hidden"
