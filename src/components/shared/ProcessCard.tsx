@@ -17,6 +17,7 @@ interface ProcessCardProps {
   date: string;
   statusColor: string;
   extraBadge?: { label: string; className?: string };
+  readyIndicator?: 'ready' | 'not_ready' | null;
   onClick?: () => void;
 }
 
@@ -29,7 +30,7 @@ const formatPhone = (value: string): string => {
 };
 
 const ProcessCard: React.FC<ProcessCardProps> = ({
-  clientName, phone, motoLabel, loja, date, statusColor, extraBadge, onClick,
+  clientName, phone, motoLabel, loja, date, statusColor, extraBadge, readyIndicator, onClick,
 }) => (
   <div
     className="bg-card rounded-lg border border-border shadow-soft hover:shadow-card hover:bg-surface-hover transition-all cursor-pointer group overflow-hidden"
@@ -40,6 +41,12 @@ const ProcessCard: React.FC<ProcessCardProps> = ({
       <div className="flex-1 p-3 space-y-2 min-w-0 overflow-hidden">
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">{clientName}</h3>
+          {readyIndicator && (
+            <span
+              className={`w-2.5 h-2.5 rounded-full shrink-0 ${readyIndicator === 'ready' ? 'bg-green-500' : 'bg-red-500'}`}
+              title={readyIndicator === 'ready' ? 'Apta para liberação' : 'Pendências para liberação'}
+            />
+          )}
         </div>
         {motoLabel && (
           <div className="flex items-center gap-1.5 text-xs font-medium text-primary min-w-0">
