@@ -612,7 +612,8 @@ const ContratoDialog: React.FC<Props> = ({
                   <CurrencyField label="Valor da Venda" value={valorVenda} onChange={setValorVenda} required />
                 </div>
 
-                {/* IPVA */}
+                {/* IPVA - hidden for Ducati */}
+                {atendimento.loja?.toLowerCase() !== 'ducati' && (
                 <div>
                   <label className="text-sm font-medium text-foreground">IPVA<span className="text-destructive ml-0.5">*</span></label>
                   <div className="flex gap-2 mt-1 flex-wrap">
@@ -646,6 +647,7 @@ const ContratoDialog: React.FC<Props> = ({
                     </div>
                   )}
                 </div>
+                )}
 
                 {/* Transferência */}
                 <div>
