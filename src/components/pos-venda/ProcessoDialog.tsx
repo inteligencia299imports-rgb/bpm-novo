@@ -251,6 +251,8 @@ const ProcessoDialog: React.FC<Props> = ({
 
             {etapas.map((e, idx) => {
               const isPrevisaoPagamento = e.etapa === 'PREVISÃO DE PAGAMENTO';
+              const isEntregaMoto = e.etapa === 'ENTREGA DA MOTO';
+              const isDateOnly = isPrevisaoPagamento || isEntregaMoto;
               return (
               <React.Fragment key={e.etapa}>
                 {idx > 0 && <Separator />}
