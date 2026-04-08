@@ -482,8 +482,22 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setEditClienteOpen(true);
   };
 
-  const openEntrega = () => {
-    setEntregaDate((atendimento as any).data_entrega || '');
+  const openEntrega = async () => {
+    // Fetch current entrega step
+    const { data: row } = await supabase
+      .from('pos_venda_processos')
+      .select('data_conclusao')
+      .eq('atendimento_id', atendimento.id)
+      .eq('etapa', 'ENTREGA DA MOTO')
+      .maybeSingle();
+    if (row?.data_conclusao) {
+      const d = new Date(row.data_conclusao);
+      setEntregaDate(d.toISOString().slice(0, 10));
+      setEntregaTime(d.toISOString().slice(11, 16));
+    } else {
+      setEntregaDate('');
+      setEntregaTime('');
+    }
     setEntregaOpen(true);
   };
 
@@ -493,15 +507,37 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       return;
     }
     setSavingEntrega(true);
-    const { error } = await supabase.from('atendimentos').update({ data_entrega: entregaDate } as any).eq('id', atendimento.id);
-    setSavingEntrega(false);
-    if (error) {
-      toast.error('Erro ao salvar data de entrega');
+    const dataConclusao = entregaTime
+      ? `${entregaDate}T${entregaTime}:00`
+      : `${entregaDate}T00:00:00`;
+
+    // Check if the ENTREGA DA MOTO step already exists
+    const { data: existing } = await supabase
+      .from('pos_venda_processos')
+      .select('id')
+      .eq('atendimento_id', atendimento.id)
+      .eq('etapa', 'ENTREGA DA MOTO')
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('pos_venda_processos').update({
+        concluida: true,
+        data_conclusao: dataConclusao,
+      }).eq('id', existing.id);
     } else {
-      toast.success('Data de entrega salva!');
-      setEntregaOpen(false);
-      if (onStatusUpdated) onStatusUpdated(); else onDeleted();
+      await supabase.from('pos_venda_processos').insert({
+        atendimento_id: atendimento.id,
+        etapa: 'ENTREGA DA MOTO',
+        concluida: true,
+        data_conclusao: dataConclusao,
+      });
     }
+
+    setSavingEntrega(false);
+    setEntregaDataConclusao(dataConclusao);
+    toast.success('Data de entrega salva!');
+    setEntregaOpen(false);
+    if (onStatusUpdated) onStatusUpdated(); else onDeleted();
   };
 
   const handleSaveCliente = async () => {
