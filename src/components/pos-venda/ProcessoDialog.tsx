@@ -251,6 +251,8 @@ const ProcessoDialog: React.FC<Props> = ({
 
             {etapas.map((e, idx) => {
               const isPrevisaoPagamento = e.etapa === 'PREVISÃO DE PAGAMENTO';
+              const isEntregaMoto = e.etapa === 'ENTREGA DA MOTO';
+              const isDateOnly = isPrevisaoPagamento || isEntregaMoto;
               return (
               <React.Fragment key={e.etapa}>
                 {idx > 0 && <Separator />}
@@ -267,19 +269,19 @@ const ProcessoDialog: React.FC<Props> = ({
                     <p className={`text-sm font-semibold uppercase ${e.concluida || (isPrevisaoPagamento && e.data_conclusao) ? 'text-foreground' : 'text-muted-foreground'}`}>
                       {e.etapa}
                     </p>
-                    {!isPrevisaoPagamento && e.concluida && e.data_conclusao && (
+                    {!isDateOnly && e.concluida && e.data_conclusao && (
                       <p className="text-xs text-muted-foreground">
                         {format(new Date(e.data_conclusao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </p>
                     )}
-                    {isPrevisaoPagamento && e.data_conclusao && (
+                    {isDateOnly && e.data_conclusao && (
                       <p className="text-xs text-muted-foreground">
                         {format(new Date(e.data_conclusao), "dd/MM/yyyy", { locale: ptBR })}
                       </p>
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    {isPrevisaoPagamento ? (
+                    {isDateOnly ? (
                       <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
                         <PopoverTrigger asChild>
                           <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
