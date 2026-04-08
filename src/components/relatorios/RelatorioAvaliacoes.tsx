@@ -13,8 +13,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-const MIN_DATE_ISO = '2026-04-06T00:00:00.000Z';
-
 // Reuse custom month logic from Showroom
 function getCustomMonthLabel(startDate: Date): string {
   const endDate = new Date(startDate);
@@ -101,8 +99,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
   const loadData = useCallback(async () => {
     const [avRes, atRes, urRes] = await Promise.all([
-      supabase.from('avaliacoes').select('id, atendimento_id, situacao, tipo_aquisicao, avaliador_id, created_at, negociacao').gte('created_at', MIN_DATE_ISO).limit(10000),
-      supabase.from('atendimentos').select('id, nome_cliente, interesse, loja, vendedor_id').gte('created_at', MIN_DATE_ISO).limit(10000),
+      supabase.from('avaliacoes').select('id, atendimento_id, situacao, tipo_aquisicao, avaliador_id, created_at, negociacao').limit(10000),
+      supabase.from('atendimentos').select('id, nome_cliente, interesse, loja, vendedor_id').limit(10000),
       supabase.from('user_roles').select('user_id, nome'),
     ]);
     setAvaliacoes((avRes.data || []) as AvaliacaoRow[]);

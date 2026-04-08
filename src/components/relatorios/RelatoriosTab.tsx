@@ -30,8 +30,7 @@ const RelatoriosTab: React.FC = () => {
   const isGestor = role === 'gestor';
   const cycle = getCurrentCycleRange();
   const [dept, setDept] = useState(isGestor ? 'showroom' : 'vendedores');
-  const minDate = new Date(2026, 3, 6);
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(cycle.start < minDate ? minDate : cycle.start);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(cycle.start);
   const [dateTo, setDateTo] = useState<Date | undefined>(cycle.end);
   const clearFnRef = useRef<(() => void) | null>(null);
   const [hasInternalFilters, setHasInternalFilters] = useState(false);
@@ -85,7 +84,7 @@ const RelatoriosTab: React.FC = () => {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" disabled={(date) => date < new Date(2026, 3, 6)} />
+                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
             <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
