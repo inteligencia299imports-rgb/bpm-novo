@@ -1610,6 +1610,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               Salvar
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Dialog Data de Entrega */}
       <Dialog open={entregaOpen} onOpenChange={setEntregaOpen}>
         <DialogContent className="max-w-sm">
@@ -1632,9 +1635,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               Salvar
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
-    </div>
         </DialogContent>
       </Dialog>
     </div>
