@@ -590,6 +590,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               <FileText className="h-4 w-4" />
             </Button>
           )}
+          {atendimento.situacao === 'vendido' && (
+            <Button size="sm" variant="outline" onClick={openEntrega} className="flex-1">
+              <Truck className="h-4 w-4" />
+            </Button>
+          )}
           <Button size="sm" variant="outline" className="flex-1" onClick={() => onEdit(atendimento.id)}>
             <Edit className="h-4 w-4" />
           </Button>
