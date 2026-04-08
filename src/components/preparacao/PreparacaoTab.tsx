@@ -55,7 +55,30 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
       const estData = estResult.data;
       const estoqueMap: Record<string, { status: string; observacoes: string | null }> = {};
       (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes }; });
-      let mapped = allData.map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null }));
+
+      // Fetch release readiness data
+      const avaliacaoIds = allData.map((d: any) => d.id);
+      const [pcResult, consigResult] = await Promise.all([
+        supabase.from('pos_compra_processos').select('avaliacao_id, etapa, concluida').in('avaliacao_id', avaliacaoIds.length ? avaliacaoIds : ['']).in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']),
+        supabase.from('consignacao_processos').select('avaliacao_id, etapa, concluida').in('avaliacao_id', avaliacaoIds.length ? avaliacaoIds : ['']).eq('etapa', 'NF EMITIDA'),
+      ]);
+      const pcData = pcResult.data || [];
+      const consigData = consigResult.data || [];
+
+      const releaseReadyMap: Record<string, boolean> = {};
+      allData.forEach((d: any) => {
+        const tipo = d.tipo_aquisicao;
+        if (isTipoPropria(tipo)) {
+          const nf = pcData.find(p => p.avaliacao_id === d.id && p.etapa === 'NF EMITIDA');
+          const vistoria = pcData.find(p => p.avaliacao_id === d.id && p.etapa === 'VISTORIA/CADEIA DOMINIAL');
+          releaseReadyMap[d.id] = !!(nf?.concluida && vistoria?.concluida);
+        } else if (isTipoConsignada(tipo)) {
+          const nf = consigData.find(p => p.avaliacao_id === d.id && p.etapa === 'NF EMITIDA');
+          releaseReadyMap[d.id] = !!(nf?.concluida);
+        }
+      });
+
+      let mapped = allData.map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null, _releaseReady: releaseReadyMap[d.id] ?? null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       setItems(mapped);
     }
