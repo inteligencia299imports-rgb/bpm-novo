@@ -232,7 +232,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
   // ===== Charts by vendedor =====
   const chartByVendedor = useMemo(() => {
-    const vendedorIds = [...new Set(filteredAtendimentos.map(a => a.vendedor_id))].filter(vid => vendedorMap[vid]);
+    const vendedorIds = [...new Set(atendimentosAll.map(a => a.vendedor_id))].filter(vid => vendedorMap[vid]);
     return vendedorIds.map(vid => {
       const vendAtend = atendimentosFiltradosPorData.filter(a => a.vendedor_id === vid);
       const vendVendas = vendidos.filter(a => a.vendedor_id === vid);
@@ -248,13 +248,13 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         conversao: qtdAtend > 0 ? qtdVendas / qtdAtend : 0,
       };
     }).filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0);
-  }, [filteredAtendimentos, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap]);
+  }, [atendimentosAll, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap]);
 
   // ===== Charts by month (only my data) =====
   const chartByMonth = useMemo(() => {
     if (!user) return [];
     const months = generateCustomMonths();
-    const myAtendimentos = filteredAtendimentos.filter(a => a.vendedor_id === user.id);
+    const myAtendimentos = atendimentosAll.filter(a => a.vendedor_id === user.id);
     return months.map(m => {
       const atendMonth = myAtendimentos.filter(a => {
         const d = new Date(a.created_at);
@@ -280,7 +280,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         conversao,
       };
     });
-  }, [user, filteredAtendimentos, estoqueByAtendimentoVenda]);
+  }, [user, atendimentosAll, estoqueByAtendimentoVenda]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
