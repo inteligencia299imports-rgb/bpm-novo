@@ -107,11 +107,10 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     // Query 1: Atendimentos filtered by loja + date (for counting)
     let atPeriodoQuery = supabase.from('atendimentos').select('id, situacao, loja, interesse, vendedor_id, created_at, updated_at');
     atPeriodoQuery = applyLojaFilter(atPeriodoQuery, filterLoja);
-    if (dateFrom) {
-      const start = new Date(dateFrom);
-      start.setHours(0, 0, 0, 0);
-      atPeriodoQuery = atPeriodoQuery.gte('created_at', start.toISOString());
-    }
+    const effectiveDateFrom = dateFrom ? new Date(Math.max(dateFrom.getTime(), new Date(MIN_DATE_ISO).getTime())) : new Date(MIN_DATE_ISO);
+    const start = new Date(effectiveDateFrom);
+    start.setHours(0, 0, 0, 0);
+    atPeriodoQuery = atPeriodoQuery.gte('created_at', start.toISOString());
     if (dateTo) {
       const end = new Date(dateTo);
       end.setHours(23, 59, 59, 999);
@@ -121,7 +120,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
     // Query 2: All atendimentos filtered by loja only (for vendidos, sinais, chartByMonth)
     let atAllQuery = supabase.from('atendimentos').select('id, situacao, loja, interesse, vendedor_id, created_at, updated_at');
-    atAllQuery = applyLojaFilter(atAllQuery, filterLoja).limit(10000);
+    atAllQuery = applyLojaFilter(atAllQuery, filterLoja).gte('created_at', MIN_DATE_ISO).limit(10000);
 
     const [atPeriodoRes, atAllRes, esRes, vdRes] = await Promise.all([
       atPeriodoQuery,
