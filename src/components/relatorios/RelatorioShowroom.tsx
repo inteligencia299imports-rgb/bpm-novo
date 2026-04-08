@@ -134,7 +134,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const xTickPropsName = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 10, fill: 'hsl(var(--foreground))' };
   const chartMarginBottom = isMobile ? 40 : 0;
   const [loading, setLoading] = useState(true);
-  const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
+  const [atendimentosPeriodo, setAtendimentosPeriodo] = useState<AtendimentoRow[]>([]);
+  const [atendimentosAll, setAtendimentosAll] = useState<AtendimentoRow[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<AvaliacaoRow[]>([]);
   const [estoqueItems, setEstoqueItems] = useState<EstoqueRow[]>([]);
   const [custosOficina, setCustosOficina] = useState<CustoOficinaRow[]>([]);
@@ -162,9 +163,36 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     });
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
+  // Helper: apply loja filter to a Supabase query
+  const applyLojaFilter = useCallback((query: any, loja: string) => {
+    if (loja === 'Ducati') return query.ilike('loja', '%ducati%');
+    if (loja === '299') return query.not('loja', 'ilike', '%ducati%');
+    return query;
+  }, []);
+
   const loadData = useCallback(async () => {
-    const [atRes, avRes, esRes, coRes, vdRes, ccRes, copRes] = await Promise.all([
-      supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal').limit(5000),
+    // Query 1: Atendimentos filtered by loja + date (for counting atendimentos no período)
+    let atPeriodoQuery = supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal');
+    atPeriodoQuery = applyLojaFilter(atPeriodoQuery, filterLoja);
+    if (dateFrom) {
+      const start = new Date(dateFrom);
+      start.setHours(0, 0, 0, 0);
+      atPeriodoQuery = atPeriodoQuery.gte('created_at', start.toISOString());
+    }
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23, 59, 59, 999);
+      atPeriodoQuery = atPeriodoQuery.lte('created_at', end.toISOString());
+    }
+    atPeriodoQuery = atPeriodoQuery.limit(5000);
+
+    // Query 2: All atendimentos filtered by loja only (for vendidos, sinais, chartByMonth)
+    let atAllQuery = supabase.from('atendimentos').select('id, nome_cliente, situacao, loja, interesse, vendedor_id, created_at, valor_venda, valor_sinal');
+    atAllQuery = applyLojaFilter(atAllQuery, filterLoja).limit(5000);
+
+    const [atPeriodoRes, atAllRes, avRes, esRes, coRes, vdRes, ccRes, copRes] = await Promise.all([
+      atPeriodoQuery,
+      atAllQuery,
       supabase.from('avaliacoes').select('id, atendimento_id, quanto_vende, valor_fechamento, previsao_custos_loja, previsao_custos_cliente, tipo_aquisicao, moto_avaliacao_id').limit(5000),
       supabase.from('estoque').select('id, avaliacao_id, atendimento_venda_id, preco, tipo, modelo, marca, placa, data_venda, valor_venda, status').limit(5000),
       supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado').limit(5000),
@@ -172,7 +200,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       supabase.from('contratos_consignante').select('id, atendimento_id').limit(5000),
       supabase.from('custos_operacionais').select('contrato_consignante_id, responsavel, valor').limit(5000),
     ]);
-    setAtendimentos((atRes.data || []) as AtendimentoRow[]);
+    setAtendimentosPeriodo((atPeriodoRes.data || []) as AtendimentoRow[]);
+    setAtendimentosAll((atAllRes.data || []) as AtendimentoRow[]);
     setAvaliacoes((avRes.data || []) as AvaliacaoRow[]);
     setEstoqueItems((esRes.data || []) as EstoqueRow[]);
     setCustosOficina((coRes.data || []) as CustoOficinaRow[]);
@@ -180,7 +209,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     setCustosOperacionais((copRes.data || []) as CustoOperacionalRow[]);
     setVendedores((vdRes.data || []) as VendedorInfo[]);
     setLoading(false);
-  }, []);
+  }, [dateFrom, dateTo, filterLoja, applyLojaFilter]);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
@@ -198,7 +227,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       .on('postgres_changes', { event: '*', schema: 'public', table: 'avaliacoes' }, debouncedLoad)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, debouncedLoad)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'custos_oficina' }, debouncedLoad)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos' }, debouncedLoad)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos_consignante' }, debouncedLoad)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'custos_operacionais' }, debouncedLoad)
       .subscribe();
 
@@ -273,60 +302,38 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   // Normalize loja
   const normLoja = (loja: string) => loja?.toUpperCase().includes('DUCATI') ? 'Ducati' : '299';
 
-  // Filter atendimentos
-  const filteredAtendimentos = useMemo(() => {
-    return atendimentos.filter(a => {
-      if (filterLoja !== 'todos' && normLoja(a.loja) !== filterLoja) return false;
-      return true;
-    });
-  }, [atendimentos, filterLoja]);
-
-  // Vendidos filtered by date and tipo
+  // Vendidos filtered by date_venda and tipo (using atendimentosAll - loja already filtered server-side)
   const vendidos = useMemo(() => {
-    return filteredAtendimentos.filter(a => {
+    return atendimentosAll.filter(a => {
       if (a.situacao !== 'vendido') return false;
-      // Find estoque with data_venda
       const estoques = estoqueByAtendimentoVenda[a.id] || [];
       const hasMatchingEstoque = estoques.some(e => {
         if (filterTipo !== 'todos' && e.tipo !== filterTipo) return false;
         if (dateFrom && e.data_venda) {
           const dv = new Date(e.data_venda);
-          if (dv < dateFrom) return false;
+          const start = new Date(dateFrom);
+          start.setHours(0, 0, 0, 0);
+          if (dv < start) return false;
         }
         if (dateTo && e.data_venda) {
           const dv = new Date(e.data_venda);
-          const endOfDay = new Date(dateTo);
-          endOfDay.setHours(23, 59, 59, 999);
-          if (dv > endOfDay) return false;
+          const end = new Date(dateTo);
+          end.setHours(23, 59, 59, 999);
+          if (dv > end) return false;
         }
         return true;
       });
       return estoques.length === 0 || hasMatchingEstoque;
     });
-  }, [filteredAtendimentos, estoqueByAtendimentoVenda, dateFrom, dateTo, filterTipo]);
+  }, [atendimentosAll, estoqueByAtendimentoVenda, dateFrom, dateTo, filterTipo]);
 
-  // Sinais filtered only by loja (no date filter, no tipo filter for counts)
+  // Sinais filtered only by loja (already server-side)
   const sinais = useMemo(() => {
-    return filteredAtendimentos.filter(a => a.situacao === 'sinal');
-  }, [filteredAtendimentos]);
+    return atendimentosAll.filter(a => a.situacao === 'sinal');
+  }, [atendimentosAll]);
 
-  // Atendimentos filtered by date (created_at in same period)
-  const atendimentosFiltradosPorData = useMemo(() => {
-    return filteredAtendimentos.filter(a => {
-      // Considerar todos os interesses (comprar, trocar, vender)
-      if (dateFrom) {
-        const d = new Date(a.created_at);
-        if (d < dateFrom) return false;
-      }
-      if (dateTo) {
-        const d = new Date(a.created_at);
-        const endOfDay = new Date(dateTo);
-        endOfDay.setHours(23, 59, 59, 999);
-        if (d > endOfDay) return false;
-      }
-      return true;
-    });
-  }, [filteredAtendimentos, dateFrom, dateTo]);
+  // atendimentosFiltradosPorData = already loaded with date+loja filter from server
+  const atendimentosFiltradosPorData = atendimentosPeriodo;
 
   // Helper: get custos for an avaliacao
   // Custos de oficina (têm valor_executado) - usam lógica previsto vs realizado
@@ -530,7 +537,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
   // ===== Charts by vendedor =====
   const chartByVendedor = useMemo(() => {
-    const vendedorIds = [...new Set(filteredAtendimentos.map(a => a.vendedor_id))];
+    const vendedorIds = [...new Set(atendimentosAll.map(a => a.vendedor_id))];
     return vendedorIds.map(vid => {
       const vendAtend = atendimentosFiltradosPorData.filter(a => a.vendedor_id === vid);
       const vendVendas = vendidos.filter(a => a.vendedor_id === vid);
@@ -556,18 +563,18 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         faturamento,
       };
     }).filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0);
-  }, [filteredAtendimentos, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap, estoqueByAtendimentoVenda, filterTipo]);
+  }, [atendimentosAll, atendimentosFiltradosPorData, vendidos, sinais, vendedorMap, estoqueByAtendimentoVenda, filterTipo]);
 
   // ===== Charts by custom month =====
   const chartByMonth = useMemo(() => {
     const months = generateCustomMonths();
     return months.map(m => {
-      const atendMonth = filteredAtendimentos.filter(a => {
+      const atendMonth = atendimentosAll.filter(a => {
         const d = new Date(a.created_at);
         return d >= m.start && d <= m.end;
       });
       // Vendidos in this month period (by data_venda from estoque)
-      const vendidosMonth = filteredAtendimentos.filter(a => {
+      const vendidosMonth = atendimentosAll.filter(a => {
         if (a.situacao !== 'vendido') return false;
         const estoques = estoqueByAtendimentoVenda[a.id] || [];
         return estoques.some(e => {
@@ -628,7 +635,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         pctMargemRealizada: faturamentoReal > 0 ? margemRealizada / faturamentoReal : 0,
       };
     });
-  }, [filteredAtendimentos, estoqueByAtendimentoVenda, avaliacoes, custosByAvaliacao, filterTipo]);
+  }, [atendimentosAll, estoqueByAtendimentoVenda, avaliacoes, custosByAvaliacao, filterTipo]);
 
   const clearFilters = () => {
     setDateFrom(undefined);
