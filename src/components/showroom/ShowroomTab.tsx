@@ -40,8 +40,17 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   const [filterVendedor, setFilterVendedor] = useState('todos');
   const [vendedores, setVendedores] = useState<{ user_id: string; nome: string }[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [dateFrom, setDateFromRaw] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateToRaw] = useState<Date | undefined>(undefined);
+
+  const setDateFrom = (d: Date | undefined) => {
+    if (d) { d.setHours(0, 0, 0, 0); }
+    setDateFromRaw(d);
+  };
+  const setDateTo = (d: Date | undefined) => {
+    if (d) { d.setHours(23, 59, 59, 999); }
+    setDateToRaw(d);
+  };
 
   useEffect(() => {
     supabase.from('user_roles').select('user_id, nome').order('nome').then(({ data }) => {
