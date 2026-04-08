@@ -1,69 +1,13 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { abbreviateName } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, ArrowDownToLine, Repeat, Package } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/contexts/AuthContext';
-import { isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-// Reuse custom month logic from Showroom
-function getCustomMonthLabel(startDate: Date): string {
-  const endDate = new Date(startDate);
-  endDate.setMonth(endDate.getMonth() + 1);
-  endDate.setDate(endDate.getDate() - 1);
-  return `${format(startDate, 'dd/MM', { locale: ptBR })} - ${format(endDate, 'dd/MM', { locale: ptBR })}`;
-}
-
-function generateCustomMonths(): { start: Date; end: Date; label: string }[] {
-  const months: { start: Date; end: Date; label: string }[] = [];
-  const now = new Date();
-  let current = new Date(2025, 11, 21);
-  while (current <= now) {
-    const end = new Date(current);
-    end.setMonth(end.getMonth() + 1);
-    end.setDate(20);
-    end.setHours(23, 59, 59, 999);
-    months.push({ start: new Date(current), end, label: getCustomMonthLabel(current) });
-    current = new Date(current);
-    current.setMonth(current.getMonth() + 1);
-  }
-  return months;
-}
-
-const fmtPct = (v: number | null | undefined) => {
-  const raw = (v ?? 0) * 100;
-  return `${(Math.round(raw * 10) / 10).toFixed(1)}%`;
-};
-
-interface AvaliacaoRow {
-  id: string;
-  atendimento_id: string;
-  situacao: string;
-  tipo_aquisicao: string | null;
-  avaliador_id: string | null;
-  created_at: string;
-  negociacao: string | null;
-}
-
-interface AtendimentoRow {
-  id: string;
-  nome_cliente: string;
-  interesse: string;
-  loja: string;
-  vendedor_id: string;
-}
-
-interface AvaliadorInfo {
-  user_id: string;
-  nome: string;
-}
 
 interface RelatorioAvaliacoesProps {
   dateFrom: Date | undefined;
@@ -80,10 +24,11 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   const xTickProps = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 9, fill: 'hsl(var(--foreground))' };
   const xTickPropsName = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 10, fill: 'hsl(var(--foreground))' };
   const chartMarginBottom = isMobile ? 40 : 0;
+
   const [loading, setLoading] = useState(true);
-  const [avaliacoes, setAvaliacoes] = useState<AvaliacaoRow[]>([]);
-  const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
-  const [avaliadores, setAvaliadores] = useState<AvaliadorInfo[]>([]);
+  const [indicadores, setIndicadores] = useState<any>({});
+  const [chartByAvaliador, setChartByAvaliador] = useState<any[]>([]);
+  const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
 
   const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v); };
@@ -98,16 +43,21 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const [avRes, atRes, urRes] = await Promise.all([
-      supabase.from('avaliacoes').select('id, atendimento_id, situacao, tipo_aquisicao, avaliador_id, created_at, negociacao').limit(10000),
-      supabase.from('atendimentos').select('id, nome_cliente, interesse, loja, vendedor_id').limit(10000),
-      supabase.from('user_roles').select('user_id, nome'),
+    const dfParam = dateFrom ? dateFrom.toISOString() : null;
+    const dtParam = dateTo ? dateTo.toISOString() : null;
+
+    const [kpisRes, avaliadoresRes, mensalRes] = await Promise.all([
+      supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
+      supabase.rpc('relatorio_avaliacoes_avaliadores', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
+      supabase.rpc('relatorio_avaliacoes_mensal', { _loja: filterLoja }),
     ]);
-    setAvaliacoes((avRes.data || []) as AvaliacaoRow[]);
-    setAtendimentos((atRes.data || []) as AtendimentoRow[]);
-    setAvaliadores((urRes.data || []) as AvaliadorInfo[]);
+
+    setIndicadores(kpisRes.data || {});
+    const avalData = (avaliadoresRes.data || []) as any[];
+    setChartByAvaliador(avalData.map((v: any) => ({ ...v, nome: abbreviateName(v.nome || 'Desconhecido') })));
+    setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
-  }, []);
+  }, [dateFrom, dateTo, filterLoja]);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
@@ -129,118 +79,6 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     };
   }, [loadData, debouncedLoad]);
 
-  const normLoja = (loja: string) => loja?.toUpperCase().includes('DUCATI') ? 'Ducati' : '299';
-
-  const atendimentoMap = useMemo(() => {
-    const map: Record<string, AtendimentoRow> = {};
-    atendimentos.forEach(a => { map[a.id] = a; });
-    return map;
-  }, [atendimentos]);
-
-  const avaliadorMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    avaliadores.forEach(a => { map[a.user_id] = a.nome; });
-    return map;
-  }, [avaliadores]);
-
-  // Filtered avaliacoes: by loja, date, and interesse (trocar/vender)
-  const filtered = useMemo(() => {
-    return avaliacoes.filter(av => {
-      if (av.situacao === 'sem_avaliar') return false;
-      const atend = atendimentoMap[av.atendimento_id];
-      if (!atend) return false;
-      if (atend.interesse !== 'trocar' && atend.interesse !== 'vender') return false;
-      if (filterLoja !== 'todos' && normLoja(atend.loja) !== filterLoja) return false;
-      if (dateFrom) {
-        const d = new Date(av.created_at);
-        if (d < dateFrom) return false;
-      }
-      if (dateTo) {
-        const d = new Date(av.created_at);
-        const endOfDay = new Date(dateTo);
-        endOfDay.setHours(23, 59, 59, 999);
-        if (d > endOfDay) return false;
-      }
-      return true;
-    });
-  }, [avaliacoes, atendimentoMap, filterLoja, dateFrom, dateTo]);
-
-  // Indicators
-  const indicadores = useMemo(() => {
-    const qtdAvaliacoes = filtered.length;
-    const aquisicoes = filtered.filter(a => !!a.tipo_aquisicao);
-    const qtdAquisicoes = aquisicoes.length;
-    const qtdProprias = aquisicoes.filter(a => isTipoPropria(a.tipo_aquisicao) && a.tipo_aquisicao !== 'convertida').length;
-    const qtdConsignadas = aquisicoes.filter(a => isTipoConsignada(a.tipo_aquisicao)).length;
-    const qtdConvertidas = aquisicoes.filter(a => a.tipo_aquisicao === 'convertida').length;
-    const qtdRetiradas = filtered.filter(a => a.situacao === 'dispensada').length;
-
-    const qtdEntradaDireta = filtered.filter(a => {
-      const atend = atendimentoMap[a.atendimento_id];
-      return atend?.interesse === 'vender';
-    }).length;
-
-    const qtdTroca = filtered.filter(a => {
-      const atend = atendimentoMap[a.atendimento_id];
-      return atend?.interesse === 'trocar';
-    }).length;
-
-    return { qtdAvaliacoes, qtdAquisicoes, qtdProprias, qtdConsignadas, qtdConvertidas, qtdRetiradas, qtdEntradaDireta, qtdTroca };
-  }, [filtered, atendimentoMap]);
-
-  // Charts by avaliador
-  const chartByAvaliador = useMemo(() => {
-    const avaliadorIds = [...new Set(filtered.map(a => a.avaliador_id).filter(Boolean))] as string[];
-    return avaliadorIds.map(aid => {
-      const avAvaliacoes = filtered.filter(a => a.avaliador_id === aid);
-      const avAquisicoes = avAvaliacoes.filter(a => !!a.tipo_aquisicao);
-      const aqTrocar = avAquisicoes.filter(a => atendimentoMap[a.atendimento_id]?.interesse === 'trocar').length;
-      const aqVender = avAquisicoes.filter(a => atendimentoMap[a.atendimento_id]?.interesse === 'vender').length;
-      return {
-        nome: abbreviateName(avaliadorMap[aid] || 'Desconhecido'),
-        avaliacoes: avAvaliacoes.length,
-        aqTrocar,
-        aqVender,
-      };
-    }).filter(v => v.avaliacoes > 0);
-  }, [filtered, avaliadorMap, atendimentoMap]);
-
-  // Charts by month
-  const chartByMonth = useMemo(() => {
-    // Use all avaliacoes (not date-filtered) for monthly breakdown
-    const allFiltered = avaliacoes.filter(av => {
-      if (av.situacao === 'sem_avaliar') return false;
-      const atend = atendimentoMap[av.atendimento_id];
-      if (!atend) return false;
-      if (atend.interesse !== 'trocar' && atend.interesse !== 'vender') return false;
-      if (filterLoja !== 'todos' && normLoja(atend.loja) !== filterLoja) return false;
-      return true;
-    });
-
-    const months = generateCustomMonths();
-    return months.map(m => {
-      const inMonth = allFiltered.filter(av => {
-        const d = new Date(av.created_at);
-        return d >= m.start && d <= m.end;
-      });
-      const aquisicoes = inMonth.filter(a => !!a.tipo_aquisicao);
-      const proprias = aquisicoes.filter(a => isTipoPropria(a.tipo_aquisicao)).length;
-      const consignadas = aquisicoes.filter(a => isTipoConsignada(a.tipo_aquisicao)).length;
-      const negTrocar = inMonth.filter(a => atendimentoMap[a.atendimento_id]?.interesse === 'trocar').length;
-      const negVender = inMonth.filter(a => atendimentoMap[a.atendimento_id]?.interesse === 'vender').length;
-
-      return {
-        label: m.label,
-        avaliacoes: inMonth.length,
-        aquisicoes: aquisicoes.length,
-        proprias,
-        consignadas,
-        negTrocar,
-        negVender,
-      };
-    });
-  }, [avaliacoes, atendimentoMap, filterLoja]);
-
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
   }
@@ -248,16 +86,9 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      {/* Loja filter */}
       <div className="flex flex-wrap items-center gap-1">
         {['todos', '299', 'Ducati'].map(loja => (
-          <Button
-            key={loja}
-            size="sm"
-            variant={filterLoja === loja ? 'default' : 'outline'}
-            className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')}
-            onClick={() => setFilterLoja(loja)}
-          >
+          <Button key={loja} size="sm" variant={filterLoja === loja ? 'default' : 'outline'} className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')} onClick={() => setFilterLoja(loja)}>
             {loja === 'todos' ? 'Todas Lojas' : loja}
           </Button>
         ))}
@@ -265,17 +96,17 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Avaliações" value={indicadores.qtdAvaliacoes} gradient="teal" icon={<ClipboardCheck className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições" value={indicadores.qtdAquisicoes} subtitle={`(${indicadores.qtdAvaliacoes > 0 ? Math.floor((indicadores.qtdAquisicoes / indicadores.qtdAvaliacoes) * 100) : 0}%)`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições Próprias" value={indicadores.qtdProprias} gradient="teal" icon={<Package className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições Consignadas" value={indicadores.qtdConsignadas} gradient="teal" icon={<ArrowDownUp className="h-5 w-5" />} />
+        <IndicatorCard title="Avaliações" value={indicadores.qtdAvaliacoes ?? 0} gradient="teal" icon={<ClipboardCheck className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições" value={indicadores.qtdAquisicoes ?? 0} subtitle={`(${(indicadores.qtdAvaliacoes ?? 0) > 0 ? Math.floor(((indicadores.qtdAquisicoes ?? 0) / (indicadores.qtdAvaliacoes ?? 1)) * 100) : 0}%)`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições Próprias" value={indicadores.qtdProprias ?? 0} gradient="teal" icon={<Package className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições Consignadas" value={indicadores.qtdConsignadas ?? 0} gradient="teal" icon={<ArrowDownUp className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Convertidas" value={indicadores.qtdConvertidas} gradient="purple" icon={<Repeat className="h-5 w-5" />} />
-        <IndicatorCard title="Retiradas" value={indicadores.qtdRetiradas} gradient="red" icon={<XCircle className="h-5 w-5" />} />
-        <IndicatorCard title="Entrada Direta" value={indicadores.qtdEntradaDireta} gradient="emerald" icon={<ArrowDownToLine className="h-5 w-5" />} />
-        <IndicatorCard title="Troca" value={indicadores.qtdTroca} gradient="emerald" icon={<ArrowRightLeft className="h-5 w-5" />} />
+        <IndicatorCard title="Convertidas" value={indicadores.qtdConvertidas ?? 0} gradient="purple" icon={<Repeat className="h-5 w-5" />} />
+        <IndicatorCard title="Retiradas" value={indicadores.qtdRetiradas ?? 0} gradient="red" icon={<XCircle className="h-5 w-5" />} />
+        <IndicatorCard title="Entrada Direta" value={indicadores.qtdEntradaDireta ?? 0} gradient="emerald" icon={<ArrowDownToLine className="h-5 w-5" />} />
+        <IndicatorCard title="Troca" value={indicadores.qtdTroca ?? 0} gradient="emerald" icon={<ArrowRightLeft className="h-5 w-5" />} />
       </div>
 
       {/* Section: Por Avaliador */}
@@ -316,7 +147,6 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MonthChart title="Avaliações" data={chartByMonth} dataKey="avaliacoes" chartH={chartH} xTickProps={xTickProps} chartMarginBottom={chartMarginBottom} />
         <MonthChart title="Aquisições" data={chartByMonth} dataKey="aquisicoes" chartH={chartH} xTickProps={xTickProps} chartMarginBottom={chartMarginBottom} />
-        {/* Próprias e Consignadas - Line chart */}
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Próprias e Consignadas</CardTitle>
@@ -338,7 +168,6 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
             </ResponsiveContainer>
           </CardContent>
         </Card>
-        {/* Negociação - Barras por interesse */}
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Negociação</CardTitle>
@@ -365,7 +194,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   );
 };
 
-// Sub-components (same style as Showroom)
+// Sub-components
 const iconColorMap: Record<string, string> = {
   teal: 'bg-[#2F6F84]/10 text-[#2F6F84]',
   purple: 'bg-[#7e6d9b]/10 text-[#7e6d9b]',

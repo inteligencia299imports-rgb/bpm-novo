@@ -3,55 +3,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Package, CheckCircle, ShieldAlert, Ban, Wrench, Clock, DollarSign, TrendingDown } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-function getCustomMonthLabel(startDate: Date): string {
-  const endDate = new Date(startDate);
-  endDate.setMonth(endDate.getMonth() + 1);
-  endDate.setDate(endDate.getDate() - 1);
-  return `${format(startDate, 'dd/MM', { locale: ptBR })} - ${format(endDate, 'dd/MM', { locale: ptBR })}`;
-}
-
-function generateCustomMonths(): { start: Date; end: Date; label: string }[] {
-  const months: { start: Date; end: Date; label: string }[] = [];
-  const now = new Date();
-  let current = new Date(2025, 11, 21);
-  while (current <= now) {
-    const end = new Date(current);
-    end.setMonth(end.getMonth() + 1);
-    end.setDate(20);
-    end.setHours(23, 59, 59, 999);
-    months.push({ start: new Date(current), end, label: getCustomMonthLabel(current) });
-    current = new Date(current);
-    current.setMonth(current.getMonth() + 1);
-  }
-  return months;
-}
-
 const fmtBRL = (v: number | null | undefined) =>
   (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
 const fmtPct = (v: number) => `${Math.round(v)}%`;
-
-interface EstoqueRow {
-  id: string;
-  status: string;
-  preco: number | null;
-  data_entrada: string;
-  data_venda: string | null;
-}
-
-interface AvaliacaoPrep {
-  id: string;
-  situacao: string;
-  quanto_pede: number | null;
-  created_at: string;
-}
 
 interface RelatorioEstoqueProps {
   dateFrom: Date | undefined;
@@ -67,9 +26,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const chartH = isMobile ? 220 : 300;
   const xTickProps = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 9, fill: 'hsl(var(--foreground))' };
   const chartMarginBottom = isMobile ? 40 : 0;
+
   const [loading, setLoading] = useState(true);
-  const [estoque, setEstoque] = useState<EstoqueRow[]>([]);
-  const [preparacao, setPreparacao] = useState<AvaliacaoPrep[]>([]);
+  const [indicadores, setIndicadores] = useState<any>({});
+  const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
 
   const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v); };
@@ -84,12 +44,13 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const [estoqueRes, avalRes] = await Promise.all([
-      supabase.from('estoque').select('id, status, preco, data_entrada, data_venda'),
-      supabase.from('avaliacoes').select('id, situacao, quanto_pede, created_at'),
+    const [kpisRes, mensalRes] = await Promise.all([
+      supabase.rpc('relatorio_estoque_kpis'),
+      supabase.rpc('relatorio_estoque_mensal'),
     ]);
-    setEstoque((estoqueRes.data || []) as EstoqueRow[]);
-    setPreparacao(((avalRes.data || []) as AvaliacaoPrep[]).filter(a => a.situacao === 'adquirida'));
+
+    setIndicadores(kpisRes.data || {});
+    setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
   }, []);
 
@@ -113,114 +74,11 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     };
   }, [loadData, debouncedLoad]);
 
-  // Current stock = not sold (no data_venda) and not vendido status
-  const currentStock = useMemo(() => estoque.filter(e => e.status !== 'vendido'), [estoque]);
-
-  const indicadores = useMemo(() => {
-    const activeStatuses = ['disponivel', 'indisponivel', 'servico', 'bloqueio_juridico'];
-    const motosEstoque = currentStock.filter(e => activeStatuses.includes(e.status));
-    const total = motosEstoque.length;
-
-    const disponivel = motosEstoque.filter(e => e.status === 'disponivel');
-    const bloqueio = motosEstoque.filter(e => e.status === 'bloqueio_juridico');
-    const indisponivel = motosEstoque.filter(e => e.status === 'indisponivel');
-    const servico = motosEstoque.filter(e => e.status === 'servico');
-
-    const sumPreco = (items: EstoqueRow[]) => items.reduce((s, e) => s + (e.preco ?? 0), 0);
-
-    const qtdPreparacao = preparacao.length;
-    const somaQuantoPede = preparacao.reduce((s, a) => s + (a.quanto_pede ?? 0), 0);
-
-    const patrimonioDisponivel = sumPreco(disponivel);
-    const patrimonioParado = sumPreco(bloqueio) + sumPreco(indisponivel) + sumPreco(servico);
-
-    const now = new Date();
-    const avgDays = (items: EstoqueRow[]) =>
-      items.length > 0
-        ? Math.round(items.reduce((s, e) => s + Math.max(0, Math.floor((now.getTime() - new Date(e.data_entrada).getTime()) / 86400000)), 0) / items.length)
-        : 0;
-
-    const avgDaysPrep = preparacao.length > 0
-      ? Math.round(preparacao.reduce((s, a) => s + Math.max(0, Math.floor((now.getTime() - new Date(a.created_at).getTime()) / 86400000)), 0) / preparacao.length)
-      : 0;
-
-    return {
-      total,
-      mediaDias: avgDays(motosEstoque),
-      disponivel: { qtd: disponivel.length, pct: total > 0 ? (disponivel.length / total) * 100 : 0, soma: sumPreco(disponivel), mediaDias: avgDays(disponivel) },
-      bloqueio: { qtd: bloqueio.length, pct: total > 0 ? (bloqueio.length / total) * 100 : 0, soma: sumPreco(bloqueio), mediaDias: avgDays(bloqueio) },
-      indisponivel: { qtd: indisponivel.length, pct: total > 0 ? (indisponivel.length / total) * 100 : 0, soma: sumPreco(indisponivel), mediaDias: avgDays(indisponivel) },
-      servico: { qtd: servico.length, pct: total > 0 ? (servico.length / total) * 100 : 0, soma: sumPreco(servico), mediaDias: avgDays(servico) },
-      qtdPreparacao,
-      somaQuantoPede,
-      mediaDiasPrep: avgDaysPrep,
-      patrimonioDisponivel,
-      patrimonioParado,
-    };
-  }, [currentStock, preparacao]);
-
-  // Monthly charts
-  const chartByMonth = useMemo(() => {
-    const months = generateCustomMonths();
-    return months.map((m, idx) => {
-      // Entradas: estoque entries with data_entrada in this month
-      const entradas = estoque.filter(e => {
-        const d = new Date(e.data_entrada);
-        return d >= m.start && d <= m.end;
-      }).length;
-
-      // Saídas: estoque entries with data_venda in this month
-      const saidas = estoque.filter(e => {
-        if (!e.data_venda) return false;
-        const d = new Date(e.data_venda);
-        return d >= m.start && d <= m.end;
-      }).length;
-
-      // Disponíveis at end of month: entered before end AND (not sold OR sold after end)
-      const disponiveis = estoque.filter(e => {
-        const entrada = new Date(e.data_entrada);
-        if (entrada > m.end) return false;
-        if (!e.data_venda) return true;
-        const venda = new Date(e.data_venda);
-        return venda > m.end;
-      }).length;
-
-      // Giro: saidas / estoque disponível no fim do ciclo
-      const giro = disponiveis > 0 ? (saidas / disponiveis) * 100 : 0;
-
-      // Patrimônio disponível at end of month
-      const patrimonioDisp = estoque.filter(e => {
-        const entrada = new Date(e.data_entrada);
-        if (entrada > m.end) return false;
-        if (e.status !== 'disponivel' && e.data_venda) {
-          const venda = new Date(e.data_venda);
-          if (venda <= m.end) return false;
-        }
-        if (!e.data_venda) return true;
-        const venda = new Date(e.data_venda);
-        return venda > m.end;
-      }).reduce((s, e) => s + (e.preco ?? 0), 0);
-
-      return {
-        label: m.label,
-        disponiveis,
-        entradas,
-        saidas,
-        giro: Math.round(giro * 10) / 10,
-        patrimonioDisp,
-      };
-    });
-  }, [estoque]);
-
-  // Patrimônio growth
   const patrimonioGrowth = useMemo(() => {
-    return chartByMonth.map((m, idx) => {
+    return chartByMonth.map((m: any, idx: number) => {
       const prev = idx > 0 ? chartByMonth[idx - 1].patrimonioDisp : 0;
-      const crescimento = prev > 0 ? ((m.patrimonioDisp - prev) / prev) * 100 : 0;
-      return {
-        ...m,
-        crescimento: Math.round(crescimento * 10) / 10,
-      };
+      const crescimento = prev > 0 ? Math.round(((m.patrimonioDisp - prev) / prev) * 1000) / 10 : 0;
+      return { ...m, crescimento };
     });
   }, [chartByMonth]);
 
@@ -228,21 +86,26 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
   }
 
+  const d = indicadores.disponivel || {};
+  const b = indicadores.bloqueio || {};
+  const ind = indicadores.indisponivel || {};
+  const s = indicadores.servico || {};
+
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Motos no Estoque" value={indicadores.total} subline={`Média: ${indicadores.mediaDias} dias`} gradient="teal" icon={<Package className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Disponível" value={indicadores.disponivel.qtd} subtitle={`(${fmtPct(indicadores.disponivel.pct)})`} subline={`Média: ${indicadores.disponivel.mediaDias} dias (${fmtBRL(indicadores.disponivel.soma)})`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Bloqueio Jurídico" value={indicadores.bloqueio.qtd} subtitle={`(${fmtPct(indicadores.bloqueio.pct)})`} subline={`Média: ${indicadores.bloqueio.mediaDias} dias (${fmtBRL(indicadores.bloqueio.soma)})`} gradient="gray" icon={<ShieldAlert className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Indisponível" value={indicadores.indisponivel.qtd} subtitle={`(${fmtPct(indicadores.indisponivel.pct)})`} subline={`Média: ${indicadores.indisponivel.mediaDias} dias (${fmtBRL(indicadores.indisponivel.soma)})`} gradient="red" icon={<Ban className="h-5 w-5" />} />
+        <IndicatorCard title="Motos no Estoque" value={indicadores.total ?? 0} subline={`Média: ${indicadores.mediaDias ?? 0} dias`} gradient="teal" icon={<Package className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Disponível" value={d.qtd ?? 0} subtitle={`(${fmtPct(d.pct ?? 0)})`} subline={`Média: ${d.mediaDias ?? 0} dias (${fmtBRL(d.soma)})`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Bloqueio Jurídico" value={b.qtd ?? 0} subtitle={`(${fmtPct(b.pct ?? 0)})`} subline={`Média: ${b.mediaDias ?? 0} dias (${fmtBRL(b.soma)})`} gradient="gray" icon={<ShieldAlert className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Indisponível" value={ind.qtd ?? 0} subtitle={`(${fmtPct(ind.pct ?? 0)})`} subline={`Média: ${ind.mediaDias ?? 0} dias (${fmtBRL(ind.soma)})`} gradient="red" icon={<Ban className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCardWithSub title="Serviço" value={indicadores.servico.qtd} subtitle={`(${fmtPct(indicadores.servico.pct)})`} subline={`Média: ${indicadores.servico.mediaDias} dias (${fmtBRL(indicadores.servico.soma)})`} gradient="orange" icon={<Wrench className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Em Preparação" value={indicadores.qtdPreparacao} subline={`Média: ${indicadores.mediaDiasPrep} dias (${fmtBRL(indicadores.somaQuantoPede)})`} gradient="purple" icon={<Clock className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Serviço" value={s.qtd ?? 0} subtitle={`(${fmtPct(s.pct ?? 0)})`} subline={`Média: ${s.mediaDias ?? 0} dias (${fmtBRL(s.soma)})`} gradient="orange" icon={<Wrench className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Em Preparação" value={indicadores.qtdPreparacao ?? 0} subline={`Média: ${indicadores.mediaDiasPrep ?? 0} dias (${fmtBRL(indicadores.somaQuantoPede)})`} gradient="purple" icon={<Clock className="h-5 w-5" />} />
         <IndicatorCard title="Patrimônio Disponível" value={fmtBRL(indicadores.patrimonioDisponivel)} gradient="teal" icon={<DollarSign className="h-5 w-5" />} />
         <IndicatorCard title="Patrimônio Parado" value={fmtBRL(indicadores.patrimonioParado)} gradient="red" icon={<TrendingDown className="h-5 w-5" />} />
       </div>
@@ -253,7 +116,6 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Quantidade */}
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Quantidade</CardTitle>
@@ -281,7 +143,6 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
           </CardContent>
         </Card>
 
-        {/* Patrimônio */}
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Patrimônio Disponível</CardTitle>
@@ -340,7 +201,7 @@ const IndicatorCardWithSub: React.FC<{ title: string; value: number; subtitle?: 
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
-          <p className="text-xl font-semibold text-foreground/80 truncate">{value}{subtitle && <span className="ml-1">{subtitle}</span>}</p>
+          <p className="text-xl font-semibold text-foreground/80 truncate">{value}{subtitle && <span className="ml-1 text-base text-muted-foreground">{subtitle}</span>}</p>
           {subline && <p className="text-xs text-muted-foreground truncate">{subline}</p>}
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap[gradient] || iconColorMap.teal)}>{icon}</div>}
