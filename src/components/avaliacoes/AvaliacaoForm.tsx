@@ -194,8 +194,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setClassificacao((data as any).classificacao || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
 
-      // Fetch estoque data if moto is in estoque
-      if (data.situacao === 'estoque' && data.id) {
+      // Fetch estoque data if available
+      if (data.id) {
         const { data: estoqueData } = await supabase.from('estoque').select('id, preco_acao').eq('avaliacao_id', data.id).maybeSingle();
         if (estoqueData) {
           setEstoqueId(estoqueData.id);
@@ -1061,21 +1061,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && (
               <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} />
             )}
-            {avaliacao?.situacao === 'estoque' && estoqueId && (
-              <div className="space-y-1.5">
-                <Label>Preço Ação</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                  <Input
-                    value={precoAcaoEdit}
-                    onChange={handleCurrencyChange(setPrecoAcaoEdit)}
-                    className="pl-10"
-                    placeholder="0,00"
-                    inputMode="numeric"
-                  />
-                </div>
+            <div className="space-y-1.5">
+              <Label>Preço Ação</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <Input
+                  value={precoAcaoEdit}
+                  onChange={handleCurrencyChange(setPrecoAcaoEdit)}
+                  className="pl-10"
+                  placeholder="0,00"
+                  inputMode="numeric"
+                />
               </div>
-            )}
+            </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Classificação da Moto <span className="text-destructive">*</span></Label>
               <div className="flex gap-2">
