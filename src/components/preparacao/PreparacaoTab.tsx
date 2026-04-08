@@ -122,6 +122,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
                       <ProcessCard key={a.id} clientName={a.atendimento?.nome_cliente || 'N/A'}
                         motoLabel={a.moto ? [(a.moto.modelo || '').toUpperCase(), a.moto.placa?.replace(/-/g, '')].filter(Boolean).join(' - ') : undefined}
                         loja={a.atendimento?.loja} date={a.updated_at} statusColor={col.hex}
+                        readyIndicator={a._releaseReady === true ? 'ready' : a._releaseReady === false ? 'not_ready' : null}
                         extraBadge={a.tipo_aquisicao ? { label: getTipoAquisicaoLabel(a.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(a.tipo_aquisicao) } : undefined}
                         onClick={() => setSelectedItem(a)} />
                     ))}
