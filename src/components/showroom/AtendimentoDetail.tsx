@@ -86,7 +86,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [contratoOpen, setContratoOpen] = useState(false);
   const [entregaOpen, setEntregaOpen] = useState(false);
   const [entregaDate, setEntregaDate] = useState('');
-  const [entregaTime, setEntregaTime] = useState('');
   const [savingEntrega, setSavingEntrega] = useState(false);
   const [entregaDataConclusao, setEntregaDataConclusao] = useState<string | null>(null);
   const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
@@ -493,10 +492,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     if (row?.data_conclusao) {
       const d = new Date(row.data_conclusao);
       setEntregaDate(d.toISOString().slice(0, 10));
-      setEntregaTime(d.toISOString().slice(11, 16));
     } else {
       setEntregaDate('');
-      setEntregaTime('');
     }
     setEntregaOpen(true);
   };
@@ -507,9 +504,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       return;
     }
     setSavingEntrega(true);
-    const dataConclusao = entregaTime
-      ? `${entregaDate}T${entregaTime}:00`
-      : `${entregaDate}T00:00:00`;
+    const dataConclusao = `${entregaDate}T12:00:00`;
 
     // Check if the ENTREGA DA MOTO step already exists
     const { data: existing } = await supabase
@@ -929,11 +924,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                                 <p className="font-semibold text-foreground flex items-center gap-1.5">
                                   <Truck className="h-3.5 w-3.5" />
                                   {format(new Date(entregaDataConclusao), "dd/MM/yyyy")}
-                                  {new Date(entregaDataConclusao).getHours() > 0 && (
-                                    <span className="text-xs text-muted-foreground font-normal">
-                                      às {format(new Date(entregaDataConclusao), "HH:mm")}
-                                    </span>
-                                  )}
                                 </p>
                               </div>
                             </div>
@@ -1695,14 +1685,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 type="date"
                 value={entregaDate}
                 onChange={e => setEntregaDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Hora</Label>
-              <Input
-                type="time"
-                value={entregaTime}
-                onChange={e => setEntregaTime(e.target.value)}
               />
             </div>
             <Button onClick={handleSaveEntrega} disabled={savingEntrega} className="w-full gap-2">
