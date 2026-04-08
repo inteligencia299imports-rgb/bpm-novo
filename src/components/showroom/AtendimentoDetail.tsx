@@ -1690,11 +1690,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Data de Entrega *</Label>
+              <Label>Data *</Label>
               <Input
                 type="date"
                 value={entregaDate}
                 onChange={e => setEntregaDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Hora</Label>
+              <Input
+                type="time"
+                value={entregaTime}
+                onChange={e => setEntregaTime(e.target.value)}
               />
             </div>
             <Button onClick={handleSaveEntrega} disabled={savingEntrega} className="w-full gap-2">
