@@ -86,7 +86,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [contratoOpen, setContratoOpen] = useState(false);
   const [entregaOpen, setEntregaOpen] = useState(false);
   const [entregaDate, setEntregaDate] = useState('');
+  const [entregaTime, setEntregaTime] = useState('');
   const [savingEntrega, setSavingEntrega] = useState(false);
+  const [entregaDataConclusao, setEntregaDataConclusao] = useState<string | null>(null);
   const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
   const [savingMotivo, setSavingMotivo] = useState(false);
   const [showResultadoConsulta, setShowResultadoConsulta] = useState<string | null>(null);
@@ -228,6 +230,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       ];
       fullHistory.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       setHistory(fullHistory);
+
+      // Fetch entrega data from pos_venda_processos
+      if (atendimento.situacao === 'vendido') {
+        const { data: entregaRow } = await supabase
+          .from('pos_venda_processos')
+          .select('data_conclusao')
+          .eq('atendimento_id', atendimento.id)
+          .eq('etapa', 'ENTREGA DA MOTO')
+          .eq('concluida', true)
+          .maybeSingle();
+        setEntregaDataConclusao(entregaRow?.data_conclusao || null);
+      }
+
       setLoading(false);
     };
     fetchRelated();
@@ -467,8 +482,22 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setEditClienteOpen(true);
   };
 
-  const openEntrega = () => {
-    setEntregaDate((atendimento as any).data_entrega || '');
+  const openEntrega = async () => {
+    // Fetch current entrega step
+    const { data: row } = await supabase
+      .from('pos_venda_processos')
+      .select('data_conclusao')
+      .eq('atendimento_id', atendimento.id)
+      .eq('etapa', 'ENTREGA DA MOTO')
+      .maybeSingle();
+    if (row?.data_conclusao) {
+      const d = new Date(row.data_conclusao);
+      setEntregaDate(d.toISOString().slice(0, 10));
+      setEntregaTime(d.toISOString().slice(11, 16));
+    } else {
+      setEntregaDate('');
+      setEntregaTime('');
+    }
     setEntregaOpen(true);
   };
 
@@ -478,15 +507,37 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       return;
     }
     setSavingEntrega(true);
-    const { error } = await supabase.from('atendimentos').update({ data_entrega: entregaDate } as any).eq('id', atendimento.id);
-    setSavingEntrega(false);
-    if (error) {
-      toast.error('Erro ao salvar data de entrega');
+    const dataConclusao = entregaTime
+      ? `${entregaDate}T${entregaTime}:00`
+      : `${entregaDate}T00:00:00`;
+
+    // Check if the ENTREGA DA MOTO step already exists
+    const { data: existing } = await supabase
+      .from('pos_venda_processos')
+      .select('id')
+      .eq('atendimento_id', atendimento.id)
+      .eq('etapa', 'ENTREGA DA MOTO')
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('pos_venda_processos').update({
+        concluida: true,
+        data_conclusao: dataConclusao,
+      }).eq('id', existing.id);
     } else {
-      toast.success('Data de entrega salva!');
-      setEntregaOpen(false);
-      if (onStatusUpdated) onStatusUpdated(); else onDeleted();
+      await supabase.from('pos_venda_processos').insert({
+        atendimento_id: atendimento.id,
+        etapa: 'ENTREGA DA MOTO',
+        concluida: true,
+        data_conclusao: dataConclusao,
+      });
     }
+
+    setSavingEntrega(false);
+    setEntregaDataConclusao(dataConclusao);
+    toast.success('Data de entrega salva!');
+    setEntregaOpen(false);
+    if (onStatusUpdated) onStatusUpdated(); else onDeleted();
   };
 
   const handleSaveCliente = async () => {
@@ -871,13 +922,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               </div>
                             </>
                           )}
-                          {(atendimento as any).data_entrega && (
+                          {entregaDataConclusao && (
                             <div className="flex items-center justify-between">
                               <div>
                                 <p className="text-xs text-muted-foreground">Data de Entrega</p>
                                 <p className="font-semibold text-foreground flex items-center gap-1.5">
                                   <Truck className="h-3.5 w-3.5" />
-                                  {format(new Date((atendimento as any).data_entrega + 'T00:00:00'), "dd/MM/yyyy")}
+                                  {format(new Date(entregaDataConclusao), "dd/MM/yyyy")}
+                                  {new Date(entregaDataConclusao).getHours() > 0 && (
+                                    <span className="text-xs text-muted-foreground font-normal">
+                                      às {format(new Date(entregaDataConclusao), "HH:mm")}
+                                    </span>
+                                  )}
                                 </p>
                               </div>
                             </div>
@@ -1634,11 +1690,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>Data de Entrega *</Label>
+              <Label>Data *</Label>
               <Input
                 type="date"
                 value={entregaDate}
                 onChange={e => setEntregaDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Hora</Label>
+              <Input
+                type="time"
+                value={entregaTime}
+                onChange={e => setEntregaTime(e.target.value)}
               />
             </div>
             <Button onClick={handleSaveEntrega} disabled={savingEntrega} className="w-full gap-2">
