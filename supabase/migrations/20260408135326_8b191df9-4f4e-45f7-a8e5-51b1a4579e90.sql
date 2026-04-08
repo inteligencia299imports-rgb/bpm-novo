@@ -1,0 +1,1 @@
+ALTER TABLE public.atendimentos ADD COLUMN data_entrega date NULL;

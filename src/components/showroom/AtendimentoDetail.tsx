@@ -7,7 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil, IdCard } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil, IdCard, Truck } from 'lucide-react';
 import type { Atendimento, MotoInteresse, MotoAvaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES, SEXOS, UFS } from '@/types/crm';
 import { Label } from '@/components/ui/label';
@@ -84,6 +84,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [savingValor, setSavingValor] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [contratoOpen, setContratoOpen] = useState(false);
+  const [entregaOpen, setEntregaOpen] = useState(false);
+  const [entregaDate, setEntregaDate] = useState('');
+  const [savingEntrega, setSavingEntrega] = useState(false);
   const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
   const [savingMotivo, setSavingMotivo] = useState(false);
   const [showResultadoConsulta, setShowResultadoConsulta] = useState<string | null>(null);
@@ -464,6 +467,28 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setEditClienteOpen(true);
   };
 
+  const openEntrega = () => {
+    setEntregaDate((atendimento as any).data_entrega || '');
+    setEntregaOpen(true);
+  };
+
+  const handleSaveEntrega = async () => {
+    if (!entregaDate) {
+      toast.error('Informe a data de entrega');
+      return;
+    }
+    setSavingEntrega(true);
+    const { error } = await supabase.from('atendimentos').update({ data_entrega: entregaDate } as any).eq('id', atendimento.id);
+    setSavingEntrega(false);
+    if (error) {
+      toast.error('Erro ao salvar data de entrega');
+    } else {
+      toast.success('Data de entrega salva!');
+      setEntregaOpen(false);
+      if (onStatusUpdated) onStatusUpdated(); else onDeleted();
+    }
+  };
+
   const handleSaveCliente = async () => {
     const digits = editTelefone.replace(/\D/g, '');
     if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
@@ -525,6 +550,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <FileText className="h-4 w-4" /> Contrato
               </Button>
             )}
+            {atendimento.situacao === 'vendido' && (
+              <Button size="sm" variant="outline" onClick={openEntrega} className="gap-1.5">
+                <Truck className="h-4 w-4" /> Entrega
+              </Button>
+            )}
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onEdit(atendimento.id)}>
               <Edit className="h-4 w-4" /> Editar
             </Button>
@@ -558,6 +588,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && (
             <Button size="sm" onClick={() => setContratoOpen(true)} className="flex-1">
               <FileText className="h-4 w-4" />
+            </Button>
+          )}
+          {atendimento.situacao === 'vendido' && (
+            <Button size="sm" variant="outline" onClick={openEntrega} className="flex-1">
+              <Truck className="h-4 w-4" />
             </Button>
           )}
           <Button size="sm" variant="outline" className="flex-1" onClick={() => onEdit(atendimento.id)}>
@@ -1575,7 +1610,31 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               Salvar
             </Button>
+      {/* Dialog Data de Entrega */}
+      <Dialog open={entregaOpen} onOpenChange={setEntregaOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5" /> Data de Entrega
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Data de Entrega *</Label>
+              <Input
+                type="date"
+                value={entregaDate}
+                onChange={e => setEntregaDate(e.target.value)}
+              />
+            </div>
+            <Button onClick={handleSaveEntrega} disabled={savingEntrega} className="w-full gap-2">
+              {savingEntrega ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Salvar
+            </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+    </div>
         </DialogContent>
       </Dialog>
     </div>
