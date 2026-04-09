@@ -169,6 +169,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         tem_manual: d.motos_avaliacao?.tem_manual ?? null,
         tem_chave_reserva: d.motos_avaliacao?.tem_chave_reserva ?? null,
         manutencao_vencida: d.motos_avaliacao?.manutencao_vencida ?? null,
+        crlv_url: d.motos_avaliacao?.crlv_url ?? null,
         venda_vendedor_id: d.atendimentos?.vendedor_id ?? null,
         vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
       }));
