@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowLeft, Phone, User, Bike, Calendar, Tag, BookOpen, Key, Wrench } from 'lucide-react';
+import { Flame, ArrowLeft, Phone, User, Bike, Calendar, Tag, BookOpen, Key, Wrench, Thermometer } from 'lucide-react';
 import { format, subDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -38,6 +38,11 @@ interface ClienteInteressado {
   created_at: string;
   interesse: string;
   situacao: string;
+  temperatura: string | null;
+}
+
+interface NovidadesTabProps {
+  onNavigateToShowroom?: (atendimentoId: string) => void;
 }
 
 const NovidadesTab: React.FC = () => {
