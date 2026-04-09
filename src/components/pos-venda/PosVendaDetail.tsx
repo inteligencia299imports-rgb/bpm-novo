@@ -80,6 +80,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
   const [intermHistory, setIntermHistory] = useState<any[]>([]);
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
+  const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
 
   const refreshConsignada = async () => {
     const consignadaEstoque = Object.values(estoqueData).find((e: any) => e.tipo === 'consignada');
@@ -154,6 +155,12 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       });
       setAvaliacoes(avalMap);
 
+      // Set avaliador name from first avaliação (for non-parte1 intermediação)
+      if (!processoProps?.showContratoConsignante) {
+        const firstAval = Object.values(avalMap)[0] as any;
+        if (firstAval?.avaliador_nome) setAvaliadorNome(firstAval.avaliador_nome);
+      }
+
       // Step 3: Consignada owner (Intermediação Parte 1) - single query with joins
       if (processoProps?.showContratoConsignante) {
         const consignadaEstoque = Object.values(estoqueMap).find((e: any) => e.tipo === 'consignada');
@@ -170,6 +177,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             if (owner) {
               setProprietario({ ...owner, id: owner.id || avalData.atendimento_id });
               setCnhUrl(owner.cnh_url || null);
+            }
+            // Fetch avaliador name
+            if (avalData.avaliador_id) {
+              const { data: avaliadorRole } = await supabase.from('user_roles').select('nome').eq('user_id', avalData.avaliador_id).single();
+              if (avaliadorRole?.nome) setAvaliadorNome(avaliadorRole.nome);
             }
           }
         }
@@ -241,6 +253,12 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isIntermParte1 && avaliadorNome && (
+                <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
+                  <IdCard className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={displayName} />
                 <div className="flex flex-col gap-0.5">
@@ -294,6 +312,12 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
                     <IdCard className="h-4 w-4 text-primary" />
                     <span className="text-sm font-semibold text-primary">{vendedorNome}</span>
+                  </div>
+                )}
+                {avaliadorNome && (
+                  <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
+                    <IdCard className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
