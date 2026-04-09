@@ -44,6 +44,7 @@ interface ClienteInteressado {
   interesse: string;
   situacao: string;
   temperatura: string | null;
+  loja: string;
 }
 
 interface NovidadesTabProps {
@@ -93,7 +94,8 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
             created_at,
             interesse,
             situacao,
-            temperatura
+            temperatura,
+            loja
           )
         `)
         .ilike('marca', selectedMoto.marca)
@@ -111,13 +113,13 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
         interesse: string;
         situacao: string;
         temperatura: string | null;
+        loja: string;
       }> = [];
 
       for (const mi of data || []) {
         const a = mi.atendimentos as any;
         if (!a) continue;
         if (a.situacao === 'sinal' || a.situacao === 'vendido') continue;
-        // Vendedor only sees own
         if (role === 'vendedor' && a.vendedor_id !== user?.id) continue;
         results.push({
           atendimento_id: mi.atendimento_id,
@@ -128,6 +130,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
           interesse: a.interesse,
           situacao: a.situacao,
           temperatura: a.temperatura,
+          loja: a.loja,
         });
       }
 
