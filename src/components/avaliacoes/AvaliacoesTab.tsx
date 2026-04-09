@@ -37,7 +37,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
     const statuses = KANBAN_COLUMNS.map(c => c.value);
-    const selectStr = `*, atendimentos!inner (id, nome_cliente, telefone, loja, vendedor_id, interesse, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria)`;
+    const selectStr = `*, atendimentos!inner (id, nome_cliente, telefone, loja, vendedor_id, interesse, cpf_cnpj, email, cep, endereco, temperatura), motos_avaliacao!inner (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria)`;
 
     let data: any[];
     let error: any;

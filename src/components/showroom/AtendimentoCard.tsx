@@ -1,6 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Bike, Calendar, ArrowLeftRight } from 'lucide-react';
+import { Phone, Bike, Calendar, ArrowLeftRight, Thermometer } from 'lucide-react';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import { STATUS_COLORS } from '@/types/crm';
 import { format } from 'date-fns';
@@ -117,16 +117,14 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
               {atendimento.loja}
             </Badge>
             {atendimento.temperatura && (
-              <Badge
-                variant="secondary"
-                className={`text-[10px] ${
-                  atendimento.temperatura === 'Quente' ? 'bg-destructive/10 text-destructive' :
-                  atendimento.temperatura === 'Morno' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-[#2EC5FF]/10 text-[#2EC5FF]'
-                }`}
-              >
+              <span className={`flex items-center gap-1 text-[10px] font-medium ${
+                atendimento.temperatura === 'Quente' ? 'text-destructive' :
+                atendimento.temperatura === 'Morno' ? 'text-yellow-600' :
+                'text-[#2EC5FF]'
+              }`}>
+                <Thermometer className="h-3 w-3" />
                 {atendimento.temperatura}
-              </Badge>
+              </span>
             )}
           </div>
 

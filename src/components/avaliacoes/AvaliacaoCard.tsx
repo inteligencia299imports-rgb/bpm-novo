@@ -1,6 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Bike, Calendar, ArrowLeftRight } from 'lucide-react';
+import { Phone, Bike, Calendar, ArrowLeftRight, Thermometer } from 'lucide-react';
 import type { Avaliacao, AppRole } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -97,13 +97,25 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
             </span>
           </div>
 
-          {/* Store badge */}
+          {/* Store badge + temperature + tipo aquisição */}
           <div className="flex items-center justify-between gap-2">
-            {at?.loja && (
-              <Badge variant="secondary" className="text-[10px]">
-                {at.loja}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {at?.loja && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {at.loja}
+                </Badge>
+              )}
+              {at?.temperatura && (
+                <span className={`flex items-center gap-1 text-[10px] font-medium ${
+                  at.temperatura === 'Quente' ? 'text-destructive' :
+                  at.temperatura === 'Morno' ? 'text-yellow-600' :
+                  'text-[#2EC5FF]'
+                }`}>
+                  <Thermometer className="h-3 w-3" />
+                  {at.temperatura}
+                </span>
+              )}
+            </div>
             {avaliacao.situacao === 'adquirida' && (avaliacao as any).tipo_aquisicao && (
               <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ml-auto ${getTipoAquisicaoBadgeClass((avaliacao as any).tipo_aquisicao)}`}>
                 {getTipoAquisicaoLabel((avaliacao as any).tipo_aquisicao)}
