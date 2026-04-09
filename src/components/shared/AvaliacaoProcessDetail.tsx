@@ -183,12 +183,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {avaliadorNome && (
-                <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
-                  <IdCard className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
-                </div>
-              )}
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={atendimento?.nome_cliente} />
                 {atendimento?.telefone && (
@@ -240,6 +234,12 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {avaliadorNome && (
+                  <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
+                    <IdCard className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <InfoItem label="Marca / Modelo" value={`${moto.marca} ${(moto.modelo || '').toUpperCase()}`} />
                   {moto.placa && <InfoItem label="Placa" value={moto.placa.replace(/-/g, '')} />}
