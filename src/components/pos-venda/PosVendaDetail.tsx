@@ -155,6 +155,12 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       });
       setAvaliacoes(avalMap);
 
+      // Set avaliador name from first avaliação (for non-parte1 intermediação)
+      if (!processoProps?.showContratoConsignante) {
+        const firstAval = Object.values(avalMap)[0] as any;
+        if (firstAval?.avaliador_nome) setAvaliadorNome(firstAval.avaliador_nome);
+      }
+
       // Step 3: Consignada owner (Intermediação Parte 1) - single query with joins
       if (processoProps?.showContratoConsignante) {
         const consignadaEstoque = Object.values(estoqueMap).find((e: any) => e.tipo === 'consignada');
