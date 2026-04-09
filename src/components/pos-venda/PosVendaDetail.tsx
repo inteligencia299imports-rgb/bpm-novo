@@ -172,6 +172,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               setProprietario({ ...owner, id: owner.id || avalData.atendimento_id });
               setCnhUrl(owner.cnh_url || null);
             }
+            // Fetch avaliador name
+            if (avalData.avaliador_id) {
+              const { data: avaliadorRole } = await supabase.from('user_roles').select('nome').eq('user_id', avalData.avaliador_id).single();
+              if (avaliadorRole?.nome) setAvaliadorNome(avaliadorRole.nome);
+            }
           }
         }
       }
