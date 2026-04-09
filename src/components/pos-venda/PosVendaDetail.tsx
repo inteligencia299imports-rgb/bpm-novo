@@ -253,12 +253,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isIntermParte1 && avaliadorNome && (
-                <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
-                  <IdCard className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
-                </div>
-              )}
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={displayName} />
                 <div className="flex flex-col gap-0.5">
@@ -314,12 +308,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                     <span className="text-sm font-semibold text-primary">{vendedorNome}</span>
                   </div>
                 )}
-                {avaliadorNome && (
-                  <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
-                    <IdCard className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
-                  </div>
-                )}
                 <div className="grid grid-cols-2 gap-4">
                   <InfoItem label="Loja" value={item.loja} />
                   <InfoItem label="Tipo de Atendimento" value={item.tipo_atendimento} />
@@ -340,6 +328,12 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {avaliadorNome && (
+                  <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
+                    <IdCard className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <InfoItem label="Marca / Modelo" value={`${motoConsignada.marca} ${(motoConsignada.modelo || '').toUpperCase()}`} />
                   {motoConsignada.placa && <InfoItem label="Placa" value={motoConsignada.placa.replace(/-/g, '')} />}
@@ -390,6 +384,12 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {avaliadorNome && (
+                  <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
+                    <IdCard className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
+                  </div>
+                )}
                 {motosInteresse.map((mi: any, idx: number) => {
                   const isEstoque = mi.origem === 'estoque' && mi.estoque_moto_id;
                   const estItem = isEstoque ? estoqueData[mi.estoque_moto_id!] : null;
