@@ -82,11 +82,19 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
     queryFn: async () => {
       if (!selectedMoto) return [];
 
-      // Find atendimentos with motos_interesse matching marca+modelo
+      // Build a partial model search: use the first 2 words as base
+      // e.g. "DK 150 XRE" → search "%DK 150%" so "DK 150 S" also matches
+      const modeloWords = selectedMoto.modelo.trim().split(/\s+/);
+      const baseModelo = modeloWords.length >= 2
+        ? modeloWords.slice(0, 2).join(' ')
+        : modeloWords[0];
+
+      // Find atendimentos with motos_interesse matching marca + modelo parcial
       const { data, error } = await supabase
         .from('motos_interesse')
         .select(`
           atendimento_id,
+          modelo,
           atendimentos!motos_interesse_atendimento_id_fkey (
             nome_cliente,
             telefone,
@@ -99,7 +107,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
           )
         `)
         .ilike('marca', selectedMoto.marca)
-        .ilike('modelo', selectedMoto.modelo);
+        .ilike('modelo', `%${baseModelo}%`);
 
       if (error) throw error;
 
