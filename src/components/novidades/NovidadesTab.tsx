@@ -61,7 +61,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('estoque')
-        .select('id, marca, modelo, ano_fabricacao, ano_modelo, cor, placa, km, preco, data_entrada, tipo, classificacao, moto_avaliacao_id, motos_avaliacao!estoque_moto_avaliacao_id_fkey(tem_manual, tem_chave_reserva, manutencao_vencida)')
+        .select('id, marca, modelo, ano_fabricacao, ano_modelo, cor, placa, km, preco, preco_acao, data_entrada, tipo, classificacao, cilindrada, categoria, empresa, moto_avaliacao_id, motos_avaliacao!estoque_moto_avaliacao_id_fkey(tem_manual, tem_chave_reserva, manutencao_vencida)')
         .eq('status', 'disponivel')
         .gte('data_entrada', sevenDaysAgo)
         .order('data_entrada', { ascending: false });
