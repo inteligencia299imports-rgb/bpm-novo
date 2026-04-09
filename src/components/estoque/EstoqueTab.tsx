@@ -245,6 +245,22 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     const isVendedor = role === 'vendedor';
     const isOwnSale = item.venda_vendedor_id === user?.id;
 
+    const addCrlvOption = () => {
+      if (!item.crlv_url) return;
+
+      options.push({
+        label: 'CRLV',
+        icon: <Download className="h-4 w-4" />,
+        action: () => {
+          const link = document.createElement('a');
+          link.href = item.crlv_url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.click();
+        },
+      });
+    };
+
     // Vendedor: only show "Venda" if sold/reserved AND it's their sale
     if (isVendedor) {
       if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'sinal') && isOwnSale) {
@@ -254,6 +270,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           action: () => nav({ tab: 'showroom', atendimentoId: item.atendimento_venda_id! }),
         });
       }
+
+      addCrlvOption();
       return options;
     }
 
@@ -342,20 +360,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    // CRLV download option
-    if (item.crlv_url) {
-      options.push({
-        label: 'CRLV',
-        icon: <Download className="h-4 w-4" />,
-        action: () => {
-          const link = document.createElement('a');
-          link.href = item.crlv_url!;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          link.click();
-        },
-      });
-    }
+    addCrlvOption();
 
     return options;
   };
