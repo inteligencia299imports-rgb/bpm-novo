@@ -146,6 +146,15 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
     },
   });
 
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  const tempColor = (temp: string | null) => {
+    if (!temp) return '';
+    if (temp === 'quente') return 'text-red-500';
+    if (temp === 'morno') return 'text-orange-500';
+    return 'text-blue-500';
+  };
+
   const diasNoEstoque = (dataEntrada: string) => {
     const dias = differenceInDays(new Date(), new Date(dataEntrada));
     return dias === 0 ? 'Hoje' : dias === 1 ? '1 dia' : `${dias} dias`;
