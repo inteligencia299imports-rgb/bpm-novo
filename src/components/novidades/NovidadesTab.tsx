@@ -105,6 +105,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
         created_at: string;
         interesse: string;
         situacao: string;
+        temperatura: string | null;
       }> = [];
 
       for (const mi of data || []) {
