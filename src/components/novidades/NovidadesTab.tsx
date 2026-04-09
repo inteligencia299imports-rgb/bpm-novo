@@ -185,7 +185,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
               {selectedMoto.ano_fabricacao && <span><strong>Ano:</strong> {selectedMoto.ano_fabricacao}/{selectedMoto.ano_modelo}</span>}
               {selectedMoto.cor && <span><strong>Cor:</strong> {selectedMoto.cor}</span>}
               {selectedMoto.placa && <span><strong>Placa:</strong> {selectedMoto.placa}</span>}
-              {selectedMoto.preco && <span><strong>Preço:</strong> R$ {selectedMoto.preco.toLocaleString('pt-BR')}</span>}
+              {selectedMoto.preco && <span><strong>Preço:</strong> R$ {selectedMoto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>}
             </div>
           </CardContent>
         </Card>
@@ -293,7 +293,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
 
                 {moto.preco && (
                   <p className="text-sm font-bold text-primary">
-                    R$ {moto.preco.toLocaleString('pt-BR')}
+                    R$ {moto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 )}
 
