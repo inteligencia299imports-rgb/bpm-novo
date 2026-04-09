@@ -524,7 +524,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             {item.km && (
                               <>
                                 <span className="text-muted-foreground">Km</span>
-                                <span className="text-foreground">{item.km}</span>
+                                <span className="text-foreground">{Number(item.km).toLocaleString('pt-BR')}</span>
                               </>
                             )}
                             <span className="text-muted-foreground">Tipo</span>
