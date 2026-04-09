@@ -228,7 +228,7 @@ const NovidadesTab: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Sparkles className="h-5 w-5 text-primary" />
+        <Flame className="h-5 w-5 text-primary" />
         <h2 className="text-lg font-bold text-foreground">Novidades</h2>
         <Badge variant="secondary" className="ml-auto">{motos.length} moto{motos.length !== 1 ? 's' : ''}</Badge>
       </div>
