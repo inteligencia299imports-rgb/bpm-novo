@@ -296,7 +296,6 @@ const NovidadesTab: React.FC = () => {
                       Revisão
                     </Badge>
                   )}
-                  </Badge>
                 </div>
               </CardContent>
             </Card>
