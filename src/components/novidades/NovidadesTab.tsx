@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowLeft, Phone, User, Bike, Calendar, Tag } from 'lucide-react';
+import { Sparkles, ArrowLeft, Phone, User, Bike, Calendar, Tag, BookOpen, Key, Wrench } from 'lucide-react';
 import { format, subDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -22,6 +22,10 @@ interface EstoqueItem {
   data_entrada: string;
   tipo: string;
   classificacao: string | null;
+  moto_avaliacao_id: string | null;
+  tem_manual: boolean | null;
+  tem_chave_reserva: boolean | null;
+  manutencao_vencida: boolean | null;
 }
 
 interface ClienteInteressado {
@@ -46,12 +50,17 @@ const NovidadesTab: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('estoque')
-        .select('id, marca, modelo, ano_fabricacao, ano_modelo, cor, placa, km, preco, data_entrada, tipo, classificacao')
+        .select('id, marca, modelo, ano_fabricacao, ano_modelo, cor, placa, km, preco, data_entrada, tipo, classificacao, moto_avaliacao_id, motos_avaliacao!estoque_moto_avaliacao_id_fkey(tem_manual, tem_chave_reserva, manutencao_vencida)')
         .eq('status', 'disponivel')
         .gte('data_entrada', sevenDaysAgo)
         .order('data_entrada', { ascending: false });
       if (error) throw error;
-      return (data || []) as EstoqueItem[];
+      return (data || []).map((item: any) => ({
+        ...item,
+        tem_manual: item.motos_avaliacao?.tem_manual ?? null,
+        tem_chave_reserva: item.motos_avaliacao?.tem_chave_reserva ?? null,
+        manutencao_vencida: item.motos_avaliacao?.manutencao_vencida ?? null,
+      })) as EstoqueItem[];
     },
   });
 
@@ -260,7 +269,7 @@ const NovidadesTab: React.FC = () => {
                   </p>
                 )}
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   {moto.classificacao && (
                     <Badge variant="secondary" className="text-[10px]">
                       {moto.classificacao}
@@ -269,6 +278,24 @@ const NovidadesTab: React.FC = () => {
                   <Badge variant="outline" className="text-[10px]">
                     {moto.tipo === 'propria' ? 'Própria' : 'Consignada'}
                   </Badge>
+                  {moto.tem_manual !== null && (
+                    <Badge variant="outline" className={`text-[10px] ${moto.tem_manual ? 'border-green-500 text-green-600' : 'border-red-500 text-red-600'}`}>
+                      <BookOpen className="h-3 w-3 mr-0.5" />
+                      Manual
+                    </Badge>
+                  )}
+                  {moto.tem_chave_reserva !== null && (
+                    <Badge variant="outline" className={`text-[10px] ${moto.tem_chave_reserva ? 'border-green-500 text-green-600' : 'border-red-500 text-red-600'}`}>
+                      <Key className="h-3 w-3 mr-0.5" />
+                      Chave
+                    </Badge>
+                  )}
+                  {moto.manutencao_vencida !== null && (
+                    <Badge variant="outline" className={`text-[10px] ${moto.manutencao_vencida ? 'border-red-500 text-red-600' : 'border-green-500 text-green-600'}`}>
+                      <Wrench className="h-3 w-3 mr-0.5" />
+                      Revisão
+                    </Badge>
+                  )}
                 </div>
               </CardContent>
             </Card>
