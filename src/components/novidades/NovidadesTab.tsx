@@ -218,42 +218,71 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
             <p className="text-sm text-muted-foreground font-medium">
               {interessados.length} cliente{interessados.length !== 1 ? 's' : ''} interessado{interessados.length !== 1 ? 's' : ''}
             </p>
-            {interessados.map((cli) => (
-              <Card
-                key={cli.atendimento_id}
-                className="hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => onNavigateToShowroom?.(cli.atendimento_id)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <p className="font-semibold text-foreground truncate">{cli.nome_cliente}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-3.5 w-3.5 shrink-0" />
-                        <span>{cli.telefone}</span>
+            {interessados.map((cli) => {
+              const formatPhone = (value: string): string => {
+                const digits = value.replace(/\D/g, '');
+                if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+                return value;
+              };
+
+              return (
+                <div
+                  key={cli.atendimento_id}
+                  className="bg-card rounded-lg border border-border shadow-soft hover:shadow-card hover:bg-surface-hover transition-all cursor-pointer group overflow-hidden"
+                  onClick={() => onNavigateToShowroom?.(cli.atendimento_id)}
+                >
+                  <div className="flex">
+                    <div className="w-1 shrink-0 rounded-l-lg bg-primary" />
+                    <div className="flex-1 p-3 space-y-2 min-w-0 overflow-hidden">
+                      {/* Header: name + interesse badge */}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">
+                          {cli.nome_cliente}
+                        </h3>
+                        <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary whitespace-nowrap">
+                          {capitalize(cli.interesse)}
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+
+                      {/* Vendedor */}
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-primary min-w-0">
                         <User className="h-3.5 w-3.5 shrink-0" />
-                        <span>{cli.vendedor_nome}</span>
+                        <span className="truncate min-w-0">{cli.vendedor_nome}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="h-3.5 w-3.5 shrink-0" />
-                        <span>{format(new Date(cli.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
+
+                      {/* Phone + Date */}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          {formatPhone(cli.telefone)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {format(new Date(cli.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                        </span>
                       </div>
-                      {cli.temperatura && (
-                        <div className={`flex items-center gap-2 text-sm ${tempColor(cli.temperatura)}`}>
-                          <Thermometer className="h-3.5 w-3.5 shrink-0" />
-                          <span>{capitalize(cli.temperatura)}</span>
-                        </div>
-                      )}
+
+                      {/* Loja + Temperatura */}
+                      <div className="flex items-center justify-between">
+                        <Badge variant="secondary" className="text-[10px]">
+                          {cli.loja}
+                        </Badge>
+                        {cli.temperatura && (
+                          <span className={`flex items-center gap-1 text-[10px] font-medium ${
+                            cli.temperatura === 'Quente' || cli.temperatura === 'quente' ? 'text-destructive' :
+                            cli.temperatura === 'Morno' || cli.temperatura === 'morno' ? 'text-yellow-600' :
+                            'text-[#2EC5FF]'
+                          }`}>
+                            <Thermometer className="h-3 w-3" />
+                            {capitalize(cli.temperatura)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <Badge variant="outline" className="shrink-0 text-xs">
-                      {capitalize(cli.interesse)}
-                    </Badge>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
