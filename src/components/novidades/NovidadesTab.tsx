@@ -45,7 +45,7 @@ interface NovidadesTabProps {
   onNavigateToShowroom?: (atendimentoId: string) => void;
 }
 
-const NovidadesTab: React.FC = () => {
+const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => {
   const { role, user } = useAuth();
   const [selectedMoto, setSelectedMoto] = useState<EstoqueItem | null>(null);
 
@@ -87,7 +87,8 @@ const NovidadesTab: React.FC = () => {
             vendedor_id,
             created_at,
             interesse,
-            situacao
+            situacao,
+            temperatura
           )
         `)
         .ilike('marca', selectedMoto.marca)
@@ -120,6 +121,7 @@ const NovidadesTab: React.FC = () => {
           created_at: a.created_at,
           interesse: a.interesse,
           situacao: a.situacao,
+          temperatura: a.temperatura,
         });
       }
 
