@@ -68,6 +68,7 @@ interface EstoqueItem {
   tem_manual?: boolean | null;
   tem_chave_reserva?: boolean | null;
   manutencao_vencida?: boolean | null;
+  crlv_url?: string | null;
   classificacao?: string | null;
   data_venda?: string | null;
   valor_venda?: number | null;
