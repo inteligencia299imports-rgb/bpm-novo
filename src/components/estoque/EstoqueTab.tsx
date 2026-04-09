@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -68,6 +68,7 @@ interface EstoqueItem {
   tem_manual?: boolean | null;
   tem_chave_reserva?: boolean | null;
   manutencao_vencida?: boolean | null;
+  crlv_url?: string | null;
   classificacao?: string | null;
   data_venda?: string | null;
   valor_venda?: number | null;
@@ -147,7 +148,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida), atendimentos:atendimento_venda_id(vendedor_id)').order('data_entrada', { ascending: false });
+      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url), atendimentos:atendimento_venda_id(vendedor_id)').order('data_entrada', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
       if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
@@ -168,6 +169,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         tem_manual: d.motos_avaliacao?.tem_manual ?? null,
         tem_chave_reserva: d.motos_avaliacao?.tem_chave_reserva ?? null,
         manutencao_vencida: d.motos_avaliacao?.manutencao_vencida ?? null,
+        crlv_url: d.motos_avaliacao?.crlv_url ?? null,
         venda_vendedor_id: d.atendimentos?.vendedor_id ?? null,
         vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
       }));
@@ -337,6 +339,21 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         label: 'Histórico',
         icon: <History className="h-4 w-4" />,
         action: () => handleOpenHistory(item),
+      });
+    }
+
+    // CRLV download option
+    if (item.crlv_url) {
+      options.push({
+        label: 'CRLV',
+        icon: <Download className="h-4 w-4" />,
+        action: () => {
+          const link = document.createElement('a');
+          link.href = item.crlv_url!;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.click();
+        },
       });
     }
 
