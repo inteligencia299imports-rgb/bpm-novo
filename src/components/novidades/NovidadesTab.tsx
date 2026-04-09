@@ -197,7 +197,11 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
               {interessados.length} cliente{interessados.length !== 1 ? 's' : ''} interessado{interessados.length !== 1 ? 's' : ''}
             </p>
             {interessados.map((cli) => (
-              <Card key={cli.atendimento_id} className="hover:shadow-md transition-shadow">
+              <Card
+                key={cli.atendimento_id}
+                className="hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => onNavigateToShowroom?.(cli.atendimento_id)}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1 min-w-0 flex-1">
@@ -214,9 +218,15 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
                         <Calendar className="h-3.5 w-3.5 shrink-0" />
                         <span>{format(new Date(cli.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
                       </div>
+                      {cli.temperatura && (
+                        <div className={`flex items-center gap-2 text-sm ${tempColor(cli.temperatura)}`}>
+                          <Thermometer className="h-3.5 w-3.5 shrink-0" />
+                          <span>{capitalize(cli.temperatura)}</span>
+                        </div>
+                      )}
                     </div>
                     <Badge variant="outline" className="shrink-0 text-xs">
-                      {cli.interesse}
+                      {capitalize(cli.interesse)}
                     </Badge>
                   </div>
                 </CardContent>
