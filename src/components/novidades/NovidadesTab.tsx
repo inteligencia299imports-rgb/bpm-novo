@@ -284,43 +284,87 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
               className="cursor-pointer hover:shadow-md hover:border-primary/40 transition-all"
               onClick={() => setSelectedMoto(moto)}
             >
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-foreground truncate">{moto.marca}</p>
-                    <p className="text-sm text-muted-foreground truncate">{moto.modelo}</p>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-semibold text-foreground">{moto.modelo}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {[moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/')}
+                      {moto.cilindrada ? ` · ${moto.cilindrada}cc` : ''}
+                    </p>
                   </div>
                   <Badge variant="outline" className="shrink-0 text-xs bg-primary/10 text-primary border-primary/30">
                     {diasNoEstoque(moto.data_entrada)}
                   </Badge>
                 </div>
 
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                  {moto.ano_fabricacao && <span>{moto.ano_fabricacao}/{moto.ano_modelo}</span>}
-                  {moto.cor && <span>{moto.cor}</span>}
-                  {moto.km && <span>{moto.km} km</span>}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                  {moto.placa && (
+                    <>
+                      <span className="text-muted-foreground">Placa</span>
+                      <span className="font-medium text-foreground">{moto.placa.replace(/-/g, '')}</span>
+                    </>
+                  )}
+                  {moto.cor && (
+                    <>
+                      <span className="text-muted-foreground">Cor</span>
+                      <span className="text-foreground">{moto.cor}</span>
+                    </>
+                  )}
+                  {moto.categoria && (
+                    <>
+                      <span className="text-muted-foreground">Categoria</span>
+                      <span className="text-foreground">{moto.categoria}</span>
+                    </>
+                  )}
+                  {moto.classificacao && (
+                    <>
+                      <span className="text-muted-foreground">Classificação</span>
+                      <span className="text-foreground">{moto.classificacao}</span>
+                    </>
+                  )}
+                  {moto.km && (
+                    <>
+                      <span className="text-muted-foreground">Km</span>
+                      <span className="text-foreground">{Number(moto.km).toLocaleString('pt-BR')}</span>
+                    </>
+                  )}
+                  <span className="text-muted-foreground">Tipo</span>
+                  <span className="text-foreground">
+                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(moto.tipo)}`}>
+                      {getTipoAquisicaoLabel(moto.tipo) || moto.tipo}
+                    </Badge>
+                  </span>
+                  {moto.empresa && (
+                    <>
+                      <span className="text-muted-foreground">Empresa</span>
+                      <span className="text-foreground">{moto.empresa}</span>
+                    </>
+                  )}
                 </div>
 
-                {moto.preco && (
-                  <p className="text-sm font-bold text-primary">
-                    R$ {moto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                )}
+                <MaintenanceBadges
+                  temManual={moto.tem_manual}
+                  temChaveReserva={moto.tem_chave_reserva}
+                  manutencaoVencida={moto.manutencao_vencida}
+                />
 
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {moto.classificacao && (
-                    <Badge variant="secondary" className="text-[10px]">
-                      {moto.classificacao}
-                    </Badge>
+                <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Preço</p>
+                    <p className="font-semibold text-foreground">{formatCurrency(moto.preco)}</p>
+                  </div>
+                  {moto.preco_acao != null && (
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Preço Ação</p>
+                      <p className="font-semibold text-green-600">{formatCurrency(moto.preco_acao)}</p>
+                    </div>
                   )}
-                  <Badge variant="outline" className="text-[10px]">
-                    {moto.tipo === 'propria' ? 'Própria' : 'Consignada'}
-                  </Badge>
-                  <MaintenanceBadges
-                    temManual={moto.tem_manual}
-                    temChaveReserva={moto.tem_chave_reserva}
-                    manutencaoVencida={moto.manutencao_vencida}
-                  />
+                </div>
+
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Calendar className="h-3 w-3" />
+                  Entrada: {format(new Date(moto.data_entrada), 'dd/MM/yyyy', { locale: ptBR })}
                 </div>
               </CardContent>
             </Card>
