@@ -6,9 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Flame, ArrowLeft, Phone, User, Bike, Calendar, Tag, BookOpen, Key, Wrench, Thermometer } from 'lucide-react';
+import { Flame, ArrowLeft, Phone, User, Bike, Calendar, Thermometer } from 'lucide-react';
 import { format, subDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 
 interface EstoqueItem {
   id: string;
@@ -20,9 +21,13 @@ interface EstoqueItem {
   placa: string | null;
   km: string | null;
   preco: number | null;
+  preco_acao: number | null;
   data_entrada: string;
   tipo: string;
   classificacao: string | null;
+  cilindrada: string | null;
+  categoria: string | null;
+  empresa: string | null;
   moto_avaliacao_id: string | null;
   tem_manual: boolean | null;
   tem_chave_reserva: boolean | null;
