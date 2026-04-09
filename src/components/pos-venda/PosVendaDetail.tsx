@@ -80,6 +80,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
   const [intermHistory, setIntermHistory] = useState<any[]>([]);
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
+  const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
 
   const refreshConsignada = async () => {
     const consignadaEstoque = Object.values(estoqueData).find((e: any) => e.tipo === 'consignada');
