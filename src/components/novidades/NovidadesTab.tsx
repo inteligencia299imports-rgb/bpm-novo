@@ -165,6 +165,11 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
     return dias === 0 ? 'Hoje' : dias === 1 ? '1 dia' : `${dias} dias`;
   };
 
+  const formatCurrency = (value: number | null) => {
+    if (value == null) return '—';
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
   if (selectedMoto) {
     return (
       <div className="space-y-4">
