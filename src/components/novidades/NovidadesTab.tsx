@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowLeft, Phone, User, Bike, Calendar, Tag, BookOpen, Key, Wrench } from 'lucide-react';
+import { Flame, ArrowLeft, Phone, User, Bike, Calendar, Tag, BookOpen, Key, Wrench, Thermometer } from 'lucide-react';
 import { format, subDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -38,9 +38,14 @@ interface ClienteInteressado {
   created_at: string;
   interesse: string;
   situacao: string;
+  temperatura: string | null;
 }
 
-const NovidadesTab: React.FC = () => {
+interface NovidadesTabProps {
+  onNavigateToShowroom?: (atendimentoId: string) => void;
+}
+
+const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => {
   const { role, user } = useAuth();
   const [selectedMoto, setSelectedMoto] = useState<EstoqueItem | null>(null);
 
@@ -82,7 +87,8 @@ const NovidadesTab: React.FC = () => {
             vendedor_id,
             created_at,
             interesse,
-            situacao
+            situacao,
+            temperatura
           )
         `)
         .ilike('marca', selectedMoto.marca)
@@ -99,6 +105,7 @@ const NovidadesTab: React.FC = () => {
         created_at: string;
         interesse: string;
         situacao: string;
+        temperatura: string | null;
       }> = [];
 
       for (const mi of data || []) {
@@ -115,6 +122,7 @@ const NovidadesTab: React.FC = () => {
           created_at: a.created_at,
           interesse: a.interesse,
           situacao: a.situacao,
+          temperatura: a.temperatura,
         });
       }
 
@@ -137,6 +145,15 @@ const NovidadesTab: React.FC = () => {
       })) as ClienteInteressado[];
     },
   });
+
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  const tempColor = (temp: string | null) => {
+    if (!temp) return '';
+    if (temp === 'quente') return 'text-red-500';
+    if (temp === 'morno') return 'text-orange-500';
+    return 'text-blue-500';
+  };
 
   const diasNoEstoque = (dataEntrada: string) => {
     const dias = differenceInDays(new Date(), new Date(dataEntrada));
@@ -189,7 +206,11 @@ const NovidadesTab: React.FC = () => {
               {interessados.length} cliente{interessados.length !== 1 ? 's' : ''} interessado{interessados.length !== 1 ? 's' : ''}
             </p>
             {interessados.map((cli) => (
-              <Card key={cli.atendimento_id} className="hover:shadow-md transition-shadow">
+              <Card
+                key={cli.atendimento_id}
+                className="hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => onNavigateToShowroom?.(cli.atendimento_id)}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1 min-w-0 flex-1">
@@ -206,9 +227,15 @@ const NovidadesTab: React.FC = () => {
                         <Calendar className="h-3.5 w-3.5 shrink-0" />
                         <span>{format(new Date(cli.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
                       </div>
+                      {cli.temperatura && (
+                        <div className={`flex items-center gap-2 text-sm ${tempColor(cli.temperatura)}`}>
+                          <Thermometer className="h-3.5 w-3.5 shrink-0" />
+                          <span>{capitalize(cli.temperatura)}</span>
+                        </div>
+                      )}
                     </div>
                     <Badge variant="outline" className="shrink-0 text-xs">
-                      {cli.interesse}
+                      {capitalize(cli.interesse)}
                     </Badge>
                   </div>
                 </CardContent>
@@ -223,7 +250,7 @@ const NovidadesTab: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Sparkles className="h-5 w-5 text-primary" />
+        <Flame className="h-5 w-5 text-primary" />
         <h2 className="text-lg font-bold text-foreground">Novidades</h2>
         <Badge variant="secondary" className="ml-auto">{motos.length} moto{motos.length !== 1 ? 's' : ''}</Badge>
       </div>
