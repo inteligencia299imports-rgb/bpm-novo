@@ -342,6 +342,21 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
+    // CRLV download option
+    if (item.crlv_url) {
+      options.push({
+        label: 'CRLV',
+        icon: <Download className="h-4 w-4" />,
+        action: () => {
+          const link = document.createElement('a');
+          link.href = item.crlv_url!;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.click();
+        },
+      });
+    }
+
     return options;
   };
 
