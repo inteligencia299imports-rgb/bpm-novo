@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';

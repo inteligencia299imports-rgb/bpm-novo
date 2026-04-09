@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
