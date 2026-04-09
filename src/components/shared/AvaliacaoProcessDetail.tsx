@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList, DollarSign, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList, DollarSign, AlertTriangle, ShieldAlert, IdCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -54,6 +54,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [currentConsignacaoStatus, setCurrentConsignacaoStatus] = useState(item.consignacao_status || 'em_aberto');
   const [loading, setLoading] = useState(true);
   const [estoqueStatus, setEstoqueStatus] = useState<{ status: string; observacoes: string | null } | null>(null);
+  const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
   const moto = item.moto || item.motos_avaliacao;
   const atendimento = item.atendimento || item.atendimentos;
   const statusValue = item[statusField] || 'em_aberto';
@@ -71,7 +72,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
         moto?.id
           ? supabase.from('motos_avaliacao').select('crlv_url').eq('id', moto.id).single()
           : Promise.resolve({ data: null }),
-        supabase.from('avaliacoes').select('quanto_pede, valor_fechamento').eq('id', item.id).maybeSingle(),
+        supabase.from('avaliacoes').select('quanto_pede, valor_fechamento, avaliador_id').eq('id', item.id).maybeSingle(),
         supabase.from('estoque').select('status, observacoes').eq('avaliacao_id', item.id).maybeSingle(),
       ]);
       setCnhUrl(cnhRes.data?.cnh_url || null);
@@ -79,6 +80,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       setQuantoPede(avRes.data?.quanto_pede ?? null);
       setValorFechamento(avRes.data?.valor_fechamento ?? null);
       setEstoqueStatus(estRes.data ? { status: estRes.data.status, observacoes: estRes.data.observacoes } : null);
+
+      // Fetch avaliador name
+      if (avRes.data?.avaliador_id) {
+        const { data: roleData } = await supabase.from('user_roles').select('nome').eq('user_id', avRes.data.avaliador_id).single();
+        if (roleData?.nome) setAvaliadorNome(roleData.nome);
+      }
+
       setLoading(false);
     };
     loadAll();
@@ -175,6 +183,12 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {avaliadorNome && (
+                <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
+                  <IdCard className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={atendimento?.nome_cliente} />
                 {atendimento?.telefone && (
