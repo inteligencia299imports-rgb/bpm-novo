@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -278,24 +279,11 @@ const NovidadesTab: React.FC = () => {
                   <Badge variant="outline" className="text-[10px]">
                     {moto.tipo === 'propria' ? 'Própria' : 'Consignada'}
                   </Badge>
-                  {moto.tem_manual !== null && (
-                    <Badge variant="outline" className={`text-[10px] ${moto.tem_manual ? 'border-green-500 text-green-600' : 'border-red-500 text-red-600'}`}>
-                      <BookOpen className="h-3 w-3 mr-0.5" />
-                      Manual
-                    </Badge>
-                  )}
-                  {moto.tem_chave_reserva !== null && (
-                    <Badge variant="outline" className={`text-[10px] ${moto.tem_chave_reserva ? 'border-green-500 text-green-600' : 'border-red-500 text-red-600'}`}>
-                      <Key className="h-3 w-3 mr-0.5" />
-                      Chave
-                    </Badge>
-                  )}
-                  {moto.manutencao_vencida !== null && (
-                    <Badge variant="outline" className={`text-[10px] ${moto.manutencao_vencida ? 'border-red-500 text-red-600' : 'border-green-500 text-green-600'}`}>
-                      <Wrench className="h-3 w-3 mr-0.5" />
-                      Revisão
-                    </Badge>
-                  )}
+                  <MaintenanceBadges
+                    temManual={moto.tem_manual}
+                    temChaveReserva={moto.tem_chave_reserva}
+                    manutencaoVencida={moto.manutencao_vencida}
+                  />
                 </div>
               </CardContent>
             </Card>
