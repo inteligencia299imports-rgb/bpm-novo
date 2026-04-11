@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Award, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, BarChart3, Flame } from 'lucide-react';
+import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, Flame } from 'lucide-react';
 import logoImg from '@/assets/logo-crm.png';
 import NotificationBell from './NotificationBell';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
   const { role, userName, signOut } = useAuth();
 
   const tabs = [
-    { id: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: ['gestor', 'vendedor'] },
+    // { id: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: ['gestor', 'vendedor'] },
     { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
     { id: 'novidades', label: 'Novidades', icon: Flame, roles: ['vendedor', 'gestor'] },
