@@ -1580,86 +1580,52 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           <DialogHeader>
             <DialogTitle>Editar Dados do Cliente</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 overflow-y-auto flex-1 pr-1">
-            <div className="space-y-1.5">
-              <Label>Nome *</Label>
-              <Input
-                value={editNome}
-                onChange={e => {
-                  const formatted = e.target.value
-                    .toLowerCase()
-                    .replace(/(?:^|\s)\S/g, match => match.toUpperCase());
-                  setEditNome(formatted);
-                }}
-                placeholder="Nome Sobrenome"
-              />
+          <ScrollArea className="flex-1 pr-3">
+            <div className="space-y-3 pb-2">
+              <div>
+                <Label>Nome <span className="text-destructive">*</span></Label>
+                <Input value={editNome} onChange={e => setEditNome(e.target.value)} />
+              </div>
+              <div>
+                <Label>Telefone <span className="text-destructive">*</span></Label>
+                <Input value={editTelefone} onChange={e => { const d = e.target.value.replace(/\D/g,''); setEditTelefone(d.length === 11 ? formatPhone(d) : d); }} maxLength={15} />
+              </div>
+              <div>
+                <Label>Sexo <span className="text-destructive">*</span></Label>
+                <Select value={editSexo} onValueChange={setEditSexo}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>UF <span className="text-destructive">*</span></Label>
+                <Select value={editUf} onValueChange={setEditUf}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>CPF/CNPJ</Label>
+                <Input value={editCpfCnpj} onChange={e => setEditCpfCnpj(formatCpfCnpj(e.target.value))} placeholder="000.000.000-00" />
+              </div>
+              <div>
+                <Label>E-mail</Label>
+                <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email" />
+              </div>
+              <div>
+                <Label>Endereço</Label>
+                <Input value={editEndereco} onChange={e => setEditEndereco(e.target.value)} />
+              </div>
+              <div>
+                <Label>CEP</Label>
+                <Input value={editCep} onChange={e => setEditCep(formatCep(e.target.value))} placeholder="00000-000" maxLength={9} />
+              </div>
+              <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
+                {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Salvar
+              </Button>
             </div>
-            <div className="space-y-1.5">
-              <Label>Telefone *</Label>
-              <Input
-                value={editTelefone}
-                onChange={e => setEditTelefone(formatPhoneInput(e.target.value))}
-                placeholder="(61) 90000-0000"
-                maxLength={15}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Sexo *</Label>
-              <Select value={editSexo} onValueChange={setEditSexo}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>UF *</Label>
-              <Select value={editUf} onValueChange={setEditUf}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>CPF/CNPJ</Label>
-              <Input
-                value={editCpfCnpj}
-                onChange={e => setEditCpfCnpj(formatCpfCnpj(e.target.value))}
-                placeholder="000.000.000-00"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>E-mail</Label>
-              <Input
-                type="email"
-                value={editEmail}
-                onChange={e => setEditEmail(e.target.value)}
-                placeholder="cliente@email.com"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Endereço</Label>
-              <Input
-                value={editEndereco}
-                onChange={e => setEditEndereco(e.target.value)}
-                placeholder="Rua, número, bairro, cidade"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>CEP</Label>
-              <Input
-                value={editCep}
-                onChange={e => setEditCep(formatCep(e.target.value))}
-                placeholder="00000-000"
-                maxLength={9}
-              />
-            </div>
-            <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
-              {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              Salvar
-            </Button>
-          </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
       {/* Dialog Data de Entrega */}
