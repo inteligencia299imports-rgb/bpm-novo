@@ -302,6 +302,11 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           await supabase.from('motos_avaliacao').insert(maData);
         }
       }
+    } else if (isEditing && interesse === 'comprar') {
+      // Se mudou para "comprar", remover moto do cliente (avaliação) existente
+      if (motoAvaliacaoId) {
+        await supabase.from('motos_avaliacao').delete().eq('id', motoAvaliacaoId);
+      }
     }
 
     toast.success(isEditing ? 'Atendimento atualizado!' : 'Atendimento criado!');
