@@ -242,7 +242,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   setNormal();
   checkPageBreak(15);
   y = drawJustifiedText(doc, 'Para dirimir quaisquer dúvidas decorrentes do presente, as partes estabelecem desde já, com exclusividade, o foro da Comarca do COMPRADOR, por mais privilegiado que outro possa ser. O VENDEDOR, de livre e espontânea vontade, RENUNCIA ao foro previsto no artigo 101, I do Código de Defesa do Consumidor; E, para produzir seus legais efeitos, firmo o presente termo, na presença de 2 (duas) testemunhas.', marginLeft, contentWidth, y, lineHeight);
-  y += lineHeight * 1;
+  y += lineHeight * 4;
 
   // Signatures - keep entire block together on same page
   const sigBlockHeight = lineHeight * 8;
