@@ -242,10 +242,10 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   setNormal();
   checkPageBreak(15);
   y = drawJustifiedText(doc, 'Para dirimir quaisquer dúvidas decorrentes do presente, as partes estabelecem desde já, com exclusividade, o foro da Comarca do COMPRADOR, por mais privilegiado que outro possa ser. O VENDEDOR, de livre e espontânea vontade, RENUNCIA ao foro previsto no artigo 101, I do Código de Defesa do Consumidor; E, para produzir seus legais efeitos, firmo o presente termo, na presença de 2 (duas) testemunhas.', marginLeft, contentWidth, y, lineHeight);
-  y += lineHeight * 4;
+  y += lineHeight * 3;
 
   // Signatures - keep entire block together on same page
-  const sigBlockHeight = lineHeight * 25 + 30; // approximate total height for all signatures + digital text + date
+  const sigBlockHeight = lineHeight * 18 + 30;
   checkPageBreak(sigBlockHeight);
 
   const colWidth = contentWidth / 2 - 5;
@@ -253,7 +253,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
 
   doc.setLineWidth(0.3);
 
-  // Client (left) and Witness (right) side by side
+  // Client (left) and Company (right) side by side
   const sigY = y;
   doc.line(marginLeft, sigY, marginLeft + lineLen, sigY);
   const rightX = marginLeft + colWidth + 10;
@@ -263,17 +263,10 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   doc.text(data.nomeCliente, marginLeft, sigY + lineHeight);
   doc.text(data.cpfCnpj, marginLeft, sigY + lineHeight * 2);
 
-  doc.text('Testemunha 1', rightX, sigY + lineHeight);
-  doc.text('RG/CPF', rightX, sigY + lineHeight * 2);
+  doc.text(empresaNome, rightX, sigY + lineHeight);
+  doc.text(`CNPJ: ${cnpj}`, rightX, sigY + lineHeight * 2);
 
-  y = sigY + lineHeight * 5;
-
-  // Company signature
-  doc.line(marginLeft, y, marginLeft + 70, y);
-  y += lineHeight;
-  doc.text(empresaNome, marginLeft, y); y += lineHeight;
-  doc.text(`CNPJ: ${cnpj}`, marginLeft, y);
-  y += lineHeight * 3;
+  y = sigY + lineHeight * 4;
 
   // Digital agreement + date
   setNormal();
