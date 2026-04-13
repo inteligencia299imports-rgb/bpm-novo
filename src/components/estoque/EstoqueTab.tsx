@@ -423,6 +423,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                   <SelectItem value="bloqueio_juridico">Bloqueio Jurídico</SelectItem>
                   <SelectItem value="sinal">Sinal</SelectItem>
                   <SelectItem value="vendido">Vendida</SelectItem>
+                  <SelectItem value="retirada">Retirada</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={filterMarca} onValueChange={setFilterMarca}>
