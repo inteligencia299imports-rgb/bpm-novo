@@ -126,7 +126,73 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     setEditClienteOpen(true);
   };
 
-  const handleSaveCliente = async () => {
+
+  const openEditMoto = () => {
+    if (!moto) return;
+    setEditMarca(moto.marca || '');
+    setEditModelo(moto.modelo || '');
+    setEditPlaca(moto.placa || '');
+    setEditKm(moto.km || '');
+    setEditAnoFab(moto.ano_fabricacao || '');
+    setEditAnoMod(moto.ano_modelo || '');
+    setEditCor(moto.cor || '');
+    setEditCategoria(moto.categoria || '');
+    setEditCilindrada(moto.cilindrada || '');
+    setEditMotoObs(moto.observacoes || '');
+    setEditTemManual(moto.tem_manual ?? false);
+    setEditTemChaveReserva(moto.tem_chave_reserva ?? false);
+    setEditManutencaoVencida(moto.manutencao_vencida ?? false);
+    setEditMotoOpen(true);
+  };
+
+  const handleSaveMoto = async () => {
+    if (!editMarca.trim() || !editModelo.trim()) {
+      toast.error('Marca e Modelo são obrigatórios');
+      return;
+    }
+    setSavingMoto(true);
+    const { error } = await supabase.from('motos_avaliacao').update({
+      marca: editMarca.trim(),
+      modelo: editModelo.trim(),
+      placa: editPlaca.trim() || null,
+      km: editKm.trim() || null,
+      ano_fabricacao: editAnoFab.trim() || null,
+      ano_modelo: editAnoMod.trim() || null,
+      cor: editCor.trim() || null,
+      categoria: editCategoria.trim() || null,
+      cilindrada: editCilindrada.trim() || null,
+      observacoes: editMotoObs.trim() || null,
+      tem_manual: editTemManual,
+      tem_chave_reserva: editTemChaveReserva,
+      manutencao_vencida: editManutencaoVencida,
+    }).eq('id', moto.id);
+    setSavingMoto(false);
+    if (error) {
+      toast.error('Erro ao salvar dados da moto');
+      console.error(error);
+    } else {
+      setMotoData({
+        ...moto,
+        marca: editMarca.trim(),
+        modelo: editModelo.trim(),
+        placa: editPlaca.trim() || null,
+        km: editKm.trim() || null,
+        ano_fabricacao: editAnoFab.trim() || null,
+        ano_modelo: editAnoMod.trim() || null,
+        cor: editCor.trim() || null,
+        categoria: editCategoria.trim() || null,
+        cilindrada: editCilindrada.trim() || null,
+        observacoes: editMotoObs.trim() || null,
+        tem_manual: editTemManual,
+        tem_chave_reserva: editTemChaveReserva,
+        manutencao_vencida: editManutencaoVencida,
+      });
+      toast.success('Dados da moto atualizados!');
+      setEditMotoOpen(false);
+    }
+  };
+
+
     const digits = editTelefone.replace(/\D/g, '');
     if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
       toast.error('Preencha todos os campos corretamente');
