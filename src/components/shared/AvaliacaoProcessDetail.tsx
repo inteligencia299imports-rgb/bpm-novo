@@ -598,7 +598,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
 
       {/* Dialog Editar Moto */}
       <Dialog open={editMotoOpen} onOpenChange={setEditMotoOpen}>
-        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Editar Dados da Moto</DialogTitle>
           </DialogHeader>
