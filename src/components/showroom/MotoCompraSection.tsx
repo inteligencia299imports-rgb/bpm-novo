@@ -34,11 +34,12 @@ interface Props {
   loja?: string;
   chassi?: string;
   setChassi?: (v: string) => void;
+  disabled?: boolean;
 }
 
 const MotoCompraSection: React.FC<Props> = ({
   origemMoto, setOrigemMoto, marca, setMarca, modelo, setModelo, ano, setAno,
-  estoqueMotoId, setEstoqueMotoId, loja, chassi = '', setChassi,
+  estoqueMotoId, setEstoqueMotoId, loja, chassi = '', setChassi, disabled,
 }) => {
   const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
   const marcas = getMarcaNomes();
