@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { TODOS_TIPOS_AQUISICAO } from '@/lib/tipoAquisicao';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
-import { Search, X, Send } from 'lucide-react';
+import { Search, X, Send, Eye } from 'lucide-react';
 import { SITUACOES_NPS } from '@/types/crm';
 import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
@@ -10,6 +10,7 @@ import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import AtendimentoCard from '@/components/showroom/AtendimentoCard';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import RespostasNpsDialog from './RespostasNpsDialog';
 
 interface NpsAquisicoesTabProps {
   onNavigateToShowroom: (atendimentoId: string) => void;
@@ -20,6 +21,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [respostasDialog, setRespostasDialog] = useState<{ open: boolean; atendimentoId: string; nomeCliente: string }>({ open: false, atendimentoId: '', nomeCliente: '' });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -168,6 +170,11 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                                   <Send className="h-3 w-3" /> Reenviar Pesquisa
                                 </Button>
                               )}
+                              {(a.nps_status || 'em_aberto') === 'respondido' && (
+                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => { e.stopPropagation(); setRespostasDialog({ open: true, atendimentoId: a.atendimento_id, nomeCliente: a.atendimento?.nome_cliente || '' }); }}>
+                                  <Eye className="h-3 w-3" /> Visualizar Respostas
+                                </Button>
+                              )}
                             </>
                           }
                         />
@@ -180,6 +187,12 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
           </div>
         </div>
       )}
+      <RespostasNpsDialog
+        open={respostasDialog.open}
+        onOpenChange={(open) => setRespostasDialog(prev => ({ ...prev, open }))}
+        atendimentoId={respostasDialog.atendimentoId}
+        nomeCliente={respostasDialog.nomeCliente}
+      />
     </div>
   );
 };
