@@ -80,7 +80,8 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   const sectionGap = lineHeight;
   let y = marginTop;
 
-  // Draw page border (matching side margins)
+  // Draw page border (matching side margins) - gray color to match consignação style
+  doc.setDrawColor(150, 150, 150);
   doc.setLineWidth(0.5);
   doc.rect(marginLeft, marginTop, contentWidth, pageHeight - marginTop - marginBottom);
 
