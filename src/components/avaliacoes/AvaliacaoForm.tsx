@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight, ShieldCheck, Handshake, Bike, IdCard, Pencil } from 'lucide-react';
-import { SEXOS, UFS } from '@/types/crm';
+import { SEXOS, UFS, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import DocumentUpload from '@/components/showroom/DocumentUpload';

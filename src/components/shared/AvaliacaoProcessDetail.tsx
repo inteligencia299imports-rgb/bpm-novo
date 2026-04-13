@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { SEXOS, UFS } from '@/types/crm';
+import { SEXOS, UFS, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
