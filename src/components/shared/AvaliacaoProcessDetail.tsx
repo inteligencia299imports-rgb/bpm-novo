@@ -625,32 +625,44 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 </div>
                 <div>
                   <Label>KM</Label>
-                  <Input value={editKm} onChange={e => setEditKm(e.target.value)} placeholder="0" />
+                  <Input value={editKm} onChange={e => { const d = e.target.value.replace(/\D/g, ''); setEditKm(d ? parseInt(d,10).toLocaleString('pt-BR') : ''); }} placeholder="0" inputMode="numeric" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Ano Fab.</Label>
-                  <Input value={editAnoFab} onChange={e => setEditAnoFab(e.target.value)} placeholder="2024" maxLength={4} />
+                  <Select value={editAnoFab} onValueChange={setEditAnoFab}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Ano Mod.</Label>
-                  <Input value={editAnoMod} onChange={e => setEditAnoMod(e.target.value)} placeholder="2025" maxLength={4} />
+                  <Select value={editAnoMod} onValueChange={setEditAnoMod}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Cor</Label>
-                  <Input value={editCor} onChange={e => setEditCor(e.target.value)} />
+                  <Select value={editCor} onValueChange={setEditCor}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{CORES_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Cilindrada</Label>
-                  <Input value={editCilindrada} onChange={e => setEditCilindrada(e.target.value)} />
+                  <Input value={editCilindrada} onChange={e => { const d = e.target.value.replace(/\D/g, ''); setEditCilindrada(d ? parseInt(d,10).toLocaleString('pt-BR') : ''); }} placeholder="0" inputMode="numeric" />
                 </div>
               </div>
               <div>
                 <Label>Categoria</Label>
-                <Input value={editCategoria} onChange={e => setEditCategoria(e.target.value)} />
+                <Select value={editCategoria} onValueChange={setEditCategoria}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Observações</Label>
