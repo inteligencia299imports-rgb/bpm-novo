@@ -118,6 +118,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [historyItem, setHistoryItem] = useState<EstoqueItem | null>(null);
   const [historyEntries, setHistoryEntries] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [retiradaItem, setRetiradaItem] = useState<EstoqueItem | null>(null);
 
   const handleOpenHistory = async (item: EstoqueItem) => {
     setHistoryItem(item);
