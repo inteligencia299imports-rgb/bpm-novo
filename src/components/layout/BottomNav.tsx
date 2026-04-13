@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, ClipboardCheck, Package, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, Flame, BarChart3 } from 'lucide-react';
+import { Bike, ClipboardCheck, Package, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, Flame, BarChart3, Award } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
 interface BottomNavProps {
@@ -23,6 +23,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
     { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['avaliador', 'gestor'] },
     { id: 'consignacao', label: 'Consign.', icon: FileText, roles: ['avaliador', 'gestor'] },
     { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['vendedor', 'avaliador', 'gestor'] },
+    { id: 'nps', label: 'NPS', icon: Award, roles: ['gestor', 'vendedor', 'avaliador'] },
   ].filter(t => role && t.roles.includes(role));
 
   return (
