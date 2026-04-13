@@ -539,6 +539,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       toast.error('Selecione o tipo de aquisição');
       return;
     }
+    // Consulta obrigatória apenas para tipos que não são consignada
+    if (tipoSelecionado !== 'consignada' && !consultaRealizada) {
+      toast.error('A consulta precisa ser realizada antes de adquirir como ' + (getTipoAquisicaoLabel(tipoSelecionado) || tipoSelecionado));
+      return;
+    }
     const valor = parseCurrencyToNumber(valorFechamentoAquisicao);
     if (interesse === 'vender' && (!valor || valor <= 0)) {
       toast.error('Informe o valor de fechamento');
