@@ -21,6 +21,8 @@ import { SEXOS, UFS } from '@/types/crm';
 import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
+import { useMarcasModelos } from '@/hooks/useMarcasModelos';
+import { Checkbox } from '@/components/ui/checkbox';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import ObservacoesProcesso from '@/components/shared/ObservacoesProcesso';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
