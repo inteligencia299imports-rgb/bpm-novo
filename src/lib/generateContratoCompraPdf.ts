@@ -244,8 +244,10 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   y = drawJustifiedText(doc, 'Para dirimir quaisquer dúvidas decorrentes do presente, as partes estabelecem desde já, com exclusividade, o foro da Comarca do COMPRADOR, por mais privilegiado que outro possa ser. O VENDEDOR, de livre e espontânea vontade, RENUNCIA ao foro previsto no artigo 101, I do Código de Defesa do Consumidor; E, para produzir seus legais efeitos, firmo o presente termo, na presença de 2 (duas) testemunhas.', marginLeft, contentWidth, y, lineHeight);
   y += lineHeight * 4;
 
-  // Signatures
-  checkPageBreak(50);
+  // Signatures - keep entire block together on same page
+  const sigBlockHeight = lineHeight * 25 + 30; // approximate total height for all signatures + digital text + date
+  checkPageBreak(sigBlockHeight);
+
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
@@ -255,7 +257,6 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   y += lineHeight * 4;
 
   // Testemunha
-  checkPageBreak(20);
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
   doc.text('Testemunha 1', marginLeft, y); y += lineHeight;
@@ -263,7 +264,6 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   y += lineHeight * 5;
 
   // Company signature
-  checkPageBreak(20);
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
   doc.text(empresaNome, marginLeft, y); y += lineHeight;
@@ -271,12 +271,10 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   y += lineHeight * 3;
 
   // Digital agreement + date
-  checkPageBreak(25);
   setNormal();
   y = drawJustifiedText(doc, 'Ao confirmar e assinar este documento por via eletrônica, estamos em acordo de que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas de todos os envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o respectivo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º, §2º.', marginLeft, contentWidth, y, lineHeight);
   y += lineHeight * 3;
 
-  checkPageBreak(10);
   setBold();
   doc.text(`Brasília, ${data.dataContrato}`, pageWidth / 2, y, { align: 'center' });
   setNormal();
