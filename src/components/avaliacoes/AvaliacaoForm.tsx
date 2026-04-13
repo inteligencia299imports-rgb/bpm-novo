@@ -828,6 +828,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Tag className="h-4 w-4 text-primary" /> Moto do Cliente
+                {canEdit && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={openEditMoto} title="Editar dados da moto">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
