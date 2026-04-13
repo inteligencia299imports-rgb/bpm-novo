@@ -1034,6 +1034,51 @@ export type Database = {
           },
         ]
       }
+      respostas_nps: {
+        Row: {
+          atendimento: string | null
+          atendimento_id: string
+          created_at: string
+          data_resposta: string
+          espaco_livre: string | null
+          experiencia: string | null
+          id: string
+          melhorias: string | null
+          nps: string | null
+          origem: string | null
+          outros_setores: string | null
+          produto: string | null
+        }
+        Insert: {
+          atendimento?: string | null
+          atendimento_id: string
+          created_at?: string
+          data_resposta?: string
+          espaco_livre?: string | null
+          experiencia?: string | null
+          id?: string
+          melhorias?: string | null
+          nps?: string | null
+          origem?: string | null
+          outros_setores?: string | null
+          produto?: string | null
+        }
+        Update: {
+          atendimento?: string | null
+          atendimento_id?: string
+          created_at?: string
+          data_resposta?: string
+          espaco_livre?: string | null
+          experiencia?: string | null
+          id?: string
+          melhorias?: string | null
+          nps?: string | null
+          origem?: string | null
+          outros_setores?: string | null
+          produto?: string | null
+        }
+        Relationships: []
+      }
       status_history: {
         Row: {
           changed_by: string | null
