@@ -248,20 +248,25 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   const sigBlockHeight = lineHeight * 25 + 30; // approximate total height for all signatures + digital text + date
   checkPageBreak(sigBlockHeight);
 
-  doc.setLineWidth(0.3);
-  doc.line(marginLeft, y, marginLeft + 70, y);
-  y += lineHeight;
-  setNormal();
-  doc.text(data.nomeCliente, marginLeft, y); y += lineHeight;
-  doc.text(data.cpfCnpj, marginLeft, y);
-  y += lineHeight * 4;
+  const colWidth = contentWidth / 2 - 5;
+  const lineLen = 70;
 
-  // Testemunha
-  doc.line(marginLeft, y, marginLeft + 70, y);
-  y += lineHeight;
-  doc.text('Testemunha 1', marginLeft, y); y += lineHeight;
-  doc.text('RG/CPF', marginLeft, y);
-  y += lineHeight * 5;
+  doc.setLineWidth(0.3);
+
+  // Client (left) and Witness (right) side by side
+  const sigY = y;
+  doc.line(marginLeft, sigY, marginLeft + lineLen, sigY);
+  const rightX = marginLeft + colWidth + 10;
+  doc.line(rightX, sigY, rightX + lineLen, sigY);
+
+  setNormal();
+  doc.text(data.nomeCliente, marginLeft, sigY + lineHeight);
+  doc.text(data.cpfCnpj, marginLeft, sigY + lineHeight * 2);
+
+  doc.text('Testemunha 1', rightX, sigY + lineHeight);
+  doc.text('RG/CPF', rightX, sigY + lineHeight * 2);
+
+  y = sigY + lineHeight * 5;
 
   // Company signature
   doc.line(marginLeft, y, marginLeft + 70, y);
