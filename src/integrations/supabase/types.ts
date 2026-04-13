@@ -20,6 +20,7 @@ export type Database = {
           cnh_url: string | null
           cpf_cnpj: string | null
           created_at: string
+          data_venda: string | null
           email: string | null
           endereco: string | null
           id: string
@@ -51,6 +52,7 @@ export type Database = {
           cnh_url?: string | null
           cpf_cnpj?: string | null
           created_at?: string
+          data_venda?: string | null
           email?: string | null
           endereco?: string | null
           id?: string
@@ -82,6 +84,7 @@ export type Database = {
           cnh_url?: string | null
           cpf_cnpj?: string | null
           created_at?: string
+          data_venda?: string | null
           email?: string | null
           endereco?: string | null
           id?: string
