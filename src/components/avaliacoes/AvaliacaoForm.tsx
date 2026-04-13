@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight, ShieldCheck, Handshake, Bike, IdCard, Pencil } from 'lucide-react';
 import { SEXOS, UFS } from '@/types/crm';
+import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -126,7 +127,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
   const openEditCliente = () => {
     if (!at) return;
-    setEditNome(at.nome_cliente || '');
+    setEditNome(formatPersonName(at.nome_cliente || ''));
     setEditTelefone(at.telefone ? formatPhone(at.telefone) : '');
     setEditSexo(at.sexo || '');
     setEditUf(at.uf || '');
@@ -155,7 +156,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     }
     setSavingCliente(true);
     const { error } = await supabase.from('atendimentos').update({
-      nome_cliente: editNome.trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()),
+      nome_cliente: formatPersonName(editNome),
       telefone: digits,
       sexo: editSexo,
       uf: editUf,
@@ -611,7 +612,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </Button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-xl font-bold truncate">{at?.nome_cliente}</h1>
+              <h1 className="text-lg sm:text-xl font-bold truncate">{formatPersonName(at?.nome_cliente)}</h1>
               {sit && <Badge className={`${sit.color} text-[10px] shrink-0`}>{sit.label}</Badge>}
               {avaliacao?.tipo_aquisicao && (
                 <Badge variant="outline" className={`text-[10px] shrink-0 ${getTipoAquisicaoBadgeClass(avaliacao.tipo_aquisicao)}`}>
@@ -683,7 +684,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <InfoItem label="Nome" value={at?.nome_cliente} />
+                <InfoItem label="Nome" value={formatPersonName(at?.nome_cliente)} />
                 <div>
                   <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Telefone</span>
                   <div className="flex items-center gap-1.5">
@@ -1420,7 +1421,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <div className="space-y-3 pb-2">
               <div>
                 <Label>Nome <span className="text-destructive">*</span></Label>
-                <Input value={editNome} onChange={e => setEditNome(e.target.value)} />
+                <Input value={editNome} onChange={e => setEditNome(formatPersonNameInput(e.target.value))} />
               </div>
               <div>
                 <Label>Telefone <span className="text-destructive">*</span></Label>

@@ -13,7 +13,7 @@ import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
 import MotoCompraSection from './MotoCompraSection';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import { cn, formatPersonName } from '@/lib/utils';
 
 // Phone mask utility
 const formatPhone = (value: string): string => {
@@ -220,7 +220,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
     const atData = {
       vendedor_id: user!.id,
-      loja, nome_cliente: nomeCliente.trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()), telefone: unformatPhone(telefone),
+      loja, nome_cliente: formatPersonName(nomeCliente), telefone: unformatPhone(telefone),
       sexo, uf, tipo_atendimento: tipoAtendimento,
       origem: origem || null, temperatura: temperatura || null,
       observacoes: observacoes || null, interesse, situacao: isEditing ? situacao : 'em_aberto' as SituacaoShowroom,

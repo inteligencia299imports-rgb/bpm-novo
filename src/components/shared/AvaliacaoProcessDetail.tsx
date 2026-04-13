@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { SEXOS, UFS } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
+import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
 
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
@@ -90,7 +91,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
 
   const openEditCliente = () => {
     if (!atendimento) return;
-    setEditNome(atendimento.nome_cliente || '');
+    setEditNome(formatPersonName(atendimento.nome_cliente || ''));
     setEditTelefone(formatPhoneInput(atendimento.telefone || ''));
     setEditSexo(atendimento.sexo || '');
     setEditUf(atendimento.uf || '');
@@ -109,7 +110,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     }
     setSavingCliente(true);
     const { error } = await supabase.from('atendimentos').update({
-      nome_cliente: editNome.trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()),
+      nome_cliente: formatPersonName(editNome),
       telefone: digits,
       sexo: editSexo,
       uf: editUf,
@@ -252,7 +253,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
-                <InfoItem label="Nome" value={atendimento?.nome_cliente} />
+                <InfoItem label="Nome" value={formatPersonName(atendimento?.nome_cliente)} />
                 {atendimento?.telefone && (
                   <div>
                     <span className="text-xs text-muted-foreground">Telefone</span>
@@ -457,7 +458,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             <div className="space-y-3 pb-2">
               <div>
                 <Label>Nome <span className="text-destructive">*</span></Label>
-                <Input value={editNome} onChange={e => setEditNome(e.target.value)} />
+                <Input value={editNome} onChange={e => setEditNome(formatPersonNameInput(e.target.value))} />
               </div>
               <div>
                 <Label>Telefone <span className="text-destructive">*</span></Label>
