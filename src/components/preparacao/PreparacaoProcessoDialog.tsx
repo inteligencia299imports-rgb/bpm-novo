@@ -585,20 +585,17 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       <span className="font-medium text-foreground">{avaliacaoData.moto.km}</span>
                     </div>
                   )}
-                  {isReadOnly ? (
-                    avaliacaoData.quanto_pede != null && (
-                      <div>
-                        <span className="text-xs text-muted-foreground block">Quanto Pede</span>
-                        <span className="font-semibold text-foreground">{formatCurrency(avaliacaoData.quanto_pede)}</span>
-                      </div>
-                    )
-                  ) : (
-                    avaliacaoData.valor_fechamento != null && (
-                      <div>
-                        <span className="text-xs text-muted-foreground block">Valor Fechamento</span>
-                        <span className="font-semibold text-foreground">{formatCurrency(avaliacaoData.valor_fechamento)}</span>
-                      </div>
-                    )
+                  {avaliacaoData.quanto_pede != null && (
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Quanto Pede</span>
+                      <span className="font-semibold text-foreground">{formatCurrency(avaliacaoData.quanto_pede)}</span>
+                    </div>
+                  )}
+                  {!isReadOnly && avaliacaoData.valor_fechamento != null && (
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Valor Fechamento</span>
+                      <span className="font-semibold text-foreground">{formatCurrency(avaliacaoData.valor_fechamento)}</span>
+                    </div>
                   )}
                 </div>
 
