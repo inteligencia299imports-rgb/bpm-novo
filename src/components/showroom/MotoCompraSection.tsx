@@ -126,13 +126,18 @@ const MotoCompraSection: React.FC<Props> = ({
   // Ducati-specific layout
   if (isDucati) {
     return (
-      <Card>
+      <Card className={disabled ? 'opacity-60' : ''}>
         <CardHeader><CardTitle className="text-base">Moto de Interesse (Ducati)</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          {disabled && (
+            <p className="text-sm text-destructive font-medium">
+              ⚠ Moto de interesse bloqueada. Para alterar, marque o atendimento como "Perdido" primeiro.
+            </p>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label>Modelo *</Label>
-              <Select value={modelo} onValueChange={setModelo}>
+              <Select value={modelo} onValueChange={setModelo} disabled={disabled}>
                 <SelectTrigger><SelectValue placeholder={loading ? "Carregando..." : "Selecione"} /></SelectTrigger>
                 <SelectContent>
                   {ducatiModelos.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
@@ -141,7 +146,7 @@ const MotoCompraSection: React.FC<Props> = ({
             </div>
             <div className="space-y-1.5">
               <Label>Ano Modelo *</Label>
-              <Select value={ano} onValueChange={setAno}>
+              <Select value={ano} onValueChange={setAno} disabled={disabled}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
               </Select>
@@ -154,6 +159,7 @@ const MotoCompraSection: React.FC<Props> = ({
                 placeholder="Ex: 9BWZZZ377VT004251"
                 maxLength={17}
                 minLength={6}
+                disabled={disabled}
               />
               {chassi && (chassi.length < 6 || chassi.length > 17) && (
                 <p className="text-xs text-destructive">Chassi deve ter entre 6 e 17 caracteres</p>
@@ -166,9 +172,14 @@ const MotoCompraSection: React.FC<Props> = ({
   }
 
   return (
-    <Card>
+    <Card className={disabled ? 'opacity-60' : ''}>
       <CardHeader><CardTitle className="text-base">Moto de Interesse (Compra)</CardTitle></CardHeader>
       <CardContent className="space-y-4">
+        {disabled && (
+          <p className="text-sm text-destructive font-medium">
+            ⚠ Moto de interesse bloqueada. Para alterar, marque o atendimento como "Perdido" primeiro.
+          </p>
+        )}
         <div className="space-y-1.5">
           <Label>Origem da Moto</Label>
           <Select value={origemMoto} onValueChange={(v) => {
@@ -177,7 +188,7 @@ const MotoCompraSection: React.FC<Props> = ({
             setMarca('');
             setModelo('');
             setAno('');
-          }}>
+          }} disabled={disabled}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="estoque">Estoque</SelectItem>
@@ -188,13 +199,14 @@ const MotoCompraSection: React.FC<Props> = ({
         {origemMoto === 'estoque' ? (
           <div className="space-y-1.5">
             <Label>Moto do Estoque *</Label>
-            <Popover open={comboOpen} onOpenChange={setComboOpen}>
+            <Popover open={disabled ? false : comboOpen} onOpenChange={disabled ? undefined : setComboOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   role="combobox"
                   aria-expanded={comboOpen}
                   className="w-full justify-between font-normal"
+                  disabled={disabled}
                 >
                   {loadingEstoque
                     ? "Carregando..."
@@ -231,21 +243,21 @@ const MotoCompraSection: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label>Marca *</Label>
-              <Select value={marca} onValueChange={(v) => { setMarca(v); setModelo(''); }}>
+              <Select value={marca} onValueChange={(v) => { setMarca(v); setModelo(''); }} disabled={disabled}>
                 <SelectTrigger><SelectValue placeholder={loading ? "Carregando..." : "Selecione"} /></SelectTrigger>
                 <SelectContent>{marcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Modelo *</Label>
-              <Select value={modelo} onValueChange={setModelo} disabled={!marca}>
+              <Select value={modelo} onValueChange={setModelo} disabled={disabled || !marca}>
                 <SelectTrigger><SelectValue placeholder={marca ? "Selecione" : "Selecione a marca primeiro"} /></SelectTrigger>
                 <SelectContent>{modelos.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Ano Modelo *</Label>
-              <Select value={ano} onValueChange={setAno}>
+              <Select value={ano} onValueChange={setAno} disabled={disabled}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
               </Select>
