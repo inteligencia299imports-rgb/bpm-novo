@@ -9,12 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
+import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -88,6 +89,7 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   indisponivel: { label: 'Serviço', color: 'bg-orange-500/15 text-orange-600' },
   indisponivel_manual: { label: 'Indisponível', color: 'bg-destructive/15 text-destructive' },
   bloqueio_juridico: { label: 'Bloqueio Jurídico', color: 'bg-muted text-muted-foreground' },
+  retirada: { label: 'Retirada', color: 'bg-amber-600/15 text-amber-700' },
 };
 
 const formatCurrency = (value: number | null) => {
