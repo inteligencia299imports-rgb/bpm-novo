@@ -34,7 +34,7 @@ const RelatoriosTab: React.FC = () => {
   // Update default tab once role is known
   React.useEffect(() => {
     if (role) {
-      setDept(role === 'gestor' ? 'showroom' : 'vendedores');
+      setDept((role === 'gestor' || role === 'avaliador') ? 'showroom' : 'vendedores');
     }
   }, [role]);
   const initFrom = cycle.start;
