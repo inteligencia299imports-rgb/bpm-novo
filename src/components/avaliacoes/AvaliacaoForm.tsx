@@ -113,6 +113,56 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
   const [custosOpen, setCustosOpen] = useState(false);
+  const [editClienteOpen, setEditClienteOpen] = useState(false);
+  const [editNome, setEditNome] = useState('');
+  const [editTelefone, setEditTelefone] = useState('');
+  const [editSexo, setEditSexo] = useState('');
+  const [editUf, setEditUf] = useState('');
+  const [editCpfCnpj, setEditCpfCnpj] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editEndereco, setEditEndereco] = useState('');
+  const [editCep, setEditCep] = useState('');
+  const [savingCliente, setSavingCliente] = useState(false);
+
+  const openEditCliente = () => {
+    if (!at) return;
+    setEditNome(at.nome_cliente || '');
+    setEditTelefone(at.telefone ? formatPhone(at.telefone) : '');
+    setEditSexo(at.sexo || '');
+    setEditUf(at.uf || '');
+    setEditCpfCnpj((at as any).cpf_cnpj || '');
+    setEditEmail((at as any).email || '');
+    setEditEndereco((at as any).endereco || '');
+    setEditCep((at as any).cep || '');
+    setEditClienteOpen(true);
+  };
+
+  const handleSaveCliente = async () => {
+    const digits = editTelefone.replace(/\D/g, '');
+    if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
+      toast.error('Preencha Nome, Telefone (11 dígitos), Sexo e UF');
+      return;
+    }
+    setSavingCliente(true);
+    const { error } = await supabase.from('atendimentos').update({
+      nome_cliente: editNome.trim().toUpperCase(),
+      telefone: digits,
+      sexo: editSexo,
+      uf: editUf,
+      cpf_cnpj: editCpfCnpj || null,
+      email: editEmail || null,
+      endereco: editEndereco || null,
+      cep: editCep || null,
+    } as any).eq('id', at?.id);
+    setSavingCliente(false);
+    if (error) {
+      toast.error('Erro ao salvar: ' + error.message);
+    } else {
+      toast.success('Dados do cliente atualizados!');
+      setEditClienteOpen(false);
+    }
+  };
+
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const refreshHistory = async () => {
     if (!avaliacao) return;
