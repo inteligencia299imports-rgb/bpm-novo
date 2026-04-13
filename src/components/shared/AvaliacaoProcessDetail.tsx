@@ -125,6 +125,14 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       setEditClienteOpen(false);
     }
   };
+
+  useEffect(() => {
+    const loadAll = async () => {
+      setLoading(true);
+      const [cnhRes, crlvRes, avRes, estRes] = await Promise.all([
+        atendimento?.id
+          ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
+          : Promise.resolve({ data: null }),
         moto?.id
           ? supabase.from('motos_avaliacao').select('crlv_url').eq('id', moto.id).single()
           : Promise.resolve({ data: null }),
@@ -137,7 +145,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       setValorFechamento(avRes.data?.valor_fechamento ?? null);
       setEstoqueStatus(estRes.data ? { status: estRes.data.status, observacoes: estRes.data.observacoes } : null);
 
-      // Fetch avaliador name
       if (avRes.data?.avaliador_id) {
         const { data: roleData } = await supabase.from('user_roles').select('nome').eq('user_id', avRes.data.avaliador_id).single();
         if (roleData?.nome) setAvaliadorNome(roleData.nome);
