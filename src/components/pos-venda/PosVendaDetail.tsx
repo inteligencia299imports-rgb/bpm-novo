@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import ProcessoDialog from './ProcessoDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import { formatPersonName } from '@/lib/utils';
 
 interface Props {
   item: any;
@@ -107,7 +108,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const int = INTERESSES.find(i => i.value === item.interesse);
   const isIntermParte1 = !!processoProps?.showContratoConsignante;
   const displayClient = isIntermParte1 && proprietario ? proprietario : item;
-  const displayName = displayClient.nome_cliente;
+  const displayName = formatPersonName(displayClient.nome_cliente);
   const displayPhone = displayClient.telefone;
   const whatsappUrl = displayPhone ? `https://wa.me/55${displayPhone.replace(/\D/g, '')}` : '';
 

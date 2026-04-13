@@ -15,6 +15,7 @@ import StatusTimeline from '@/components/shared/StatusTimeline';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { formatPersonName } from '@/lib/utils';
 
 interface ConsultaDetailProps {
   moto: any;
@@ -228,7 +229,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <InfoItem label="Nome" value={atendimento?.nome_cliente} />
+                <InfoItem label="Nome" value={formatPersonName(atendimento?.nome_cliente)} />
                 {atendimento?.telefone && (
                   <div>
                     <span className="text-xs text-muted-foreground">Telefone</span>

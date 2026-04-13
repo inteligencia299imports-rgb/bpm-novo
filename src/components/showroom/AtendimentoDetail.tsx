@@ -18,6 +18,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
+import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PhotoUpload from './PhotoUpload';
 import DocumentUpload from './DocumentUpload';
@@ -493,7 +494,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   };
 
   const openEditCliente = () => {
-    setEditNome(atendimento.nome_cliente);
+    setEditNome(formatPersonName(atendimento.nome_cliente));
     setEditTelefone(formatPhoneInput(atendimento.telefone));
     setEditSexo(atendimento.sexo);
     setEditUf(atendimento.uf);
@@ -566,7 +567,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     }
     setSavingCliente(true);
     const { error } = await supabase.from('atendimentos').update({
-      nome_cliente: editNome.trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()),
+      nome_cliente: formatPersonName(editNome),
       telefone: digits,
       sexo: editSexo,
       uf: editUf,
@@ -600,7 +601,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </Button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-xl font-bold truncate">{atendimento.nome_cliente}</h1>
+              <h1 className="text-lg sm:text-xl font-bold truncate">{formatPersonName(atendimento.nome_cliente)}</h1>
               {sit && <Badge className={`${sit.color} text-[10px] shrink-0`}>{sit.label}</Badge>}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -712,7 +713,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <InfoItem label="Nome" value={atendimento.nome_cliente} />
+                <InfoItem label="Nome" value={formatPersonName(atendimento.nome_cliente)} />
                 <div>
                   <span className="text-xs text-muted-foreground">Telefone</span>
                   <div className="flex items-center gap-1.5">
@@ -1584,7 +1585,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             <div className="space-y-3 pb-2">
               <div>
                 <Label>Nome <span className="text-destructive">*</span></Label>
-                <Input value={editNome} onChange={e => setEditNome(e.target.value)} />
+                <Input value={editNome} onChange={e => setEditNome(formatPersonNameInput(e.target.value))} />
               </div>
               <div>
                 <Label>Telefone <span className="text-destructive">*</span></Label>
