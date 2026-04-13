@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
-import { Search, X, Send } from 'lucide-react';
+import { Search, X, Send, Eye } from 'lucide-react';
 import { SITUACOES_NPS } from '@/types/crm';
 import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import AtendimentoCard from '@/components/showroom/AtendimentoCard';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import RespostasNpsDialog from './RespostasNpsDialog';
 
 interface NpsVendasTabProps {
   onNavigateToShowroom: (atendimentoId: string) => void;
