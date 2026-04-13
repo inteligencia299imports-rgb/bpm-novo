@@ -269,9 +269,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 {!isIntermParte1 && <InfoItem label="Sexo" value={item.sexo} />}
                 {!isIntermParte1 && <InfoItem label="UF" value={item.uf} />}
                 {isIntermParte1 && proprietario?.loja && <InfoItem label="Loja" value={proprietario.loja} />}
-                {(item as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={(item as any).cpf_cnpj} />}
+                {(item as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj((item as any).cpf_cnpj)} />}
                 {(item as any)?.email && <InfoItem label="E-mail" value={(item as any).email} />}
-                {(item as any)?.cep && <InfoItem label="CEP" value={(item as any).cep} />}
+                {(item as any)?.cep && <InfoItem label="CEP" value={formatCep((item as any).cep)} />}
                 {(item as any)?.endereco && <InfoItem label="Endereço" value={(item as any).endereco} />}
               </div>
               <Separator className="my-2" />
