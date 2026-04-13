@@ -132,7 +132,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     setEditMarca(moto.marca || '');
     setEditModelo(moto.modelo || '');
     setEditPlaca(moto.placa || '');
-    setEditKm(moto.km || '');
+    setEditKm(moto.km ? (parseInt(moto.km.replace(/\D/g,''),10) || 0).toLocaleString('pt-BR') : '');
     setEditAnoFab(moto.ano_fabricacao || '');
     setEditAnoMod(moto.ano_modelo || '');
     setEditCor(moto.cor || '');
