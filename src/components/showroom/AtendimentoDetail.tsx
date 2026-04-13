@@ -563,7 +563,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       return;
     }
     setSavingCliente(true);
-    const { data: updatedData, error } = await supabase.from('atendimentos').update({
+    const { error } = await supabase.from('atendimentos').update({
       nome_cliente: editNome.trim(),
       telefone: digits,
       sexo: editSexo,
@@ -572,9 +572,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       email: editEmail.trim() || null,
       endereco: editEndereco.trim() || null,
       cep: editCep.trim() || null,
-    }).eq('id', atendimento.id).select().single();
+    }).eq('id', atendimento.id);
     setSavingCliente(false);
-    if (error || !updatedData) {
+    if (error) {
       toast.error('Erro ao salvar dados do cliente');
       console.error('Erro ao atualizar cliente:', error);
     } else {
