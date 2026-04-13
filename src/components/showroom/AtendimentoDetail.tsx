@@ -572,7 +572,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       email: editEmail.trim() || null,
       endereco: editEndereco.trim() || null,
       cep: editCep.trim() || null,
-    } as any).eq('id', atendimento.id).select().single();
+    }).eq('id', atendimento.id).select().single();
     setSavingCliente(false);
     if (error || !updatedData) {
       toast.error('Erro ao salvar dados do cliente');
