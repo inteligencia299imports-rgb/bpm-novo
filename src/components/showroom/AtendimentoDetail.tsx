@@ -495,10 +495,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setEditTelefone(formatPhoneInput(atendimento.telefone));
     setEditSexo(atendimento.sexo);
     setEditUf(atendimento.uf);
-    setEditCpfCnpj((atendimento as any).cpf_cnpj || '');
-    setEditEmail((atendimento as any).email || '');
-    setEditEndereco((atendimento as any).endereco || '');
-    setEditCep((atendimento as any).cep || '');
+    setEditCpfCnpj(atendimento.cpf_cnpj || '');
+    setEditEmail(atendimento.email || '');
+    setEditEndereco(atendimento.endereco || '');
+    setEditCep(atendimento.cep || '');
     setEditClienteOpen(true);
   };
 
