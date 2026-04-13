@@ -156,7 +156,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setEditAnoMod(moto.ano_modelo || '');
     setEditCor(moto.cor || '');
     setEditCategoria(moto.categoria || '');
-    setEditCilindrada(moto.cilindrada || '');
+    setEditCilindrada(moto.cilindrada ? (parseInt(moto.cilindrada.replace(/\D/g,''),10) || 0).toLocaleString('pt-BR') : '');
     setEditMotoObs(moto.observacoes || '');
     setEditTemManual(moto.tem_manual ?? false);
     setEditTemChaveReserva(moto.tem_chave_reserva ?? false);
