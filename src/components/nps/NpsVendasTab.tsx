@@ -173,6 +173,11 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                                   <Send className="h-3 w-3" /> Reenviar Pesquisa
                                 </Button>
                               )}
+                              {(a.nps_status || 'em_aberto') === 'respondido' && (
+                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => { e.stopPropagation(); setRespostasDialog({ open: true, atendimentoId: a.id, nomeCliente: a.nome_cliente }); }}>
+                                  <Eye className="h-3 w-3" /> Visualizar Respostas
+                                </Button>
+                              )}
                             </>
                           }
                         />
