@@ -42,6 +42,8 @@ const formatPhone = (value: string): string => {
   }
   return value;
 };
+const formatCpfCnpj = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 14); if (d.length <= 11) return d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2'); return d.replace(/(\d{2})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2'); };
+const formatCep = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 8); return d.length > 5 ? d.replace(/(\d{5})(\d)/, '$1-$2') : d; };
 
 const formatKm = (km: string | null) => {
   if (!km) return null;
@@ -495,10 +497,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setEditTelefone(formatPhoneInput(atendimento.telefone));
     setEditSexo(atendimento.sexo);
     setEditUf(atendimento.uf);
-    setEditCpfCnpj(atendimento.cpf_cnpj || '');
+    setEditCpfCnpj(atendimento.cpf_cnpj ? formatCpfCnpj(atendimento.cpf_cnpj) : '');
     setEditEmail(atendimento.email || '');
     setEditEndereco(atendimento.endereco || '');
-    setEditCep(atendimento.cep || '');
+    setEditCep(atendimento.cep ? formatCep(atendimento.cep) : '');
     setEditClienteOpen(true);
   };
 
@@ -568,10 +570,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       telefone: digits,
       sexo: editSexo,
       uf: editUf,
-      cpf_cnpj: editCpfCnpj.trim() || null,
+      cpf_cnpj: editCpfCnpj.replace(/\D/g, '') || null,
       email: editEmail.trim() || null,
       endereco: editEndereco.trim() || null,
-      cep: editCep.trim() || null,
+      cep: editCep.replace(/\D/g, '') || null,
     }).eq('id', atendimento.id);
     setSavingCliente(false);
     if (error) {
@@ -1623,7 +1625,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               <Label>CPF/CNPJ</Label>
               <Input
                 value={editCpfCnpj}
-                onChange={e => setEditCpfCnpj(e.target.value)}
+                onChange={e => setEditCpfCnpj(formatCpfCnpj(e.target.value))}
                 placeholder="000.000.000-00"
               />
             </div>
@@ -1648,8 +1650,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               <Label>CEP</Label>
               <Input
                 value={editCep}
-                onChange={e => setEditCep(e.target.value)}
+                onChange={e => setEditCep(formatCep(e.target.value))}
                 placeholder="00000-000"
+                maxLength={9}
               />
             </div>
             <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">

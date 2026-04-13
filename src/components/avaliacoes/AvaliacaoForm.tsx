@@ -130,11 +130,21 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setEditTelefone(at.telefone ? formatPhone(at.telefone) : '');
     setEditSexo(at.sexo || '');
     setEditUf(at.uf || '');
-    setEditCpfCnpj((at as any).cpf_cnpj || '');
+    setEditCpfCnpj((at as any).cpf_cnpj ? formatCpfCnpj((at as any).cpf_cnpj) : '');
     setEditEmail((at as any).email || '');
     setEditEndereco((at as any).endereco || '');
-    setEditCep((at as any).cep || '');
+    setEditCep((at as any).cep ? formatCep((at as any).cep) : '');
     setEditClienteOpen(true);
+  };
+
+  const formatCpfCnpj = (v: string) => {
+    const d = v.replace(/\D/g, '').slice(0, 14);
+    if (d.length <= 11) return d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    return d.replace(/(\d{2})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+  };
+  const formatCep = (v: string) => {
+    const d = v.replace(/\D/g, '').slice(0, 8);
+    return d.length > 5 ? d.replace(/(\d{5})(\d)/, '$1-$2') : d;
   };
 
   const handleSaveCliente = async () => {
@@ -149,10 +159,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       telefone: digits,
       sexo: editSexo,
       uf: editUf,
-      cpf_cnpj: editCpfCnpj || null,
+      cpf_cnpj: editCpfCnpj.replace(/\D/g, '') || null,
       email: editEmail || null,
       endereco: editEndereco || null,
-      cep: editCep || null,
+      cep: editCep.replace(/\D/g, '') || null,
     } as any).eq('id', at?.id);
     setSavingCliente(false);
     if (error) {
@@ -160,6 +170,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     } else {
       toast.success('Dados do cliente atualizados!');
       setEditClienteOpen(false);
+      await loadAvaliacao();
     }
   };
 
@@ -1431,7 +1442,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               </div>
               <div>
                 <Label>CPF/CNPJ</Label>
-                <Input value={editCpfCnpj} onChange={e => setEditCpfCnpj(e.target.value)} />
+                <Input value={editCpfCnpj} onChange={e => setEditCpfCnpj(formatCpfCnpj(e.target.value))} placeholder="000.000.000-00" />
               </div>
               <div>
                 <Label>E-mail</Label>
@@ -1443,7 +1454,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               </div>
               <div>
                 <Label>CEP</Label>
-                <Input value={editCep} onChange={e => setEditCep(e.target.value)} placeholder="00000-000" />
+                <Input value={editCep} onChange={e => setEditCep(formatCep(e.target.value))} placeholder="00000-000" maxLength={9} />
               </div>
               <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
                 {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
