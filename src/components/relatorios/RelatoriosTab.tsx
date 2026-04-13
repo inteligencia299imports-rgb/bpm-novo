@@ -27,7 +27,7 @@ function getCurrentCycleRange(): { start: Date; end: Date } {
 
 const RelatoriosTab: React.FC = () => {
   const { role, loading } = useAuth();
-  const isGestorOrAvaliadorOrAvaliador = role === 'gestor' || role === 'avaliador';
+  const isGestorOrAvaliador = role === 'gestor' || role === 'avaliador';
   const cycle = getCurrentCycleRange();
   const [dept, setDept] = useState('showroom');
 
