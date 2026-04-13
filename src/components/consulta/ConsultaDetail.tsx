@@ -26,6 +26,8 @@ const formatPhone = (value: string): string => {
   if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   return value;
 };
+const formatCpfCnpj = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 14); if (d.length <= 11) return d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2'); return d.replace(/(\d{2})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2'); };
+const formatCep = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 8); return d.length > 5 ? d.replace(/(\d{5})(\d)/, '$1-$2') : d; };
 
 const formatKm = (km: string | null | undefined) => {
   if (!km) return null;
@@ -234,9 +236,9 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                   </div>
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
-                {(atendimento as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={(atendimento as any).cpf_cnpj} />}
+                {(atendimento as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj((atendimento as any).cpf_cnpj)} />}
                 {(atendimento as any)?.email && <InfoItem label="E-mail" value={(atendimento as any).email} />}
-                {(atendimento as any)?.cep && <InfoItem label="CEP" value={(atendimento as any).cep} />}
+                {(atendimento as any)?.cep && <InfoItem label="CEP" value={formatCep((atendimento as any).cep)} />}
                 {(atendimento as any)?.endereco && <InfoItem label="Endereço" value={(atendimento as any).endereco} />}
               </div>
               {atendimento?.id && (

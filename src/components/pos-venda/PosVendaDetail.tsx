@@ -44,6 +44,8 @@ const formatPhone = (value: string): string => {
   if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   return value;
 };
+const formatCpfCnpj = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 14); if (d.length <= 11) return d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2'); return d.replace(/(\d{2})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2'); };
+const formatCep = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 8); return d.length > 5 ? d.replace(/(\d{5})(\d)/, '$1-$2') : d; };
 
 const formatKm = (km: string | null | undefined) => {
   if (!km) return null;
@@ -269,9 +271,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 {!isIntermParte1 && <InfoItem label="Sexo" value={item.sexo} />}
                 {!isIntermParte1 && <InfoItem label="UF" value={item.uf} />}
                 {isIntermParte1 && proprietario?.loja && <InfoItem label="Loja" value={proprietario.loja} />}
-                {(item as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={(item as any).cpf_cnpj} />}
+                {(item as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj((item as any).cpf_cnpj)} />}
                 {(item as any)?.email && <InfoItem label="E-mail" value={(item as any).email} />}
-                {(item as any)?.cep && <InfoItem label="CEP" value={(item as any).cep} />}
+                {(item as any)?.cep && <InfoItem label="CEP" value={formatCep((item as any).cep)} />}
                 {(item as any)?.endereco && <InfoItem label="Endereço" value={(item as any).endereco} />}
               </div>
               <Separator className="my-2" />
