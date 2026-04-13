@@ -355,8 +355,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    // Option to change status (not for consigned)
-    if (item.tipo !== 'consignada' && ['disponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(item.status)) {
+    // Option to change status
+    if (['disponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(item.status)) {
       options.push({
         label: 'Alterar Status',
         icon: <RefreshCw className="h-4 w-4" />,
