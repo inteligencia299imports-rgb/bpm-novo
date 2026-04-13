@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, ClipboardCheck, Package, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, Flame, Award } from 'lucide-react';
+import { Bike, ClipboardCheck, Package, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, Flame, Award, BarChart3 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
 interface BottomNavProps {
@@ -12,7 +12,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
   const { role, signOut } = useAuth();
 
   const tabs = [
-    // { id: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: ['gestor', 'vendedor'] },
+    { id: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: ['gestor', 'vendedor'] },
     { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
     { id: 'novidades', label: 'Novidades', icon: Flame, roles: ['vendedor', 'gestor'] },
