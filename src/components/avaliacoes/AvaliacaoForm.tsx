@@ -161,6 +161,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [estoqueId, setEstoqueId] = useState<string | null>(null);
   const [dispensadaMotivo, setDispensadaMotivo] = useState<string | null>(null);
   const [savingDispensada, setSavingDispensada] = useState(false);
+  const [estoqueVendido, setEstoqueVendido] = useState(false);
 
   const loadAvaliacao = async () => {
     const { data } = await supabase
@@ -198,10 +199,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
       // Fetch estoque data if available
       if (data.id) {
-        const { data: estoqueData } = await supabase.from('estoque').select('id, preco_acao').eq('avaliacao_id', data.id).maybeSingle();
+        const { data: estoqueData } = await supabase.from('estoque').select('id, preco_acao, status').eq('avaliacao_id', data.id).maybeSingle();
         if (estoqueData) {
           setEstoqueId(estoqueData.id);
           setPrecoAcaoEdit(numberToCurrencyMask(estoqueData.preco_acao));
+          setEstoqueVendido(estoqueData.status === 'vendido' || estoqueData.status === 'sinal');
         }
       }
 
@@ -991,7 +993,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
            <div className="md:col-span-2 flex flex-col items-center gap-3">
             <div className="flex gap-2 flex-wrap justify-center">
-              {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao && (
+              {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao && !estoqueVendido && (
                 <Button
                   size="sm"
                   className="gap-2 text-white hover:opacity-90"
