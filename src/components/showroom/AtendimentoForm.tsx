@@ -220,7 +220,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
     const atData = {
       vendedor_id: user!.id,
-      loja, nome_cliente: nomeCliente.trim(), telefone: unformatPhone(telefone),
+      loja, nome_cliente: nomeCliente.trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()), telefone: unformatPhone(telefone),
       sexo, uf, tipo_atendimento: tipoAtendimento,
       origem: origem || null, temperatura: temperatura || null,
       observacoes: observacoes || null, interesse, situacao: isEditing ? situacao : 'em_aberto' as SituacaoShowroom,

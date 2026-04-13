@@ -109,7 +109,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     }
     setSavingCliente(true);
     const { error } = await supabase.from('atendimentos').update({
-      nome_cliente: editNome.trim().toUpperCase(),
+      nome_cliente: editNome.trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()),
       telefone: digits,
       sexo: editSexo,
       uf: editUf,
