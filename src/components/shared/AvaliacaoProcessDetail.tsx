@@ -390,6 +390,9 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Bike className="h-4 w-4 text-primary" /> Dados da Moto
+                  <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={openEditMoto} title="Editar dados da moto">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
