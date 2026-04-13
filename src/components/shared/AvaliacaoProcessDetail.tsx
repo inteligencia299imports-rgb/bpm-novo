@@ -17,6 +17,9 @@ import { toast } from 'sonner';
 import { SEXOS, UFS } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
+import { useMarcasModelos } from '@/hooks/useMarcasModelos';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
