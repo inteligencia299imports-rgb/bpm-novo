@@ -17,6 +17,9 @@ import { toast } from 'sonner';
 import { SEXOS, UFS } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
+import { useMarcasModelos } from '@/hooks/useMarcasModelos';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
@@ -75,7 +78,28 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [editEndereco, setEditEndereco] = useState('');
   const [editCep, setEditCep] = useState('');
   const [savingCliente, setSavingCliente] = useState(false);
-  const moto = item.moto || item.motos_avaliacao;
+
+  // Moto edit state
+  const [editMotoOpen, setEditMotoOpen] = useState(false);
+  const [editMarca, setEditMarca] = useState('');
+  const [editModelo, setEditModelo] = useState('');
+  const [editPlaca, setEditPlaca] = useState('');
+  const [editKm, setEditKm] = useState('');
+  const [editAnoFab, setEditAnoFab] = useState('');
+  const [editAnoMod, setEditAnoMod] = useState('');
+  const [editCor, setEditCor] = useState('');
+  const [editCategoria, setEditCategoria] = useState('');
+  const [editCilindrada, setEditCilindrada] = useState('');
+  const [editMotoObs, setEditMotoObs] = useState('');
+  const [editTemManual, setEditTemManual] = useState(false);
+  const [editTemChaveReserva, setEditTemChaveReserva] = useState(false);
+  const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
+  const [savingMoto, setSavingMoto] = useState(false);
+
+  const { getMarcaNomes, getModelosPorMarca } = useMarcasModelos();
+
+  const [motoData, setMotoData] = useState(item.moto || item.motos_avaliacao);
+  const moto = motoData;
   const atendimento = item.atendimento || item.atendimentos;
   const statusValue = item[statusField] || 'em_aberto';
   const statusCol = statusColumns.find(c => c.value === statusValue);
@@ -102,7 +126,73 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     setEditClienteOpen(true);
   };
 
-  const handleSaveCliente = async () => {
+
+  const openEditMoto = () => {
+    if (!moto) return;
+    setEditMarca(moto.marca || '');
+    setEditModelo(moto.modelo || '');
+    setEditPlaca(moto.placa || '');
+    setEditKm(moto.km || '');
+    setEditAnoFab(moto.ano_fabricacao || '');
+    setEditAnoMod(moto.ano_modelo || '');
+    setEditCor(moto.cor || '');
+    setEditCategoria(moto.categoria || '');
+    setEditCilindrada(moto.cilindrada || '');
+    setEditMotoObs(moto.observacoes || '');
+    setEditTemManual(moto.tem_manual ?? false);
+    setEditTemChaveReserva(moto.tem_chave_reserva ?? false);
+    setEditManutencaoVencida(moto.manutencao_vencida ?? false);
+    setEditMotoOpen(true);
+  };
+
+  const handleSaveMoto = async () => {
+    if (!editMarca.trim() || !editModelo.trim()) {
+      toast.error('Marca e Modelo são obrigatórios');
+      return;
+    }
+    setSavingMoto(true);
+    const { error } = await supabase.from('motos_avaliacao').update({
+      marca: editMarca.trim(),
+      modelo: editModelo.trim(),
+      placa: editPlaca.trim() || null,
+      km: editKm.trim() || null,
+      ano_fabricacao: editAnoFab.trim() || null,
+      ano_modelo: editAnoMod.trim() || null,
+      cor: editCor.trim() || null,
+      categoria: editCategoria.trim() || null,
+      cilindrada: editCilindrada.trim() || null,
+      observacoes: editMotoObs.trim() || null,
+      tem_manual: editTemManual,
+      tem_chave_reserva: editTemChaveReserva,
+      manutencao_vencida: editManutencaoVencida,
+    }).eq('id', moto.id);
+    setSavingMoto(false);
+    if (error) {
+      toast.error('Erro ao salvar dados da moto');
+      console.error(error);
+    } else {
+      setMotoData({
+        ...moto,
+        marca: editMarca.trim(),
+        modelo: editModelo.trim(),
+        placa: editPlaca.trim() || null,
+        km: editKm.trim() || null,
+        ano_fabricacao: editAnoFab.trim() || null,
+        ano_modelo: editAnoMod.trim() || null,
+        cor: editCor.trim() || null,
+        categoria: editCategoria.trim() || null,
+        cilindrada: editCilindrada.trim() || null,
+        observacoes: editMotoObs.trim() || null,
+        tem_manual: editTemManual,
+        tem_chave_reserva: editTemChaveReserva,
+        manutencao_vencida: editManutencaoVencida,
+      });
+      toast.success('Dados da moto atualizados!');
+      setEditMotoOpen(false);
+    }
+  };
+
+
     const digits = editTelefone.replace(/\D/g, '');
     if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
       toast.error('Preencha todos os campos corretamente');
@@ -300,6 +390,9 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Bike className="h-4 w-4 text-primary" /> Dados da Moto
+                  <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={openEditMoto} title="Editar dados da moto">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -496,6 +589,89 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               </div>
               <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
                 {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Salvar
+              </Button>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Editar Moto */}
+      <Dialog open={editMotoOpen} onOpenChange={setEditMotoOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Editar Dados da Moto</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 pr-3">
+            <div className="space-y-3 pb-2">
+              <div>
+                <Label>Marca <span className="text-destructive">*</span></Label>
+                <Select value={editMarca} onValueChange={(v) => { setEditMarca(v); setEditModelo(''); }}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{getMarcaNomes().map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Modelo <span className="text-destructive">*</span></Label>
+                <Select value={editModelo} onValueChange={setEditModelo}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{getModelosPorMarca(editMarca).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Placa</Label>
+                  <Input value={editPlaca} onChange={e => setEditPlaca(e.target.value.toUpperCase())} placeholder="ABC1D23" maxLength={7} />
+                </div>
+                <div>
+                  <Label>KM</Label>
+                  <Input value={editKm} onChange={e => setEditKm(e.target.value)} placeholder="0" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Ano Fab.</Label>
+                  <Input value={editAnoFab} onChange={e => setEditAnoFab(e.target.value)} placeholder="2024" maxLength={4} />
+                </div>
+                <div>
+                  <Label>Ano Mod.</Label>
+                  <Input value={editAnoMod} onChange={e => setEditAnoMod(e.target.value)} placeholder="2025" maxLength={4} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Cor</Label>
+                  <Input value={editCor} onChange={e => setEditCor(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Cilindrada</Label>
+                  <Input value={editCilindrada} onChange={e => setEditCilindrada(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label>Categoria</Label>
+                <Input value={editCategoria} onChange={e => setEditCategoria(e.target.value)} />
+              </div>
+              <div>
+                <Label>Observações</Label>
+                <Textarea value={editMotoObs} onChange={e => setEditMotoObs(e.target.value)} rows={3} />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox id="edit-manual" checked={editTemManual} onCheckedChange={(v) => setEditTemManual(!!v)} />
+                  <Label htmlFor="edit-manual" className="cursor-pointer">Tem manual</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="edit-chave" checked={editTemChaveReserva} onCheckedChange={(v) => setEditTemChaveReserva(!!v)} />
+                  <Label htmlFor="edit-chave" className="cursor-pointer">Tem chave reserva</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="edit-manut" checked={editManutencaoVencida} onCheckedChange={(v) => setEditManutencaoVencida(!!v)} />
+                  <Label htmlFor="edit-manut" className="cursor-pointer">Manutenção vencida</Label>
+                </div>
+              </div>
+              <Button onClick={handleSaveMoto} disabled={savingMoto} className="w-full gap-2">
+                {savingMoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 Salvar
               </Button>
             </div>
