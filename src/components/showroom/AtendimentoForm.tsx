@@ -483,6 +483,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           estoqueMotoId={estoqueMotoId} setEstoqueMotoId={setEstoqueMotoId}
           loja={loja}
           chassi={chassi} setChassi={setChassi}
+          disabled={isEditing && (situacao === 'sinal' || situacao === 'vendido')}
         />
       )}
 
