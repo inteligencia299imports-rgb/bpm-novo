@@ -161,6 +161,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [estoqueId, setEstoqueId] = useState<string | null>(null);
   const [dispensadaMotivo, setDispensadaMotivo] = useState<string | null>(null);
   const [savingDispensada, setSavingDispensada] = useState(false);
+  const [estoqueVendido, setEstoqueVendido] = useState(false);
 
   const loadAvaliacao = async () => {
     const { data } = await supabase
