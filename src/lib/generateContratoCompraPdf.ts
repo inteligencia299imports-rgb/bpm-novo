@@ -245,7 +245,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   y += lineHeight * 1;
 
   // Signatures - keep entire block together on same page
-  const sigBlockHeight = lineHeight * 18 + 30;
+  const sigBlockHeight = lineHeight * 8;
   checkPageBreak(sigBlockHeight);
 
   const colWidth = contentWidth / 2 - 5;
