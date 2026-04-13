@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { useAuth } from '@/contexts/AuthContext';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
+import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import CustosOficinaDialog from '@/components/avaliacoes/CustosOficinaDialog';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -97,6 +98,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [fotos, setFotos] = useState<MotoFoto[]>([]);
   const [showEvalDialog, setShowEvalDialog] = useState(false);
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
+  const [contratoCompraOpen, setContratoCompraOpen] = useState(false);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
@@ -559,6 +561,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           <div className="flex items-center gap-2 shrink-0">
             {avaliacao?.situacao === 'adquirida' && avaliacao?.tipo_aquisicao === 'consignada' && (
               <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
+                <FileText className="h-4 w-4" /> Contrato
+              </Button>
+            )}
+            {avaliacao?.situacao === 'adquirida' && isTipoPropria(avaliacao?.tipo_aquisicao) && (
+              <Button size="sm" onClick={() => setContratoCompraOpen(true)} className="gap-1.5">
                 <FileText className="h-4 w-4" /> Contrato
               </Button>
             )}
@@ -1265,6 +1272,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         <ContratoConsignacaoDialog
           open={contratoConsignacaoOpen}
           onOpenChange={setContratoConsignacaoOpen}
+          avaliacao={avaliacao}
+        />
+      )}
+
+      {avaliacao?.situacao === 'adquirida' && isTipoPropria(avaliacao?.tipo_aquisicao) && (
+        <ContratoCompraDialog
+          open={contratoCompraOpen}
+          onOpenChange={setContratoCompraOpen}
           avaliacao={avaliacao}
         />
       )}
