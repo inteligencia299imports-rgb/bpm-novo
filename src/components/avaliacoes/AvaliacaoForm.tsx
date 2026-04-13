@@ -539,6 +539,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       toast.error('Selecione o tipo de aquisição');
       return;
     }
+    // Consulta obrigatória apenas para tipos que não são consignada
+    if (tipoSelecionado !== 'consignada' && !consultaRealizada) {
+      toast.error('A consulta precisa ser realizada antes de adquirir como ' + (getTipoAquisicaoLabel(tipoSelecionado) || tipoSelecionado));
+      return;
+    }
     const valor = parseCurrencyToNumber(valorFechamentoAquisicao);
     if (interesse === 'vender' && (!valor || valor <= 0)) {
       toast.error('Informe o valor de fechamento');
@@ -671,7 +676,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     .filter(b => b.value !== avaliacao?.situacao)
     .filter(b => !(b.value === 'adquirida' && interesse === 'trocar'))
     .filter(b => !(b.value === 'adquirida' && !hasEvaluation))
-    .filter(b => !(b.value === 'adquirida' && (!cnhUrl || !crlvUrl || !consultaRealizada)))
+    .filter(b => !(b.value === 'adquirida' && (!cnhUrl || !crlvUrl)))
     .filter(b => !(b.value === 'adquirida' && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque')))
     .filter(b => !(b.value === 'em_aberto' && avaliacao?.situacao !== 'dispensada'))
     .filter(b => !(b.value === 'dispensada' && avaliacao?.situacao === 'estoque'));
