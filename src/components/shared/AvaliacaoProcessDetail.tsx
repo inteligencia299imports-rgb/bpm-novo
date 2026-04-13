@@ -3,12 +3,18 @@ import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList, DollarSign, AlertTriangle, ShieldAlert, IdCard } from 'lucide-react';
+import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList, DollarSign, AlertTriangle, ShieldAlert, IdCard, Pencil, Loader2, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+import { SEXOS, UFS } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 
@@ -56,12 +62,69 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [loading, setLoading] = useState(true);
   const [estoqueStatus, setEstoqueStatus] = useState<{ status: string; observacoes: string | null } | null>(null);
   const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
+  const [editClienteOpen, setEditClienteOpen] = useState(false);
+  const [editNome, setEditNome] = useState('');
+  const [editTelefone, setEditTelefone] = useState('');
+  const [editSexo, setEditSexo] = useState('');
+  const [editUf, setEditUf] = useState('');
+  const [editCpfCnpj, setEditCpfCnpj] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editEndereco, setEditEndereco] = useState('');
+  const [editCep, setEditCep] = useState('');
+  const [savingCliente, setSavingCliente] = useState(false);
   const moto = item.moto || item.motos_avaliacao;
   const atendimento = item.atendimento || item.atendimentos;
   const statusValue = item[statusField] || 'em_aberto';
   const statusCol = statusColumns.find(c => c.value === statusValue);
   const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
   const whatsappUrl = atendimento?.telefone ? `https://wa.me/55${atendimento.telefone.replace(/\D/g, '')}` : '';
+
+  const formatPhoneInput = (value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return digits.length ? `(${digits}` : '';
+    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
+  const openEditCliente = () => {
+    if (!atendimento) return;
+    setEditNome(atendimento.nome_cliente || '');
+    setEditTelefone(formatPhoneInput(atendimento.telefone || ''));
+    setEditSexo(atendimento.sexo || '');
+    setEditUf(atendimento.uf || '');
+    setEditCpfCnpj(atendimento.cpf_cnpj || '');
+    setEditEmail(atendimento.email || '');
+    setEditEndereco(atendimento.endereco || '');
+    setEditCep(atendimento.cep || '');
+    setEditClienteOpen(true);
+  };
+
+  const handleSaveCliente = async () => {
+    const digits = editTelefone.replace(/\D/g, '');
+    if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
+      toast.error('Preencha todos os campos corretamente');
+      return;
+    }
+    setSavingCliente(true);
+    const { error } = await supabase.from('atendimentos').update({
+      nome_cliente: editNome.trim(),
+      telefone: digits,
+      sexo: editSexo,
+      uf: editUf,
+      cpf_cnpj: editCpfCnpj.trim() || null,
+      email: editEmail.trim() || null,
+      endereco: editEndereco.trim() || null,
+      cep: editCep.trim() || null,
+    }).eq('id', atendimento.id);
+    setSavingCliente(false);
+    if (error) {
+      toast.error('Erro ao salvar dados do cliente');
+      console.error('Erro ao atualizar cliente:', error);
+    } else {
+      toast.success('Dados do cliente atualizados!');
+      setEditClienteOpen(false);
+    }
+  };
 
   useEffect(() => {
     const loadAll = async () => {
@@ -82,7 +145,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       setValorFechamento(avRes.data?.valor_fechamento ?? null);
       setEstoqueStatus(estRes.data ? { status: estRes.data.status, observacoes: estRes.data.observacoes } : null);
 
-      // Fetch avaliador name
       if (avRes.data?.avaliador_id) {
         const { data: roleData } = await supabase.from('user_roles').select('nome').eq('user_id', avRes.data.avaliador_id).single();
         if (roleData?.nome) setAvaliadorNome(roleData.nome);
@@ -181,6 +243,9 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
+                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={openEditCliente} title="Editar dados do cliente">
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -379,6 +444,77 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           />
         </>
       )}
+
+      {/* Dialog Editar Cliente */}
+      <Dialog open={editClienteOpen} onOpenChange={setEditClienteOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Editar Dados do Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 overflow-y-auto flex-1 pr-1">
+            <div className="space-y-1.5">
+              <Label>Nome *</Label>
+              <Input
+                value={editNome}
+                onChange={e => {
+                  const formatted = e.target.value
+                    .toLowerCase()
+                    .replace(/(?:^|\s)\S/g, match => match.toUpperCase());
+                  setEditNome(formatted);
+                }}
+                placeholder="Nome Sobrenome"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Telefone *</Label>
+              <Input
+                value={editTelefone}
+                onChange={e => setEditTelefone(formatPhoneInput(e.target.value))}
+                placeholder="(61) 90000-0000"
+                maxLength={15}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Sexo *</Label>
+              <Select value={editSexo} onValueChange={setEditSexo}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>UF *</Label>
+              <Select value={editUf} onValueChange={setEditUf}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>CPF/CNPJ</Label>
+              <Input value={editCpfCnpj} onChange={e => setEditCpfCnpj(e.target.value)} placeholder="000.000.000-00" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>E-mail</Label>
+              <Input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="cliente@email.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Endereço</Label>
+              <Input value={editEndereco} onChange={e => setEditEndereco(e.target.value)} placeholder="Rua, número, bairro, cidade" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>CEP</Label>
+              <Input value={editCep} onChange={e => setEditCep(e.target.value)} placeholder="00000-000" />
+            </div>
+            <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
+              {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Salvar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
