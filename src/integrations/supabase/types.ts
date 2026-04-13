@@ -1247,10 +1247,15 @@ export type Database = {
         }
         Returns: Json
       }
-      relatorio_vendedor_equipe: {
-        Args: { _date_from?: string; _date_to?: string; _loja?: string }
-        Returns: Json
-      }
+      relatorio_vendedor_equipe:
+        | {
+            Args: { _date_from?: string; _date_to?: string; _loja?: string }
+            Returns: Json
+          }
+        | {
+            Args: { _date_from?: string; _date_to?: string; _loja?: string }
+            Returns: Json
+          }
       relatorio_vendedor_kpis: {
         Args: {
           _date_from?: string
