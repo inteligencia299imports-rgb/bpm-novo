@@ -192,7 +192,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     }
   };
 
-
+  const handleSaveCliente = async () => {
     const digits = editTelefone.replace(/\D/g, '');
     if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
       toast.error('Preencha todos os campos corretamente');
