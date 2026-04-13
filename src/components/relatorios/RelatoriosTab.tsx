@@ -26,10 +26,17 @@ function getCurrentCycleRange(): { start: Date; end: Date } {
 }
 
 const RelatoriosTab: React.FC = () => {
-  const { role } = useAuth();
+  const { role, loading } = useAuth();
   const isGestor = role === 'gestor';
   const cycle = getCurrentCycleRange();
-  const [dept, setDept] = useState(isGestor ? 'showroom' : 'vendedores');
+  const [dept, setDept] = useState('showroom');
+
+  // Update default tab once role is known
+  React.useEffect(() => {
+    if (role) {
+      setDept(role === 'gestor' ? 'showroom' : 'vendedores');
+    }
+  }, [role]);
   const initFrom = cycle.start;
   initFrom.setHours(0, 0, 0, 0);
   const initTo = cycle.end;
