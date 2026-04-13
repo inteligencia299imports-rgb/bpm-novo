@@ -78,7 +78,28 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [editEndereco, setEditEndereco] = useState('');
   const [editCep, setEditCep] = useState('');
   const [savingCliente, setSavingCliente] = useState(false);
-  const moto = item.moto || item.motos_avaliacao;
+
+  // Moto edit state
+  const [editMotoOpen, setEditMotoOpen] = useState(false);
+  const [editMarca, setEditMarca] = useState('');
+  const [editModelo, setEditModelo] = useState('');
+  const [editPlaca, setEditPlaca] = useState('');
+  const [editKm, setEditKm] = useState('');
+  const [editAnoFab, setEditAnoFab] = useState('');
+  const [editAnoMod, setEditAnoMod] = useState('');
+  const [editCor, setEditCor] = useState('');
+  const [editCategoria, setEditCategoria] = useState('');
+  const [editCilindrada, setEditCilindrada] = useState('');
+  const [editMotoObs, setEditMotoObs] = useState('');
+  const [editTemManual, setEditTemManual] = useState(false);
+  const [editTemChaveReserva, setEditTemChaveReserva] = useState(false);
+  const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
+  const [savingMoto, setSavingMoto] = useState(false);
+
+  const { getMarcaNomes, getModelosPorMarca } = useMarcasModelos();
+
+  const [motoData, setMotoData] = useState(item.moto || item.motos_avaliacao);
+  const moto = motoData;
   const atendimento = item.atendimento || item.atendimentos;
   const statusValue = item[statusField] || 'em_aberto';
   const statusCol = statusColumns.find(c => c.value === statusValue);
