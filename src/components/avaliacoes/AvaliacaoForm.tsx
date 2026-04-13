@@ -16,7 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight, ShieldCheck, Handshake, Bike, IdCard } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight, ShieldCheck, Handshake, Bike, IdCard, Pencil } from 'lucide-react';
+import { SEXOS, UFS } from '@/types/crm';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -112,6 +113,56 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [history, setHistory] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
   const [custosOpen, setCustosOpen] = useState(false);
+  const [editClienteOpen, setEditClienteOpen] = useState(false);
+  const [editNome, setEditNome] = useState('');
+  const [editTelefone, setEditTelefone] = useState('');
+  const [editSexo, setEditSexo] = useState('');
+  const [editUf, setEditUf] = useState('');
+  const [editCpfCnpj, setEditCpfCnpj] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editEndereco, setEditEndereco] = useState('');
+  const [editCep, setEditCep] = useState('');
+  const [savingCliente, setSavingCliente] = useState(false);
+
+  const openEditCliente = () => {
+    if (!at) return;
+    setEditNome(at.nome_cliente || '');
+    setEditTelefone(at.telefone ? formatPhone(at.telefone) : '');
+    setEditSexo(at.sexo || '');
+    setEditUf(at.uf || '');
+    setEditCpfCnpj((at as any).cpf_cnpj || '');
+    setEditEmail((at as any).email || '');
+    setEditEndereco((at as any).endereco || '');
+    setEditCep((at as any).cep || '');
+    setEditClienteOpen(true);
+  };
+
+  const handleSaveCliente = async () => {
+    const digits = editTelefone.replace(/\D/g, '');
+    if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
+      toast.error('Preencha Nome, Telefone (11 dígitos), Sexo e UF');
+      return;
+    }
+    setSavingCliente(true);
+    const { error } = await supabase.from('atendimentos').update({
+      nome_cliente: editNome.trim().toUpperCase(),
+      telefone: digits,
+      sexo: editSexo,
+      uf: editUf,
+      cpf_cnpj: editCpfCnpj || null,
+      email: editEmail || null,
+      endereco: editEndereco || null,
+      cep: editCep || null,
+    } as any).eq('id', at?.id);
+    setSavingCliente(false);
+    if (error) {
+      toast.error('Erro ao salvar: ' + error.message);
+    } else {
+      toast.success('Dados do cliente atualizados!');
+      setEditClienteOpen(false);
+    }
+  };
+
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const refreshHistory = async () => {
     if (!avaliacao) return;
@@ -614,6 +665,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
+                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={openEditCliente} title="Editar dados do cliente">
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1343,6 +1397,60 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* Dialog Editar Cliente */}
+      <Dialog open={editClienteOpen} onOpenChange={setEditClienteOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Editar Dados do Cliente</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 pr-3">
+            <div className="space-y-3 pb-2">
+              <div>
+                <Label>Nome <span className="text-destructive">*</span></Label>
+                <Input value={editNome} onChange={e => setEditNome(e.target.value)} />
+              </div>
+              <div>
+                <Label>Telefone <span className="text-destructive">*</span></Label>
+                <Input value={editTelefone} onChange={e => { const d = e.target.value.replace(/\D/g,''); setEditTelefone(d.length === 11 ? formatPhone(d) : d); }} maxLength={15} />
+              </div>
+              <div>
+                <Label>Sexo <span className="text-destructive">*</span></Label>
+                <Select value={editSexo} onValueChange={setEditSexo}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>UF <span className="text-destructive">*</span></Label>
+                <Select value={editUf} onValueChange={setEditUf}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>CPF/CNPJ</Label>
+                <Input value={editCpfCnpj} onChange={e => setEditCpfCnpj(e.target.value)} />
+              </div>
+              <div>
+                <Label>E-mail</Label>
+                <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email" />
+              </div>
+              <div>
+                <Label>Endereço</Label>
+                <Input value={editEndereco} onChange={e => setEditEndereco(e.target.value)} />
+              </div>
+              <div>
+                <Label>CEP</Label>
+                <Input value={editCep} onChange={e => setEditCep(e.target.value)} placeholder="00000-000" />
+              </div>
+              <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
+                {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Salvar
+              </Button>
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>
