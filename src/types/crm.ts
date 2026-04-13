@@ -198,6 +198,10 @@ export interface Atendimento {
   cnh_url?: string | null;
   valor_sinal?: number | null;
   valor_venda?: number | null;
+  cpf_cnpj?: string | null;
+  email?: string | null;
+  endereco?: string | null;
+  cep?: string | null;
 }
 
 export interface MotoInteresse {
