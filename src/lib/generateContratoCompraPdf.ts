@@ -191,9 +191,10 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   y += sectionGap;
 
   // CLÁUSULA QUINTA
+  doc.addPage();
+  y = marginTop;
   sectionHeader('CLÁUSULA QUINTA – DA GARANTIA');
   setNormal();
-  checkPageBreak(50);
   y = drawJustifiedText(doc, 'Para os veículos usados a VENDEDORA fornece a garantia pelo tempo exigido por lei, e somente para os componentes motor e caixa de câmbio, contudo, a mesma estará automaticamente cancelada, no caso de mau uso do veículo em questão, em caso deste último ter suas características originais (as quais são especificadas pelo fabricante do manual do veículo), alteradas, bem como, quando o mesmo for utilizado fora dos padrões e/ou limites de carga e/ou de rotação especificados pelos fabricantes ou ainda, se for utilizado em competições de qualquer espécie ou natureza, além do que, se tiver sua manutenção negligenciada. Todo e qualquer serviço e/ou conserto coberto por esta garantia deverá ser executado por assistência técnica, ou oficina mecânica indicada por esta VENDEDORA e somente após orçamento aprovado pela VENDEDORA; para os veículos novos, isto é, 0KM, a garantia é a de fábrica; ficam de fora da presente garantia, os componentes eletro-eletrônicos e do sistema de arrefecimento do veículo, como, por exemplo:', marginLeft, contentWidth, y, lineHeight);
   y += sectionGap;
 
