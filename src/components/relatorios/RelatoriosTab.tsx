@@ -27,14 +27,14 @@ function getCurrentCycleRange(): { start: Date; end: Date } {
 
 const RelatoriosTab: React.FC = () => {
   const { role, loading } = useAuth();
-  const isGestor = role === 'gestor';
+  const isGestorOrAvaliador = role === 'gestor' || role === 'avaliador';
   const cycle = getCurrentCycleRange();
   const [dept, setDept] = useState('showroom');
 
   // Update default tab once role is known
   React.useEffect(() => {
     if (role) {
-      setDept(role === 'gestor' ? 'showroom' : 'vendedores');
+      setDept((role === 'gestor' || role === 'avaliador') ? 'showroom' : 'vendedores');
     }
   }, [role]);
   const initFrom = cycle.start;
@@ -80,7 +80,7 @@ const RelatoriosTab: React.FC = () => {
       <p className="text-sm text-muted-foreground mt-0.5">Análise de desempenho e indicadores</p>
       <Tabs value={dept} onValueChange={setDept}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-full">
-          {isGestor && (
+          {isGestorOrAvaliador && (
             <div className="w-full sm:w-auto overflow-x-auto">
               <TabsList className="w-max">
                 <TabsTrigger value="showroom" className="gap-1.5">
@@ -121,7 +121,7 @@ const RelatoriosTab: React.FC = () => {
             </Popover>
           </div>
         </div>
-        {isGestor && (
+        {isGestorOrAvaliador && (
           <>
             <TabsContent value="showroom" className="w-full max-w-full overflow-x-hidden">
               <RelatorioShowroom dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
