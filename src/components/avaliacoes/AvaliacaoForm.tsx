@@ -200,7 +200,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     }
   };
 
-
+  const openEditCliente = () => {
     if (!at) return;
     setEditNome(formatPersonName(at.nome_cliente || ''));
     setEditTelefone(at.telefone ? formatPhone(at.telefone) : '');
