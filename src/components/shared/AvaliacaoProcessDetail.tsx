@@ -62,6 +62,16 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [loading, setLoading] = useState(true);
   const [estoqueStatus, setEstoqueStatus] = useState<{ status: string; observacoes: string | null } | null>(null);
   const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
+  const [editClienteOpen, setEditClienteOpen] = useState(false);
+  const [editNome, setEditNome] = useState('');
+  const [editTelefone, setEditTelefone] = useState('');
+  const [editSexo, setEditSexo] = useState('');
+  const [editUf, setEditUf] = useState('');
+  const [editCpfCnpj, setEditCpfCnpj] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editEndereco, setEditEndereco] = useState('');
+  const [editCep, setEditCep] = useState('');
+  const [savingCliente, setSavingCliente] = useState(false);
   const moto = item.moto || item.motos_avaliacao;
   const atendimento = item.atendimento || item.atendimentos;
   const statusValue = item[statusField] || 'em_aberto';
@@ -69,13 +79,52 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
   const whatsappUrl = atendimento?.telefone ? `https://wa.me/55${atendimento.telefone.replace(/\D/g, '')}` : '';
 
-  useEffect(() => {
-    const loadAll = async () => {
-      setLoading(true);
-      const [cnhRes, crlvRes, avRes, estRes] = await Promise.all([
-        atendimento?.id
-          ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
-          : Promise.resolve({ data: null }),
+  const formatPhoneInput = (value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return digits.length ? `(${digits}` : '';
+    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
+  const openEditCliente = () => {
+    if (!atendimento) return;
+    setEditNome(atendimento.nome_cliente || '');
+    setEditTelefone(formatPhoneInput(atendimento.telefone || ''));
+    setEditSexo(atendimento.sexo || '');
+    setEditUf(atendimento.uf || '');
+    setEditCpfCnpj(atendimento.cpf_cnpj || '');
+    setEditEmail(atendimento.email || '');
+    setEditEndereco(atendimento.endereco || '');
+    setEditCep(atendimento.cep || '');
+    setEditClienteOpen(true);
+  };
+
+  const handleSaveCliente = async () => {
+    const digits = editTelefone.replace(/\D/g, '');
+    if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
+      toast.error('Preencha todos os campos corretamente');
+      return;
+    }
+    setSavingCliente(true);
+    const { error } = await supabase.from('atendimentos').update({
+      nome_cliente: editNome.trim(),
+      telefone: digits,
+      sexo: editSexo,
+      uf: editUf,
+      cpf_cnpj: editCpfCnpj.trim() || null,
+      email: editEmail.trim() || null,
+      endereco: editEndereco.trim() || null,
+      cep: editCep.trim() || null,
+    }).eq('id', atendimento.id);
+    setSavingCliente(false);
+    if (error) {
+      toast.error('Erro ao salvar dados do cliente');
+      console.error('Erro ao atualizar cliente:', error);
+    } else {
+      toast.success('Dados do cliente atualizados!');
+      setEditClienteOpen(false);
+    }
+  };
         moto?.id
           ? supabase.from('motos_avaliacao').select('crlv_url').eq('id', moto.id).single()
           : Promise.resolve({ data: null }),
