@@ -187,6 +187,12 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
           </div>
         </div>
       )}
+      <RespostasNpsDialog
+        open={respostasDialog.open}
+        onOpenChange={(open) => setRespostasDialog(prev => ({ ...prev, open }))}
+        atendimentoId={respostasDialog.atendimentoId}
+        nomeCliente={respostasDialog.nomeCliente}
+      />
     </div>
   );
 };
