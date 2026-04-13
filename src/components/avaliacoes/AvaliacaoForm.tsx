@@ -144,7 +144,63 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
   const [savingMoto, setSavingMoto] = useState(false);
 
-  const openEditCliente = () => {
+  const { getMarcaNomes, getModelosPorMarca } = useMarcasModelos();
+
+  const openEditMoto = () => {
+    if (!moto) return;
+    setEditMarca(moto.marca || '');
+    setEditModelo(moto.modelo || '');
+    setEditPlaca(moto.placa || '');
+    setEditKm(moto.km || '');
+    setEditAnoFab(moto.ano_fabricacao || '');
+    setEditAnoMod(moto.ano_modelo || '');
+    setEditCor(moto.cor || '');
+    setEditCategoria(moto.categoria || '');
+    setEditCilindrada(moto.cilindrada || '');
+    setEditMotoObs(moto.observacoes || '');
+    setEditTemManual(moto.tem_manual ?? false);
+    setEditTemChaveReserva(moto.tem_chave_reserva ?? false);
+    setEditManutencaoVencida(moto.manutencao_vencida ?? false);
+    setEditMotoOpen(true);
+  };
+
+  const handleSaveMoto = async () => {
+    if (!editMarca.trim() || !editModelo.trim()) {
+      toast.error('Marca e Modelo são obrigatórios');
+      return;
+    }
+    setSavingMoto(true);
+    const updateData = {
+      marca: editMarca.trim(),
+      modelo: editModelo.trim(),
+      placa: editPlaca.trim() || null,
+      km: editKm.trim() || null,
+      ano_fabricacao: editAnoFab.trim() || null,
+      ano_modelo: editAnoMod.trim() || null,
+      cor: editCor.trim() || null,
+      categoria: editCategoria.trim() || null,
+      cilindrada: editCilindrada.trim() || null,
+      observacoes: editMotoObs.trim() || null,
+      tem_manual: editTemManual,
+      tem_chave_reserva: editTemChaveReserva,
+      manutencao_vencida: editManutencaoVencida,
+    };
+    const { error } = await supabase.from('motos_avaliacao').update(updateData).eq('id', moto.id);
+    setSavingMoto(false);
+    if (error) {
+      toast.error('Erro ao salvar dados da moto');
+      console.error(error);
+    } else {
+      // Update local state
+      if (avaliacao?.moto_avaliacao) {
+        Object.assign(avaliacao.moto_avaliacao, updateData);
+      }
+      toast.success('Dados da moto atualizados!');
+      setEditMotoOpen(false);
+    }
+  };
+
+
     if (!at) return;
     setEditNome(formatPersonName(at.nome_cliente || ''));
     setEditTelefone(at.telefone ? formatPhone(at.telefone) : '');
