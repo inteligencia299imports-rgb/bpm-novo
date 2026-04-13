@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, Flame, Award, BarChart3 } from 'lucide-react';
+import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, Flame, BarChart3 } from 'lucide-react';
 import logoImg from '@/assets/logo-crm.png';
 import NotificationBell from './NotificationBell';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
     { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['avaliador', 'gestor'] },
     { id: 'consignacao', label: 'Consignação', icon: FileText, roles: ['avaliador', 'gestor'] },
     { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['vendedor', 'avaliador', 'gestor'] },
-    { id: 'nps', label: 'NPS', icon: Award, roles: ['vendedor', 'gestor', 'avaliador'] },
   ].filter(t => role && t.roles.includes(role));
 
   return (
