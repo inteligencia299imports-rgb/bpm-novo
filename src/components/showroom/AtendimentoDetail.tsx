@@ -277,6 +277,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const handleStatusChange = async (value: SituacaoShowroom, label: string, extraData?: Record<string, any>, observacoes?: string) => {
     const previousStatus = atendimento.situacao;
     const updateData: any = { situacao: value, ...extraData };
+    // Gravar data_venda no atendimento ao marcar como vendido
+    if (value === 'vendido') {
+      updateData.data_venda = new Date().toISOString();
+    }
+    // Limpar data_venda se reverter de vendido
+    if (previousStatus === 'vendido' && value !== 'vendido') {
+      updateData.data_venda = null;
+    }
     const { error } = await supabase.from('atendimentos').update(updateData).eq('id', atendimento.id);
     if (error) {
       toast.error('Erro ao alterar status');
