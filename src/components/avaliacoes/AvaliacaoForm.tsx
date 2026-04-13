@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight, ShieldCheck, Handshake, Bike, IdCard, Pencil } from 'lucide-react';
-import { SEXOS, UFS } from '@/types/crm';
+import { SEXOS, UFS, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
@@ -151,12 +151,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setEditMarca(moto.marca || '');
     setEditModelo(moto.modelo || '');
     setEditPlaca(moto.placa || '');
-    setEditKm(moto.km || '');
+    setEditKm(moto.km ? (parseInt(moto.km.replace(/\D/g,''),10) || 0).toLocaleString('pt-BR') : '');
     setEditAnoFab(moto.ano_fabricacao || '');
     setEditAnoMod(moto.ano_modelo || '');
     setEditCor(moto.cor || '');
     setEditCategoria(moto.categoria || '');
-    setEditCilindrada(moto.cilindrada || '');
+    setEditCilindrada(moto.cilindrada ? (parseInt(moto.cilindrada.replace(/\D/g,''),10) || 0).toLocaleString('pt-BR') : '');
     setEditMotoObs(moto.observacoes || '');
     setEditTemManual(moto.tem_manual ?? false);
     setEditTemChaveReserva(moto.tem_chave_reserva ?? false);
@@ -174,12 +174,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       marca: editMarca.trim(),
       modelo: editModelo.trim(),
       placa: editPlaca.trim() || null,
-      km: editKm.trim() || null,
+      km: editKm.replace(/\D/g, '') || null,
       ano_fabricacao: editAnoFab.trim() || null,
       ano_modelo: editAnoMod.trim() || null,
       cor: editCor.trim() || null,
       categoria: editCategoria.trim() || null,
-      cilindrada: editCilindrada.trim() || null,
+      cilindrada: editCilindrada.replace(/\D/g, '') || null,
       observacoes: editMotoObs.trim() || null,
       tem_manual: editTemManual,
       tem_chave_reserva: editTemChaveReserva,
@@ -1575,32 +1575,44 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 </div>
                 <div>
                   <Label>KM</Label>
-                  <Input value={editKm} onChange={e => setEditKm(e.target.value)} placeholder="0" />
+                  <Input value={editKm} onChange={e => { const d = e.target.value.replace(/\D/g, ''); setEditKm(d ? parseInt(d,10).toLocaleString('pt-BR') : ''); }} placeholder="0" inputMode="numeric" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Ano Fab.</Label>
-                  <Input value={editAnoFab} onChange={e => setEditAnoFab(e.target.value)} placeholder="2024" maxLength={4} />
+                  <Select value={editAnoFab} onValueChange={setEditAnoFab}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Ano Mod.</Label>
-                  <Input value={editAnoMod} onChange={e => setEditAnoMod(e.target.value)} placeholder="2025" maxLength={4} />
+                  <Select value={editAnoMod} onValueChange={setEditAnoMod}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Cor</Label>
-                  <Input value={editCor} onChange={e => setEditCor(e.target.value)} />
+                  <Select value={editCor} onValueChange={setEditCor}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{CORES_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Cilindrada</Label>
-                  <Input value={editCilindrada} onChange={e => setEditCilindrada(e.target.value)} />
+                  <Input value={editCilindrada} onChange={e => { const d = e.target.value.replace(/\D/g, ''); setEditCilindrada(d ? parseInt(d,10).toLocaleString('pt-BR') : ''); }} placeholder="0" inputMode="numeric" />
                 </div>
               </div>
               <div>
                 <Label>Categoria</Label>
-                <Input value={editCategoria} onChange={e => setEditCategoria(e.target.value)} />
+                <Select value={editCategoria} onValueChange={setEditCategoria}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Observações</Label>
