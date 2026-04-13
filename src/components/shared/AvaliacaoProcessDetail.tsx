@@ -595,6 +595,89 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog Editar Moto */}
+      <Dialog open={editMotoOpen} onOpenChange={setEditMotoOpen}>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Editar Dados da Moto</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 pr-3">
+            <div className="space-y-3 pb-2">
+              <div>
+                <Label>Marca <span className="text-destructive">*</span></Label>
+                <Select value={editMarca} onValueChange={(v) => { setEditMarca(v); setEditModelo(''); }}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{getMarcaNomes().map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Modelo <span className="text-destructive">*</span></Label>
+                <Select value={editModelo} onValueChange={setEditModelo}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{getModelosPorMarca(editMarca).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Placa</Label>
+                  <Input value={editPlaca} onChange={e => setEditPlaca(e.target.value.toUpperCase())} placeholder="ABC1D23" maxLength={7} />
+                </div>
+                <div>
+                  <Label>KM</Label>
+                  <Input value={editKm} onChange={e => setEditKm(e.target.value)} placeholder="0" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Ano Fab.</Label>
+                  <Input value={editAnoFab} onChange={e => setEditAnoFab(e.target.value)} placeholder="2024" maxLength={4} />
+                </div>
+                <div>
+                  <Label>Ano Mod.</Label>
+                  <Input value={editAnoMod} onChange={e => setEditAnoMod(e.target.value)} placeholder="2025" maxLength={4} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Cor</Label>
+                  <Input value={editCor} onChange={e => setEditCor(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Cilindrada</Label>
+                  <Input value={editCilindrada} onChange={e => setEditCilindrada(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label>Categoria</Label>
+                <Input value={editCategoria} onChange={e => setEditCategoria(e.target.value)} />
+              </div>
+              <div>
+                <Label>Observações</Label>
+                <Textarea value={editMotoObs} onChange={e => setEditMotoObs(e.target.value)} rows={3} />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox id="edit-manual" checked={editTemManual} onCheckedChange={(v) => setEditTemManual(!!v)} />
+                  <Label htmlFor="edit-manual" className="cursor-pointer">Tem manual</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="edit-chave" checked={editTemChaveReserva} onCheckedChange={(v) => setEditTemChaveReserva(!!v)} />
+                  <Label htmlFor="edit-chave" className="cursor-pointer">Tem chave reserva</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="edit-manut" checked={editManutencaoVencida} onCheckedChange={(v) => setEditManutencaoVencida(!!v)} />
+                  <Label htmlFor="edit-manut" className="cursor-pointer">Manutenção vencida</Label>
+                </div>
+              </div>
+              <Button onClick={handleSaveMoto} disabled={savingMoto} className="w-full gap-2">
+                {savingMoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Salvar
+              </Button>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
