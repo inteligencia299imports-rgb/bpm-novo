@@ -688,6 +688,16 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         }}
       />
 
+      <RetiradaDialog
+        open={!!retiradaItem}
+        onOpenChange={(open) => { if (!open) setRetiradaItem(null); }}
+        estoqueItem={retiradaItem}
+        onSuccess={() => {
+          setRetiradaItem(null);
+          fetchEstoque();
+        }}
+      />
+
       <Dialog open={!!historyItem} onOpenChange={(open) => { if (!open) setHistoryItem(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
