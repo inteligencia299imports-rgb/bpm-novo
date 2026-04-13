@@ -84,6 +84,10 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   doc.setLineWidth(0.5);
   doc.rect(marginLeft, marginTop, contentWidth, pageHeight - marginTop - marginBottom);
 
+  // Draw page border (matching side margins)
+  doc.setLineWidth(0.5);
+  doc.rect(marginLeft, marginTop, contentWidth, pageHeight - marginTop - marginBottom);
+
   const setNormal = () => { doc.setFont('helvetica', 'normal'); doc.setFontSize(fontSize); };
   const setBold = () => { doc.setFont('helvetica', 'bold'); doc.setFontSize(fontSize); };
 
