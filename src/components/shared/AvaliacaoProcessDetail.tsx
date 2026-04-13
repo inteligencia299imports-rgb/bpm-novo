@@ -36,6 +36,8 @@ interface Props {
 }
 
 const formatPhone = (v: string) => { const d = v.replace(/\D/g, ''); return d.length === 11 ? `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}` : v; };
+const formatCpfCnpj = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 14); if (d.length <= 11) return d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2'); return d.replace(/(\d{2})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2'); };
+const formatCep = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 8); return d.length > 5 ? d.replace(/(\d{5})(\d)/, '$1-$2') : d; };
 const formatKm = (km: string | null | undefined) => { if (!km) return null; const n = parseInt(km.replace(/\D/g,''),10); return isNaN(n) ? km : n.toLocaleString('pt-BR') + ' km'; };
 const formatCurrency = (v: number | null | undefined) => v == null ? '-' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -92,10 +94,10 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     setEditTelefone(formatPhoneInput(atendimento.telefone || ''));
     setEditSexo(atendimento.sexo || '');
     setEditUf(atendimento.uf || '');
-    setEditCpfCnpj(atendimento.cpf_cnpj || '');
+    setEditCpfCnpj(atendimento.cpf_cnpj ? formatCpfCnpj(atendimento.cpf_cnpj) : '');
     setEditEmail(atendimento.email || '');
     setEditEndereco(atendimento.endereco || '');
-    setEditCep(atendimento.cep || '');
+    setEditCep(atendimento.cep ? formatCep(atendimento.cep) : '');
     setEditClienteOpen(true);
   };
 
@@ -107,14 +109,14 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     }
     setSavingCliente(true);
     const { error } = await supabase.from('atendimentos').update({
-      nome_cliente: editNome.trim(),
+      nome_cliente: editNome.trim().toUpperCase(),
       telefone: digits,
       sexo: editSexo,
       uf: editUf,
-      cpf_cnpj: editCpfCnpj.trim() || null,
+      cpf_cnpj: editCpfCnpj.replace(/\D/g, '') || null,
       email: editEmail.trim() || null,
       endereco: editEndereco.trim() || null,
-      cep: editCep.trim() || null,
+      cep: editCep.replace(/\D/g, '') || null,
     }).eq('id', atendimento.id);
     setSavingCliente(false);
     if (error) {
@@ -494,7 +496,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             </div>
             <div className="space-y-1.5">
               <Label>CPF/CNPJ</Label>
-              <Input value={editCpfCnpj} onChange={e => setEditCpfCnpj(e.target.value)} placeholder="000.000.000-00" />
+              <Input value={editCpfCnpj} onChange={e => setEditCpfCnpj(formatCpfCnpj(e.target.value))} placeholder="000.000.000-00" />
             </div>
             <div className="space-y-1.5">
               <Label>E-mail</Label>
@@ -506,7 +508,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             </div>
             <div className="space-y-1.5">
               <Label>CEP</Label>
-              <Input value={editCep} onChange={e => setEditCep(e.target.value)} placeholder="00000-000" />
+              <Input value={editCep} onChange={e => setEditCep(formatCep(e.target.value))} placeholder="00000-000" maxLength={9} />
             </div>
             <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
               {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
