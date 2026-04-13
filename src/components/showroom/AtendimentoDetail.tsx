@@ -495,10 +495,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setEditTelefone(formatPhoneInput(atendimento.telefone));
     setEditSexo(atendimento.sexo);
     setEditUf(atendimento.uf);
-    setEditCpfCnpj((atendimento as any).cpf_cnpj || '');
-    setEditEmail((atendimento as any).email || '');
-    setEditEndereco((atendimento as any).endereco || '');
-    setEditCep((atendimento as any).cep || '');
+    setEditCpfCnpj(atendimento.cpf_cnpj || '');
+    setEditEmail(atendimento.email || '');
+    setEditEndereco(atendimento.endereco || '');
+    setEditCep(atendimento.cep || '');
     setEditClienteOpen(true);
   };
 
@@ -563,7 +563,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       return;
     }
     setSavingCliente(true);
-    const { error } = await supabase.from('atendimentos').update({
+    const { data: updatedData, error } = await supabase.from('atendimentos').update({
       nome_cliente: editNome.trim(),
       telefone: digits,
       sexo: editSexo,
@@ -572,10 +572,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       email: editEmail.trim() || null,
       endereco: editEndereco.trim() || null,
       cep: editCep.trim() || null,
-    } as any).eq('id', atendimento.id);
+    }).eq('id', atendimento.id).select().single();
     setSavingCliente(false);
-    if (error) {
+    if (error || !updatedData) {
       toast.error('Erro ao salvar dados do cliente');
+      console.error('Erro ao atualizar cliente:', error);
     } else {
       toast.success('Dados do cliente atualizados!');
       setEditClienteOpen(false);
@@ -725,10 +726,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 </div>
                 <InfoItem label="Sexo" value={atendimento.sexo} />
                 <InfoItem label="UF" value={atendimento.uf} />
-                <InfoItem label="CPF/CNPJ" value={(atendimento as any).cpf_cnpj} />
-                <InfoItem label="E-mail" value={(atendimento as any).email} />
-                <InfoItem label="Endereço" value={(atendimento as any).endereco} />
-                <InfoItem label="CEP" value={(atendimento as any).cep} />
+                <InfoItem label="CPF/CNPJ" value={atendimento.cpf_cnpj} />
+                <InfoItem label="E-mail" value={atendimento.email} />
+                <InfoItem label="Endereço" value={atendimento.endereco} />
+                <InfoItem label="CEP" value={atendimento.cep} />
               </div>
               <Separator className="my-2" />
               <DocumentUpload
