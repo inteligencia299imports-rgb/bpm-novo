@@ -125,6 +125,23 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [editCep, setEditCep] = useState('');
   const [savingCliente, setSavingCliente] = useState(false);
 
+  // Moto edit state
+  const [editMotoOpen, setEditMotoOpen] = useState(false);
+  const [editMarca, setEditMarca] = useState('');
+  const [editModelo, setEditModelo] = useState('');
+  const [editPlaca, setEditPlaca] = useState('');
+  const [editKm, setEditKm] = useState('');
+  const [editAnoFab, setEditAnoFab] = useState('');
+  const [editAnoMod, setEditAnoMod] = useState('');
+  const [editCor, setEditCor] = useState('');
+  const [editCategoria, setEditCategoria] = useState('');
+  const [editCilindrada, setEditCilindrada] = useState('');
+  const [editMotoObs, setEditMotoObs] = useState('');
+  const [editTemManual, setEditTemManual] = useState(false);
+  const [editTemChaveReserva, setEditTemChaveReserva] = useState(false);
+  const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
+  const [savingMoto, setSavingMoto] = useState(false);
+
   const openEditCliente = () => {
     if (!at) return;
     setEditNome(formatPersonName(at.nome_cliente || ''));
