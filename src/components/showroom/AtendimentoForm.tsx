@@ -276,6 +276,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       } else {
         await supabase.from('motos_interesse').insert(miData as any);
       }
+    } else if (isEditing && interesse === 'vender') {
+      // Se mudou para "vender", remover moto de interesse existente
+      await supabase.from('motos_interesse').delete().eq('atendimento_id', atId!);
     }
 
     // Save moto avaliacao
