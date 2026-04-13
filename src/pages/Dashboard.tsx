@@ -18,7 +18,7 @@ import NovidadesTab from '@/components/novidades/NovidadesTab';
 
 const Dashboard = () => {
   const { role } = useAuth();
-  const getDefaultTab = (r: string | null) => 'showroom';
+  const getDefaultTab = (r: string | null) => 'relatorios';
   const [activeTab, setActiveTab] = useState(getDefaultTab(role));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [hasSetInitialTab, setHasSetInitialTab] = useState(false);
