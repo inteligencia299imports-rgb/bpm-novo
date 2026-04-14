@@ -44,16 +44,24 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         .filter((a: any) => a.atendimentos?.interesse === 'vender')
         .map((d: any) => ({
           ...d,
-          // Build a virtual atendimento-like object for AtendimentoCard
           _atendimentoCard: {
             ...d.atendimentos,
             motos_avaliacao: [d.motos_avaliacao],
             motos_interesse: [],
-            interesse: 'vender', // Show moto as client's moto
+            interesse: 'vender',
           },
           atendimento: d.atendimentos,
           moto_avaliacao: d.motos_avaliacao,
         }));
+
+      // Fetch acquisition dates from status_history
+      const avalIds = mapped.map((m: any) => m.id);
+      if (avalIds.length > 0) {
+        const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', avalIds);
+        const acquDateMap: Record<string, string> = {};
+        (histData || []).forEach((h: any) => { acquDateMap[h.entity_id] = h.created_at; });
+        mapped = mapped.map((m: any) => ({ ...m, _dataAquisicao: acquDateMap[m.id] || null }));
+      }
 
       if (search.trim()) {
         const s = search.trim().toLowerCase();
