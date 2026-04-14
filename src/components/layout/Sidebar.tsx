@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, Flame, BarChart3, Award } from 'lucide-react';
+import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, Flame, BarChart3 } from 'lucide-react';
 import logoImg from '@/assets/logo-crm.png';
 import NotificationBell from './NotificationBell';
 import { Button } from '@/components/ui/button';
