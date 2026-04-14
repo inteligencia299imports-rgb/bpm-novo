@@ -563,26 +563,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
       if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
       if (aquisRevisaoVencida) motoUpdate.manutencao_vencida = aquisRevisaoVencida === 'sim';
-      // Auto-solicitar consulta para consignada (se ainda não solicitada)
-      if (tipoSelecionado === 'consignada' && !consultaSolicitada) {
-        motoUpdate.consulta_solicitada = true;
-        setConsultaSolicitada(true);
-        // Notificar responsáveis pela consulta
-        const motoLabel = `${moto?.marca || ''} ${moto?.modelo || ''} ${moto?.placa ? '- ' + moto.placa : ''}`.trim();
-        supabase.rpc('notify_consulta', {
-          _title: 'Consulta Solicitada (Auto)',
-          _message: `Consulta solicitada automaticamente para ${motoLabel} (consignada) | Por: ${userName || user?.email || 'Sistema'}`,
-          _entity_id: avaliacao.moto_avaliacao_id,
-          _entity_type: 'consulta',
-        });
-        supabase.from('status_history').insert({
-          entity_type: 'consulta',
-          entity_id: avaliacao.moto_avaliacao_id,
-          status: 'Consulta Solicitada',
-          changed_by: user?.id,
-          changed_by_name: userName || user?.email || null,
-        } as any);
-      }
       if (Object.keys(motoUpdate).length > 0) {
         await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', avaliacao.moto_avaliacao_id);
       }
