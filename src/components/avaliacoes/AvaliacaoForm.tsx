@@ -563,6 +563,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
       if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
       if (aquisRevisaoVencida) motoUpdate.manutencao_vencida = aquisRevisaoVencida === 'sim';
+      // Auto-solicitar consulta para consignada (se ainda não solicitada)
+      if (tipoSelecionado === 'consignada' && !consultaSolicitada) {
+        motoUpdate.consulta_solicitada = true;
+      }
       if (Object.keys(motoUpdate).length > 0) {
         await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', avaliacao.moto_avaliacao_id);
       }
