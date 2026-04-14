@@ -61,7 +61,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
       const [pcResult, consigResult, histResult] = await Promise.all([
         supabase.from('pos_compra_processos').select('avaliacao_id, etapa, concluida').in('avaliacao_id', avaliacaoIds.length ? avaliacaoIds : ['']).in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']),
         supabase.from('consignacao_processos').select('avaliacao_id, etapa, concluida').in('avaliacao_id', avaliacaoIds.length ? avaliacaoIds : ['']).eq('etapa', 'NF EMITIDA'),
-        supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', avaliacaoIds.length ? avaliacaoIds : ['']),
+        supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', allData.map((d: any) => d.moto_avaliacao_id).filter(Boolean).length ? allData.map((d: any) => d.moto_avaliacao_id).filter(Boolean) : ['']),
       ]);
       const pcData = pcResult.data || [];
       const consigData = consigResult.data || [];
@@ -79,8 +79,10 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
         }
       });
 
+      const motoAcqMap: Record<string, string> = {};
+      (histResult.data || []).forEach((h: any) => { motoAcqMap[h.entity_id] = h.created_at; });
       const acquDateMap: Record<string, string> = {};
-      (histResult.data || []).forEach((h: any) => { acquDateMap[h.entity_id] = h.created_at; });
+      allData.forEach((d: any) => { if (d.moto_avaliacao_id && motoAcqMap[d.moto_avaliacao_id]) acquDateMap[d.id] = motoAcqMap[d.moto_avaliacao_id]; });
 
       let mapped = allData.map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null, _releaseReady: releaseReadyMap[d.id] ?? null, _dataAquisicao: acquDateMap[d.id] || null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }

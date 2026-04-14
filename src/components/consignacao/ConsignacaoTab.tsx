@@ -54,10 +54,12 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
     if (error) { toast.error('Erro ao carregar consignações'); } else {
       const estoqueMap: Record<string, { status: string; observacoes: string | null }> = {};
       (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes }; });
-      const avalIds = (data || []).map((d: any) => d.id);
-      const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', avalIds.length ? avalIds : ['']);
+      const motoIds = (data || []).map((d: any) => d.moto_avaliacao_id).filter(Boolean);
+      const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', motoIds.length ? motoIds : ['']);
+      const motoAcqMap: Record<string, string> = {};
+      (histData || []).forEach((h: any) => { motoAcqMap[h.entity_id] = h.created_at; });
       const acquDateMap: Record<string, string> = {};
-      (histData || []).forEach((h: any) => { acquDateMap[h.entity_id] = h.created_at; });
+      (data || []).forEach((d: any) => { if (d.moto_avaliacao_id && motoAcqMap[d.moto_avaliacao_id]) acquDateMap[d.id] = motoAcqMap[d.moto_avaliacao_id]; });
       let mapped = (data || [])
         .map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
