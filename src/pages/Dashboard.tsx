@@ -6,7 +6,6 @@ import ShowroomTab from '@/components/showroom/ShowroomTab';
 import EstoqueTab from '@/components/estoque/EstoqueTab';
 import type { EstoqueNavTarget } from '@/components/estoque/EstoqueTab';
 import AvaliacoesTab from '@/components/avaliacoes/AvaliacoesTab';
-import NpsTab from '@/components/nps/NpsTab';
 import ConsultaTab from '@/components/consulta/ConsultaTab';
 import PosVendaTab from '@/components/pos-venda/PosVendaTab';
 import IntermediacacaoTab from '@/components/intermediacao/IntermediacacaoTab';
@@ -117,7 +116,6 @@ const Dashboard = () => {
             onInitialHandled={() => setInitialAvaliacaoId(null)}
           />
         )}
-        {activeTab === 'nps' && <NpsTab onNavigateToShowroom={handleNavigateToShowroom} />}
         {activeTab === 'relatorios' && <RelatoriosTab />}
         {activeTab === 'novidades' && <NovidadesTab onNavigateToShowroom={handleNavigateToShowroom} />}
       </main>
