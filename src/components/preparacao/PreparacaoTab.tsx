@@ -58,9 +58,10 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
 
       // Fetch release readiness data
       const avaliacaoIds = allData.map((d: any) => d.id);
-      const [pcResult, consigResult] = await Promise.all([
+      const [pcResult, consigResult, histResult] = await Promise.all([
         supabase.from('pos_compra_processos').select('avaliacao_id, etapa, concluida').in('avaliacao_id', avaliacaoIds.length ? avaliacaoIds : ['']).in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']),
         supabase.from('consignacao_processos').select('avaliacao_id, etapa, concluida').in('avaliacao_id', avaliacaoIds.length ? avaliacaoIds : ['']).eq('etapa', 'NF EMITIDA'),
+        supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', avaliacaoIds.length ? avaliacaoIds : ['']),
       ]);
       const pcData = pcResult.data || [];
       const consigData = consigResult.data || [];
@@ -78,7 +79,10 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
         }
       });
 
-      let mapped = allData.map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null, _releaseReady: releaseReadyMap[d.id] ?? null }));
+      const acquDateMap: Record<string, string> = {};
+      (histResult.data || []).forEach((h: any) => { acquDateMap[h.entity_id] = h.created_at; });
+
+      let mapped = allData.map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null, _releaseReady: releaseReadyMap[d.id] ?? null, _dataAquisicao: acquDateMap[d.id] || null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       setItems(mapped);
     }
@@ -121,7 +125,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
                     {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => (
                       <ProcessCard key={a.id} clientName={a.atendimento?.nome_cliente || 'N/A'}
                         motoLabel={a.moto ? [(a.moto.modelo || '').toUpperCase(), a.moto.placa?.replace(/-/g, '')].filter(Boolean).join(' - ') : undefined}
-                        loja={a.atendimento?.loja} date={a.updated_at} statusColor={col.hex}
+                        loja={a.atendimento?.loja} date={a._dataAquisicao || a.updated_at} statusColor={col.hex}
                         readyIndicator={a._releaseReady === true ? 'ready' : a._releaseReady === false ? 'not_ready' : null}
                         extraBadge={a.tipo_aquisicao ? { label: getTipoAquisicaoLabel(a.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(a.tipo_aquisicao) } : undefined}
                         onClick={() => setSelectedItem(a)} />
