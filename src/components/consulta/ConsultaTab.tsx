@@ -8,10 +8,7 @@ import ConsultaDetail from './ConsultaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 
-const COLUMNS = [
-  { value: false, label: 'Pendente', hex: '#da6220' },
-  { value: true, label: 'Realizada', hex: '#169d53' },
-];
+const PENDING_COLOR = '#da6220';
 
 const ConsultaTab = () => {
   const [motos, setMotos] = useState<any[]>([]);
@@ -32,7 +29,6 @@ const ConsultaTab = () => {
       console.error(error);
     } else {
       let results = (data || [])
-        .filter((d: any) => !d.avaliacoes?.some((av: any) => ['estoque', 'adquirida', 'perdido', 'dispensada'].includes(av.situacao)))
         .map((d: any) => ({
           ...d,
           atendimento: d.atendimentos,
@@ -52,7 +48,7 @@ const ConsultaTab = () => {
 
   useEffect(() => { fetchMotos(); }, [fetchMotos]);
 
-  const getColumnMotos = (val: boolean) => motos.filter(m => (m.consulta_realizada ?? false) === val);
+  const pendingMotos = motos.filter(m => !(m.consulta_realizada ?? false));
 
   if (selectedMoto) {
     return <ConsultaDetail moto={selectedMoto} onClose={() => setSelectedMoto(null)} />;
@@ -81,43 +77,34 @@ const ConsultaTab = () => {
       </div>
 
       {loading ? (
-        <KanbanSkeleton columns={2} />
+        <KanbanSkeleton columns={1} />
       ) : (
-        <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-2">
-            {COLUMNS.map(col => {
-              const items = getColumnMotos(col.value);
-              return (
-                <div key={String(col.value)} className="w-[320px] shrink-0 md:w-auto md:shrink flex flex-col">
-                  <div className="flex items-center justify-between mb-3 px-1">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.hex }} />
-                      <span className="text-sm font-semibold text-foreground">{col.label}</span>
-                      <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5 font-medium">{items.length}</span>
-                    </div>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-2.5 flex-1 min-h-[200px] space-y-2.5 border border-border/50">
-                    {items.length === 0 ? (
-                      <p className="text-xs text-muted-foreground text-center py-8">Nenhuma moto</p>
-                    ) : (
-                      items.map(m => (
-                        <ProcessCard
-                          key={m.id}
-                          clientName={m.atendimento?.nome_cliente || 'N/A'}
-                          phone={m.atendimento?.telefone}
-                          motoLabel={[m.placa?.replace(/-/g, ''), `${m.marca} ${(m.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ')}
-                          loja={m.atendimento?.loja}
-                          date={m.created_at}
-                          statusColor={col.hex}
-                          extraBadge={m.tipo_aquisicao ? { label: getTipoAquisicaoLabel(m.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(m.tipo_aquisicao) } : undefined}
-                          onClick={() => setSelectedMoto(m)}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        <div>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PENDING_COLOR }} />
+              <span className="text-sm font-semibold text-foreground">Pendente</span>
+              <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5 font-medium">{pendingMotos.length}</span>
+            </div>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-2.5 min-h-[200px] space-y-2.5 border border-border/50">
+            {pendingMotos.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">Nenhuma consulta pendente</p>
+            ) : (
+              pendingMotos.map(m => (
+                <ProcessCard
+                  key={m.id}
+                  clientName={m.atendimento?.nome_cliente || 'N/A'}
+                  phone={m.atendimento?.telefone}
+                  motoLabel={[m.placa?.replace(/-/g, ''), `${m.marca} ${(m.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ')}
+                  loja={m.atendimento?.loja}
+                  date={m.created_at}
+                  statusColor={PENDING_COLOR}
+                  extraBadge={m.tipo_aquisicao ? { label: getTipoAquisicaoLabel(m.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(m.tipo_aquisicao) } : undefined}
+                  onClick={() => setSelectedMoto(m)}
+                />
+              ))
+            )}
           </div>
         </div>
       )}
