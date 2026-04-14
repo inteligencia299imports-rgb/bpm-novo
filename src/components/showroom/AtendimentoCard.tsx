@@ -13,6 +13,7 @@ interface Props {
   onClick: () => void;
   actions?: React.ReactNode;
   statusColorOverride?: string;
+  dateOverride?: string;
 }
 
 const formatPhone = (value: string): string => {
@@ -107,7 +108,7 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
             </span>
             <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              {format(new Date(atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}
+              {format(new Date(dateOverride || atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}
             </span>
           </div>
 
