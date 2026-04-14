@@ -55,12 +55,12 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         }));
 
       // Fetch acquisition dates from status_history
-      const avalIds = mapped.map((m: any) => m.id);
-      if (avalIds.length > 0) {
-        const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', avalIds);
-        const acquDateMap: Record<string, string> = {};
-        (histData || []).forEach((h: any) => { acquDateMap[h.entity_id] = h.created_at; });
-        mapped = mapped.map((m: any) => ({ ...m, _dataAquisicao: acquDateMap[m.id] || null }));
+      const motoIds = mapped.map((m: any) => m.moto_avaliacao_id).filter(Boolean);
+      if (motoIds.length > 0) {
+        const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', motoIds);
+        const motoAcqMap: Record<string, string> = {};
+        (histData || []).forEach((h: any) => { motoAcqMap[h.entity_id] = h.created_at; });
+        mapped = mapped.map((m: any) => ({ ...m, _dataAquisicao: (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null }));
       }
 
       if (search.trim()) {

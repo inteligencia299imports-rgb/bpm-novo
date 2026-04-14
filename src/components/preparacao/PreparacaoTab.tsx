@@ -79,8 +79,10 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
         }
       });
 
+      const motoAcqMap: Record<string, string> = {};
+      (histResult.data || []).forEach((h: any) => { motoAcqMap[h.entity_id] = h.created_at; });
       const acquDateMap: Record<string, string> = {};
-      (histResult.data || []).forEach((h: any) => { acquDateMap[h.entity_id] = h.created_at; });
+      allData.forEach((d: any) => { if (d.moto_avaliacao_id && motoAcqMap[d.moto_avaliacao_id]) acquDateMap[d.id] = motoAcqMap[d.moto_avaliacao_id]; });
 
       let mapped = allData.map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null, _releaseReady: releaseReadyMap[d.id] ?? null, _dataAquisicao: acquDateMap[d.id] || null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
