@@ -67,6 +67,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [currentConsignacaoStatus, setCurrentConsignacaoStatus] = useState(item.consignacao_status || 'em_aberto');
   const [loading, setLoading] = useState(true);
   const [estoqueStatus, setEstoqueStatus] = useState<{ status: string; observacoes: string | null } | null>(null);
+  const [dataAquisicao, setDataAquisicao] = useState<string | null>(null);
   const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
   const [editNome, setEditNome] = useState('');
@@ -222,7 +223,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      const [cnhRes, crlvRes, avRes, estRes] = await Promise.all([
+      const [cnhRes, crlvRes, avRes, estRes, histRes] = await Promise.all([
         atendimento?.id
           ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
           : Promise.resolve({ data: null }),
@@ -231,12 +232,14 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           : Promise.resolve({ data: null }),
         supabase.from('avaliacoes').select('quanto_pede, valor_fechamento, avaliador_id').eq('id', item.id).maybeSingle(),
         supabase.from('estoque').select('status, observacoes').eq('avaliacao_id', item.id).maybeSingle(),
+        supabase.from('status_history').select('created_at').eq('entity_type', 'avaliacao').eq('entity_id', item.id).eq('status', 'adquirida').order('created_at', { ascending: true }).limit(1).maybeSingle(),
       ]);
       setCnhUrl(cnhRes.data?.cnh_url || null);
       setCrlvUrl(crlvRes.data?.crlv_url || null);
       setQuantoPede(avRes.data?.quanto_pede ?? null);
       setValorFechamento(avRes.data?.valor_fechamento ?? null);
       setEstoqueStatus(estRes.data ? { status: estRes.data.status, observacoes: estRes.data.observacoes } : null);
+      setDataAquisicao(histRes.data?.created_at || null);
 
       if (avRes.data?.avaliador_id) {
         const { data: roleData } = await supabase.from('user_roles').select('nome').eq('user_id', avRes.data.avaliador_id).single();
@@ -273,7 +276,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             </div>
             <p className="text-xs text-muted-foreground">
               {moto?.placa && <span className="mr-2">{moto.placa.replace(/-/g, '')}</span>}
-              {format(new Date(item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              {format(new Date(dataAquisicao || item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
           {entityType === 'consignacao' && (
