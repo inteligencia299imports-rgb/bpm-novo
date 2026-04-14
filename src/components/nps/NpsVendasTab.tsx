@@ -156,10 +156,11 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                       <p className="text-xs text-muted-foreground text-center py-8">Nenhum atendimento</p>
                     ) : (
                       items.map(a => (
-                        <AtendimentoCard
+                         <AtendimentoCard
                           key={a.id}
                           atendimento={a}
                           onClick={() => onNavigateToShowroom(a.id)}
+                          dateOverride={a.data_venda || undefined}
                           statusColorOverride={SITUACOES_NPS.find(s => s.value === (a.nps_status || 'em_aberto'))?.hex}
                           actions={
                             <>

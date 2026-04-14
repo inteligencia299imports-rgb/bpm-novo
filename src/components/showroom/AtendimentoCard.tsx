@@ -13,6 +13,7 @@ interface Props {
   onClick: () => void;
   actions?: React.ReactNode;
   statusColorOverride?: string;
+  dateOverride?: string;
 }
 
 const formatPhone = (value: string): string => {
@@ -58,7 +59,7 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride }) => {
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
@@ -107,7 +108,7 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
             </span>
             <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
-              {format(new Date(atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}
+              {format(new Date(dateOverride || atendimento.created_at), "dd/MM HH:mm", { locale: ptBR })}
             </span>
           </div>
 
