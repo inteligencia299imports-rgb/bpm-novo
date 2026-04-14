@@ -232,7 +232,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           : Promise.resolve({ data: null }),
         supabase.from('avaliacoes').select('quanto_pede, valor_fechamento, avaliador_id').eq('id', item.id).maybeSingle(),
         supabase.from('estoque').select('status, observacoes').eq('avaliacao_id', item.id).maybeSingle(),
-        supabase.from('status_history').select('created_at').eq('entity_type', 'avaliacao').eq('entity_id', item.id).eq('status', 'adquirida').order('created_at', { ascending: true }).limit(1).maybeSingle(),
+        supabase.from('status_history').select('created_at').eq('entity_type', 'avaliacao').eq('entity_id', item.moto_avaliacao_id || item.id).eq('status', 'adquirida').order('created_at', { ascending: true }).limit(1).maybeSingle(),
       ]);
       setCnhUrl(cnhRes.data?.cnh_url || null);
       setCrlvUrl(crlvRes.data?.crlv_url || null);
