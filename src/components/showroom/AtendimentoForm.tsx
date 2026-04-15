@@ -455,14 +455,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             </div>
             <div className="space-y-1.5">
               <Label>Temperatura *</Label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 [&>button]:min-w-[90px]">
                 {TEMPERATURAS.map(t => (
                   <ToggleButton key={t} label={t} value={t} selected={temperatura} onSelect={setTemperatura} />
                 ))}
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 max-w-md gap-4">
             <div className="space-y-1.5">
               <Label>Origem *</Label>
               <Select value={origem} onValueChange={setOrigem}>
