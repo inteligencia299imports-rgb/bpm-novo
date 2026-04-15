@@ -464,19 +464,21 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               </div>
             )}
           </div>
-          <div className="space-y-1.5">
-            <Label>Origem *</Label>
-            <Select value={origem} onValueChange={setOrigem}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Interesse *</Label>
-            <Select value={interesse} onValueChange={v => setInteresse(v as Interesse)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{INTERESSES.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="space-y-1.5">
+              <Label>Origem *</Label>
+              <Select value={origem} onValueChange={setOrigem}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Interesse *</Label>
+              <Select value={interesse} onValueChange={v => setInteresse(v as Interesse)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{INTERESSES.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
