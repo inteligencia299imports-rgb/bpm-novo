@@ -447,7 +447,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             </div>
             <div className="space-y-1.5">
               <Label>Tipo de Atendimento *</Label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 [&>button]:min-w-[90px]">
                 {TIPOS_ATENDIMENTO.map(t => (
                   <ToggleButton key={t} label={t} value={t} selected={tipoAtendimento} onSelect={setTipoAtendimento} />
                 ))}
