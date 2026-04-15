@@ -412,7 +412,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                   }}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="sm:col-span-2 grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Sexo *</Label>
                   <div className="flex flex-wrap gap-2">
