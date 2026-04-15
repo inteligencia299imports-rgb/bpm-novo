@@ -103,6 +103,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [saving, setSaving] = useState(false);
   const [showLiberarForm, setShowLiberarForm] = useState(false);
   const [activeStatus, setActiveStatus] = useState(currentStatus);
+  const [pendingSteps, setPendingSteps] = useState<string[]>([]);
 
   // Liberar form fields
   const [empresa, setEmpresa] = useState('');
