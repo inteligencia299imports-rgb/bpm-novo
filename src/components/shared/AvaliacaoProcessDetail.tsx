@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
