@@ -72,8 +72,13 @@ const ProcessCard: React.FC<ProcessCardProps> = ({
             <Badge variant="secondary" className="text-[10px]">{loja}</Badge>
           )}
           {extraBadge && (
-            <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ml-auto ${extraBadge.className || ''}`}>
+            <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ${extraBadge.className || ''}`}>
               {extraBadge.label}
+            </Badge>
+          )}
+          {secondaryBadge && (
+            <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ml-auto ${secondaryBadge.className || ''}`}>
+              {secondaryBadge.label}
             </Badge>
           )}
         </div>
