@@ -373,7 +373,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       {entityType === 'preparacao' && pendingSteps.length === 0 && item.situacao !== 'estoque' && (
         <div className="rounded-lg border border-green-300 bg-green-50 dark:bg-green-950/20 dark:border-green-800 p-3 flex items-center gap-2.5">
           <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-          <p className="text-xs font-semibold text-green-700 dark:text-green-400">Todos os processos concluídos — pronto para liberação</p>
+          <p className="text-xs font-semibold text-green-700 dark:text-green-400">Todos os processos concluídos</p>
         </div>
       )}
 
