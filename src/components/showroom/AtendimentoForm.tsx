@@ -379,7 +379,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       {/* Card: Dados do Cliente */}
       <Card>
         <CardHeader><CardTitle className="text-base">Dados do Cliente</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_2fr_auto_auto] gap-4">
           <div className="space-y-1.5">
             <Label>Telefone *</Label>
             <div className="flex gap-2">
@@ -412,21 +412,19 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                   }}
                 />
               </div>
-              <div className="sm:col-span-2 grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Sexo *</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {SEXOS.map(s => (
-                      <ToggleButton key={s} label={s} value={s} selected={sexo} onSelect={setSexo} />
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>UF *</Label>
-                  <Select value={uf} onValueChange={setUf}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>{UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-                  </Select>
+              <div className="space-y-1.5">
+                <Label>UF *</Label>
+                <Select value={uf} onValueChange={setUf}>
+                  <SelectTrigger className="w-20"><SelectValue placeholder="UF" /></SelectTrigger>
+                  <SelectContent>{UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Sexo *</Label>
+                <div className="flex flex-wrap gap-2">
+                  {SEXOS.map(s => (
+                    <ToggleButton key={s} label={s} value={s} selected={sexo} onSelect={setSexo} />
+                  ))}
                 </div>
               </div>
             </>
