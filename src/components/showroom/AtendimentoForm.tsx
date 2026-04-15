@@ -453,16 +453,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 ))}
               </div>
             </div>
-            {(isEditing || isPhoneValid) && (
-              <div className="space-y-1.5">
-                <Label>Temperatura *</Label>
-                <div className="flex flex-wrap gap-2">
-                  {TEMPERATURAS.map(t => (
-                    <ToggleButton key={t} label={t} value={t} selected={temperatura} onSelect={setTemperatura} />
-                  ))}
-                </div>
+            <div className="space-y-1.5">
+              <Label>Temperatura *</Label>
+              <div className="flex flex-wrap gap-2">
+                {TEMPERATURAS.map(t => (
+                  <ToggleButton key={t} label={t} value={t} selected={temperatura} onSelect={setTemperatura} />
+                ))}
               </div>
-            )}
+            </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             <div className="space-y-1.5">
