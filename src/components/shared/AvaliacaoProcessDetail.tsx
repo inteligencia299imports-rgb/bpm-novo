@@ -248,6 +248,30 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
         if (roleData?.nome) setAvaliadorNome(roleData.nome);
       }
 
+      // Fetch pending release steps for preparacao
+      if (entityType === 'preparacao') {
+        const tipo = item.tipo_aquisicao;
+        const pending: string[] = [];
+        if (isTipoPropria(tipo)) {
+          const { data: pcSteps } = await supabase.from('pos_compra_processos')
+            .select('etapa, concluida')
+            .eq('avaliacao_id', item.id)
+            .in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']);
+          const nf = pcSteps?.find(p => p.etapa === 'NF EMITIDA');
+          const vistoria = pcSteps?.find(p => p.etapa === 'VISTORIA/CADEIA DOMINIAL');
+          if (!nf?.concluida) pending.push('NF Emitida (Pós-Compra)');
+          if (!vistoria?.concluida) pending.push('Vistoria/Cadeia Dominial (Pós-Compra)');
+        } else if (isTipoConsignada(tipo)) {
+          const { data: consigSteps } = await supabase.from('consignacao_processos')
+            .select('etapa, concluida')
+            .eq('avaliacao_id', item.id)
+            .eq('etapa', 'NF EMITIDA');
+          const nf = consigSteps?.find(p => p.etapa === 'NF EMITIDA');
+          if (!nf?.concluida) pending.push('NF Emitida (Consignação)');
+        }
+        setPendingSteps(pending);
+      }
+
       setLoading(false);
     };
     loadAll();
