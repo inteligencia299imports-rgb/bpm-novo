@@ -70,6 +70,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [estoqueStatus, setEstoqueStatus] = useState<{ status: string; observacoes: string | null } | null>(null);
   const [dataAquisicao, setDataAquisicao] = useState<string | null>(null);
   const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
+  const [pendingSteps, setPendingSteps] = useState<string[]>([]);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
   const [editNome, setEditNome] = useState('');
   const [editTelefone, setEditTelefone] = useState('');
