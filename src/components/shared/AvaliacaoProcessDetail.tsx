@@ -300,7 +300,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 </Badge>
               )}
               {entityType === 'pos_compra' && atendimento?.interesse === 'trocar' && (
-                <Badge variant="outline" className="text-[10px] shrink-0 border-amber-500 text-amber-600">
+                <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary">
                   Troca
                 </Badge>
               )}
