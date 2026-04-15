@@ -462,7 +462,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-2 max-w-md gap-4">
+          <div className="grid grid-cols-1 max-w-[220px] gap-4">
             <div className="space-y-1.5">
               <Label>Origem *</Label>
               <Select value={origem} onValueChange={setOrigem}>
