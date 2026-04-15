@@ -17,6 +17,7 @@ interface ProcessCardProps {
   date: string;
   statusColor: string;
   extraBadge?: { label: string; className?: string };
+  secondaryBadge?: { label: string; className?: string };
   readyIndicator?: 'ready' | 'not_ready' | null;
   onClick?: () => void;
 }
