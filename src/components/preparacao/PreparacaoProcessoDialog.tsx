@@ -103,6 +103,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [saving, setSaving] = useState(false);
   const [showLiberarForm, setShowLiberarForm] = useState(false);
   const [activeStatus, setActiveStatus] = useState(currentStatus);
+  const [pendingSteps, setPendingSteps] = useState<string[]>([]);
 
   // Liberar form fields
   const [empresa, setEmpresa] = useState('');
@@ -204,6 +205,23 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setHistory(merged);
+
+      // Fetch pending release steps
+      const tipo = avaliacaoData?.tipo_aquisicao;
+      const pending: string[] = [];
+      if (isTipoPropria(tipo)) {
+        const { data: pcSteps } = await supabase.from('pos_compra_processos')
+          .select('etapa, concluida').eq('avaliacao_id', avaliacaoId)
+          .in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']);
+        if (!pcSteps?.find(p => p.etapa === 'NF EMITIDA')?.concluida) pending.push('NF Emitida (Pós-Compra)');
+        if (!pcSteps?.find(p => p.etapa === 'VISTORIA/CADEIA DOMINIAL')?.concluida) pending.push('Vistoria/Cadeia Dominial (Pós-Compra)');
+      } else if (isTipoConsignada(tipo)) {
+        const { data: consigSteps } = await supabase.from('consignacao_processos')
+          .select('etapa, concluida').eq('avaliacao_id', avaliacaoId).eq('etapa', 'NF EMITIDA');
+        if (!consigSteps?.find(p => p.etapa === 'NF EMITIDA')?.concluida) pending.push('NF Emitida (Consignação)');
+      }
+      setPendingSteps(pending);
+
       setLoading(false);
     };
 
@@ -625,6 +643,25 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 {avaliacaoData.moto?.observacoes && (
                   <p className="text-xs text-muted-foreground italic">{avaliacaoData.moto.observacoes}</p>
                 )}
+              </div>
+            )}
+
+            {/* Pending release steps */}
+            {pendingSteps.length > 0 && (
+              <div className="rounded-lg border border-orange-300 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800 p-3 flex items-start gap-2.5">
+                <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold text-orange-700 dark:text-orange-400">Pendências para liberação ao estoque</p>
+                  {pendingSteps.map(step => (
+                    <p key={step} className="text-xs text-orange-600 dark:text-orange-400">• {step}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+            {pendingSteps.length === 0 && avaliacaoData?.situacao !== 'estoque' && (
+              <div className="rounded-lg border border-green-300 bg-green-50 dark:bg-green-950/20 dark:border-green-800 p-3 flex items-center gap-2.5">
+                <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                <p className="text-xs font-semibold text-green-700 dark:text-green-400">Todos os processos concluídos — pronto para liberação</p>
               </div>
             )}
 
