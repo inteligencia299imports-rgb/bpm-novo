@@ -359,7 +359,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       type="button"
       onClick={() => onSelect(value)}
       className={cn(
-        "px-3 py-1.5 rounded-md text-sm font-medium border transition-colors",
+        "px-3 h-9 rounded-md text-sm font-medium border transition-colors",
         selected === value
           ? "bg-primary text-primary-foreground border-primary"
           : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
