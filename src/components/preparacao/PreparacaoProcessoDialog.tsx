@@ -205,6 +205,23 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setHistory(merged);
+
+      // Fetch pending release steps
+      const tipo = avaliacaoData?.tipo_aquisicao;
+      const pending: string[] = [];
+      if (isTipoPropria(tipo)) {
+        const { data: pcSteps } = await supabase.from('pos_compra_processos')
+          .select('etapa, concluida').eq('avaliacao_id', avaliacaoId)
+          .in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']);
+        if (!pcSteps?.find(p => p.etapa === 'NF EMITIDA')?.concluida) pending.push('NF Emitida (Pós-Compra)');
+        if (!pcSteps?.find(p => p.etapa === 'VISTORIA/CADEIA DOMINIAL')?.concluida) pending.push('Vistoria/Cadeia Dominial (Pós-Compra)');
+      } else if (isTipoConsignada(tipo)) {
+        const { data: consigSteps } = await supabase.from('consignacao_processos')
+          .select('etapa, concluida').eq('avaliacao_id', avaliacaoId).eq('etapa', 'NF EMITIDA');
+        if (!consigSteps?.find(p => p.etapa === 'NF EMITIDA')?.concluida) pending.push('NF Emitida (Consignação)');
+      }
+      setPendingSteps(pending);
+
       setLoading(false);
     };
 
