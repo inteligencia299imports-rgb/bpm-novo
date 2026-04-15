@@ -112,7 +112,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
                         motoLabel={a.moto ? [a.moto.placa?.replace(/-/g, ''), `${a.moto.marca} ${(a.moto.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
                         loja={a.atendimento?.loja} date={a._dataAquisicao || a.updated_at} statusColor={col.hex}
                         extraBadge={a.tipo_aquisicao && a.tipo_aquisicao !== 'propria' ? { label: getTipoAquisicaoLabel(a.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(a.tipo_aquisicao) } : undefined}
-                        secondaryBadge={a.atendimento?.interesse === 'trocar' ? { label: 'Troca', className: 'border-amber-500 text-amber-600' } : undefined}
+                        secondaryBadge={a.atendimento?.interesse === 'trocar' ? { label: 'Troca', className: 'border-primary/30 text-primary' } : undefined}
                         onClick={() => setSelectedItem(a)} />
                     ))}
                   </div>
