@@ -455,21 +455,21 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             </div>
             {(isEditing || isPhoneValid) && (
               <div className="space-y-1.5">
-                <Label>Origem *</Label>
-                <Select value={origem} onValueChange={setOrigem}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-                </Select>
+                <Label>Temperatura *</Label>
+                <div className="flex flex-wrap gap-2">
+                  {TEMPERATURAS.map(t => (
+                    <ToggleButton key={t} label={t} value={t} selected={temperatura} onSelect={setTemperatura} />
+                  ))}
+                </div>
               </div>
             )}
           </div>
           <div className="space-y-1.5">
-            <Label>Temperatura *</Label>
-            <div className="flex flex-wrap gap-2">
-              {TEMPERATURAS.map(t => (
-                <ToggleButton key={t} label={t} value={t} selected={temperatura} onSelect={setTemperatura} />
-              ))}
-            </div>
+            <Label>Origem *</Label>
+            <Select value={origem} onValueChange={setOrigem}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Interesse *</Label>
