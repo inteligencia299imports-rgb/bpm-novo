@@ -358,6 +358,25 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
 
       <Separator />
 
+      {/* Pending release steps for preparacao */}
+      {entityType === 'preparacao' && pendingSteps.length > 0 && (
+        <div className="rounded-lg border border-orange-300 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800 p-3 flex items-start gap-2.5">
+          <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-orange-700 dark:text-orange-400">Pendências para liberação ao estoque</p>
+            {pendingSteps.map(step => (
+              <p key={step} className="text-xs text-orange-600 dark:text-orange-400">• {step}</p>
+            ))}
+          </div>
+        </div>
+      )}
+      {entityType === 'preparacao' && pendingSteps.length === 0 && item.situacao !== 'estoque' && (
+        <div className="rounded-lg border border-green-300 bg-green-50 dark:bg-green-950/20 dark:border-green-800 p-3 flex items-center gap-2.5">
+          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+          <p className="text-xs font-semibold text-green-700 dark:text-green-400">Todos os processos concluídos — pronto para liberação</p>
+        </div>
+      )}
+
       <ScrollArea className="h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 pr-3">
           {/* Dados do Cliente */}
