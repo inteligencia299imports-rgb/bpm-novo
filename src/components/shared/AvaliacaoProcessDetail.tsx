@@ -299,6 +299,11 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   {statusCol.label}
                 </Badge>
               )}
+              {entityType === 'pos_compra' && atendimento?.interesse === 'trocar' && (
+                <Badge variant="outline" className="text-[10px] shrink-0 border-amber-500 text-amber-600">
+                  Troca
+                </Badge>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               {moto?.placa && <span className="mr-2">{moto.placa.replace(/-/g, '')}</span>}

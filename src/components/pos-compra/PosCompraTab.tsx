@@ -27,7 +27,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
   useEffect(() => {
     if (initialAvaliacaoId) {
       supabase.from('avaliacoes')
-        .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`)
+        .select(`*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco, interesse), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`)
         .eq('id', initialAvaliacaoId).single().then(({ data }) => {
           if (data) setSelectedItem({ ...data, atendimento: (data as any).atendimentos, moto: (data as any).motos_avaliacao });
         });
@@ -40,7 +40,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
     const statuses = VISIBLE_COLUMNS.map(c => c.value);
-    const selectStr = `*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`;
+    const selectStr = `*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco, interesse), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`;
 
     let data: any[];
     let error: any;
@@ -112,6 +112,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
                         motoLabel={a.moto ? [a.moto.placa?.replace(/-/g, ''), `${a.moto.marca} ${(a.moto.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
                         loja={a.atendimento?.loja} date={a._dataAquisicao || a.updated_at} statusColor={col.hex}
                         extraBadge={a.tipo_aquisicao && a.tipo_aquisicao !== 'propria' ? { label: getTipoAquisicaoLabel(a.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(a.tipo_aquisicao) } : undefined}
+                        secondaryBadge={a.atendimento?.interesse === 'trocar' ? { label: 'Troca', className: 'border-amber-500 text-amber-600' } : undefined}
                         onClick={() => setSelectedItem(a)} />
                     ))}
                   </div>
