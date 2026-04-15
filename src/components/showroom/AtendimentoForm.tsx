@@ -436,7 +436,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       <Card>
         <CardHeader><CardTitle className="text-base">Dados do Atendimento</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-6">
+          <div className="flex flex-wrap justify-between gap-4">
             <div className="space-y-1.5">
               <Label>Loja *</Label>
               <div className="flex flex-wrap gap-2">
