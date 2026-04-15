@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +70,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [estoqueStatus, setEstoqueStatus] = useState<{ status: string; observacoes: string | null } | null>(null);
   const [dataAquisicao, setDataAquisicao] = useState<string | null>(null);
   const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
+  const [pendingSteps, setPendingSteps] = useState<string[]>([]);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
   const [editNome, setEditNome] = useState('');
   const [editTelefone, setEditTelefone] = useState('');
@@ -246,6 +248,30 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
         if (roleData?.nome) setAvaliadorNome(roleData.nome);
       }
 
+      // Fetch pending release steps for preparacao
+      if (entityType === 'preparacao') {
+        const tipo = item.tipo_aquisicao;
+        const pending: string[] = [];
+        if (isTipoPropria(tipo)) {
+          const { data: pcSteps } = await supabase.from('pos_compra_processos')
+            .select('etapa, concluida')
+            .eq('avaliacao_id', item.id)
+            .in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']);
+          const nf = pcSteps?.find(p => p.etapa === 'NF EMITIDA');
+          const vistoria = pcSteps?.find(p => p.etapa === 'VISTORIA/CADEIA DOMINIAL');
+          if (!nf?.concluida) pending.push('NF Emitida (Pós-Compra)');
+          if (!vistoria?.concluida) pending.push('Vistoria/Cadeia Dominial (Pós-Compra)');
+        } else if (isTipoConsignada(tipo)) {
+          const { data: consigSteps } = await supabase.from('consignacao_processos')
+            .select('etapa, concluida')
+            .eq('avaliacao_id', item.id)
+            .eq('etapa', 'NF EMITIDA');
+          const nf = consigSteps?.find(p => p.etapa === 'NF EMITIDA');
+          if (!nf?.concluida) pending.push('NF Emitida (Consignação)');
+        }
+        setPendingSteps(pending);
+      }
+
       setLoading(false);
     };
     loadAll();
@@ -331,6 +357,25 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       </div>
 
       <Separator />
+
+      {/* Pending release steps for preparacao */}
+      {entityType === 'preparacao' && pendingSteps.length > 0 && (
+        <div className="rounded-lg border border-orange-300 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800 p-3 flex items-start gap-2.5">
+          <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-orange-700 dark:text-orange-400">Pendências para liberação ao estoque</p>
+            {pendingSteps.map(step => (
+              <p key={step} className="text-xs text-orange-600 dark:text-orange-400">• {step}</p>
+            ))}
+          </div>
+        </div>
+      )}
+      {entityType === 'preparacao' && pendingSteps.length === 0 && item.situacao !== 'estoque' && (
+        <div className="rounded-lg border border-green-300 bg-green-50 dark:bg-green-950/20 dark:border-green-800 p-3 flex items-center gap-2.5">
+          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+          <p className="text-xs font-semibold text-green-700 dark:text-green-400">Todos os processos concluídos — pronto para liberação</p>
+        </div>
+      )}
 
       <ScrollArea className="h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 pr-3">
