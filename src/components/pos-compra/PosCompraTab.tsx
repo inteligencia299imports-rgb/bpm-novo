@@ -40,7 +40,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
     const statuses = VISIBLE_COLUMNS.map(c => c.value);
-    const selectStr = `*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`;
+    const selectStr = `*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco, interesse), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`;
 
     let data: any[];
     let error: any;
