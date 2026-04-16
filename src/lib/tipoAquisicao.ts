@@ -38,6 +38,7 @@ export const getTipoAquisicaoBadgeClass = (tipo: string | null | undefined): str
     case 'convertida': return 'border-blue-800 text-blue-800';
     case 'test-ride': return 'border-orange-500 text-orange-600';
     case 'repasse': return 'border-gray-500 text-gray-600';
+    case 'ducati': return 'border-red-500 text-red-600';
     default: return 'border-green-500 text-green-600'; // propria
   }
 };
