@@ -281,6 +281,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                     <TableRow>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Vendedor</TableHead>
+                      <TableHead>Loja</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Modelo</TableHead>
                       <TableHead>Placa</TableHead>
@@ -296,11 +297,12 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                   </TableHeader>
                   <TableBody>
                     {motosVendidas.length === 0 ? (
-                      <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">Nenhuma moto vendida encontrada</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">Nenhuma moto vendida encontrada</TableCell></TableRow>
                     ) : motosVendidas.map((m: any, i: number) => (
                       <TableRow key={i}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
                         <TableCell className="text-xs">{m.vendedor}</TableCell>
+                        <TableCell className={`text-xs font-medium ${(m.loja || '').toLowerCase().includes('ducati') ? 'text-red-600' : ''}`}>{lojaLabel(m.loja)}</TableCell>
                         <TableCell><Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(m.tipo)}`}>{tipoLabel(m.tipo)}</Badge></TableCell>
                         <TableCell className="text-xs">{m.modelo}</TableCell>
                         <TableCell className="text-xs font-mono">{m.placa}</TableCell>
@@ -325,6 +327,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                     <TableRow>
                       <TableHead>Cliente</TableHead>
                       <TableHead>Vendedor</TableHead>
+                      <TableHead>Loja</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Modelo</TableHead>
                       <TableHead>Placa</TableHead>
@@ -340,11 +343,12 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                   </TableHeader>
                   <TableBody>
                     {motosSinal.length === 0 ? (
-                      <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">Nenhuma moto com sinal encontrada</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">Nenhuma moto com sinal encontrada</TableCell></TableRow>
                     ) : motosSinal.map((m: any, i: number) => (
                       <TableRow key={i}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
                         <TableCell className="text-xs">{m.vendedor}</TableCell>
+                        <TableCell className={`text-xs font-medium ${(m.loja || '').toLowerCase().includes('ducati') ? 'text-red-600' : ''}`}>{lojaLabel(m.loja)}</TableCell>
                         <TableCell><Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(m.tipo)}`}>{tipoLabel(m.tipo)}</Badge></TableCell>
                         <TableCell className="text-xs">{m.modelo}</TableCell>
                         <TableCell className="text-xs font-mono">{m.placa}</TableCell>
