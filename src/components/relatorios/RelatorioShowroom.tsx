@@ -113,8 +113,13 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }, [loadData, debouncedLoad]);
 
   const tipoLabel = (t: string) => {
-    const map: Record<string, string> = { propria: 'Própria', consignada: 'Consignada', 'test-ride': 'Test-Ride', repasse: 'Repasse', convertida: 'Convertida' };
+    const map: Record<string, string> = { propria: 'Própria', consignada: 'Consignada', 'test-ride': 'Test-Ride', repasse: 'Repasse', convertida: 'Convertida', ducati: 'Ducati' };
     return map[t] || t;
+  };
+
+  const lojaLabel = (loja: string | null) => {
+    if (!loja) return '-';
+    return loja.charAt(0).toUpperCase() + loja.slice(1).toLowerCase();
   };
 
   if (loading) {
