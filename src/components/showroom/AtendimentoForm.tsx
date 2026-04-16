@@ -140,6 +140,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhone(e.target.value);
     setTelefone(formatted);
+    setClientFound(null);
     // Auto-search when phone reaches 11 digits (only for new atendimentos)
     const digits = unformatPhone(formatted);
     if (digits.length === 11 && !isEditing) {
