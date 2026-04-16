@@ -14,6 +14,7 @@ import ConsignacaoTab from '@/components/consignacao/ConsignacaoTab';
 import PreparacaoTab from '@/components/preparacao/PreparacaoTab';
 import RelatoriosTab from '@/components/relatorios/RelatoriosTab';
 import NovidadesTab from '@/components/novidades/NovidadesTab';
+import NpsTab from '@/components/nps/NpsTab';
 
 const Dashboard = () => {
   const { role } = useAuth();
@@ -118,6 +119,7 @@ const Dashboard = () => {
         )}
         {activeTab === 'relatorios' && <RelatoriosTab />}
         {activeTab === 'novidades' && <NovidadesTab onNavigateToShowroom={handleNavigateToShowroom} />}
+        {activeTab === 'nps' && <NpsTab onNavigateToShowroom={handleNavigateToShowroom} />}
       </main>
       <BottomNav activeTab={activeTab} onTabChange={(tab) => { clearInitials(); setActiveTab(tab); }} />
     </div>
