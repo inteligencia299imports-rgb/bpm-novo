@@ -36,6 +36,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
   const [searchingPhone, setSearchingPhone] = useState(false);
+  const [clientFound, setClientFound] = useState<boolean | null>(null);
 
   // form state
   const [loja, setLoja] = useState('');
