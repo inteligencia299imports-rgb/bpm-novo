@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save, Loader2, SendHorizonal } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, SendHorizonal, CheckCircle } from 'lucide-react';
 import { LOJAS, INTERESSES, TEMPERATURAS, ORIGENS, UFS, TIPOS_ATENDIMENTO, SEXOS } from '@/types/crm';
 import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
@@ -36,6 +36,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
   const [searchingPhone, setSearchingPhone] = useState(false);
+  const [clientFound, setClientFound] = useState<boolean | null>(null);
 
   // form state
   const [loja, setLoja] = useState('');
@@ -139,6 +140,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhone(e.target.value);
     setTelefone(formatted);
+    setClientFound(null);
     // Auto-search when phone reaches 11 digits (only for new atendimentos)
     const digits = unformatPhone(formatted);
     if (digits.length === 11 && !isEditing) {
@@ -165,13 +167,13 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         setSexo(data.sexo);
         setUf(data.uf);
         if (data.origem) setOrigem(data.origem);
-        toast.success('Cliente encontrado! Dados preenchidos automaticamente.');
+        setClientFound(true);
       } else {
         setNomeCliente('');
         setSexo('');
         setUf('DF');
         setOrigem('');
-        toast.info('Cliente não encontrado. Preencha os dados manualmente.');
+        setClientFound(false);
       }
     } catch (err) {
       console.error('Erro ao buscar cliente:', err);
@@ -382,7 +384,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[220px_2fr_auto_auto] gap-4">
           <div className="space-y-1.5">
             <Label>Telefone *</Label>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <Input
                 value={telefone}
                 onChange={handlePhoneChange}
@@ -392,7 +394,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 className="flex-1"
               />
               {searchingPhone && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              {!searchingPhone && clientFound === true && <CheckCircle className="h-5 w-5 text-primary" />}
             </div>
+            {clientFound === true && (
+              <p className="text-xs text-primary font-medium">Cliente encontrado!</p>
+            )}
+            {clientFound === false && (
+              <p className="text-xs text-muted-foreground">Cliente não encontrado. Preencha os dados.</p>
+            )}
             {telefone && !isPhoneValid && (
               <p className="text-xs text-destructive">Telefone deve ter 11 dígitos</p>
             )}
