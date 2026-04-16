@@ -164,11 +164,6 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                           statusColorOverride={SITUACOES_NPS.find(s => s.value === (a.nps_status || 'em_aberto'))?.hex}
                           actions={
                             <>
-                              {(a.nps_status || 'em_aberto') === 'em_aberto' && (
-                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
-                                  <Send className="h-3 w-3" /> Enviar Pesquisa
-                                </Button>
-                              )}
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
                                 <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
                                   <Send className="h-3 w-3" /> Reenviar Pesquisa
