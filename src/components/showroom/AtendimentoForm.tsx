@@ -383,7 +383,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[220px_2fr_auto_auto] gap-4">
           <div className="space-y-1.5">
             <Label>Telefone *</Label>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <Input
                 value={telefone}
                 onChange={handlePhoneChange}
@@ -393,7 +393,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 className="flex-1"
               />
               {searchingPhone && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              {!searchingPhone && clientFound === true && <CheckCircle className="h-5 w-5 text-primary" />}
             </div>
+            {clientFound === true && (
+              <p className="text-xs text-primary font-medium">Cliente encontrado!</p>
+            )}
+            {clientFound === false && (
+              <p className="text-xs text-muted-foreground">Cliente não encontrado. Preencha os dados.</p>
+            )}
             {telefone && !isPhoneValid && (
               <p className="text-xs text-destructive">Telefone deve ter 11 dígitos</p>
             )}
