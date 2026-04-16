@@ -307,7 +307,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                       <TableRow key={i}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
                         <TableCell className="text-xs">{m.vendedor}</TableCell>
-                        <TableCell className={`text-xs font-medium ${(m.loja || '').toLowerCase().includes('ducati') ? 'text-red-600' : ''}`}>{lojaLabel(m.loja)}</TableCell>
+                        <TableCell className="text-xs font-medium">{lojaLabel(m.loja)}</TableCell>
                         <TableCell><Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(m.tipo)}`}>{tipoLabel(m.tipo)}</Badge></TableCell>
                         <TableCell className="text-xs">{m.modelo}</TableCell>
                         <TableCell className="text-xs font-mono">{m.placa}</TableCell>
@@ -353,7 +353,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                       <TableRow key={i}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
                         <TableCell className="text-xs">{m.vendedor}</TableCell>
-                        <TableCell className={`text-xs font-medium ${(m.loja || '').toLowerCase().includes('ducati') ? 'text-red-600' : ''}`}>{lojaLabel(m.loja)}</TableCell>
+                        <TableCell className="text-xs font-medium">{lojaLabel(m.loja)}</TableCell>
                         <TableCell><Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(m.tipo)}`}>{tipoLabel(m.tipo)}</Badge></TableCell>
                         <TableCell className="text-xs">{m.modelo}</TableCell>
                         <TableCell className="text-xs font-mono">{m.placa}</TableCell>
