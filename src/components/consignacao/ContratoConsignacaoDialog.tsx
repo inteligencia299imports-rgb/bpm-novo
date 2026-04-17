@@ -133,12 +133,25 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
       setJaGerado(!!(histGerado && histGerado.length > 0));
 
+      // Buscar dados atualizados do atendimento direto do banco para garantir dados frescos
+      const atendimentoId = atendimento?.id;
+      let atendimentoFresh: any = atendimento;
+      if (atendimentoId) {
+        const { data: at } = await supabase
+          .from('atendimentos')
+          .select('cpf_cnpj, email, endereco, cep')
+          .eq('id', atendimentoId)
+          .maybeSingle();
+        if (at) atendimentoFresh = { ...atendimento, ...at };
+      }
+
       if (contrato) {
         setContratoId(contrato.id);
-        setCpfCnpj(contrato.cpf_cnpj || '');
-        setEmail(contrato.email || '');
-        setEndereco(contrato.endereco || '');
-        setCep(contrato.cep || '');
+        // Fallback: se contrato não tem, puxa do atendimento (cliente já cadastrado)
+        setCpfCnpj(contrato.cpf_cnpj || atendimentoFresh?.cpf_cnpj || '');
+        setEmail(contrato.email || atendimentoFresh?.email || '');
+        setEndereco(contrato.endereco || atendimentoFresh?.endereco || '');
+        setCep(contrato.cep || atendimentoFresh?.cep || '');
         setValorQuitacao(contrato.valor_quitacao ? formatCurrencyInput(String(Math.round(contrato.valor_quitacao * 100))) : '');
         setValorFechamento(contrato.valor_fechamento ? formatCurrencyInput(String(Math.round(contrato.valor_fechamento * 100))) : '');
         setObsInternas(contrato.observacoes_internas || '');
@@ -146,11 +159,13 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         setDataContrato(contrato.data_contrato ? new Date(contrato.data_contrato + 'T12:00:00') : undefined);
       } else {
         setContratoId(null);
-        setCpfCnpj('');
-        setEmail('');
-        setEndereco('');
-        setCep('');
-        setValorQuitacao(avaliacao.valor_fechamento ? formatCurrencyInput(String(Math.round(avaliacao.valor_fechamento * 100))) : '');
+        // Pré-preencher dados do cliente a partir do atendimento
+        setCpfCnpj(atendimentoFresh?.cpf_cnpj || '');
+        setEmail(atendimentoFresh?.email || '');
+        setEndereco(atendimentoFresh?.endereco || '');
+        setCep(atendimentoFresh?.cep || '');
+        // Valor de Quitação SEMPRE vazio (preenchido manualmente pelo usuário)
+        setValorQuitacao('');
         setValorFechamento(avaliacao.valor_fechamento ? formatCurrencyInput(String(Math.round(avaliacao.valor_fechamento * 100))) : '');
         setObsInternas('');
         setObsContrato('');
