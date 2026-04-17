@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { supabase } from '@/lib/supabase';
+import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Input } from '@/components/ui/input';
 import { Search, X, FileSearch } from 'lucide-react';
 import ProcessCard from '@/components/shared/ProcessCard';
@@ -18,11 +19,13 @@ const ConsultaTab = () => {
 
   const fetchMotos = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('motos_avaliacao')
-      .select('*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), avaliacoes(tipo_aquisicao, situacao)')
-      .eq('consulta_solicitada', true)
-      .order('created_at', { ascending: false });
+    const { data, error } = await fetchAllRange(() =>
+      supabase
+        .from('motos_avaliacao')
+        .select('*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), avaliacoes(tipo_aquisicao, situacao)')
+        .eq('consulta_solicitada', true)
+        .order('created_at', { ascending: false })
+    );
 
     if (error) {
       toast.error('Erro ao carregar consultas');

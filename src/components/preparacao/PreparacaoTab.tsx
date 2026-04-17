@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { supabase } from '@/lib/supabase';
+import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Input } from '@/components/ui/input';
 import { Search, X, Wrench } from 'lucide-react';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
@@ -34,23 +35,14 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const PER_STATUS_LIMIT = 50;
-    const isSearching = search.trim().length > 0;
-    const statuses = PREPARACAO_COLUMNS.map(c => c.value);
     const selectStr = `*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`;
 
-    let allData: any[];
-    let err1: any;
     const estResult = await supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null);
-    if (isSearching) {
-      const result = await supabase.from('avaliacoes').select(selectStr).in('situacao', ['adquirida', 'estoque']).order('updated_at', { ascending: false });
-      err1 = result.error;
-      allData = result.data || [];
-    } else {
-      const statusResults = await Promise.all(statuses.map(s => supabase.from('avaliacoes').select(selectStr).in('situacao', ['adquirida', 'estoque']).eq('preparacao_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
-      err1 = statusResults.find(r => r.error)?.error;
-      allData = statusResults.flatMap(r => r.data || []);
-    }
+    const result = await fetchAllRange(() =>
+      supabase.from('avaliacoes').select(selectStr).in('situacao', ['adquirida', 'estoque']).order('updated_at', { ascending: false })
+    );
+    const err1 = result.error;
+    const allData = result.data || [];
     if (err1) { toast.error('Erro ao carregar preparação'); } else {
       const estData = estResult.data;
       const estoqueMap: Record<string, { status: string; observacoes: string | null }> = {};
