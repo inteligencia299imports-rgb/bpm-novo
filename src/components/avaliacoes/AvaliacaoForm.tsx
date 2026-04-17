@@ -1504,56 +1504,56 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       </Dialog>
       {/* Dialog Editar Cliente */}
       <Dialog open={editClienteOpen} onOpenChange={setEditClienteOpen}>
-        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Editar Dados do Cliente</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 pr-3">
-            <div className="space-y-3 pb-2">
-              <div>
-                <Label>Nome <span className="text-destructive">*</span></Label>
-                <Input value={editNome} onChange={e => setEditNome(formatPersonNameInput(e.target.value))} />
-              </div>
-              <div>
-                <Label>Telefone <span className="text-destructive">*</span></Label>
-                <Input value={editTelefone} onChange={e => { const d = e.target.value.replace(/\D/g,''); setEditTelefone(d.length === 11 ? formatPhone(d) : d); }} maxLength={15} />
-              </div>
-              <div>
-                <Label>Sexo <span className="text-destructive">*</span></Label>
-                <Select value={editSexo} onValueChange={setEditSexo}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>UF <span className="text-destructive">*</span></Label>
-                <Select value={editUf} onValueChange={setEditUf}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>CPF/CNPJ</Label>
-                <Input value={editCpfCnpj} onChange={e => setEditCpfCnpj(formatCpfCnpj(e.target.value))} placeholder="000.000.000-00" />
-              </div>
-              <div>
-                <Label>E-mail</Label>
-                <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email" />
-              </div>
-              <div>
-                <Label>Endereço</Label>
-                <Input value={editEndereco} onChange={e => setEditEndereco(e.target.value)} />
-              </div>
-              <div>
-                <Label>CEP</Label>
-                <Input value={editCep} onChange={e => setEditCep(formatCep(e.target.value))} placeholder="00000-000" maxLength={9} />
-              </div>
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <div className="col-span-2">
+              <Label>Nome <span className="text-destructive">*</span></Label>
+              <Input value={editNome} onChange={e => setEditNome(formatPersonNameInput(e.target.value))} />
+            </div>
+            <div>
+              <Label>Telefone <span className="text-destructive">*</span></Label>
+              <Input value={editTelefone} onChange={e => { const d = e.target.value.replace(/\D/g,''); setEditTelefone(d.length === 11 ? formatPhone(d) : d); }} maxLength={15} />
+            </div>
+            <div>
+              <Label>CPF/CNPJ</Label>
+              <Input value={editCpfCnpj} onChange={e => setEditCpfCnpj(formatCpfCnpj(e.target.value))} placeholder="000.000.000-00" />
+            </div>
+            <div>
+              <Label>Sexo <span className="text-destructive">*</span></Label>
+              <Select value={editSexo} onValueChange={setEditSexo}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>UF <span className="text-destructive">*</span></Label>
+              <Select value={editUf} onValueChange={setEditUf}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2">
+              <Label>E-mail</Label>
+              <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email" />
+            </div>
+            <div className="col-span-2">
+              <Label>Endereço</Label>
+              <Input value={editEndereco} onChange={e => setEditEndereco(e.target.value)} />
+            </div>
+            <div>
+              <Label>CEP</Label>
+              <Input value={editCep} onChange={e => setEditCep(formatCep(e.target.value))} placeholder="00000-000" maxLength={9} />
+            </div>
+            <div className="col-span-2 pt-2">
               <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
                 {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 Salvar
               </Button>
             </div>
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
 
