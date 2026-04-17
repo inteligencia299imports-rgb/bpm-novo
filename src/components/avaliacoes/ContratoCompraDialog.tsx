@@ -100,7 +100,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
     if (!open || !avaliacao) return;
     const loadContrato = async () => {
       setLoading(true);
-      const [{ data: contrato }, { data: histGerado }] = await Promise.all([
+      const atendimentoId = atendimento?.id;
+      const [{ data: contrato }, { data: histGerado }, { data: atFresh }] = await Promise.all([
         supabase
           .from('contratos_consignacao')
           .select('*')
@@ -113,13 +114,17 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
           .eq('entity_id', avaliacao.id)
           .like('status', 'CONTRATO COMPRA GERADO%')
           .limit(1),
+        atendimentoId
+          ? supabase.from('atendimentos').select('cpf_cnpj').eq('id', atendimentoId).maybeSingle()
+          : Promise.resolve({ data: null as any }),
       ]);
 
       setJaGerado(!!(histGerado && histGerado.length > 0));
 
       if (contrato) {
         setContratoId(contrato.id);
-        setCpfCnpj(contrato.cpf_cnpj || '');
+        // Fallback: prioriza dado do contrato; se vazio, usa o do atendimento
+        setCpfCnpj(contrato.cpf_cnpj || atFresh?.cpf_cnpj || '');
         setValorQuitacao(contrato.valor_quitacao ? formatCurrencyInput(String(Math.round(contrato.valor_quitacao * 100))) : '');
         setValorFechamento(contrato.valor_fechamento ? formatCurrencyInput(String(Math.round(contrato.valor_fechamento * 100))) : '');
         setObsInternas(contrato.observacoes_internas || '');
@@ -127,8 +132,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
         setDataContrato(contrato.data_contrato ? new Date(contrato.data_contrato + 'T12:00:00') : undefined);
       } else {
         setContratoId(null);
-        setCpfCnpj('');
-        setValorQuitacao(avaliacao.valor_fechamento ? formatCurrencyInput(String(Math.round(avaliacao.valor_fechamento * 100))) : '');
+        setCpfCnpj(atFresh?.cpf_cnpj || '');
+        setValorQuitacao('');
         setValorFechamento(avaliacao.valor_fechamento ? formatCurrencyInput(String(Math.round(avaliacao.valor_fechamento * 100))) : '');
         setObsInternas('');
         setObsContrato('');
