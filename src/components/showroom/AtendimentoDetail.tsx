@@ -1592,7 +1592,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           <DialogHeader>
             <DialogTitle>Editar Dados do Cliente</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 pr-3">
+          <ScrollArea className="flex-1 min-h-0 pr-3">
             <div className="space-y-3 pb-2">
               <div>
                 <Label>Nome <span className="text-destructive">*</span></Label>
