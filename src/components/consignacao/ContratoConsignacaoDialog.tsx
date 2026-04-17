@@ -134,15 +134,15 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       setJaGerado(!!(histGerado && histGerado.length > 0));
 
       // Buscar dados atualizados do atendimento direto do banco para garantir dados frescos
-      const atendimentoId = atendimento?.id;
-      let atendimentoFresh: any = atendimento;
+      const atendimentoId = atendimento?.id || avaliacao?.atendimento_id;
+      let atendimentoFresh: any = atendimento || {};
       if (atendimentoId) {
         const { data: at } = await supabase
           .from('atendimentos')
-          .select('cpf_cnpj, email, endereco, cep')
+          .select('nome_cliente, cpf_cnpj, email, endereco, cep')
           .eq('id', atendimentoId)
           .maybeSingle();
-        if (at) atendimentoFresh = { ...atendimento, ...at };
+        if (at) atendimentoFresh = { ...atendimentoFresh, ...at };
       }
 
       if (contrato) {
