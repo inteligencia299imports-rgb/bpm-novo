@@ -493,15 +493,22 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   };
 
-  const openEditCliente = () => {
-    setEditNome(formatPersonName(atendimento.nome_cliente));
-    setEditTelefone(formatPhoneInput(atendimento.telefone));
-    setEditSexo(atendimento.sexo);
-    setEditUf(atendimento.uf);
-    setEditCpfCnpj(atendimento.cpf_cnpj ? formatCpfCnpj(atendimento.cpf_cnpj) : '');
-    setEditEmail(atendimento.email || '');
-    setEditEndereco(atendimento.endereco || '');
-    setEditCep(atendimento.cep ? formatCep(atendimento.cep) : '');
+  const openEditCliente = async () => {
+    // Buscar dados frescos do banco para garantir que todos os campos apareçam preenchidos
+    const { data } = await supabase
+      .from('atendimentos')
+      .select('nome_cliente, telefone, sexo, uf, cpf_cnpj, email, endereco, cep')
+      .eq('id', atendimento.id)
+      .maybeSingle();
+    const src: any = data || atendimento;
+    setEditNome(formatPersonName(src.nome_cliente || ''));
+    setEditTelefone(formatPhoneInput(src.telefone || ''));
+    setEditSexo(src.sexo || '');
+    setEditUf(src.uf || '');
+    setEditCpfCnpj(src.cpf_cnpj ? formatCpfCnpj(src.cpf_cnpj) : '');
+    setEditEmail(src.email || '');
+    setEditEndereco(src.endereco || '');
+    setEditCep(src.cep ? formatCep(src.cep) : '');
     setEditClienteOpen(true);
   };
 
