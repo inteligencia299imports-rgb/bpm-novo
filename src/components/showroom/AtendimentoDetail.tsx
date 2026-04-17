@@ -566,7 +566,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       return;
     }
     setSavingCliente(true);
-    const { error } = await supabase.from('atendimentos').update({
+    const { data, error } = await supabase.from('atendimentos').update({
       nome_cliente: formatPersonName(editNome),
       telefone: digits,
       sexo: editSexo,
@@ -575,16 +575,20 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       email: editEmail.trim() || null,
       endereco: editEndereco.trim() || null,
       cep: editCep.replace(/\D/g, '') || null,
-    }).eq('id', atendimento.id);
+    }).eq('id', atendimento.id).select('id');
     setSavingCliente(false);
     if (error) {
       toast.error('Erro ao salvar dados do cliente');
       console.error('Erro ao atualizar cliente:', error);
-    } else {
-      toast.success('Dados do cliente atualizados!');
-      setEditClienteOpen(false);
-      if (onStatusUpdated) onStatusUpdated(); else onDeleted();
+      return;
     }
+    if (!data || data.length === 0) {
+      toast.error('Você não tem permissão para editar este atendimento');
+      return;
+    }
+    toast.success('Dados do cliente atualizados!');
+    setEditClienteOpen(false);
+    if (onStatusUpdated) onStatusUpdated(); else onDeleted();
   };
 
   if (loading) {
