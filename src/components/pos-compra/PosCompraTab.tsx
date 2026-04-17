@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { TIPOS_PROPRIA, getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { supabase } from '@/lib/supabase';
+import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Input } from '@/components/ui/input';
 import { Search, X, ShoppingCart } from 'lucide-react';
 import { POS_COMPRA_COLUMNS } from '@/types/crm';
@@ -37,23 +38,14 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const PER_STATUS_LIMIT = 50;
-    const isSearching = search.trim().length > 0;
-    const statuses = VISIBLE_COLUMNS.map(c => c.value);
     const selectStr = `*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco, interesse), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`;
 
-    let data: any[];
-    let error: any;
     const estResult = await supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null);
-    if (isSearching) {
-      const result = await supabase.from('avaliacoes').select(selectStr).in('tipo_aquisicao', TIPOS_PROPRIA).order('updated_at', { ascending: false });
-      error = result.error;
-      data = result.data || [];
-    } else {
-      const statusResults = await Promise.all(statuses.map(s => supabase.from('avaliacoes').select(selectStr).in('tipo_aquisicao', TIPOS_PROPRIA).eq('pos_compra_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
-      error = statusResults.find(r => r.error)?.error;
-      data = statusResults.flatMap(r => r.data || []);
-    }
+    const result = await fetchAllRange(() =>
+      supabase.from('avaliacoes').select(selectStr).in('tipo_aquisicao', TIPOS_PROPRIA).order('updated_at', { ascending: false })
+    );
+    const error = result.error;
+    const data = result.data || [];
     const estData = estResult.data;
     if (error) { toast.error('Erro ao carregar pós-compra'); } else {
       const estoqueMap: Record<string, { status: string; observacoes: string | null }> = {};
