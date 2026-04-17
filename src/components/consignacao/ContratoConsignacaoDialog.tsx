@@ -137,13 +137,17 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       const atendimentoId = atendimento?.id || avaliacao?.atendimento_id;
       let atendimentoFresh: any = atendimento || {};
       if (atendimentoId) {
-        const { data: at } = await supabase
+        const { data: at, error: atErr } = await supabase
           .from('atendimentos')
           .select('nome_cliente, cpf_cnpj, email, endereco, cep')
           .eq('id', atendimentoId)
           .maybeSingle();
+        console.log('[ContratoConsignacao] atendimentoId:', atendimentoId, 'fresh:', at, 'err:', atErr);
         if (at) atendimentoFresh = { ...atendimentoFresh, ...at };
+      } else {
+        console.warn('[ContratoConsignacao] sem atendimentoId! avaliacao:', avaliacao);
       }
+      console.log('[ContratoConsignacao] contrato:', contrato, 'atendimentoFresh:', atendimentoFresh);
 
       if (contrato) {
         setContratoId(contrato.id);
