@@ -28,7 +28,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange }) => {
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden">
-            <img src={logoImg} alt="BPM 299" className="h-9 w-9 object-cover" />
+            <img src={logoImg} alt="BPM 299" className="h-9 w-9 object-contain" />
           </div>
           <span className="text-lg font-bold tracking-tight hidden sm:block">BPM 299</span>
         </div>

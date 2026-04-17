@@ -33,7 +33,7 @@ const Login = () => {
       <Card className="w-full max-w-md animate-fade-in">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl overflow-hidden">
-            <img src={logoImg} alt="BPM 299" className="h-14 w-14 object-cover" />
+            <img src={logoImg} alt="BPM 299" className="h-14 w-14 object-contain" />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold">BPM 299</CardTitle>
