@@ -7,12 +7,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { AlertTriangle, ShieldAlert, CheckCircle, Loader2, CircleCheck } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, CheckCircle, Loader2, CircleCheck, LogOut } from 'lucide-react';
 
 interface StatusChangeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  estoqueItem: { id: string; modelo: string; placa?: string | null; status: string } | null;
+  estoqueItem: { id: string; modelo: string; placa?: string | null; status: string; tipo?: string; avaliacao_id?: string | null } | null;
   onSuccess: () => void;
 }
 
@@ -38,6 +38,14 @@ const ALL_STATUS_OPTIONS = [
     colorClass: 'text-muted-foreground',
     borderClass: 'border-muted-foreground/50 bg-muted/30',
   },
+  {
+    value: 'retirada',
+    label: 'RETIRADA',
+    icon: <LogOut className="h-4 w-4" />,
+    colorClass: 'text-amber-700',
+    borderClass: 'border-amber-600/50 bg-amber-500/5',
+    consignadaOnly: true,
+  },
 ];
 
 const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenChange, estoqueItem, onSuccess }) => {
@@ -59,6 +67,7 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
         disponivel: 'DISPONÍVEL',
         indisponivel_manual: 'INDISPONÍVEL',
         bloqueio_juridico: 'BLOQUEIO JURÍDICO',
+        retirada: 'RETIRADA',
       };
       const statusLabel = statusLabelMap[selectedStatus] || selectedStatus;
 
@@ -83,6 +92,42 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
         observacoes: observacao.trim(),
       });
 
+      // Special handling for RETIRADA on consigned motos
+      if (selectedStatus === 'retirada' && estoqueItem.avaliacao_id) {
+        // Update avaliacao to 'perdido'
+        await supabase
+          .from('avaliacoes')
+          .update({ situacao: 'perdido', consignacao_status: 'concluido' })
+          .eq('id', estoqueItem.avaliacao_id);
+
+        // History for avaliacao
+        await supabase.from('status_history').insert({
+          entity_id: estoqueItem.avaliacao_id,
+          entity_type: 'avaliacao',
+          status: 'RETIRADA',
+          changed_by: user?.id || null,
+          changed_by_name: userName || null,
+          observacoes: observacao.trim(),
+        });
+
+        // Conclude pending consignacao processes
+        const { data: processos } = await supabase
+          .from('consignacao_processos')
+          .select('id')
+          .eq('avaliacao_id', estoqueItem.avaliacao_id)
+          .eq('concluida', false);
+
+        if (processos && processos.length > 0) {
+          const now = new Date().toISOString();
+          for (const p of processos) {
+            await supabase
+              .from('consignacao_processos')
+              .update({ concluida: true, data_conclusao: now })
+              .eq('id', p.id);
+          }
+        }
+      }
+
       toast.success(`Status alterado para ${statusLabel}`);
       setSelectedStatus('');
       setObservacao('');
@@ -95,6 +140,13 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
     }
   };
 
+  const isConsignada = estoqueItem?.tipo === 'consignada';
+  const visibleOptions = ALL_STATUS_OPTIONS.filter(opt => {
+    if (opt.value === estoqueItem?.status) return false;
+    if (opt.consignadaOnly && !isConsignada) return false;
+    return true;
+  });
+
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { setSelectedStatus(''); setObservacao(''); } onOpenChange(v); }}>
       <DialogContent className="max-w-md">
@@ -104,7 +156,7 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
 
         <div className="space-y-4 pt-2">
           <RadioGroup value={selectedStatus} onValueChange={setSelectedStatus} className="space-y-2">
-            {ALL_STATUS_OPTIONS.filter(opt => opt.value !== estoqueItem?.status).map((opt) => (
+            {visibleOptions.map((opt) => (
               <Label
                 key={opt.value}
                 htmlFor={opt.value}
@@ -118,6 +170,12 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
               </Label>
             ))}
           </RadioGroup>
+
+          {selectedStatus === 'retirada' && (
+            <p className="text-xs text-muted-foreground">
+              A moto será marcada como retirada, a avaliação será marcada como perdida e os processos de consignação serão concluídos.
+            </p>
+          )}
 
           <div className="space-y-2">
             <Label>Observação *</Label>

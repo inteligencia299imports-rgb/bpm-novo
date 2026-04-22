@@ -346,16 +346,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    // Retirada option for consigned motos (instead of status change)
-    if (item.tipo === 'consignada' && ['disponivel', 'indisponivel_manual', 'bloqueio_juridico', 'indisponivel'].includes(item.status)) {
-      options.push({
-        label: 'Retirada',
-        icon: <LogOut className="h-4 w-4" />,
-        action: () => setRetiradaItem(item),
-      });
-    }
-
-    // Option to change status
+    // Option to change status (Retirada is now an option inside this dialog for consigned motos)
     if (['disponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(item.status)) {
       options.push({
         label: 'Alterar Status',
