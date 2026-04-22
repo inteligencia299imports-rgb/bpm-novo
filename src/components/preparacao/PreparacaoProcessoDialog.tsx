@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check, ArrowLeft } from 'lucide-react';
+import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check, ArrowLeft, Search } from 'lucide-react';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -104,6 +104,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [showLiberarForm, setShowLiberarForm] = useState(false);
   const [activeStatus, setActiveStatus] = useState(currentStatus);
   const [pendingSteps, setPendingSteps] = useState<string[]>([]);
+  const [showConsulta, setShowConsulta] = useState(false);
 
   // Liberar form fields
   const [empresa, setEmpresa] = useState('');
@@ -555,6 +556,16 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-base font-bold text-foreground">{avaliacaoData.moto?.marca} {avaliacaoData.moto?.modelo}</span>
                   <div className="flex items-center gap-2">
+                    {avaliacaoData.moto?.resultado_consulta && String(avaliacaoData.moto.resultado_consulta).trim().length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5 text-xs"
+                        onClick={() => setShowConsulta(true)}
+                      >
+                        <Search className="h-3.5 w-3.5" /> Consulta
+                      </Button>
+                    )}
                     {avaliacaoData.tipo_aquisicao && (
                       <Badge variant="outline" className={`text-xs ${getTipoAquisicaoBadgeClass(avaliacaoData.tipo_aquisicao)}`}>
                         {getTipoAquisicaoLabel(avaliacaoData.tipo_aquisicao)}
@@ -1007,6 +1018,21 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         )}
         </div>
       </DialogContent>
+
+      <Dialog open={showConsulta} onOpenChange={setShowConsulta}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" /> Resultado da Consulta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[400px] overflow-y-auto px-1">
+            <p className="text-sm whitespace-pre-wrap">
+              {avaliacaoData?.moto?.resultado_consulta || 'Nenhum resultado registrado.'}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
