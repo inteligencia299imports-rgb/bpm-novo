@@ -1018,6 +1018,21 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         )}
         </div>
       </DialogContent>
+
+      <Dialog open={showConsulta} onOpenChange={setShowConsulta}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" /> Resultado da Consulta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[400px] overflow-y-auto px-1">
+            <p className="text-sm whitespace-pre-wrap">
+              {avaliacaoData?.moto?.resultado_consulta || 'Nenhum resultado registrado.'}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
