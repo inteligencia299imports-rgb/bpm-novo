@@ -51,10 +51,11 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
       // Fetch release readiness data
       const avaliacaoIds = allData.map((d: any) => d.id);
       const motoIdsForHist = allData.map((d: any) => d.moto_avaliacao_id).filter(Boolean);
+      const histEntityIds = Array.from(new Set([...motoIdsForHist, ...avaliacaoIds]));
       const [pcResult, consigResult, histResult] = await Promise.all([
         supabase.from('pos_compra_processos').select('avaliacao_id, etapa, concluida').in('avaliacao_id', avaliacaoIds.length ? avaliacaoIds : ['']).in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']),
         supabase.from('consignacao_processos').select('avaliacao_id, etapa, concluida').in('avaliacao_id', avaliacaoIds.length ? avaliacaoIds : ['']).eq('etapa', 'NF EMITIDA'),
-        fetchAllRange(() => supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', motoIdsForHist.length ? motoIdsForHist : [''])),
+        fetchAllRange(() => supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', histEntityIds.length ? histEntityIds : [''])),
       ]);
       const pcData = pcResult.data || [];
       const consigData = consigResult.data || [];
@@ -72,13 +73,18 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
         }
       });
 
-      const motoAcqMap: Record<string, string> = {};
+      const histByEntity: Record<string, string> = {};
       (histResult.data || []).forEach((h: any) => {
-        const prev = motoAcqMap[h.entity_id];
-        if (!prev || new Date(h.created_at).getTime() > new Date(prev).getTime()) motoAcqMap[h.entity_id] = h.created_at;
+        const prev = histByEntity[h.entity_id];
+        if (!prev || new Date(h.created_at).getTime() > new Date(prev).getTime()) histByEntity[h.entity_id] = h.created_at;
       });
       const acquDateMap: Record<string, string> = {};
-      allData.forEach((d: any) => { if (d.moto_avaliacao_id && motoAcqMap[d.moto_avaliacao_id]) acquDateMap[d.id] = motoAcqMap[d.moto_avaliacao_id]; });
+      allData.forEach((d: any) => {
+        const byMoto = d.moto_avaliacao_id ? histByEntity[d.moto_avaliacao_id] : null;
+        const byAval = histByEntity[d.id];
+        const picked = [byMoto, byAval].filter(Boolean).sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0];
+        if (picked) acquDateMap[d.id] = picked;
+      });
 
       let mapped = allData.map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null, _releaseReady: releaseReadyMap[d.id] ?? null, _dataAquisicao: acquDateMap[d.id] || null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
