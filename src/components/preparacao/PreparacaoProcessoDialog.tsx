@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check, ArrowLeft } from 'lucide-react';
+import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check, ArrowLeft, Search } from 'lucide-react';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -104,6 +104,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [showLiberarForm, setShowLiberarForm] = useState(false);
   const [activeStatus, setActiveStatus] = useState(currentStatus);
   const [pendingSteps, setPendingSteps] = useState<string[]>([]);
+  const [showConsulta, setShowConsulta] = useState(false);
 
   // Liberar form fields
   const [empresa, setEmpresa] = useState('');
