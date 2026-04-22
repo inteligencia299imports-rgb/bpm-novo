@@ -120,6 +120,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [historyEntries, setHistoryEntries] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [retiradaItem, setRetiradaItem] = useState<EstoqueItem | null>(null);
+  const [consultaItem, setConsultaItem] = useState<EstoqueItem | null>(null);
 
   const handleOpenHistory = async (item: EstoqueItem) => {
     setHistoryItem(item);
@@ -363,6 +364,15 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         label: 'Histórico',
         icon: <History className="h-4 w-4" />,
         action: () => handleOpenHistory(item),
+      });
+    }
+
+    // Consulta result option (only if consulta has been performed)
+    if (item.resultado_consulta && item.resultado_consulta.trim().length > 0) {
+      options.push({
+        label: 'Consulta',
+        icon: <Search className="h-4 w-4" />,
+        action: () => setConsultaItem(item),
       });
     }
 
