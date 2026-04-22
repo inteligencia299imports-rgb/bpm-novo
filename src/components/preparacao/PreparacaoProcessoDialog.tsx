@@ -556,6 +556,16 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-base font-bold text-foreground">{avaliacaoData.moto?.marca} {avaliacaoData.moto?.modelo}</span>
                   <div className="flex items-center gap-2">
+                    {avaliacaoData.moto?.resultado_consulta && String(avaliacaoData.moto.resultado_consulta).trim().length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5 text-xs"
+                        onClick={() => setShowConsulta(true)}
+                      >
+                        <Search className="h-3.5 w-3.5" /> Consulta
+                      </Button>
+                    )}
                     {avaliacaoData.tipo_aquisicao && (
                       <Badge variant="outline" className={`text-xs ${getTipoAquisicaoBadgeClass(avaliacaoData.tipo_aquisicao)}`}>
                         {getTipoAquisicaoLabel(avaliacaoData.tipo_aquisicao)}
