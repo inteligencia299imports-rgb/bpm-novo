@@ -725,6 +725,21 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!consultaItem} onOpenChange={(open) => { if (!open) setConsultaItem(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" /> Resultado da Consulta - {consultaItem?.modelo}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[400px] overflow-y-auto px-1">
+            <p className="text-sm whitespace-pre-wrap">
+              {consultaItem?.resultado_consulta || 'Nenhum resultado registrado.'}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
