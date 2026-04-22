@@ -50,10 +50,11 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
 
       // Fetch release readiness data
       const avaliacaoIds = allData.map((d: any) => d.id);
+      const motoIdsForHist = allData.map((d: any) => d.moto_avaliacao_id).filter(Boolean);
       const [pcResult, consigResult, histResult] = await Promise.all([
         supabase.from('pos_compra_processos').select('avaliacao_id, etapa, concluida').in('avaliacao_id', avaliacaoIds.length ? avaliacaoIds : ['']).in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']),
         supabase.from('consignacao_processos').select('avaliacao_id, etapa, concluida').in('avaliacao_id', avaliacaoIds.length ? avaliacaoIds : ['']).eq('etapa', 'NF EMITIDA'),
-        supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', allData.map((d: any) => d.moto_avaliacao_id).filter(Boolean).length ? allData.map((d: any) => d.moto_avaliacao_id).filter(Boolean) : ['']),
+        fetchAllRange(() => supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', motoIdsForHist.length ? motoIdsForHist : [''])),
       ]);
       const pcData = pcResult.data || [];
       const consigData = consigResult.data || [];
@@ -72,7 +73,10 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
       });
 
       const motoAcqMap: Record<string, string> = {};
-      (histResult.data || []).forEach((h: any) => { motoAcqMap[h.entity_id] = h.created_at; });
+      (histResult.data || []).forEach((h: any) => {
+        const prev = motoAcqMap[h.entity_id];
+        if (!prev || new Date(h.created_at).getTime() > new Date(prev).getTime()) motoAcqMap[h.entity_id] = h.created_at;
+      });
       const acquDateMap: Record<string, string> = {};
       allData.forEach((d: any) => { if (d.moto_avaliacao_id && motoAcqMap[d.moto_avaliacao_id]) acquDateMap[d.id] = motoAcqMap[d.moto_avaliacao_id]; });
 
