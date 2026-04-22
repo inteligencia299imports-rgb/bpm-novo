@@ -119,7 +119,9 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
                     {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => (
                       <ProcessCard key={a.id} clientName={a.atendimento?.nome_cliente || 'N/A'}
                         motoLabel={a.moto ? [(a.moto.modelo || '').toUpperCase(), a.moto.placa?.replace(/-/g, '')].filter(Boolean).join(' - ') : undefined}
-                        loja={a.atendimento?.loja} date={a._dataAquisicao || a.updated_at} statusColor={col.hex}
+                        loja={a.atendimento?.loja} date={a._dataAquisicao || a.updated_at}
+                        dateLabel={a._dataAquisicao ? 'Aquisição' : undefined}
+                        statusColor={col.hex}
                         readyIndicator={a._releaseReady === true ? 'ready' : a._releaseReady === false ? 'not_ready' : null}
                         extraBadge={a.tipo_aquisicao ? { label: getTipoAquisicaoLabel(a.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(a.tipo_aquisicao) } : undefined}
                         onClick={() => setSelectedItem(a)} />
