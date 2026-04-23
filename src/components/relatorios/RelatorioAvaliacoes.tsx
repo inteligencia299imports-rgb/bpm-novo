@@ -19,8 +19,31 @@ interface RelatorioAvaliacoesProps {
   onFilterChange?: (loja: string) => void;
 }
 
-const TIPOS_PROPRIA = new Set(['propria', 'própria', 'convertida', 'repasse', 'test-ride', 'test ride']);
-const TIPOS_CONSIGNADA = new Set(['consignada', 'consignacao', 'consignação']);
+const normalizeText = (value: string | null | undefined) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
+const TIPOS_PROPRIA = new Set(['propria', 'convertida', 'repasse', 'test-ride', 'test ride']);
+const TIPOS_CONSIGNADA = new Set(['consignada', 'consignacao']);
+const TIPOS_AQUISICAO = new Set([...TIPOS_PROPRIA, ...TIPOS_CONSIGNADA]);
+
+const isInDateRange = (value: string | null | undefined, dateFromIso: string | null, dateToIso: string | null) => {
+  if (!value) return false;
+  if (dateFromIso && value < dateFromIso) return false;
+  if (dateToIso && value > dateToIso) return false;
+  return true;
+};
+
+const chunkArray = <T,>(items: T[], size: number) => {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+};
 
 const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
   const isMobile = useIsMobile();
@@ -53,19 +76,16 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       : null;
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
-    const [kpisRes, avaliadoresRes, mensalRes, detalhesRes, nomesRes] = await Promise.all([
-      supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
+    const [avaliadoresRes, mensalRes, detalhesBaseRes, nomesRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_avaliadores', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
       fetchAllRange<any>(() => {
         let query = supabase
           .from('avaliacoes')
-          .select('avaliador_id,tipo_aquisicao,created_at,situacao,atendimentos!inner(interesse,loja)')
+          .select('id,avaliador_id,tipo_aquisicao,created_at,updated_at,situacao,atendimentos!inner(interesse,loja)')
           .neq('situacao', 'sem_avaliar')
           .in('atendimentos.interesse', ['trocar', 'vender']);
 
-        if (dfParam) query = query.gte('created_at', dfParam);
-        if (dtParam) query = query.lte('created_at', dtParam);
         if (lojaParam !== 'todos') query = query.eq('atendimentos.loja', lojaParam);
 
         return query;
@@ -73,16 +93,61 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       supabase.from('user_roles').select('user_id,nome'),
     ]);
 
-    setIndicadores(kpisRes.data || {});
+    const detalhesBase = (detalhesBaseRes.data || []) as any[];
+    const detalhesPeriodo = detalhesBase.filter((item: any) => isInDateRange(item.created_at, dfParam, dtParam));
+    const aquisicaoIds = detalhesBase.map((item: any) => item.id).filter(Boolean);
+    const historicosPorAvaliacao = new Map<string, string>();
+
+    if (aquisicaoIds.length > 0) {
+      const historicoRes = await Promise.all(
+        chunkArray(aquisicaoIds, 200).map((ids) =>
+          fetchAllRange<any>(() =>
+            supabase
+              .from('status_history')
+              .select('entity_id,created_at')
+              .eq('entity_type', 'avaliacao')
+              .eq('status', 'adquirida')
+              .in('entity_id', ids),
+          ),
+        ),
+      );
+
+      for (const response of historicoRes) {
+        for (const item of response.data || []) {
+          const current = historicosPorAvaliacao.get(item.entity_id);
+          if (!current || item.created_at < current) {
+            historicosPorAvaliacao.set(item.entity_id, item.created_at);
+          }
+        }
+      }
+    }
+
+    const aquisicoesPeriodo = detalhesBase.filter((item: any) => {
+      const tipo = normalizeText(item.tipo_aquisicao);
+      if (!TIPOS_AQUISICAO.has(tipo)) return false;
+      const dataAquisicao = historicosPorAvaliacao.get(item.id) || item.updated_at || item.created_at;
+      return isInDateRange(dataAquisicao, dfParam, dtParam);
+    });
+
+    setIndicadores({
+      total_avaliacoes: detalhesPeriodo.length,
+      total_aquisicoes: aquisicoesPeriodo.length,
+      aquisicoes_propria: aquisicoesPeriodo.filter((item: any) => TIPOS_PROPRIA.has(normalizeText(item.tipo_aquisicao))).length,
+      aquisicoes_consignada: aquisicoesPeriodo.filter((item: any) => TIPOS_CONSIGNADA.has(normalizeText(item.tipo_aquisicao))).length,
+      aquisicoes_convertida: aquisicoesPeriodo.filter((item: any) => normalizeText(item.tipo_aquisicao) === 'convertida').length,
+      entrada_direta: aquisicoesPeriodo.filter((item: any) => normalizeText(item.atendimentos?.interesse) === 'vender').length,
+      troca: aquisicoesPeriodo.filter((item: any) => normalizeText(item.atendimentos?.interesse) === 'trocar').length,
+      retiradas: detalhesPeriodo.filter((item: any) => normalizeText(item.situacao) === 'retirada').length,
+    });
 
     const rawAvaliadores = (avaliadoresRes.data || []) as any[];
     const nomeById = new Map(((nomesRes.data || []) as any[]).map((item: any) => [item.user_id, item.nome || 'Desconhecido']));
     const detalhesByAvaliador = new Map<string, { aqPropria: number; aqConsignada: number }>();
 
-    for (const item of (detalhesRes.data || []) as any[]) {
+    for (const item of detalhesPeriodo) {
       const avaliadorId = item.avaliador_id;
       if (!avaliadorId) continue;
-      const tipo = String(item.tipo_aquisicao || '').trim().toLowerCase();
+      const tipo = normalizeText(item.tipo_aquisicao);
       const atual = detalhesByAvaliador.get(avaliadorId) || { aqPropria: 0, aqConsignada: 0 };
       if (TIPOS_PROPRIA.has(tipo)) atual.aqPropria += 1;
       if (TIPOS_CONSIGNADA.has(tipo)) atual.aqConsignada += 1;
