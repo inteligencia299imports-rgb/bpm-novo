@@ -257,6 +257,24 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+const AquisicoesAvaliadorTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload || {};
+  const propria = d.aqPropria ?? 0;
+  const consignada = d.aqConsignada ?? 0;
+  const total = d.totalAquisicoes ?? (propria + consignada);
+  const taxa = d.taxaConversao ?? 0;
+  return (
+    <div style={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12, background: 'hsl(var(--background))', padding: '8px 12px' }}>
+      <p style={{ fontWeight: 700, marginBottom: 4 }}>{label}</p>
+      <p style={{ margin: 0, color: '#2F6F84' }}>Próprias: {propria}</p>
+      <p style={{ margin: 0, color: '#7e6d9b' }}>Consignadas: {consignada}</p>
+      <p style={{ margin: '4px 0 0', fontWeight: 600 }}>Total: {total}</p>
+      <p style={{ margin: 0, color: '#E8913A', fontWeight: 600 }}>Conversão: {taxa}%</p>
+    </div>
+  );
+};
+
 const renderBarLabel = (props: any) => {
   const { x, y, width, value } = props;
   if (value == null || value === 0) return null;
