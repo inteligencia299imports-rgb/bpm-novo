@@ -47,7 +47,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const dtParam = dateTo
       ? new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate(), 23, 59, 59, 999).toISOString()
       : null;
-    const lojaParam = filterLoja === 'todos' ? null : filterLoja;
+    const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
     const [kpisRes, avaliadoresRes, mensalRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
