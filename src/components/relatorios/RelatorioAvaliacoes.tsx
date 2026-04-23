@@ -147,6 +147,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                     const taxa = v.avaliacoes > 0 ? Math.round((total / v.avaliacoes) * 100) : 0;
                     return { ...v, totalAquisicoes: total, taxaConversao: taxa };
                   })
+                  .filter(v => v.totalAquisicoes > 0)
                   .sort((a, b) => b.totalAquisicoes - a.totalAquisicoes)}
                 barCategoryGap="25%"
                 margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}
