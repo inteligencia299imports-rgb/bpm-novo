@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { abbreviateName } from '@/lib/utils';
+import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, ArrowDownToLine, Repeat, Package } from 'lucide-react';
@@ -17,6 +18,9 @@ interface RelatorioAvaliacoesProps {
   onRegisterClear?: (fn: () => void) => void;
   onFilterChange?: (loja: string) => void;
 }
+
+const TIPOS_PROPRIA = new Set(['propria', 'própria', 'convertida', 'repasse', 'test-ride', 'test ride']);
+const TIPOS_CONSIGNADA = new Set(['consignada', 'consignacao', 'consignação']);
 
 const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
   const isMobile = useIsMobile();
@@ -49,15 +53,55 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       : null;
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
-    const [kpisRes, avaliadoresRes, mensalRes] = await Promise.all([
+    const [kpisRes, avaliadoresRes, mensalRes, detalhesRes, nomesRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
       supabase.rpc('relatorio_avaliacoes_avaliadores', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
+      fetchAllRange<any>(() => {
+        let query = supabase
+          .from('avaliacoes')
+          .select('avaliador_id,tipo_aquisicao,created_at,situacao,atendimentos!inner(interesse,loja)')
+          .neq('situacao', 'sem_avaliar')
+          .in('atendimentos.interesse', ['trocar', 'vender']);
+
+        if (dfParam) query = query.gte('created_at', dfParam);
+        if (dtParam) query = query.lte('created_at', dtParam);
+        if (lojaParam !== 'todos') query = query.eq('atendimentos.loja', lojaParam);
+
+        return query;
+      }),
+      supabase.from('user_roles').select('user_id,nome'),
     ]);
 
     setIndicadores(kpisRes.data || {});
-    const avalData = (avaliadoresRes.data || []) as any[];
-    setChartByAvaliador(avalData.map((v: any) => ({ ...v, nome: abbreviateName(v.nome || 'Desconhecido') })));
+
+    const rawAvaliadores = (avaliadoresRes.data || []) as any[];
+    const nomeById = new Map(((nomesRes.data || []) as any[]).map((item: any) => [item.user_id, item.nome || 'Desconhecido']));
+    const detalhesByAvaliador = new Map<string, { aqPropria: number; aqConsignada: number }>();
+
+    for (const item of (detalhesRes.data || []) as any[]) {
+      const avaliadorId = item.avaliador_id;
+      if (!avaliadorId) continue;
+      const tipo = String(item.tipo_aquisicao || '').trim().toLowerCase();
+      const atual = detalhesByAvaliador.get(avaliadorId) || { aqPropria: 0, aqConsignada: 0 };
+      if (TIPOS_PROPRIA.has(tipo)) atual.aqPropria += 1;
+      if (TIPOS_CONSIGNADA.has(tipo)) atual.aqConsignada += 1;
+      detalhesByAvaliador.set(avaliadorId, atual);
+    }
+
+    const avalData = rawAvaliadores.map((v: any) => {
+      const nomeCompleto = v.nome || 'Desconhecido';
+      const avaliadorId = [...nomeById.entries()].find(([, nome]) => nome === nomeCompleto)?.[0];
+      const detalhes = avaliadorId ? detalhesByAvaliador.get(avaliadorId) : undefined;
+      return {
+        ...v,
+        aqPropria: v.aqPropria ?? detalhes?.aqPropria ?? 0,
+        aqConsignada: v.aqConsignada ?? detalhes?.aqConsignada ?? 0,
+        nome: abbreviateName(nomeCompleto),
+      };
+    });
+
+    setChartByAvaliador(avalData);
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
   }, [dateFrom, dateTo, filterLoja]);
