@@ -1158,6 +1158,10 @@ export type Database = {
         Args: { _atendimento_id: string }
         Returns: boolean
       }
+      can_manage_contrato_compra: {
+        Args: { _atendimento_id: string; _user_id: string }
+        Returns: boolean
+      }
       can_manage_contrato_consignacao: {
         Args: { _avaliacao_id: string; _user_id: string }
         Returns: boolean
