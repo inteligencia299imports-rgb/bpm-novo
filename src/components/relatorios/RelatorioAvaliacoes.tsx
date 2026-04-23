@@ -78,21 +78,23 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
     const [mensalRes, detalhesBaseRes, nomesRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
-      fetchAllRange<any>(() => {
-        let query = supabase
+      fetchAllRange<any>(() =>
+        supabase
           .from('avaliacoes')
           .select('id,avaliador_id,tipo_aquisicao,created_at,updated_at,situacao,atendimentos!inner(interesse,loja)')
           .neq('situacao', 'sem_avaliar')
-          .in('atendimentos.interesse', ['trocar', 'vender']);
-
-        if (lojaParam !== 'todos') query = query.eq('atendimentos.loja', lojaParam);
-
-        return query;
-      }),
+          .in('atendimentos.interesse', ['trocar', 'vender']),
+      ),
       supabase.from('user_roles').select('user_id,nome'),
     ]);
 
-    const detalhesBase = (detalhesBaseRes.data || []) as any[];
+    const normLoja = (loja: string | null | undefined) =>
+      (loja || '').toUpperCase().includes('DUCATI') ? 'Ducati' : '299';
+
+    const detalhesBase = ((detalhesBaseRes.data || []) as any[]).filter((item: any) => {
+      if (lojaParam === 'todos') return true;
+      return normLoja(item.atendimentos?.loja) === lojaParam;
+    });
     const detalhesPeriodo = detalhesBase.filter((item: any) => isInDateRange(item.created_at, dfParam, dtParam));
     const aquisicaoIds = detalhesBase.map((item: any) => item.id).filter(Boolean);
     const historicosPorAvaliacao = new Map<string, string>();
