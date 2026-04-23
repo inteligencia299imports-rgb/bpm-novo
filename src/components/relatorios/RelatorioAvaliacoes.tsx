@@ -134,20 +134,31 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Qtd Aquisições</CardTitle>
             <div className="flex flex-wrap items-center gap-3 text-[11px]">
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#2F6F84' }} />Trocar</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Vender</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#2F6F84' }} />Aquisições</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Conversão (%)</span>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={chartH}>
-              <BarChart data={[...chartByAvaliador].sort((a, b) => (b.aqTrocar + b.aqVender) - (a.aqTrocar + a.aqVender))} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
+              <ComposedChart
+                data={[...chartByAvaliador]
+                  .map((v: any) => {
+                    const total = (v.aqTrocar || 0) + (v.aqVender || 0);
+                    const taxa = v.avaliacoes > 0 ? Math.round((total / v.avaliacoes) * 100) : 0;
+                    return { ...v, totalAquisicoes: total, taxaConversao: taxa };
+                  })
+                  .sort((a, b) => b.totalAquisicoes - a.totalAquisicoes)}
+                barCategoryGap="25%"
+                margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="nome" tick={xTickPropsName} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Bar dataKey="aqTrocar" name="Trocar" fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
-                <Bar dataKey="aqVender" name="Vender" fill="#E8913A" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
-              </BarChart>
+                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} unit="%" />
+                <Tooltip content={<AquisicoesAvaliadorTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
+                <Bar yAxisId="left" dataKey="totalAquisicoes" name="Aquisições" fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
+                <Line yAxisId="right" type="monotone" dataKey="taxaConversao" name="Conversão" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
+              </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -242,6 +253,24 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           {capitalize(entry.name)}: {entry.value}
         </p>
       ))}
+    </div>
+  );
+};
+
+const AquisicoesAvaliadorTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload || {};
+  const propria = d.aqPropria ?? 0;
+  const consignada = d.aqConsignada ?? 0;
+  const total = d.totalAquisicoes ?? (propria + consignada);
+  const taxa = d.taxaConversao ?? 0;
+  return (
+    <div style={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12, background: 'hsl(var(--background))', padding: '8px 12px' }}>
+      <p style={{ fontWeight: 700, marginBottom: 4 }}>{label}</p>
+      <p style={{ margin: 0, color: '#2F6F84' }}>Próprias: {propria}</p>
+      <p style={{ margin: 0, color: '#7e6d9b' }}>Consignadas: {consignada}</p>
+      <p style={{ margin: '4px 0 0', fontWeight: 600 }}>Total: {total}</p>
+      <p style={{ margin: 0, color: '#E8913A', fontWeight: 600 }}>Conversão: {taxa}%</p>
     </div>
   );
 };
