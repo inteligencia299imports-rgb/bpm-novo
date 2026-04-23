@@ -44,12 +44,15 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
   const loadData = useCallback(async () => {
     const dfParam = dateFrom ? dateFrom.toISOString() : null;
-    const dtParam = dateTo ? dateTo.toISOString() : null;
+    const dtParam = dateTo
+      ? new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate(), 23, 59, 59, 999).toISOString()
+      : null;
+    const lojaParam = filterLoja === 'todos' ? null : filterLoja;
 
     const [kpisRes, avaliadoresRes, mensalRes] = await Promise.all([
-      supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
-      supabase.rpc('relatorio_avaliacoes_avaliadores', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
-      supabase.rpc('relatorio_avaliacoes_mensal', { _loja: filterLoja }),
+      supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
+      supabase.rpc('relatorio_avaliacoes_avaliadores', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
+      supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
     ]);
 
     setIndicadores(kpisRes.data || {});
