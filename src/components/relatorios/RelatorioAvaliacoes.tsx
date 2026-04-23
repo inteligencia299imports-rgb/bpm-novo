@@ -76,7 +76,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       : null;
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
-    const [mensalRes, detalhesBaseRes, nomesRes] = await Promise.all([
+    const [mensalRes, detalhesBaseRes, nomesRes, kpisRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
       fetchAllRange<any>(() =>
         supabase
@@ -86,6 +86,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           .in('atendimentos.interesse', ['trocar', 'vender']),
       ),
       supabase.from('user_roles').select('user_id,nome'),
+      supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
     ]);
 
     const normLoja = (loja: string | null | undefined) =>
@@ -130,16 +131,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       return isInDateRange(dataAquisicao, dfParam, dtParam);
     });
 
-    setIndicadores({
-      total_avaliacoes: detalhesPeriodo.length,
-      total_aquisicoes: aquisicoesPeriodo.length,
-      aquisicoes_propria: aquisicoesPeriodo.filter((item: any) => TIPOS_PROPRIA.has(normalizeText(item.tipo_aquisicao))).length,
-      aquisicoes_consignada: aquisicoesPeriodo.filter((item: any) => TIPOS_CONSIGNADA.has(normalizeText(item.tipo_aquisicao))).length,
-      aquisicoes_convertida: aquisicoesPeriodo.filter((item: any) => normalizeText(item.tipo_aquisicao) === 'convertida').length,
-      entrada_direta: aquisicoesPeriodo.filter((item: any) => normalizeText(item.atendimentos?.interesse) === 'vender').length,
-      troca: aquisicoesPeriodo.filter((item: any) => normalizeText(item.atendimentos?.interesse) === 'trocar').length,
-      retiradas: detalhesPeriodo.filter((item: any) => normalizeText(item.situacao) === 'retirada').length,
-    });
+    setIndicadores((kpisRes.data as any) || {});
 
     const nomeById = new Map(((nomesRes.data || []) as any[]).map((item: any) => [item.user_id, item.nome || 'Desconhecido']));
     const chartMap = new Map<string, { nomeCompleto: string; avaliacoes: number; aqTrocar: number; aqVender: number; aqPropria: number; aqConsignada: number }>();
