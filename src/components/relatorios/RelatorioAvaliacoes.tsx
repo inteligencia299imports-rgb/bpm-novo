@@ -86,6 +86,17 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
   }
 
+  const indicadoresNormalizados = {
+    totalAvaliacoes: indicadores.total_avaliacoes ?? indicadores.qtdAvaliacoes ?? 0,
+    totalAquisicoes: indicadores.total_aquisicoes ?? indicadores.qtdAquisicoes ?? 0,
+    aquisicoesPropria: indicadores.aquisicoes_propria ?? indicadores.qtdProprias ?? 0,
+    aquisicoesConsignada: indicadores.aquisicoes_consignada ?? indicadores.qtdConsignadas ?? 0,
+    aquisicoesConvertida: indicadores.aquisicoes_convertida ?? indicadores.qtdConvertidas ?? 0,
+    entradaDireta: indicadores.entrada_direta ?? indicadores.qtdEntradaDireta ?? 0,
+    troca: indicadores.troca ?? indicadores.qtdTroca ?? 0,
+    retiradas: indicadores.retiradas ?? indicadores.qtdRetiradas ?? 0,
+  };
+
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
@@ -99,17 +110,17 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Avaliações" value={indicadores.qtdAvaliacoes ?? 0} gradient="teal" icon={<ClipboardCheck className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições" value={indicadores.qtdAquisicoes ?? 0} subtitle={`(${(indicadores.qtdAvaliacoes ?? 0) > 0 ? Math.floor(((indicadores.qtdAquisicoes ?? 0) / (indicadores.qtdAvaliacoes ?? 1)) * 100) : 0}%)`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições Próprias" value={indicadores.qtdProprias ?? 0} gradient="teal" icon={<Package className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições Consignadas" value={indicadores.qtdConsignadas ?? 0} gradient="teal" icon={<ArrowDownUp className="h-5 w-5" />} />
+        <IndicatorCard title="Avaliações" value={indicadoresNormalizados.totalAvaliacoes} gradient="teal" icon={<ClipboardCheck className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições" value={indicadoresNormalizados.totalAquisicoes} subtitle={`(${indicadoresNormalizados.totalAvaliacoes > 0 ? Math.floor((indicadoresNormalizados.totalAquisicoes / indicadoresNormalizados.totalAvaliacoes) * 100) : 0}%)`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições Próprias" value={indicadoresNormalizados.aquisicoesPropria} gradient="teal" icon={<Package className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições Consignadas" value={indicadoresNormalizados.aquisicoesConsignada} gradient="teal" icon={<ArrowDownUp className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Convertidas" value={indicadores.qtdConvertidas ?? 0} gradient="purple" icon={<Repeat className="h-5 w-5" />} />
-        <IndicatorCard title="Retiradas" value={indicadores.qtdRetiradas ?? 0} gradient="red" icon={<XCircle className="h-5 w-5" />} />
-        <IndicatorCard title="Entrada Direta" value={indicadores.qtdEntradaDireta ?? 0} gradient="emerald" icon={<ArrowDownToLine className="h-5 w-5" />} />
-        <IndicatorCard title="Troca" value={indicadores.qtdTroca ?? 0} gradient="emerald" icon={<ArrowRightLeft className="h-5 w-5" />} />
+        <IndicatorCard title="Convertidas" value={indicadoresNormalizados.aquisicoesConvertida} gradient="purple" icon={<Repeat className="h-5 w-5" />} />
+        <IndicatorCard title="Retiradas" value={indicadoresNormalizados.retiradas} gradient="red" icon={<XCircle className="h-5 w-5" />} />
+        <IndicatorCard title="Entrada Direta" value={indicadoresNormalizados.entradaDireta} gradient="emerald" icon={<ArrowDownToLine className="h-5 w-5" />} />
+        <IndicatorCard title="Troca" value={indicadoresNormalizados.troca} gradient="emerald" icon={<ArrowRightLeft className="h-5 w-5" />} />
       </div>
 
       {/* Section: Por Avaliador */}
