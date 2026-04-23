@@ -1457,7 +1457,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         </DialogContent>
       </Dialog>
 
-      {avaliacao?.situacao === 'adquirida' && avaliacao?.tipo_aquisicao === 'consignada' && (
+      {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao === 'consignada' && (
         <ContratoConsignacaoDialog
           open={contratoConsignacaoOpen}
           onOpenChange={setContratoConsignacaoOpen}
@@ -1465,7 +1465,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         />
       )}
 
-      {avaliacao?.situacao === 'adquirida' && isTipoPropria(avaliacao?.tipo_aquisicao) && (
+      {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && isTipoPropria(avaliacao?.tipo_aquisicao) && (
         <ContratoCompraDialog
           open={contratoCompraOpen}
           onOpenChange={setContratoCompraOpen}
