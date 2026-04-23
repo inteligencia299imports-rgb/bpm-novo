@@ -131,7 +131,12 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       return isInDateRange(dataAquisicao, dfParam, dtParam);
     });
 
-    setIndicadores((kpisRes.data as any) || {});
+    const totalAvaliacoesComAvaliador = detalhesPeriodo.filter((item: any) => Boolean(item.avaliador_id)).length;
+
+    setIndicadores({
+      ...((kpisRes.data as any) || {}),
+      total_avaliacoes: totalAvaliacoesComAvaliador,
+    });
 
     const nomeById = new Map(((nomesRes.data || []) as any[]).map((item: any) => [item.user_id, item.nome || 'Desconhecido']));
     const chartMap = new Map<string, { nomeCompleto: string; avaliacoes: number; aqTrocar: number; aqVender: number; aqPropria: number; aqConsignada: number }>();
