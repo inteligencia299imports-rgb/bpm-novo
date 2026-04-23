@@ -47,7 +47,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const dtParam = dateTo
       ? new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate(), 23, 59, 59, 999).toISOString()
       : null;
-    const lojaParam = filterLoja === 'todos' ? null : filterLoja;
+    const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
     const [kpisRes, avaliadoresRes, mensalRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
@@ -129,7 +129,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Qtd de Avaliações" data={[...chartByAvaliador].sort((a, b) => b.avaliacoes - a.avaliacoes)} dataKey="avaliacoes" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
+        <ChartCard title="Qtd de Avaliações" data={[...chartByAvaliador].filter(v => (v.avaliacoes || 0) > 0).sort((a, b) => b.avaliacoes - a.avaliacoes)} dataKey="avaliacoes" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Qtd Aquisições</CardTitle>
@@ -147,6 +147,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                     const taxa = v.avaliacoes > 0 ? Math.round((total / v.avaliacoes) * 100) : 0;
                     return { ...v, totalAquisicoes: total, taxaConversao: taxa };
                   })
+                  .filter(v => v.totalAquisicoes > 0)
                   .sort((a, b) => b.totalAquisicoes - a.totalAquisicoes)}
                 barCategoryGap="25%"
                 margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}
