@@ -76,8 +76,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       : null;
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
-    const [avaliadoresRes, mensalRes, detalhesBaseRes, nomesRes] = await Promise.all([
-      supabase.rpc('relatorio_avaliacoes_avaliadores', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
+    const [mensalRes, detalhesBaseRes, nomesRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
       fetchAllRange<any>(() => {
         let query = supabase
@@ -140,31 +139,49 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       retiradas: detalhesPeriodo.filter((item: any) => normalizeText(item.situacao) === 'retirada').length,
     });
 
-    const rawAvaliadores = (avaliadoresRes.data || []) as any[];
     const nomeById = new Map(((nomesRes.data || []) as any[]).map((item: any) => [item.user_id, item.nome || 'Desconhecido']));
-    const detalhesByAvaliador = new Map<string, { aqPropria: number; aqConsignada: number }>();
+    const chartMap = new Map<string, { nomeCompleto: string; avaliacoes: number; aqTrocar: number; aqVender: number; aqPropria: number; aqConsignada: number }>();
 
     for (const item of detalhesPeriodo) {
       const avaliadorId = item.avaliador_id;
       if (!avaliadorId) continue;
-      const tipo = normalizeText(item.tipo_aquisicao);
-      const atual = detalhesByAvaliador.get(avaliadorId) || { aqPropria: 0, aqConsignada: 0 };
-      if (TIPOS_PROPRIA.has(tipo)) atual.aqPropria += 1;
-      if (TIPOS_CONSIGNADA.has(tipo)) atual.aqConsignada += 1;
-      detalhesByAvaliador.set(avaliadorId, atual);
+      const atual = chartMap.get(avaliadorId) || {
+        nomeCompleto: nomeById.get(avaliadorId) || 'Desconhecido',
+        avaliacoes: 0,
+        aqTrocar: 0,
+        aqVender: 0,
+        aqPropria: 0,
+        aqConsignada: 0,
+      };
+      atual.avaliacoes += 1;
+      chartMap.set(avaliadorId, atual);
     }
 
-    const avalData = rawAvaliadores.map((v: any) => {
-      const nomeCompleto = v.nome || 'Desconhecido';
-      const avaliadorId = [...nomeById.entries()].find(([, nome]) => nome === nomeCompleto)?.[0];
-      const detalhes = avaliadorId ? detalhesByAvaliador.get(avaliadorId) : undefined;
-      return {
-        ...v,
-        aqPropria: v.aqPropria ?? detalhes?.aqPropria ?? 0,
-        aqConsignada: v.aqConsignada ?? detalhes?.aqConsignada ?? 0,
-        nome: abbreviateName(nomeCompleto),
+    for (const item of aquisicoesPeriodo) {
+      const avaliadorId = item.avaliador_id;
+      if (!avaliadorId) continue;
+      const tipo = normalizeText(item.tipo_aquisicao);
+      const interesse = normalizeText(item.atendimentos?.interesse);
+      const atual = chartMap.get(avaliadorId) || {
+        nomeCompleto: nomeById.get(avaliadorId) || 'Desconhecido',
+        avaliacoes: 0,
+        aqTrocar: 0,
+        aqVender: 0,
+        aqPropria: 0,
+        aqConsignada: 0,
       };
-    });
+      if (interesse === 'trocar') atual.aqTrocar += 1;
+      if (interesse === 'vender') atual.aqVender += 1;
+      if (TIPOS_PROPRIA.has(tipo)) atual.aqPropria += 1;
+      if (TIPOS_CONSIGNADA.has(tipo)) atual.aqConsignada += 1;
+      chartMap.set(avaliadorId, atual);
+    }
+
+    const avalData = Array.from(chartMap.values()).map((item) => ({
+      ...item,
+      nome: abbreviateName(item.nomeCompleto),
+      total: item.aqTrocar + item.aqVender,
+    }));
 
     setChartByAvaliador(avalData);
     setChartByMonth((mensalRes.data || []) as any[]);
