@@ -101,12 +101,19 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
     const loadContrato = async () => {
       setLoading(true);
       const atendimentoId = atendimento?.id;
-      const [{ data: contrato }, { data: histGerado }, { data: atFresh }] = await Promise.all([
+      if (!atendimentoId) {
+        setLoading(false);
+        return;
+      }
+      // Buscar contratos vinculados ao atendimento (pode haver de venda também),
+      // pegamos o que tem observação 'CONTRATO_COMPRA' nas observacoes_internas marker,
+      // ou criamos um novo. Para diferenciar do contrato de venda, usamos um marcador na coluna ipva_tipo='COMPRA'.
+      const [{ data: contratosList }, { data: histGerado }, { data: atFresh }] = await Promise.all([
         supabase
-          .from('contratos_consignacao')
+          .from('contratos')
           .select('*')
-          .eq('avaliacao_id', avaliacao.id)
-          .maybeSingle(),
+          .eq('atendimento_id', atendimentoId)
+          .eq('ipva_tipo', 'COMPRA'),
         supabase
           .from('status_history')
           .select('id')
@@ -114,22 +121,21 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
           .eq('entity_id', avaliacao.id)
           .like('status', 'CONTRATO COMPRA GERADO%')
           .limit(1),
-        atendimentoId
-          ? supabase.from('atendimentos').select('cpf_cnpj').eq('id', atendimentoId).maybeSingle()
-          : Promise.resolve({ data: null as any }),
+        supabase.from('atendimentos').select('cpf_cnpj').eq('id', atendimentoId).maybeSingle(),
       ]);
 
       setJaGerado(!!(histGerado && histGerado.length > 0));
 
+      const contrato = contratosList && contratosList.length > 0 ? contratosList[0] : null;
+
       if (contrato) {
         setContratoId(contrato.id);
-        // Fallback: prioriza dado do contrato; se vazio, usa o do atendimento
         setCpfCnpj(contrato.cpf_cnpj || atFresh?.cpf_cnpj || '');
         setValorQuitacao(contrato.valor_quitacao ? formatCurrencyInput(String(Math.round(contrato.valor_quitacao * 100))) : '');
         setValorFechamento(contrato.valor_fechamento ? formatCurrencyInput(String(Math.round(contrato.valor_fechamento * 100))) : '');
         setObsInternas(contrato.observacoes_internas || '');
         setObsContrato(contrato.observacoes_contrato || '');
-        setDataContrato(contrato.data_contrato ? new Date(contrato.data_contrato + 'T12:00:00') : undefined);
+        setDataContrato(contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined);
       } else {
         setContratoId(null);
         setCpfCnpj(atFresh?.cpf_cnpj || '');
@@ -146,27 +152,34 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
 
   const saveContrato = async (): Promise<string | null> => {
     setSaving(true);
+    const atendimentoId = atendimento?.id;
+    if (!atendimentoId) {
+      toast.error('Atendimento não encontrado');
+      setSaving(false);
+      return null;
+    }
     const payload: any = {
-      avaliacao_id: avaliacao.id,
+      atendimento_id: atendimentoId,
       cpf_cnpj: cpfCnpj || null,
-      valor_quitacao: valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : 0,
+      valor_quitacao: valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : null,
       valor_fechamento: parseCurrencyInput(valorFechamento) || null,
       observacoes_internas: obsInternas || null,
       observacoes_contrato: obsContrato || null,
-      data_contrato: dataContrato ? format(dataContrato, 'yyyy-MM-dd') : null,
+      data_sinal: dataContrato ? format(dataContrato, 'yyyy-MM-dd') : null,
+      ipva_tipo: 'COMPRA', // marcador para distinguir contrato de compra do de venda
     };
 
     // Sync CPF back to atendimentos
-    const atendimentoId = atendimento?.id;
-    if (atendimentoId && cpfCnpj) {
+    if (cpfCnpj) {
       await supabase.from('atendimentos').update({
         cpf_cnpj: cpfCnpj || null,
       }).eq('id', atendimentoId);
     }
 
     if (contratoId) {
-      const { error } = await supabase.from('contratos_consignacao').update(payload).eq('id', contratoId);
+      const { error } = await supabase.from('contratos').update(payload).eq('id', contratoId);
       if (error) {
+        console.error('Erro update contrato compra:', error);
         toast.error('Erro ao salvar contrato');
         setSaving(false);
         return null;
@@ -174,8 +187,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
       setSaving(false);
       return contratoId;
     } else {
-      const { data, error } = await supabase.from('contratos_consignacao').insert(payload).select().single();
+      const { data, error } = await supabase.from('contratos').insert(payload).select().single();
       if (error) {
+        console.error('Erro insert contrato compra:', error);
         toast.error('Erro ao criar contrato');
         setSaving(false);
         return null;
