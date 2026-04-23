@@ -76,7 +76,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       : null;
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
-    const [mensalRes, detalhesBaseRes, nomesRes] = await Promise.all([
+    const [mensalRes, detalhesBaseRes, nomesRes, kpisRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
       fetchAllRange<any>(() =>
         supabase
@@ -86,6 +86,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           .in('atendimentos.interesse', ['trocar', 'vender']),
       ),
       supabase.from('user_roles').select('user_id,nome'),
+      supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
     ]);
 
     const normLoja = (loja: string | null | undefined) =>
