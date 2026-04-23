@@ -799,11 +799,40 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 currentUrl={cnhUrl}
                 bucketPath={`docs/${at?.id}/cnh`}
                 onUploaded={async (url) => {
-                  await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', at?.id);
+                  if (!at?.id) {
+                    toast.error('Atendimento não carregado. Recarregue a página.');
+                    return;
+                  }
+                  const { data, error } = await supabase
+                    .from('atendimentos')
+                    .update({ cnh_url: url } as any)
+                    .eq('id', at.id)
+                    .select('id, cnh_url');
+                  if (error) {
+                    toast.error('Erro ao salvar CNH: ' + error.message);
+                    return;
+                  }
+                  if (!data || data.length === 0) {
+                    toast.error('Sem permissão para salvar a CNH neste atendimento.');
+                    return;
+                  }
                   setCnhUrl(url);
                 }}
                 onRemoved={async () => {
-                  await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', at?.id);
+                  if (!at?.id) return;
+                  const { data, error } = await supabase
+                    .from('atendimentos')
+                    .update({ cnh_url: null } as any)
+                    .eq('id', at.id)
+                    .select('id');
+                  if (error) {
+                    toast.error('Erro ao remover CNH: ' + error.message);
+                    return;
+                  }
+                  if (!data || data.length === 0) {
+                    toast.error('Sem permissão para remover a CNH.');
+                    return;
+                  }
                   setCnhUrl(null);
                 }}
               />
