@@ -711,12 +711,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {avaliacao?.situacao === 'adquirida' && avaliacao?.tipo_aquisicao === 'consignada' && (
+            {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao === 'consignada' && (
               <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
                 <FileText className="h-4 w-4" /> Contrato
               </Button>
             )}
-            {avaliacao?.situacao === 'adquirida' && isTipoPropria(avaliacao?.tipo_aquisicao) && (
+            {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && isTipoPropria(avaliacao?.tipo_aquisicao) && (
               <Button size="sm" onClick={() => setContratoCompraOpen(true)} className="gap-1.5">
                 <FileText className="h-4 w-4" /> Contrato
               </Button>
