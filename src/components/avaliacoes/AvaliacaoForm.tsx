@@ -191,6 +191,20 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       toast.error('Erro ao salvar dados da moto');
       console.error(error);
     } else {
+      // Sincronizar campos compartilhados com estoque (se a moto estiver no estoque)
+      const estoqueUpdate = {
+        marca: updateData.marca,
+        modelo: updateData.modelo,
+        placa: updateData.placa,
+        km: updateData.km,
+        ano_fabricacao: updateData.ano_fabricacao,
+        ano_modelo: updateData.ano_modelo,
+        cor: updateData.cor,
+        categoria: updateData.categoria,
+        cilindrada: updateData.cilindrada,
+        observacoes: updateData.observacoes,
+      };
+      await supabase.from('estoque').update(estoqueUpdate).eq('moto_avaliacao_id', moto.id);
       // Update local state
       if (avaliacao?.moto_avaliacao) {
         Object.assign(avaliacao.moto_avaliacao, updateData);
@@ -448,9 +462,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     if (error) {
       toast.error('Erro ao salvar avaliação');
     } else {
-      // Atualizar preço ação no estoque se aplicável
-      if (estoqueId && precoAcaoEdit.trim() !== '') {
-        await supabase.from('estoque').update({ preco_acao: parseCurrencyToNumber(precoAcaoEdit) }).eq('id', estoqueId);
+      // Atualizar preço ação e valor de fechamento (preco) no estoque se aplicável
+      if (estoqueId) {
+        const estoqueUpdate: any = {};
+        if (precoAcaoEdit.trim() !== '') estoqueUpdate.preco_acao = parseCurrencyToNumber(precoAcaoEdit);
+        if ((avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '') {
+          estoqueUpdate.preco = parseCurrencyToNumber(valorFechamentoEdit);
+        }
+        if (Object.keys(estoqueUpdate).length > 0) {
+          await supabase.from('estoque').update(estoqueUpdate).eq('id', estoqueId);
+        }
       }
       // Registrar no histórico
       const isFirstEvaluation = avaliacao?.situacao === 'sem_avaliar';
