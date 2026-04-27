@@ -68,6 +68,7 @@ const getStatusLabel = (value: string, entityType?: string) => {
 const getStatusHex = (value: string) => PREPARACAO_COLUMNS.find(c => c.value === value)?.hex || '#888';
 
 const ACTION_BUTTONS = [
+  { value: 'em_aberto', label: 'Em Aberto', icon: CheckCircle, targetStatus: 'em_aberto' },
   { value: 'pendente', label: 'Pendente', icon: AlertCircle, targetStatus: 'pendente' },
   { value: 'oficina', label: 'Oficina', icon: Wrench, targetStatus: 'oficina' },
   { value: 'servico_externo', label: 'Serviço Externo', icon: Truck, targetStatus: 'servico_externo' },
@@ -196,6 +197,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         indisponivel_manual: 'INDISPONÍVEL',
         bloqueio_juridico: 'BLOQUEIO JURÍDICO',
         reenviada_preparacao: 'REENVIADA PREPARAÇÃO',
+        pendencia_concluida: 'PENDÊNCIA CONCLUÍDA',
         ...Object.fromEntries(PREPARACAO_COLUMNS.map(c => [c.value, c.label])),
       };
       const remapStatus = (s: string) => STATUS_REMAP[s] || s;
@@ -336,8 +338,9 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         return;
       }
 
+      const isPendenciaConcluida = targetStatus === 'em_aberto' && statusFrom === 'pendente';
       const historySaved = await insertHistory({
-        statusTo: targetStatus,
+        statusTo: isPendenciaConcluida ? 'pendencia_concluida' : targetStatus,
         observacoes,
         changedBy: user.id,
         changedByName: userName,
@@ -346,7 +349,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       if (!historySaved) {
         toast.error('Status alterado, mas erro ao registrar histórico');
       } else {
-        toast.success(`Status alterado para ${getStatusLabel(targetStatus)}`);
+        toast.success(`Status alterado para ${isPendenciaConcluida ? 'Em Aberto' : getStatusLabel(targetStatus)}`);
       }
 
       setActiveStatus(targetStatus);
@@ -471,9 +474,11 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
   const visibleButtons = ACTION_BUTTONS.filter(btn => {
     if (btn.targetStatus === activeStatus) return false;
-    // For estoque tracking: only allow pendente, oficina, servico_externo
+    // "Em Aberto" só aparece quando o status atual é "pendente"
+    if (btn.value === 'em_aberto' && activeStatus !== 'pendente') return false;
+    // For estoque tracking: only allow em_aberto (se pendente), pendente, oficina, servico_externo
     if (isEstoqueTracking) {
-      return ['pendente', 'oficina', 'servico_externo'].includes(btn.value);
+      return ['em_aberto', 'pendente', 'oficina', 'servico_externo'].includes(btn.value);
     }
     if (btn.value === 'preparacao' && (activeStatus === 'aguardando_aceite' || activeStatus === 'aguardando_liberacao_estoque')) return false;
     if (btn.value === 'aceite' && activeStatus !== 'aguardando_aceite') return false;
