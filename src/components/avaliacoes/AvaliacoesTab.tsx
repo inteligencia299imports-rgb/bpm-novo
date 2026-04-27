@@ -98,7 +98,11 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
   }
 
   const getColumnAvaliacoes = (situacao: SituacaoAvaliacao) =>
-    avaliacoes.filter(a => a.situacao === situacao);
+    avaliacoes.filter(a => {
+      // Se já foi liberada para estoque, não exibir na coluna "Adquirida"
+      if (situacao === 'adquirida' && (a as any)._estoqueInfo) return false;
+      return a.situacao === situacao;
+    });
 
   return (
     <div className="space-y-5">
