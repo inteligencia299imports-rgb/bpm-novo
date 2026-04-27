@@ -68,6 +68,7 @@ const getStatusLabel = (value: string, entityType?: string) => {
 const getStatusHex = (value: string) => PREPARACAO_COLUMNS.find(c => c.value === value)?.hex || '#888';
 
 const ACTION_BUTTONS = [
+  { value: 'em_aberto', label: 'Em Aberto', icon: CheckCircle, targetStatus: 'em_aberto' },
   { value: 'pendente', label: 'Pendente', icon: AlertCircle, targetStatus: 'pendente' },
   { value: 'oficina', label: 'Oficina', icon: Wrench, targetStatus: 'oficina' },
   { value: 'servico_externo', label: 'Serviço Externo', icon: Truck, targetStatus: 'servico_externo' },
