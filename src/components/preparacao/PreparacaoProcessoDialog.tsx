@@ -472,9 +472,11 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
   const visibleButtons = ACTION_BUTTONS.filter(btn => {
     if (btn.targetStatus === activeStatus) return false;
-    // For estoque tracking: only allow pendente, oficina, servico_externo
+    // "Em Aberto" só aparece quando o status atual é "pendente"
+    if (btn.value === 'em_aberto' && activeStatus !== 'pendente') return false;
+    // For estoque tracking: only allow em_aberto (se pendente), pendente, oficina, servico_externo
     if (isEstoqueTracking) {
-      return ['pendente', 'oficina', 'servico_externo'].includes(btn.value);
+      return ['em_aberto', 'pendente', 'oficina', 'servico_externo'].includes(btn.value);
     }
     if (btn.value === 'preparacao' && (activeStatus === 'aguardando_aceite' || activeStatus === 'aguardando_liberacao_estoque')) return false;
     if (btn.value === 'aceite' && activeStatus !== 'aguardando_aceite') return false;
