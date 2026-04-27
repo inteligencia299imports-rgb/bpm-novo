@@ -268,6 +268,16 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     };
 
+    const addConsultaOption = () => {
+      if (!item.resultado_consulta || item.resultado_consulta.trim().length === 0) return;
+
+      options.push({
+        label: 'Consulta',
+        icon: <Search className="h-4 w-4" />,
+        action: () => setConsultaItem(item),
+      });
+    };
+
     // Vendedor: only show "Venda" if sold/reserved AND it's their sale
     if (isVendedor) {
       if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'sinal') && isOwnSale) {
@@ -278,6 +288,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         });
       }
 
+      addConsultaOption();
       addCrlvOption();
       return options;
     }
@@ -367,14 +378,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    // Consulta result option (only if consulta has been performed)
-    if (item.resultado_consulta && item.resultado_consulta.trim().length > 0) {
-      options.push({
-        label: 'Consulta',
-        icon: <Search className="h-4 w-4" />,
-        action: () => setConsultaItem(item),
-      });
-    }
+    addConsultaOption();
 
     addCrlvOption();
 
