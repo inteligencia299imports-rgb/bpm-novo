@@ -197,6 +197,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         indisponivel_manual: 'INDISPONÍVEL',
         bloqueio_juridico: 'BLOQUEIO JURÍDICO',
         reenviada_preparacao: 'REENVIADA PREPARAÇÃO',
+        pendencia_concluida: 'PENDÊNCIA CONCLUÍDA',
         ...Object.fromEntries(PREPARACAO_COLUMNS.map(c => [c.value, c.label])),
       };
       const remapStatus = (s: string) => STATUS_REMAP[s] || s;
