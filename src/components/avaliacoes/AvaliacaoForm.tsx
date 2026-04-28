@@ -352,10 +352,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
       // Fetch estoque data if available
       if (data.id) {
-        const { data: estoqueData } = await supabase.from('estoque').select('id, preco_acao, status').eq('avaliacao_id', data.id).maybeSingle();
+        const { data: estoqueData } = await supabase.from('estoque').select('id, preco_acao, preco, status').eq('avaliacao_id', data.id).maybeSingle();
         if (estoqueData) {
           setEstoqueId(estoqueData.id);
           setPrecoAcaoEdit(numberToCurrencyMask(estoqueData.preco_acao));
+          setPrecoTabelaEdit(numberToCurrencyMask(estoqueData.preco));
           setEstoqueVendido(estoqueData.status === 'vendido' || estoqueData.status === 'sinal');
         }
       }
