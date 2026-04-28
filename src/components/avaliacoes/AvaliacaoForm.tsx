@@ -468,7 +468,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       if (estoqueId) {
         const estoqueUpdate: any = {};
         if (precoAcaoEdit.trim() !== '') estoqueUpdate.preco_acao = parseCurrencyToNumber(precoAcaoEdit);
-        if ((avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '') {
+        if (precoTabelaEdit.trim() !== '') {
+          estoqueUpdate.preco = parseCurrencyToNumber(precoTabelaEdit);
+        } else if ((avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '') {
           estoqueUpdate.preco = parseCurrencyToNumber(valorFechamentoEdit);
         }
         if (Object.keys(estoqueUpdate).length > 0) {
