@@ -63,6 +63,10 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         mapped = mapped.map((m: any) => ({ ...m, _dataAquisicao: (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null }));
       }
 
+      // Filtra apenas aquisições a partir de 06/04/2026
+      const cutoff = new Date('2026-04-06T00:00:00').getTime();
+      mapped = mapped.filter((m: any) => m._dataAquisicao && new Date(m._dataAquisicao).getTime() >= cutoff);
+
       if (search.trim()) {
         const s = search.trim().toLowerCase();
         mapped = mapped.filter((a: any) =>
