@@ -310,6 +310,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [classificacao, setClassificacao] = useState('');
   const [valorFechamentoEdit, setValorFechamentoEdit] = useState('');
   const [precoAcaoEdit, setPrecoAcaoEdit] = useState('');
+  const [precoTabelaEdit, setPrecoTabelaEdit] = useState('');
   const [estoqueId, setEstoqueId] = useState<string | null>(null);
   const [dispensadaMotivo, setDispensadaMotivo] = useState<string | null>(null);
   const [savingDispensada, setSavingDispensada] = useState(false);
@@ -351,10 +352,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
       // Fetch estoque data if available
       if (data.id) {
-        const { data: estoqueData } = await supabase.from('estoque').select('id, preco_acao, status').eq('avaliacao_id', data.id).maybeSingle();
+        const { data: estoqueData } = await supabase.from('estoque').select('id, preco_acao, preco, status').eq('avaliacao_id', data.id).maybeSingle();
         if (estoqueData) {
           setEstoqueId(estoqueData.id);
           setPrecoAcaoEdit(numberToCurrencyMask(estoqueData.preco_acao));
+          setPrecoTabelaEdit(numberToCurrencyMask(estoqueData.preco));
           setEstoqueVendido(estoqueData.status === 'vendido' || estoqueData.status === 'sinal');
         }
       }
@@ -466,7 +468,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       if (estoqueId) {
         const estoqueUpdate: any = {};
         if (precoAcaoEdit.trim() !== '') estoqueUpdate.preco_acao = parseCurrencyToNumber(precoAcaoEdit);
-        if ((avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '') {
+        if (precoTabelaEdit.trim() !== '') {
+          estoqueUpdate.preco = parseCurrencyToNumber(precoTabelaEdit);
+        } else if ((avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '') {
           estoqueUpdate.preco = parseCurrencyToNumber(valorFechamentoEdit);
         }
         if (Object.keys(estoqueUpdate).length > 0) {
@@ -1275,9 +1279,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CurrencyField label="Avaliação Compra" value={avalCompra} onChange={handleCurrencyChange(setAvalCompra)} />
             <CurrencyField label="Previsão Custos Loja" value={prevCustosLoja} onChange={handleCurrencyChange(setPrevCustosLoja)} />
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
-            {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && (
-              <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} />
-            )}
             <div className="space-y-1.5">
               <Label>Preço Ação</Label>
               <div className="relative">
@@ -1291,6 +1292,24 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 />
               </div>
             </div>
+            {estoqueId && (
+              <div className="space-y-1.5">
+                <Label>Preço de Tabela</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <Input
+                    value={precoTabelaEdit}
+                    onChange={handleCurrencyChange(setPrecoTabelaEdit)}
+                    className="pl-10"
+                    placeholder="0,00"
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+            )}
+            {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && (
+              <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} />
+            )}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Classificação da Moto <span className="text-destructive">*</span></Label>
               <div className="flex gap-2">
