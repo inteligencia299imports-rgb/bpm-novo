@@ -16,6 +16,7 @@ interface Props {
   dateOverride?: string;
   readyIndicator?: 'ready' | 'not_ready' | null;
   readyReason?: string;
+  interesseLabelOverride?: string;
 }
 
 const formatPhone = (value: string): string => {
