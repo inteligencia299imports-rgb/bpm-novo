@@ -157,7 +157,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta), avaliacoes:avaliacao_id(tipo_aquisicao), atendimentos:atendimento_venda_id(vendedor_id)').order('data_entrada', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
-      if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
+      if (filterTipo !== 'todos' && filterTipo !== 'test-ride') query = query.eq('tipo', filterTipo);
       if (filterEmpresa !== 'todas') query = query.eq('empresa', filterEmpresa);
       const { data, error } = await query;
       if (error) throw error;
