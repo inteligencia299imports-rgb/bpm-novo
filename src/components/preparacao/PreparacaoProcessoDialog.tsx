@@ -212,7 +212,9 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       // Fetch pending release steps
       const tipo = avaliacaoData?.tipo_aquisicao;
       const pending: string[] = [];
-      if (isTipoPropria(tipo)) {
+      if (tipo === 'test-ride') {
+        // Test-ride não exige NF nem Vistoria
+      } else if (isTipoPropria(tipo)) {
         const { data: pcSteps } = await supabase.from('pos_compra_processos')
           .select('etapa, concluida').eq('avaliacao_id', avaliacaoId)
           .in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']);
@@ -279,10 +281,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       const tipoAquisicao = avaliacaoData?.tipo_aquisicao;
       const isConsignada = isTipoConsignada(tipoAquisicao);
       const isPropria = isTipoPropria(tipoAquisicao);
+      const isTestRide = tipoAquisicao === 'test-ride';
 
       const pendencias: string[] = [];
 
-      if (isPropria) {
+      if (isTestRide) {
+        // Test-ride não exige NF nem Vistoria para liberar
+      } else if (isPropria) {
         // Check pos_compra_processos for NF EMITIDA and VISTORIA/CADEIA DOMINIAL
         const { data: processos } = await supabase
           .from('pos_compra_processos')
