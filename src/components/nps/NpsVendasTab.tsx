@@ -68,6 +68,20 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
         );
       }
       setAtendimentos(mapped);
+
+      // Fetch ENTREGA DA MOTO step status for each atendimento
+      if (atIds.length > 0) {
+        const { data: pvData } = await supabase
+          .from('pos_venda_processos')
+          .select('atendimento_id, concluida')
+          .eq('etapa', 'ENTREGA DA MOTO')
+          .in('atendimento_id', atIds);
+        const map: Record<string, boolean> = {};
+        (pvData || []).forEach((p: any) => { map[p.atendimento_id] = !!p.concluida; });
+        setEntregaMap(map);
+      } else {
+        setEntregaMap({});
+      }
     }
     setLoading(false);
   }, [search]);
