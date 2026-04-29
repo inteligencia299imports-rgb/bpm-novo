@@ -54,15 +54,26 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
           moto_avaliacao: d.motos_avaliacao,
         }));
 
-      // Fetch acquisition dates from status_history
+      // Fetch acquisition dates from status_history (próprias/convertidas/repasse)
       const motoIds = mapped.map((m: any) => m.moto_avaliacao_id).filter(Boolean);
       const avalIds = mapped.map((m: any) => m.id).filter(Boolean);
+      const motoAcqMap: Record<string, string> = {};
       if (motoIds.length > 0) {
         const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', motoIds);
-        const motoAcqMap: Record<string, string> = {};
         (histData || []).forEach((h: any) => { motoAcqMap[h.entity_id] = h.created_at; });
-        mapped = mapped.map((m: any) => ({ ...m, _dataAquisicao: (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null }));
       }
+      // Fetch estoque.data_venda for consignadas (used as data_negociacao on view)
+      const estVendaMap: Record<string, string> = {};
+      if (avalIds.length > 0) {
+        const { data: estData } = await supabase.from('estoque').select('avaliacao_id, data_venda').in('avaliacao_id', avalIds).not('data_venda', 'is', null);
+        (estData || []).forEach((e: any) => { if (e.avaliacao_id) estVendaMap[e.avaliacao_id] = e.data_venda; });
+      }
+      mapped = mapped.map((m: any) => {
+        if (m.tipo_aquisicao === 'consignada') {
+          return { ...m, _dataAquisicao: estVendaMap[m.id] || null };
+        }
+        return { ...m, _dataAquisicao: (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null };
+      });
 
       // Readiness indicators
       const readyMap: Record<string, boolean> = {};
