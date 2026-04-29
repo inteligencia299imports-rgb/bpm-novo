@@ -341,7 +341,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    if (item.avaliacao_id && item.tipo === 'propria') {
+    if (item.avaliacao_id && item.tipo === 'propria' && item.tipo_aquisicao !== 'test-ride') {
       options.push({
         label: 'Pós-Compra',
         icon: <ShoppingCart className="h-4 w-4" />,
