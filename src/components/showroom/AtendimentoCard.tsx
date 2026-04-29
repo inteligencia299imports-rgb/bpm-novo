@@ -16,6 +16,7 @@ interface Props {
   dateOverride?: string;
   readyIndicator?: 'ready' | 'not_ready' | null;
   readyReason?: string;
+  interesseLabelOverride?: string;
 }
 
 const formatPhone = (value: string): string => {
@@ -61,7 +62,7 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator, readyReason }) => {
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator, readyReason, interesseLabelOverride }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
@@ -90,7 +91,7 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
               />
             )}
             <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary whitespace-nowrap">
-              {getInteresseLabel(atendimento.interesse)}
+              {interesseLabelOverride || getInteresseLabel(atendimento.interesse)}
             </Badge>
           </div>
 
