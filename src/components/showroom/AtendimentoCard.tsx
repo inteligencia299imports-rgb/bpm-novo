@@ -60,7 +60,7 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride }) => {
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
@@ -82,6 +82,12 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
             <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">
               {atendimento.nome_cliente}
             </h3>
+            {readyIndicator && (
+              <span
+                className={`w-2.5 h-2.5 rounded-full shrink-0 ${readyIndicator === 'ready' ? 'bg-green-500' : 'bg-red-500'}`}
+                title={readyIndicator === 'ready' ? 'Entrega da moto concluída' : 'Entrega da moto pendente'}
+              />
+            )}
             <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary whitespace-nowrap">
               {getInteresseLabel(atendimento.interesse)}
             </Badge>
