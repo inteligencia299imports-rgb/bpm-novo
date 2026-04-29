@@ -32,7 +32,6 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         atendimentos!inner (id, nome_cliente, telefone, loja, interesse, situacao, temperatura, created_at, updated_at, nps_status, sexo, uf, tipo_atendimento, vendedor_id, origem),
         motos_avaliacao!inner (id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada)
       `)
-      .in('situacao', ['adquirida', 'estoque', 'perdido'])
       .in('tipo_aquisicao', TODOS_TIPOS_AQUISICAO.filter(t => t !== 'test-ride'))
       .order('updated_at', { ascending: false });
 
