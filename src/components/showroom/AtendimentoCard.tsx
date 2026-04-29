@@ -14,6 +14,7 @@ interface Props {
   actions?: React.ReactNode;
   statusColorOverride?: string;
   dateOverride?: string;
+  readyIndicator?: 'ready' | 'not_ready' | null;
 }
 
 const formatPhone = (value: string): string => {
