@@ -63,7 +63,9 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
       const releaseReadyMap: Record<string, boolean> = {};
       allData.forEach((d: any) => {
         const tipo = d.tipo_aquisicao;
-        if (isTipoPropria(tipo)) {
+        if (tipo === 'test-ride') {
+          releaseReadyMap[d.id] = true;
+        } else if (isTipoPropria(tipo)) {
           const nf = pcData.find(p => p.avaliacao_id === d.id && p.etapa === 'NF EMITIDA');
           const vistoria = pcData.find(p => p.avaliacao_id === d.id && p.etapa === 'VISTORIA/CADEIA DOMINIAL');
           releaseReadyMap[d.id] = !!(nf?.concluida && vistoria?.concluida);

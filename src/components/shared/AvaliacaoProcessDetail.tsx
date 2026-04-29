@@ -252,7 +252,9 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       if (entityType === 'preparacao') {
         const tipo = item.tipo_aquisicao;
         const pending: string[] = [];
-        if (isTipoPropria(tipo)) {
+        if (tipo === 'test-ride') {
+          // Test-ride não exige NF nem Vistoria
+        } else if (isTipoPropria(tipo)) {
           const { data: pcSteps } = await supabase.from('pos_compra_processos')
             .select('etapa, concluida')
             .eq('avaliacao_id', item.id)
