@@ -61,37 +61,100 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', motoIds);
         (histData || []).forEach((h: any) => { motoAcqMap[h.entity_id] = h.created_at; });
       }
-      // Fetch estoque.data_venda for consignadas (used as data_negociacao on view)
+      // Fetch estoque info for consignadas (data_venda, status, atendimento_venda_id)
+      const estInfoMap: Record<string, { data_venda?: string; status?: string; atendimento_venda_id?: string }> = {};
       const estVendaMap: Record<string, string> = {};
       if (avalIds.length > 0) {
-        const { data: estData } = await supabase.from('estoque').select('avaliacao_id, data_venda').in('avaliacao_id', avalIds).not('data_venda', 'is', null);
-        (estData || []).forEach((e: any) => { if (e.avaliacao_id) estVendaMap[e.avaliacao_id] = e.data_venda; });
+        const { data: estData } = await supabase
+          .from('estoque')
+          .select('avaliacao_id, data_venda, status, atendimento_venda_id')
+          .in('avaliacao_id', avalIds);
+        (estData || []).forEach((e: any) => {
+          if (e.avaliacao_id) {
+            estInfoMap[e.avaliacao_id] = { data_venda: e.data_venda, status: e.status, atendimento_venda_id: e.atendimento_venda_id };
+            if (e.data_venda) estVendaMap[e.avaliacao_id] = e.data_venda;
+          }
+        });
       }
       mapped = mapped.map((m: any) => {
         if (m.tipo_aquisicao === 'consignada') {
-          return { ...m, _dataAquisicao: estVendaMap[m.id] || null };
+          // Consignada: data_negociacao = estoque.data_venda OU status_history.RETIRADA
+          return { ...m, _dataAquisicao: estVendaMap[m.id] || (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null };
         }
         return { ...m, _dataAquisicao: (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null };
       });
 
-      // Readiness indicators
+      // Readiness indicators (vw_envio_nps rules)
       const readyMap: Record<string, boolean> = {};
+      const reasonMap: Record<string, string> = {};
       if (avalIds.length > 0) {
-        const { data: pcData } = await supabase.from('pos_compra_processos').select('avaliacao_id, concluida').eq('etapa', 'DOCUMENTAÇÃO RECEBIDA').in('avaliacao_id', avalIds);
+        // Pós-compra DOCUMENTAÇÃO RECEBIDA (próprias/convertidas)
+        const { data: pcData } = await supabase
+          .from('pos_compra_processos')
+          .select('avaliacao_id, concluida')
+          .eq('etapa', 'DOCUMENTAÇÃO RECEBIDA')
+          .in('avaliacao_id', avalIds);
         const pcMap: Record<string, boolean> = {};
         (pcData || []).forEach((p: any) => { pcMap[p.avaliacao_id] = !!p.concluida; });
+
+        // RETIRADA via status_history (consignadas retiradas)
+        const { data: retData } = await supabase
+          .from('status_history')
+          .select('entity_id')
+          .eq('status', 'RETIRADA')
+          .in('entity_id', motoIds.length > 0 ? motoIds : ['00000000-0000-0000-0000-000000000000']);
+        const retSet = new Set((retData || []).map((r: any) => r.entity_id));
+
+        // PREVISÃO DE PAGAMENTO no pos_venda do atendimento_venda_id (consignadas vendidas)
+        const atendVendaIds = Object.values(estInfoMap)
+          .map(e => e.atendimento_venda_id)
+          .filter(Boolean) as string[];
+        const pvMap: Record<string, boolean> = {};
+        if (atendVendaIds.length > 0) {
+          const { data: pvData } = await supabase
+            .from('pos_venda_processos')
+            .select('atendimento_id, concluida')
+            .eq('etapa', 'PREVISÃO DE PAGAMENTO')
+            .in('atendimento_id', atendVendaIds);
+          (pvData || []).forEach((p: any) => { pvMap[p.atendimento_id] = !!p.concluida; });
+        }
 
         mapped.forEach((m: any) => {
           const tipo = m.tipo_aquisicao;
           if (tipo === 'propria' || tipo === 'convertida' || tipo === 'repasse') {
-            readyMap[m.id] = !!pcMap[m.id] && m.situacao === 'adquirida';
+            if (m.situacao !== 'adquirida') {
+              readyMap[m.id] = false;
+              reasonMap[m.id] = 'Pendente: avaliação ainda não está adquirida';
+            } else if (!pcMap[m.id]) {
+              readyMap[m.id] = false;
+              reasonMap[m.id] = 'Pendente: aguardando conclusão de "Documentação recebida" no Pós-Compra';
+            } else {
+              readyMap[m.id] = true;
+              reasonMap[m.id] = 'Pronto para envio: documentação recebida';
+            }
           } else if (tipo === 'consignada') {
-            // Consignada na NPS: já vendida no estoque (regra da view)
-            readyMap[m.id] = !!estVendaMap[m.id];
+            const est = estInfoMap[m.id];
+            const isRetirada = m.moto_avaliacao_id && retSet.has(m.moto_avaliacao_id);
+            const isVendida = est?.status === 'vendido' && !!est?.data_venda;
+            const pvOk = est?.atendimento_venda_id ? !!pvMap[est.atendimento_venda_id] : false;
+
+            if (isRetirada) {
+              readyMap[m.id] = true;
+              reasonMap[m.id] = 'Pronto para envio: moto retirada pelo consignante';
+            } else if (isVendida && pvOk) {
+              readyMap[m.id] = true;
+              reasonMap[m.id] = 'Pronto para envio: moto vendida e previsão de pagamento concluída';
+            } else if (isVendida && !pvOk) {
+              readyMap[m.id] = false;
+              reasonMap[m.id] = 'Pendente: aguardando conclusão de "Previsão de pagamento" no Pós-Venda';
+            } else {
+              readyMap[m.id] = false;
+              reasonMap[m.id] = 'Pendente: moto consignada ainda não foi vendida nem retirada';
+            }
           }
         });
       }
-      mapped = mapped.map((m: any) => ({ ...m, _ready: readyMap[m.id] || false }));
+      mapped = mapped.map((m: any) => ({ ...m, _ready: readyMap[m.id] || false, _readyReason: reasonMap[m.id] || '' }));
 
       // Filtra apenas aquisições a partir de 06/04/2026 (data_negociacao definida)
       const cutoff = new Date('2026-04-06T00:00:00').getTime();
@@ -202,6 +265,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                           dateOverride={a._dataAquisicao || undefined}
                           statusColorOverride={SITUACOES_NPS.find(s => s.value === (a.nps_status || 'em_aberto'))?.hex}
                           readyIndicator={a._ready ? 'ready' : 'not_ready'}
+                          readyReason={a._readyReason}
                           actions={
                             <>
                               {(a.nps_status || 'em_aberto') === 'enviado' && (

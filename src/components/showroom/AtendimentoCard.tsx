@@ -15,6 +15,7 @@ interface Props {
   statusColorOverride?: string;
   dateOverride?: string;
   readyIndicator?: 'ready' | 'not_ready' | null;
+  readyReason?: string;
 }
 
 const formatPhone = (value: string): string => {
@@ -60,7 +61,7 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator }) => {
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator, readyReason }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
@@ -85,7 +86,7 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
             {readyIndicator && (
               <span
                 className={`w-2.5 h-2.5 rounded-full shrink-0 ${readyIndicator === 'ready' ? 'bg-green-500' : 'bg-red-500'}`}
-                title={readyIndicator === 'ready' ? 'Entrega da moto concluída' : 'Entrega da moto pendente'}
+                title={readyReason || (readyIndicator === 'ready' ? 'Pronto para envio' : 'Pendente')}
               />
             )}
             <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary whitespace-nowrap">
