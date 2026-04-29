@@ -79,6 +79,9 @@ interface EstoqueItem {
   vendedor_nome?: string | null;
   // From atendimentos join (for ownership check)
   venda_vendedor_id?: string | null;
+  // From avaliacoes join
+  tipo_aquisicao?: string | null;
+  displayTipo?: string | null;
 }
 
 // Navigation target type removed - using EstoqueNavTarget from props
