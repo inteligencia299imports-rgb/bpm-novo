@@ -564,8 +564,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       toast.error('Selecione o tipo de aquisição');
       return;
     }
-    // Para tipos que não são consignada, exigir CNH, CRLV e consulta
-    if (tipoSelecionado !== 'consignada') {
+    // Para tipos que não são consignada nem test-ride, exigir CNH, CRLV e consulta
+    if (tipoSelecionado !== 'consignada' && tipoSelecionado !== 'test-ride') {
       if (!cnhUrl || !crlvUrl) {
         toast.error('CNH e CRLV são obrigatórios para adquirir como ' + (getTipoAquisicaoLabel(tipoSelecionado) || tipoSelecionado));
         return;
