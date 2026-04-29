@@ -18,6 +18,7 @@ interface NpsVendasTabProps {
 const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
   const { user, userName, role } = useAuth();
   const [atendimentos, setAtendimentos] = useState<any[]>([]);
+  const [entregaMap, setEntregaMap] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [respostasDialog, setRespostasDialog] = useState<{ open: boolean; atendimentoId: string; nomeCliente: string }>({ open: false, atendimentoId: '', nomeCliente: '' });
