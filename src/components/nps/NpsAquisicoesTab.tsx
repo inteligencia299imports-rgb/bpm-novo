@@ -56,12 +56,47 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
 
       // Fetch acquisition dates from status_history
       const motoIds = mapped.map((m: any) => m.moto_avaliacao_id).filter(Boolean);
+      const avalIds = mapped.map((m: any) => m.id).filter(Boolean);
       if (motoIds.length > 0) {
         const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', motoIds);
         const motoAcqMap: Record<string, string> = {};
         (histData || []).forEach((h: any) => { motoAcqMap[h.entity_id] = h.created_at; });
         mapped = mapped.map((m: any) => ({ ...m, _dataAquisicao: (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null }));
       }
+
+      // Readiness indicators
+      const readyMap: Record<string, boolean> = {};
+      if (avalIds.length > 0) {
+        const [{ data: pcData }, { data: cgData }, { data: retData }] = await Promise.all([
+          supabase.from('pos_compra_processos').select('avaliacao_id, concluida').eq('etapa', 'DOCUMENTAÇÃO RECEBIDA').in('avaliacao_id', avalIds),
+          supabase.from('consignacao_processos').select('avaliacao_id, concluida').eq('etapa', 'NF EMITIDA').in('avaliacao_id', avalIds),
+          supabase.from('status_history').select('entity_id').eq('entity_type', 'avaliacao').eq('status', 'RETIRADA').in('entity_id', avalIds),
+        ]);
+        const pcMap: Record<string, boolean> = {};
+        (pcData || []).forEach((p: any) => { pcMap[p.avaliacao_id] = !!p.concluida; });
+        const cgMap: Record<string, boolean> = {};
+        (cgData || []).forEach((c: any) => { cgMap[c.avaliacao_id] = !!c.concluida; });
+        const retSet = new Set((retData || []).map((r: any) => r.entity_id));
+
+        mapped.forEach((m: any) => {
+          const tipo = m.tipo_aquisicao;
+          if (tipo === 'propria' || tipo === 'convertida' || tipo === 'repasse') {
+            readyMap[m.id] = !!pcMap[m.id] && m.situacao === 'adquirida';
+          } else if (tipo === 'consignada') {
+            if (retSet.has(m.id)) {
+              readyMap[m.id] = true;
+            } else if (m.situacao !== 'perdido') {
+              readyMap[m.id] = !!cgMap[m.id];
+            } else {
+              readyMap[m.id] = false;
+            }
+          }
+        });
+      }
+      mapped = mapped.map((m: any) => ({ ...m, _ready: readyMap[m.id] || false }));
+
+      // Exclude perdido that aren't retiradas
+      mapped = mapped.filter((m: any) => m.situacao !== 'perdido' || readyMap[m.id]);
 
       // Filtra apenas aquisições a partir de 06/04/2026
       const cutoff = new Date('2026-04-06T00:00:00').getTime();
