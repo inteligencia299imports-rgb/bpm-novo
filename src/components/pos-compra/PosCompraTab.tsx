@@ -42,7 +42,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
 
     const estResult = await supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null);
     const result = await fetchAllRange(() =>
-      supabase.from('avaliacoes').select(selectStr).in('tipo_aquisicao', TIPOS_PROPRIA).order('updated_at', { ascending: false })
+      supabase.from('avaliacoes').select(selectStr).in('tipo_aquisicao', TIPOS_PROPRIA.filter(t => t !== 'test-ride')).order('updated_at', { ascending: false })
     );
     const error = result.error;
     const data = result.data || [];
