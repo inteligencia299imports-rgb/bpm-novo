@@ -86,7 +86,7 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
             {readyIndicator && (
               <span
                 className={`w-2.5 h-2.5 rounded-full shrink-0 ${readyIndicator === 'ready' ? 'bg-green-500' : 'bg-red-500'}`}
-                title={readyIndicator === 'ready' ? 'Entrega da moto concluída' : 'Entrega da moto pendente'}
+                title={readyReason || (readyIndicator === 'ready' ? 'Pronto para envio' : 'Pendente')}
               />
             )}
             <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary whitespace-nowrap">
