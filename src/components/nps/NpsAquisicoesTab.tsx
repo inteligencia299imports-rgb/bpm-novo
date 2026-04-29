@@ -122,10 +122,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         mapped.forEach((m: any) => {
           const tipo = m.tipo_aquisicao;
           if (tipo === 'propria' || tipo === 'convertida' || tipo === 'repasse') {
-            if (m.situacao !== 'adquirida') {
-              readyMap[m.id] = false;
-              reasonMap[m.id] = 'Pendente: avaliação ainda não está adquirida';
-            } else if (!pcMap[m.id]) {
+            if (!pcMap[m.id]) {
               readyMap[m.id] = false;
               reasonMap[m.id] = 'Pendente: aguardando conclusão de "Documentação recebida" no Pós-Compra';
             } else {
