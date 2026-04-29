@@ -18,6 +18,7 @@ interface NpsVendasTabProps {
 const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
   const { user, userName, role } = useAuth();
   const [atendimentos, setAtendimentos] = useState<any[]>([]);
+  const [entregaMap, setEntregaMap] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [respostasDialog, setRespostasDialog] = useState<{ open: boolean; atendimentoId: string; nomeCliente: string }>({ open: false, atendimentoId: '', nomeCliente: '' });
@@ -67,6 +68,20 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
         );
       }
       setAtendimentos(mapped);
+
+      // Fetch ENTREGA DA MOTO step status for each atendimento
+      if (atIds.length > 0) {
+        const { data: pvData } = await supabase
+          .from('pos_venda_processos')
+          .select('atendimento_id, concluida')
+          .eq('etapa', 'ENTREGA DA MOTO')
+          .in('atendimento_id', atIds);
+        const map: Record<string, boolean> = {};
+        (pvData || []).forEach((p: any) => { map[p.atendimento_id] = !!p.concluida; });
+        setEntregaMap(map);
+      } else {
+        setEntregaMap({});
+      }
     }
     setLoading(false);
   }, [search]);
@@ -163,6 +178,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                           onClick={() => onNavigateToShowroom(a.id)}
                           dateOverride={a.data_venda || undefined}
                           statusColorOverride={SITUACOES_NPS.find(s => s.value === (a.nps_status || 'em_aberto'))?.hex}
+                          readyIndicator={entregaMap[a.id] ? 'ready' : 'not_ready'}
                           actions={
                             <>
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
