@@ -91,7 +91,7 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
               />
             )}
             <Badge variant="outline" className="text-[10px] shrink-0 border-primary/30 text-primary whitespace-nowrap">
-              {getInteresseLabel(atendimento.interesse)}
+              {interesseLabelOverride || getInteresseLabel(atendimento.interesse)}
             </Badge>
           </div>
 
