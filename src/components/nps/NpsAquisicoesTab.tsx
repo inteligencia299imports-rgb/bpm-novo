@@ -265,6 +265,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                           dateOverride={a._dataAquisicao || undefined}
                           statusColorOverride={SITUACOES_NPS.find(s => s.value === (a.nps_status || 'em_aberto'))?.hex}
                           readyIndicator={a._ready ? 'ready' : 'not_ready'}
+                          readyReason={a._readyReason}
                           actions={
                             <>
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
