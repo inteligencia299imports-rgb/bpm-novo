@@ -178,6 +178,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                           onClick={() => onNavigateToShowroom(a.id)}
                           dateOverride={a.data_venda || undefined}
                           statusColorOverride={SITUACOES_NPS.find(s => s.value === (a.nps_status || 'em_aberto'))?.hex}
+                          readyIndicator={entregaMap[a.id] ? 'ready' : 'not_ready'}
                           actions={
                             <>
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
