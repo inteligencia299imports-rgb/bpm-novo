@@ -170,7 +170,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           for (const r of roles) vendedorMap[r.user_id] = r.nome;
         }
       }
-      const mapped = (data || []).map((d: any) => ({
+      let mapped = (data || []).map((d: any) => ({
         ...d,
         tem_manual: d.motos_avaliacao?.tem_manual ?? null,
         tem_chave_reserva: d.motos_avaliacao?.tem_chave_reserva ?? null,
@@ -179,7 +179,15 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         resultado_consulta: d.motos_avaliacao?.resultado_consulta ?? null,
         venda_vendedor_id: d.atendimentos?.vendedor_id ?? null,
         vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
+        tipo_aquisicao: d.avaliacoes?.tipo_aquisicao ?? null,
+        displayTipo: d.avaliacoes?.tipo_aquisicao || d.tipo,
       }));
+      // Client-side filter: test-ride
+      if (filterTipo === 'test-ride') {
+        mapped = mapped.filter((m: any) => m.tipo_aquisicao === 'test-ride');
+      } else if (filterTipo === 'propria') {
+        mapped = mapped.filter((m: any) => m.tipo_aquisicao !== 'test-ride');
+      }
       setItems(mapped);
 
       // Fetch which items have history
