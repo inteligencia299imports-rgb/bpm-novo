@@ -62,7 +62,7 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator, readyReason }) => {
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator, readyReason, interesseLabelOverride }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
