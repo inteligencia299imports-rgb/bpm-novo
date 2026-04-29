@@ -179,6 +179,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                           dateOverride={a.data_venda || undefined}
                           statusColorOverride={SITUACOES_NPS.find(s => s.value === (a.nps_status || 'em_aberto'))?.hex}
                           readyIndicator={entregaMap[a.id] ? 'ready' : 'not_ready'}
+                          readyReason={entregaMap[a.id] ? 'Pronto para envio: entrega da moto concluída' : 'Pendente: aguardando conclusão da etapa "Entrega da moto" no Pós-Venda'}
                           actions={
                             <>
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
