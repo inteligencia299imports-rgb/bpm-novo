@@ -79,6 +79,9 @@ interface EstoqueItem {
   vendedor_nome?: string | null;
   // From atendimentos join (for ownership check)
   venda_vendedor_id?: string | null;
+  // From avaliacoes join
+  tipo_aquisicao?: string | null;
+  displayTipo?: string | null;
 }
 
 // Navigation target type removed - using EstoqueNavTarget from props
@@ -154,10 +157,10 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta), atendimentos:atendimento_venda_id(vendedor_id)').order('data_entrada', { ascending: false });
+      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta), avaliacoes:avaliacao_id(tipo_aquisicao), atendimentos:atendimento_venda_id(vendedor_id)').order('data_entrada', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
-      if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
+      if (filterTipo !== 'todos' && filterTipo !== 'test-ride') query = query.eq('tipo', filterTipo);
       if (filterEmpresa !== 'todas') query = query.eq('empresa', filterEmpresa);
       const { data, error } = await query;
       if (error) throw error;
@@ -170,7 +173,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           for (const r of roles) vendedorMap[r.user_id] = r.nome;
         }
       }
-      const mapped = (data || []).map((d: any) => ({
+      let mapped = (data || []).map((d: any) => ({
         ...d,
         tem_manual: d.motos_avaliacao?.tem_manual ?? null,
         tem_chave_reserva: d.motos_avaliacao?.tem_chave_reserva ?? null,
@@ -179,7 +182,15 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         resultado_consulta: d.motos_avaliacao?.resultado_consulta ?? null,
         venda_vendedor_id: d.atendimentos?.vendedor_id ?? null,
         vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
+        tipo_aquisicao: d.avaliacoes?.tipo_aquisicao ?? null,
+        displayTipo: d.avaliacoes?.tipo_aquisicao || d.tipo,
       }));
+      // Client-side filter: test-ride
+      if (filterTipo === 'test-ride') {
+        mapped = mapped.filter((m: any) => m.tipo_aquisicao === 'test-ride');
+      } else if (filterTipo === 'propria') {
+        mapped = mapped.filter((m: any) => m.tipo_aquisicao !== 'test-ride');
+      }
       setItems(mapped);
 
       // Fetch which items have history
@@ -330,7 +341,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    if (item.avaliacao_id && item.tipo === 'propria') {
+    if (item.avaliacao_id && item.tipo === 'propria' && item.tipo_aquisicao !== 'test-ride') {
       options.push({
         label: 'Pós-Compra',
         icon: <ShoppingCart className="h-4 w-4" />,
@@ -446,6 +457,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                   <SelectItem value="todos">Todos os tipos</SelectItem>
                   <SelectItem value="propria">Própria</SelectItem>
                   <SelectItem value="consignada">Consignada</SelectItem>
+                  <SelectItem value="test-ride">Test-Ride</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
@@ -549,8 +561,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             )}
                             <span className="text-muted-foreground">Tipo</span>
                             <span className="text-foreground capitalize">
-                              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(item.tipo)}`}>
-                                {getTipoAquisicaoLabel(item.tipo) || item.tipo}
+                              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(item.displayTipo || item.tipo)}`}>
+                                {getTipoAquisicaoLabel(item.displayTipo || item.tipo) || item.tipo}
                               </Badge>
                             </span>
                             {item.empresa && (
