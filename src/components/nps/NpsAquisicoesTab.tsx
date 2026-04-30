@@ -292,7 +292,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                           reason = a._readyReason;
                         } else if (status === 'enviado') {
                           if (a._npsSent === 'sent') { indicator = 'ready'; reason = 'NPS ENVIADO'; }
-                          else if (a._npsSent === 'invalid') { indicator = 'not_ready'; reason = 'NPS NÃO ENVIADO (NÚMERO INVÁLIDO)'; }
+                          else if (a._npsSent === 'invalid') { indicator = 'not_ready'; reason = 'NPS NÃO ENVIADO'; }
                         }
                         return (
                         <AtendimentoCard
