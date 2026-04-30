@@ -196,7 +196,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                             <>
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
                                 <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
-                                  <Send className="h-3 w-3" /> Reenviar Pesquisa
+                                  <Copy className="h-3 w-3" /> Copiar Link
                                 </Button>
                               )}
                               {(a.nps_status || 'em_aberto') === 'respondido' && (
