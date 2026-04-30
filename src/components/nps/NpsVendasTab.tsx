@@ -238,7 +238,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                             </>
                           }
                         />
-                      ))
+                      );})
                     )}
                   </div>
                 </div>
