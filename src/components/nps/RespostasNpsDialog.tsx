@@ -50,7 +50,7 @@ const RespostasNpsDialog: React.FC<RespostasNpsDialogProps> = ({ open, onOpenCha
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg">
-            Respostas NPS {nomeCliente ? `— ${nomeCliente}` : ''}
+            NPS{nomeCliente ? ` - ${nomeCliente}` : ''}
           </DialogTitle>
         </DialogHeader>
 
