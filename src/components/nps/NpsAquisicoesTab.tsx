@@ -161,11 +161,11 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
           .from('status_history')
           .select('entity_id, status, created_at')
           .in('entity_id', atIds)
-          .in('status', ['NPS ENVIADO', 'NPS NÃO ENVIADO (NÚMERO INVÁLIDO)'])
+          .in('status', ['NPS ENVIADO', 'NPS ENVIADO MANUALMENTE', 'NPS NÃO ENVIADO'])
           .order('created_at', { ascending: false });
         (shData || []).forEach((r: any) => {
           if (npsSentMap[r.entity_id]) return;
-          npsSentMap[r.entity_id] = r.status === 'NPS ENVIADO' ? 'sent' : 'invalid';
+          npsSentMap[r.entity_id] = r.status === 'NPS NÃO ENVIADO' ? 'invalid' : 'sent';
         });
       }
       mapped = mapped.map((m: any) => ({ ...m, _npsSent: npsSentMap[m.atendimento_id] || null }));
