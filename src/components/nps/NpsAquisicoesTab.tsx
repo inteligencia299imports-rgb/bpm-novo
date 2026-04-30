@@ -194,8 +194,20 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     const telefone = item.atendimento?.telefone?.replace(/\D/g, '') || '';
     const atendimentoId = item.atendimento_id;
     const previousStatus = item.nps_status || 'em_aberto';
-    const url = `https://wa.me/55${telefone}?text=https%3A%2F%2Ftally.so%2Fr%2FVLZ5Ej%3Fid%3D${atendimentoId}`;
-    window.open(url, '_blank');
+    const link = `https://tally.so/r/VLZ5Ej?id=${atendimentoId}`;
+
+    if (previousStatus === 'enviado') {
+      try {
+        await navigator.clipboard.writeText(link);
+        toast.success('Link copiado');
+      } catch {
+        toast.error('Não foi possível copiar o link');
+        return;
+      }
+    } else {
+      const url = `https://wa.me/55${telefone}?text=${encodeURIComponent(link)}`;
+      window.open(url, '_blank');
+    }
 
     const updates = { nps_status: 'enviado', nps_enviado_at: new Date().toISOString() };
     const { error } = await supabase.from('avaliacoes').update(updates).eq('id', item.id);
@@ -208,9 +220,9 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         status: 'enviado',
         changed_by: user?.id,
         changed_by_name: userName,
-        observacoes: previousStatus === 'enviado' ? 'Pesquisa reenviada' : 'Pesquisa enviada',
+        observacoes: previousStatus === 'enviado' ? 'Pesquisa reenviada (link copiado)' : 'Pesquisa enviada',
       });
-      toast.success(previousStatus === 'enviado' ? 'Pesquisa reenviada' : 'Pesquisa enviada');
+      if (previousStatus !== 'enviado') toast.success('Pesquisa enviada');
       fetchData();
     }
   };
