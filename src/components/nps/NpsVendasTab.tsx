@@ -19,6 +19,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
   const { user, userName, role } = useAuth();
   const [atendimentos, setAtendimentos] = useState<any[]>([]);
   const [entregaMap, setEntregaMap] = useState<Record<string, boolean>>({});
+  const [npsSentMap, setNpsSentMap] = useState<Record<string, 'sent' | 'invalid'>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [respostasDialog, setRespostasDialog] = useState<{ open: boolean; atendimentoId: string; nomeCliente: string }>({ open: false, atendimentoId: '', nomeCliente: '' });
@@ -81,6 +82,24 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
         setEntregaMap(map);
       } else {
         setEntregaMap({});
+      }
+
+      // Fetch latest NPS status_history per atendimento
+      if (atIds.length > 0) {
+        const { data: shData } = await supabase
+          .from('status_history')
+          .select('entity_id, status, created_at')
+          .in('entity_id', atIds)
+          .in('status', ['NPS ENVIADO', 'NPS NÃO ENVIADO (NÚMERO INVÁLIDO)'])
+          .order('created_at', { ascending: false });
+        const sMap: Record<string, 'sent' | 'invalid'> = {};
+        (shData || []).forEach((r: any) => {
+          if (sMap[r.entity_id]) return; // first (latest) wins
+          sMap[r.entity_id] = r.status === 'NPS ENVIADO' ? 'sent' : 'invalid';
+        });
+        setNpsSentMap(sMap);
+      } else {
+        setNpsSentMap({});
       }
     }
     setLoading(false);
@@ -183,15 +202,27 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                     {items.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-8">Nenhum atendimento</p>
                     ) : (
-                      items.map(a => (
+                      items.map(a => {
+                        const status = a.nps_status || 'em_aberto';
+                        let indicator: 'ready' | 'not_ready' | null = null;
+                        let reason: string | undefined = undefined;
+                        if (status === 'em_aberto') {
+                          indicator = entregaMap[a.id] ? 'ready' : 'not_ready';
+                          reason = entregaMap[a.id] ? 'Pronto para envio: entrega da moto concluída' : 'Pendente: aguardando conclusão da etapa "Entrega da moto" no Pós-Venda';
+                        } else if (status === 'enviado') {
+                          const s = npsSentMap[a.id];
+                          if (s === 'sent') { indicator = 'ready'; reason = 'NPS ENVIADO'; }
+                          else if (s === 'invalid') { indicator = 'not_ready'; reason = 'NPS NÃO ENVIADO (NÚMERO INVÁLIDO)'; }
+                        }
+                        return (
                          <AtendimentoCard
                           key={a.id}
                           atendimento={a}
                           onClick={() => onNavigateToShowroom(a.id)}
                           dateOverride={a.data_venda || undefined}
-                          statusColorOverride={SITUACOES_NPS.find(s => s.value === (a.nps_status || 'em_aberto'))?.hex}
-                          readyIndicator={entregaMap[a.id] ? 'ready' : 'not_ready'}
-                          readyReason={entregaMap[a.id] ? 'Pronto para envio: entrega da moto concluída' : 'Pendente: aguardando conclusão da etapa "Entrega da moto" no Pós-Venda'}
+                          statusColorOverride={SITUACOES_NPS.find(s => s.value === status)?.hex}
+                          readyIndicator={indicator}
+                          readyReason={reason}
                           actions={
                             <>
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
@@ -207,7 +238,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                             </>
                           }
                         />
-                      ))
+                      );})
                     )}
                   </div>
                 </div>

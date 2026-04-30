@@ -153,6 +153,23 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       }
       mapped = mapped.map((m: any) => ({ ...m, _ready: readyMap[m.id] || false, _readyReason: reasonMap[m.id] || '' }));
 
+      // Latest NPS status_history per atendimento (NPS ENVIADO / NPS NÃO ENVIADO)
+      const atIds = mapped.map((m: any) => m.atendimento_id).filter(Boolean);
+      const npsSentMap: Record<string, 'sent' | 'invalid'> = {};
+      if (atIds.length > 0) {
+        const { data: shData } = await supabase
+          .from('status_history')
+          .select('entity_id, status, created_at')
+          .in('entity_id', atIds)
+          .in('status', ['NPS ENVIADO', 'NPS NÃO ENVIADO (NÚMERO INVÁLIDO)'])
+          .order('created_at', { ascending: false });
+        (shData || []).forEach((r: any) => {
+          if (npsSentMap[r.entity_id]) return;
+          npsSentMap[r.entity_id] = r.status === 'NPS ENVIADO' ? 'sent' : 'invalid';
+        });
+      }
+      mapped = mapped.map((m: any) => ({ ...m, _npsSent: npsSentMap[m.atendimento_id] || null }));
+
       // Filtra apenas aquisições a partir de 06/04/2026 (data_negociacao definida)
       const cutoff = new Date('2026-04-06T00:00:00').getTime();
       mapped = mapped.filter((m: any) => m._dataAquisicao && new Date(m._dataAquisicao).getTime() >= cutoff);
@@ -266,15 +283,26 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                     {colItems.length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-8">Nenhuma avaliação</p>
                     ) : (
-                      colItems.map(a => (
+                      colItems.map(a => {
+                        const status = a.nps_status || 'em_aberto';
+                        let indicator: 'ready' | 'not_ready' | null = null;
+                        let reason: string | undefined = undefined;
+                        if (status === 'em_aberto') {
+                          indicator = a._ready ? 'ready' : 'not_ready';
+                          reason = a._readyReason;
+                        } else if (status === 'enviado') {
+                          if (a._npsSent === 'sent') { indicator = 'ready'; reason = 'NPS ENVIADO'; }
+                          else if (a._npsSent === 'invalid') { indicator = 'not_ready'; reason = 'NPS NÃO ENVIADO (NÚMERO INVÁLIDO)'; }
+                        }
+                        return (
                         <AtendimentoCard
                           key={a.id}
                           atendimento={a._atendimentoCard}
                           onClick={() => onNavigateToShowroom(a.atendimento_id)}
                           dateOverride={a._dataAquisicao || undefined}
-                          statusColorOverride={SITUACOES_NPS.find(s => s.value === (a.nps_status || 'em_aberto'))?.hex}
-                          readyIndicator={a._ready ? 'ready' : 'not_ready'}
-                          readyReason={a._readyReason}
+                          statusColorOverride={SITUACOES_NPS.find(s => s.value === status)?.hex}
+                          readyIndicator={indicator}
+                          readyReason={reason}
                           interesseLabelOverride={a.tipo_aquisicao === 'consignada' ? 'Consignada' : a.tipo_aquisicao === 'propria' ? 'Própria' : a.tipo_aquisicao === 'convertida' ? 'Convertida' : a.tipo_aquisicao === 'repasse' ? 'Repasse' : undefined}
                           actions={
                             <>
@@ -291,7 +319,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                             </>
                           }
                         />
-                      ))
+                      );})
                     )}
                   </div>
                 </div>
