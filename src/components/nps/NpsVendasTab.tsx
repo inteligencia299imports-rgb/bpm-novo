@@ -83,6 +83,24 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
       } else {
         setEntregaMap({});
       }
+
+      // Fetch latest NPS status_history per atendimento
+      if (atIds.length > 0) {
+        const { data: shData } = await supabase
+          .from('status_history')
+          .select('entity_id, status, created_at')
+          .in('entity_id', atIds)
+          .in('status', ['NPS ENVIADO', 'NPS NÃO ENVIADO (NÚMERO INVÁLIDO)'])
+          .order('created_at', { ascending: false });
+        const sMap: Record<string, 'sent' | 'invalid'> = {};
+        (shData || []).forEach((r: any) => {
+          if (sMap[r.entity_id]) return; // first (latest) wins
+          sMap[r.entity_id] = r.status === 'NPS ENVIADO' ? 'sent' : 'invalid';
+        });
+        setNpsSentMap(sMap);
+      } else {
+        setNpsSentMap({});
+      }
     }
     setLoading(false);
   }, [search]);
