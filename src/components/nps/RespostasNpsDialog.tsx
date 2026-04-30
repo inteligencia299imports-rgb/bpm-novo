@@ -82,7 +82,7 @@ const RespostasNpsDialog: React.FC<RespostasNpsDialogProps> = ({ open, onOpenCha
               }
               return (
                 <div key={field} className="space-y-1">
-                  <label className="text-xs font-semibold text-blue-600 uppercase tracking-wide">{LABELS[field]}</label>
+                  <label className="text-xs font-semibold text-primary uppercase tracking-wide">{LABELS[field]}</label>
                   <p className={`text-sm rounded-md p-3 border whitespace-pre-wrap ${isNps ? npsClass : 'text-foreground bg-muted/50 border-border/50'}`}>{value}</p>
                 </div>
               );
