@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
-import { Search, X, Send, Eye } from 'lucide-react';
+import { Search, X, Send, Eye, Copy } from 'lucide-react';
 import { SITUACOES_NPS } from '@/types/crm';
 import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
@@ -111,8 +111,20 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
     const telefone = atendimento.telefone?.replace(/\D/g, '') || '';
     const id = atendimento.id;
     const previousStatus = atendimento.nps_status || 'em_aberto';
-    const url = `https://wa.me/55${telefone}?text=https%3A%2F%2Ftally.so%2Fr%2FOD4Gp7%3Fid%3D${id}`;
-    window.open(url, '_blank');
+    const link = `https://tally.so/r/OD4Gp7?id=${id}`;
+
+    if (previousStatus === 'enviado') {
+      try {
+        await navigator.clipboard.writeText(link);
+        toast.success('Link copiado');
+      } catch {
+        toast.error('Não foi possível copiar o link');
+        return;
+      }
+    } else {
+      const url = `https://wa.me/55${telefone}?text=${encodeURIComponent(link)}`;
+      window.open(url, '_blank');
+    }
 
     const updates = { nps_status: 'enviado', nps_enviado_at: new Date().toISOString() };
     const { error } = await supabase.from('atendimentos').update(updates).eq('id', id);
@@ -125,9 +137,9 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
         status: 'enviado',
         changed_by: user?.id,
         changed_by_name: userName,
-        observacoes: previousStatus === 'enviado' ? 'Pesquisa reenviada' : 'Pesquisa enviada',
+        observacoes: previousStatus === 'enviado' ? 'Pesquisa reenviada (link copiado)' : 'Pesquisa enviada',
       });
-      toast.success(previousStatus === 'enviado' ? 'Pesquisa reenviada' : 'Pesquisa enviada');
+      if (previousStatus !== 'enviado') toast.success('Pesquisa enviada');
       fetchData();
     }
   };
@@ -184,7 +196,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                             <>
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
                                 <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
-                                  <Send className="h-3 w-3" /> Reenviar Pesquisa
+                                  <Copy className="h-3 w-3" /> Copiar Link
                                 </Button>
                               )}
                               {(a.nps_status || 'em_aberto') === 'respondido' && (
