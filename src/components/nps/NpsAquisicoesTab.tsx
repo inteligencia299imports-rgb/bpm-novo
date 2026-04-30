@@ -161,11 +161,11 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
           .from('status_history')
           .select('entity_id, status, created_at')
           .in('entity_id', atIds)
-          .in('status', ['NPS ENVIADO', 'NPS NÃO ENVIADO (NÚMERO INVÁLIDO)'])
+          .in('status', ['NPS ENVIADO', 'NPS ENVIADO MANUALMENTE', 'NPS NÃO ENVIADO'])
           .order('created_at', { ascending: false });
         (shData || []).forEach((r: any) => {
           if (npsSentMap[r.entity_id]) return;
-          npsSentMap[r.entity_id] = r.status === 'NPS ENVIADO' ? 'sent' : 'invalid';
+          npsSentMap[r.entity_id] = r.status === 'NPS NÃO ENVIADO' ? 'invalid' : 'sent';
         });
       }
       mapped = mapped.map((m: any) => ({ ...m, _npsSent: npsSentMap[m.atendimento_id] || null }));
@@ -231,15 +231,16 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     if (error) {
       toast.error('Erro ao registrar envio');
     } else {
+      const isManual = previousStatus === 'enviado';
       await supabase.from('status_history').insert({
         entity_id: atendimentoId,
         entity_type: 'nps_aquisicao',
-        status: 'enviado',
+        status: isManual ? 'NPS ENVIADO MANUALMENTE' : 'enviado',
         changed_by: user?.id,
         changed_by_name: userName,
-        observacoes: previousStatus === 'enviado' ? 'Pesquisa reenviada (link copiado)' : 'Pesquisa enviada',
+        observacoes: isManual ? 'Pesquisa reenviada (link copiado)' : 'Pesquisa enviada',
       });
-      if (previousStatus !== 'enviado') toast.success('Pesquisa enviada');
+      if (!isManual) toast.success('Pesquisa enviada');
       fetchData();
     }
   };
@@ -292,7 +293,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                           reason = a._readyReason;
                         } else if (status === 'enviado') {
                           if (a._npsSent === 'sent') { indicator = 'ready'; reason = 'NPS ENVIADO'; }
-                          else if (a._npsSent === 'invalid') { indicator = 'not_ready'; reason = 'NPS NÃO ENVIADO (NÚMERO INVÁLIDO)'; }
+                          else if (a._npsSent === 'invalid') { indicator = 'not_ready'; reason = 'NPS NÃO ENVIADO'; }
                         }
                         return (
                         <AtendimentoCard
