@@ -153,6 +153,23 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       }
       mapped = mapped.map((m: any) => ({ ...m, _ready: readyMap[m.id] || false, _readyReason: reasonMap[m.id] || '' }));
 
+      // Latest NPS status_history per atendimento (NPS ENVIADO / NPS NÃO ENVIADO)
+      const atIds = mapped.map((m: any) => m.atendimento_id).filter(Boolean);
+      const npsSentMap: Record<string, 'sent' | 'invalid'> = {};
+      if (atIds.length > 0) {
+        const { data: shData } = await supabase
+          .from('status_history')
+          .select('entity_id, status, created_at')
+          .in('entity_id', atIds)
+          .in('status', ['NPS ENVIADO', 'NPS NÃO ENVIADO (NÚMERO INVÁLIDO)'])
+          .order('created_at', { ascending: false });
+        (shData || []).forEach((r: any) => {
+          if (npsSentMap[r.entity_id]) return;
+          npsSentMap[r.entity_id] = r.status === 'NPS ENVIADO' ? 'sent' : 'invalid';
+        });
+      }
+      mapped = mapped.map((m: any) => ({ ...m, _npsSent: npsSentMap[m.atendimento_id] || null }));
+
       // Filtra apenas aquisições a partir de 06/04/2026 (data_negociacao definida)
       const cutoff = new Date('2026-04-06T00:00:00').getTime();
       mapped = mapped.filter((m: any) => m._dataAquisicao && new Date(m._dataAquisicao).getTime() >= cutoff);
