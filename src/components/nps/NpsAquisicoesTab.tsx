@@ -319,7 +319,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                             </>
                           }
                         />
-                      ))
+                      );})
                     )}
                   </div>
                 </div>
