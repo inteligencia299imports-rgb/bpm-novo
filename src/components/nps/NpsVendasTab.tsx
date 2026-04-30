@@ -90,12 +90,12 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
           .from('status_history')
           .select('entity_id, status, created_at')
           .in('entity_id', atIds)
-          .in('status', ['NPS ENVIADO', 'NPS NÃO ENVIADO (NÚMERO INVÁLIDO)'])
+          .in('status', ['NPS ENVIADO', 'NPS ENVIADO MANUALMENTE', 'NPS NÃO ENVIADO'])
           .order('created_at', { ascending: false });
         const sMap: Record<string, 'sent' | 'invalid'> = {};
         (shData || []).forEach((r: any) => {
           if (sMap[r.entity_id]) return; // first (latest) wins
-          sMap[r.entity_id] = r.status === 'NPS ENVIADO' ? 'sent' : 'invalid';
+          sMap[r.entity_id] = r.status === 'NPS NÃO ENVIADO' ? 'invalid' : 'sent';
         });
         setNpsSentMap(sMap);
       } else {
