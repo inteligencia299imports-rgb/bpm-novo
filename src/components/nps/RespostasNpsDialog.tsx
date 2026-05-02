@@ -23,19 +23,17 @@ const LABELS: Record<string, string> = {
   origem: 'Origem',
 };
 
-const RespostasNpsDialog: React.FC<RespostasNpsDialogProps> = ({ open, onOpenChange, atendimentoId, nomeCliente, origem }) => {
+const RespostasNpsDialog: React.FC<RespostasNpsDialogProps> = ({ open, onOpenChange, atendimentoId, nomeCliente }) => {
   const [resposta, setResposta] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!open || !atendimentoId) return;
     setLoading(true);
-    let query = supabase
+    supabase
       .from('respostas_nps')
       .select('*')
-      .eq('atendimento_id', atendimentoId);
-    if (origem) query = query.eq('origem', origem);
-    query
+      .eq('atendimento_id', atendimentoId)
       .order('data_resposta', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -43,7 +41,7 @@ const RespostasNpsDialog: React.FC<RespostasNpsDialogProps> = ({ open, onOpenCha
         setResposta(data);
         setLoading(false);
       });
-  }, [open, atendimentoId, origem]);
+  }, [open, atendimentoId]);
 
   const fields = ['atendimento', 'outros_setores', 'produto', 'experiencia', 'nps', 'melhorias', 'espaco_livre', 'origem'] as const;
 
