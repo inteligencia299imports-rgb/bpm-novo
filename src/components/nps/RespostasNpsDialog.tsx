@@ -74,16 +74,18 @@ const RespostasNpsDialog: React.FC<RespostasNpsDialogProps> = ({ open, onOpenCha
               if (!value) return null;
               const isNps = field === 'nps';
               const npsNum = isNps ? Number(value) : NaN;
-              let npsClass = '';
+              let npsColor = '';
               if (isNps && !isNaN(npsNum)) {
-                if (npsNum > 8) npsClass = 'bg-green-100 text-green-800 border-green-300 font-semibold';
-                else if (npsNum >= 7) npsClass = 'bg-yellow-100 text-yellow-800 border-yellow-300 font-semibold';
-                else npsClass = 'bg-red-100 text-red-800 border-red-300 font-semibold';
+                if (npsNum > 8) npsColor = 'text-green-700';
+                else if (npsNum >= 7) npsColor = 'text-yellow-700';
+                else npsColor = 'text-red-700';
               }
               return (
                 <div key={field} className="space-y-1">
                   <label className="text-xs font-semibold text-primary uppercase tracking-wide">{LABELS[field]}</label>
-                  <p className={`text-sm rounded-md p-3 border whitespace-pre-wrap ${isNps ? npsClass : 'text-foreground bg-muted/50 border-border/50'}`}>{value}</p>
+                  <p className="text-sm rounded-md p-3 border whitespace-pre-wrap text-foreground bg-muted/50 border-border/50">
+                    {isNps ? <span className={`font-bold ${npsColor}`}>{value}</span> : value}
+                  </p>
                 </div>
               );
             })}
