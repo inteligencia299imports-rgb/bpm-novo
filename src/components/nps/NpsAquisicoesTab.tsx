@@ -334,6 +334,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         onOpenChange={(open) => setRespostasDialog(prev => ({ ...prev, open }))}
         atendimentoId={respostasDialog.atendimentoId}
         nomeCliente={respostasDialog.nomeCliente}
+        origem="aquisicao"
       />
     </div>
   );
