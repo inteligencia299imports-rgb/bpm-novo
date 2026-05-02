@@ -10,7 +10,6 @@ interface RespostasNpsDialogProps {
   onOpenChange: (open: boolean) => void;
   atendimentoId: string;
   nomeCliente?: string;
-  origem?: 'venda' | 'aquisicao';
 }
 
 const LABELS: Record<string, string> = {
