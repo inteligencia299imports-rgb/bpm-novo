@@ -313,7 +313,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                                 </Button>
                               )}
                               {(a.nps_status || 'em_aberto') === 'respondido' && (
-                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => { e.stopPropagation(); setRespostasDialog({ open: true, atendimentoId: a.atendimento_id, nomeCliente: a.atendimento?.nome_cliente || '' }); }}>
+                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => { e.stopPropagation(); setRespostasDialog({ open: true, atendimentoId: a.id, nomeCliente: a.atendimento?.nome_cliente || '' }); }}>
                                   <Eye className="h-3 w-3" /> Visualizar Respostas
                                 </Button>
                               )}
