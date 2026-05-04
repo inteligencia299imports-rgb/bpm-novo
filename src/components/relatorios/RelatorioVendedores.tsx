@@ -91,13 +91,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <div className="flex flex-wrap items-center gap-1">
-        {['todos', '299', 'Ducati'].map(loja => (
-          <Button key={loja} size="sm" variant={filterLoja === loja ? 'default' : 'outline'} className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')} onClick={() => setFilterLoja(loja)}>
-            {loja === 'todos' ? 'Todas Lojas' : loja}
-          </Button>
-        ))}
-      </div>
+      <LojaFilter value={filterLoja} onChange={setFilterLoja} />
 
       {myIndicadores && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
