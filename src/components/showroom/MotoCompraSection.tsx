@@ -45,7 +45,7 @@ const MotoCompraSection: React.FC<Props> = ({
   const marcas = getMarcaNomes();
   const modelos = marca ? getModelosPorMarca(marca) : [];
 
-  const isDucati = loja === 'Ducati';
+  const isDucati = (loja || '').toLowerCase().startsWith('ducati');
   const ducatiModelos = getModelosPorMarca('DUCATI');
 
   const [estoque, setEstoque] = useState<EstoqueOption[]>([]);
