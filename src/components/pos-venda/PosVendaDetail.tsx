@@ -409,7 +409,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                                 {estItem.cilindrada ? ` · ${estItem.cilindrada}cc` : ''}
                               </p>
                             </div>
-                            {item.loja?.toLowerCase() !== 'ducati' && (
+                            {item!.loja?.toLowerCase().startsWith('ducati') && (
                               <Badge variant="outline" className={`text-xs gap-1 ${
                                 estItem.status === 'indisponivel' ? 'border-orange-500 text-orange-600' :
                                 estItem.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
@@ -424,7 +424,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                               </Badge>
                             )}
                           </div>
-                          {item.loja?.toLowerCase() === 'ducati' ? (
+                          {item.loja?.toLowerCase().startsWith('ducati') ? (
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                               {mi.chassi && (
                                 <>
@@ -531,11 +531,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                         </>
                       ) : (
                         <div className="grid grid-cols-2 gap-4">
-                          {item.loja?.toLowerCase() !== 'ducati' && <InfoItem label="Origem" value="Externo" />}
+                          {item!.loja?.toLowerCase().startsWith('ducati') && <InfoItem label="Origem" value="Externo" />}
                           <InfoItem label="Marca" value={mi.marca} />
                           <InfoItem label="Modelo" value={mi.modelo} />
                           <InfoItem label="Ano" value={mi.ano} />
-                          {item.loja?.toLowerCase() === 'ducati' && mi.chassi && <InfoItem label="Chassi" value={mi.chassi} />}
+                          {item.loja?.toLowerCase().startsWith('ducati') && mi.chassi && <InfoItem label="Chassi" value={mi.chassi} />}
                         </div>
                       )}
                     </div>
