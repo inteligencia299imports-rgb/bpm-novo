@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { LojaFilter } from './LojaFilter';
 
 interface RelatorioAvaliacoesProps {
   dateFrom: Date | undefined;
