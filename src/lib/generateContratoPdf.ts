@@ -87,7 +87,7 @@ const TEMPLATES: Record<TemplateType, {
 };
 
 function getTemplateType(loja: string, empresaMotoInteresse: string | null): TemplateType {
-  if (loja === 'Ducati') return 'ducati';
+  if ((loja || '').toLowerCase().startsWith('ducati')) return 'ducati';
   if (empresaMotoInteresse?.toUpperCase()?.includes('MMATOS')) return 'mmatos';
   return 'fag';
 }
