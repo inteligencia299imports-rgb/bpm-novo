@@ -1,11 +1,11 @@
 /**
  * Helpers para identificar e agrupar as lojas.
- * As lojas Ducati Bsb, Ducati Fln e Ducati Poa compartilham o mesmo padrão
+ * As lojas Ducati BSB, Ducati FLN e Ducati POA compartilham o mesmo padrão
  * de negociação (motos 0km, sem controle de estoque/avaliação).
  * As lojas 299i, 299s e Aventura compartilham o padrão "299".
  */
 
-export const LOJAS_DUCATI = ['Ducati Bsb', 'Ducati Fln', 'Ducati Poa'] as const;
+export const LOJAS_DUCATI = ['Ducati BSB', 'Ducati FLN', 'Ducati POA'] as const;
 export const LOJAS_299 = ['299i', '299s', 'Aventura'] as const;
 
 /** True quando a loja é qualquer unidade Ducati */
