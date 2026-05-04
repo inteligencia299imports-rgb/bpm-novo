@@ -9,6 +9,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { LojaFilter } from './LojaFilter';
 
 const fmtPctInt = (v: number | null | undefined) => `${Math.round((v ?? 0) * 100)}%`;
 
