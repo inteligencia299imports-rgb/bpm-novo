@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { LojaFilter } from './LojaFilter';
 
 interface RelatorioAvaliacoesProps {
   dateFrom: Date | undefined;
@@ -225,13 +226,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <div className="flex flex-wrap items-center gap-1">
-        {['todos', '299', 'Ducati'].map(loja => (
-          <Button key={loja} size="sm" variant={filterLoja === loja ? 'default' : 'outline'} className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')} onClick={() => setFilterLoja(loja)}>
-            {loja === 'todos' ? 'Todas Lojas' : loja}
-          </Button>
-        ))}
-      </div>
+      <LojaFilter value={filterLoja} onChange={setFilterLoja} />
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">

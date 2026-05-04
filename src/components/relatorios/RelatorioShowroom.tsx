@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { LojaFilter } from './LojaFilter';
 
 const fmtBRL = (v: number | null | undefined) =>
   (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -130,13 +131,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-1">
-          {['todos', '299', 'Ducati'].map(loja => (
-            <Button key={loja} size="sm" variant={filterLoja === loja ? 'default' : 'outline'} className={cn('rounded-full px-4 h-8 text-xs font-medium', filterLoja === loja && 'shadow-sm')} onClick={() => setFilterLoja(loja)}>
-              {loja === 'todos' ? 'Todas Lojas' : loja}
-            </Button>
-          ))}
-        </div>
+        <LojaFilter value={filterLoja} onChange={setFilterLoja} />
         <div className="flex flex-wrap items-center gap-2 max-w-full">
           <span className="text-xs font-medium text-muted-foreground shrink-0">Tipo:</span>
           <div className="flex flex-wrap items-center gap-2">
