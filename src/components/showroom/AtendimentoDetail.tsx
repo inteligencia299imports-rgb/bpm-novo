@@ -813,7 +813,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               {estItem.cilindrada ? ` · ${estItem.cilindrada}cc` : ''}
                             </p>
                           </div>
-                          {atendimento!.loja?.toLowerCase().startsWith('ducati') && (
+                          {!atendimento.loja?.toLowerCase().startsWith('ducati') && (
                             <Badge variant="outline" className={`text-xs ${
                               estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
                               estItem.status === 'sinal' ? 'border-[#b376c4] text-[#b376c4]' :
@@ -954,7 +954,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       </>
                     ) : (
                     <div className="grid grid-cols-2 gap-4">
-                      {atendimento!.loja?.toLowerCase().startsWith('ducati') && <InfoItem label="Origem" value="Externo" />}
+                      {!atendimento.loja?.toLowerCase().startsWith('ducati') && <InfoItem label="Origem" value="Externo" />}
                       <InfoItem label="Marca" value={moto.marca} />
                       <InfoItem label="Modelo" value={moto.modelo} />
                       <InfoItem label="Ano" value={moto.ano} />

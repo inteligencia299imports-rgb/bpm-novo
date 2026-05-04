@@ -409,7 +409,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                                 {estItem.cilindrada ? ` · ${estItem.cilindrada}cc` : ''}
                               </p>
                             </div>
-                            {item!.loja?.toLowerCase().startsWith('ducati') && (
+                            {!item.loja?.toLowerCase().startsWith('ducati') && (
                               <Badge variant="outline" className={`text-xs gap-1 ${
                                 estItem.status === 'indisponivel' ? 'border-orange-500 text-orange-600' :
                                 estItem.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
@@ -531,7 +531,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                         </>
                       ) : (
                         <div className="grid grid-cols-2 gap-4">
-                          {item!.loja?.toLowerCase().startsWith('ducati') && <InfoItem label="Origem" value="Externo" />}
+                          {!item.loja?.toLowerCase().startsWith('ducati') && <InfoItem label="Origem" value="Externo" />}
                           <InfoItem label="Marca" value={mi.marca} />
                           <InfoItem label="Modelo" value={mi.modelo} />
                           <InfoItem label="Ano" value={mi.ano} />
