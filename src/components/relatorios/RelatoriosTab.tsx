@@ -89,9 +89,6 @@ const RelatoriosTab: React.FC = () => {
                 <TabsTrigger value="avaliacoes" className="gap-1.5">
                   <ClipboardCheck className="h-4 w-4" /> Avaliações
                 </TabsTrigger>
-                <TabsTrigger value="estoque" className="gap-1.5">
-                  <Package className="h-4 w-4" /> Estoque
-                </TabsTrigger>
               </TabsList>
             </div>
           )}
