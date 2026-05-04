@@ -9,7 +9,7 @@ interface LojaFilterProps {
 
 const SUB_LOJAS: Record<string, string[]> = {
   '299': ['299i', '299s', 'Aventura'],
-  Ducati: ['Ducati Bsb', 'Ducati Fln', 'Ducati Poa'],
+  Ducati: ['Ducati BSB', 'Ducati FLN', 'Ducati POA'],
 };
 
 const getGroup = (v: string): 'todos' | '299' | 'Ducati' | null => {
