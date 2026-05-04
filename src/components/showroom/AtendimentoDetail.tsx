@@ -813,7 +813,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               {estItem.cilindrada ? ` · ${estItem.cilindrada}cc` : ''}
                             </p>
                           </div>
-                          {atendimento.loja?.toLowerCase() !== 'ducati' && (
+                          {!atendimento.loja?.toLowerCase().startsWith('ducati') && (
                             <Badge variant="outline" className={`text-xs ${
                               estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
                               estItem.status === 'sinal' ? 'border-[#b376c4] text-[#b376c4]' :
@@ -836,7 +836,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             {estItem.observacoes}
                           </div>
                         )}
-                        {atendimento.loja?.toLowerCase() === 'ducati' ? (
+                        {atendimento.loja?.toLowerCase().startsWith('ducati') ? (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                             {moto.chassi && (
                               <>
@@ -954,11 +954,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       </>
                     ) : (
                     <div className="grid grid-cols-2 gap-4">
-                      {atendimento.loja?.toLowerCase() !== 'ducati' && <InfoItem label="Origem" value="Externo" />}
+                      {!atendimento.loja?.toLowerCase().startsWith('ducati') && <InfoItem label="Origem" value="Externo" />}
                       <InfoItem label="Marca" value={moto.marca} />
                       <InfoItem label="Modelo" value={moto.modelo} />
                       <InfoItem label="Ano" value={moto.ano} />
-                      {atendimento.loja?.toLowerCase() === 'ducati' && moto.chassi && <InfoItem label="Chassi" value={moto.chassi} />}
+                      {atendimento.loja?.toLowerCase().startsWith('ducati') && moto.chassi && <InfoItem label="Chassi" value={moto.chassi} />}
                     </div>
                     )}
                   </div>
@@ -1258,7 +1258,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                   if (atendimento.interesse === 'vender' && (b.value === 'sinal' || b.value === 'vendido')) {
                     return false;
                   }
-                  const isDucati = atendimento.loja?.toLowerCase() === 'ducati';
+                  const isDucati = atendimento.loja?.toLowerCase().startsWith('ducati');
                   if ((b.value === 'sinal' || b.value === 'vendido') && !isDucati && !motosInteresse.some(m => m.origem === 'estoque')) {
                     return false;
                   }

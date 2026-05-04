@@ -471,7 +471,7 @@ const ContratoDialog: React.FC<Props> = ({
     if (!motoInt && !estItem) errors.push('Moto de Interesse');
     if (!transferenciaTipo) errors.push('Transferência');
     if (transferenciaTipo === 'cliente' && !transferenciaValor) errors.push('Valor da Transferência');
-    const isDucati = atendimento.loja?.toLowerCase() === 'ducati';
+    const isDucati = atendimento.loja?.toLowerCase().startsWith('ducati');
     if (!isDucati && !ipvaTipo) errors.push('IPVA');
     if (!isDucati && ipvaTipo === 'ambos' && !ipvaCotas) errors.push('Número de Cotas do IPVA');
     if (!isDucati && ipvaTipo === 'loja' && !ipvaValor) errors.push('Valor do IPVA');
@@ -614,7 +614,7 @@ const ContratoDialog: React.FC<Props> = ({
                 </div>
 
                 {/* IPVA - hidden for Ducati */}
-                {atendimento.loja?.toLowerCase() !== 'ducati' && (
+                {!atendimento.loja?.toLowerCase().startsWith('ducati') && (
                 <div>
                   <label className="text-sm font-medium text-foreground">IPVA<span className="text-destructive ml-0.5">*</span></label>
                   <div className="flex gap-2 mt-1 flex-wrap">

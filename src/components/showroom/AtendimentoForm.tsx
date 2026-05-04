@@ -51,7 +51,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [interesse, setInteresse] = useState<Interesse>('comprar');
   const [situacao, setSituacao] = useState<SituacaoShowroom>('em_aberto');
 
-  const isDucati = loja === 'Ducati';
+  const isDucati = loja.toLowerCase().startsWith('ducati');
 
   // compra
   const [origemMoto, setOrigemMoto] = useState('estoque');
