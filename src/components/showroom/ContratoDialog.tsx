@@ -387,6 +387,32 @@ const ContratoDialog: React.FC<Props> = ({
     }
   };
 
+  // Auto-save on close: if user closes the dialog (X, ESC, click outside)
+  // without explicitly saving, persist whatever was filled to avoid losing data.
+  const hasAnyData = (): boolean => {
+    return !!(
+      cpfCnpj || ipvaTipo || ipvaCotas || ipvaValor ||
+      transferenciaTipo || transferenciaValor ||
+      valorQuitacao || valorFechamento ||
+      obsInternas || obsContrato ||
+      dataSinal || dataVencimento ||
+      valorSinal || valorVenda ||
+      formasPagamento.length > 0
+    );
+  };
+
+  const handleOpenChange = async (next: boolean) => {
+    if (!next && !loading && !saving && !generating && !viewing && hasAnyData()) {
+      const id = await saveContrato();
+      if (id) {
+        toast.success('Alterações salvas');
+        onSaved?.();
+      }
+    }
+    onOpenChange(next);
+  };
+
+
   // Get moto de interesse data
   const motoInt = motosInteresse[0];
   const estItem = motoInt?.origem === 'estoque' && motoInt?.estoque_moto_id ? estoqueData[motoInt.estoque_moto_id] : null;
