@@ -120,6 +120,7 @@ const ContratoDialog: React.FC<Props> = ({
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [viewing, setViewing] = useState(false);
   const [contratoId, setContratoId] = useState<string | null>(null);
   const [jaGerado, setJaGerado] = useState(false);
 
@@ -387,6 +388,32 @@ const ContratoDialog: React.FC<Props> = ({
     }
   };
 
+  // Auto-save on close: if user closes the dialog (X, ESC, click outside)
+  // without explicitly saving, persist whatever was filled to avoid losing data.
+  const hasAnyData = (): boolean => {
+    return !!(
+      cpfCnpj || ipvaTipo || ipvaCotas || ipvaValor ||
+      transferenciaTipo || transferenciaValor ||
+      valorQuitacao || valorFechamento ||
+      obsInternas || obsContrato ||
+      dataSinal || dataVencimento ||
+      valorSinal || valorVenda ||
+      formasPagamento.length > 0
+    );
+  };
+
+  const handleOpenChange = async (next: boolean) => {
+    if (!next && !loading && !saving && !generating && !viewing && hasAnyData()) {
+      const id = await saveContrato();
+      if (id) {
+        toast.success('Alterações salvas');
+        onSaved?.();
+      }
+    }
+    onOpenChange(next);
+  };
+
+
   // Get moto de interesse data
   const motoInt = motosInteresse[0];
   const estItem = motoInt?.origem === 'estoque' && motoInt?.estoque_moto_id ? estoqueData[motoInt.estoque_moto_id] : null;
@@ -522,7 +549,7 @@ const ContratoDialog: React.FC<Props> = ({
     }
   };
 
-  const [viewing, setViewing] = useState(false);
+  
 
   const handleVisualizar = async () => {
     if (!validateForGeneration()) return;
@@ -546,7 +573,7 @@ const ContratoDialog: React.FC<Props> = ({
   const tipoLabel = (tipo: string) => TIPOS_PAGAMENTO.find(t => t.value === tipo)?.label || tipo;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-3xl h-[90vh] p-0 flex flex-col">
         <DialogHeader className="p-6 pb-0 shrink-0">
           <DialogTitle className="flex items-center gap-2">
