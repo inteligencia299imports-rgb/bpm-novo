@@ -548,7 +548,7 @@ const ContratoDialog: React.FC<Props> = ({
     }
   };
 
-  const [viewing, setViewing] = useState(false);
+  
 
   const handleVisualizar = async () => {
     if (!validateForGeneration()) return;
