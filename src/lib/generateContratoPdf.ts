@@ -259,9 +259,9 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   y += lineHeight;
   doc.text(`CNPJ: ${template.cnpj}`, pageWidth / 2, y, { align: 'center' });
   y += lineHeight;
-  doc.text('SCIA Quadra 15 Conjunto 3, Nº 6, Loja 6 - 71250-015 - Brasília, DF', pageWidth / 2, y, { align: 'center' });
+  doc.text(template.endereco, pageWidth / 2, y, { align: 'center' });
   y += lineHeight;
-  doc.text('Telefone: (61) 3710-5687', pageWidth / 2, y, { align: 'center' });
+  doc.text(`Telefone: ${template.telefone}`, pageWidth / 2, y, { align: 'center' });
   y += lineHeight + 2;
   
   // Line separator
