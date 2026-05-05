@@ -573,7 +573,7 @@ const ContratoDialog: React.FC<Props> = ({
   const tipoLabel = (tipo: string) => TIPOS_PAGAMENTO.find(t => t.value === tipo)?.label || tipo;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-3xl h-[90vh] p-0 flex flex-col">
         <DialogHeader className="p-6 pb-0 shrink-0">
           <DialogTitle className="flex items-center gap-2">
