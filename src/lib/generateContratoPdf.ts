@@ -62,32 +62,59 @@ interface ContratoPdfData {
   dataVencimento: string;
 }
 
-type TemplateType = 'ducati' | 'fag' | 'mmatos';
+type TemplateType = 'ducati' | 'ducati_fln' | 'ducati_poa' | 'fag' | 'mmatos';
 
 const TEMPLATES: Record<TemplateType, {
   empresaNome: string;
   cnpj: string;
+  endereco: string;
+  telefone: string;
   logoPath: string;
 }> = {
   ducati: {
     empresaNome: 'FAG SOLUCOES E COMERCIO DE VEICULOS LTDA',
     cnpj: '49.580.035/0001-36',
+    endereco: 'SCIA Quadra 15 Conjunto 3, Nº 6, Loja 6 - 71250-015 - Brasília, DF',
+    telefone: '(61) 3710-5687',
+    logoPath: '/logos/ducati-logo.png',
+  },
+  ducati_fln: {
+    empresaNome: 'Intercontinental Motorsport LTDA',
+    cnpj: '05.564.902/0001-74',
+    endereco: 'Rua Professor Egidio Ferreira 198, Capoeiras - 88090-500 - Florianópolis, SC',
+    telefone: '(48) 3031-3992',
+    logoPath: '/logos/ducati-logo.png',
+  },
+  ducati_poa: {
+    empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
+    cnpj: '05.564.902/0002-55',
+    endereco: 'Pereira Franco 283-A, São João - 90240-520 - Porto Alegre, RS',
+    telefone: '(51) 3373-7608',
     logoPath: '/logos/ducati-logo.png',
   },
   fag: {
     empresaNome: 'FAG SOLUCOES E COMERCIO DE VEICULOS LTDA',
     cnpj: '49.580.035/0001-36',
+    endereco: 'SCIA Quadra 15 Conjunto 3, Nº 6, Loja 6 - 71250-015 - Brasília, DF',
+    telefone: '(61) 3710-5687',
     logoPath: '/logos/299-logo.jpg',
   },
   mmatos: {
     empresaNome: 'MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA',
     cnpj: '21.194.795/0001-96',
+    endereco: 'SCIA Quadra 15 Conjunto 3, Nº 6, Loja 6 - 71250-015 - Brasília, DF',
+    telefone: '(61) 3710-5687',
     logoPath: '/logos/299-logo.jpg',
   },
 };
 
 function getTemplateType(loja: string, empresaMotoInteresse: string | null): TemplateType {
-  if ((loja || '').toLowerCase().startsWith('ducati')) return 'ducati';
+  const l = (loja || '').toUpperCase();
+  if (l.includes('DUCATI')) {
+    if (l.includes('FLN')) return 'ducati_fln';
+    if (l.includes('POA')) return 'ducati_poa';
+    return 'ducati';
+  }
   if (empresaMotoInteresse?.toUpperCase()?.includes('MMATOS')) return 'mmatos';
   return 'fag';
 }
