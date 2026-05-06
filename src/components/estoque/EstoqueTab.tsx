@@ -438,6 +438,19 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
         {showFilters && (
           <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-1">
+              {(['todos', 'Brasília', 'Florianópolis', 'Porto Alegre'] as const).map(c => (
+                <Button
+                  key={c}
+                  size="sm"
+                  variant={filterCidade === c ? 'default' : 'outline'}
+                  className="rounded-full px-4 h-8 text-xs font-medium"
+                  onClick={() => setFilterCidade(c)}
+                >
+                  {c === 'todos' ? 'Todas Cidades' : c}
+                </Button>
+              ))}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
