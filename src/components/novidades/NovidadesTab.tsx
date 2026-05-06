@@ -57,6 +57,8 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
   const { role, user } = useAuth();
   const [selectedMoto, setSelectedMoto] = useState<EstoqueItem | null>(null);
 
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
+
   const sevenDaysAgo = subDays(new Date(), 7).toISOString();
 
   const { data: motos = [], isLoading: loadingMotos } = useQuery({
@@ -64,7 +66,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('estoque')
-        .select('id, marca, modelo, ano_fabricacao, ano_modelo, cor, placa, km, preco, preco_acao, data_entrada, tipo, classificacao, cilindrada, categoria, empresa, moto_avaliacao_id, motos_avaliacao!estoque_moto_avaliacao_id_fkey(tem_manual, tem_chave_reserva, manutencao_vencida)')
+        .select('id, marca, modelo, ano_fabricacao, ano_modelo, cor, placa, km, preco, preco_acao, data_entrada, tipo, classificacao, cilindrada, categoria, empresa, moto_avaliacao_id, motos_avaliacao!estoque_moto_avaliacao_id_fkey(tem_manual, tem_chave_reserva, manutencao_vencida), avaliacoes:avaliacao_id(atendimentos:atendimento_id(loja))')
         .eq('status', 'disponivel')
         .gte('data_entrada', sevenDaysAgo)
         .order('data_entrada', { ascending: false });
@@ -74,9 +76,12 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
         tem_manual: item.motos_avaliacao?.tem_manual ?? null,
         tem_chave_reserva: item.motos_avaliacao?.tem_chave_reserva ?? null,
         manutencao_vencida: item.motos_avaliacao?.manutencao_vencida ?? null,
+        loja_origem: item.avaliacoes?.atendimentos?.loja ?? null,
       })) as EstoqueItem[];
     },
   });
+
+  const motosFiltered = motos.filter(m => matchesCidade(m.loja_origem, filterCidade));
 
   const { data: interessados = [], isLoading: loadingInteressados } = useQuery({
     queryKey: ['novidades-interessados', selectedMoto?.id, selectedMoto?.marca, selectedMoto?.modelo],
