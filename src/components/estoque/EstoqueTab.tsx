@@ -490,12 +490,12 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                 </SelectContent>
               </Select>
             </div>
-            {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterEmpresa !== 'todas') && (
+            {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterEmpresa !== 'todas' || filterCidade !== 'todos') && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterEmpresa('todas'); }}
+                onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterEmpresa('todas'); setFilterCidade('todos'); }}
               >
                 <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
               </Button>
