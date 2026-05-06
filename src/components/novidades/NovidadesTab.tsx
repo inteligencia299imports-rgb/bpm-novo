@@ -309,15 +309,17 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
       <div className="flex items-center gap-2">
         <Flame className="h-5 w-5 text-primary" />
         <h2 className="text-lg font-bold text-foreground">Novidades</h2>
-        <Badge variant="secondary" className="ml-auto">{motos.length} moto{motos.length !== 1 ? 's' : ''}</Badge>
+        <Badge variant="secondary" className="ml-auto">{motosFiltered.length} moto{motosFiltered.length !== 1 ? 's' : ''}</Badge>
       </div>
       <p className="text-sm text-muted-foreground">Motos disponíveis no estoque há até 7 dias</p>
+
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
 
       {loadingMotos ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
         </div>
-      ) : motos.length === 0 ? (
+      ) : motosFiltered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Bike className="h-12 w-12 mx-auto mb-3 opacity-40" />
           <p className="font-medium">Nenhuma novidade no momento</p>
@@ -325,7 +327,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {motos.map((moto) => (
+          {motosFiltered.map((moto) => (
             <Card
               key={moto.id}
               className="cursor-pointer hover:shadow-md hover:border-primary/40 transition-all"
