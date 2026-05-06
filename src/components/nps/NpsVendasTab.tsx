@@ -185,6 +185,8 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
         </div>
       </div>
 
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+
       {loading ? (
         <KanbanSkeleton columns={3} />
       ) : (
