@@ -109,7 +109,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [filterMarca, setFilterMarca] = useState('todas');
   const [filterTipo, setFilterTipo] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('disponivel');
-  const [filterEmpresa, setFilterEmpresa] = useState('todas');
+  
   const [filterCidade, setFilterCidade] = useState<'todos' | 'Brasília' | 'Florianópolis' | 'Porto Alegre'>('todos');
   const [showFilters, setShowFilters] = useState(true);
   const [page, setPage] = useState(1);
@@ -148,12 +148,11 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     let query = supabase.from('estoque').select('marca');
     if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
     if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
-    if (filterEmpresa !== 'todas') query = query.eq('empresa', filterEmpresa);
     query.then(({ data }) => {
       const unique = [...new Set((data || []).map(d => d.marca))].sort();
       setAllMarcas(unique);
     });
-  }, [filterStatus, filterTipo, filterEmpresa]);
+  }, [filterStatus, filterTipo]);
 
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
@@ -162,7 +161,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
       if (filterTipo !== 'todos' && filterTipo !== 'test-ride') query = query.eq('tipo', filterTipo);
-      if (filterEmpresa !== 'todas') query = query.eq('empresa', filterEmpresa);
+      
       const { data, error } = await query;
       if (error) throw error;
       // Get vendedor names for items with atendimento_venda_id
@@ -213,7 +212,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [filterStatus, filterMarca, filterTipo, filterEmpresa]);
+  }, [filterStatus, filterMarca, filterTipo]);
 
   useEffect(() => { fetchEstoque(); }, [fetchEstoque]);
 
@@ -481,21 +480,13 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                   <SelectItem value="test-ride">Test-Ride</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
-                <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todas as empresas</SelectItem>
-                  <SelectItem value="FAG">FAG</SelectItem>
-                  <SelectItem value="MMATOS">MMATOS</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
-            {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterEmpresa !== 'todas' || filterCidade !== 'todos') && (
+            {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterCidade !== 'todos') && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterEmpresa('todas'); setFilterCidade('todos'); }}
+                onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterCidade('todos'); }}
               >
                 <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
               </Button>
