@@ -161,7 +161,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
                         loja={a.atendimento?.loja} date={a._dataAquisicao || a.updated_at}
                         dateLabel={a._dataAquisicao ? 'Aquisição' : undefined}
                         statusColor={col.hex}
-                        readyIndicator={a._releaseReady === true ? 'ready' : a._releaseReady === false ? 'not_ready' : null}
+                        readyIndicator={col.value === 'aguardando_liberacao_estoque' ? (a._releaseReady === true ? 'ready' : a._releaseReady === false ? 'not_ready' : null) : null}
                         extraBadge={a.tipo_aquisicao ? { label: getTipoAquisicaoLabel(a.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(a.tipo_aquisicao) } : undefined}
                         onClick={() => setSelectedItem(a)} />
                     ))}
