@@ -6,7 +6,7 @@
  */
 
 export const LOJAS_DUCATI = ['Ducati BSB', 'Ducati FLN', 'Ducati POA'] as const;
-export const LOJAS_299 = ['299i', '299s', 'Aventura'] as const;
+export const LOJAS_299 = ['299i', '299s', '299f', '299p', 'Aventura'] as const;
 
 /** True quando a loja é qualquer unidade Ducati */
 export const isLojaDucati = (loja: string | null | undefined): boolean =>
