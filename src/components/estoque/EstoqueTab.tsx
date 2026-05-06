@@ -185,6 +185,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
         tipo_aquisicao: d.avaliacoes?.tipo_aquisicao ?? null,
         displayTipo: d.avaliacoes?.tipo_aquisicao || d.tipo,
+        loja_origem: d.atendimentos?.loja ?? d.avaliacoes?.atendimentos?.loja ?? null,
       }));
       // Client-side filter: test-ride
       if (filterTipo === 'test-ride') {
