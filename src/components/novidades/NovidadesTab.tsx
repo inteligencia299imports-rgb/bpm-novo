@@ -10,6 +10,7 @@ import { Flame, ArrowLeft, Phone, User, Bike, Calendar, Thermometer } from 'luci
 import { format, subDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
+import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 interface EstoqueItem {
   id: string;
