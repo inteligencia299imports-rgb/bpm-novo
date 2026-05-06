@@ -151,19 +151,21 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       const motoAvaliacaoId = avaliacaoData?.moto_avaliacao_id;
       
       // Fetch preparacao history
+      const prepEntityIds = [avaliacaoId, motoAvaliacaoId].filter(Boolean) as string[];
       const prepPromise = supabase
         .from('status_history')
         .select('*')
-        .eq('entity_id', avaliacaoId)
+        .in('entity_id', prepEntityIds)
         .eq('entity_type', 'preparacao')
         .order('created_at', { ascending: false });
 
       // Fetch avaliacao history - only acquisition entry (adquirida)
-      const avaliacaoPromise = motoAvaliacaoId
+      const avalEntityIds = [avaliacaoId, motoAvaliacaoId].filter(Boolean) as string[];
+      const avaliacaoPromise = avalEntityIds.length
         ? supabase
             .from('status_history')
             .select('*')
-            .eq('entity_id', motoAvaliacaoId)
+            .in('entity_id', avalEntityIds)
             .eq('entity_type', 'avaliacao')
             .in('status', ['adquirida'])
             .order('created_at', { ascending: false })
