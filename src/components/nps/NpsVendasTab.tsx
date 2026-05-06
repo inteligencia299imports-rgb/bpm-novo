@@ -10,6 +10,7 @@ import AtendimentoCard from '@/components/showroom/AtendimentoCard';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import RespostasNpsDialog from './RespostasNpsDialog';
+import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 interface NpsVendasTabProps {
   onNavigateToShowroom: (atendimentoId: string) => void;
@@ -23,6 +24,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [respostasDialog, setRespostasDialog] = useState<{ open: boolean; atendimentoId: string; nomeCliente: string }>({ open: false, atendimentoId: '', nomeCliente: '' });
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -108,7 +110,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const getColumnItems = (status: SituacaoNps) =>
-    atendimentos.filter(a => (a.nps_status || 'em_aberto') === status);
+    atendimentos.filter(a => (a.nps_status || 'em_aberto') === status && matchesCidade(a.loja, filterCidade));
 
   const handleUpdateStatus = async (e: React.MouseEvent, id: string, newStatus: SituacaoNps) => {
     e.stopPropagation();
@@ -182,6 +184,8 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
           )}
         </div>
       </div>
+
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
 
       {loading ? (
         <KanbanSkeleton columns={3} />

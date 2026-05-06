@@ -18,6 +18,7 @@ import AtendimentoDetail from './AtendimentoDetail';
 import AtendimentoForm from './AtendimentoForm';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 const KANBAN_COLUMNS = SITUACOES_SHOWROOM;
 
@@ -40,6 +41,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   const [filterVendedor, setFilterVendedor] = useState('todos');
   const [vendedores, setVendedores] = useState<{ user_id: string; nome: string }[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
   const [dateFrom, setDateFromRaw] = useState<Date | undefined>(undefined);
   const [dateTo, setDateToRaw] = useState<Date | undefined>(undefined);
 
@@ -179,10 +181,13 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
           return all.some(f => f && String(f).toLowerCase().includes(s));
         });
       }
+      if (filterCidade !== 'todos') {
+        results = results.filter(a => matchesCidade((a as any).loja, filterCidade));
+      }
       setAtendimentos(results);
     }
     setLoading(false);
-  }, [filterLoja, filterInteresse, filterVendedor, search, dateFrom, dateTo]);
+  }, [filterLoja, filterInteresse, filterVendedor, search, dateFrom, dateTo, filterCidade]);
 
   useEffect(() => { fetchAtendimentos(); }, [fetchAtendimentos]);
 
@@ -285,6 +290,8 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
           <Filter className="h-4 w-4" /> Filtros
         </Button>
       </div>
+
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
 
       {showFilters && (
         <Card className="animate-fade-in border-border shadow-soft">

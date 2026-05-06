@@ -10,6 +10,7 @@ import { Flame, ArrowLeft, Phone, User, Bike, Calendar, Thermometer } from 'luci
 import { format, subDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
+import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 interface EstoqueItem {
   id: string;
@@ -32,6 +33,7 @@ interface EstoqueItem {
   tem_manual: boolean | null;
   tem_chave_reserva: boolean | null;
   manutencao_vencida: boolean | null;
+  loja_origem: string | null;
 }
 
 interface ClienteInteressado {
@@ -55,6 +57,8 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
   const { role, user } = useAuth();
   const [selectedMoto, setSelectedMoto] = useState<EstoqueItem | null>(null);
 
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
+
   const sevenDaysAgo = subDays(new Date(), 7).toISOString();
 
   const { data: motos = [], isLoading: loadingMotos } = useQuery({
@@ -62,7 +66,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('estoque')
-        .select('id, marca, modelo, ano_fabricacao, ano_modelo, cor, placa, km, preco, preco_acao, data_entrada, tipo, classificacao, cilindrada, categoria, empresa, moto_avaliacao_id, motos_avaliacao!estoque_moto_avaliacao_id_fkey(tem_manual, tem_chave_reserva, manutencao_vencida)')
+        .select('id, marca, modelo, ano_fabricacao, ano_modelo, cor, placa, km, preco, preco_acao, data_entrada, tipo, classificacao, cilindrada, categoria, empresa, moto_avaliacao_id, motos_avaliacao!estoque_moto_avaliacao_id_fkey(tem_manual, tem_chave_reserva, manutencao_vencida), avaliacoes:avaliacao_id(atendimentos:atendimento_id(loja))')
         .eq('status', 'disponivel')
         .gte('data_entrada', sevenDaysAgo)
         .order('data_entrada', { ascending: false });
@@ -72,9 +76,12 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
         tem_manual: item.motos_avaliacao?.tem_manual ?? null,
         tem_chave_reserva: item.motos_avaliacao?.tem_chave_reserva ?? null,
         manutencao_vencida: item.motos_avaliacao?.manutencao_vencida ?? null,
+        loja_origem: item.avaliacoes?.atendimentos?.loja ?? null,
       })) as EstoqueItem[];
     },
   });
+
+  const motosFiltered = motos.filter(m => matchesCidade(m.loja_origem, filterCidade));
 
   const { data: interessados = [], isLoading: loadingInteressados } = useQuery({
     queryKey: ['novidades-interessados', selectedMoto?.id, selectedMoto?.marca, selectedMoto?.modelo],
@@ -302,15 +309,17 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
       <div className="flex items-center gap-2">
         <Flame className="h-5 w-5 text-primary" />
         <h2 className="text-lg font-bold text-foreground">Novidades</h2>
-        <Badge variant="secondary" className="ml-auto">{motos.length} moto{motos.length !== 1 ? 's' : ''}</Badge>
+        <Badge variant="secondary" className="ml-auto">{motosFiltered.length} moto{motosFiltered.length !== 1 ? 's' : ''}</Badge>
       </div>
       <p className="text-sm text-muted-foreground">Motos disponíveis no estoque há até 7 dias</p>
+
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
 
       {loadingMotos ? (
         <div className="flex justify-center py-12">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
         </div>
-      ) : motos.length === 0 ? (
+      ) : motosFiltered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Bike className="h-12 w-12 mx-auto mb-3 opacity-40" />
           <p className="font-medium">Nenhuma novidade no momento</p>
@@ -318,7 +327,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {motos.map((moto) => (
+          {motosFiltered.map((moto) => (
             <Card
               key={moto.id}
               className="cursor-pointer hover:shadow-md hover:border-primary/40 transition-all"

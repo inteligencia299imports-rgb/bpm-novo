@@ -11,6 +11,7 @@ import AtendimentoCard from '@/components/showroom/AtendimentoCard';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import RespostasNpsDialog from './RespostasNpsDialog';
+import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 interface NpsAquisicoesTabProps {
   onNavigateToShowroom: (atendimentoId: string) => void;
@@ -22,6 +23,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [respostasDialog, setRespostasDialog] = useState<{ open: boolean; atendimentoId: string; nomeCliente: string }>({ open: false, atendimentoId: '', nomeCliente: '' });
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -189,7 +191,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const getColumnItems = (status: SituacaoNps) =>
-    items.filter(a => (a.nps_status || 'em_aberto') === status);
+    items.filter(a => (a.nps_status || 'em_aberto') === status && matchesCidade(a.atendimento?.loja, filterCidade));
 
   const handleUpdateStatus = async (e: React.MouseEvent, id: string, newStatus: SituacaoNps) => {
     e.stopPropagation();
@@ -263,6 +265,8 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
           )}
         </div>
       </div>
+
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
 
       {loading ? (
         <KanbanSkeleton columns={3} />

@@ -10,6 +10,7 @@ import AvaliacaoCard from './AvaliacaoCard';
 import AvaliacaoForm from './AvaliacaoForm';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 const KANBAN_COLUMNS = SITUACOES_AVALIACAO;
 
@@ -24,6 +25,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
 
   useEffect(() => {
     if (initialAvaliacaoId) {
@@ -101,6 +103,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
     avaliacoes.filter(a => {
       // Se já foi liberada para estoque, não exibir na coluna "Adquirida"
       if (situacao === 'adquirida' && (a as any)._estoqueInfo) return false;
+      if (!matchesCidade((a as any).atendimento?.loja, filterCidade)) return false;
       return a.situacao === situacao;
     });
 
@@ -130,7 +133,9 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
               <X className="h-4 w-4" />
             </button>
           )}
-        </div>
+      </div>
+
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
       </div>
 
       {/* Kanban Board */}
