@@ -41,6 +41,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   const [filterVendedor, setFilterVendedor] = useState('todos');
   const [vendedores, setVendedores] = useState<{ user_id: string; nome: string }[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
   const [dateFrom, setDateFromRaw] = useState<Date | undefined>(undefined);
   const [dateTo, setDateToRaw] = useState<Date | undefined>(undefined);
 
