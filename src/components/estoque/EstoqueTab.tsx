@@ -110,6 +110,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [filterTipo, setFilterTipo] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('disponivel');
   const [filterEmpresa, setFilterEmpresa] = useState('todas');
+  const [filterCidade, setFilterCidade] = useState<'todos' | 'Brasília' | 'Florianópolis' | 'Porto Alegre'>('todos');
   const [showFilters, setShowFilters] = useState(true);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
