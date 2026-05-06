@@ -103,6 +103,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
     avaliacoes.filter(a => {
       // Se já foi liberada para estoque, não exibir na coluna "Adquirida"
       if (situacao === 'adquirida' && (a as any)._estoqueInfo) return false;
+      if (!matchesCidade((a as any).atendimento?.loja, filterCidade)) return false;
       return a.situacao === situacao;
     });
 
