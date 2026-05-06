@@ -105,7 +105,10 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
   }, [search]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
-  const getColumnItems = (status: PreparacaoStatus) => items.filter((a: any) => (a.preparacao_status || 'em_aberto') === status);
+  const filteredItems = filterCidade === 'todos'
+    ? items
+    : items.filter((a: any) => CIDADE_LOJAS[filterCidade].includes(a.atendimento?.loja));
+  const getColumnItems = (status: PreparacaoStatus) => filteredItems.filter((a: any) => (a.preparacao_status || 'em_aberto') === status);
 
   return (
     <div className="space-y-5">
@@ -119,6 +122,19 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
           <Input placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card border-border" />
           {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>}
         </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
+        {(['todos', 'Brasília', 'Florianópolis', 'Porto Alegre'] as const).map(c => (
+          <Button
+            key={c}
+            size="sm"
+            variant={filterCidade === c ? 'default' : 'outline'}
+            className={cn('rounded-full px-4 h-8 text-xs font-medium', filterCidade === c && 'shadow-sm')}
+            onClick={() => setFilterCidade(c)}
+          >
+            {c === 'todos' ? 'Todas Cidades' : c}
+          </Button>
+        ))}
       </div>
       {loading ? (
         <KanbanSkeleton columns={4} />
