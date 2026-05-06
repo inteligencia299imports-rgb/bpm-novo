@@ -110,6 +110,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [filterTipo, setFilterTipo] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('disponivel');
   const [filterEmpresa, setFilterEmpresa] = useState('todas');
+  const [filterCidade, setFilterCidade] = useState<'todos' | 'Brasília' | 'Florianópolis' | 'Porto Alegre'>('todos');
   const [showFilters, setShowFilters] = useState(true);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
@@ -157,7 +158,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta), avaliacoes:avaliacao_id(tipo_aquisicao), atendimentos:atendimento_venda_id(vendedor_id)').order('data_entrada', { ascending: false });
+      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta), avaliacoes:avaliacao_id(tipo_aquisicao, atendimentos:atendimento_id(loja)), atendimentos:atendimento_venda_id(vendedor_id, loja)').order('data_entrada', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
       if (filterTipo !== 'todos' && filterTipo !== 'test-ride') query = query.eq('tipo', filterTipo);
@@ -184,6 +185,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
         tipo_aquisicao: d.avaliacoes?.tipo_aquisicao ?? null,
         displayTipo: d.avaliacoes?.tipo_aquisicao || d.tipo,
+        loja_origem: d.atendimentos?.loja ?? d.avaliacoes?.atendimentos?.loja ?? null,
       }));
       // Client-side filter: test-ride
       if (filterTipo === 'test-ride') {
@@ -215,7 +217,13 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
   useEffect(() => { fetchEstoque(); }, [fetchEstoque]);
 
-  const filtered = items.filter(item => {
+  const CIDADE_LOJAS: Record<string, string[]> = {
+    'Brasília': ['299i', '299s', 'Aventura', 'Ducati BSB'],
+    'Florianópolis': ['299f', 'Ducati FLN'],
+    'Porto Alegre': ['299p', 'Ducati POA'],
+  };
+  const filtered = items.filter((item: any) => {
+    if (filterCidade !== 'todos' && !CIDADE_LOJAS[filterCidade].includes(item.loja_origem)) return false;
     if (!search) return true;
     const s = search.toLowerCase();
     return [item.marca, item.modelo, item.placa, item.cor, item.cilindrada, item.empresa, item.observacoes]
@@ -430,6 +438,19 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
         {showFilters && (
           <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-1">
+              {(['todos', 'Brasília', 'Florianópolis', 'Porto Alegre'] as const).map(c => (
+                <Button
+                  key={c}
+                  size="sm"
+                  variant={filterCidade === c ? 'default' : 'outline'}
+                  className="rounded-full px-4 h-8 text-xs font-medium"
+                  onClick={() => setFilterCidade(c)}
+                >
+                  {c === 'todos' ? 'Todas Cidades' : c}
+                </Button>
+              ))}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
@@ -469,12 +490,12 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                 </SelectContent>
               </Select>
             </div>
-            {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterEmpresa !== 'todas') && (
+            {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterEmpresa !== 'todas' || filterCidade !== 'todos') && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterEmpresa('todas'); }}
+                onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterEmpresa('todas'); setFilterCidade('todos'); }}
               >
                 <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
               </Button>
