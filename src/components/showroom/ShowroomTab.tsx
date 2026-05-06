@@ -358,12 +358,12 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
               </PopoverContent>
             </Popover>
             </div>
-            {(filterLoja !== 'todas' || filterInteresse !== 'todos' || filterVendedor !== 'todos' || dateFrom || dateTo) && (
+            {(filterInteresse !== 'todos' || filterVendedor !== 'todos' || dateFrom || dateTo) && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                onClick={() => { setFilterLoja('todas'); setFilterInteresse('todos'); setFilterVendedor('todos'); setDateFrom(undefined); setDateTo(undefined); }}
+                onClick={() => { setFilterInteresse('todos'); setFilterVendedor('todos'); setDateFrom(undefined); setDateTo(undefined); }}
               >
                 <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
               </Button>
