@@ -191,7 +191,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const getColumnItems = (status: SituacaoNps) =>
-    items.filter(a => (a.nps_status || 'em_aberto') === status);
+    items.filter(a => (a.nps_status || 'em_aberto') === status && matchesCidade(a.atendimento?.loja, filterCidade));
 
   const handleUpdateStatus = async (e: React.MouseEvent, id: string, newStatus: SituacaoNps) => {
     e.stopPropagation();
