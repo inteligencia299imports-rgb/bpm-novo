@@ -149,7 +149,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
       {selectedItem && (
         <PreparacaoProcessoDialog
           open={!!selectedItem}
-          onOpenChange={(open) => { if (!open) setSelectedItem(null); }}
+          onOpenChange={(open) => { if (!open) { setSelectedItem(null); fetchItems(); } }}
           avaliacaoId={selectedItem.id}
           currentStatus={selectedItem.preparacao_status || 'em_aberto'}
           avaliacaoData={selectedItem}
