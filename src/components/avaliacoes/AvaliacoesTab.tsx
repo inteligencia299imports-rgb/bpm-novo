@@ -133,7 +133,9 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
               <X className="h-4 w-4" />
             </button>
           )}
-        </div>
+      </div>
+
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
       </div>
 
       {/* Kanban Board */}
