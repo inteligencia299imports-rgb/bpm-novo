@@ -36,7 +36,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   const [selectedAtendimento, setSelectedAtendimento] = useState<Atendimento | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [filterLoja, setFilterLoja] = useState('todas');
+  
   const [filterInteresse, setFilterInteresse] = useState('todos');
   const [filterVendedor, setFilterVendedor] = useState('todos');
   const [vendedores, setVendedores] = useState<{ user_id: string; nome: string }[]>([]);
