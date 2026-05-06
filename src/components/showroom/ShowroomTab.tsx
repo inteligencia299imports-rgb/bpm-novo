@@ -181,10 +181,13 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
           return all.some(f => f && String(f).toLowerCase().includes(s));
         });
       }
+      if (filterCidade !== 'todos') {
+        results = results.filter(a => matchesCidade((a as any).loja, filterCidade));
+      }
       setAtendimentos(results);
     }
     setLoading(false);
-  }, [filterLoja, filterInteresse, filterVendedor, search, dateFrom, dateTo]);
+  }, [filterLoja, filterInteresse, filterVendedor, search, dateFrom, dateTo, filterCidade]);
 
   useEffect(() => { fetchAtendimentos(); }, [fetchAtendimentos]);
 
