@@ -212,7 +212,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [filterStatus, filterMarca, filterTipo, filterEmpresa]);
+  }, [filterStatus, filterMarca, filterTipo]);
 
   useEffect(() => { fetchEstoque(); }, [fetchEstoque]);
 
