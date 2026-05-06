@@ -40,6 +40,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
   // form state
   const [loja, setLoja] = useState('');
+  const [lojaGroup, setLojaGroup] = useState<'299' | 'Ducati' | ''>('');
   const [nomeCliente, setNomeCliente] = useState('');
   const [telefone, setTelefone] = useState('');
   const [sexo, setSexo] = useState('');
@@ -453,19 +454,20 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                   '299': ['299i', '299s', '299f', '299p', 'Aventura'],
                   Ducati: ['Ducati BSB', 'Ducati FLN', 'Ducati POA'],
                 };
-                const group: '299' | 'Ducati' | '' =
+                const detected: '299' | 'Ducati' | '' =
                   GROUPS['299'].includes(loja) ? '299' :
                   GROUPS.Ducati.includes(loja) ? 'Ducati' : '';
+                const group = detected || lojaGroup;
                 return (
                   <div className="flex flex-col gap-2">
                     <div className="flex flex-wrap gap-2">
                       {(['299', 'Ducati'] as const).map(g => (
-                        <ToggleButton key={g} label={g} value={g} selected={group} onSelect={(v) => { if (v !== group) setLoja(''); }} />
+                        <ToggleButton key={g} label={g} value={g} selected={group} onSelect={(v) => { setLojaGroup(v as '299' | 'Ducati'); if (!GROUPS[v as '299' | 'Ducati'].includes(loja)) setLoja(''); }} />
                       ))}
                     </div>
                     {group && (
                       <div className="flex flex-wrap gap-2 pl-1">
-                        {GROUPS[group].map(l => (
+                        {GROUPS[group as '299' | 'Ducati'].map(l => (
                           <ToggleButton key={l} label={l} value={l} selected={loja} onSelect={setLoja} />
                         ))}
                       </div>
