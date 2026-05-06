@@ -161,7 +161,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
       if (filterTipo !== 'todos' && filterTipo !== 'test-ride') query = query.eq('tipo', filterTipo);
-      if (filterEmpresa !== 'todas') query = query.eq('empresa', filterEmpresa);
+      
       const { data, error } = await query;
       if (error) throw error;
       // Get vendedor names for items with atendimento_venda_id
