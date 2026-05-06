@@ -1654,11 +1654,37 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label>Data *</Label>
-              <Input
-                type="date"
-                value={entregaDate}
-                onChange={e => setEntregaDate(e.target.value)}
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full rounded-full h-10 px-4 justify-start text-left font-normal',
+                      !entregaDate && 'text-muted-foreground'
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {entregaDate
+                      ? format(new Date(`${entregaDate}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR })
+                      : 'Selecionar data'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={entregaDate ? new Date(`${entregaDate}T12:00:00`) : undefined}
+                    onSelect={(d) => {
+                      if (!d) { setEntregaDate(''); return; }
+                      const y = d.getFullYear();
+                      const m = String(d.getMonth() + 1).padStart(2, '0');
+                      const day = String(d.getDate()).padStart(2, '0');
+                      setEntregaDate(`${y}-${m}-${day}`);
+                    }}
+                    locale={ptBR}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <Button onClick={handleSaveEntrega} disabled={savingEntrega} className="w-full gap-2">
               {savingEntrega ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
