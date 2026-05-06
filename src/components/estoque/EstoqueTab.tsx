@@ -217,7 +217,13 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
   useEffect(() => { fetchEstoque(); }, [fetchEstoque]);
 
-  const filtered = items.filter(item => {
+  const CIDADE_LOJAS: Record<string, string[]> = {
+    'Brasília': ['299i', '299s', 'Aventura', 'Ducati BSB'],
+    'Florianópolis': ['299f', 'Ducati FLN'],
+    'Porto Alegre': ['299p', 'Ducati POA'],
+  };
+  const filtered = items.filter((item: any) => {
+    if (filterCidade !== 'todos' && !CIDADE_LOJAS[filterCidade].includes(item.loja_origem)) return false;
     if (!search) return true;
     const s = search.toLowerCase();
     return [item.marca, item.modelo, item.placa, item.cor, item.cilindrada, item.empresa, item.observacoes]
