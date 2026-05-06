@@ -33,6 +33,7 @@ interface EstoqueItem {
   tem_manual: boolean | null;
   tem_chave_reserva: boolean | null;
   manutencao_vencida: boolean | null;
+  loja_origem: string | null;
 }
 
 interface ClienteInteressado {
