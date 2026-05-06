@@ -25,6 +25,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
 
   useEffect(() => {
     if (initialAvaliacaoId) {
