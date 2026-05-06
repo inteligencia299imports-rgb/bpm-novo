@@ -448,11 +448,31 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           <div className="flex flex-wrap justify-between gap-4">
             <div className="space-y-1.5">
               <Label>Loja *</Label>
-              <div className="flex flex-wrap gap-2">
-                {LOJAS.map(l => (
-                  <ToggleButton key={l} label={l} value={l} selected={loja} onSelect={setLoja} />
-                ))}
-              </div>
+              {(() => {
+                const GROUPS: Record<'299' | 'Ducati', string[]> = {
+                  '299': ['299i', '299s', '299f', '299p', 'Aventura'],
+                  Ducati: ['Ducati BSB', 'Ducati FLN', 'Ducati POA'],
+                };
+                const group: '299' | 'Ducati' | '' =
+                  GROUPS['299'].includes(loja) ? '299' :
+                  GROUPS.Ducati.includes(loja) ? 'Ducati' : '';
+                return (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      {(['299', 'Ducati'] as const).map(g => (
+                        <ToggleButton key={g} label={g} value={g} selected={group} onSelect={(v) => { if (v !== group) setLoja(''); }} />
+                      ))}
+                    </div>
+                    {group && (
+                      <div className="flex flex-wrap gap-2 pl-1">
+                        {GROUPS[group].map(l => (
+                          <ToggleButton key={l} label={l} value={l} selected={loja} onSelect={setLoja} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             <div className="space-y-1.5">
               <Label>Tipo de Atendimento *</Label>
