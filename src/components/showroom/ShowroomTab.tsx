@@ -84,7 +84,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       q = q.order('created_at', { ascending: false });
       if (!isSearching && status) q = q.limit(PER_STATUS_LIMIT);
       if (filterLoja === 'Ducati') q = q.in('loja', ['Ducati BSB', 'Ducati FLN', 'Ducati POA']);
-      else if (filterLoja === '299') q = q.in('loja', ['299i', '299s', 'Aventura']);
+      else if (filterLoja === '299') q = q.in('loja', ['299i', '299s', '299f', '299p', 'Aventura']);
       // Vendedores sempre veem apenas seus próprios atendimentos
       if (role === 'vendedor') {
         q = q.eq('vendedor_id', user!.id);
