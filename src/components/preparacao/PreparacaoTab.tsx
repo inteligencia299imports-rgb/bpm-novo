@@ -3,6 +3,8 @@ import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTip
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Search, X, Wrench } from 'lucide-react';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
 import type { PreparacaoStatus } from '@/types/crm';
