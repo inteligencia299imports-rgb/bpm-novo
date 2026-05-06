@@ -24,6 +24,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [respostasDialog, setRespostasDialog] = useState<{ open: boolean; atendimentoId: string; nomeCliente: string }>({ open: false, atendimentoId: '', nomeCliente: '' });
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
