@@ -36,7 +36,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   const [selectedAtendimento, setSelectedAtendimento] = useState<Atendimento | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [filterLoja, setFilterLoja] = useState('todas');
+  
   const [filterInteresse, setFilterInteresse] = useState('todos');
   const [filterVendedor, setFilterVendedor] = useState('todos');
   const [vendedores, setVendedores] = useState<{ user_id: string; nome: string }[]>([]);
@@ -85,8 +85,6 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       if (status) q = q.eq('situacao', status);
       q = q.order('created_at', { ascending: false });
       if (!isSearching && status) q = q.limit(PER_STATUS_LIMIT);
-      if (filterLoja === 'Ducati') q = q.in('loja', ['Ducati BSB', 'Ducati FLN', 'Ducati POA']);
-      else if (filterLoja === '299') q = q.in('loja', ['299i', '299s', '299f', '299p', 'Aventura']);
       // Vendedores sempre veem apenas seus próprios atendimentos
       if (role === 'vendedor') {
         q = q.eq('vendedor_id', user!.id);
@@ -187,7 +185,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       setAtendimentos(results);
     }
     setLoading(false);
-  }, [filterLoja, filterInteresse, filterVendedor, search, dateFrom, dateTo, filterCidade]);
+  }, [filterInteresse, filterVendedor, search, dateFrom, dateTo, filterCidade]);
 
   useEffect(() => { fetchAtendimentos(); }, [fetchAtendimentos]);
 
@@ -297,14 +295,6 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
         <Card className="animate-fade-in border-border shadow-soft">
           <CardContent className="pt-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <Select value={filterLoja} onValueChange={setFilterLoja}>
-              <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Loja" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas as lojas</SelectItem>
-                <SelectItem value="299">299</SelectItem>
-                <SelectItem value="Ducati">Ducati</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={filterInteresse} onValueChange={setFilterInteresse}>
               <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Interesse" /></SelectTrigger>
               <SelectContent>
@@ -366,12 +356,12 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
               </PopoverContent>
             </Popover>
             </div>
-            {(filterLoja !== 'todas' || filterInteresse !== 'todos' || filterVendedor !== 'todos' || dateFrom || dateTo) && (
+            {(filterInteresse !== 'todos' || filterVendedor !== 'todos' || dateFrom || dateTo) && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                onClick={() => { setFilterLoja('todas'); setFilterInteresse('todos'); setFilterVendedor('todos'); setDateFrom(undefined); setDateTo(undefined); }}
+                onClick={() => { setFilterInteresse('todos'); setFilterVendedor('todos'); setDateFrom(undefined); setDateTo(undefined); }}
               >
                 <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
               </Button>
