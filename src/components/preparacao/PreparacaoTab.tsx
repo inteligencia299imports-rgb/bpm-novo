@@ -61,13 +61,14 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
       const avaliacaoIds = allData.map((d: any) => d.id);
       const motoIdsForHist = allData.map((d: any) => d.moto_avaliacao_id).filter(Boolean);
       const histEntityIds = Array.from(new Set([...motoIdsForHist, ...avaliacaoIds]));
+      const avaliacaoIdSet = new Set(avaliacaoIds);
       const [pcResult, consigResult, histResult] = await Promise.all([
-        fetchAllRange(() => supabase.from('pos_compra_processos').select('avaliacao_id, etapa, concluida').in('avaliacao_id', avaliacaoIds.length ? avaliacaoIds : ['']).in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL'])),
-        fetchAllRange(() => supabase.from('consignacao_processos').select('avaliacao_id, etapa, concluida').in('avaliacao_id', avaliacaoIds.length ? avaliacaoIds : ['']).eq('etapa', 'NF EMITIDA')),
+        fetchAllRange(() => supabase.from('pos_compra_processos').select('avaliacao_id, etapa, concluida').in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']).eq('concluida', true)),
+        fetchAllRange(() => supabase.from('consignacao_processos').select('avaliacao_id, etapa, concluida').eq('etapa', 'NF EMITIDA').eq('concluida', true)),
         fetchAllRange(() => supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', histEntityIds.length ? histEntityIds : [''])),
       ]);
-      const pcData = pcResult.data || [];
-      const consigData = consigResult.data || [];
+      const pcData = (pcResult.data || []).filter((p: any) => avaliacaoIdSet.has(p.avaliacao_id));
+      const consigData = (consigResult.data || []).filter((p: any) => avaliacaoIdSet.has(p.avaliacao_id));
 
       const releaseReadyMap: Record<string, boolean> = {};
       allData.forEach((d: any) => {
