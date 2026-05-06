@@ -159,11 +159,12 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         .order('created_at', { ascending: false });
 
       // Fetch avaliacao history - only acquisition entry (adquirida)
-      const avaliacaoPromise = motoAvaliacaoId
+      const avalEntityIds = [avaliacaoId, motoAvaliacaoId].filter(Boolean) as string[];
+      const avaliacaoPromise = avalEntityIds.length
         ? supabase
             .from('status_history')
             .select('*')
-            .eq('entity_id', motoAvaliacaoId)
+            .in('entity_id', avalEntityIds)
             .eq('entity_type', 'avaliacao')
             .in('status', ['adquirida'])
             .order('created_at', { ascending: false })
