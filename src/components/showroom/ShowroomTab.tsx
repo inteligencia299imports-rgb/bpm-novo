@@ -291,6 +291,8 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
         </Button>
       </div>
 
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+
       {showFilters && (
         <Card className="animate-fade-in border-border shadow-soft">
           <CardContent className="pt-4 space-y-3">
