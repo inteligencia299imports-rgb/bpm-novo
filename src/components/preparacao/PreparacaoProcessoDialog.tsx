@@ -211,10 +211,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
       setHistory(merged);
 
-      // Fetch pending release steps
+      // Fetch pending release steps - skipped for bikes already in estoque (tracking mode)
       const tipo = avaliacaoData?.tipo_aquisicao;
       const pending: string[] = [];
-      if (tipo === 'test-ride') {
+      const skipPending = avaliacaoData?.situacao === 'estoque';
+      if (skipPending) {
+        // Estoque tracking: process conditions are not required to conclude preparation
+      } else if (tipo === 'test-ride') {
         // Test-ride não exige NF nem Vistoria
       } else if (isTipoPropria(tipo)) {
         const { data: pcSteps } = await supabase.from('pos_compra_processos')
