@@ -72,17 +72,17 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
       const releaseReadyMap: Record<string, boolean> = {};
       allData.forEach((d: any) => {
         const tipo = d.tipo_aquisicao;
-        if (tipo === 'test-ride') {
-          // Test-ride não exige NF nem Vistoria para liberar
-          releaseReadyMap[d.id] = true;
+        if (isTipoConsignada(tipo)) {
+          // Consignada: exige NF EMITIDA
+          const nf = consigData.find(p => p.avaliacao_id === d.id && p.etapa === 'NF EMITIDA');
+          releaseReadyMap[d.id] = !!(nf?.concluida);
         } else if (isTipoPropria(tipo)) {
-          // Própria / Convertida / Repasse: exige NF EMITIDA + VISTORIA/CADEIA DOMINIAL
+          // Própria / Convertida / Test-ride / Repasse: exige NF EMITIDA + VISTORIA/CADEIA DOMINIAL
           const nf = pcData.find(p => p.avaliacao_id === d.id && p.etapa === 'NF EMITIDA');
           const vistoria = pcData.find(p => p.avaliacao_id === d.id && p.etapa === 'VISTORIA/CADEIA DOMINIAL');
           releaseReadyMap[d.id] = !!(nf?.concluida && vistoria?.concluida);
-        } else if (isTipoConsignada(tipo)) {
-          const nf = consigData.find(p => p.avaliacao_id === d.id && p.etapa === 'NF EMITIDA');
-          releaseReadyMap[d.id] = !!(nf?.concluida);
+        } else {
+          releaseReadyMap[d.id] = false;
         }
       });
 
