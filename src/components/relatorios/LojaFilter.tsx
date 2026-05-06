@@ -8,7 +8,7 @@ interface LojaFilterProps {
 }
 
 const SUB_LOJAS: Record<string, string[]> = {
-  '299': ['299i', '299s', 'Aventura'],
+  '299': ['299i', '299s', '299f', '299p', 'Aventura'],
   Ducati: ['Ducati BSB', 'Ducati FLN', 'Ducati POA'],
 };
 
