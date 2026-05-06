@@ -297,14 +297,6 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
         <Card className="animate-fade-in border-border shadow-soft">
           <CardContent className="pt-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <Select value={filterLoja} onValueChange={setFilterLoja}>
-              <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Loja" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas as lojas</SelectItem>
-                <SelectItem value="299">299</SelectItem>
-                <SelectItem value="Ducati">Ducati</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={filterInteresse} onValueChange={setFilterInteresse}>
               <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Interesse" /></SelectTrigger>
               <SelectContent>
