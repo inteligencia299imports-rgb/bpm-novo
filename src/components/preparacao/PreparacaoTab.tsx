@@ -16,10 +16,17 @@ interface PreparacaoTabProps {
   onInitialHandled?: () => void;
 }
 
+const CIDADE_LOJAS: Record<string, string[]> = {
+  'Brasília': ['299i', '299s', 'Aventura', 'Ducati BSB'],
+  'Florianópolis': ['299f', 'Ducati FLN'],
+  'Porto Alegre': ['299p', 'Ducati POA'],
+};
+
 const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filterCidade, setFilterCidade] = useState<'todos' | 'Brasília' | 'Florianópolis' | 'Porto Alegre'>('todos');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
   useEffect(() => {
