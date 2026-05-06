@@ -18,6 +18,7 @@ import AtendimentoDetail from './AtendimentoDetail';
 import AtendimentoForm from './AtendimentoForm';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 const KANBAN_COLUMNS = SITUACOES_SHOWROOM;
 
