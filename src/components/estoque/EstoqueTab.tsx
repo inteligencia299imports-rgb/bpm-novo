@@ -481,21 +481,13 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                   <SelectItem value="test-ride">Test-Ride</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
-                <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todas as empresas</SelectItem>
-                  <SelectItem value="FAG">FAG</SelectItem>
-                  <SelectItem value="MMATOS">MMATOS</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
-            {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterEmpresa !== 'todas' || filterCidade !== 'todos') && (
+            {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterCidade !== 'todos') && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterEmpresa('todas'); setFilterCidade('todos'); }}
+                onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterCidade('todos'); }}
               >
                 <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
               </Button>
