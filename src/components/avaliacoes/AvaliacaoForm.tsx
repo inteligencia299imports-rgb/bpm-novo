@@ -1279,19 +1279,21 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CurrencyField label="Avaliação Compra" value={avalCompra} onChange={handleCurrencyChange(setAvalCompra)} />
             <CurrencyField label="Previsão Custos Loja" value={prevCustosLoja} onChange={handleCurrencyChange(setPrevCustosLoja)} />
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
-            <div className="space-y-1.5">
-              <Label>Preço Ação</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                <Input
-                  value={precoAcaoEdit}
-                  onChange={handleCurrencyChange(setPrecoAcaoEdit)}
-                  className="pl-10"
-                  placeholder="0,00"
-                  inputMode="numeric"
-                />
+            {estoqueId && (
+              <div className="space-y-1.5">
+                <Label>Preço Ação</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <Input
+                    value={precoAcaoEdit}
+                    onChange={handleCurrencyChange(setPrecoAcaoEdit)}
+                    className="pl-10"
+                    placeholder="0,00"
+                    inputMode="numeric"
+                  />
+                </div>
               </div>
-            </div>
+            )}
             {estoqueId && (
               <div className="space-y-1.5">
                 <Label>Preço de Tabela</Label>
