@@ -101,7 +101,7 @@ const RelatoriosTab: React.FC = () => {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" disabled={(date) => date < new Date('2026-03-21T00:00:00')} defaultMonth={dateFrom ?? new Date('2026-03-21T00:00:00')} />
+                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateFrom ?? new Date('2026-03-21T00:00:00')} />
               </PopoverContent>
             </Popover>
             <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
