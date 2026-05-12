@@ -28,18 +28,45 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    let query = supabase
-      .from('atendimentos')
-      .select('*, motos_interesse(*), motos_avaliacao(*)')
-      .eq('situacao', 'vendido')
-      .in('interesse', ['comprar', 'trocar']);
+    const PER_STATUS_LIMIT = 50;
+    const isSearching = search.trim().length > 0;
 
-    // Vendedores veem apenas os próprios; gestor vê todos
-    if (role !== 'gestor') {
-      query = query.eq('vendedor_id', user?.id || '');
+    const buildQuery = (status?: SituacaoNps) => {
+      let q = supabase
+        .from('atendimentos')
+        .select('*, motos_interesse(*), motos_avaliacao(*)')
+        .eq('situacao', 'vendido')
+        .in('interesse', ['comprar', 'trocar']);
+
+      if (status) {
+        if (status === 'em_aberto') {
+          q = q.or('nps_status.eq.em_aberto,nps_status.is.null');
+        } else {
+          q = q.eq('nps_status', status);
+        }
+      }
+
+      if (role !== 'gestor') {
+        q = q.eq('vendedor_id', user?.id || '');
+      }
+
+      q = q.order('updated_at', { ascending: false });
+      if (!isSearching && status) q = q.limit(PER_STATUS_LIMIT);
+      return q;
+    };
+
+    let data: any[] = [];
+    let error: any = null;
+    if (isSearching) {
+      const result = await buildQuery();
+      error = result.error;
+      data = result.data || [];
+    } else {
+      const statuses: SituacaoNps[] = SITUACOES_NPS.map(s => s.value);
+      const results = await Promise.all(statuses.map(s => buildQuery(s)));
+      error = results.find(r => r.error)?.error;
+      data = results.flatMap(r => r.data || []);
     }
-
-    const { data, error } = await query.order('updated_at', { ascending: false });
 
     if (error) {
       toast.error('Erro ao carregar NPS Vendas');
