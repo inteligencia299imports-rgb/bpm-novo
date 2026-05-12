@@ -68,7 +68,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
   const loadData = useCallback(async () => {
     const dfParam = dateFrom ? dateFrom.toISOString() : null;
-    const dtParam = dateTo ? dateTo.toISOString() : null;
+    const dtParam = dateTo ? new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate(), 23, 59, 59, 999).toISOString() : null;
 
     const [kpisRes, vendedoresRes, vendidasRes, sinaisRes, mensalRes] = await Promise.all([
       supabase.rpc('relatorio_showroom_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja, _tipo: filterTipo }),
