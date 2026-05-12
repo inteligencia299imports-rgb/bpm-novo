@@ -83,6 +83,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     const buildQuery = (status?: string) => {
       let q = supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)');
       if (status) q = q.eq('situacao', status);
+      if (filterInteresse !== 'todos') q = q.eq('interesse', filterInteresse);
       q = q.order('created_at', { ascending: false });
       if (!isSearching && status) q = q.limit(PER_STATUS_LIMIT);
       // Vendedores sempre veem apenas seus próprios atendimentos
