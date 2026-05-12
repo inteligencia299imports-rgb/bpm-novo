@@ -32,8 +32,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
       .from('atendimentos')
       .select('*, motos_interesse(*), motos_avaliacao(*)')
       .eq('situacao', 'vendido')
-      .in('interesse', ['comprar', 'trocar'])
-      .gte('data_venda', '2026-04-06');
+      .in('interesse', ['comprar', 'trocar']);
 
     // Vendedores veem apenas os próprios; gestor vê todos
     if (role !== 'gestor') {
