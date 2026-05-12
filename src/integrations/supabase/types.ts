@@ -219,6 +219,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "avaliacoes_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_atendimentos"
+            referencedColumns: ["atendimento_id"]
+          },
+          {
             foreignKeyName: "avaliacoes_moto_avaliacao_id_fkey"
             columns: ["moto_avaliacao_id"]
             isOneToOne: false
@@ -327,6 +334,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "atendimentos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_atendimentos"
+            referencedColumns: ["atendimento_id"]
           },
         ]
       }
@@ -442,6 +456,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "atendimentos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_consignante_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_atendimentos"
+            referencedColumns: ["atendimento_id"]
           },
         ]
       }
@@ -622,6 +643,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "atendimentos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_atendimento_venda_id_fkey"
+            columns: ["atendimento_venda_id"]
+            isOneToOne: false
+            referencedRelation: "vw_atendimentos"
+            referencedColumns: ["atendimento_id"]
           },
           {
             foreignKeyName: "estoque_avaliacao_id_fkey"
@@ -852,6 +880,13 @@ export type Database = {
             referencedRelation: "atendimentos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "motos_avaliacao_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_atendimentos"
+            referencedColumns: ["atendimento_id"]
+          },
         ]
       }
       motos_interesse: {
@@ -895,6 +930,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "atendimentos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "motos_interesse_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_atendimentos"
+            referencedColumns: ["atendimento_id"]
           },
         ]
       }
@@ -1035,6 +1077,13 @@ export type Database = {
             referencedRelation: "atendimentos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pos_venda_processos_atendimento_id_fkey"
+            columns: ["atendimento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_atendimentos"
+            referencedColumns: ["atendimento_id"]
+          },
         ]
       }
       respostas_nps: {
@@ -1147,7 +1196,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      vw_atendimentos: {
+        Row: {
+          abatimentos: number | null
+          atendimento_id: string | null
+          data_atendimento: string | null
+          data_sinal: string | null
+          data_venda: string | null
+          interesse: string | null
+          loja: string | null
+          margem_oficina: number | null
+          margem_prevista: number | null
+          margem_realizada: number | null
+          modelo: string | null
+          nome_cliente: string | null
+          placa: string | null
+          quanto_vende: number | null
+          sexo: string | null
+          status: string | null
+          telefone: string | null
+          tipo_moto: string | null
+          uf: string | null
+          valor_fechamento: number | null
+          valor_venda: number | null
+          vendedor: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       atendimento_has_avaliacao: {
