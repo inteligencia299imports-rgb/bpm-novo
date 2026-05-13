@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import RespostasNpsDialog from './RespostasNpsDialog';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import { isLojaDucati } from '@/lib/lojaUtils';
 
 interface NpsVendasTabProps {
   onNavigateToShowroom: (atendimentoId: string) => void;
@@ -106,6 +107,9 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
           .eq('etapa', 'ENTREGA DA MOTO')
           .in('atendimento_id', atIds);
         const map: Record<string, boolean> = {};
+        mapped.forEach((a: any) => {
+          if (isLojaDucati(a.loja) && a.data_venda) map[a.id] = true;
+        });
         (pvData || []).forEach((p: any) => { map[p.atendimento_id] = !!p.concluida || !!p.data_conclusao; });
         setEntregaMap(map);
       } else {
@@ -239,7 +243,9 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                         let reason: string | undefined = undefined;
                         if (status === 'em_aberto') {
                           indicator = entregaMap[a.id] ? 'ready' : 'not_ready';
-                          reason = entregaMap[a.id] ? 'Pronto para envio: entrega da moto concluída' : 'Pendente: aguardando conclusão da etapa "Entrega da moto" no Pós-Venda';
+                          reason = entregaMap[a.id]
+                            ? (isLojaDucati(a.loja) ? 'Pronto para envio: venda Ducati registrada' : 'Pronto para envio: entrega da moto concluída')
+                            : 'Pendente: aguardando conclusão da etapa "Entrega da moto" no Pós-Venda';
                         } else if (status === 'enviado') {
                           const s = npsSentMap[a.id];
                           if (s === 'sent') { indicator = 'ready'; reason = 'NPS ENVIADO'; }
