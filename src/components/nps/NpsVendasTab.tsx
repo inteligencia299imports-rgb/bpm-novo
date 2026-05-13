@@ -102,11 +102,11 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
       if (atIds.length > 0) {
         const { data: pvData } = await supabase
           .from('pos_venda_processos')
-          .select('atendimento_id, concluida')
+          .select('atendimento_id, concluida, data_conclusao')
           .eq('etapa', 'ENTREGA DA MOTO')
           .in('atendimento_id', atIds);
         const map: Record<string, boolean> = {};
-        (pvData || []).forEach((p: any) => { map[p.atendimento_id] = !!p.concluida; });
+        (pvData || []).forEach((p: any) => { map[p.atendimento_id] = !!p.concluida || !!p.data_conclusao; });
         setEntregaMap(map);
       } else {
         setEntregaMap({});
