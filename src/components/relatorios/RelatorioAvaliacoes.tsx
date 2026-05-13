@@ -8,6 +8,7 @@ import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, Arro
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
+import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from '@/lib/reportDateRange';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
 
@@ -71,10 +72,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const dfParam = dateFrom ? dateFrom.toISOString() : null;
-    const dtParam = dateTo
-      ? new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate(), 23, 59, 59, 999).toISOString()
-      : null;
+    const dfParam = toSaoPauloStartOfDayIso(dateFrom);
+    const dtParam = toSaoPauloEndOfDayIso(dateTo);
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
     const [mensalRes, detalhesBaseRes, nomesRes, kpisRes] = await Promise.all([

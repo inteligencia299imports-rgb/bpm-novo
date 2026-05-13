@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ComposedChart, Line } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
+import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from '@/lib/reportDateRange';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
 
@@ -49,8 +50,8 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
   const loadData = useCallback(async () => {
     if (!user) return;
-    const dfParam = dateFrom ? dateFrom.toISOString() : null;
-    const dtParam = dateTo ? new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate(), 23, 59, 59, 999).toISOString() : null;
+    const dfParam = toSaoPauloStartOfDayIso(dateFrom);
+    const dtParam = toSaoPauloEndOfDayIso(dateTo);
 
     const [myKpisRes, equipeRes, mensalRes] = await Promise.all([
       supabase.rpc('relatorio_vendedor_kpis', { _user_id: user.id, _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
