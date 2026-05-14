@@ -352,19 +352,19 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                 const status = STATUS_LABELS[r.statusPrep] || { label: r.statusPrep, hex: '#888' };
                 return (
                   <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.nomeCliente}</TableCell>
-                    <TableCell>{r.modelo}</TableCell>
-                    <TableCell>{(r.placa || '').replace(/-/g, '')}</TableCell>
+                    <TableCell className="text-xs font-medium">{r.nomeCliente}</TableCell>
+                    <TableCell className="text-xs">{r.modelo}</TableCell>
+                    <TableCell className="text-xs font-mono">{(r.placa || '').replace(/-/g, '')}</TableCell>
                     <TableCell>
-                      {r.tipo && <Badge variant="outline" className={getTipoAquisicaoBadgeClass(r.tipo)}>{getTipoAquisicaoLabel(r.tipo)}</Badge>}
+                      {r.tipo && <Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(r.tipo)}`}>{getTipoAquisicaoLabel(r.tipo)}</Badge>}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{fmtDate(r.dataAquisicao)}</TableCell>
-                    <TableCell><Badge variant="outline" style={{ borderColor: status.hex, color: status.hex }}>{status.label}</Badge></TableCell>
-                    <TableCell className="whitespace-nowrap">{fmtDate(r.dataEntradaPrep)}</TableCell>
-                    <TableCell className="whitespace-nowrap">{fmtDate(r.dataPreparacao)}</TableCell>
-                    <TableCell className="whitespace-nowrap">{fmtDuration(r.tempoPrepMs)}</TableCell>
-                    <TableCell className="whitespace-nowrap">{fmtDate(r.dataLiberacao)}</TableCell>
-                    <TableCell className="whitespace-nowrap">{fmtDuration(r.tempoLibMs)}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataAquisicao)}</TableCell>
+                    <TableCell><Badge variant="outline" className="text-[10px]" style={{ borderColor: status.hex, color: status.hex }}>{status.label}</Badge></TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataEntradaPrep)}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataPreparacao)}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{fmtDuration(r.tempoPrepMs)}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataLiberacao)}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{fmtDuration(r.tempoLibMs)}</TableCell>
                   </TableRow>
                 );
               })}
