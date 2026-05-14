@@ -37,11 +37,12 @@ const matchesLoja = (loja: string, filter: string) => {
 type TipoFilter = 'todos' | 'propria' | 'consignada';
 
 const fmtDate = (iso: string | null | undefined) => iso ? format(new Date(iso), 'dd/MM/yyyy HH:mm') : '-';
+const fmtInt = (n: number) => Math.round(n).toLocaleString('pt-BR');
 const fmtDuration = (ms: number | null) => {
   if (ms == null || !isFinite(ms) || ms < 0) return '-';
   const hours = ms / 3600000;
   const days = hours / 24;
-  return `${Math.round(hours)}h (${Math.round(days)} Dias)`;
+  return `${fmtInt(hours)}h (${fmtInt(days)} Dias)`;
 };
 
 const STATUS_LABELS: Record<string, { label: string; hex: string }> = {
