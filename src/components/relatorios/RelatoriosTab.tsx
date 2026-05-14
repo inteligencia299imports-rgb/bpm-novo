@@ -12,6 +12,7 @@ import RelatorioShowroom from './RelatorioShowroom';
 import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
 import RelatorioVendedores from './RelatorioVendedores';
+import RelatorioPreparacao from './RelatorioPreparacao';
 
 function getCurrentCycleRange(): { start: Date; end: Date } {
   const now = new Date();
