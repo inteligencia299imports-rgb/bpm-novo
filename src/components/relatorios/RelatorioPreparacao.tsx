@@ -369,7 +369,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
               ) : filteredRows.map(r => {
                 const status = r.dataLiberacao
                   ? { label: 'Estoque', hex: '#169d53' }
-                  : { label: 'Ag. Liberação', hex: '#607D8B' };
+                  : { label: 'Ag. Liberar', hex: '#607D8B' };
                 return (
                   <TableRow key={r.id}>
                     <TableCell className="text-xs font-medium">{r.nomeCliente}</TableCell>
