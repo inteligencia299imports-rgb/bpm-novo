@@ -247,7 +247,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       const lib = baseFiltered.filter(r => r.dataLiberacao && new Date(r.dataLiberacao) >= b.start && new Date(r.dataLiberacao) <= b.end);
       const tempoPrep = prep.map(r => r.tempoPrepMs).filter((v): v is number => v != null && v >= 0);
       const tempoLib = lib.map(r => r.tempoLibMs).filter((v): v is number => v != null && v >= 0);
-      const avgDays = (arr: number[]) => arr.length ? +(arr.reduce((s, v) => s + v, 0) / arr.length / 86400000).toFixed(1) : 0;
+      const avgDays = (arr: number[]) => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length / 86400000) : 0;
       return {
         label: b.label,
         qtdPrep: prep.length,
