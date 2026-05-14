@@ -74,14 +74,17 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
   const [loading, setLoading] = useState(true);
   const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
+  const [filterLoja, setFilterLojaState] = useState<string>('todos');
   const [rows, setRows] = useState<any[]>([]);
 
-  const setFilterTipo = (v: TipoFilter) => { setFilterTipoState(v); onFilterChange?.(v); };
+  const setFilterTipo = (v: TipoFilter) => { setFilterTipoState(v); onFilterChange?.(filterLoja, v); };
+  const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v, filterTipo); };
 
   useEffect(() => {
     onRegisterClear?.(() => {
       setFilterTipoState('todos');
-      onFilterChange?.('todos');
+      setFilterLojaState('todos');
+      onFilterChange?.('todos', 'todos');
       setDateFrom(undefined);
       setDateTo(undefined);
     });
