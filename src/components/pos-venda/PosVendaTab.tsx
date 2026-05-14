@@ -8,6 +8,7 @@ import ProcessCard from '@/components/shared/ProcessCard';
 import PosVendaDetail from './PosVendaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+import { fetchAllRange } from '@/lib/fetchAllRange';
 
 interface PosVendaTabProps {
   initialAtendimentoId?: string | null;
@@ -38,12 +39,12 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
     const statuses = POS_VENDA_COLUMNS.map(c => c.value);
-    const estRes = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes, tipo');
+    const estRes = await fetchAllRange(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes, tipo'));
 
     let atData: any[];
     let atError: any;
     if (isSearching) {
-      const result = await supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false });
+      const result = await fetchAllRange(() => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
       atError = result.error;
       atData = result.data || [];
     } else {
