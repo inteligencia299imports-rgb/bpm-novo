@@ -41,7 +41,7 @@ const fmtDuration = (ms: number | null) => {
   if (ms == null || !isFinite(ms) || ms < 0) return '-';
   const hours = ms / 3600000;
   const days = hours / 24;
-  return `${Math.round(hours)}h (${days.toFixed(1)}d)`;
+  return `${Math.round(hours)}h (${Math.round(days)} Dias)`;
 };
 
 const STATUS_LABELS: Record<string, { label: string; hex: string }> = {
@@ -247,7 +247,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       const lib = baseFiltered.filter(r => r.dataLiberacao && new Date(r.dataLiberacao) >= b.start && new Date(r.dataLiberacao) <= b.end);
       const tempoPrep = prep.map(r => r.tempoPrepMs).filter((v): v is number => v != null && v >= 0);
       const tempoLib = lib.map(r => r.tempoLibMs).filter((v): v is number => v != null && v >= 0);
-      const avgDays = (arr: number[]) => arr.length ? +(arr.reduce((s, v) => s + v, 0) / arr.length / 86400000).toFixed(1) : 0;
+      const avgDays = (arr: number[]) => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length / 86400000) : 0;
       return {
         label: b.label,
         qtdPrep: prep.length,
