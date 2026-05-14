@@ -20,8 +20,18 @@ interface Props {
   setDateFrom: (d: Date | undefined) => void;
   setDateTo: (d: Date | undefined) => void;
   onRegisterClear?: (fn: () => void) => void;
-  onFilterChange?: (tipo: string) => void;
+  onFilterChange?: (loja: string, tipo: string) => void;
 }
+
+const SUB_LOJAS_299 = ['299i', '299s', '299f', '299p', 'Aventura'];
+const SUB_LOJAS_DUCATI = ['Ducati BSB', 'Ducati FLN', 'Ducati POA'];
+const matchesLoja = (loja: string, filter: string) => {
+  if (filter === 'todos') return true;
+  const l = (loja || '').trim();
+  if (filter === '299') return SUB_LOJAS_299.includes(l) || /^299/i.test(l);
+  if (filter === 'Ducati') return SUB_LOJAS_DUCATI.includes(l) || /ducati/i.test(l);
+  return l.toLowerCase() === filter.toLowerCase();
+};
 
 type TipoFilter = 'todos' | 'propria' | 'consignada';
 
