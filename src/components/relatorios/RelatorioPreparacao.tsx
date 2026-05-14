@@ -356,7 +356,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
-                <TableHead>Modelo</TableHead>
+                <TableHead className="max-w-[220px]">Modelo</TableHead>
                 <TableHead>Placa</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Entrada</TableHead>
@@ -377,13 +377,13 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                 return (
                   <TableRow key={r.id}>
                     <TableCell className="text-xs font-medium">{r.nomeCliente}</TableCell>
-                    <TableCell className="text-xs">{r.modelo}</TableCell>
+                    <TableCell className="text-xs max-w-[220px] truncate" title={r.modelo}>{r.modelo}</TableCell>
                     <TableCell className="text-xs font-mono">{(r.placa || '').replace(/-/g, '')}</TableCell>
                     <TableCell>
                       {r.tipo && <Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(r.tipo)}`}>{getTipoAquisicaoLabel(r.tipo)}</Badge>}
                     </TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataEntradaPrep)}</TableCell>
-                    <TableCell><Badge variant="outline" className="text-[10px]" style={{ borderColor: status.hex, color: status.hex }}>{status.label}</Badge></TableCell>
+                    <TableCell><Badge variant="outline" className="text-[10px] whitespace-nowrap" style={{ borderColor: status.hex, color: status.hex }}>{status.label}</Badge></TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataPreparacao)}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDuration(r.tempoPrepMs)}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataLiberacao)}</TableCell>
