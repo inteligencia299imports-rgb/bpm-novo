@@ -430,7 +430,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         let valueStr = String(entry.value);
         if (dk === 'diasPrep' || dk === 'diasLib') {
           const hours = entry.payload?.[dk === 'diasPrep' ? 'horasPrep' : 'horasLib'] ?? 0;
-          valueStr = `${hours}h (${entry.value} Dias)`;
+          valueStr = `${fmtInt(hours)}h (${fmtInt(entry.value)} Dias)`;
         }
         return (
           <p key={i} style={{ color: entry.color, margin: 0 }}>
