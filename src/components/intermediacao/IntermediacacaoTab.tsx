@@ -68,7 +68,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     const isSearching = search.trim().length > 0;
     const statuses = config.columns.map((c: any) => c.value);
     const statusField = config.statusField as 'intermediacao_parte1_status' | 'intermediacao_parte2_status';
-    const estRes = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id, status, observacoes').eq('tipo', 'consignada');
+    const estRes = await fetchAllRange<any>(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id, status, observacoes').eq('tipo', 'consignada'));
 
     let atData: any[];
     let atError: any;
