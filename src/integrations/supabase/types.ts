@@ -1223,6 +1223,29 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_nps_respostas: {
+        Row: {
+          atendimento: string | null
+          data_envio: string | null
+          data_resposta: string | null
+          data_venda: string | null
+          departamento: string | null
+          espaco_livre: string | null
+          experiencia: string | null
+          id_atendimento: string | null
+          id_resposta: string | null
+          melhorias: string | null
+          nome_cliente: string | null
+          nps: string | null
+          objeto: string | null
+          origem: string | null
+          outros_setores: string | null
+          produto: string | null
+          telefone: string | null
+          vendedor: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       atendimento_has_avaliacao: {
