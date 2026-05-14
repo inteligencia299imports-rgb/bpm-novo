@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck } from 'lucide-react';
+import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -12,6 +12,7 @@ import RelatorioShowroom from './RelatorioShowroom';
 import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
 import RelatorioVendedores from './RelatorioVendedores';
+import RelatorioPreparacao from './RelatorioPreparacao';
 
 function getCurrentCycleRange(): { start: Date; end: Date } {
   const now = new Date();
@@ -89,6 +90,9 @@ const RelatoriosTab: React.FC = () => {
                 <TabsTrigger value="avaliacoes" className="gap-1.5">
                   <ClipboardCheck className="h-4 w-4" /> Avaliações
                 </TabsTrigger>
+                <TabsTrigger value="preparacao" className="gap-1.5">
+                  <Wrench className="h-4 w-4" /> Preparação
+                </TabsTrigger>
               </TabsList>
             </div>
           )}
@@ -125,6 +129,9 @@ const RelatoriosTab: React.FC = () => {
             </TabsContent>
             <TabsContent value="avaliacoes">
               <RelatorioAvaliacoes dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'avaliacoes') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
+            </TabsContent>
+            <TabsContent value="preparacao" className="w-full max-w-full overflow-x-hidden">
+              <RelatorioPreparacao dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'preparacao') clearFnRef.current = fn; }} onFilterChange={(tipo) => setHasInternalFilters(tipo !== 'todos')} />
             </TabsContent>
             <TabsContent value="estoque">
               <RelatorioEstoque dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
