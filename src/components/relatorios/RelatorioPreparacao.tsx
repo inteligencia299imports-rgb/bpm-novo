@@ -354,9 +354,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                 <TableHead>Modelo</TableHead>
                 <TableHead>Placa</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead>Aquisição</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Entrada Preparação</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Data Preparação</TableHead>
                 <TableHead>Tempo Prep.</TableHead>
                 <TableHead>Data Liberação</TableHead>
@@ -365,7 +364,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
             </TableHeader>
             <TableBody>
               {filteredRows.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
               ) : filteredRows.map(r => {
                 const status = r.dataLiberacao
                   ? { label: 'Estoque', hex: '#169d53' }
@@ -378,9 +377,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                     <TableCell>
                       {r.tipo && <Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(r.tipo)}`}>{getTipoAquisicaoLabel(r.tipo)}</Badge>}
                     </TableCell>
-                    <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataAquisicao)}</TableCell>
-                    <TableCell><Badge variant="outline" className="text-[10px]" style={{ borderColor: status.hex, color: status.hex }}>{status.label}</Badge></TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataEntradaPrep)}</TableCell>
+                    <TableCell><Badge variant="outline" className="text-[10px]" style={{ borderColor: status.hex, color: status.hex }}>{status.label}</Badge></TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataPreparacao)}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDuration(r.tempoPrepMs)}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataLiberacao)}</TableCell>
