@@ -131,14 +131,10 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       }
     }
 
-    // A Parte 2 só deve listar vendas consignadas após a Parte 1 estar concluída.
-    // Ex.: se intermediacao_parte2_status = em_aberto, deve aparecer no Em Aberto da Parte 2.
+    // Parte 1 e Parte 2 são independentes — cada uma lista suas próprias pendências.
     filtered = filtered.filter(a => {
-      const parte1Status = a.intermediacao_parte1_status || 'em_aberto';
-      const parte2Status = a.intermediacao_parte2_status || 'em_aberto';
-
-      if (parte === 'parte1') return parte1Status !== 'concluido';
-      return parte1Status === 'concluido' && parte2Status !== 'concluido';
+      const status = (parte === 'parte1' ? a.intermediacao_parte1_status : a.intermediacao_parte2_status) || 'em_aberto';
+      return status !== 'concluido';
     });
 
     setItems(filtered);
