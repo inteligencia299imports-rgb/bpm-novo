@@ -49,6 +49,10 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
   const [parte, setParte] = useState<Parte>(initialParte || 'parte1');
 
   useEffect(() => {
+    if (initialParte) setParte(initialParte);
+  }, [initialParte]);
+
+  useEffect(() => {
     if (initialAtendimentoId) {
       supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
         if (data) {
@@ -127,8 +131,15 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       }
     }
 
-    // Filter out concluido items for parte1
-    filtered = filtered.filter(a => a.intermediacao_parte1_status !== 'concluido' || parte !== 'parte1');
+    // A Parte 2 só deve listar vendas consignadas após a Parte 1 estar concluída.
+    // Ex.: se intermediacao_parte2_status = em_aberto, deve aparecer no Em Aberto da Parte 2.
+    filtered = filtered.filter(a => {
+      const parte1Status = a.intermediacao_parte1_status || 'em_aberto';
+      const parte2Status = a.intermediacao_parte2_status || 'em_aberto';
+
+      if (parte === 'parte1') return parte1Status !== 'concluido';
+      return parte1Status === 'concluido' && parte2Status !== 'concluido';
+    });
 
     setItems(filtered);
     setLoading(false);
