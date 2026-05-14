@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { Badge } from '@/components/ui/badge';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
+import { LojaFilter } from './LojaFilter';
 
 interface Props {
   dateFrom: Date | undefined;
@@ -20,8 +21,18 @@ interface Props {
   setDateFrom: (d: Date | undefined) => void;
   setDateTo: (d: Date | undefined) => void;
   onRegisterClear?: (fn: () => void) => void;
-  onFilterChange?: (tipo: string) => void;
+  onFilterChange?: (loja: string, tipo: string) => void;
 }
+
+const SUB_LOJAS_299 = ['299i', '299s', '299f', '299p', 'Aventura'];
+const SUB_LOJAS_DUCATI = ['Ducati BSB', 'Ducati FLN', 'Ducati POA'];
+const matchesLoja = (loja: string, filter: string) => {
+  if (filter === 'todos') return true;
+  const l = (loja || '').trim();
+  if (filter === '299') return SUB_LOJAS_299.includes(l) || /^299/i.test(l);
+  if (filter === 'Ducati') return SUB_LOJAS_DUCATI.includes(l) || /ducati/i.test(l);
+  return l.toLowerCase() === filter.toLowerCase();
+};
 
 type TipoFilter = 'todos' | 'propria' | 'consignada';
 
@@ -64,14 +75,17 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
   const [loading, setLoading] = useState(true);
   const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
+  const [filterLoja, setFilterLojaState] = useState<string>('todos');
   const [rows, setRows] = useState<any[]>([]);
 
-  const setFilterTipo = (v: TipoFilter) => { setFilterTipoState(v); onFilterChange?.(v); };
+  const setFilterTipo = (v: TipoFilter) => { setFilterTipoState(v); onFilterChange?.(filterLoja, v); };
+  const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v, filterTipo); };
 
   useEffect(() => {
     onRegisterClear?.(() => {
       setFilterTipoState('todos');
-      onFilterChange?.('todos');
+      setFilterLojaState('todos');
+      onFilterChange?.('todos', 'todos');
       setDateFrom(undefined);
       setDateTo(undefined);
     });
@@ -196,9 +210,10 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     };
   }, [loadData, debouncedLoad]);
 
-  // Apply filters: tipo + period (data de preparação dentro do range)
+  // Apply filters: loja + tipo + period (data de preparação dentro do range)
   const filteredRows = useMemo(() => {
     return rows.filter(r => {
+      if (!matchesLoja(r.loja, filterLoja)) return false;
       if (filterTipo !== 'todos' && r.tipoCat !== filterTipo) return false;
       if (dateFrom && r.dataPreparacao && new Date(r.dataPreparacao) < dateFrom) return false;
       if (dateTo && r.dataPreparacao && new Date(r.dataPreparacao) > dateTo) return false;
@@ -206,7 +221,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       if (!r.dataPreparacao && (dateFrom || dateTo)) return false;
       return true;
     });
-  }, [rows, filterTipo, dateFrom, dateTo]);
+  }, [rows, filterLoja, filterTipo, dateFrom, dateTo]);
 
   const kpis = useMemo(() => {
     const preparadas = filteredRows.filter(r => r.dataPreparacao);
@@ -224,12 +239,12 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
   // Charts: ciclos a partir de 21/03
   const chartData = useMemo(() => {
-    // Use rows filtered only by tipo (not by period) for monthly chart
-    const tipoFiltered = rows.filter(r => filterTipo === 'todos' || r.tipoCat === filterTipo);
+    // Use rows filtered by loja + tipo (not by period) for monthly chart
+    const baseFiltered = rows.filter(r => matchesLoja(r.loja, filterLoja) && (filterTipo === 'todos' || r.tipoCat === filterTipo));
     const buckets = getCycleBuckets();
     return buckets.map(b => {
-      const prep = tipoFiltered.filter(r => r.dataPreparacao && new Date(r.dataPreparacao) >= b.start && new Date(r.dataPreparacao) <= b.end);
-      const lib = tipoFiltered.filter(r => r.dataLiberacao && new Date(r.dataLiberacao) >= b.start && new Date(r.dataLiberacao) <= b.end);
+      const prep = baseFiltered.filter(r => r.dataPreparacao && new Date(r.dataPreparacao) >= b.start && new Date(r.dataPreparacao) <= b.end);
+      const lib = baseFiltered.filter(r => r.dataLiberacao && new Date(r.dataLiberacao) >= b.start && new Date(r.dataLiberacao) <= b.end);
       const tempoPrep = prep.map(r => r.tempoPrepMs).filter((v): v is number => v != null && v >= 0);
       const tempoLib = lib.map(r => r.tempoLibMs).filter((v): v is number => v != null && v >= 0);
       const avgDays = (arr: number[]) => arr.length ? +(arr.reduce((s, v) => s + v, 0) / arr.length / 86400000).toFixed(1) : 0;
@@ -241,7 +256,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         diasLib: avgDays(tempoLib),
       };
     });
-  }, [rows, filterTipo]);
+  }, [rows, filterLoja, filterTipo]);
 
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
 
@@ -255,15 +270,18 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
 
-      {/* Tipo filter */}
-      <div className="flex flex-wrap items-center gap-1">
-        {tipoBtns.map(b => (
-          <Button key={b.value} size="sm" variant={filterTipo === b.value ? 'default' : 'outline'}
-            className={cn('rounded-full px-4 h-8 text-xs font-medium', filterTipo === b.value && 'shadow-sm')}
-            onClick={() => setFilterTipo(b.value)}>
-            {b.label}
-          </Button>
-        ))}
+      {/* Filters: Loja (left) + Tipo (right) */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+        <div className="flex flex-wrap items-center gap-1 ml-auto">
+          {tipoBtns.map(b => (
+            <Button key={b.value} size="sm" variant={filterTipo === b.value ? 'default' : 'outline'}
+              className={cn('rounded-full px-4 h-8 text-xs font-medium', filterTipo === b.value && 'shadow-sm')}
+              onClick={() => setFilterTipo(b.value)}>
+              {b.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* KPIs */}
