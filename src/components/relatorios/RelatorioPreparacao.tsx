@@ -415,4 +415,18 @@ const KpiCard: React.FC<{ title: string; value: string | number; icon: React.Rea
   </Card>
 );
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12, background: 'hsl(var(--background))', padding: '8px 12px' }}>
+      <p style={{ fontWeight: 700, marginBottom: 4 }}>{label}</p>
+      {payload.map((entry: any, i: number) => (
+        <p key={i} style={{ color: entry.color, margin: 0 }}>
+          {entry.name}: {entry.value}
+        </p>
+      ))}
+    </div>
+  );
+};
+
 export default RelatorioPreparacao;
