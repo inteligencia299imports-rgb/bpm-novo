@@ -270,15 +270,18 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
 
-      {/* Tipo filter */}
-      <div className="flex flex-wrap items-center gap-1">
-        {tipoBtns.map(b => (
-          <Button key={b.value} size="sm" variant={filterTipo === b.value ? 'default' : 'outline'}
-            className={cn('rounded-full px-4 h-8 text-xs font-medium', filterTipo === b.value && 'shadow-sm')}
-            onClick={() => setFilterTipo(b.value)}>
-            {b.label}
-          </Button>
-        ))}
+      {/* Filters: Loja (left) + Tipo (right) */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+        <div className="flex flex-wrap items-center gap-1 ml-auto">
+          {tipoBtns.map(b => (
+            <Button key={b.value} size="sm" variant={filterTipo === b.value ? 'default' : 'outline'}
+              className={cn('rounded-full px-4 h-8 text-xs font-medium', filterTipo === b.value && 'shadow-sm')}
+              onClick={() => setFilterTipo(b.value)}>
+              {b.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* KPIs */}
