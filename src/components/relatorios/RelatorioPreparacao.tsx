@@ -300,10 +300,10 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 !mt-6">
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4">
-            <CardTitle className="text-sm font-semibold">Preparação por Ciclo</CardTitle>
+            <CardTitle className="text-sm font-semibold">Preparação</CardTitle>
             <div className="flex flex-wrap items-center gap-3 text-[11px] mt-1">
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#7e6d9b' }} />Qtd preparadas</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Dias médios</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#2F6F84' }} />Preparadas</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Tempo Médio</span>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
@@ -314,18 +314,18 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Bar yAxisId="left" dataKey="qtdPrep" name="Qtd preparadas" fill="#7e6d9b" radius={[8, 8, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="diasPrep" name="Dias médios" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
+                <Bar yAxisId="left" dataKey="qtdPrep" name="Preparadas" fill="#2F6F84" radius={[8, 8, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="diasPrep" name="Tempo Médio" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4">
-            <CardTitle className="text-sm font-semibold">Liberação por Ciclo</CardTitle>
+            <CardTitle className="text-sm font-semibold">Liberadas</CardTitle>
             <div className="flex flex-wrap items-center gap-3 text-[11px] mt-1">
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#3a8f6a' }} />Qtd liberadas</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#2F6F84' }} />Dias médios</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#3a8f6a' }} />Liberadas</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Tempo Médio</span>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
@@ -336,8 +336,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Bar yAxisId="left" dataKey="qtdLib" name="Qtd liberadas" fill="#3a8f6a" radius={[8, 8, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="diasLib" name="Dias médios" stroke="#2F6F84" strokeWidth={2.5} dot={{ r: 4, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} />
+                <Bar yAxisId="left" dataKey="qtdLib" name="Liberadas" fill="#3a8f6a" radius={[8, 8, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="diasLib" name="Tempo Médio" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
