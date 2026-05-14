@@ -367,7 +367,9 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
               {filteredRows.length === 0 ? (
                 <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
               ) : filteredRows.map(r => {
-                const status = STATUS_LABELS[r.statusPrep] || { label: r.statusPrep, hex: '#888' };
+                const status = r.dataLiberacao
+                  ? { label: 'Estoque', hex: '#169d53' }
+                  : { label: 'Ag. Liberação', hex: '#607D8B' };
                 return (
                   <TableRow key={r.id}>
                     <TableCell className="text-xs font-medium">{r.nomeCliente}</TableCell>
