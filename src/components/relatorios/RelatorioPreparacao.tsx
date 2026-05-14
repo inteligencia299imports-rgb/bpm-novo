@@ -209,9 +209,10 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     };
   }, [loadData, debouncedLoad]);
 
-  // Apply filters: tipo + period (data de preparação dentro do range)
+  // Apply filters: loja + tipo + period (data de preparação dentro do range)
   const filteredRows = useMemo(() => {
     return rows.filter(r => {
+      if (!matchesLoja(r.loja, filterLoja)) return false;
       if (filterTipo !== 'todos' && r.tipoCat !== filterTipo) return false;
       if (dateFrom && r.dataPreparacao && new Date(r.dataPreparacao) < dateFrom) return false;
       if (dateTo && r.dataPreparacao && new Date(r.dataPreparacao) > dateTo) return false;
@@ -219,7 +220,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       if (!r.dataPreparacao && (dateFrom || dateTo)) return false;
       return true;
     });
-  }, [rows, filterTipo, dateFrom, dateTo]);
+  }, [rows, filterLoja, filterTipo, dateFrom, dateTo]);
 
   const kpis = useMemo(() => {
     const preparadas = filteredRows.filter(r => r.dataPreparacao);
@@ -237,12 +238,12 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
   // Charts: ciclos a partir de 21/03
   const chartData = useMemo(() => {
-    // Use rows filtered only by tipo (not by period) for monthly chart
-    const tipoFiltered = rows.filter(r => filterTipo === 'todos' || r.tipoCat === filterTipo);
+    // Use rows filtered by loja + tipo (not by period) for monthly chart
+    const baseFiltered = rows.filter(r => matchesLoja(r.loja, filterLoja) && (filterTipo === 'todos' || r.tipoCat === filterTipo));
     const buckets = getCycleBuckets();
     return buckets.map(b => {
-      const prep = tipoFiltered.filter(r => r.dataPreparacao && new Date(r.dataPreparacao) >= b.start && new Date(r.dataPreparacao) <= b.end);
-      const lib = tipoFiltered.filter(r => r.dataLiberacao && new Date(r.dataLiberacao) >= b.start && new Date(r.dataLiberacao) <= b.end);
+      const prep = baseFiltered.filter(r => r.dataPreparacao && new Date(r.dataPreparacao) >= b.start && new Date(r.dataPreparacao) <= b.end);
+      const lib = baseFiltered.filter(r => r.dataLiberacao && new Date(r.dataLiberacao) >= b.start && new Date(r.dataLiberacao) <= b.end);
       const tempoPrep = prep.map(r => r.tempoPrepMs).filter((v): v is number => v != null && v >= 0);
       const tempoLib = lib.map(r => r.tempoLibMs).filter((v): v is number => v != null && v >= 0);
       const avgDays = (arr: number[]) => arr.length ? +(arr.reduce((s, v) => s + v, 0) / arr.length / 86400000).toFixed(1) : 0;
@@ -254,7 +255,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         diasLib: avgDays(tempoLib),
       };
     });
-  }, [rows, filterTipo]);
+  }, [rows, filterLoja, filterTipo]);
 
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
 
