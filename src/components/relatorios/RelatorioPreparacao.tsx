@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { Badge } from '@/components/ui/badge';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
+import { LojaFilter } from './LojaFilter';
 
 interface Props {
   dateFrom: Date | undefined;
