@@ -73,7 +73,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     let atData: any[];
     let atError: any;
     if (isSearching) {
-      const result = await supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false });
+      const result = await fetchAllRange<any>(() => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
       atError = result.error;
       atData = result.data || [];
     } else {
