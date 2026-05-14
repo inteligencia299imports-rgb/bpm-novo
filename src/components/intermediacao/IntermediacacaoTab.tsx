@@ -64,23 +64,12 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const PER_STATUS_LIMIT = 50;
-    const isSearching = search.trim().length > 0;
-    const statuses = config.columns.map((c: any) => c.value);
     const statusField = config.statusField as 'intermediacao_parte1_status' | 'intermediacao_parte2_status';
     const estRes = await fetchAllRange<any>(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id, status, observacoes').eq('tipo', 'consignada'));
 
-    let atData: any[];
-    let atError: any;
-    if (isSearching) {
-      const result = await fetchAllRange<any>(() => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
-      atError = result.error;
-      atData = result.data || [];
-    } else {
-      const statusResults = await Promise.all(statuses.map((s: string) => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').eq(statusField, s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
-      atError = statusResults.find(r => r.error)?.error;
-      atData = statusResults.flatMap(r => r.data || []);
-    }
+    const result = await fetchAllRange<any>(() => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
+    const atError = result.error;
+    const atData = result.data || [];
     if (atError) { toast.error('Erro ao carregar intermediação'); setLoading(false); return; }
 
     const estoqueMap: Record<string, any> = {};
