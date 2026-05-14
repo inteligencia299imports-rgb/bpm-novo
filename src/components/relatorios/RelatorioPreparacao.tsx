@@ -424,11 +424,19 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return (
     <div style={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12, background: 'hsl(var(--background))', padding: '8px 12px' }}>
       <p style={{ fontWeight: 700, marginBottom: 4 }}>{label}</p>
-      {payload.map((entry: any, i: number) => (
-        <p key={i} style={{ color: entry.color, margin: 0 }}>
-          {entry.name}: {entry.value}
-        </p>
-      ))}
+      {payload.map((entry: any, i: number) => {
+        const dk = entry.dataKey;
+        let valueStr = String(entry.value);
+        if (dk === 'diasPrep' || dk === 'diasLib') {
+          const hours = entry.payload?.[dk === 'diasPrep' ? 'horasPrep' : 'horasLib'] ?? 0;
+          valueStr = `${hours}h (${entry.value} Dias)`;
+        }
+        return (
+          <p key={i} style={{ color: entry.color, margin: 0 }}>
+            {entry.name}: {valueStr}
+          </p>
+        );
+      })}
     </div>
   );
 };
