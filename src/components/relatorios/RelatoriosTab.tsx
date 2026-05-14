@@ -131,7 +131,7 @@ const RelatoriosTab: React.FC = () => {
               <RelatorioAvaliacoes dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'avaliacoes') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
             </TabsContent>
             <TabsContent value="preparacao" className="w-full max-w-full overflow-x-hidden">
-              <RelatorioPreparacao dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'preparacao') clearFnRef.current = fn; }} onFilterChange={(tipo) => setHasInternalFilters(tipo !== 'todos')} />
+              <RelatorioPreparacao dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'preparacao') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
             </TabsContent>
             <TabsContent value="estoque">
               <RelatorioEstoque dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
