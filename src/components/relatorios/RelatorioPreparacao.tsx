@@ -354,11 +354,11 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                 <TableHead>Modelo</TableHead>
                 <TableHead>Placa</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead>Entrada Preparação</TableHead>
+                <TableHead>Entrada</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Data Preparação</TableHead>
+                <TableHead>Preparação</TableHead>
                 <TableHead>Tempo Prep.</TableHead>
-                <TableHead>Data Liberação</TableHead>
+                <TableHead>Liberação</TableHead>
                 <TableHead>Tempo Lib.</TableHead>
               </TableRow>
             </TableHeader>
