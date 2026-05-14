@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Input } from '@/components/ui/input';
 import { Search, X, Handshake } from 'lucide-react';
 import { INTERMEDIACAO_PARTE1_COLUMNS, INTERMEDIACAO_PARTE2_COLUMNS, INTERMEDIACAO_PARTE1_ETAPAS, INTERMEDIACAO_PARTE2_ETAPAS } from '@/types/crm';
@@ -67,12 +68,12 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     const isSearching = search.trim().length > 0;
     const statuses = config.columns.map((c: any) => c.value);
     const statusField = config.statusField as 'intermediacao_parte1_status' | 'intermediacao_parte2_status';
-    const estRes = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id, status, observacoes').eq('tipo', 'consignada');
+    const estRes = await fetchAllRange<any>(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id, status, observacoes').eq('tipo', 'consignada'));
 
     let atData: any[];
     let atError: any;
     if (isSearching) {
-      const result = await supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false });
+      const result = await fetchAllRange<any>(() => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
       atError = result.error;
       atData = result.data || [];
     } else {
