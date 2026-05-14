@@ -247,13 +247,17 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       const lib = baseFiltered.filter(r => r.dataLiberacao && new Date(r.dataLiberacao) >= b.start && new Date(r.dataLiberacao) <= b.end);
       const tempoPrep = prep.map(r => r.tempoPrepMs).filter((v): v is number => v != null && v >= 0);
       const tempoLib = lib.map(r => r.tempoLibMs).filter((v): v is number => v != null && v >= 0);
-      const avgDays = (arr: number[]) => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length / 86400000) : 0;
+      const avgMs = (arr: number[]) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
+      const msPrep = avgMs(tempoPrep);
+      const msLib = avgMs(tempoLib);
       return {
         label: b.label,
         qtdPrep: prep.length,
-        diasPrep: avgDays(tempoPrep),
+        diasPrep: Math.round(msPrep / 86400000),
+        horasPrep: Math.round(msPrep / 3600000),
         qtdLib: lib.length,
-        diasLib: avgDays(tempoLib),
+        diasLib: Math.round(msLib / 86400000),
+        horasLib: Math.round(msLib / 3600000),
       };
     });
   }, [rows, filterLoja, filterTipo]);
@@ -286,20 +290,20 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard title="Motos Preparadas" value={kpis.qtdPreparadas} icon={<Wrench className="h-5 w-5" />} color="purple" />
-        <KpiCard title="Tempo Preparação" value={fmtDuration(kpis.tempoMedioPrep)} icon={<Clock className="h-5 w-5" />} color="orange" />
+        <KpiCard title="Motos Preparadas" value={kpis.qtdPreparadas} icon={<Wrench className="h-5 w-5" />} color="teal" />
+        <KpiCard title="Tempo Preparação" value={fmtDuration(kpis.tempoMedioPrep)} icon={<Clock className="h-5 w-5" />} color="teal" />
         <KpiCard title="Motos Liberadas" value={kpis.qtdLiberadas} icon={<CheckCircle className="h-5 w-5" />} color="emerald" />
-        <KpiCard title="Tempo Liberação" value={fmtDuration(kpis.tempoMedioLib)} icon={<Package className="h-5 w-5" />} color="teal" />
+        <KpiCard title="Tempo Liberação" value={fmtDuration(kpis.tempoMedioLib)} icon={<Clock className="h-5 w-5" />} color="emerald" />
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 !mt-6">
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4">
-            <CardTitle className="text-sm font-semibold">Preparação por Ciclo</CardTitle>
+            <CardTitle className="text-sm font-semibold">Preparação</CardTitle>
             <div className="flex flex-wrap items-center gap-3 text-[11px] mt-1">
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#7e6d9b' }} />Qtd preparadas</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Dias médios</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#2F6F84' }} />Preparadas</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Tempo Médio</span>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
@@ -310,18 +314,18 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Bar yAxisId="left" dataKey="qtdPrep" name="Qtd preparadas" fill="#7e6d9b" radius={[8, 8, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="diasPrep" name="Dias médios" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
+                <Bar yAxisId="left" dataKey="qtdPrep" name="Preparadas" fill="#2F6F84" radius={[8, 8, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="diasPrep" name="Tempo Médio" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4">
-            <CardTitle className="text-sm font-semibold">Liberação por Ciclo</CardTitle>
+            <CardTitle className="text-sm font-semibold">Liberadas</CardTitle>
             <div className="flex flex-wrap items-center gap-3 text-[11px] mt-1">
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#3a8f6a' }} />Qtd liberadas</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#2F6F84' }} />Dias médios</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#3a8f6a' }} />Liberadas</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Tempo Médio</span>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
@@ -332,8 +336,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Bar yAxisId="left" dataKey="qtdLib" name="Qtd liberadas" fill="#3a8f6a" radius={[8, 8, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="diasLib" name="Dias médios" stroke="#2F6F84" strokeWidth={2.5} dot={{ r: 4, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} />
+                <Bar yAxisId="left" dataKey="qtdLib" name="Liberadas" fill="#3a8f6a" radius={[8, 8, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="diasLib" name="Tempo Médio" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
@@ -420,11 +424,19 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return (
     <div style={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12, background: 'hsl(var(--background))', padding: '8px 12px' }}>
       <p style={{ fontWeight: 700, marginBottom: 4 }}>{label}</p>
-      {payload.map((entry: any, i: number) => (
-        <p key={i} style={{ color: entry.color, margin: 0 }}>
-          {entry.name}: {entry.value}
-        </p>
-      ))}
+      {payload.map((entry: any, i: number) => {
+        const dk = entry.dataKey;
+        let valueStr = String(entry.value);
+        if (dk === 'diasPrep' || dk === 'diasLib') {
+          const hours = entry.payload?.[dk === 'diasPrep' ? 'horasPrep' : 'horasLib'] ?? 0;
+          valueStr = `${hours}h (${entry.value} Dias)`;
+        }
+        return (
+          <p key={i} style={{ color: entry.color, margin: 0 }}>
+            {entry.name}: {valueStr}
+          </p>
+        );
+      })}
     </div>
   );
 };
