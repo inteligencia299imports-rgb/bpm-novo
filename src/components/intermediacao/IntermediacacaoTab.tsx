@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Input } from '@/components/ui/input';
 import { Search, X, Handshake } from 'lucide-react';
 import { INTERMEDIACAO_PARTE1_COLUMNS, INTERMEDIACAO_PARTE2_COLUMNS, INTERMEDIACAO_PARTE1_ETAPAS, INTERMEDIACAO_PARTE2_ETAPAS } from '@/types/crm';
