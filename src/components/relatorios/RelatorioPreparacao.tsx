@@ -152,8 +152,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       // Data Entrada Preparação = última despausa OU data de aquisição
       const dataEntradaPrep = ultimaDespausa || dataAquisicao;
 
-      // Data de preparação = primeira aguardando_liberacao_estoque após dataEntradaPrep
-      const aceites = prepHist.filter(h => h.status === 'aguardando_liberacao_estoque' &&
+      // Data de preparação = primeira aguardando_aceite após dataEntradaPrep
+      const aceites = prepHist.filter(h => h.status === 'aguardando_aceite' &&
         (!dataEntradaPrep || new Date(h.created_at) >= new Date(dataEntradaPrep))).map(h => h.created_at);
       const dataPreparacao = aceites.length ? aceites[0] : null;
 
