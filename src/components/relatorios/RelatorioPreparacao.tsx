@@ -356,7 +356,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
-                <TableHead>Modelo</TableHead>
+                <TableHead className="max-w-[220px]">Modelo</TableHead>
                 <TableHead>Placa</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Entrada</TableHead>
