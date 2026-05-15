@@ -39,14 +39,11 @@ const RelatoriosTab: React.FC = () => {
     }
   }, [role]);
 
-  // Preparação: filtrar a partir de 21/03/2026 em diante
-  React.useEffect(() => {
-    if (dept === 'preparacao') {
-      const start = new Date(2026, 2, 21, 0, 0, 0, 0);
-      setDateFromRaw(start);
-      setDateToRaw(undefined);
-    }
-  }, [dept]);
+  // Preparação: bloquear seleção de datas antes de 21/03/2026
+  const PREP_MIN_DATE = new Date(2026, 2, 21, 0, 0, 0, 0);
+  const disabledDates = dept === 'preparacao'
+    ? (date: Date) => date < PREP_MIN_DATE
+    : undefined;
   const initFrom = cycle.start;
   initFrom.setHours(0, 0, 0, 0);
   const initTo = cycle.end;
@@ -114,7 +111,7 @@ const RelatoriosTab: React.FC = () => {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateFrom ?? new Date('2026-03-21T00:00:00')} />
+                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} disabled={disabledDates} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateFrom ?? new Date('2026-03-21T00:00:00')} />
               </PopoverContent>
             </Popover>
             <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
@@ -126,7 +123,7 @@ const RelatoriosTab: React.FC = () => {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
-                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateTo ?? new Date('2026-03-21T00:00:00')} />
+                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} disabled={disabledDates} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateTo ?? new Date('2026-03-21T00:00:00')} />
               </PopoverContent>
             </Popover>
           </div>
