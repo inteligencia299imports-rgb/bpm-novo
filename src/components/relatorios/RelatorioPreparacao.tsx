@@ -38,6 +38,25 @@ type TipoFilter = 'todos' | 'propria' | 'consignada';
 
 const fmtDate = (iso: string | null | undefined) => iso ? format(new Date(iso), 'dd/MM/yyyy HH:mm') : '-';
 const fmtInt = (n: number) => Math.round(n).toLocaleString('pt-BR');
+// Diferença em ms entre duas datas, desconsiderando os domingos (00:00 a 23:59:59)
+const diffExcludingSundays = (startMs: number, endMs: number): number => {
+  if (endMs <= startMs) return 0;
+  let total = endMs - startMs;
+  const cursor = new Date(startMs);
+  cursor.setHours(0, 0, 0, 0);
+  while (cursor.getTime() < endMs) {
+    if (cursor.getDay() === 0) {
+      const dayStart = cursor.getTime();
+      const dayEnd = dayStart + 86400000;
+      const overlapStart = Math.max(startMs, dayStart);
+      const overlapEnd = Math.min(endMs, dayEnd);
+      if (overlapEnd > overlapStart) total -= (overlapEnd - overlapStart);
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return Math.max(0, total);
+};
+
 const fmtDuration = (ms: number | null) => {
   if (ms == null || !isFinite(ms) || ms < 0) return '-';
   const hours = ms / 3600000;
@@ -164,8 +183,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         (!dataEntradaPrep || new Date(h.created_at) >= new Date(dataEntradaPrep))).map(h => h.created_at);
       const dataLiberacao = liberacoes.length ? liberacoes[0] : null;
 
-      const tempoPrepMs = dataPreparacao && dataEntradaPrep ? new Date(dataPreparacao).getTime() - new Date(dataEntradaPrep).getTime() : null;
-      const tempoLibMs = dataLiberacao && dataPreparacao ? new Date(dataLiberacao).getTime() - new Date(dataPreparacao).getTime() : null;
+      const tempoPrepMs = dataPreparacao && dataEntradaPrep ? diffExcludingSundays(new Date(dataEntradaPrep).getTime(), new Date(dataPreparacao).getTime()) : null;
+      const tempoLibMs = dataLiberacao && dataPreparacao ? diffExcludingSundays(new Date(dataPreparacao).getTime(), new Date(dataLiberacao).getTime()) : null;
 
       const tipoNorm = (a.tipo_aquisicao || '').toLowerCase();
       const tipoCat: 'propria' | 'consignada' = ['consignada', 'consignacao'].includes(tipoNorm) ? 'consignada' : 'propria';
@@ -222,6 +241,10 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       // If no dataPreparacao, only include when no period is set
       if (!r.dataPreparacao && (dateFrom || dateTo)) return false;
       return true;
+    }).sort((a, b) => {
+      const ta = a.dataPreparacao ? new Date(a.dataPreparacao).getTime() : Infinity;
+      const tb = b.dataPreparacao ? new Date(b.dataPreparacao).getTime() : Infinity;
+      return ta - tb;
     });
   }, [rows, filterLoja, filterTipo, dateFrom, dateTo]);
 
