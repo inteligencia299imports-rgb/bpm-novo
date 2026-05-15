@@ -38,6 +38,15 @@ const RelatoriosTab: React.FC = () => {
       setDept((role === 'gestor' || role === 'avaliador') ? 'showroom' : 'vendedores');
     }
   }, [role]);
+
+  // Preparação: filtrar a partir de 21/03/2026 em diante
+  React.useEffect(() => {
+    if (dept === 'preparacao') {
+      const start = new Date(2026, 2, 21, 0, 0, 0, 0);
+      setDateFromRaw(start);
+      setDateToRaw(undefined);
+    }
+  }, [dept]);
   const initFrom = cycle.start;
   initFrom.setHours(0, 0, 0, 0);
   const initTo = cycle.end;
