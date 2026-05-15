@@ -39,14 +39,11 @@ const RelatoriosTab: React.FC = () => {
     }
   }, [role]);
 
-  // Preparação: filtrar a partir de 21/03/2026 em diante
-  React.useEffect(() => {
-    if (dept === 'preparacao') {
-      const start = new Date(2026, 2, 21, 0, 0, 0, 0);
-      setDateFromRaw(start);
-      setDateToRaw(undefined);
-    }
-  }, [dept]);
+  // Preparação: bloquear seleção de datas antes de 21/03/2026
+  const PREP_MIN_DATE = new Date(2026, 2, 21, 0, 0, 0, 0);
+  const disabledDates = dept === 'preparacao'
+    ? (date: Date) => date < PREP_MIN_DATE
+    : undefined;
   const initFrom = cycle.start;
   initFrom.setHours(0, 0, 0, 0);
   const initTo = cycle.end;
