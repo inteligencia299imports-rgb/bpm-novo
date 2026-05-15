@@ -142,9 +142,10 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         .map(h => h.created_at).sort();
       const dataAquisicao = adquiridas.length ? adquiridas[adquiridas.length - 1] : null;
 
-      // Preparação history (entity_type='preparacao' only on avaliacao_id)
-      const prepHist = histAval.filter(h => h.entity_type === 'preparacao').sort((x, y) =>
-        new Date(x.created_at).getTime() - new Date(y.created_at).getTime());
+      // Preparação history (entity_type='preparacao' em avaliacao_id OU moto_avaliacao_id)
+      const prepHist = [...histAval, ...histMoto]
+        .filter(h => h.entity_type === 'preparacao')
+        .sort((x, y) => new Date(x.created_at).getTime() - new Date(y.created_at).getTime());
 
       // Última despausa = último 'reenviada_preparacao'
       const reenvios = prepHist.filter(h => h.status === 'reenviada_preparacao').map(h => h.created_at);
