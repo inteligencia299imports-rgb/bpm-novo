@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Wrench, CheckCircle, Clock, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -303,21 +303,24 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
           <CardHeader className="pb-4 pt-4 px-4">
             <CardTitle className="text-sm font-semibold">Preparação</CardTitle>
             <div className="flex flex-wrap items-center gap-3 text-[11px] mt-1">
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#2F6F84' }} />Preparadas</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Tempo Médio</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#2F6F84' }} />Tempo de Preparação</span>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={chartH}>
-              <ComposedChart data={chartData} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
+              <AreaChart data={chartData} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
+                <defs>
+                  <linearGradient id="gradPrep" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2F6F84" stopOpacity={0.55} />
+                    <stop offset="100%" stopColor="#2F6F84" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Bar yAxisId="left" dataKey="qtdPrep" name="Preparadas" fill="#2F6F84" radius={[8, 8, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="diasPrep" name="Tempo Médio" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
-              </ComposedChart>
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeOpacity: 0.3 }} />
+                <Area type="monotone" dataKey="diasPrep" name="Tempo de Preparação" stroke="#2F6F84" strokeWidth={2.5} fill="url(#gradPrep)" dot={{ r: 3, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 5 }} />
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -325,21 +328,24 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
           <CardHeader className="pb-4 pt-4 px-4">
             <CardTitle className="text-sm font-semibold">Liberadas</CardTitle>
             <div className="flex flex-wrap items-center gap-3 text-[11px] mt-1">
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#3a8f6a' }} />Liberadas</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Tempo Médio</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#3a8f6a' }} />Tempo de Liberação</span>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={chartH}>
-              <ComposedChart data={chartData} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
+              <AreaChart data={chartData} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
+                <defs>
+                  <linearGradient id="gradLib" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3a8f6a" stopOpacity={0.55} />
+                    <stop offset="100%" stopColor="#3a8f6a" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Bar yAxisId="left" dataKey="qtdLib" name="Liberadas" fill="#3a8f6a" radius={[8, 8, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="diasLib" name="Tempo Médio" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
-              </ComposedChart>
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeOpacity: 0.3 }} />
+                <Area type="monotone" dataKey="diasLib" name="Tempo de Liberação" stroke="#3a8f6a" strokeWidth={2.5} fill="url(#gradLib)" dot={{ r: 3, fill: '#3a8f6a', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 5 }} />
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -429,8 +435,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         const dk = entry.dataKey;
         let valueStr = String(entry.value);
         if (dk === 'diasPrep' || dk === 'diasLib') {
-          const hours = entry.payload?.[dk === 'diasPrep' ? 'horasPrep' : 'horasLib'] ?? 0;
-          valueStr = `${fmtInt(hours)}h (${fmtInt(entry.value)} Dias)`;
+          const isPrep = dk === 'diasPrep';
+          const hours = entry.payload?.[isPrep ? 'horasPrep' : 'horasLib'] ?? 0;
+          const qtd = entry.payload?.[isPrep ? 'qtdPrep' : 'qtdLib'] ?? 0;
+          valueStr = `${fmtInt(hours)}h (${fmtInt(entry.value)} Dias) • ${fmtInt(qtd)} ${isPrep ? 'preparadas' : 'liberadas'}`;
         }
         return (
           <p key={i} style={{ color: entry.color, margin: 0 }}>
