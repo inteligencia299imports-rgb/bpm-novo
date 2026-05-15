@@ -241,6 +241,10 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       // If no dataPreparacao, only include when no period is set
       if (!r.dataPreparacao && (dateFrom || dateTo)) return false;
       return true;
+    }).sort((a, b) => {
+      const ta = a.dataPreparacao ? new Date(a.dataPreparacao).getTime() : Infinity;
+      const tb = b.dataPreparacao ? new Date(b.dataPreparacao).getTime() : Infinity;
+      return ta - tb;
     });
   }, [rows, filterLoja, filterTipo, dateFrom, dateTo]);
 
