@@ -200,6 +200,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         bloqueio_juridico: 'BLOQUEIO JURÍDICO',
         reenviada_preparacao: 'REENVIADA PREPARAÇÃO',
         pendencia_concluida: 'PENDÊNCIA CONCLUÍDA',
+        repreparacao_concluida: 'REPREPARAÇÃO CONCLUÍDA',
+        preparacao_concluida: 'PREPARAÇÃO CONCLUÍDA',
         ...Object.fromEntries(PREPARACAO_COLUMNS.map(c => [c.value, c.label])),
       };
       const remapStatus = (s: string) => STATUS_REMAP[s] || s;
