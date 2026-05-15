@@ -166,9 +166,11 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         .filter(h => h.entity_type === 'preparacao')
         .sort((x, y) => new Date(x.created_at).getTime() - new Date(y.created_at).getTime());
 
-      // Última despausa = último 'reenviada_preparacao'
-      const reenvios = prepHist.filter(h => h.status === 'reenviada_preparacao').map(h => h.created_at);
-      const ultimaDespausa = reenvios.length ? reenvios[reenvios.length - 1] : null;
+      // Última despausa = último 'reenviada_preparacao' OU 'pendencia_concluida'
+      const resets = prepHist
+        .filter(h => h.status === 'reenviada_preparacao' || h.status === 'pendencia_concluida')
+        .map(h => h.created_at);
+      const ultimaDespausa = resets.length ? resets[resets.length - 1] : null;
 
       // Data Entrada Preparação = última despausa OU data de aquisição
       const dataEntradaPrep = ultimaDespausa || dataAquisicao;
