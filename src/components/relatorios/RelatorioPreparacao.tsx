@@ -184,7 +184,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       const dataLiberacao = liberacoes.length ? liberacoes[0] : null;
 
       const tempoPrepMs = dataPreparacao && dataEntradaPrep ? diffExcludingSundays(new Date(dataEntradaPrep).getTime(), new Date(dataPreparacao).getTime()) : null;
-      const tempoLibMs = dataLiberacao && dataPreparacao ? diffExcludingSundays(new Date(dataPreparacao).getTime(), new Date(dataLiberacao).getTime()) : null;
+      const tempoLibMs = dataLiberacao && dataEntradaPrep ? diffExcludingSundays(new Date(dataEntradaPrep).getTime(), new Date(dataLiberacao).getTime()) : null;
 
       const tipoNorm = (a.tipo_aquisicao || '').toLowerCase();
       const tipoCat: 'propria' | 'consignada' = ['consignada', 'consignacao'].includes(tipoNorm) ? 'consignada' : 'propria';
