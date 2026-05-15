@@ -430,19 +430,24 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 12, background: 'hsl(var(--background))', padding: '8px 12px' }}>
-      <p style={{ fontWeight: 700, marginBottom: 4 }}>{label}</p>
+      <p style={{ fontWeight: 700, marginBottom: 4 }}>Período: {label}</p>
       {payload.map((entry: any, i: number) => {
         const dk = entry.dataKey;
-        let valueStr = String(entry.value);
         if (dk === 'diasPrep' || dk === 'diasLib') {
           const isPrep = dk === 'diasPrep';
           const hours = entry.payload?.[isPrep ? 'horasPrep' : 'horasLib'] ?? 0;
           const qtd = entry.payload?.[isPrep ? 'qtdPrep' : 'qtdLib'] ?? 0;
-          valueStr = `${fmtInt(hours)}h (${fmtInt(entry.value)} Dias) • ${fmtInt(qtd)} ${isPrep ? 'preparadas' : 'liberadas'}`;
+          const qtdLabel = isPrep ? 'Preparadas' : 'Liberadas';
+          return (
+            <div key={i} style={{ color: entry.color }}>
+              <p style={{ margin: 0 }}>{qtdLabel}: {fmtInt(qtd)}</p>
+              <p style={{ margin: 0 }}>Tempo: {fmtInt(hours)}h ({fmtInt(entry.value)} Dias)</p>
+            </div>
+          );
         }
         return (
           <p key={i} style={{ color: entry.color, margin: 0 }}>
-            {entry.name}: {valueStr}
+            {entry.name}: {String(entry.value)}
           </p>
         );
       })}
