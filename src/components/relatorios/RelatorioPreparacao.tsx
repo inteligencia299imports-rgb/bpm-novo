@@ -38,6 +38,25 @@ type TipoFilter = 'todos' | 'propria' | 'consignada';
 
 const fmtDate = (iso: string | null | undefined) => iso ? format(new Date(iso), 'dd/MM/yyyy HH:mm') : '-';
 const fmtInt = (n: number) => Math.round(n).toLocaleString('pt-BR');
+// Diferença em ms entre duas datas, desconsiderando os domingos (00:00 a 23:59:59)
+const diffExcludingSundays = (startMs: number, endMs: number): number => {
+  if (endMs <= startMs) return 0;
+  let total = endMs - startMs;
+  const cursor = new Date(startMs);
+  cursor.setHours(0, 0, 0, 0);
+  while (cursor.getTime() < endMs) {
+    if (cursor.getDay() === 0) {
+      const dayStart = cursor.getTime();
+      const dayEnd = dayStart + 86400000;
+      const overlapStart = Math.max(startMs, dayStart);
+      const overlapEnd = Math.min(endMs, dayEnd);
+      if (overlapEnd > overlapStart) total -= (overlapEnd - overlapStart);
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return Math.max(0, total);
+};
+
 const fmtDuration = (ms: number | null) => {
   if (ms == null || !isFinite(ms) || ms < 0) return '-';
   const hours = ms / 3600000;
