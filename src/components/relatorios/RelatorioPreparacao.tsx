@@ -212,7 +212,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       };
     });
 
-    setRows(result);
+    // Para perdidos (retiradas), só inclui se houve preparação concluída
+    setRows(result.filter(r => r.situacao !== 'perdido' || !!r.dataPreparacao));
     setLoading(false);
   }, []);
 
