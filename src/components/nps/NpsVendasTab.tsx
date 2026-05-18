@@ -226,6 +226,12 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
       </div>
 
       <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+      <NpsDateFilter
+        dataInicio={dataInicio}
+        dataFim={dataFim}
+        onChange={(i, f) => { setDataInicio(i); setDataFim(f); }}
+        label="Data da venda"
+      />
 
       {loading ? (
         <KanbanSkeleton columns={3} />
