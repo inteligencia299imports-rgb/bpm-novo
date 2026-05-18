@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import RespostasNpsDialog from './RespostasNpsDialog';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import { isLojaDucati } from '@/lib/lojaUtils';
+import NpsDateFilter from './NpsDateFilter';
 
 interface NpsVendasTabProps {
   onNavigateToShowroom: (atendimentoId: string) => void;
