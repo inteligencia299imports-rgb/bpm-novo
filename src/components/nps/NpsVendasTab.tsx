@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import RespostasNpsDialog from './RespostasNpsDialog';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import { isLojaDucati } from '@/lib/lojaUtils';
+import NpsDateFilter from './NpsDateFilter';
 
 interface NpsVendasTabProps {
   onNavigateToShowroom: (atendimentoId: string) => void;
@@ -26,6 +27,8 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
   const [search, setSearch] = useState('');
   const [respostasDialog, setRespostasDialog] = useState<{ open: boolean; atendimentoId: string; nomeCliente: string }>({ open: false, atendimentoId: '', nomeCliente: '' });
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -137,7 +140,17 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const getColumnItems = (status: SituacaoNps) =>
-    atendimentos.filter(a => (a.nps_status || 'em_aberto') === status && matchesCidade(a.loja, filterCidade));
+    atendimentos.filter(a => {
+      if ((a.nps_status || 'em_aberto') !== status) return false;
+      if (!matchesCidade(a.loja, filterCidade)) return false;
+      if (dataInicio || dataFim) {
+        if (!a.data_venda) return false;
+        const t = new Date(a.data_venda).getTime();
+        if (dataInicio && t < new Date(`${dataInicio}T00:00:00`).getTime()) return false;
+        if (dataFim && t > new Date(`${dataFim}T23:59:59`).getTime()) return false;
+      }
+      return true;
+    });
 
   const handleUpdateStatus = async (e: React.MouseEvent, id: string, newStatus: SituacaoNps) => {
     e.stopPropagation();
@@ -213,6 +226,12 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
       </div>
 
       <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+      <NpsDateFilter
+        dataInicio={dataInicio}
+        dataFim={dataFim}
+        onChange={(i, f) => { setDataInicio(i); setDataFim(f); }}
+        label="Data da venda"
+      />
 
       {loading ? (
         <KanbanSkeleton columns={3} />

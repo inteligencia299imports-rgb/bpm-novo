@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import RespostasNpsDialog from './RespostasNpsDialog';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import NpsDateFilter from './NpsDateFilter';
 
 interface NpsAquisicoesTabProps {
   onNavigateToShowroom: (atendimentoId: string) => void;
@@ -24,6 +25,8 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
   const [search, setSearch] = useState('');
   const [respostasDialog, setRespostasDialog] = useState<{ open: boolean; atendimentoId: string; nomeCliente: string }>({ open: false, atendimentoId: '', nomeCliente: '' });
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -191,7 +194,17 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const getColumnItems = (status: SituacaoNps) =>
-    items.filter(a => (a.nps_status || 'em_aberto') === status && matchesCidade(a.atendimento?.loja, filterCidade));
+    items.filter(a => {
+      if ((a.nps_status || 'em_aberto') !== status) return false;
+      if (!matchesCidade(a.atendimento?.loja, filterCidade)) return false;
+      if (dataInicio || dataFim) {
+        if (!a._dataAquisicao) return false;
+        const t = new Date(a._dataAquisicao).getTime();
+        if (dataInicio && t < new Date(`${dataInicio}T00:00:00`).getTime()) return false;
+        if (dataFim && t > new Date(`${dataFim}T23:59:59`).getTime()) return false;
+      }
+      return true;
+    });
 
   const handleUpdateStatus = async (e: React.MouseEvent, id: string, newStatus: SituacaoNps) => {
     e.stopPropagation();
@@ -267,6 +280,12 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       </div>
 
       <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+      <NpsDateFilter
+        dataInicio={dataInicio}
+        dataFim={dataFim}
+        onChange={(i, f) => { setDataInicio(i); setDataFim(f); }}
+        label="Data de aquisição"
+      />
 
       {loading ? (
         <KanbanSkeleton columns={3} />
