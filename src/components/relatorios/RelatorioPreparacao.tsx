@@ -415,7 +415,11 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                     <TableCell className="text-xs max-w-[220px] truncate" title={r.modelo}>{r.modelo}</TableCell>
                     <TableCell className="text-xs font-mono">{(r.placa || '').replace(/-/g, '')}</TableCell>
                     <TableCell>
-                      {r.tipo && <Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(r.tipo)}`}>{getTipoAquisicaoLabel(r.tipo)}</Badge>}
+                      {r.situacao === 'perdido' ? (
+                        <Badge variant="outline" className="text-[10px] border-red-300 bg-red-50 text-red-700">Retirada</Badge>
+                      ) : (
+                        r.tipo && <Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(r.tipo)}`}>{getTipoAquisicaoLabel(r.tipo)}</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataEntradaPrep)}</TableCell>
                     <TableCell><Badge variant="outline" className="text-[10px] whitespace-nowrap" style={{ borderColor: status.hex, color: status.hex }}>{status.label}</Badge></TableCell>
