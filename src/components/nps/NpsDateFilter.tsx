@@ -1,40 +1,70 @@
 import React from 'react';
-import { Input } from '@/components/ui/input';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
 interface Props {
-  dataInicio: string;
-  dataFim: string;
-  onChange: (inicio: string, fim: string) => void;
-  label?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+  onChange: (from: Date | undefined, to: Date | undefined) => void;
 }
 
-const NpsDateFilter: React.FC<Props> = ({ dataInicio, dataFim, onChange, label = 'Período' }) => {
-  const clear = () => onChange('', '');
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-muted-foreground">{label}:</span>
-      <Input
-        type="date"
-        value={dataInicio}
-        onChange={(e) => onChange(e.target.value, dataFim)}
-        className="h-8 w-[150px] text-xs bg-card border-border"
-      />
-      <span className="text-xs text-muted-foreground">até</span>
-      <Input
-        type="date"
-        value={dataFim}
-        onChange={(e) => onChange(dataInicio, e.target.value)}
-        className="h-8 w-[150px] text-xs bg-card border-border"
-      />
-      {(dataInicio || dataFim) && (
-        <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={clear}>
-          <X className="h-3 w-3 mr-1" /> Limpar
+const NpsDateFilter: React.FC<Props> = ({ dateFrom, dateTo, onChange }) => (
+  <div className="flex items-center gap-2">
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            'rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0',
+            !dateFrom && 'text-muted-foreground',
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
         </Button>
-      )}
-    </div>
-  );
-};
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="end">
+        <Calendar
+          mode="single"
+          selected={dateFrom}
+          onSelect={(d) => onChange(d, dateTo)}
+          locale={ptBR}
+          className="p-3 pointer-events-auto"
+        />
+      </PopoverContent>
+    </Popover>
+    <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            'rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0',
+            !dateTo && 'text-muted-foreground',
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="end">
+        <Calendar
+          mode="single"
+          selected={dateTo}
+          onSelect={(d) => onChange(dateFrom, d)}
+          locale={ptBR}
+          className="p-3 pointer-events-auto"
+        />
+      </PopoverContent>
+    </Popover>
+  </div>
+);
 
 export default NpsDateFilter;

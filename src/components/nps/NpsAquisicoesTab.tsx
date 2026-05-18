@@ -25,8 +25,8 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
   const [search, setSearch] = useState('');
   const [respostasDialog, setRespostasDialog] = useState<{ open: boolean; atendimentoId: string; nomeCliente: string }>({ open: false, atendimentoId: '', nomeCliente: '' });
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -197,11 +197,11 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     items.filter(a => {
       if ((a.nps_status || 'em_aberto') !== status) return false;
       if (!matchesCidade(a.atendimento?.loja, filterCidade)) return false;
-      if (dataInicio || dataFim) {
+      if (dateFrom || dateTo) {
         if (!a._dataAquisicao) return false;
         const t = new Date(a._dataAquisicao).getTime();
-        if (dataInicio && t < new Date(`${dataInicio}T00:00:00`).getTime()) return false;
-        if (dataFim && t > new Date(`${dataFim}T23:59:59`).getTime()) return false;
+        if (dateFrom && t < new Date(dateFrom).setHours(0, 0, 0, 0)) return false;
+        if (dateTo && t > new Date(dateTo).setHours(23, 59, 59, 999)) return false;
       }
       return true;
     });
@@ -277,15 +277,10 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
             </button>
           )}
         </div>
+        <NpsDateFilter dateFrom={dateFrom} dateTo={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
       </div>
 
       <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
-      <NpsDateFilter
-        dataInicio={dataInicio}
-        dataFim={dataFim}
-        onChange={(i, f) => { setDataInicio(i); setDataFim(f); }}
-        label="Data de aquisição"
-      />
 
       {loading ? (
         <KanbanSkeleton columns={3} />
