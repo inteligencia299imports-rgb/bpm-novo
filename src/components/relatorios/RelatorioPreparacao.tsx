@@ -117,7 +117,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const avalRes = await fetchAllRange<any>(() => supabase
       .from('avaliacoes')
       .select('id, moto_avaliacao_id, atendimento_id, tipo_aquisicao, situacao, preparacao_status, atendimentos!inner(id, nome_cliente, loja), motos_avaliacao!inner(id, marca, modelo, placa)')
-      .in('situacao', ['adquirida', 'estoque'])
+      .in('situacao', ['adquirida', 'estoque', 'perdido'])
     );
     const avals = (avalRes.data || []).filter((a: any) => {
       const tipo = (a.tipo_aquisicao || '').toLowerCase();
@@ -212,7 +212,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       };
     });
 
-    setRows(result);
+    // Para perdidos (retiradas), só inclui se houve preparação concluída
+    setRows(result.filter(r => r.situacao !== 'perdido' || !!r.dataPreparacao));
     setLoading(false);
   }, []);
 
