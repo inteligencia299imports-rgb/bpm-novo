@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import RespostasNpsDialog from './RespostasNpsDialog';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import NpsDateFilter from './NpsDateFilter';
 
 interface NpsAquisicoesTabProps {
   onNavigateToShowroom: (atendimentoId: string) => void;
