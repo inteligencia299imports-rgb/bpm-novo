@@ -107,9 +107,6 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
           .eq('etapa', 'ENTREGA DA MOTO')
           .in('atendimento_id', atIds);
         const map: Record<string, boolean> = {};
-        mapped.forEach((a: any) => {
-          if (isLojaDucati(a.loja) && a.data_venda) map[a.id] = true;
-        });
         (pvData || []).forEach((p: any) => { map[p.atendimento_id] = !!p.concluida || !!p.data_conclusao; });
         setEntregaMap(map);
       } else {
