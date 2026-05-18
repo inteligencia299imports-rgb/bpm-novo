@@ -126,7 +126,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
     const avalIds = avals.map((a: any) => a.id);
     const motoIds = avals.map((a: any) => a.moto_avaliacao_id).filter(Boolean);
-    const allEntityIds = Array.from(new Set([...avalIds, ...motoIds]));
+    const atendimentoIds = avals.map((a: any) => a.atendimento_id).filter(Boolean);
+    const allEntityIds = Array.from(new Set([...avalIds, ...motoIds, ...atendimentoIds]));
 
     if (allEntityIds.length === 0) {
       setRows([]);
@@ -140,7 +141,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const histResults = await Promise.all(chunks.map(chunk =>
       fetchAllRange<any>(() => supabase.from('status_history')
         .select('entity_id, entity_type, status, created_at')
-        .in('entity_type', ['avaliacao', 'preparacao'])
+        .in('entity_type', ['avaliacao', 'preparacao', 'showroom'])
         .in('entity_id', chunk))
     ));
     const allHist = histResults.flatMap(r => r.data || []);
@@ -154,10 +155,14 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const result = avals.map((a: any) => {
       const histAval = histByEntity[a.id] || [];
       const histMoto = a.moto_avaliacao_id ? (histByEntity[a.moto_avaliacao_id] || []) : [];
+      const histAtendimento = a.atendimento_id ? (histByEntity[a.atendimento_id] || []) : [];
 
-      // Data de aquisição: latest 'adquirida' across avaliacao/moto entries with entity_type='avaliacao'
-      const adquiridas = [...histAval, ...histMoto]
-        .filter(h => h.entity_type === 'avaliacao' && h.status === 'adquirida')
+      // Data de aquisição: avaliações usam 'adquirida'; parte de pagamento/troca herda o 'vendido' do Showroom
+      const adquiridas = [...histAval, ...histMoto, ...histAtendimento]
+        .filter(h =>
+          (h.entity_type === 'avaliacao' && h.status === 'adquirida') ||
+          (h.entity_type === 'showroom' && h.status === 'vendido')
+        )
         .map(h => h.created_at).sort();
       const dataAquisicao = adquiridas.length ? adquiridas[adquiridas.length - 1] : null;
 
