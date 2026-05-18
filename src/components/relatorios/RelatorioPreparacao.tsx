@@ -416,7 +416,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                     <TableCell className="text-xs font-mono">{(r.placa || '').replace(/-/g, '')}</TableCell>
                     <TableCell>
                       {r.situacao === 'perdido' ? (
-                        <Badge variant="outline" className="text-[10px] border-red-300 bg-red-50 text-red-700">Retirada</Badge>
+                        <Badge variant="outline" className="text-[10px] border-red-400 text-red-600 bg-transparent">Retirada</Badge>
                       ) : (
                         r.tipo && <Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(r.tipo)}`}>{getTipoAquisicaoLabel(r.tipo)}</Badge>
                       )}
