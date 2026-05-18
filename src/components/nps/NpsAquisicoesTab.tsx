@@ -197,11 +197,11 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     items.filter(a => {
       if ((a.nps_status || 'em_aberto') !== status) return false;
       if (!matchesCidade(a.atendimento?.loja, filterCidade)) return false;
-      if (dataInicio || dataFim) {
+      if (dateFrom || dateTo) {
         if (!a._dataAquisicao) return false;
         const t = new Date(a._dataAquisicao).getTime();
-        if (dataInicio && t < new Date(`${dataInicio}T00:00:00`).getTime()) return false;
-        if (dataFim && t > new Date(`${dataFim}T23:59:59`).getTime()) return false;
+        if (dateFrom && t < new Date(dateFrom).setHours(0, 0, 0, 0)) return false;
+        if (dateTo && t > new Date(dateTo).setHours(23, 59, 59, 999)) return false;
       }
       return true;
     });
