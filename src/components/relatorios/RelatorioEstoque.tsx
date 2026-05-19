@@ -8,6 +8,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
+import { fetchAllRange } from '@/lib/fetchAllRange';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 
 
 const fmtBRL = (v: number | null | undefined) =>
