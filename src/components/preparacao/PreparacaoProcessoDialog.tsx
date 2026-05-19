@@ -904,7 +904,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          {LOJAS.map(l => (
+                          {LOJAS.filter(l => !l.toUpperCase().includes('DUCATI')).map(l => (
                             <SelectItem key={l} value={l}>{l}</SelectItem>
                           ))}
                         </SelectContent>
