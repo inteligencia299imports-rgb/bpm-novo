@@ -204,9 +204,20 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         3: { halign: 'right' }, 11: { halign: 'right' }, 12: { halign: 'right' }, 13: { halign: 'right' },
       },
       didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 13) {
-          const r = rows[data.row.index];
+        if (data.section !== 'body') return;
+        const r = rows[data.row.index];
+        if (data.column.index === 13) {
           if (r.compra > 0) data.cell.styles.textColor = r.margemAbs >= 0 ? [58, 143, 106] : [220, 38, 38];
+        }
+        if (data.column.index === 10) {
+          const map: Record<string, [number, number, number]> = {
+            'Disponível': [34, 153, 84],
+            'Bloqueio': [100, 116, 139],
+            'Indisponível': [220, 38, 38],
+            'Serviço': [234, 88, 12],
+          };
+          const c = map[r.situacao];
+          if (c) { data.cell.styles.textColor = c; data.cell.styles.fontStyle = 'bold'; }
         }
       },
       margin: { left: 20, right: 20 },
