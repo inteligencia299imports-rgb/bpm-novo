@@ -83,13 +83,21 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     };
   }, [loadData, debouncedLoad]);
 
+  // Mostrar apenas ciclos a partir de 20/04 (dados anteriores ainda em revisão)
+  const filteredChart = useMemo(() => {
+    return chartByMonth.filter((m: any) => {
+      const mm = parseInt(String(m.label || '').split('/')[1] || '0', 10);
+      return mm >= 4 && mm <= 12;
+    });
+  }, [chartByMonth]);
+
   const patrimonioGrowth = useMemo(() => {
-    return chartByMonth.map((m: any, idx: number) => {
-      const prev = idx > 0 ? chartByMonth[idx - 1].patrimonioDisp : 0;
+    return filteredChart.map((m: any, idx: number) => {
+      const prev = idx > 0 ? filteredChart[idx - 1].patrimonioDisp : 0;
       const crescimento = prev > 0 ? Math.round(((m.patrimonioDisp - prev) / prev) * 1000) / 10 : 0;
       return { ...m, crescimento };
     });
-  }, [chartByMonth]);
+  }, [filteredChart]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
