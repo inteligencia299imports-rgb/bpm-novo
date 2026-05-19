@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 interface LojaFilterProps {
   value: string;
   onChange: (loja: string) => void;
+  hideDucati?: boolean;
 }
 
 const SUB_LOJAS: Record<string, string[]> = {
@@ -19,14 +20,15 @@ const getGroup = (v: string): 'todos' | '299' | 'Ducati' | null => {
   return null;
 };
 
-export const LojaFilter: React.FC<LojaFilterProps> = ({ value, onChange }) => {
+export const LojaFilter: React.FC<LojaFilterProps> = ({ value, onChange, hideDucati }) => {
   const group = getGroup(value);
   const subs = group && group !== 'todos' ? SUB_LOJAS[group] : null;
+  const groups = (hideDucati ? ['todos', '299'] : ['todos', '299', 'Ducati']) as Array<'todos' | '299' | 'Ducati'>;
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-1">
-        {(['todos', '299', 'Ducati'] as const).map(g => (
+        {groups.map(g => (
           <Button
             key={g}
             size="sm"
