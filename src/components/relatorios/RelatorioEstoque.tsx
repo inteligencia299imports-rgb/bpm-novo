@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, CheckCircle, ShieldAlert, Ban, Wrench, Clock, DollarSign, TrendingDown } from 'lucide-react';
+import { Package, CheckCircle, ShieldAlert, Ban, Wrench, Clock, DollarSign, TrendingDown, FileSpreadsheet, FileDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
@@ -131,6 +131,90 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     });
   }, [filteredChart]);
 
+  const statusLabel = (s: string) => ({
+    disponivel: 'Disponível', bloqueio_juridico: 'Bloqueio',
+    indisponivel: 'Indisponível', servico: 'Serviço',
+  } as Record<string, string>)[s] || s;
+
+  const buildRows = () => motos.map((m: any) => {
+    const cutoffDate = dateTo ?? new Date();
+    const entrada = m.data_entrada ? new Date(m.data_entrada) : null;
+    const dias = entrada ? Math.max(0, Math.floor((cutoffDate.getTime() - entrada.getTime()) / 86400000)) : 0;
+    const preco = Number(m.preco) || 0;
+    const compra = Number(m.avaliacoes?.valor_fechamento) || 0;
+    const margemAbs = preco - compra;
+    const margemPct = compra > 0 ? (margemAbs / compra) * 100 : 0;
+    const displayTipo = m.avaliacoes?.tipo_aquisicao || m.tipo;
+    return {
+      empresa: m.empresa || '', tipo: getTipoAquisicaoLabel(displayTipo) || '',
+      patio: m.loja || '', dias, marca: m.marca || '', modelo: m.modelo || '',
+      cor: m.cor || '', fabMod: [m.ano_fabricacao, m.ano_modelo].filter(Boolean).join('/'),
+      placa: m.placa || '', entrada: entrada ? entrada.toLocaleDateString('pt-BR') : '',
+      situacao: statusLabel(m.status), preco, compra, margemAbs, margemPct,
+    };
+  });
+
+  const handleExportExcel = async () => {
+    const XLSX = await import('xlsx');
+    const rows = buildRows();
+    const aoa = [[
+      'Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa','Entrada','Situação','Preço','Compra','Margem (R$)','Margem (%)',
+    ], ...rows.map(r => [
+      r.empresa, r.tipo, r.patio, r.dias, r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao,
+      r.preco, r.compra || '', r.compra > 0 ? r.margemAbs : '', r.compra > 0 ? r.margemPct / 100 : '',
+    ])];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [10,12,12,6,12,22,12,10,10,11,13,14,14,14,10].map(w => ({ wch: w }));
+    // Format currency and percent columns
+    const range = XLSX.utils.decode_range(ws['!ref'] as string);
+    for (let R = 1; R <= range.e.r; R++) {
+      ['L','M','N'].forEach(c => { const cell = ws[`${c}${R+1}`]; if (cell && typeof cell.v === 'number') cell.z = 'R$ #,##0.00'; });
+      const pct = ws[`O${R+1}`]; if (pct && typeof pct.v === 'number') pct.z = '0.0%';
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Estoque');
+    XLSX.writeFile(wb, `estoque_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
+
+  const handleExportPdf = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const autoTable = (await import('jspdf-autotable')).default;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const rows = buildRows();
+    const cutoffStr = (dateTo ?? new Date()).toLocaleDateString('pt-BR');
+    doc.setFontSize(14);
+    doc.setTextColor(30, 41, 59);
+    doc.text(`Motos em Estoque — ${rows.length} unidade(s)`, 40, 36);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(`Pátio: ${filterLoja === 'todos' ? 'Todos' : filterLoja}  •  Tipo: ${filterTipo === 'todos' ? 'Todos' : filterTipo}  •  Data base: ${cutoffStr}`, 40, 52);
+
+    autoTable(doc, {
+      startY: 64,
+      head: [['Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa','Entrada','Situação','Preço','Compra','Margem']],
+      body: rows.map(r => [
+        r.empresa, r.tipo, r.patio, String(r.dias), r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao,
+        fmtBRL(r.preco), r.compra > 0 ? fmtBRL(r.compra) : '—',
+        r.compra > 0 ? `${fmtBRL(r.margemAbs)} (${r.margemPct.toFixed(1)}%)` : '—',
+      ]),
+      styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
+      headStyles: { fillColor: [47, 111, 132], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      columnStyles: {
+        3: { halign: 'right' }, 11: { halign: 'right' }, 12: { halign: 'right' }, 13: { halign: 'right' },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 13) {
+          const r = rows[data.row.index];
+          if (r.compra > 0) data.cell.styles.textColor = r.margemAbs >= 0 ? [58, 143, 106] : [220, 38, 38];
+        }
+      },
+      margin: { left: 20, right: 20 },
+    });
+    doc.save(`estoque_${new Date().toISOString().slice(0,10)}.pdf`);
+  };
+
+
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
   }
@@ -237,7 +321,17 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
       {/* Section: Lista de Motos em Estoque */}
       <div className="space-y-1 !mt-8">
-        <h2 className="text-lg font-bold text-foreground">Motos em Estoque ({motos.length})</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-bold text-foreground">Motos em Estoque ({motos.length})</h2>
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportExcel} disabled={motos.length === 0} title="Baixar Excel">
+              <FileSpreadsheet className="h-4 w-4 text-[#3a8f6a]" />
+            </Button>
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportPdf} disabled={motos.length === 0} title="Baixar PDF (paisagem)">
+              <FileDown className="h-4 w-4 text-red-600" />
+            </Button>
+          </div>
+        </div>
         <Separator />
       </div>
       <Card className="border shadow-sm rounded-xl">
