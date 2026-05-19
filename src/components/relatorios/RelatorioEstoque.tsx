@@ -95,7 +95,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const s = indicadores.servico || {};
 
   return (
-    <div className="space-y-4 w-full max-w-full overflow-x-hidden">
+    <div className={cn("space-y-4 w-full max-w-full overflow-x-hidden transition-opacity", refreshing && "opacity-60 pointer-events-none")}>
       <Separator className="my-2" />
 
       {/* Indicators - Line 1 */}
