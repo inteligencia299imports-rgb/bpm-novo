@@ -239,7 +239,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
       {/* Filters: Loja (left) + Tipo (right) */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <LojaFilter value={filterLoja} onChange={setFilterLoja} hideDucati />
+        <CidadeFilter value={filterLoja as CidadeFilterValue} onChange={(v) => setFilterLoja(v)} />
         <div className="flex flex-wrap items-center gap-1 ml-auto">
           {([
             { value: 'todos', label: 'Todos' },
