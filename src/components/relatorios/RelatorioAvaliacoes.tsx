@@ -194,8 +194,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   }, [loadData]);
 
   useEffect(() => {
-    setLoading(true);
     loadData();
+
     const channel = supabase
       .channel('relatorio-avaliacoes-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'avaliacoes' }, debouncedLoad)

@@ -95,8 +95,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }, [loadData]);
 
   useEffect(() => {
-    setLoading(true);
     loadData();
+
 
     const channel = supabase
       .channel('relatorio-realtime')
