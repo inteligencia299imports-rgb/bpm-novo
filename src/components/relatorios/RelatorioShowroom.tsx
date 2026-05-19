@@ -67,7 +67,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     });
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
+  const [refreshing, setRefreshing] = useState(false);
   const loadData = useCallback(async () => {
+    setRefreshing(true);
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
 
@@ -86,7 +88,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     setMotosSinal((sinaisRes.data || []) as any[]);
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
+    setRefreshing(false);
   }, [dateFrom, dateTo, filterLoja, filterTipo]);
+
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
