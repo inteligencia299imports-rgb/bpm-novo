@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Wrench, CheckCircle, Clock, Package } from 'lucide-react';
+import { Wrench, CheckCircle, Clock, Package, FileSpreadsheet, FileDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Separator } from '@/components/ui/separator';
