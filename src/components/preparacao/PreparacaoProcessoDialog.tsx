@@ -709,6 +709,19 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
               /* Reenviar from Estoque mode: only show reenviar button with alert */
               <div className="space-y-3">
                 <div>
+                  <label className="text-sm font-medium text-foreground">Pátio (Loja) *</label>
+                  <Select value={reenviarLoja} onValueChange={setReenviarLoja}>
+                    <SelectTrigger className="h-9 mt-1.5">
+                      <SelectValue placeholder="Selecione o pátio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LOJAS.filter(l => !l.toUpperCase().includes('DUCATI')).map(l => (
+                        <SelectItem key={l} value={l}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <label className="text-sm font-medium text-foreground">Motivo / Observação *</label>
                   <Textarea
                     placeholder="Descreva o motivo do reenvio para preparação..."
@@ -721,6 +734,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 <Button
                   disabled={saving}
                   onClick={async () => {
+                    if (!reenviarLoja) {
+                      toast.error('Selecione o pátio');
+                      return;
+                    }
                     if (!reenviarObs.trim()) {
                       toast.error('A observação é obrigatória');
                       return;
@@ -733,7 +750,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       const { error: estoqueErr } = await supabase.from('estoque').update({
                         status: 'indisponivel',
                         observacoes: reenviarObs.trim(),
-                      }).eq('id', reenviarFromEstoque.estoqueItemId);
+                        loja: reenviarLoja,
+                      } as any).eq('id', reenviarFromEstoque.estoqueItemId);
                       if (estoqueErr) { toast.error('Erro ao atualizar estoque'); return; }
 
                       await supabase.from('avaliacoes').update({ preparacao_status: 'em_aberto' } as any).eq('id', avaliacaoId);
