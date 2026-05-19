@@ -61,8 +61,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   }, [loadData]);
 
   useEffect(() => {
-    setLoading(true);
     loadData();
+
     const channel = supabase
       .channel('relatorio-estoque-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, debouncedLoad)
