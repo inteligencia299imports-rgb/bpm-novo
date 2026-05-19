@@ -188,6 +188,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     setChartByAvaliador(avalData);
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
+    setRefreshing(false);
   }, [dateFrom, dateTo, filterLoja]);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
