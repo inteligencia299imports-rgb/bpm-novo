@@ -71,9 +71,12 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     });
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
+  const [refreshing, setRefreshing] = useState(false);
   const loadData = useCallback(async () => {
+    setRefreshing(true);
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
+
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
     const [mensalRes, detalhesBaseRes, nomesRes, kpisRes] = await Promise.all([
