@@ -321,7 +321,17 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
       {/* Section: Lista de Motos em Estoque */}
       <div className="space-y-1 !mt-8">
-        <h2 className="text-lg font-bold text-foreground">Motos em Estoque ({motos.length})</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-bold text-foreground">Motos em Estoque ({motos.length})</h2>
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportExcel} disabled={motos.length === 0} title="Baixar Excel">
+              <FileSpreadsheet className="h-4 w-4 text-[#3a8f6a]" />
+            </Button>
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportPdf} disabled={motos.length === 0} title="Baixar PDF (paisagem)">
+              <FileDown className="h-4 w-4 text-red-600" />
+            </Button>
+          </div>
+        </div>
         <Separator />
       </div>
       <Card className="border shadow-sm rounded-xl">
