@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Wrench, CheckCircle, Clock, Package } from 'lucide-react';
+import { Wrench, CheckCircle, Clock, Package, FileSpreadsheet, FileDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Separator } from '@/components/ui/separator';
@@ -296,6 +296,68 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     });
   }, [rows, filterLoja, filterTipo]);
 
+  const buildExportRows = () => filteredRows.map(r => {
+    const statusLabel = r.dataLiberacao ? 'Estoque' : 'Ag. Liberar';
+    const tipoExport = r.situacao === 'perdido' ? 'Retirada' : (r.tipo ? getTipoAquisicaoLabel(r.tipo) : '-');
+    return {
+      cliente: r.nomeCliente, modelo: r.modelo, placa: (r.placa || '').replace(/-/g, ''),
+      tipo: tipoExport,
+      entrada: r.dataEntradaPrep ? format(new Date(r.dataEntradaPrep), 'dd/MM/yyyy HH:mm') : '-',
+      status: statusLabel,
+      preparacao: r.dataPreparacao ? format(new Date(r.dataPreparacao), 'dd/MM/yyyy HH:mm') : '-',
+      tempoPrep: fmtDuration(r.tempoPrepMs),
+      liberacao: r.dataLiberacao ? format(new Date(r.dataLiberacao), 'dd/MM/yyyy HH:mm') : '-',
+      tempoLib: fmtDuration(r.tempoLibMs),
+    };
+  });
+
+  const handleExportExcel = async () => {
+    const XLSX = await import('xlsx');
+    const rows = buildExportRows();
+    const aoa = [[
+      'Cliente','Modelo','Placa','Tipo','Entrada','Status','Preparação','Tempo Prep.','Liberação','Tempo Lib.',
+    ], ...rows.map(r => [r.cliente, r.modelo, r.placa, r.tipo, r.entrada, r.status, r.preparacao, r.tempoPrep, r.liberacao, r.tempoLib])];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [22,26,10,12,18,12,18,16,18,16].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Preparação');
+    XLSX.writeFile(wb, `preparacao_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
+
+  const handleExportPdf = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const autoTable = (await import('jspdf-autotable')).default;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const rows = buildExportRows();
+    const periodo = (dateFrom || dateTo)
+      ? `${dateFrom ? format(dateFrom, 'dd/MM/yyyy') : '...'} a ${dateTo ? format(dateTo, 'dd/MM/yyyy') : '...'}`
+      : 'Todos';
+    doc.setFontSize(14); doc.setTextColor(30, 41, 59);
+    doc.text(`Motos Preparadas — ${rows.length} registro(s)`, 40, 36);
+    doc.setFontSize(9); doc.setTextColor(100);
+    doc.text(`Loja: ${filterLoja === 'todos' ? 'Todas' : filterLoja}  •  Tipo: ${filterTipo === 'todos' ? 'Todos' : filterTipo}  •  Período: ${periodo}`, 40, 52);
+
+    autoTable(doc, {
+      startY: 64,
+      head: [['Cliente','Modelo','Placa','Tipo','Entrada','Status','Preparação','Tempo Prep.','Liberação','Tempo Lib.']],
+      body: rows.map(r => [r.cliente, r.modelo, r.placa, r.tipo, r.entrada, r.status, r.preparacao, r.tempoPrep, r.liberacao, r.tempoLib]),
+      styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
+      headStyles: { fillColor: [47, 111, 132], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      didParseCell: (data) => {
+        if (data.section !== 'body') return;
+        if (data.column.index === 5) {
+          const r = rows[data.row.index];
+          const c: [number, number, number] = r.status === 'Estoque' ? [22, 157, 83] : [96, 125, 139];
+          data.cell.styles.textColor = c;
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
+      margin: { left: 20, right: 20 },
+    });
+    doc.save(`preparacao_${new Date().toISOString().slice(0,10)}.pdf`);
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
 
   const tipoBtns: { value: TipoFilter; label: string }[] = [
@@ -386,7 +448,17 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
       {/* Table */}
       <div className="space-y-1 !mt-8">
-        <h2 className="text-lg font-bold text-foreground">Motos Preparadas</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-bold text-foreground">Motos Preparadas</h2>
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportExcel} disabled={filteredRows.length === 0} title="Baixar Excel">
+              <FileSpreadsheet className="h-4 w-4 text-[#3a8f6a]" />
+            </Button>
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportPdf} disabled={filteredRows.length === 0} title="Baixar PDF (paisagem)">
+              <FileDown className="h-4 w-4 text-red-600" />
+            </Button>
+          </div>
+        </div>
         <Separator />
       </div>
       <Card className="border shadow-sm rounded-xl">
