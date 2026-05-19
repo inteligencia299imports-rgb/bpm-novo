@@ -85,9 +85,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const filtered = motosData.filter((m: any) => {
       const loja = (m.loja || '').toString();
       if (filterLoja === 'todos') return true;
-      if (filterLoja === '299') return !/DUCATI/i.test(loja);
-      if (filterLoja === 'Ducati') return /DUCATI/i.test(loja);
-      return loja.toLowerCase() === filterLoja.toLowerCase();
+      return matchesCidade(loja, filterLoja as CidadeFilterValue);
     });
     setMotos(filtered);
     setLoading(false);
