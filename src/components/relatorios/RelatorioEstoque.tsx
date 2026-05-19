@@ -252,11 +252,12 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                 <TableHead className="text-xs">Marca</TableHead>
                 <TableHead className="text-xs">Modelo</TableHead>
                 <TableHead className="text-xs">Cor</TableHead>
-                <TableHead className="text-xs">Ano Fab/Mod</TableHead>
+                <TableHead className="text-xs">Fab/Mod</TableHead>
                 <TableHead className="text-xs">Placa</TableHead>
-                <TableHead className="text-xs">Data Entrada</TableHead>
+                <TableHead className="text-xs">Entrada</TableHead>
+                <TableHead className="text-xs">Situação</TableHead>
                 <TableHead className="text-xs text-right">Preço</TableHead>
-                <TableHead className="text-xs text-right">Valor Compra</TableHead>
+                <TableHead className="text-xs text-right">Compra</TableHead>
                 <TableHead className="text-xs text-right">Margem</TableHead>
               </TableRow>
             </TableHeader>
