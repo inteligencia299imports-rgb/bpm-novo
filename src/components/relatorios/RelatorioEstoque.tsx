@@ -20,8 +20,10 @@ interface RelatorioEstoqueProps {
   setDateFrom: (d: Date | undefined) => void;
   setDateTo: (d: Date | undefined) => void;
   onRegisterClear?: (fn: () => void) => void;
-  onFilterChange?: (loja: string) => void;
+  onFilterChange?: (loja: string, tipo: string) => void;
 }
+
+type TipoFilter = 'todos' | 'propria' | 'consignada';
 
 const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
   const isMobile = useIsMobile();
@@ -33,13 +35,16 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const [indicadores, setIndicadores] = useState<any>({});
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
+  const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
 
-  const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v); };
+  const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v, filterTipo); };
+  const setFilterTipo = (v: TipoFilter) => { setFilterTipoState(v); onFilterChange?.(filterLoja, v); };
 
   useEffect(() => {
     onRegisterClear?.(() => {
       setFilterLojaState('todos');
-      onFilterChange?.('todos');
+      setFilterTipoState('todos');
+      onFilterChange?.('todos', 'todos');
       setDateFrom(undefined);
       setDateTo(undefined);
     });
@@ -48,14 +53,15 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const loadData = useCallback(async () => {
     const cutoff = (dateTo ?? new Date()).toISOString();
     const [kpisRes, mensalRes] = await Promise.all([
-      supabase.rpc('relatorio_estoque_kpis', { p_cutoff: cutoff }),
-      supabase.rpc('relatorio_estoque_mensal', { p_cutoff: cutoff }),
+      supabase.rpc('relatorio_estoque_kpis', { p_cutoff: cutoff, p_loja: filterLoja, p_tipo: filterTipo }),
+      supabase.rpc('relatorio_estoque_mensal', { p_cutoff: cutoff, p_loja: filterLoja, p_tipo: filterTipo }),
     ]);
 
     setIndicadores(kpisRes.data || {});
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
-  }, [dateTo]);
+  }, [dateTo, filterLoja, filterTipo]);
+
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
