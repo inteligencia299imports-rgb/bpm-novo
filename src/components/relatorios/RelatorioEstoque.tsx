@@ -67,7 +67,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       fetchAllRange(() => {
         let q = supabase
           .from('estoque')
-          .select('id, empresa, tipo, loja, marca, modelo, cor, ano_fabricacao, ano_modelo, placa, data_entrada, data_venda, preco, status, avaliacoes:avaliacao_id(valor_fechamento)')
+          .select('id, empresa, tipo, loja, marca, modelo, cor, ano_fabricacao, ano_modelo, placa, data_entrada, data_venda, preco, status, avaliacoes:avaliacao_id(valor_fechamento, tipo_aquisicao)')
           .in('status', ['disponivel', 'indisponivel', 'servico', 'bloqueio_juridico'])
           .lte('data_entrada', cutoff)
           .or(`data_venda.is.null,data_venda.gt.${cutoff}`)
