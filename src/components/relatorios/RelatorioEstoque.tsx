@@ -43,7 +43,9 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     });
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
+  const [refreshing, setRefreshing] = useState(false);
   const loadData = useCallback(async () => {
+    setRefreshing(true);
     const [kpisRes, mensalRes] = await Promise.all([
       supabase.rpc('relatorio_estoque_kpis'),
       supabase.rpc('relatorio_estoque_mensal'),
@@ -52,6 +54,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     setIndicadores(kpisRes.data || {});
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
+    setRefreshing(false);
   }, []);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
