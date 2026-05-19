@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { LojaFilter } from './LojaFilter';
+import CidadeFilter, { CidadeFilterValue, matchesCidade } from '@/components/shared/CidadeFilter';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -85,9 +85,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const filtered = motosData.filter((m: any) => {
       const loja = (m.loja || '').toString();
       if (filterLoja === 'todos') return true;
-      if (filterLoja === '299') return !/DUCATI/i.test(loja);
-      if (filterLoja === 'Ducati') return /DUCATI/i.test(loja);
-      return loja.toLowerCase() === filterLoja.toLowerCase();
+      return matchesCidade(loja, filterLoja as CidadeFilterValue);
     });
     setMotos(filtered);
     setLoading(false);
@@ -241,7 +239,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
       {/* Filters: Loja (left) + Tipo (right) */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <LojaFilter value={filterLoja} onChange={setFilterLoja} hideDucati />
+        <CidadeFilter value={filterLoja as CidadeFilterValue} onChange={(v) => setFilterLoja(v)} />
         <div className="flex flex-wrap items-center gap-1 ml-auto">
           {([
             { value: 'todos', label: 'Todos' },
