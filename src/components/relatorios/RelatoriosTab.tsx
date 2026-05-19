@@ -110,18 +110,22 @@ const RelatoriosTab: React.FC = () => {
             </div>
           )}
           <div className="w-full sm:w-auto flex items-center gap-2 overflow-x-auto pb-1">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateFrom && 'text-muted-foreground')}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} disabled={disabledDates} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateFrom ?? new Date('2026-03-21T00:00:00')} />
-              </PopoverContent>
-            </Popover>
-            <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
+            {dept !== 'estoque' && (
+              <>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateFrom && 'text-muted-foreground')}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} disabled={disabledDates} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateFrom ?? new Date('2026-03-21T00:00:00')} />
+                  </PopoverContent>
+                </Popover>
+                <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
+              </>
+            )}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateTo && 'text-muted-foreground')}>
