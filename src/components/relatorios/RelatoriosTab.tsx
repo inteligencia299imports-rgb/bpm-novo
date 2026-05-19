@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,15 @@ const RelatoriosTab: React.FC = () => {
     setDateToRaw(d);
   };
   const clearFnRef = useRef<(() => void) | null>(null);
+
+  // Estoque: default Data Fim = hoje (usuário ainda pode alterar)
+  useEffect(() => {
+    if (dept === 'estoque') {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      setDateToRaw(today);
+    }
+  }, [dept]);
   const [hasInternalFilters, setHasInternalFilters] = useState(false);
 
   const hasActiveFilters = !!(dateFrom || dateTo || hasInternalFilters);
@@ -126,12 +135,6 @@ const RelatoriosTab: React.FC = () => {
                 <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
               </>
             )}
-            {dept === 'estoque' ? (
-              <Button variant="outline" size="sm" disabled className="rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0 opacity-100">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(new Date(), 'dd/MM/yyyy')}
-              </Button>
-            ) : (
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateTo && 'text-muted-foreground')}>
@@ -143,7 +146,6 @@ const RelatoriosTab: React.FC = () => {
                 <Calendar mode="single" selected={dateTo} onSelect={setDateTo} disabled={disabledDates} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateTo ?? new Date('2026-03-21T00:00:00')} />
               </PopoverContent>
             </Popover>
-            )}
           </div>
         </div>
         {isGestorOrAvaliador && (
