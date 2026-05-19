@@ -131,7 +131,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     setActiveStatus(currentStatus);
     setDetalhes('');
     setReenviarObs('');
+    setReenviarLoja('');
     setShowLiberarForm(false);
+    // Carrega loja atual do estoque (para troca de pátio na repreparação)
+    if (reenviarFromEstoque?.estoqueItemId) {
+      supabase.from('estoque').select('loja').eq('id', reenviarFromEstoque.estoqueItemId).maybeSingle()
+        .then(({ data }) => setReenviarLoja((data as any)?.loja || avaliacaoData?.atendimento?.loja || ''));
+    }
     setEmpresa('MMATOS');
     // Pre-populate from avaliação/atendimento data
     setLoja(avaliacaoData?.atendimento?.loja || '');
