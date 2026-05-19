@@ -44,15 +44,16 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
+    const cutoff = (dateTo ?? new Date()).toISOString();
     const [kpisRes, mensalRes] = await Promise.all([
-      supabase.rpc('relatorio_estoque_kpis'),
+      supabase.rpc('relatorio_estoque_kpis', { p_cutoff: cutoff }),
       supabase.rpc('relatorio_estoque_mensal'),
     ]);
 
     setIndicadores(kpisRes.data || {});
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
-  }, []);
+  }, [dateTo]);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
