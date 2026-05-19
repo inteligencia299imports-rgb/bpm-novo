@@ -104,6 +104,25 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
 
+      {/* Filters: Loja (left) + Tipo (right) */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+        <div className="flex flex-wrap items-center gap-1 ml-auto">
+          {([
+            { value: 'todos', label: 'Todos' },
+            { value: 'propria', label: 'Próprias' },
+            { value: 'consignada', label: 'Consignadas' },
+          ] as { value: TipoFilter; label: string }[]).map(b => (
+            <Button key={b.value} size="sm" variant={filterTipo === b.value ? 'default' : 'outline'}
+              className={cn('rounded-full px-4 h-8 text-xs font-medium', filterTipo === b.value && 'shadow-sm')}
+              onClick={() => setFilterTipo(b.value)}>
+              {b.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Motos no Estoque" value={indicadores.total ?? 0} subline={`Média: ${indicadores.mediaDias ?? 0} dias (${fmtBRL(indicadores.somaTotal)})`} gradient="teal" icon={<Package className="h-5 w-5" />} />
