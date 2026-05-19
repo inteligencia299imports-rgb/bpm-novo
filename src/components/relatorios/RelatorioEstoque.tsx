@@ -252,18 +252,19 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                 <TableHead className="text-xs">Marca</TableHead>
                 <TableHead className="text-xs">Modelo</TableHead>
                 <TableHead className="text-xs">Cor</TableHead>
-                <TableHead className="text-xs">Ano Fab/Mod</TableHead>
+                <TableHead className="text-xs">Fab/Mod</TableHead>
                 <TableHead className="text-xs">Placa</TableHead>
-                <TableHead className="text-xs">Data Entrada</TableHead>
+                <TableHead className="text-xs">Entrada</TableHead>
+                <TableHead className="text-xs">Situação</TableHead>
                 <TableHead className="text-xs text-right">Preço</TableHead>
-                <TableHead className="text-xs text-right">Valor Compra</TableHead>
+                <TableHead className="text-xs text-right">Compra</TableHead>
                 <TableHead className="text-xs text-right">Margem</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {motos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} className="text-center text-muted-foreground text-sm py-6">
+                  <TableCell colSpan={14} className="text-center text-muted-foreground text-sm py-6">
                     Nenhuma moto encontrada com os filtros selecionados.
                   </TableCell>
                 </TableRow>
@@ -295,6 +296,20 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                       <TableCell className="text-xs">{anoFM || '—'}</TableCell>
                       <TableCell className="text-xs font-mono">{m.placa || '—'}</TableCell>
                       <TableCell className="text-xs">{entrada ? entrada.toLocaleDateString('pt-BR') : '—'}</TableCell>
+                      <TableCell className="text-xs">
+                        {(() => {
+                          const map: Record<string, { label: string; cls: string }> = {
+                            disponivel: { label: 'Disponível', cls: 'border-green-500 text-green-600' },
+                            bloqueio_juridico: { label: 'Bloqueio', cls: 'border-gray-500 text-gray-600' },
+                            indisponivel: { label: 'Indisponível', cls: 'border-red-500 text-red-600' },
+                            servico: { label: 'Serviço', cls: 'border-orange-500 text-orange-600' },
+                          };
+                          const s = map[m.status];
+                          return s ? (
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${s.cls}`}>{s.label}</Badge>
+                          ) : '—';
+                        })()}
+                      </TableCell>
                       <TableCell className="text-xs text-right">{fmtBRL(preco)}</TableCell>
                       <TableCell className="text-xs text-right">{compra > 0 ? fmtBRL(compra) : '—'}</TableCell>
                       <TableCell className={cn('text-xs text-right font-medium', compra > 0 ? (margemAbs >= 0 ? 'text-[#3a8f6a]' : 'text-red-500') : 'text-muted-foreground')}>
