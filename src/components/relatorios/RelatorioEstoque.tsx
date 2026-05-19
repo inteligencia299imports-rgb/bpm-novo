@@ -10,6 +10,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
+
 
 
 
@@ -277,7 +280,13 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                   return (
                     <TableRow key={m.id}>
                       <TableCell className="text-xs">{m.empresa || '—'}</TableCell>
-                      <TableCell className="text-xs capitalize">{m.tipo || '—'}</TableCell>
+                      <TableCell className="text-xs">
+                        {m.tipo ? (
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(m.tipo)}`}>
+                            {getTipoAquisicaoLabel(m.tipo)}
+                          </Badge>
+                        ) : '—'}
+                      </TableCell>
                       <TableCell className="text-xs">{m.loja || '—'}</TableCell>
                       <TableCell className="text-xs text-right">{dias}</TableCell>
                       <TableCell className="text-xs">{m.marca || '—'}</TableCell>
