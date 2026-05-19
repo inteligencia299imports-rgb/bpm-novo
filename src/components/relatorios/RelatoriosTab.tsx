@@ -103,6 +103,9 @@ const RelatoriosTab: React.FC = () => {
                 <TabsTrigger value="preparacao" className="gap-1.5">
                   <Wrench className="h-4 w-4" /> Preparação
                 </TabsTrigger>
+                <TabsTrigger value="estoque" className="gap-1.5">
+                  <Package className="h-4 w-4" /> Estoque
+                </TabsTrigger>
               </TabsList>
             </div>
           )}
