@@ -282,11 +282,14 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                     <TableRow key={m.id}>
                       <TableCell className="text-xs">{m.empresa || '—'}</TableCell>
                       <TableCell className="text-xs">
-                        {m.tipo ? (
-                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(m.tipo)}`}>
-                            {getTipoAquisicaoLabel(m.tipo)}
-                          </Badge>
-                        ) : '—'}
+                        {(() => {
+                          const displayTipo = m.avaliacoes?.tipo_aquisicao || m.tipo;
+                          return displayTipo ? (
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(displayTipo)}`}>
+                              {getTipoAquisicaoLabel(displayTipo)}
+                            </Badge>
+                          ) : '—';
+                        })()}
                       </TableCell>
                       <TableCell className="text-xs">{m.loja || '—'}</TableCell>
                       <TableCell className="text-xs text-right">{dias}</TableCell>
