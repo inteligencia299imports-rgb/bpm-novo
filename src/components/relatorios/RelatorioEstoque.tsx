@@ -296,6 +296,20 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                       <TableCell className="text-xs">{anoFM || '—'}</TableCell>
                       <TableCell className="text-xs font-mono">{m.placa || '—'}</TableCell>
                       <TableCell className="text-xs">{entrada ? entrada.toLocaleDateString('pt-BR') : '—'}</TableCell>
+                      <TableCell className="text-xs">
+                        {(() => {
+                          const map: Record<string, { label: string; cls: string }> = {
+                            disponivel: { label: 'Disponível', cls: 'border-green-500 text-green-600' },
+                            bloqueio_juridico: { label: 'Bloqueio', cls: 'border-gray-500 text-gray-600' },
+                            indisponivel: { label: 'Indisponível', cls: 'border-red-500 text-red-600' },
+                            servico: { label: 'Serviço', cls: 'border-orange-500 text-orange-600' },
+                          };
+                          const s = map[m.status];
+                          return s ? (
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${s.cls}`}>{s.label}</Badge>
+                          ) : '—';
+                        })()}
+                      </TableCell>
                       <TableCell className="text-xs text-right">{fmtBRL(preco)}</TableCell>
                       <TableCell className="text-xs text-right">{compra > 0 ? fmtBRL(compra) : '—'}</TableCell>
                       <TableCell className={cn('text-xs text-right font-medium', compra > 0 ? (margemAbs >= 0 ? 'text-[#3a8f6a]' : 'text-red-500') : 'text-muted-foreground')}>
