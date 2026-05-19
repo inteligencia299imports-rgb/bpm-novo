@@ -73,8 +73,8 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   }, [loadData]);
 
   useEffect(() => {
-    setLoading(true);
     loadData();
+
     const channel = supabase
       .channel('relatorio-vendedores-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'atendimentos' }, debouncedLoad)
