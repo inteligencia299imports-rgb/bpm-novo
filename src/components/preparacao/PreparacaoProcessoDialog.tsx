@@ -421,6 +421,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         ano_modelo: moto.ano_modelo || null,
         km: moto.km || null,
         empresa,
+        loja,
         preco: precoValue,
         status: 'disponivel',
         avaliacao_id: avaliacaoId,

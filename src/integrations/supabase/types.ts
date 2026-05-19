@@ -567,6 +567,7 @@ export type Database = {
           empresa: string | null
           id: string
           km: string | null
+          loja: string | null
           marca: string
           modelo: string
           moto_avaliacao_id: string | null
@@ -595,6 +596,7 @@ export type Database = {
           empresa?: string | null
           id?: string
           km?: string | null
+          loja?: string | null
           marca: string
           modelo: string
           moto_avaliacao_id?: string | null
@@ -623,6 +625,7 @@ export type Database = {
           empresa?: string | null
           id?: string
           km?: string | null
+          loja?: string | null
           marca?: string
           modelo?: string
           moto_avaliacao_id?: string | null
