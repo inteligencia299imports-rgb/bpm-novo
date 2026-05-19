@@ -43,11 +43,14 @@ const RelatoriosTab: React.FC = () => {
   // Showroom/Avaliações: bloquear seleção antes de 01/04/2025
   const PREP_MIN_DATE = new Date(2026, 2, 21, 0, 0, 0, 0);
   const SHOWROOM_AVAL_MIN_DATE = new Date(2025, 3, 1, 0, 0, 0, 0);
+  const ESTOQUE_MIN_DATE = new Date(2026, 3, 6, 0, 0, 0, 0);
   const disabledDates = dept === 'preparacao'
     ? (date: Date) => date < PREP_MIN_DATE
-    : (dept === 'showroom' || dept === 'avaliacoes')
-      ? (date: Date) => date < SHOWROOM_AVAL_MIN_DATE
-      : undefined;
+    : dept === 'estoque'
+      ? (date: Date) => date < ESTOQUE_MIN_DATE
+      : (dept === 'showroom' || dept === 'avaliacoes')
+        ? (date: Date) => date < SHOWROOM_AVAL_MIN_DATE
+        : undefined;
   const initFrom = cycle.start;
   initFrom.setHours(0, 0, 0, 0);
   const initTo = cycle.end;
