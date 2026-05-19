@@ -1319,9 +1319,17 @@ export type Database = {
       relatorio_estoque_kpis:
         | { Args: never; Returns: Json }
         | { Args: { p_cutoff?: string }; Returns: Json }
+        | {
+            Args: { p_cutoff?: string; p_loja?: string; p_tipo?: string }
+            Returns: Json
+          }
       relatorio_estoque_mensal:
         | { Args: never; Returns: Json }
         | { Args: { p_cutoff?: string }; Returns: Json }
+        | {
+            Args: { p_cutoff?: string; p_loja?: string; p_tipo?: string }
+            Returns: Json
+          }
       relatorio_showroom_kpis: {
         Args: {
           _date_from?: string
