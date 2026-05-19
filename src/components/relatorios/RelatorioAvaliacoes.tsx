@@ -227,7 +227,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   };
 
   return (
-    <div className="space-y-4 w-full max-w-full overflow-x-hidden">
+    <div className={cn("space-y-4 w-full max-w-full overflow-x-hidden transition-opacity", refreshing && "opacity-60 pointer-events-none")}>
       <Separator className="my-2" />
       <LojaFilter value={filterLoja} onChange={setFilterLoja} />
 
