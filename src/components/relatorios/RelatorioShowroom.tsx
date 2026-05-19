@@ -67,7 +67,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     });
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
+  const [refreshing, setRefreshing] = useState(false);
   const loadData = useCallback(async () => {
+    setRefreshing(true);
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
 
@@ -86,7 +88,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     setMotosSinal((sinaisRes.data || []) as any[]);
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
+    setRefreshing(false);
   }, [dateFrom, dateTo, filterLoja, filterTipo]);
+
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
@@ -129,8 +133,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }
 
   return (
-    <div className="space-y-4 w-full max-w-full overflow-x-hidden">
+    <div className={cn("space-y-4 w-full max-w-full overflow-x-hidden transition-opacity", refreshing && "opacity-60 pointer-events-none")}>
       <Separator className="my-2" />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <LojaFilter value={filterLoja} onChange={setFilterLoja} />
         <div className="flex flex-wrap items-center gap-2 max-w-full">
