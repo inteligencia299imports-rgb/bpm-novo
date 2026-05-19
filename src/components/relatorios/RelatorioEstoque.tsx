@@ -8,6 +8,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
+import { fetchAllRange } from '@/lib/fetchAllRange';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 
 
 const fmtBRL = (v: number | null | undefined) =>
@@ -34,8 +37,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const [loading, setLoading] = useState(true);
   const [indicadores, setIndicadores] = useState<any>({});
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
+  const [motos, setMotos] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
   const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
+
 
   const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v, filterTipo); };
   const setFilterTipo = (v: TipoFilter) => { setFilterTipoState(v); onFilterChange?.(filterLoja, v); };
@@ -51,16 +56,40 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const cutoff = (dateTo ?? new Date()).toISOString();
-    const [kpisRes, mensalRes] = await Promise.all([
+    const cutoffDate = dateTo ?? new Date();
+    const cutoff = cutoffDate.toISOString();
+    const [kpisRes, mensalRes, motosRes] = await Promise.all([
       supabase.rpc('relatorio_estoque_kpis', { p_cutoff: cutoff, p_loja: filterLoja, p_tipo: filterTipo }),
       supabase.rpc('relatorio_estoque_mensal', { p_cutoff: cutoff, p_loja: filterLoja, p_tipo: filterTipo }),
+      fetchAllRange(() => {
+        let q = supabase
+          .from('estoque')
+          .select('id, empresa, tipo, loja, marca, modelo, cor, ano_fabricacao, ano_modelo, placa, data_entrada, data_venda, preco, status, avaliacoes:avaliacao_id(valor_fechamento)')
+          .in('status', ['disponivel', 'indisponivel', 'servico', 'bloqueio_juridico'])
+          .lte('data_entrada', cutoff)
+          .or(`data_venda.is.null,data_venda.gt.${cutoff}`)
+          .order('data_entrada', { ascending: false });
+        if (filterTipo !== 'todos') q = q.eq('tipo', filterTipo);
+        return q;
+      }),
     ]);
 
     setIndicadores(kpisRes.data || {});
     setChartByMonth((mensalRes.data || []) as any[]);
+
+    // Filtro de loja client-side (mesma lógica do RPC: '299' = não Ducati)
+    const motosData = (motosRes.data || []) as any[];
+    const filtered = motosData.filter((m: any) => {
+      const loja = (m.loja || '').toString();
+      if (filterLoja === 'todos') return true;
+      if (filterLoja === '299') return !/DUCATI/i.test(loja);
+      if (filterLoja === 'Ducati') return /DUCATI/i.test(loja);
+      return loja.toLowerCase() === filterLoja.toLowerCase();
+    });
+    setMotos(filtered);
     setLoading(false);
   }, [dateTo, filterLoja, filterTipo]);
+
 
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -202,9 +231,78 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
           </CardContent>
         </Card>
       </div>
+
+      {/* Section: Lista de Motos em Estoque */}
+      <div className="space-y-1 !mt-8">
+        <h2 className="text-lg font-bold text-foreground">Motos em Estoque ({motos.length})</h2>
+        <Separator />
+      </div>
+      <Card className="border shadow-sm rounded-xl">
+        <CardContent className="p-0 overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Empresa</TableHead>
+                <TableHead className="text-xs">Tipo</TableHead>
+                <TableHead className="text-xs">Pátio</TableHead>
+                <TableHead className="text-xs text-right">Dias</TableHead>
+                <TableHead className="text-xs">Marca</TableHead>
+                <TableHead className="text-xs">Modelo</TableHead>
+                <TableHead className="text-xs">Cor</TableHead>
+                <TableHead className="text-xs">Ano Fab/Mod</TableHead>
+                <TableHead className="text-xs">Placa</TableHead>
+                <TableHead className="text-xs">Data Entrada</TableHead>
+                <TableHead className="text-xs text-right">Preço</TableHead>
+                <TableHead className="text-xs text-right">Valor Compra</TableHead>
+                <TableHead className="text-xs text-right">Margem</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {motos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={13} className="text-center text-muted-foreground text-sm py-6">
+                    Nenhuma moto encontrada com os filtros selecionados.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                motos.map((m: any) => {
+                  const cutoffDate = dateTo ?? new Date();
+                  const entrada = m.data_entrada ? new Date(m.data_entrada) : null;
+                  const dias = entrada ? Math.max(0, Math.floor((cutoffDate.getTime() - entrada.getTime()) / 86400000)) : 0;
+                  const preco = Number(m.preco) || 0;
+                  const compra = Number(m.avaliacoes?.valor_fechamento) || 0;
+                  const margemAbs = preco - compra;
+                  const margemPct = compra > 0 ? (margemAbs / compra) * 100 : 0;
+                  const anoFM = [m.ano_fabricacao, m.ano_modelo].filter(Boolean).join('/');
+                  return (
+                    <TableRow key={m.id}>
+                      <TableCell className="text-xs">{m.empresa || '—'}</TableCell>
+                      <TableCell className="text-xs capitalize">{m.tipo || '—'}</TableCell>
+                      <TableCell className="text-xs">{m.loja || '—'}</TableCell>
+                      <TableCell className="text-xs text-right">{dias}</TableCell>
+                      <TableCell className="text-xs">{m.marca || '—'}</TableCell>
+                      <TableCell className="text-xs">{m.modelo || '—'}</TableCell>
+                      <TableCell className="text-xs">{m.cor || '—'}</TableCell>
+                      <TableCell className="text-xs">{anoFM || '—'}</TableCell>
+                      <TableCell className="text-xs font-mono">{m.placa || '—'}</TableCell>
+                      <TableCell className="text-xs">{entrada ? entrada.toLocaleDateString('pt-BR') : '—'}</TableCell>
+                      <TableCell className="text-xs text-right">{fmtBRL(preco)}</TableCell>
+                      <TableCell className="text-xs text-right">{compra > 0 ? fmtBRL(compra) : '—'}</TableCell>
+                      <TableCell className={cn('text-xs text-right font-medium', compra > 0 ? (margemAbs >= 0 ? 'text-[#3a8f6a]' : 'text-red-500') : 'text-muted-foreground')}>
+                        {compra > 0 ? `${fmtBRL(margemAbs)} (${margemPct.toFixed(1)}%)` : '—'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 };
+
 
 // Sub-components
 const iconColorMap: Record<string, string> = {
