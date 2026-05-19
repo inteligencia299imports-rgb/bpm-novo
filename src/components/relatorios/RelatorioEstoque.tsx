@@ -47,7 +47,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const cutoff = (dateTo ?? new Date()).toISOString();
     const [kpisRes, mensalRes] = await Promise.all([
       supabase.rpc('relatorio_estoque_kpis', { p_cutoff: cutoff }),
-      supabase.rpc('relatorio_estoque_mensal'),
+      supabase.rpc('relatorio_estoque_mensal', { p_cutoff: cutoff }),
     ]);
 
     setIndicadores(kpisRes.data || {});
