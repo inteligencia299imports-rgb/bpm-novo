@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { LojaFilter } from './LojaFilter';
+
 
 const fmtBRL = (v: number | null | undefined) =>
   (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -18,8 +20,10 @@ interface RelatorioEstoqueProps {
   setDateFrom: (d: Date | undefined) => void;
   setDateTo: (d: Date | undefined) => void;
   onRegisterClear?: (fn: () => void) => void;
-  onFilterChange?: (loja: string) => void;
+  onFilterChange?: (loja: string, tipo: string) => void;
 }
+
+type TipoFilter = 'todos' | 'propria' | 'consignada';
 
 const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
   const isMobile = useIsMobile();
@@ -31,13 +35,16 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const [indicadores, setIndicadores] = useState<any>({});
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
+  const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
 
-  const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v); };
+  const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v, filterTipo); };
+  const setFilterTipo = (v: TipoFilter) => { setFilterTipoState(v); onFilterChange?.(filterLoja, v); };
 
   useEffect(() => {
     onRegisterClear?.(() => {
       setFilterLojaState('todos');
-      onFilterChange?.('todos');
+      setFilterTipoState('todos');
+      onFilterChange?.('todos', 'todos');
       setDateFrom(undefined);
       setDateTo(undefined);
     });
@@ -46,14 +53,15 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const loadData = useCallback(async () => {
     const cutoff = (dateTo ?? new Date()).toISOString();
     const [kpisRes, mensalRes] = await Promise.all([
-      supabase.rpc('relatorio_estoque_kpis', { p_cutoff: cutoff }),
-      supabase.rpc('relatorio_estoque_mensal', { p_cutoff: cutoff }),
+      supabase.rpc('relatorio_estoque_kpis', { p_cutoff: cutoff, p_loja: filterLoja, p_tipo: filterTipo }),
+      supabase.rpc('relatorio_estoque_mensal', { p_cutoff: cutoff, p_loja: filterLoja, p_tipo: filterTipo }),
     ]);
 
     setIndicadores(kpisRes.data || {});
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
-  }, [dateTo]);
+  }, [dateTo, filterLoja, filterTipo]);
+
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
@@ -95,6 +103,25 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
+
+      {/* Filters: Loja (left) + Tipo (right) */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+        <div className="flex flex-wrap items-center gap-1 ml-auto">
+          {([
+            { value: 'todos', label: 'Todos' },
+            { value: 'propria', label: 'Próprias' },
+            { value: 'consignada', label: 'Consignadas' },
+          ] as { value: TipoFilter; label: string }[]).map(b => (
+            <Button key={b.value} size="sm" variant={filterTipo === b.value ? 'default' : 'outline'}
+              className={cn('rounded-full px-4 h-8 text-xs font-medium', filterTipo === b.value && 'shadow-sm')}
+              onClick={() => setFilterTipo(b.value)}>
+              {b.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
