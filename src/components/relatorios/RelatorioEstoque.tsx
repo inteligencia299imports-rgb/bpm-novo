@@ -231,9 +231,78 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
           </CardContent>
         </Card>
       </div>
+
+      {/* Section: Lista de Motos em Estoque */}
+      <div className="space-y-1 !mt-8">
+        <h2 className="text-lg font-bold text-foreground">Motos em Estoque ({motos.length})</h2>
+        <Separator />
+      </div>
+      <Card className="border shadow-sm rounded-xl">
+        <CardContent className="p-0 overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Empresa</TableHead>
+                <TableHead className="text-xs">Tipo</TableHead>
+                <TableHead className="text-xs">Pátio</TableHead>
+                <TableHead className="text-xs text-right">Dias</TableHead>
+                <TableHead className="text-xs">Marca</TableHead>
+                <TableHead className="text-xs">Modelo</TableHead>
+                <TableHead className="text-xs">Cor</TableHead>
+                <TableHead className="text-xs">Ano Fab/Mod</TableHead>
+                <TableHead className="text-xs">Placa</TableHead>
+                <TableHead className="text-xs">Data Entrada</TableHead>
+                <TableHead className="text-xs text-right">Preço</TableHead>
+                <TableHead className="text-xs text-right">Valor Compra</TableHead>
+                <TableHead className="text-xs text-right">Margem</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {motos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={13} className="text-center text-muted-foreground text-sm py-6">
+                    Nenhuma moto encontrada com os filtros selecionados.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                motos.map((m: any) => {
+                  const cutoffDate = dateTo ?? new Date();
+                  const entrada = m.data_entrada ? new Date(m.data_entrada) : null;
+                  const dias = entrada ? Math.max(0, Math.floor((cutoffDate.getTime() - entrada.getTime()) / 86400000)) : 0;
+                  const preco = Number(m.preco) || 0;
+                  const compra = Number(m.avaliacoes?.valor_fechamento) || 0;
+                  const margemAbs = preco - compra;
+                  const margemPct = compra > 0 ? (margemAbs / compra) * 100 : 0;
+                  const anoFM = [m.ano_fabricacao, m.ano_modelo].filter(Boolean).join('/');
+                  return (
+                    <TableRow key={m.id}>
+                      <TableCell className="text-xs">{m.empresa || '—'}</TableCell>
+                      <TableCell className="text-xs capitalize">{m.tipo || '—'}</TableCell>
+                      <TableCell className="text-xs">{m.loja || '—'}</TableCell>
+                      <TableCell className="text-xs text-right">{dias}</TableCell>
+                      <TableCell className="text-xs">{m.marca || '—'}</TableCell>
+                      <TableCell className="text-xs">{m.modelo || '—'}</TableCell>
+                      <TableCell className="text-xs">{m.cor || '—'}</TableCell>
+                      <TableCell className="text-xs">{anoFM || '—'}</TableCell>
+                      <TableCell className="text-xs font-mono">{m.placa || '—'}</TableCell>
+                      <TableCell className="text-xs">{entrada ? entrada.toLocaleDateString('pt-BR') : '—'}</TableCell>
+                      <TableCell className="text-xs text-right">{fmtBRL(preco)}</TableCell>
+                      <TableCell className="text-xs text-right">{compra > 0 ? fmtBRL(compra) : '—'}</TableCell>
+                      <TableCell className={cn('text-xs text-right font-medium', compra > 0 ? (margemAbs >= 0 ? 'text-[#3a8f6a]' : 'text-red-500') : 'text-muted-foreground')}>
+                        {compra > 0 ? `${fmtBRL(margemAbs)} (${margemPct.toFixed(1)}%)` : '—'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 };
+
 
 // Sub-components
 const iconColorMap: Record<string, string> = {
