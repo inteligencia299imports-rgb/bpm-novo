@@ -264,7 +264,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
             <TableBody>
               {motos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} className="text-center text-muted-foreground text-sm py-6">
+                  <TableCell colSpan={14} className="text-center text-muted-foreground text-sm py-6">
                     Nenhuma moto encontrada com os filtros selecionados.
                   </TableCell>
                 </TableRow>
