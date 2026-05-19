@@ -37,8 +37,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const [loading, setLoading] = useState(true);
   const [indicadores, setIndicadores] = useState<any>({});
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
+  const [motos, setMotos] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
   const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
+
 
   const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v, filterTipo); };
   const setFilterTipo = (v: TipoFilter) => { setFilterTipoState(v); onFilterChange?.(filterLoja, v); };
