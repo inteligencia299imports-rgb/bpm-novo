@@ -43,9 +43,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     });
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
-  const [refreshing, setRefreshing] = useState(false);
   const loadData = useCallback(async () => {
-    setRefreshing(true);
     const [kpisRes, mensalRes] = await Promise.all([
       supabase.rpc('relatorio_estoque_kpis'),
       supabase.rpc('relatorio_estoque_mensal'),
@@ -54,7 +52,6 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     setIndicadores(kpisRes.data || {});
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
-    setRefreshing(false);
   }, []);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -64,8 +61,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   }, [loadData]);
 
   useEffect(() => {
+    setLoading(true);
     loadData();
-
     const channel = supabase
       .channel('relatorio-estoque-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'estoque' }, debouncedLoad)
@@ -95,7 +92,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const s = indicadores.servico || {};
 
   return (
-    <div className={cn("space-y-4 w-full max-w-full overflow-x-hidden transition-opacity", refreshing && "opacity-60 pointer-events-none")}>
+    <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
 
       {/* Indicators - Line 1 */}

@@ -48,10 +48,8 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     });
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
-  const [refreshing, setRefreshing] = useState(false);
   const loadData = useCallback(async () => {
     if (!user) return;
-    setRefreshing(true);
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
 
@@ -66,7 +64,6 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     setChartByVendedor(equipeData.map((v: any) => ({ ...v, nome: abbreviateName(v.nome || 'Desconhecido') })));
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
-    setRefreshing(false);
   }, [user, dateFrom, dateTo, filterLoja]);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -76,8 +73,8 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   }, [loadData]);
 
   useEffect(() => {
+    setLoading(true);
     loadData();
-
     const channel = supabase
       .channel('relatorio-vendedores-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'atendimentos' }, debouncedLoad)
@@ -94,7 +91,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   }
 
   return (
-    <div className={cn("space-y-4 w-full max-w-full overflow-x-hidden transition-opacity", refreshing && "opacity-60 pointer-events-none")}>
+    <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
       <LojaFilter value={filterLoja} onChange={setFilterLoja} />
 

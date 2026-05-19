@@ -71,12 +71,9 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     });
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
-  const [refreshing, setRefreshing] = useState(false);
   const loadData = useCallback(async () => {
-    setRefreshing(true);
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
-
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
     const [mensalRes, detalhesBaseRes, nomesRes, kpisRes] = await Promise.all([
@@ -188,7 +185,6 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     setChartByAvaliador(avalData);
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
-    setRefreshing(false);
   }, [dateFrom, dateTo, filterLoja]);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -198,8 +194,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   }, [loadData]);
 
   useEffect(() => {
+    setLoading(true);
     loadData();
-
     const channel = supabase
       .channel('relatorio-avaliacoes-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'avaliacoes' }, debouncedLoad)
@@ -227,7 +223,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   };
 
   return (
-    <div className={cn("space-y-4 w-full max-w-full overflow-x-hidden transition-opacity", refreshing && "opacity-60 pointer-events-none")}>
+    <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
       <LojaFilter value={filterLoja} onChange={setFilterLoja} />
 
