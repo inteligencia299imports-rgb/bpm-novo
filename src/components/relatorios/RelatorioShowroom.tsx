@@ -124,6 +124,84 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     return loja.charAt(0).toUpperCase() + loja.slice(1).toLowerCase();
   };
 
+  const buildRows = (list: any[], dataLabel: 'dataVenda' | 'dataSinal') => list.map((m: any) => ({
+    cliente: m.nomeCliente || '', vendedor: m.vendedor || '', loja: lojaLabel(m.loja),
+    tipo: tipoLabel(m.tipo), modelo: m.modelo || '', placa: m.placa || '',
+    data: m[dataLabel] ? format(new Date(m[dataLabel]), 'dd/MM/yyyy') : '',
+    quantoVende: Number(m.quantoVende) || 0, valorFechamento: Number(m.valorFechamento) || 0,
+    margemPrevista: Number(m.margemPrevista) || 0, pctMargemPrevista: Number(m.pctMargemPrevista) || 0,
+    valorVenda: Number(m.valorVenda) || 0, margemOficina: Number(m.margemOficina) || 0,
+    abatimentos: Number(m.abatimentos) || 0,
+    margemRealizada: Number(m.margemRealizada) || 0, pctMargemRealizada: Number(m.pctMargemRealizada) || 0,
+  }));
+
+  const currentList = () => listTab === 'vendidas'
+    ? { rows: buildRows(motosVendidas, 'dataVenda'), title: 'Vendidas', dateHeader: 'Data Venda', count: motosVendidas.length }
+    : { rows: buildRows(motosSinal, 'dataSinal'), title: 'Com Sinal', dateHeader: 'Data Sinal', count: motosSinal.length };
+
+  const handleExportExcel = async () => {
+    const XLSX = await import('xlsx');
+    const { rows, title, dateHeader } = currentList();
+    const aoa = [[
+      'Cliente','Vendedor','Loja','Tipo','Modelo','Placa', dateHeader,
+      'Quanto Vende','V. Fechamento','Margem Prev. (R$)','Margem Prev. (%)',
+      'Valor Venda','M. Oficina','Abatimentos','Margem Real. (R$)','Margem Real. (%)',
+    ], ...rows.map(r => [
+      r.cliente, r.vendedor, r.loja, r.tipo, r.modelo, r.placa, r.data,
+      r.quantoVende, r.valorFechamento, r.margemPrevista, r.pctMargemPrevista,
+      r.valorVenda, r.margemOficina, r.abatimentos, r.margemRealizada, r.pctMargemRealizada,
+    ])];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [22,18,10,12,22,10,11,14,14,14,10,14,12,12,14,10].map(w => ({ wch: w }));
+    const range = XLSX.utils.decode_range(ws['!ref'] as string);
+    for (let R = 1; R <= range.e.r; R++) {
+      ['H','I','J','L','M','N','O'].forEach(c => { const cell = ws[`${c}${R+1}`]; if (cell && typeof cell.v === 'number') cell.z = 'R$ #,##0.00'; });
+      ['K','P'].forEach(c => { const cell = ws[`${c}${R+1}`]; if (cell && typeof cell.v === 'number') cell.z = '0.0%'; });
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, title);
+    XLSX.writeFile(wb, `showroom_${title.toLowerCase().replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
+
+  const handleExportPdf = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const autoTable = (await import('jspdf-autotable')).default;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const { rows, title, dateHeader, count } = currentList();
+    const periodo = (dateFrom || dateTo)
+      ? `${dateFrom ? format(dateFrom, 'dd/MM/yyyy') : '...'} a ${dateTo ? format(dateTo, 'dd/MM/yyyy') : '...'}`
+      : 'Todos';
+    doc.setFontSize(14); doc.setTextColor(30, 41, 59);
+    doc.text(`Showroom — ${title} — ${count} registro(s)`, 40, 36);
+    doc.setFontSize(9); doc.setTextColor(100);
+    doc.text(`Loja: ${filterLoja === 'todos' ? 'Todas' : filterLoja}  •  Tipo: ${filterTipo === 'todos' ? 'Todos' : tipoLabel(filterTipo)}  •  Período: ${periodo}`, 40, 52);
+
+    autoTable(doc, {
+      startY: 64,
+      head: [['Cliente','Vendedor','Loja','Tipo','Modelo','Placa', dateHeader,'Quanto Vende','V. Fechamento','Margem Prev.','Valor Venda','M. Oficina','Abatim.','Margem Real.']],
+      body: rows.map(r => [
+        r.cliente, r.vendedor, r.loja, r.tipo, r.modelo, r.placa, r.data,
+        fmtBRL(r.quantoVende), fmtBRL(r.valorFechamento),
+        `${fmtBRL(r.margemPrevista)} (${fmtPct(r.pctMargemPrevista)})`,
+        fmtBRL(r.valorVenda), fmtBRL(r.margemOficina), fmtBRL(r.abatimentos),
+        `${fmtBRL(r.margemRealizada)} (${fmtPct(r.pctMargemRealizada)})`,
+      ]),
+      styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
+      headStyles: { fillColor: [47, 111, 132], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      columnStyles: { 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right' }, 11: { halign: 'right' }, 12: { halign: 'right' }, 13: { halign: 'right' } },
+      didParseCell: (data) => {
+        if (data.section !== 'body') return;
+        const r = rows[data.row.index];
+        if (data.column.index === 9 && r.margemPrevista !== 0) data.cell.styles.textColor = r.margemPrevista >= 0 ? [58, 143, 106] : [220, 38, 38];
+        if (data.column.index === 11 && r.margemOficina !== 0) data.cell.styles.textColor = r.margemOficina >= 0 ? [58, 143, 106] : [220, 38, 38];
+        if (data.column.index === 13 && r.margemRealizada !== 0) data.cell.styles.textColor = r.margemRealizada >= 0 ? [58, 143, 106] : [220, 38, 38];
+      },
+      margin: { left: 20, right: 20 },
+    });
+    doc.save(`showroom_${title.toLowerCase().replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
   }
