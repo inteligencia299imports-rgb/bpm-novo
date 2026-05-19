@@ -143,6 +143,7 @@ const RelatoriosTab: React.FC = () => {
                 <Calendar mode="single" selected={dateTo} onSelect={setDateTo} disabled={disabledDates} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateTo ?? new Date('2026-03-21T00:00:00')} />
               </PopoverContent>
             </Popover>
+            )}
           </div>
         </div>
         {isGestorOrAvaliador && (
