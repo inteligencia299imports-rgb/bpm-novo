@@ -64,6 +64,15 @@ const RelatoriosTab: React.FC = () => {
     setDateToRaw(d);
   };
   const clearFnRef = useRef<(() => void) | null>(null);
+
+  // Estoque: default Data Fim = hoje (usuário ainda pode alterar)
+  useEffect(() => {
+    if (dept === 'estoque') {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      setDateToRaw(today);
+    }
+  }, [dept]);
   const [hasInternalFilters, setHasInternalFilters] = useState(false);
 
   const hasActiveFilters = !!(dateFrom || dateTo || hasInternalFilters);
