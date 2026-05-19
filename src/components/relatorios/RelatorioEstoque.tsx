@@ -83,13 +83,21 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     };
   }, [loadData, debouncedLoad]);
 
+  // Mostrar apenas ciclos a partir de 20/04 (dados anteriores ainda em revisão)
+  const filteredChart = useMemo(() => {
+    return chartByMonth.filter((m: any) => {
+      const mm = parseInt(String(m.label || '').split('/')[1] || '0', 10);
+      return mm >= 4 && mm <= 12;
+    });
+  }, [chartByMonth]);
+
   const patrimonioGrowth = useMemo(() => {
-    return chartByMonth.map((m: any, idx: number) => {
-      const prev = idx > 0 ? chartByMonth[idx - 1].patrimonioDisp : 0;
+    return filteredChart.map((m: any, idx: number) => {
+      const prev = idx > 0 ? filteredChart[idx - 1].patrimonioDisp : 0;
       const crescimento = prev > 0 ? Math.round(((m.patrimonioDisp - prev) / prev) * 1000) / 10 : 0;
       return { ...m, crescimento };
     });
-  }, [chartByMonth]);
+  }, [filteredChart]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
@@ -156,7 +164,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={chartH}>
-              <ComposedChart data={chartByMonth} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
+              <ComposedChart data={filteredChart} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
