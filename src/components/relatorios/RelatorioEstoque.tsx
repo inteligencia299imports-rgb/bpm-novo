@@ -67,7 +67,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       fetchAllRange(() => {
         let q = supabase
           .from('estoque')
-          .select('id, empresa, tipo, loja, marca, modelo, cor, ano_fabricacao, ano_modelo, placa, data_entrada, data_venda, preco, status, avaliacoes:avaliacao_id(valor_fechamento)')
+          .select('id, empresa, tipo, loja, marca, modelo, cor, ano_fabricacao, ano_modelo, placa, data_entrada, data_venda, preco, status, avaliacoes:avaliacao_id(valor_fechamento, tipo_aquisicao)')
           .in('status', ['disponivel', 'indisponivel', 'servico', 'bloqueio_juridico'])
           .lte('data_entrada', cutoff)
           .or(`data_venda.is.null,data_venda.gt.${cutoff}`)
@@ -282,11 +282,14 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                     <TableRow key={m.id}>
                       <TableCell className="text-xs">{m.empresa || '—'}</TableCell>
                       <TableCell className="text-xs">
-                        {m.tipo ? (
-                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(m.tipo)}`}>
-                            {getTipoAquisicaoLabel(m.tipo)}
-                          </Badge>
-                        ) : '—'}
+                        {(() => {
+                          const displayTipo = m.avaliacoes?.tipo_aquisicao || m.tipo;
+                          return displayTipo ? (
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(displayTipo)}`}>
+                              {getTipoAquisicaoLabel(displayTipo)}
+                            </Badge>
+                          ) : '—';
+                        })()}
                       </TableCell>
                       <TableCell className="text-xs">{m.loja || '—'}</TableCell>
                       <TableCell className="text-xs text-right">{dias}</TableCell>
