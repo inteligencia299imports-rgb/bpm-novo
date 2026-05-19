@@ -56,16 +56,40 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const cutoff = (dateTo ?? new Date()).toISOString();
-    const [kpisRes, mensalRes] = await Promise.all([
+    const cutoffDate = dateTo ?? new Date();
+    const cutoff = cutoffDate.toISOString();
+    const [kpisRes, mensalRes, motosRes] = await Promise.all([
       supabase.rpc('relatorio_estoque_kpis', { p_cutoff: cutoff, p_loja: filterLoja, p_tipo: filterTipo }),
       supabase.rpc('relatorio_estoque_mensal', { p_cutoff: cutoff, p_loja: filterLoja, p_tipo: filterTipo }),
+      fetchAllRange(() => {
+        let q = supabase
+          .from('estoque')
+          .select('id, empresa, tipo, loja, marca, modelo, cor, ano_fabricacao, ano_modelo, placa, data_entrada, data_venda, preco, status, avaliacoes:avaliacao_id(valor_fechamento)')
+          .in('status', ['disponivel', 'indisponivel', 'servico', 'bloqueio_juridico'])
+          .lte('data_entrada', cutoff)
+          .or(`data_venda.is.null,data_venda.gt.${cutoff}`)
+          .order('data_entrada', { ascending: false });
+        if (filterTipo !== 'todos') q = q.eq('tipo', filterTipo);
+        return q;
+      }),
     ]);
 
     setIndicadores(kpisRes.data || {});
     setChartByMonth((mensalRes.data || []) as any[]);
+
+    // Filtro de loja client-side (mesma lógica do RPC: '299' = não Ducati)
+    const motosData = (motosRes.data || []) as any[];
+    const filtered = motosData.filter((m: any) => {
+      const loja = (m.loja || '').toString();
+      if (filterLoja === 'todos') return true;
+      if (filterLoja === '299') return !/DUCATI/i.test(loja);
+      if (filterLoja === 'Ducati') return /DUCATI/i.test(loja);
+      return loja.toLowerCase() === filterLoja.toLowerCase();
+    });
+    setMotos(filtered);
     setLoading(false);
   }, [dateTo, filterLoja, filterTipo]);
+
 
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
