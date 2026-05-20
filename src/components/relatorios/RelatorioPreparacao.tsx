@@ -258,7 +258,6 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       matchesLoja(r.loja, filterLoja) &&
       (filterTipo === 'todos' || r.tipoCat === filterTipo) &&
       r.situacao !== 'perdido' &&
-      !r.dataLiberacao &&
       r.statusPrep !== 'estoque'
     ).length;
     return {
