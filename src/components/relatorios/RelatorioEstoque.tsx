@@ -279,9 +279,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
             <CardTitle className="text-sm font-semibold">Quantidade</CardTitle>
             <div className="flex flex-wrap items-center gap-3 text-[11px]">
               <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#2F6F84' }} />Estoque</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#3a8f6a' }} />Entradas</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#E8913A' }} />Saídas</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#7e6d9b' }} />Giro %</span>
+              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#3a8f6a' }} />Disponíveis</span>
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
@@ -292,20 +290,22 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                     <stop offset="0%" stopColor="#2F6F84" stopOpacity={0.45} />
                     <stop offset="100%" stopColor="#2F6F84" stopOpacity={0.02} />
                   </linearGradient>
+                  <linearGradient id="dispGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3a8f6a" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#3a8f6a" stopOpacity={0.02} />
+                  </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Area yAxisId="left" type="monotone" dataKey="disponiveis" name="Estoque" stroke="#2F6F84" strokeWidth={2.5} fill="url(#estoqueGradient)" dot={{ r: 4, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />
-                <Line yAxisId="left" type="monotone" dataKey="entradas" name="Entradas" stroke="#3a8f6a" strokeWidth={2.5} dot={{ r: 4, fill: '#3a8f6a', stroke: '#fff', strokeWidth: 2 }} />
-                <Line yAxisId="left" type="monotone" dataKey="saidas" name="Saídas" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
-                <Line yAxisId="right" type="monotone" dataKey="giro" name="Giro %" stroke="#7e6d9b" strokeWidth={2.5} strokeDasharray="5 5" dot={{ r: 4, fill: '#7e6d9b', stroke: '#fff', strokeWidth: 2 }} />
+                <Area type="monotone" dataKey="disponiveis" name="Estoque" stroke="#2F6F84" strokeWidth={2.5} fill="url(#estoqueGradient)" dot={{ r: 4, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                <Area type="monotone" dataKey="apenasDisponiveis" name="Disponíveis" stroke="#3a8f6a" strokeWidth={2.5} fill="url(#dispGradient)" dot={{ r: 4, fill: '#3a8f6a', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
+
       </div>
 
 
