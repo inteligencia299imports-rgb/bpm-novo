@@ -386,7 +386,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+        <KpiCard title="Em Preparação" value={kpis.emPreparacao} icon={<Package className="h-5 w-5" />} color="amber" />
         <KpiCard title="Motos Preparadas" value={kpis.qtdPreparadas} icon={<Wrench className="h-5 w-5" />} color="teal" />
         <KpiCard title="Tempo Preparação" value={fmtDuration(kpis.tempoMedioPrep)} icon={<Clock className="h-5 w-5" />} color="teal" />
         <KpiCard title="Motos Liberadas" value={kpis.qtdLiberadas} icon={<CheckCircle className="h-5 w-5" />} color="emerald" />
