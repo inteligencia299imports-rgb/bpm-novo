@@ -256,13 +256,21 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const tempoPrepValid = preparadas.map(r => r.tempoPrepMs).filter((v): v is number => v != null && v >= 0);
     const tempoLibValid = liberadas.map(r => r.tempoLibMs).filter((v): v is number => v != null && v >= 0);
     const avg = (arr: number[]) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+    // Em preparação agora: aplica apenas loja + tipo (estado atual, independente do período)
+    const emPreparacao = rows.filter(r =>
+      matchesLoja(r.loja, filterLoja) &&
+      (filterTipo === 'todos' || r.tipoCat === filterTipo) &&
+      r.situacao !== 'perdido' &&
+      !r.dataLiberacao
+    ).length;
     return {
+      emPreparacao,
       qtdPreparadas: preparadas.length,
       tempoMedioPrep: avg(tempoPrepValid),
       qtdLiberadas: liberadas.length,
       tempoMedioLib: avg(tempoLibValid),
     };
-  }, [filteredRows]);
+  }, [filteredRows, rows, filterLoja, filterTipo]);
 
   // Charts: ciclos a partir de 21/03
   const chartData = useMemo(() => {
@@ -378,7 +386,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+        <KpiCard title="Em Preparação" value={kpis.emPreparacao} icon={<Package className="h-5 w-5" />} color="amber" />
         <KpiCard title="Motos Preparadas" value={kpis.qtdPreparadas} icon={<Wrench className="h-5 w-5" />} color="teal" />
         <KpiCard title="Tempo Preparação" value={fmtDuration(kpis.tempoMedioPrep)} icon={<Clock className="h-5 w-5" />} color="teal" />
         <KpiCard title="Motos Liberadas" value={kpis.qtdLiberadas} icon={<CheckCircle className="h-5 w-5" />} color="emerald" />
