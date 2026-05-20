@@ -273,7 +273,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         <h2 className="text-lg font-bold text-foreground">Resultado do Ano</h2>
         <Separator />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Quantidade</CardTitle>
@@ -285,14 +285,20 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
-            <ResponsiveContainer width="100%" height={chartH}>
+            <ResponsiveContainer width="100%" height={isMobile ? 260 : 420}>
               <ComposedChart data={filteredChart} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
+                <defs>
+                  <linearGradient id="estoqueGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2F6F84" stopOpacity={0.45} />
+                    <stop offset="100%" stopColor="#2F6F84" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Bar yAxisId="left" dataKey="disponiveis" name="Estoque" fill="#2F6F84" radius={[8, 8, 0, 0]} />
+                <Area yAxisId="left" type="monotone" dataKey="disponiveis" name="Estoque" stroke="#2F6F84" strokeWidth={2.5} fill="url(#estoqueGradient)" dot={{ r: 4, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />
                 <Line yAxisId="left" type="monotone" dataKey="entradas" name="Entradas" stroke="#3a8f6a" strokeWidth={2.5} dot={{ r: 4, fill: '#3a8f6a', stroke: '#fff', strokeWidth: 2 }} />
                 <Line yAxisId="left" type="monotone" dataKey="saidas" name="Saídas" stroke="#E8913A" strokeWidth={2.5} dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
                 <Line yAxisId="right" type="monotone" dataKey="giro" name="Giro %" stroke="#7e6d9b" strokeWidth={2.5} strokeDasharray="5 5" dot={{ r: 4, fill: '#7e6d9b', stroke: '#fff', strokeWidth: 2 }} />
@@ -300,30 +306,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
-        <Card className="border shadow-sm rounded-xl">
-          <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-sm font-semibold">Patrimônio Disponível</CardTitle>
-            <div className="flex flex-wrap items-center gap-3 text-[11px]">
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#2F6F84' }} />Patrimônio</span>
-              <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: '#3a8f6a' }} />Crescimento %</span>
-            </div>
-          </CardHeader>
-          <CardContent className="px-4 pb-3 pt-0">
-            <ResponsiveContainer width="100%" height={chartH}>
-              <ComposedChart data={patrimonioGrowth} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
-                <Tooltip content={<PatrimonioTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Bar yAxisId="left" dataKey="patrimonioDisp" name="Patrimônio" fill="#2F6F84" radius={[8, 8, 0, 0]} />
-                <Line yAxisId="right" type="monotone" dataKey="crescimento" name="Crescimento %" stroke="#3a8f6a" strokeWidth={2.5} dot={{ r: 4, fill: '#3a8f6a', stroke: '#fff', strokeWidth: 2 }} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
       </div>
+
 
       {/* Section: Lista de Motos em Estoque */}
       <div className="space-y-1 !mt-8">
