@@ -256,12 +256,14 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const tempoPrepValid = preparadas.map(r => r.tempoPrepMs).filter((v): v is number => v != null && v >= 0);
     const tempoLibValid = liberadas.map(r => r.tempoLibMs).filter((v): v is number => v != null && v >= 0);
     const avg = (arr: number[]) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
-    // Em preparação agora: aplica apenas loja + tipo (estado atual, independente do período)
+    // Em preparação agora: alinhado ao kanban (em_aberto, pendente, oficina, servico_externo)
+    const kanbanStatuses = ['em_aberto', 'pendente', 'oficina', 'servico_externo'];
     const emPreparacao = rows.filter(r =>
       matchesLoja(r.loja, filterLoja) &&
       (filterTipo === 'todos' || r.tipoCat === filterTipo) &&
       r.situacao !== 'perdido' &&
-      !r.dataLiberacao
+      !r.dataLiberacao &&
+      kanbanStatuses.includes(r.statusPrep)
     ).length;
     return {
       emPreparacao,
