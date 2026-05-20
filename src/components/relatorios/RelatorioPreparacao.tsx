@@ -256,13 +256,21 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const tempoPrepValid = preparadas.map(r => r.tempoPrepMs).filter((v): v is number => v != null && v >= 0);
     const tempoLibValid = liberadas.map(r => r.tempoLibMs).filter((v): v is number => v != null && v >= 0);
     const avg = (arr: number[]) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+    // Em preparação agora: aplica apenas loja + tipo (estado atual, independente do período)
+    const emPreparacao = rows.filter(r =>
+      matchesLoja(r.loja, filterLoja) &&
+      (filterTipo === 'todos' || r.tipoCat === filterTipo) &&
+      r.situacao !== 'perdido' &&
+      !r.dataLiberacao
+    ).length;
     return {
+      emPreparacao,
       qtdPreparadas: preparadas.length,
       tempoMedioPrep: avg(tempoPrepValid),
       qtdLiberadas: liberadas.length,
       tempoMedioLib: avg(tempoLibValid),
     };
-  }, [filteredRows]);
+  }, [filteredRows, rows, filterLoja, filterTipo]);
 
   // Charts: ciclos a partir de 21/03
   const chartData = useMemo(() => {
