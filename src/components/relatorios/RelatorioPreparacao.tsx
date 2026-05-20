@@ -112,10 +112,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       .select('id, moto_avaliacao_id, atendimento_id, tipo_aquisicao, situacao, preparacao_status, atendimentos!inner(id, nome_cliente, loja), motos_avaliacao!inner(id, marca, modelo, placa)')
       .in('situacao', ['adquirida', 'estoque', 'perdido'])
     );
-    const avals = (avalRes.data || []).filter((a: any) => {
-      const tipo = (a.tipo_aquisicao || '').toLowerCase();
-      return ['propria', 'convertida', 'repasse', 'test-ride', 'test ride', 'consignada', 'consignacao'].includes(tipo);
-    });
+    const avals = (avalRes.data || []);
 
     const avalIds = avals.map((a: any) => a.id);
     const motoIds = avals.map((a: any) => a.moto_avaliacao_id).filter(Boolean);
