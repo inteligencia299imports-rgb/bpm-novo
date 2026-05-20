@@ -411,7 +411,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                             </div>
                             {!item.loja?.toLowerCase().startsWith('ducati') && (
                               <Badge variant="outline" className={`text-xs gap-1 ${
-                                estItem.status === 'indisponivel' ? 'border-orange-500 text-orange-600' :
+                                estItem.status === 'servico' ? 'border-orange-500 text-orange-600' :
                                 estItem.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
                                 estItem.status === 'bloqueio_juridico' ? 'border-muted-foreground text-muted-foreground' :
                                 estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
@@ -420,7 +420,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                               }`}>
                                 {estItem.status === 'indisponivel_manual' && <AlertTriangle className="h-3 w-3" />}
                                 {estItem.status === 'bloqueio_juridico' && <ShieldAlert className="h-3 w-3" />}
-                                {estItem.status === 'indisponivel' ? 'Serviço' : estItem.status === 'indisponivel_manual' ? 'Indisponível' : estItem.status === 'bloqueio_juridico' ? 'Bloqueio Jurídico' : estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : 'Estoque'}
+                                {estItem.status === 'servico' ? 'Serviço' : estItem.status === 'indisponivel_manual' ? 'Indisponível' : estItem.status === 'bloqueio_juridico' ? 'Bloqueio Jurídico' : estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : 'Estoque'}
                               </Badge>
                             )}
                           </div>
@@ -470,9 +470,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                           </div>
                           )}
                           {/* Estoque observation for special statuses */}
-                          {estItem.observacoes && ['indisponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(estItem.status) && (
+                          {estItem.observacoes && ['servico', 'indisponivel_manual', 'bloqueio_juridico'].includes(estItem.status) && (
                             <div className={`text-xs italic flex items-start gap-1.5 rounded p-2 ${
-                              estItem.status === 'indisponivel' ? 'text-orange-600 bg-orange-500/10' :
+                              estItem.status === 'servico' ? 'text-orange-600 bg-orange-500/10' :
                               estItem.status === 'indisponivel_manual' ? 'text-destructive bg-destructive/10' :
                               'text-muted-foreground bg-muted'
                             }`}>

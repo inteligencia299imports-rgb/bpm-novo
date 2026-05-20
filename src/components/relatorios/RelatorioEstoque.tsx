@@ -70,7 +70,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         let q = supabase
           .from('estoque')
           .select('id, empresa, tipo, loja, marca, modelo, cor, ano_fabricacao, ano_modelo, placa, data_entrada, data_venda, preco, status, avaliacoes:avaliacao_id(valor_fechamento, tipo_aquisicao)')
-          .in('status', ['disponivel', 'indisponivel', 'servico', 'bloqueio_juridico'])
+          .in('status', ['disponivel', 'servico', 'servico', 'bloqueio_juridico'])
           .lte('data_entrada', cutoff)
           .or(`data_venda.is.null,data_venda.gt.${cutoff}`)
           .order('data_entrada', { ascending: false });
@@ -133,7 +133,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
   const statusLabel = (s: string) => ({
     disponivel: 'Disponível', bloqueio_juridico: 'Bloqueio',
-    indisponivel: 'Indisponível', servico: 'Serviço',
+    servico: 'Indisponível', servico: 'Serviço',
   } as Record<string, string>)[s] || s;
 
   const buildRows = () => motos.map((m: any) => {
@@ -232,7 +232,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
   const d = indicadores.disponivel || {};
   const b = indicadores.bloqueio || {};
-  const ind = indicadores.indisponivel || {};
+  const ind = indicadores.servico || {};
   const s = indicadores.servico || {};
 
   return (
@@ -409,7 +409,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                           const map: Record<string, { label: string; cls: string }> = {
                             disponivel: { label: 'Disponível', cls: 'border-green-500 text-green-600' },
                             bloqueio_juridico: { label: 'Bloqueio', cls: 'border-gray-500 text-gray-600' },
-                            indisponivel: { label: 'Indisponível', cls: 'border-red-500 text-red-600' },
+                            servico: { label: 'Indisponível', cls: 'border-red-500 text-red-600' },
                             servico: { label: 'Serviço', cls: 'border-orange-500 text-orange-600' },
                           };
                           const s = map[m.status];
