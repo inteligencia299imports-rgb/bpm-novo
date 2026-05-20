@@ -115,13 +115,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     };
   }, [loadData, debouncedLoad]);
 
-  // Mostrar apenas ciclos a partir de 20/04 (dados anteriores ainda em revisão)
-  const filteredChart = useMemo(() => {
-    return chartByMonth.filter((m: any) => {
-      const mm = parseInt(String(m.label || '').split('/')[1] || '0', 10);
-      return mm >= 4 && mm <= 12;
-    });
-  }, [chartByMonth]);
+  // Mostrar todos os ciclos do ano (21/12 do ano anterior até o momento)
+  const filteredChart = useMemo(() => chartByMonth, [chartByMonth]);
 
   const patrimonioGrowth = useMemo(() => {
     return filteredChart.map((m: any, idx: number) => {
