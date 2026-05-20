@@ -133,7 +133,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
   const statusLabel = (s: string) => ({
     disponivel: 'Disponível', bloqueio_juridico: 'Bloqueio',
-    servico: 'Serviço',
+    servico: 'Serviço', indisponivel_manual: 'Indisponível',
   } as Record<string, string>)[s] || s;
 
   const buildRows = () => motos.map((m: any) => {
