@@ -287,20 +287,20 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
               <ComposedChart data={filteredChart} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
                 <defs>
                   <linearGradient id="estoqueGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2F6F84" stopOpacity={0.45} />
-                    <stop offset="100%" stopColor="#2F6F84" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="#2563eb" stopOpacity={0.45} />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity={0.02} />
                   </linearGradient>
                   <linearGradient id="dispGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3a8f6a" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#3a8f6a" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="#16a34a" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#16a34a" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
-                <Area type="monotone" dataKey="disponiveis" name="Estoque" stroke="#2F6F84" strokeWidth={2.5} fill="url(#estoqueGradient)" dot={{ r: 4, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />
-                <Area type="monotone" dataKey="apenasDisponiveis" name="Disponíveis" stroke="#3a8f6a" strokeWidth={2.5} fill="url(#dispGradient)" dot={{ r: 4, fill: '#3a8f6a', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                <Area type="monotone" dataKey="disponiveis" name="Estoque total" stroke="#2563eb" strokeWidth={2.5} fill="url(#estoqueGradient)" dot={{ r: 4, fill: '#2563eb', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                <Area type="monotone" dataKey="apenasDisponiveis" name="Disponíveis" stroke="#16a34a" strokeWidth={2.5} fill="url(#dispGradient)" dot={{ r: 4, fill: '#16a34a', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />
               </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
