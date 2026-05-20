@@ -410,6 +410,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                             disponivel: { label: 'Disponível', cls: 'border-green-500 text-green-600' },
                             bloqueio_juridico: { label: 'Bloqueio', cls: 'border-gray-500 text-gray-600' },
                             servico: { label: 'Serviço', cls: 'border-orange-500 text-orange-600' },
+                            indisponivel_manual: { label: 'Indisponível', cls: 'border-red-500 text-red-600' },
                           };
                           const s = map[m.status];
                           return s ? (
