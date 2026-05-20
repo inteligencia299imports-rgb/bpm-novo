@@ -365,7 +365,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
       {/* Filters: Loja (left) + Tipo (right) */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+        <CidadeFilter value={filterLoja as CidadeFilterValue} onChange={(v) => setFilterLoja(v)} />
         <div className="flex flex-wrap items-center gap-1 ml-auto">
           {tipoBtns.map(b => (
             <Button key={b.value} size="sm" variant={filterTipo === b.value ? 'default' : 'outline'}
