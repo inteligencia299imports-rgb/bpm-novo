@@ -262,11 +262,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         <IndicatorCard title="Motos no Estoque" value={indicadores.total ?? 0} subline={`Média: ${indicadores.mediaDias ?? 0} dias (${fmtBRL(indicadores.somaTotal)})`} gradient="teal" icon={<Package className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Disponível" value={d.qtd ?? 0} subtitle={`(${fmtPct(d.pct ?? 0)})`} subline={`Média: ${d.mediaDias ?? 0} dias (${fmtBRL(d.soma)})`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Bloqueio Jurídico" value={b.qtd ?? 0} subtitle={`(${fmtPct(b.pct ?? 0)})`} subline={`Média: ${b.mediaDias ?? 0} dias (${fmtBRL(b.soma)})`} gradient="gray" icon={<ShieldAlert className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Indisponível" value={ind.qtd ?? 0} subtitle={`(${fmtPct(ind.pct ?? 0)})`} subline={`Média: ${ind.mediaDias ?? 0} dias (${fmtBRL(ind.soma)})`} gradient="red" icon={<Ban className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Serviço" value={s.qtd ?? 0} subtitle={`(${fmtPct(s.pct ?? 0)})`} subline={`Média: ${s.mediaDias ?? 0} dias (${fmtBRL(s.soma)})`} gradient="orange" icon={<Wrench className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCardWithSub title="Serviço" value={s.qtd ?? 0} subtitle={`(${fmtPct(s.pct ?? 0)})`} subline={`Média: ${s.mediaDias ?? 0} dias (${fmtBRL(s.soma)})`} gradient="orange" icon={<Wrench className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Em Preparação" value={indicadores.qtdPreparacao ?? 0} subline={`Média: ${indicadores.mediaDiasPrep ?? 0} dias (${fmtBRL(indicadores.somaQuantoPede)})`} gradient="purple" icon={<Clock className="h-5 w-5" />} />
         <IndicatorCard title="Patrimônio Disponível" value={fmtBRL(indicadores.patrimonioDisponivel)} gradient="teal" icon={<DollarSign className="h-5 w-5" />} />
         <IndicatorCard title="Patrimônio Parado" value={fmtBRL(indicadores.patrimonioParado)} gradient="red" icon={<TrendingDown className="h-5 w-5" />} />
