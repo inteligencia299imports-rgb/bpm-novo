@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { Badge } from '@/components/ui/badge';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
-import { LojaFilter } from './LojaFilter';
+import CidadeFilter, { CidadeFilterValue, matchesCidade } from '@/components/shared/CidadeFilter';
 
 interface Props {
   dateFrom: Date | undefined;
@@ -24,15 +24,8 @@ interface Props {
   onFilterChange?: (loja: string, tipo: string) => void;
 }
 
-const SUB_LOJAS_299 = ['299i', '299s', '299f', '299p', 'Aventura'];
-const SUB_LOJAS_DUCATI = ['Ducati BSB', 'Ducati FLN', 'Ducati POA'];
-const matchesLoja = (loja: string, filter: string) => {
-  if (filter === 'todos') return true;
-  const l = (loja || '').trim();
-  if (filter === '299') return SUB_LOJAS_299.includes(l) || /^299/i.test(l);
-  if (filter === 'Ducati') return SUB_LOJAS_DUCATI.includes(l) || /ducati/i.test(l);
-  return l.toLowerCase() === filter.toLowerCase();
-};
+const matchesLoja = (loja: string, filter: string) =>
+  matchesCidade(loja, (filter || 'todos') as CidadeFilterValue);
 
 type TipoFilter = 'todos' | 'propria' | 'consignada';
 
@@ -372,7 +365,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
       {/* Filters: Loja (left) + Tipo (right) */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+        <CidadeFilter value={filterLoja as CidadeFilterValue} onChange={(v) => setFilterLoja(v)} />
         <div className="flex flex-wrap items-center gap-1 ml-auto">
           {tipoBtns.map(b => (
             <Button key={b.value} size="sm" variant={filterTipo === b.value ? 'default' : 'outline'}
