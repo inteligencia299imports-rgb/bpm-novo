@@ -70,7 +70,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         let q = supabase
           .from('estoque')
           .select('id, empresa, tipo, loja, marca, modelo, cor, ano_fabricacao, ano_modelo, placa, data_entrada, data_venda, preco, status, avaliacoes:avaliacao_id(valor_fechamento, tipo_aquisicao)')
-          .in('status', ['disponivel', 'servico', 'bloqueio_juridico'])
+          .in('status', ['disponivel', 'servico', 'indisponivel_manual', 'bloqueio_juridico'])
           .lte('data_entrada', cutoff)
           .or(`data_venda.is.null,data_venda.gt.${cutoff}`)
           .order('data_entrada', { ascending: false });
@@ -133,7 +133,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
   const statusLabel = (s: string) => ({
     disponivel: 'Disponível', bloqueio_juridico: 'Bloqueio',
-    servico: 'Serviço',
+    servico: 'Serviço', indisponivel_manual: 'Indisponível',
   } as Record<string, string>)[s] || s;
 
   const buildRows = () => motos.map((m: any) => {
@@ -233,6 +233,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const d = indicadores.disponivel || {};
   const b = indicadores.bloqueio || {};
   const s = indicadores.servico || {};
+  const ind = indicadores.indisponivel || {};
 
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
@@ -266,6 +267,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <IndicatorCardWithSub title="Indisponível" value={ind.qtd ?? 0} subtitle={`(${fmtPct(ind.pct ?? 0)})`} subline={`Média: ${ind.mediaDias ?? 0} dias (${fmtBRL(ind.soma)})`} gradient="red" icon={<Ban className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Em Preparação" value={indicadores.qtdPreparacao ?? 0} subline={`Média: ${indicadores.mediaDiasPrep ?? 0} dias (${fmtBRL(indicadores.somaQuantoPede)})`} gradient="purple" icon={<Clock className="h-5 w-5" />} />
         <IndicatorCard title="Patrimônio Disponível" value={fmtBRL(indicadores.patrimonioDisponivel)} gradient="teal" icon={<DollarSign className="h-5 w-5" />} />
         <IndicatorCard title="Patrimônio Parado" value={fmtBRL(indicadores.patrimonioParado)} gradient="red" icon={<TrendingDown className="h-5 w-5" />} />
@@ -408,6 +410,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                             disponivel: { label: 'Disponível', cls: 'border-green-500 text-green-600' },
                             bloqueio_juridico: { label: 'Bloqueio', cls: 'border-gray-500 text-gray-600' },
                             servico: { label: 'Serviço', cls: 'border-orange-500 text-orange-600' },
+                            indisponivel_manual: { label: 'Indisponível', cls: 'border-red-500 text-red-600' },
                           };
                           const s = map[m.status];
                           return s ? (
