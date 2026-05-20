@@ -70,7 +70,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         let q = supabase
           .from('estoque')
           .select('id, empresa, tipo, loja, marca, modelo, cor, ano_fabricacao, ano_modelo, placa, data_entrada, data_venda, preco, status, avaliacoes:avaliacao_id(valor_fechamento, tipo_aquisicao)')
-          .in('status', ['disponivel', 'indisponivel', 'servico', 'bloqueio_juridico'])
+          .in('status', ['disponivel', 'servico', 'bloqueio_juridico'])
           .lte('data_entrada', cutoff)
           .or(`data_venda.is.null,data_venda.gt.${cutoff}`)
           .order('data_entrada', { ascending: false });
@@ -133,7 +133,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
   const statusLabel = (s: string) => ({
     disponivel: 'Disponível', bloqueio_juridico: 'Bloqueio',
-    indisponivel: 'Indisponível', servico: 'Serviço',
+    servico: 'Serviço',
   } as Record<string, string>)[s] || s;
 
   const buildRows = () => motos.map((m: any) => {
@@ -232,7 +232,6 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
   const d = indicadores.disponivel || {};
   const b = indicadores.bloqueio || {};
-  const ind = indicadores.indisponivel || {};
   const s = indicadores.servico || {};
 
   return (
@@ -263,11 +262,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         <IndicatorCard title="Motos no Estoque" value={indicadores.total ?? 0} subline={`Média: ${indicadores.mediaDias ?? 0} dias (${fmtBRL(indicadores.somaTotal)})`} gradient="teal" icon={<Package className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Disponível" value={d.qtd ?? 0} subtitle={`(${fmtPct(d.pct ?? 0)})`} subline={`Média: ${d.mediaDias ?? 0} dias (${fmtBRL(d.soma)})`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Bloqueio Jurídico" value={b.qtd ?? 0} subtitle={`(${fmtPct(b.pct ?? 0)})`} subline={`Média: ${b.mediaDias ?? 0} dias (${fmtBRL(b.soma)})`} gradient="gray" icon={<ShieldAlert className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Indisponível" value={ind.qtd ?? 0} subtitle={`(${fmtPct(ind.pct ?? 0)})`} subline={`Média: ${ind.mediaDias ?? 0} dias (${fmtBRL(ind.soma)})`} gradient="red" icon={<Ban className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Serviço" value={s.qtd ?? 0} subtitle={`(${fmtPct(s.pct ?? 0)})`} subline={`Média: ${s.mediaDias ?? 0} dias (${fmtBRL(s.soma)})`} gradient="orange" icon={<Wrench className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCardWithSub title="Serviço" value={s.qtd ?? 0} subtitle={`(${fmtPct(s.pct ?? 0)})`} subline={`Média: ${s.mediaDias ?? 0} dias (${fmtBRL(s.soma)})`} gradient="orange" icon={<Wrench className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Em Preparação" value={indicadores.qtdPreparacao ?? 0} subline={`Média: ${indicadores.mediaDiasPrep ?? 0} dias (${fmtBRL(indicadores.somaQuantoPede)})`} gradient="purple" icon={<Clock className="h-5 w-5" />} />
         <IndicatorCard title="Patrimônio Disponível" value={fmtBRL(indicadores.patrimonioDisponivel)} gradient="teal" icon={<DollarSign className="h-5 w-5" />} />
         <IndicatorCard title="Patrimônio Parado" value={fmtBRL(indicadores.patrimonioParado)} gradient="red" icon={<TrendingDown className="h-5 w-5" />} />
@@ -409,7 +407,6 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                           const map: Record<string, { label: string; cls: string }> = {
                             disponivel: { label: 'Disponível', cls: 'border-green-500 text-green-600' },
                             bloqueio_juridico: { label: 'Bloqueio', cls: 'border-gray-500 text-gray-600' },
-                            indisponivel: { label: 'Indisponível', cls: 'border-red-500 text-red-600' },
                             servico: { label: 'Serviço', cls: 'border-orange-500 text-orange-600' },
                           };
                           const s = map[m.status];

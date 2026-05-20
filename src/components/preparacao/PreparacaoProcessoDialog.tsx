@@ -202,7 +202,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         adquirida: 'Adquirida',
         sinal: 'Sinal',
         estoque: 'Moto Liberada',
-        indisponivel: 'Serviço',
+        servico: 'Serviço',
         indisponivel_manual: 'INDISPONÍVEL',
         bloqueio_juridico: 'BLOQUEIO JURÍDICO',
         reenviada_preparacao: 'REENVIADA PREPARAÇÃO',
@@ -520,10 +520,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
       await supabase.from('avaliacoes').update({ preparacao_status: 'estoque' } as any).eq('id', avaliacaoId);
 
-      // If bike was sent back from stock (indisponivel), restore to disponivel and clear the reenvio observation
+      // If bike was sent back from stock (servico), restore to disponivel and clear the reenvio observation
       if (isInEstoque) {
         const { data: estoqueData } = await supabase.from('estoque').select('status, observacoes').eq('avaliacao_id', avaliacaoId).maybeSingle();
-        if (estoqueData?.status === 'indisponivel') {
+        if (estoqueData?.status === 'servico') {
           await supabase.from('estoque').update({
             status: 'disponivel',
             observacoes: null,
@@ -748,7 +748,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       if (!user) { toast.error('Sessão expirada'); return; }
 
                       const { error: estoqueErr } = await supabase.from('estoque').update({
-                        status: 'indisponivel',
+                        status: 'servico',
                         observacoes: reenviarObs.trim(),
                         loja: reenviarLoja,
                       } as any).eq('id', reenviarFromEstoque.estoqueItemId);

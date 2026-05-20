@@ -820,19 +820,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             <Badge variant="outline" className={`text-xs ${
                               estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
                               estItem.status === 'sinal' ? 'border-[#b376c4] text-[#b376c4]' :
-                              estItem.status === 'indisponivel' ? 'border-orange-500 text-orange-600' :
+                              estItem.status === 'servico' ? 'border-orange-500 text-orange-600' :
                               estItem.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
                               estItem.status === 'bloqueio_juridico' ? 'border-muted-foreground text-muted-foreground' :
                               ''
                             }`}>
-                              {estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : estItem.status === 'indisponivel' ? 'Serviço' : estItem.status === 'indisponivel_manual' ? 'Indisponível' : estItem.status === 'bloqueio_juridico' ? 'Bloqueio Jurídico' : 'Estoque'}
+                              {estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : estItem.status === 'servico' ? 'Serviço' : estItem.status === 'indisponivel_manual' ? 'Indisponível' : estItem.status === 'bloqueio_juridico' ? 'Bloqueio Jurídico' : 'Estoque'}
                             </Badge>
                           )}
                         </div>
                         {/* Estoque observation for special statuses */}
-                        {estItem.observacoes && ['indisponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(estItem.status) && (
+                        {estItem.observacoes && ['servico', 'indisponivel_manual', 'bloqueio_juridico'].includes(estItem.status) && (
                           <div className={`text-xs italic flex items-start gap-1.5 rounded p-2 ${
-                            estItem.status === 'indisponivel' ? 'text-orange-600 bg-orange-500/10' :
+                            estItem.status === 'servico' ? 'text-orange-600 bg-orange-500/10' :
                             estItem.status === 'indisponivel_manual' ? 'text-destructive bg-destructive/10' :
                             'text-muted-foreground bg-muted'
                           }`}>
@@ -1270,7 +1270,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     const motoEst = motosInteresse.find(m => m.origem === 'estoque' && m.estoque_moto_id);
                     if (motoEst) {
                       const est = estoqueData[motoEst.estoque_moto_id!];
-                      if (est && (est.status === 'vendido' || est.status === 'indisponivel' || est.status === 'indisponivel_manual' || est.status === 'bloqueio_juridico' || (est.status === 'sinal' && est.atendimento_venda_id && est.atendimento_venda_id !== atendimento.id))) {
+                      if (est && (est.status === 'vendido' || est.status === 'servico' || est.status === 'indisponivel_manual' || est.status === 'bloqueio_juridico' || (est.status === 'sinal' && est.atendimento_venda_id && est.atendimento_venda_id !== atendimento.id))) {
                         return false;
                       }
                     }
