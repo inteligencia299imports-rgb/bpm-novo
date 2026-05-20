@@ -233,6 +233,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const d = indicadores.disponivel || {};
   const b = indicadores.bloqueio || {};
   const s = indicadores.servico || {};
+  const ind = indicadores.indisponivel || {};
 
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
