@@ -53,16 +53,6 @@ const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange }) => {
             <span className="font-medium">{userName}</span>
             <span className="text-muted-foreground">({ROLE_LABELS[role || '']})</span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={signOut}
-            className="text-muted-foreground hover:text-destructive"
-            title="Sair"
-          >
-            <LogOut className="h-4 w-4" />
-            <span className="hidden md:inline ml-1">Sair</span>
-          </Button>
         </div>
       </div>
     </header>
