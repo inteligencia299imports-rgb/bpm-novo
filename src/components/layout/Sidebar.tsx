@@ -96,6 +96,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
             )}
           </div>
           <NotificationBell />
+          <button
+            onClick={signOut}
+            title="Sair"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-white/10 transition-colors shrink-0"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </aside>
