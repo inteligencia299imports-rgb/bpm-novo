@@ -42,7 +42,7 @@ const RelatoriosTab: React.FC = () => {
   // Preparação: bloquear seleção de datas antes de 21/03/2026
   // Showroom/Avaliações: bloquear seleção antes de 01/04/2025
   const PREP_MIN_DATE = new Date(2026, 2, 21, 0, 0, 0, 0);
-  const SHOWROOM_AVAL_MIN_DATE = new Date(2025, 11, 21, 0, 0, 0, 0);
+  const SHOWROOM_AVAL_MIN_DATE = new Date(2025, 0, 1, 0, 0, 0, 0);
   const ESTOQUE_MIN_DATE = new Date(2026, 3, 6, 0, 0, 0, 0);
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
