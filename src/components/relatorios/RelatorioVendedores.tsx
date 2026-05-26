@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { abbreviateName } from '@/lib/utils';
+import { abbreviateName, fmtInt } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, Check, CreditCard, TrendingUp } from 'lucide-react';
@@ -97,11 +97,11 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
       {myIndicadores && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <IndicatorCard title="Atendimentos" value={myIndicadores.qtdAtendimentos ?? 0} icon={<Users className="h-5 w-5" />} />
-          <IndicatorCard title="Sinais" value={myIndicadores.qtdSinais ?? 0} icon={<CreditCard className="h-5 w-5" />} iconClass="bg-purple-100 text-purple-600" />
+          <IndicatorCard title="Atendimentos" value={fmtInt(myIndicadores.qtdAtendimentos ?? 0)} icon={<Users className="h-5 w-5" />} />
+          <IndicatorCard title="Sinais" value={fmtInt(myIndicadores.qtdSinais ?? 0)} icon={<CreditCard className="h-5 w-5" />} iconClass="bg-purple-100 text-purple-600" />
           <IndicatorCard
             title="Vendas"
-            value={`${myIndicadores.qtdVendas ?? 0} (${fmtPctInt(myIndicadores.taxaConversao ?? 0)})`}
+            value={`${fmtInt(myIndicadores.qtdVendas ?? 0)} (${fmtPctInt(myIndicadores.taxaConversao ?? 0)})`}
             icon={<Check className="h-5 w-5 text-green-600" />}
             iconClass="bg-green-100 text-green-600"
           />
