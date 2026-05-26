@@ -435,7 +435,7 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; subline?:
   </Card>
 );
 
-const IndicatorCardWithSub: React.FC<{ title: string; value: number; subtitle?: string; subline?: string; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subtitle, subline, gradient = 'teal', icon }) => (
+const IndicatorCardWithSub: React.FC<{ title: string; value: string | number; subtitle?: string; subline?: string; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subtitle, subline, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
