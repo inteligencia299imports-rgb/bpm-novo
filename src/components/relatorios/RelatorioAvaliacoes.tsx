@@ -229,17 +229,17 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Avaliações" value={indicadoresNormalizados.totalAvaliacoes} gradient="teal" icon={<ClipboardCheck className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições" value={indicadoresNormalizados.totalAquisicoes} subtitle={`(${indicadoresNormalizados.totalAvaliacoes > 0 ? Math.floor((indicadoresNormalizados.totalAquisicoes / indicadoresNormalizados.totalAvaliacoes) * 100) : 0}%)`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições Próprias" value={indicadoresNormalizados.aquisicoesPropria} gradient="teal" icon={<Package className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições Consignadas" value={indicadoresNormalizados.aquisicoesConsignada} gradient="teal" icon={<ArrowDownUp className="h-5 w-5" />} />
+        <IndicatorCard title="Avaliações" value={fmtInt(indicadoresNormalizados.totalAvaliacoes)} gradient="teal" icon={<ClipboardCheck className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições" value={fmtInt(indicadoresNormalizados.totalAquisicoes)} subtitle={`(${indicadoresNormalizados.totalAvaliacoes > 0 ? Math.floor((indicadoresNormalizados.totalAquisicoes / indicadoresNormalizados.totalAvaliacoes) * 100) : 0}%)`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições Próprias" value={fmtInt(indicadoresNormalizados.aquisicoesPropria)} gradient="teal" icon={<Package className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições Consignadas" value={fmtInt(indicadoresNormalizados.aquisicoesConsignada)} gradient="teal" icon={<ArrowDownUp className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Convertidas" value={indicadoresNormalizados.aquisicoesConvertida} gradient="purple" icon={<Repeat className="h-5 w-5" />} />
-        <IndicatorCard title="Retiradas" value={indicadoresNormalizados.retiradas} gradient="red" icon={<XCircle className="h-5 w-5" />} />
-        <IndicatorCard title="Entrada Direta" value={indicadoresNormalizados.entradaDireta} gradient="emerald" icon={<ArrowDownToLine className="h-5 w-5" />} />
-        <IndicatorCard title="Troca" value={indicadoresNormalizados.troca} gradient="emerald" icon={<ArrowRightLeft className="h-5 w-5" />} />
+        <IndicatorCard title="Convertidas" value={fmtInt(indicadoresNormalizados.aquisicoesConvertida)} gradient="purple" icon={<Repeat className="h-5 w-5" />} />
+        <IndicatorCard title="Retiradas" value={fmtInt(indicadoresNormalizados.retiradas)} gradient="red" icon={<XCircle className="h-5 w-5" />} />
+        <IndicatorCard title="Entrada Direta" value={fmtInt(indicadoresNormalizados.entradaDireta)} gradient="emerald" icon={<ArrowDownToLine className="h-5 w-5" />} />
+        <IndicatorCard title="Troca" value={fmtInt(indicadoresNormalizados.troca)} gradient="emerald" icon={<ArrowRightLeft className="h-5 w-5" />} />
       </div>
 
       {/* Section: Por Avaliador */}

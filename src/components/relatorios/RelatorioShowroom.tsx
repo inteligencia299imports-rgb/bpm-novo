@@ -225,9 +225,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Atendimentos" value={indicadores.qtdAtendimentos ?? 0} gradient="teal" icon={<Users className="h-5 w-5" />} />
-        <IndicatorCard title="Vendas" value={indicadores.qtdVendas ?? 0} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} />
-        <IndicatorCard title="Sinais" value={indicadores.qtdSinais ?? 0} gradient="teal" icon={<CreditCard className="h-5 w-5" />} />
+        <IndicatorCard title="Atendimentos" value={fmtInt(indicadores.qtdAtendimentos ?? 0)} gradient="teal" icon={<Users className="h-5 w-5" />} />
+        <IndicatorCard title="Vendas" value={fmtInt(indicadores.qtdVendas ?? 0)} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} />
+        <IndicatorCard title="Sinais" value={fmtInt(indicadores.qtdSinais ?? 0)} gradient="teal" icon={<CreditCard className="h-5 w-5" />} />
         <IndicatorCard title="Taxa de Conversão" value={fmtPctInt(indicadores.taxaConversao ?? 0)} gradient="teal" icon={<TrendingUp className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
