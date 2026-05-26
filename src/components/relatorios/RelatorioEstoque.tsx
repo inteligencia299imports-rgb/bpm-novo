@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fmtInt } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Package, CheckCircle, ShieldAlert, Ban, Wrench, Clock, DollarSign, TrendingDown, FileSpreadsheet, FileDown } from 'lucide-react';
