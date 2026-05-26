@@ -272,10 +272,10 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 {!isIntermParte1 && <InfoItem label="Sexo" value={item.sexo} />}
                 {!isIntermParte1 && <InfoItem label="UF" value={item.uf} />}
                 {isIntermParte1 && proprietario?.loja && <InfoItem label="Loja" value={proprietario.loja} />}
-                {(item as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj((item as any).cpf_cnpj)} />}
-                {(item as any)?.email && <InfoItem label="E-mail" value={(item as any).email} />}
-                {(item as any)?.cep && <InfoItem label="CEP" value={formatCep((item as any).cep)} />}
-                {(item as any)?.endereco && <InfoItem label="Endereço" value={(item as any).endereco} />}
+                {(displayClient as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj((displayClient as any).cpf_cnpj)} />}
+                {(displayClient as any)?.email && <InfoItem label="E-mail" value={(displayClient as any).email} />}
+                {(displayClient as any)?.cep && <InfoItem label="CEP" value={formatCep((displayClient as any).cep)} />}
+                {(displayClient as any)?.endereco && <InfoItem label="Endereço" value={(displayClient as any).endereco} />}
               </div>
               <Separator className="my-2" />
               <DocumentUpload
