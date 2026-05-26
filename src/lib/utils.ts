@@ -61,3 +61,8 @@ export function formatModelo(modelo: string | null | undefined): string {
   if (!modelo) return '';
   return modelo.toUpperCase();
 }
+
+/** Format integer with thousands separator */
+export function fmtInt(n: number | null | undefined): string {
+  return (n ?? 0).toLocaleString('pt-BR');
+}
