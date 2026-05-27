@@ -625,7 +625,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                           </div>
 
                           {item.observacoes && (
-                            <div className={`text-xs italic line-clamp-2 ${
+                            <div className={`text-xs italic whitespace-pre-wrap break-words ${
                               item.status === 'servico' ? 'flex items-start gap-1.5 text-orange-600 font-medium bg-orange-500/10 rounded p-2' :
                               item.status === 'indisponivel_manual' ? 'flex items-start gap-1.5 text-destructive font-medium bg-destructive/10 rounded p-2' :
                               item.status === 'bloqueio_juridico' ? 'flex items-start gap-1.5 text-muted-foreground font-medium bg-muted rounded p-2' :
