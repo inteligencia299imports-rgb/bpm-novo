@@ -653,12 +653,12 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
 
       {/* Dialog Editar Moto */}
       <Dialog open={editMotoOpen} onOpenChange={setEditMotoOpen}>
-        <DialogContent className="max-w-xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-xl h-[85dvh] max-h-[85dvh] flex flex-col overflow-hidden p-0">
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
             <DialogTitle>Editar Dados da Moto</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 min-h-0 pr-3">
-            <div className="space-y-3 pb-2">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2 pr-7" style={{ scrollbarWidth: 'thin' }}>
+            <div className="space-y-3 pb-4">
               <div>
                 <Label>Marca <span className="text-destructive">*</span></Label>
                 <Select value={editMarca} onValueChange={(v) => { setEditMarca(v); setEditModelo(''); }}>
@@ -737,12 +737,14 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   <Label htmlFor="edit-manut" className="cursor-pointer">Manutenção vencida</Label>
                 </div>
               </div>
-              <Button onClick={handleSaveMoto} disabled={savingMoto} className="w-full gap-2">
-                {savingMoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                Salvar
-              </Button>
             </div>
-          </ScrollArea>
+          </div>
+          <div className="shrink-0 border-t bg-background px-6 py-4">
+            <Button onClick={handleSaveMoto} disabled={savingMoto} className="w-full gap-2">
+              {savingMoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Salvar
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
