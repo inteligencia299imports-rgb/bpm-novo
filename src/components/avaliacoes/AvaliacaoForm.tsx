@@ -1634,7 +1634,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           <DialogHeader>
             <DialogTitle>Editar Dados da Moto</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 pr-3">
+          <ScrollArea className="flex-1 min-h-0 pr-3">
             <div className="space-y-3 pb-2">
               <div>
                 <Label>Marca <span className="text-destructive">*</span></Label>
