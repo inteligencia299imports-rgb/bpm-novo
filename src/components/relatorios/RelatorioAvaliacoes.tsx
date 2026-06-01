@@ -9,8 +9,10 @@ import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from '@/lib/reportDateRange';
+import { getPreviousPeriodIso, getPreviousPeriod } from '@/lib/reportComparison';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
+import DeltaBadge from './DeltaBadge';
 
 interface RelatorioAvaliacoesProps {
   dateFrom: Date | undefined;
