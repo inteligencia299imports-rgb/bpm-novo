@@ -187,13 +187,14 @@ const iconColorMap: Record<string, string> = {
   teal: 'bg-[#2F6F84]/10 text-[#2F6F84]',
 };
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; icon?: React.ReactNode; iconClass?: string }> = ({ title, value, icon, iconClass }) => (
+const IndicatorCard: React.FC<{ title: string; value: string | number; current?: number | null; previous?: number | null; icon?: React.ReactNode; iconClass?: string }> = ({ title, value, current, previous, icon, iconClass }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}</p>
+          <DeltaBadge current={current} previous={previous} className="mt-1" />
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconClass || iconColorMap.teal)}>{icon}</div>}
       </div>
