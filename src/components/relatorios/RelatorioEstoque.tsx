@@ -433,7 +433,7 @@ const iconColorMap: Record<string, string> = {
 
 const IndicatorCard: React.FC<{ title: string; value: string | number; subline?: string; current?: number | null; previous?: number | null; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subline, current, previous, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
-    <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
+    <CardContent className="px-4 min-h-[100px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
@@ -449,7 +449,7 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; subline?:
 
 const IndicatorCardWithSub: React.FC<{ title: string; value: string | number; subtitle?: string; subline?: string; current?: number | null; previous?: number | null; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subtitle, subline, current, previous, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
-    <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
+    <CardContent className="px-4 min-h-[100px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>

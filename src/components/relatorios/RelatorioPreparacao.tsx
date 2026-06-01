@@ -541,7 +541,7 @@ const colorMap: Record<string, string> = {
 
 const KpiCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string; current?: number; previous?: number; invert?: boolean }> = ({ title, value, icon, color, current, previous, invert }) => (
   <Card className="border shadow-sm rounded-xl">
-    <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
+    <CardContent className="px-4 min-h-[100px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
