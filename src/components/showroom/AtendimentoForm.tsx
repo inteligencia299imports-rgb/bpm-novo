@@ -193,6 +193,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
+    if (isEditing && (situacao === 'sinal' || situacao === 'vendido') && lojaOriginal) {
+      const is299 = (l: string) => ['299i', '299s', '299f', '299p', 'Aventura'].includes(l);
+      const isDuc = (l: string) => l.toLowerCase().startsWith('ducati');
+      if ((is299(lojaOriginal) && isDuc(loja)) || (isDuc(lojaOriginal) && is299(loja))) {
+        toast.error('Atendimentos com Sinal ou Vendido não podem trocar entre 299 e Ducati');
+        return;
+      }
+    }
     if (nomeCliente.trim().split(/\s+/).length < 2) {
       toast.error('Informe o nome completo do cliente (nome e sobrenome)');
       return;
