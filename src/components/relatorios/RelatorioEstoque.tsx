@@ -266,14 +266,14 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
 
       {/* Indicators - Line 1 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <IndicatorCard title="Motos no Estoque" value={fmtInt(indicadores.total ?? 0)} current={indicadores.total} previous={indicadoresPrev.total} subline={`Média: ${fmtInt(indicadores.mediaDias ?? 0)} dias (${fmtBRL(indicadores.somaTotal)})`} gradient="teal" icon={<Package className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Disponível" value={fmtInt(d.qtd ?? 0)} subtitle={`(${fmtPct(d.pct ?? 0)})`} current={d.qtd} previous={dP.qtd} subline={`Média: ${fmtInt(d.mediaDias ?? 0)} dias (${fmtBRL(d.soma)})`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Bloqueio Jurídico" value={fmtInt(b.qtd ?? 0)} subtitle={`(${fmtPct(b.pct ?? 0)})`} current={b.qtd} previous={bP.qtd} subline={`Média: ${fmtInt(b.mediaDias ?? 0)} dias (${fmtBRL(b.soma)})`} gradient="gray" icon={<ShieldAlert className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Indisponível" value={fmtInt(ind.qtd ?? 0)} subtitle={`(${fmtPct(ind.pct ?? 0)})`} current={ind.qtd} previous={indP.qtd} subline={`Média: ${fmtInt(ind.mediaDias ?? 0)} dias (${fmtBRL(ind.soma)})`} gradient="red" icon={<Ban className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <IndicatorCardWithSub title="Serviço" value={fmtInt(s.qtd ?? 0)} subtitle={`(${fmtPct(s.pct ?? 0)})`} current={s.qtd} previous={sP.qtd} subline={`Média: ${fmtInt(s.mediaDias ?? 0)} dias (${fmtBRL(s.soma)})`} gradient="orange" icon={<Wrench className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Em Preparação" value={fmtInt(indicadores.qtdPreparacao ?? 0)} current={indicadores.qtdPreparacao} previous={indicadoresPrev.qtdPreparacao} subline={`Média: ${fmtInt(indicadores.mediaDiasPrep ?? 0)} dias (${fmtBRL(indicadores.somaQuantoPede)})`} gradient="purple" icon={<Clock className="h-5 w-5" />} />
         <IndicatorCard title="Patrimônio Disponível" value={fmtBRL(indicadores.patrimonioDisponivel)} current={indicadores.patrimonioDisponivel} previous={indicadoresPrev.patrimonioDisponivel} gradient="teal" icon={<DollarSign className="h-5 w-5" />} />
