@@ -3,21 +3,17 @@ import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from './reportDateRang
 const MS_DAY = 86400000;
 
 /**
- * Calcula o período anterior ao atual mantendo a mesma quantidade de dias.
- * O período anterior termina 1 dia antes do início do período atual.
+ * Calcula o período equivalente no mês anterior (mesmos dias, um mês antes).
  *
- * Ex: 21/05/2026 a 20/06/2026 (31 dias) -> 20/04/2026 a 20/05/2026
+ * Ex: 21/05/2026 a 20/06/2026 -> 21/04/2026 a 20/05/2026
  */
 export const getPreviousPeriod = (
   dateFrom: Date | undefined,
   dateTo: Date | undefined,
 ): { prevFrom: Date | undefined; prevTo: Date | undefined } => {
   if (!dateFrom || !dateTo) return { prevFrom: undefined, prevTo: undefined };
-  const from = new Date(dateFrom.getFullYear(), dateFrom.getMonth(), dateFrom.getDate());
-  const to = new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate());
-  const days = Math.round((to.getTime() - from.getTime()) / MS_DAY) + 1;
-  const prevTo = new Date(from.getTime() - MS_DAY);
-  const prevFrom = new Date(from.getTime() - days * MS_DAY);
+  const prevFrom = new Date(dateFrom.getFullYear(), dateFrom.getMonth() - 1, dateFrom.getDate());
+  const prevTo = new Date(dateTo.getFullYear(), dateTo.getMonth() - 1, dateTo.getDate());
   return { prevFrom, prevTo };
 };
 
