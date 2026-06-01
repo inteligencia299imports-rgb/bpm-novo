@@ -58,6 +58,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
   const [loading, setLoading] = useState(true);
   const [indicadores, setIndicadores] = useState<any>({});
+  const [indicadoresPrev, setIndicadoresPrev] = useState<any>({});
   const [chartByAvaliador, setChartByAvaliador] = useState<any[]>([]);
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
