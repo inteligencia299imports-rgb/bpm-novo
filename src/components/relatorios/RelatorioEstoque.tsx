@@ -277,7 +277,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         <IndicatorCardWithSub title="Serviço" value={fmtInt(s.qtd ?? 0)} subtitle={`(${fmtPct(s.pct ?? 0)})`} current={s.qtd} previous={sP.qtd} subline={`Média: ${fmtInt(s.mediaDias ?? 0)} dias (${fmtBRL(s.soma)})`} gradient="orange" icon={<Wrench className="h-5 w-5" />} />
         <IndicatorCardWithSub title="Em Preparação" value={fmtInt(indicadores.qtdPreparacao ?? 0)} current={indicadores.qtdPreparacao} previous={indicadoresPrev.qtdPreparacao} subline={`Média: ${fmtInt(indicadores.mediaDiasPrep ?? 0)} dias (${fmtBRL(indicadores.somaQuantoPede)})`} gradient="purple" icon={<Clock className="h-5 w-5" />} />
         <IndicatorCard title="Patrimônio Disponível" value={fmtBRL(indicadores.patrimonioDisponivel)} current={indicadores.patrimonioDisponivel} previous={indicadoresPrev.patrimonioDisponivel} gradient="teal" icon={<DollarSign className="h-5 w-5" />} />
-        <IndicatorCard title="Patrimônio Parado" value={fmtBRL(indicadores.patrimonioParado)} gradient="red" icon={<TrendingDown className="h-5 w-5" />} />
+        <IndicatorCard title="Patrimônio Parado" value={fmtBRL(indicadores.patrimonioParado)} current={indicadores.patrimonioParado} previous={indicadoresPrev.patrimonioParado} gradient="red" icon={<TrendingDown className="h-5 w-5" />} />
       </div>
 
       {/* Section: Resultado do Ano */}
