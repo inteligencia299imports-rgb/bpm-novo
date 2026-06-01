@@ -460,11 +460,28 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                   GROUPS['299'].includes(loja) ? '299' :
                   GROUPS.Ducati.includes(loja) ? 'Ducati' : '';
                 const group = detected || lojaGroup;
+                const originalGroup: '299' | 'Ducati' | '' =
+                  GROUPS['299'].includes(lojaOriginal) ? '299' :
+                  GROUPS.Ducati.includes(lojaOriginal) ? 'Ducati' : '';
+                const groupLocked = isEditing && (situacao === 'sinal' || situacao === 'vendido') && !!originalGroup;
                 return (
                   <div className="flex flex-col gap-2">
                     <div className="flex flex-wrap gap-2">
                       {(['299', 'Ducati'] as const).map(g => (
-                        <ToggleButton key={g} label={g} value={g} selected={group} onSelect={(v) => { setLojaGroup(v as '299' | 'Ducati'); if (!GROUPS[v as '299' | 'Ducati'].includes(loja)) setLoja(''); }} />
+                        <ToggleButton
+                          key={g}
+                          label={g}
+                          value={g}
+                          selected={group}
+                          onSelect={(v) => {
+                            if (groupLocked && v !== originalGroup) {
+                              toast.error('Atendimentos com Sinal ou Vendido não podem trocar entre 299 e Ducati');
+                              return;
+                            }
+                            setLojaGroup(v as '299' | 'Ducati');
+                            if (!GROUPS[v as '299' | 'Ducati'].includes(loja)) setLoja('');
+                          }}
+                        />
                       ))}
                     </div>
                     {group && (
