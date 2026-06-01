@@ -55,14 +55,20 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     if (!user) return;
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
+    const { prevFromIso, prevToIso } = getPreviousPeriodIso(dateFrom, dateTo);
+    const hasPrev = Boolean(prevFromIso && prevToIso);
 
-    const [myKpisRes, equipeRes, mensalRes] = await Promise.all([
+    const [myKpisRes, myKpisPrevRes, equipeRes, mensalRes] = await Promise.all([
       supabase.rpc('relatorio_vendedor_kpis', { _user_id: user.id, _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
+      hasPrev
+        ? supabase.rpc('relatorio_vendedor_kpis', { _user_id: user.id, _date_from: prevFromIso, _date_to: prevToIso, _loja: filterLoja })
+        : Promise.resolve({ data: null } as any),
       supabase.rpc('relatorio_vendedor_equipe', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
       supabase.rpc('relatorio_vendedor_mensal', { _user_id: user.id, _loja: filterLoja }),
     ]);
 
     setMyIndicadores(myKpisRes.data || {});
+    setMyIndicadoresPrev(myKpisPrevRes?.data || {});
     const equipeData = (equipeRes.data || []) as any[];
     setChartByVendedor(equipeData.map((v: any) => ({ ...v, nome: abbreviateName(v.nome || 'Desconhecido') })));
     setChartByMonth((mensalRes.data || []) as any[]);
