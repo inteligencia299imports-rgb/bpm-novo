@@ -65,10 +65,13 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const loadData = useCallback(async () => {
     const cutoffDate = dateTo ?? new Date();
     const cutoff = cutoffDate.toISOString();
+    const prevCutoffDate = getPreviousMonthDate(cutoffDate)!;
+    const prevCutoff = prevCutoffDate.toISOString();
     // Gráficos mensais ignoram filtro de data (apenas cidade e tipo)
     const chartCutoff = new Date().toISOString();
-    const [kpisRes, mensalRes, motosRes] = await Promise.all([
+    const [kpisRes, kpisPrevRes, mensalRes, motosRes] = await Promise.all([
       supabase.rpc('relatorio_estoque_kpis', { p_cutoff: cutoff, p_loja: filterLoja, p_tipo: filterTipo }),
+      supabase.rpc('relatorio_estoque_kpis', { p_cutoff: prevCutoff, p_loja: filterLoja, p_tipo: filterTipo }),
       supabase.rpc('relatorio_estoque_mensal', { p_cutoff: chartCutoff, p_loja: filterLoja, p_tipo: filterTipo }),
       fetchAllRange(() => {
         let q = supabase
@@ -84,6 +87,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     ]);
 
     setIndicadores(kpisRes.data || {});
+    setIndicadoresPrev(kpisPrevRes?.data || {});
     setChartByMonth((mensalRes.data || []) as any[]);
 
     // Filtro de loja client-side (mesma lógica do RPC: '299' = não Ducati)
