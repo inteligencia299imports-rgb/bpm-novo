@@ -189,7 +189,7 @@ const iconColorMap: Record<string, string> = {
 
 const IndicatorCard: React.FC<{ title: string; value: string | number; current?: number | null; previous?: number | null; icon?: React.ReactNode; iconClass?: string }> = ({ title, value, current, previous, icon, iconClass }) => (
   <Card className="border shadow-sm rounded-xl">
-    <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
+    <CardContent className="px-4 min-h-[100px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
