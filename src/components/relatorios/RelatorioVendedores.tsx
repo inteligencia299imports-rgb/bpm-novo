@@ -35,6 +35,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
   const [loading, setLoading] = useState(true);
   const [myIndicadores, setMyIndicadores] = useState<any>(null);
+  const [myIndicadoresPrev, setMyIndicadoresPrev] = useState<any>({});
   const [chartByVendedor, setChartByVendedor] = useState<any[]>([]);
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
