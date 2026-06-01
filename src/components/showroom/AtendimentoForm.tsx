@@ -197,7 +197,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       const is299 = (l: string) => ['299i', '299s', '299f', '299p', 'Aventura'].includes(l);
       const isDuc = (l: string) => l.toLowerCase().startsWith('ducati');
       if ((is299(lojaOriginal) && isDuc(loja)) || (isDuc(lojaOriginal) && is299(loja))) {
-        toast.error('Atendimentos com Sinal ou Vendido não podem trocar entre 299 e Ducati');
+        toast.error('Atendimentos com Sinal ou Vendido não podem trocar entre 299 e Ducati. Marque o atendimento como perdido primeiro.');
         return;
       }
     }
@@ -483,7 +483,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                           selected={group}
                           onSelect={(v) => {
                             if (groupLocked && v !== originalGroup) {
-                              toast.error('Atendimentos com Sinal ou Vendido não podem trocar entre 299 e Ducati');
+                              toast.error('Atendimentos com Sinal ou Vendido não podem trocar entre 299 e Ducati. Marque o atendimento como perdido primeiro.');
                               return;
                             }
                             setLojaGroup(v as '299' | 'Ducati');
