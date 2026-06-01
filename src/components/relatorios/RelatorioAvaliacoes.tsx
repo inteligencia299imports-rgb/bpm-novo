@@ -77,9 +77,12 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   const loadData = useCallback(async () => {
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
+    const { prevFromIso, prevToIso } = getPreviousPeriodIso(dateFrom, dateTo);
+    const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
+    const hasPrev = Boolean(prevFromIso && prevToIso);
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
-    const [mensalRes, detalhesBaseRes, nomesRes, kpisRes] = await Promise.all([
+    const [mensalRes, detalhesBaseRes, nomesRes, kpisRes, kpisPrevRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
       fetchAllRange<any>(() =>
         supabase
@@ -90,6 +93,9 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       ),
       supabase.from('user_roles').select('user_id,nome'),
       supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
+      hasPrev
+        ? supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: prevFromIso, _date_to: prevToIso, _loja: lojaParam })
+        : Promise.resolve({ data: null } as any),
     ]);
 
     const normLoja = (loja: string | null | undefined) =>
@@ -100,6 +106,9 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       return normLoja(item.atendimentos?.loja) === lojaParam;
     });
     const detalhesPeriodo = detalhesBase.filter((item: any) => isInDateRange(item.created_at, dfParam, dtParam));
+    const detalhesPeriodoPrev = hasPrev
+      ? detalhesBase.filter((item: any) => isInDateRange(item.created_at, prevFromIso, prevToIso))
+      : [];
     const aquisicaoIds = detalhesBase.map((item: any) => item.id).filter(Boolean);
     const historicosPorAvaliacao = new Map<string, string>();
 
@@ -135,10 +144,15 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     });
 
     const totalAvaliacoesComAvaliador = detalhesPeriodo.filter((item: any) => Boolean(item.avaliador_id)).length;
+    const totalAvaliacoesPrev = detalhesPeriodoPrev.filter((item: any) => Boolean(item.avaliador_id)).length;
 
     setIndicadores({
       ...((kpisRes.data as any) || {}),
       total_avaliacoes: totalAvaliacoesComAvaliador,
+    });
+    setIndicadoresPrev({
+      ...((kpisPrevRes?.data as any) || {}),
+      total_avaliacoes: totalAvaliacoesPrev,
     });
 
     const nomeById = new Map(((nomesRes.data || []) as any[]).map((item: any) => [item.user_id, item.nome || 'Desconhecido']));
