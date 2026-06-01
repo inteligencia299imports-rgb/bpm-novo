@@ -56,7 +56,7 @@ const RelatoriosTab: React.FC = () => {
         : (date: Date) => date > todayEnd;
   const initFrom = cycle.start;
   initFrom.setHours(0, 0, 0, 0);
-  const initTo = cycle.end;
+  const initTo = new Date();
   initTo.setHours(23, 59, 59, 999);
   const [dateFrom, setDateFromRaw] = useState<Date | undefined>(initFrom);
   const [dateTo, setDateToRaw] = useState<Date | undefined>(initTo);
