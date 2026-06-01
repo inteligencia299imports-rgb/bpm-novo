@@ -431,7 +431,7 @@ const iconColorMap: Record<string, string> = {
   gray: 'bg-gray-500/10 text-gray-500',
 };
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; subline?: string; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subline, gradient = 'teal', icon }) => (
+const IndicatorCard: React.FC<{ title: string; value: string | number; subline?: string; current?: number | null; previous?: number | null; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subline, current, previous, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
@@ -439,6 +439,7 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; subline?:
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}</p>
           {subline && <p className="text-xs text-muted-foreground truncate">{subline}</p>}
+          <DeltaBadge current={current} previous={previous} className="mt-1" />
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap[gradient] || iconColorMap.teal)}>{icon}</div>}
       </div>
@@ -446,7 +447,7 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; subline?:
   </Card>
 );
 
-const IndicatorCardWithSub: React.FC<{ title: string; value: string | number; subtitle?: string; subline?: string; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subtitle, subline, gradient = 'teal', icon }) => (
+const IndicatorCardWithSub: React.FC<{ title: string; value: string | number; subtitle?: string; subline?: string; current?: number | null; previous?: number | null; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subtitle, subline, current, previous, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
@@ -454,6 +455,7 @@ const IndicatorCardWithSub: React.FC<{ title: string; value: string | number; su
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}{subtitle && <span className="ml-1 text-base text-muted-foreground">{subtitle}</span>}</p>
           {subline && <p className="text-xs text-muted-foreground truncate">{subline}</p>}
+          <DeltaBadge current={current} previous={previous} className="mt-1" />
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap[gradient] || iconColorMap.teal)}>{icon}</div>}
       </div>
