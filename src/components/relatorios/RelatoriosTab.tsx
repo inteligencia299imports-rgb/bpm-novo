@@ -124,56 +124,58 @@ const RelatoriosTab: React.FC = () => {
               </TabsList>
             </div>
           )}
-          <div className="w-full sm:w-auto flex items-center gap-2 overflow-x-auto pb-1">
-            {dept !== 'estoque' && (
-              <>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateFrom && 'text-muted-foreground')}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} disabled={disabledFromDates} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateFrom ?? new Date('2026-03-21T00:00:00')} />
-                  </PopoverContent>
-                </Popover>
-                <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
-              </>
-            )}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateTo && 'text-muted-foreground')}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} disabled={(date: Date) => disabledFromDates(date) || (dateFrom ? date < dateFrom : false)} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateTo ?? new Date('2026-03-21T00:00:00')} />
-              </PopoverContent>
-            </Popover>
+          <div className="w-full sm:w-auto flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {dept !== 'estoque' && (
+                <>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateFrom && 'text-muted-foreground')}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} disabled={disabledFromDates} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateFrom ?? new Date('2026-03-21T00:00:00')} />
+                    </PopoverContent>
+                  </Popover>
+                  <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
+                </>
+              )}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateTo && 'text-muted-foreground')}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} disabled={(date: Date) => disabledFromDates(date) || (dateFrom ? date < dateFrom : false)} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateTo ?? new Date('2026-03-21T00:00:00')} />
+                </PopoverContent>
+              </Popover>
+            </div>
+            {(() => {
+              if (!dateTo) return null;
+              if (dept === 'estoque') {
+                const prev = getPreviousMonthDate(dateTo);
+                if (!prev) return null;
+                return (
+                  <p className="text-xs text-muted-foreground pr-1">
+                    Comparado com {format(prev, 'dd/MM/yyyy')}
+                  </p>
+                );
+              }
+              if (!dateFrom) return null;
+              const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
+              if (!prevFrom || !prevTo) return null;
+              return (
+                <p className="text-xs text-muted-foreground pr-1">
+                  Comparado com {format(prevFrom, 'dd/MM/yyyy')} a {format(prevTo, 'dd/MM/yyyy')}
+                </p>
+              );
+            })()}
           </div>
         </div>
-        {(() => {
-          if (!dateTo) return null;
-          if (dept === 'estoque') {
-            const prev = getPreviousMonthDate(dateTo);
-            if (!prev) return null;
-            return (
-              <p className="text-xs text-muted-foreground mt-1">
-                Comparado com {format(prev, 'dd/MM/yyyy')}
-              </p>
-            );
-          }
-          if (!dateFrom) return null;
-          const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
-          if (!prevFrom || !prevTo) return null;
-          return (
-            <p className="text-xs text-muted-foreground mt-1">
-              Comparado com {format(prevFrom, 'dd/MM/yyyy')} a {format(prevTo, 'dd/MM/yyyy')}
-            </p>
-          );
-        })()}
         {isGestorOrAvaliador && (
           <>
             <TabsContent value="showroom" className="w-full max-w-full overflow-x-hidden">
