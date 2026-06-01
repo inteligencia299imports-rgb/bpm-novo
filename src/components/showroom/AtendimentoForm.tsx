@@ -40,6 +40,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
   // form state
   const [loja, setLoja] = useState('');
+  const [lojaOriginal, setLojaOriginal] = useState('');
   const [lojaGroup, setLojaGroup] = useState<'299' | 'Ducati' | ''>('');
   const [nomeCliente, setNomeCliente] = useState('');
   const [telefone, setTelefone] = useState('');
