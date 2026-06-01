@@ -9,8 +9,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from '@/lib/reportDateRange';
+import { getPreviousPeriodIso } from '@/lib/reportComparison';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
+import DeltaBadge from './DeltaBadge';
 
 const fmtPctInt = (v: number | null | undefined) => `${Math.round((v ?? 0) * 100)}%`;
 
@@ -33,6 +35,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
   const [loading, setLoading] = useState(true);
   const [myIndicadores, setMyIndicadores] = useState<any>(null);
+  const [myIndicadoresPrev, setMyIndicadoresPrev] = useState<any>({});
   const [chartByVendedor, setChartByVendedor] = useState<any[]>([]);
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
@@ -52,14 +55,20 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     if (!user) return;
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
+    const { prevFromIso, prevToIso } = getPreviousPeriodIso(dateFrom, dateTo);
+    const hasPrev = Boolean(prevFromIso && prevToIso);
 
-    const [myKpisRes, equipeRes, mensalRes] = await Promise.all([
+    const [myKpisRes, myKpisPrevRes, equipeRes, mensalRes] = await Promise.all([
       supabase.rpc('relatorio_vendedor_kpis', { _user_id: user.id, _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
+      hasPrev
+        ? supabase.rpc('relatorio_vendedor_kpis', { _user_id: user.id, _date_from: prevFromIso, _date_to: prevToIso, _loja: filterLoja })
+        : Promise.resolve({ data: null } as any),
       supabase.rpc('relatorio_vendedor_equipe', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
       supabase.rpc('relatorio_vendedor_mensal', { _user_id: user.id, _loja: filterLoja }),
     ]);
 
     setMyIndicadores(myKpisRes.data || {});
+    setMyIndicadoresPrev(myKpisPrevRes?.data || {});
     const equipeData = (equipeRes.data || []) as any[];
     setChartByVendedor(equipeData.map((v: any) => ({ ...v, nome: abbreviateName(v.nome || 'Desconhecido') })));
     setChartByMonth((mensalRes.data || []) as any[]);
@@ -97,11 +106,13 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
       {myIndicadores && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <IndicatorCard title="Atendimentos" value={fmtInt(myIndicadores.qtdAtendimentos ?? 0)} icon={<Users className="h-5 w-5" />} />
-          <IndicatorCard title="Sinais" value={fmtInt(myIndicadores.qtdSinais ?? 0)} icon={<CreditCard className="h-5 w-5" />} iconClass="bg-purple-100 text-purple-600" />
+          <IndicatorCard title="Atendimentos" value={fmtInt(myIndicadores.qtdAtendimentos ?? 0)} current={myIndicadores.qtdAtendimentos} previous={myIndicadoresPrev.qtdAtendimentos} icon={<Users className="h-5 w-5" />} />
+          <IndicatorCard title="Sinais" value={fmtInt(myIndicadores.qtdSinais ?? 0)} current={myIndicadores.qtdSinais} previous={myIndicadoresPrev.qtdSinais} icon={<CreditCard className="h-5 w-5" />} iconClass="bg-purple-100 text-purple-600" />
           <IndicatorCard
             title="Vendas"
             value={`${fmtInt(myIndicadores.qtdVendas ?? 0)} (${fmtPctInt(myIndicadores.taxaConversao ?? 0)})`}
+            current={myIndicadores.qtdVendas}
+            previous={myIndicadoresPrev.qtdVendas}
             icon={<Check className="h-5 w-5 text-green-600" />}
             iconClass="bg-green-100 text-green-600"
           />
@@ -176,13 +187,14 @@ const iconColorMap: Record<string, string> = {
   teal: 'bg-[#2F6F84]/10 text-[#2F6F84]',
 };
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; icon?: React.ReactNode; iconClass?: string }> = ({ title, value, icon, iconClass }) => (
+const IndicatorCard: React.FC<{ title: string; value: string | number; current?: number | null; previous?: number | null; icon?: React.ReactNode; iconClass?: string }> = ({ title, value, current, previous, icon, iconClass }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}</p>
+          <DeltaBadge current={current} previous={previous} className="mt-1" />
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconClass || iconColorMap.teal)}>{icon}</div>}
       </div>

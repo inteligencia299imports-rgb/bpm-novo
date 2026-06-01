@@ -13,6 +13,8 @@ import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
+import { getPreviousMonthDate } from '@/lib/reportComparison';
+import DeltaBadge from './DeltaBadge';
 
 
 
@@ -40,6 +42,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
   const [loading, setLoading] = useState(true);
   const [indicadores, setIndicadores] = useState<any>({});
+  const [indicadoresPrev, setIndicadoresPrev] = useState<any>({});
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [motos, setMotos] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
@@ -62,10 +65,13 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const loadData = useCallback(async () => {
     const cutoffDate = dateTo ?? new Date();
     const cutoff = cutoffDate.toISOString();
+    const prevCutoffDate = getPreviousMonthDate(cutoffDate)!;
+    const prevCutoff = prevCutoffDate.toISOString();
     // Gráficos mensais ignoram filtro de data (apenas cidade e tipo)
     const chartCutoff = new Date().toISOString();
-    const [kpisRes, mensalRes, motosRes] = await Promise.all([
+    const [kpisRes, kpisPrevRes, mensalRes, motosRes] = await Promise.all([
       supabase.rpc('relatorio_estoque_kpis', { p_cutoff: cutoff, p_loja: filterLoja, p_tipo: filterTipo }),
+      supabase.rpc('relatorio_estoque_kpis', { p_cutoff: prevCutoff, p_loja: filterLoja, p_tipo: filterTipo }),
       supabase.rpc('relatorio_estoque_mensal', { p_cutoff: chartCutoff, p_loja: filterLoja, p_tipo: filterTipo }),
       fetchAllRange(() => {
         let q = supabase
@@ -81,6 +87,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     ]);
 
     setIndicadores(kpisRes.data || {});
+    setIndicadoresPrev(kpisPrevRes?.data || {});
     setChartByMonth((mensalRes.data || []) as any[]);
 
     // Filtro de loja client-side (mesma lógica do RPC: '299' = não Ducati)
@@ -230,6 +237,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const b = indicadores.bloqueio || {};
   const s = indicadores.servico || {};
   const ind = indicadores.indisponivel || {};
+  const dP = indicadoresPrev.disponivel || {};
+  const bP = indicadoresPrev.bloqueio || {};
+  const sP = indicadoresPrev.servico || {};
+  const indP = indicadoresPrev.indisponivel || {};
 
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
@@ -256,17 +267,17 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Motos no Estoque" value={fmtInt(indicadores.total ?? 0)} subline={`Média: ${fmtInt(indicadores.mediaDias ?? 0)} dias (${fmtBRL(indicadores.somaTotal)})`} gradient="teal" icon={<Package className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Disponível" value={fmtInt(d.qtd ?? 0)} subtitle={`(${fmtPct(d.pct ?? 0)})`} subline={`Média: ${fmtInt(d.mediaDias ?? 0)} dias (${fmtBRL(d.soma)})`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Bloqueio Jurídico" value={fmtInt(b.qtd ?? 0)} subtitle={`(${fmtPct(b.pct ?? 0)})`} subline={`Média: ${fmtInt(b.mediaDias ?? 0)} dias (${fmtBRL(b.soma)})`} gradient="gray" icon={<ShieldAlert className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Indisponível" value={fmtInt(ind.qtd ?? 0)} subtitle={`(${fmtPct(ind.pct ?? 0)})`} subline={`Média: ${fmtInt(ind.mediaDias ?? 0)} dias (${fmtBRL(ind.soma)})`} gradient="red" icon={<Ban className="h-5 w-5" />} />
+        <IndicatorCard title="Motos no Estoque" value={fmtInt(indicadores.total ?? 0)} current={indicadores.total} previous={indicadoresPrev.total} subline={`Média: ${fmtInt(indicadores.mediaDias ?? 0)} dias (${fmtBRL(indicadores.somaTotal)})`} gradient="teal" icon={<Package className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Disponível" value={fmtInt(d.qtd ?? 0)} subtitle={`(${fmtPct(d.pct ?? 0)})`} current={d.qtd} previous={dP.qtd} subline={`Média: ${fmtInt(d.mediaDias ?? 0)} dias (${fmtBRL(d.soma)})`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Bloqueio Jurídico" value={fmtInt(b.qtd ?? 0)} subtitle={`(${fmtPct(b.pct ?? 0)})`} current={b.qtd} previous={bP.qtd} subline={`Média: ${fmtInt(b.mediaDias ?? 0)} dias (${fmtBRL(b.soma)})`} gradient="gray" icon={<ShieldAlert className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Indisponível" value={fmtInt(ind.qtd ?? 0)} subtitle={`(${fmtPct(ind.pct ?? 0)})`} current={ind.qtd} previous={indP.qtd} subline={`Média: ${fmtInt(ind.mediaDias ?? 0)} dias (${fmtBRL(ind.soma)})`} gradient="red" icon={<Ban className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCardWithSub title="Serviço" value={fmtInt(s.qtd ?? 0)} subtitle={`(${fmtPct(s.pct ?? 0)})`} subline={`Média: ${fmtInt(s.mediaDias ?? 0)} dias (${fmtBRL(s.soma)})`} gradient="orange" icon={<Wrench className="h-5 w-5" />} />
-        <IndicatorCardWithSub title="Em Preparação" value={fmtInt(indicadores.qtdPreparacao ?? 0)} subline={`Média: ${fmtInt(indicadores.mediaDiasPrep ?? 0)} dias (${fmtBRL(indicadores.somaQuantoPede)})`} gradient="purple" icon={<Clock className="h-5 w-5" />} />
-        <IndicatorCard title="Patrimônio Disponível" value={fmtBRL(indicadores.patrimonioDisponivel)} gradient="teal" icon={<DollarSign className="h-5 w-5" />} />
-        <IndicatorCard title="Patrimônio Parado" value={fmtBRL(indicadores.patrimonioParado)} gradient="red" icon={<TrendingDown className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Serviço" value={fmtInt(s.qtd ?? 0)} subtitle={`(${fmtPct(s.pct ?? 0)})`} current={s.qtd} previous={sP.qtd} subline={`Média: ${fmtInt(s.mediaDias ?? 0)} dias (${fmtBRL(s.soma)})`} gradient="orange" icon={<Wrench className="h-5 w-5" />} />
+        <IndicatorCardWithSub title="Em Preparação" value={fmtInt(indicadores.qtdPreparacao ?? 0)} current={indicadores.qtdPreparacao} previous={indicadoresPrev.qtdPreparacao} subline={`Média: ${fmtInt(indicadores.mediaDiasPrep ?? 0)} dias (${fmtBRL(indicadores.somaQuantoPede)})`} gradient="purple" icon={<Clock className="h-5 w-5" />} />
+        <IndicatorCard title="Patrimônio Disponível" value={fmtBRL(indicadores.patrimonioDisponivel)} current={indicadores.patrimonioDisponivel} previous={indicadoresPrev.patrimonioDisponivel} gradient="teal" icon={<DollarSign className="h-5 w-5" />} />
+        <IndicatorCard title="Patrimônio Parado" value={fmtBRL(indicadores.patrimonioParado)} current={indicadores.patrimonioParado} previous={indicadoresPrev.patrimonioParado} gradient="red" icon={<TrendingDown className="h-5 w-5" />} />
       </div>
 
       {/* Section: Resultado do Ano */}
@@ -420,7 +431,7 @@ const iconColorMap: Record<string, string> = {
   gray: 'bg-gray-500/10 text-gray-500',
 };
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; subline?: string; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subline, gradient = 'teal', icon }) => (
+const IndicatorCard: React.FC<{ title: string; value: string | number; subline?: string; current?: number | null; previous?: number | null; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subline, current, previous, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
@@ -428,6 +439,7 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; subline?:
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}</p>
           {subline && <p className="text-xs text-muted-foreground truncate">{subline}</p>}
+          <DeltaBadge current={current} previous={previous} className="mt-1" />
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap[gradient] || iconColorMap.teal)}>{icon}</div>}
       </div>
@@ -435,7 +447,7 @@ const IndicatorCard: React.FC<{ title: string; value: string | number; subline?:
   </Card>
 );
 
-const IndicatorCardWithSub: React.FC<{ title: string; value: string | number; subtitle?: string; subline?: string; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subtitle, subline, gradient = 'teal', icon }) => (
+const IndicatorCardWithSub: React.FC<{ title: string; value: string | number; subtitle?: string; subline?: string; current?: number | null; previous?: number | null; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subtitle, subline, current, previous, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
@@ -443,6 +455,7 @@ const IndicatorCardWithSub: React.FC<{ title: string; value: string | number; su
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}{subtitle && <span className="ml-1 text-base text-muted-foreground">{subtitle}</span>}</p>
           {subline && <p className="text-xs text-muted-foreground truncate">{subline}</p>}
+          <DeltaBadge current={current} previous={previous} className="mt-1" />
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap[gradient] || iconColorMap.teal)}>{icon}</div>}
       </div>

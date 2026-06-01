@@ -15,8 +15,10 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from '@/lib/reportDateRange';
+import { getPreviousPeriodIso } from '@/lib/reportComparison';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
+import DeltaBadge from './DeltaBadge';
 
 const fmtBRL = (v: number | null | undefined) =>
   (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -45,6 +47,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
   const [loading, setLoading] = useState(true);
   const [indicadores, setIndicadores] = useState<any>({});
+  const [indicadoresPrev, setIndicadoresPrev] = useState<any>({});
   const [chartByVendedor, setChartByVendedor] = useState<any[]>([]);
   const [motosVendidas, setMotosVendidas] = useState<any[]>([]);
   const [motosSinal, setMotosSinal] = useState<any[]>([]);
@@ -70,9 +73,14 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const loadData = useCallback(async () => {
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
+    const { prevFromIso, prevToIso } = getPreviousPeriodIso(dateFrom, dateTo);
+    const hasPrev = Boolean(prevFromIso && prevToIso);
 
-    const [kpisRes, vendedoresRes, vendidasRes, sinaisRes, mensalRes] = await Promise.all([
+    const [kpisRes, kpisPrevRes, vendedoresRes, vendidasRes, sinaisRes, mensalRes] = await Promise.all([
       supabase.rpc('relatorio_showroom_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja, _tipo: filterTipo }),
+      hasPrev
+        ? supabase.rpc('relatorio_showroom_kpis', { _date_from: prevFromIso, _date_to: prevToIso, _loja: filterLoja, _tipo: filterTipo })
+        : Promise.resolve({ data: null } as any),
       supabase.rpc('relatorio_showroom_vendedores', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja, _tipo: filterTipo }),
       supabase.rpc('relatorio_showroom_vendidas', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja, _tipo: filterTipo }),
       supabase.rpc('relatorio_showroom_sinais', { _loja: filterLoja, _tipo: filterTipo }),
@@ -80,6 +88,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     ]);
 
     setIndicadores(kpisRes.data || {});
+    setIndicadoresPrev(kpisPrevRes?.data || {});
     const vendedoresData = (vendedoresRes.data || []) as any[];
     setChartByVendedor(vendedoresData.map((v: any) => ({ ...v, nome: abbreviateName(v.nome || 'Desconhecido') })));
     setMotosVendidas((vendidasRes.data || []) as any[]);
@@ -225,17 +234,17 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Atendimentos" value={fmtInt(indicadores.qtdAtendimentos ?? 0)} gradient="teal" icon={<Users className="h-5 w-5" />} />
-        <IndicatorCard title="Vendas" value={fmtInt(indicadores.qtdVendas ?? 0)} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} />
-        <IndicatorCard title="Sinais" value={fmtInt(indicadores.qtdSinais ?? 0)} gradient="teal" icon={<CreditCard className="h-5 w-5" />} />
-        <IndicatorCard title="Taxa de Conversão" value={fmtPctInt(indicadores.taxaConversao ?? 0)} gradient="teal" icon={<TrendingUp className="h-5 w-5" />} />
+        <IndicatorCard title="Atendimentos" value={fmtInt(indicadores.qtdAtendimentos ?? 0)} current={indicadores.qtdAtendimentos} previous={indicadoresPrev.qtdAtendimentos} gradient="teal" icon={<Users className="h-5 w-5" />} />
+        <IndicatorCard title="Vendas" value={fmtInt(indicadores.qtdVendas ?? 0)} current={indicadores.qtdVendas} previous={indicadoresPrev.qtdVendas} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} />
+        <IndicatorCard title="Sinais" value={fmtInt(indicadores.qtdSinais ?? 0)} current={indicadores.qtdSinais} previous={indicadoresPrev.qtdSinais} gradient="teal" icon={<CreditCard className="h-5 w-5" />} />
+        <IndicatorCard title="Taxa de Conversão" value={fmtPctInt(indicadores.taxaConversao ?? 0)} current={indicadores.taxaConversao} previous={indicadoresPrev.taxaConversao} gradient="teal" icon={<TrendingUp className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} gradient="purple" icon={<DollarSign className="h-5 w-5" />} />
-        <IndicatorCard title="Margem Prevista" value={`${fmtBRL(indicadores.margemPrevista)} (${fmtPct(indicadores.pctMargemPrevista)})`} gradient="purple" icon={<Target className="h-5 w-5" />} />
-        <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} gradient="emerald" icon={<BarChart3 className="h-5 w-5" />} />
-        <IndicatorCard title="Margem Realizada" value={`${fmtBRL(indicadores.margemRealizada)} (${fmtPct(indicadores.pctMargemRealizada)})`} gradient="emerald" icon={<PieChart className="h-5 w-5" />} />
+        <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} current={indicadores.faturamentoPrevisto} previous={indicadoresPrev.faturamentoPrevisto} gradient="purple" icon={<DollarSign className="h-5 w-5" />} />
+        <IndicatorCard title="Margem Prevista" value={`${fmtBRL(indicadores.margemPrevista)} (${fmtPct(indicadores.pctMargemPrevista)})`} current={indicadores.margemPrevista} previous={indicadoresPrev.margemPrevista} gradient="purple" icon={<Target className="h-5 w-5" />} />
+        <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} current={indicadores.faturamentoRealizado} previous={indicadoresPrev.faturamentoRealizado} gradient="emerald" icon={<BarChart3 className="h-5 w-5" />} />
+        <IndicatorCard title="Margem Realizada" value={`${fmtBRL(indicadores.margemRealizada)} (${fmtPct(indicadores.pctMargemRealizada)})`} current={indicadores.margemRealizada} previous={indicadoresPrev.margemRealizada} gradient="emerald" icon={<PieChart className="h-5 w-5" />} />
       </div>
 
       {/* Section: Por Vendedor */}
@@ -471,13 +480,14 @@ const iconColorMap: Record<string, string> = {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; gradient?: string; icon?: React.ReactNode }> = ({ title, value, gradient = 'teal', icon }) => (
+const IndicatorCard: React.FC<{ title: string; value: string | number; current?: number | null; previous?: number | null; gradient?: string; icon?: React.ReactNode }> = ({ title, value, current, previous, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}</p>
+          <DeltaBadge current={current} previous={previous} className="mt-1" />
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap[gradient] || iconColorMap.teal)}>{icon}</div>}
       </div>

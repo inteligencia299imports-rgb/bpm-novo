@@ -9,8 +9,10 @@ import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from '@/lib/reportDateRange';
+import { getPreviousPeriodIso, getPreviousPeriod } from '@/lib/reportComparison';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
+import DeltaBadge from './DeltaBadge';
 
 interface RelatorioAvaliacoesProps {
   dateFrom: Date | undefined;
@@ -56,6 +58,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
   const [loading, setLoading] = useState(true);
   const [indicadores, setIndicadores] = useState<any>({});
+  const [indicadoresPrev, setIndicadoresPrev] = useState<any>({});
   const [chartByAvaliador, setChartByAvaliador] = useState<any[]>([]);
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
@@ -74,9 +77,12 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   const loadData = useCallback(async () => {
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
+    const { prevFromIso, prevToIso } = getPreviousPeriodIso(dateFrom, dateTo);
+    const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
+    const hasPrev = Boolean(prevFromIso && prevToIso);
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
-    const [mensalRes, detalhesBaseRes, nomesRes, kpisRes] = await Promise.all([
+    const [mensalRes, detalhesBaseRes, nomesRes, kpisRes, kpisPrevRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
       fetchAllRange<any>(() =>
         supabase
@@ -87,6 +93,9 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       ),
       supabase.from('user_roles').select('user_id,nome'),
       supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
+      hasPrev
+        ? supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: prevFromIso, _date_to: prevToIso, _loja: lojaParam })
+        : Promise.resolve({ data: null } as any),
     ]);
 
     const normLoja = (loja: string | null | undefined) =>
@@ -97,6 +106,9 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       return normLoja(item.atendimentos?.loja) === lojaParam;
     });
     const detalhesPeriodo = detalhesBase.filter((item: any) => isInDateRange(item.created_at, dfParam, dtParam));
+    const detalhesPeriodoPrev = hasPrev
+      ? detalhesBase.filter((item: any) => isInDateRange(item.created_at, prevFromIso, prevToIso))
+      : [];
     const aquisicaoIds = detalhesBase.map((item: any) => item.id).filter(Boolean);
     const historicosPorAvaliacao = new Map<string, string>();
 
@@ -132,10 +144,15 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     });
 
     const totalAvaliacoesComAvaliador = detalhesPeriodo.filter((item: any) => Boolean(item.avaliador_id)).length;
+    const totalAvaliacoesPrev = detalhesPeriodoPrev.filter((item: any) => Boolean(item.avaliador_id)).length;
 
     setIndicadores({
       ...((kpisRes.data as any) || {}),
       total_avaliacoes: totalAvaliacoesComAvaliador,
+    });
+    setIndicadoresPrev({
+      ...((kpisPrevRes?.data as any) || {}),
+      total_avaliacoes: totalAvaliacoesPrev,
     });
 
     const nomeById = new Map(((nomesRes.data || []) as any[]).map((item: any) => [item.user_id, item.nome || 'Desconhecido']));
@@ -222,6 +239,17 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     retiradas: indicadores.retiradas ?? indicadores.qtdRetiradas ?? 0,
   };
 
+  const prev = {
+    totalAvaliacoes: indicadoresPrev.total_avaliacoes ?? indicadoresPrev.qtdAvaliacoes,
+    totalAquisicoes: indicadoresPrev.total_aquisicoes ?? indicadoresPrev.qtdAquisicoes,
+    aquisicoesPropria: indicadoresPrev.aquisicoes_propria ?? indicadoresPrev.qtdProprias,
+    aquisicoesConsignada: indicadoresPrev.aquisicoes_consignada ?? indicadoresPrev.qtdConsignadas,
+    aquisicoesConvertida: indicadoresPrev.aquisicoes_convertida ?? indicadoresPrev.qtdConvertidas,
+    entradaDireta: indicadoresPrev.entrada_direta ?? indicadoresPrev.qtdEntradaDireta,
+    troca: indicadoresPrev.troca ?? indicadoresPrev.qtdTroca,
+    retiradas: indicadoresPrev.retiradas ?? indicadoresPrev.qtdRetiradas,
+  };
+
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
@@ -229,17 +257,17 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Avaliações" value={fmtInt(indicadoresNormalizados.totalAvaliacoes)} gradient="teal" icon={<ClipboardCheck className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições" value={fmtInt(indicadoresNormalizados.totalAquisicoes)} subtitle={`(${indicadoresNormalizados.totalAvaliacoes > 0 ? Math.floor((indicadoresNormalizados.totalAquisicoes / indicadoresNormalizados.totalAvaliacoes) * 100) : 0}%)`} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições Próprias" value={fmtInt(indicadoresNormalizados.aquisicoesPropria)} gradient="teal" icon={<Package className="h-5 w-5" />} />
-        <IndicatorCard title="Aquisições Consignadas" value={fmtInt(indicadoresNormalizados.aquisicoesConsignada)} gradient="teal" icon={<ArrowDownUp className="h-5 w-5" />} />
+        <IndicatorCard title="Avaliações" value={fmtInt(indicadoresNormalizados.totalAvaliacoes)} current={indicadoresNormalizados.totalAvaliacoes} previous={prev.totalAvaliacoes} gradient="teal" icon={<ClipboardCheck className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições" value={fmtInt(indicadoresNormalizados.totalAquisicoes)} subtitle={`(${indicadoresNormalizados.totalAvaliacoes > 0 ? Math.floor((indicadoresNormalizados.totalAquisicoes / indicadoresNormalizados.totalAvaliacoes) * 100) : 0}%)`} current={indicadoresNormalizados.totalAquisicoes} previous={prev.totalAquisicoes} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições Próprias" value={fmtInt(indicadoresNormalizados.aquisicoesPropria)} current={indicadoresNormalizados.aquisicoesPropria} previous={prev.aquisicoesPropria} gradient="teal" icon={<Package className="h-5 w-5" />} />
+        <IndicatorCard title="Aquisições Consignadas" value={fmtInt(indicadoresNormalizados.aquisicoesConsignada)} current={indicadoresNormalizados.aquisicoesConsignada} previous={prev.aquisicoesConsignada} gradient="teal" icon={<ArrowDownUp className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Convertidas" value={fmtInt(indicadoresNormalizados.aquisicoesConvertida)} gradient="purple" icon={<Repeat className="h-5 w-5" />} />
-        <IndicatorCard title="Retiradas" value={fmtInt(indicadoresNormalizados.retiradas)} gradient="red" icon={<XCircle className="h-5 w-5" />} />
-        <IndicatorCard title="Entrada Direta" value={fmtInt(indicadoresNormalizados.entradaDireta)} gradient="emerald" icon={<ArrowDownToLine className="h-5 w-5" />} />
-        <IndicatorCard title="Troca" value={fmtInt(indicadoresNormalizados.troca)} gradient="emerald" icon={<ArrowRightLeft className="h-5 w-5" />} />
+        <IndicatorCard title="Convertidas" value={fmtInt(indicadoresNormalizados.aquisicoesConvertida)} current={indicadoresNormalizados.aquisicoesConvertida} previous={prev.aquisicoesConvertida} gradient="purple" icon={<Repeat className="h-5 w-5" />} />
+        <IndicatorCard title="Retiradas" value={fmtInt(indicadoresNormalizados.retiradas)} current={indicadoresNormalizados.retiradas} previous={prev.retiradas} gradient="red" icon={<XCircle className="h-5 w-5" />} />
+        <IndicatorCard title="Entrada Direta" value={fmtInt(indicadoresNormalizados.entradaDireta)} current={indicadoresNormalizados.entradaDireta} previous={prev.entradaDireta} gradient="emerald" icon={<ArrowDownToLine className="h-5 w-5" />} />
+        <IndicatorCard title="Troca" value={fmtInt(indicadoresNormalizados.troca)} current={indicadoresNormalizados.troca} previous={prev.troca} gradient="emerald" icon={<ArrowRightLeft className="h-5 w-5" />} />
       </div>
 
       {/* Section: Por Avaliador */}
@@ -347,13 +375,14 @@ const iconColorMap: Record<string, string> = {
   red: 'bg-red-500/10 text-red-500',
 };
 
-const IndicatorCard: React.FC<{ title: string; value: string | number; subtitle?: string; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subtitle, gradient = 'teal', icon }) => (
+const IndicatorCard: React.FC<{ title: string; value: string | number; subtitle?: string; current?: number | null; previous?: number | null; gradient?: string; icon?: React.ReactNode }> = ({ title, value, subtitle, current, previous, gradient = 'teal', icon }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}{subtitle && <span className="ml-1">{subtitle}</span>}</p>
+          <DeltaBadge current={current} previous={previous} className="mt-1" />
         </div>
         {icon && <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', iconColorMap[gradient] || iconColorMap.teal)}>{icon}</div>}
       </div>

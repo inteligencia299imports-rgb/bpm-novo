@@ -14,6 +14,8 @@ import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTip
 import { Badge } from '@/components/ui/badge';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
 import CidadeFilter, { CidadeFilterValue, matchesCidade } from '@/components/shared/CidadeFilter';
+import { getPreviousPeriod } from '@/lib/reportComparison';
+import DeltaBadge from './DeltaBadge';
 
 interface Props {
   dateFrom: Date | undefined;
@@ -247,27 +249,44 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     });
   }, [rows, filterLoja, filterTipo, dateFrom, dateTo]);
 
-  const kpis = useMemo(() => {
-    const preparadas = filteredRows.filter(r => r.dataPreparacao);
-    const liberadas = filteredRows.filter(r => r.dataLiberacao);
+  const computeKpis = (df: Date | undefined, dt: Date | undefined) => {
+    const filtered = rows.filter(r => {
+      if (!matchesLoja(r.loja, filterLoja)) return false;
+      if (filterTipo !== 'todos' && r.tipoCat !== filterTipo) return false;
+      if (df && r.dataPreparacao && new Date(r.dataPreparacao) < df) return false;
+      if (dt && r.dataPreparacao && new Date(r.dataPreparacao) > dt) return false;
+      if (!r.dataPreparacao && (df || dt)) return false;
+      return true;
+    });
+    const preparadas = filtered.filter(r => r.dataPreparacao);
+    const liberadas = filtered.filter(r => r.dataLiberacao);
     const tempoPrepValid = preparadas.map(r => r.tempoPrepMs).filter((v): v is number => v != null && v >= 0);
     const tempoLibValid = liberadas.map(r => r.tempoLibMs).filter((v): v is number => v != null && v >= 0);
     const avg = (arr: number[]) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
-    // Em preparação agora: alinhado ao kanban (todos os status exceto 'estoque'), ignora data
+    return {
+      qtdPreparadas: preparadas.length,
+      tempoMedioPrep: avg(tempoPrepValid),
+      qtdLiberadas: liberadas.length,
+      tempoMedioLib: avg(tempoLibValid),
+    };
+  };
+
+  const kpis = useMemo(() => {
+    const base = computeKpis(dateFrom, dateTo);
     const emPreparacao = rows.filter(r =>
       matchesLoja(r.loja, filterLoja) &&
       (filterTipo === 'todos' || r.tipoCat === filterTipo) &&
       r.situacao !== 'perdido' &&
       r.statusPrep !== 'estoque'
     ).length;
-    return {
-      emPreparacao,
-      qtdPreparadas: preparadas.length,
-      tempoMedioPrep: avg(tempoPrepValid),
-      qtdLiberadas: liberadas.length,
-      tempoMedioLib: avg(tempoLibValid),
-    };
-  }, [filteredRows, rows, filterLoja, filterTipo]);
+    return { emPreparacao, ...base };
+  }, [filteredRows, rows, filterLoja, filterTipo, dateFrom, dateTo]);
+
+  const kpisPrev = useMemo(() => {
+    const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
+    if (!prevFrom || !prevTo) return null;
+    return computeKpis(prevFrom, prevTo);
+  }, [rows, filterLoja, filterTipo, dateFrom, dateTo]);
 
   // Charts: ciclos a partir de 21/03
   const chartData = useMemo(() => {
@@ -385,10 +404,10 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
         <KpiCard title="Em Preparação" value={fmtInt(kpis.emPreparacao)} icon={<Wrench className="h-5 w-5" />} color="orange" />
-        <KpiCard title="Motos Preparadas" value={fmtInt(kpis.qtdPreparadas)} icon={<CheckCircle className="h-5 w-5" />} color="teal" />
-        <KpiCard title="Tempo Preparação" value={fmtDuration(kpis.tempoMedioPrep)} icon={<Clock className="h-5 w-5" />} color="teal" />
-        <KpiCard title="Motos Liberadas" value={fmtInt(kpis.qtdLiberadas)} icon={<CheckCircle className="h-5 w-5" />} color="emerald" />
-        <KpiCard title="Tempo Liberação" value={fmtDuration(kpis.tempoMedioLib)} icon={<Clock className="h-5 w-5" />} color="emerald" />
+        <KpiCard title="Motos Preparadas" value={fmtInt(kpis.qtdPreparadas)} current={kpis.qtdPreparadas} previous={kpisPrev?.qtdPreparadas} icon={<CheckCircle className="h-5 w-5" />} color="teal" />
+        <KpiCard title="Tempo Preparação" value={fmtDuration(kpis.tempoMedioPrep)} current={kpis.tempoMedioPrep ?? 0} previous={kpisPrev?.tempoMedioPrep ?? undefined} invert icon={<Clock className="h-5 w-5" />} color="teal" />
+        <KpiCard title="Motos Liberadas" value={fmtInt(kpis.qtdLiberadas)} current={kpis.qtdLiberadas} previous={kpisPrev?.qtdLiberadas} icon={<CheckCircle className="h-5 w-5" />} color="emerald" />
+        <KpiCard title="Tempo Liberação" value={fmtDuration(kpis.tempoMedioLib)} current={kpis.tempoMedioLib ?? 0} previous={kpisPrev?.tempoMedioLib ?? undefined} invert icon={<Clock className="h-5 w-5" />} color="emerald" />
       </div>
 
       {/* Charts */}
