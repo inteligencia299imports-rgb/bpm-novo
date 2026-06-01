@@ -87,6 +87,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         const { data: at } = await supabase.from('atendimentos').select('*').eq('id', atendimentoId).single();
         if (at) {
           setLoja(at.loja);
+          setLojaOriginal(at.loja);
           setNomeCliente(at.nome_cliente);
           setTelefone(formatPhone(at.telefone));
           setSexo(at.sexo);
