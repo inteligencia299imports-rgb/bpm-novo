@@ -249,27 +249,44 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     });
   }, [rows, filterLoja, filterTipo, dateFrom, dateTo]);
 
-  const kpis = useMemo(() => {
-    const preparadas = filteredRows.filter(r => r.dataPreparacao);
-    const liberadas = filteredRows.filter(r => r.dataLiberacao);
+  const computeKpis = (df: Date | undefined, dt: Date | undefined) => {
+    const filtered = rows.filter(r => {
+      if (!matchesLoja(r.loja, filterLoja)) return false;
+      if (filterTipo !== 'todos' && r.tipoCat !== filterTipo) return false;
+      if (df && r.dataPreparacao && new Date(r.dataPreparacao) < df) return false;
+      if (dt && r.dataPreparacao && new Date(r.dataPreparacao) > dt) return false;
+      if (!r.dataPreparacao && (df || dt)) return false;
+      return true;
+    });
+    const preparadas = filtered.filter(r => r.dataPreparacao);
+    const liberadas = filtered.filter(r => r.dataLiberacao);
     const tempoPrepValid = preparadas.map(r => r.tempoPrepMs).filter((v): v is number => v != null && v >= 0);
     const tempoLibValid = liberadas.map(r => r.tempoLibMs).filter((v): v is number => v != null && v >= 0);
     const avg = (arr: number[]) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
-    // Em preparação agora: alinhado ao kanban (todos os status exceto 'estoque'), ignora data
+    return {
+      qtdPreparadas: preparadas.length,
+      tempoMedioPrep: avg(tempoPrepValid),
+      qtdLiberadas: liberadas.length,
+      tempoMedioLib: avg(tempoLibValid),
+    };
+  };
+
+  const kpis = useMemo(() => {
+    const base = computeKpis(dateFrom, dateTo);
     const emPreparacao = rows.filter(r =>
       matchesLoja(r.loja, filterLoja) &&
       (filterTipo === 'todos' || r.tipoCat === filterTipo) &&
       r.situacao !== 'perdido' &&
       r.statusPrep !== 'estoque'
     ).length;
-    return {
-      emPreparacao,
-      qtdPreparadas: preparadas.length,
-      tempoMedioPrep: avg(tempoPrepValid),
-      qtdLiberadas: liberadas.length,
-      tempoMedioLib: avg(tempoLibValid),
-    };
-  }, [filteredRows, rows, filterLoja, filterTipo]);
+    return { emPreparacao, ...base };
+  }, [filteredRows, rows, filterLoja, filterTipo, dateFrom, dateTo]);
+
+  const kpisPrev = useMemo(() => {
+    const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
+    if (!prevFrom || !prevTo) return null;
+    return computeKpis(prevFrom, prevTo);
+  }, [rows, filterLoja, filterTipo, dateFrom, dateTo]);
 
   // Charts: ciclos a partir de 21/03
   const chartData = useMemo(() => {
