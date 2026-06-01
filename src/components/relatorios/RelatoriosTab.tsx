@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { getPreviousPeriod, getPreviousMonthDate } from '@/lib/reportComparison';
 import RelatorioShowroom from './RelatorioShowroom';
 import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
