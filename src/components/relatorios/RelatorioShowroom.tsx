@@ -47,6 +47,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
   const [loading, setLoading] = useState(true);
   const [indicadores, setIndicadores] = useState<any>({});
+  const [indicadoresPrev, setIndicadoresPrev] = useState<any>({});
   const [chartByVendedor, setChartByVendedor] = useState<any[]>([]);
   const [motosVendidas, setMotosVendidas] = useState<any[]>([]);
   const [motosSinal, setMotosSinal] = useState<any[]>([]);
