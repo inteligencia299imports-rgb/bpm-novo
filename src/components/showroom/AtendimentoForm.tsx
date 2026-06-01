@@ -483,7 +483,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                           selected={group}
                           onSelect={(v) => {
                             if (groupLocked && v !== originalGroup) {
-                              toast.error('Atendimentos com Sinal ou Vendido não podem trocar entre 299 e Ducati');
+                              toast.error('Atendimentos com Sinal ou Vendido não podem trocar entre 299 e Ducati. Marque o atendimento como perdido primeiro.');
                               return;
                             }
                             setLojaGroup(v as '299' | 'Ducati');
