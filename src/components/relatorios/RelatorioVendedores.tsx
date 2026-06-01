@@ -105,7 +105,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       <LojaFilter value={filterLoja} onChange={setFilterLoja} />
 
       {myIndicadores && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <IndicatorCard title="Atendimentos" value={fmtInt(myIndicadores.qtdAtendimentos ?? 0)} current={myIndicadores.qtdAtendimentos} previous={myIndicadoresPrev.qtdAtendimentos} icon={<Users className="h-5 w-5" />} />
           <IndicatorCard title="Sinais" value={fmtInt(myIndicadores.qtdSinais ?? 0)} current={myIndicadores.qtdSinais} previous={myIndicadoresPrev.qtdSinais} icon={<CreditCard className="h-5 w-5" />} iconClass="bg-purple-100 text-purple-600" />
           <IndicatorCard
