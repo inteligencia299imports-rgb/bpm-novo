@@ -234,17 +234,17 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Atendimentos" value={fmtInt(indicadores.qtdAtendimentos ?? 0)} gradient="teal" icon={<Users className="h-5 w-5" />} />
-        <IndicatorCard title="Vendas" value={fmtInt(indicadores.qtdVendas ?? 0)} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} />
-        <IndicatorCard title="Sinais" value={fmtInt(indicadores.qtdSinais ?? 0)} gradient="teal" icon={<CreditCard className="h-5 w-5" />} />
-        <IndicatorCard title="Taxa de Conversão" value={fmtPctInt(indicadores.taxaConversao ?? 0)} gradient="teal" icon={<TrendingUp className="h-5 w-5" />} />
+        <IndicatorCard title="Atendimentos" value={fmtInt(indicadores.qtdAtendimentos ?? 0)} current={indicadores.qtdAtendimentos} previous={indicadoresPrev.qtdAtendimentos} gradient="teal" icon={<Users className="h-5 w-5" />} />
+        <IndicatorCard title="Vendas" value={fmtInt(indicadores.qtdVendas ?? 0)} current={indicadores.qtdVendas} previous={indicadoresPrev.qtdVendas} gradient="teal" icon={<ShoppingCart className="h-5 w-5" />} />
+        <IndicatorCard title="Sinais" value={fmtInt(indicadores.qtdSinais ?? 0)} current={indicadores.qtdSinais} previous={indicadoresPrev.qtdSinais} gradient="teal" icon={<CreditCard className="h-5 w-5" />} />
+        <IndicatorCard title="Taxa de Conversão" value={fmtPctInt(indicadores.taxaConversao ?? 0)} current={indicadores.taxaConversao} previous={indicadoresPrev.taxaConversao} gradient="teal" icon={<TrendingUp className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} gradient="purple" icon={<DollarSign className="h-5 w-5" />} />
-        <IndicatorCard title="Margem Prevista" value={`${fmtBRL(indicadores.margemPrevista)} (${fmtPct(indicadores.pctMargemPrevista)})`} gradient="purple" icon={<Target className="h-5 w-5" />} />
-        <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} gradient="emerald" icon={<BarChart3 className="h-5 w-5" />} />
-        <IndicatorCard title="Margem Realizada" value={`${fmtBRL(indicadores.margemRealizada)} (${fmtPct(indicadores.pctMargemRealizada)})`} gradient="emerald" icon={<PieChart className="h-5 w-5" />} />
+        <IndicatorCard title="Faturamento Previsto" value={fmtBRL(indicadores.faturamentoPrevisto)} current={indicadores.faturamentoPrevisto} previous={indicadoresPrev.faturamentoPrevisto} gradient="purple" icon={<DollarSign className="h-5 w-5" />} />
+        <IndicatorCard title="Margem Prevista" value={`${fmtBRL(indicadores.margemPrevista)} (${fmtPct(indicadores.pctMargemPrevista)})`} current={indicadores.margemPrevista} previous={indicadoresPrev.margemPrevista} gradient="purple" icon={<Target className="h-5 w-5" />} />
+        <IndicatorCard title="Faturamento Realizado" value={fmtBRL(indicadores.faturamentoRealizado)} current={indicadores.faturamentoRealizado} previous={indicadoresPrev.faturamentoRealizado} gradient="emerald" icon={<BarChart3 className="h-5 w-5" />} />
+        <IndicatorCard title="Margem Realizada" value={`${fmtBRL(indicadores.margemRealizada)} (${fmtPct(indicadores.pctMargemRealizada)})`} current={indicadores.margemRealizada} previous={indicadoresPrev.margemRealizada} gradient="emerald" icon={<PieChart className="h-5 w-5" />} />
       </div>
 
       {/* Section: Por Vendedor */}
