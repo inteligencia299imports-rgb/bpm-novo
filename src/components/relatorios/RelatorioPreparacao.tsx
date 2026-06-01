@@ -539,13 +539,16 @@ const colorMap: Record<string, string> = {
   orange: 'bg-orange-500/10 text-orange-500',
 };
 
-const KpiCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
+const KpiCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string; current?: number; previous?: number; invert?: boolean }> = ({ title, value, icon, color, current, previous, invert }) => (
   <Card className="border shadow-sm rounded-xl">
     <CardContent className="px-4 min-h-[80px] flex items-center justify-center py-0">
       <div className="flex items-center justify-between w-full">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{title}</p>
           <p className="text-xl font-semibold text-foreground/80 truncate">{value}</p>
+          {current !== undefined && previous !== undefined && (
+            <DeltaBadge current={current} previous={previous} invert={invert} />
+          )}
         </div>
         <div className={cn('ml-2 p-2 rounded-lg flex-shrink-0', colorMap[color] || colorMap.teal)}>{icon}</div>
       </div>
