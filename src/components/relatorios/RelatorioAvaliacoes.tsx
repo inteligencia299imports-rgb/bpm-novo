@@ -256,14 +256,14 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       <LojaFilter value={filterLoja} onChange={setFilterLoja} />
 
       {/* Indicators - Line 1 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Avaliações" value={fmtInt(indicadoresNormalizados.totalAvaliacoes)} current={indicadoresNormalizados.totalAvaliacoes} previous={prev.totalAvaliacoes} gradient="teal" icon={<ClipboardCheck className="h-5 w-5" />} />
         <IndicatorCard title="Aquisições" value={fmtInt(indicadoresNormalizados.totalAquisicoes)} subtitle={`(${indicadoresNormalizados.totalAvaliacoes > 0 ? Math.floor((indicadoresNormalizados.totalAquisicoes / indicadoresNormalizados.totalAvaliacoes) * 100) : 0}%)`} current={indicadoresNormalizados.totalAquisicoes} previous={prev.totalAquisicoes} gradient="teal" icon={<CheckCircle className="h-5 w-5" />} />
         <IndicatorCard title="Aquisições Próprias" value={fmtInt(indicadoresNormalizados.aquisicoesPropria)} current={indicadoresNormalizados.aquisicoesPropria} previous={prev.aquisicoesPropria} gradient="teal" icon={<Package className="h-5 w-5" />} />
         <IndicatorCard title="Aquisições Consignadas" value={fmtInt(indicadoresNormalizados.aquisicoesConsignada)} current={indicadoresNormalizados.aquisicoesConsignada} previous={prev.aquisicoesConsignada} gradient="teal" icon={<ArrowDownUp className="h-5 w-5" />} />
       </div>
       {/* Indicators - Line 2 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <IndicatorCard title="Convertidas" value={fmtInt(indicadoresNormalizados.aquisicoesConvertida)} current={indicadoresNormalizados.aquisicoesConvertida} previous={prev.aquisicoesConvertida} gradient="purple" icon={<Repeat className="h-5 w-5" />} />
         <IndicatorCard title="Retiradas" value={fmtInt(indicadoresNormalizados.retiradas)} current={indicadoresNormalizados.retiradas} previous={prev.retiradas} gradient="red" icon={<XCircle className="h-5 w-5" />} />
         <IndicatorCard title="Entrada Direta" value={fmtInt(indicadoresNormalizados.entradaDireta)} current={indicadoresNormalizados.entradaDireta} previous={prev.entradaDireta} gradient="emerald" icon={<ArrowDownToLine className="h-5 w-5" />} />
