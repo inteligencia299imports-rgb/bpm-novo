@@ -531,7 +531,18 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                     <TableCell className="text-xs whitespace-nowrap">{fmtDuration(r.tempoPrepMs)}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataLiberacao)}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDuration(r.tempoLibMs)}</TableCell>
-                    <TableCell className="text-xs text-center">{r.retornos ?? 0}</TableCell>
+                    <TableCell className="text-xs text-center">
+                      {(r.retornos ?? 0) > 0 ? (
+                        <span
+                          className="inline-flex items-center justify-center rounded-full text-[10px] font-bold text-white w-6 h-6 shadow-sm"
+                          style={{ background: 'linear-gradient(135deg, hsl(270, 60%, 48%), hsl(280, 70%, 38%))' }}
+                        >
+                          {r.retornos}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 );
               })}
