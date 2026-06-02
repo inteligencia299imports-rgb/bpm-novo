@@ -507,7 +507,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
             </TableHeader>
             <TableBody>
               {filteredRows.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
               ) : filteredRows.map(r => {
                 const status = r.dataLiberacao
                   ? { label: 'Estoque', hex: '#169d53' }
@@ -530,6 +530,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                     <TableCell className="text-xs whitespace-nowrap">{fmtDuration(r.tempoPrepMs)}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataLiberacao)}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDuration(r.tempoLibMs)}</TableCell>
+                    <TableCell className="text-xs text-center">{r.retornos ?? 0}</TableCell>
                   </TableRow>
                 );
               })}
