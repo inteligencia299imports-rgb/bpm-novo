@@ -54,9 +54,9 @@ export const computeDelta = (current: number | null | undefined, previous: numbe
 export const formatDeltaPct = (pct: number | null): string => {
   if (pct === null) return '—';
   if (!isFinite(pct)) return '—';
-  const rounded = Math.round(pct * 10) / 10;
+  const rounded = Math.round(pct);
   const sign = rounded > 0 ? '+' : '';
-  return `${sign}${rounded.toFixed(1)}%`;
+  return `${sign}${rounded}%`;
 };
 
 /**
