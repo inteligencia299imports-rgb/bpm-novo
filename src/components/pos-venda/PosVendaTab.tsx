@@ -81,9 +81,12 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
       const s = search.trim().toLowerCase();
       filtered = filtered.filter((a: any) => [a.nome_cliente, a.telefone, a.loja].some(f => f && String(f).toLowerCase().includes(s)));
     }
+    if (filterCidade !== 'todos') {
+      filtered = filtered.filter((a: any) => matchesCidade(a.loja, filterCidade));
+    }
     setItems(filtered);
     setLoading(false);
-  }, [search]);
+  }, [search, filterCidade]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
   const getColumnItems = (status: PosVendaStatus) => items.filter((a: any) => (a.pos_venda_status || 'em_aberto') === status);
