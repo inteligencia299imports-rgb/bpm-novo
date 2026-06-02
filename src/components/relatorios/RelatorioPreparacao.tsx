@@ -332,6 +332,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       tempoPrep: fmtDuration(r.tempoPrepMs),
       liberacao: r.dataLiberacao ? format(new Date(r.dataLiberacao), 'dd/MM/yyyy HH:mm') : '-',
       tempoLib: fmtDuration(r.tempoLibMs),
+      retornos: String(r.retornos ?? 0),
     };
   });
 
@@ -339,10 +340,10 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const XLSX = await import('xlsx');
     const rows = buildExportRows();
     const aoa = [[
-      'Cliente','Modelo','Placa','Tipo','Entrada','Status','Preparação','Tempo Prep.','Liberação','Tempo Lib.',
-    ], ...rows.map(r => [r.cliente, r.modelo, r.placa, r.tipo, r.entrada, r.status, r.preparacao, r.tempoPrep, r.liberacao, r.tempoLib])];
+      'Cliente','Modelo','Placa','Tipo','Entrada','Status','Preparação','Tempo Prep.','Liberação','Tempo Lib.','Retornos',
+    ], ...rows.map(r => [r.cliente, r.modelo, r.placa, r.tipo, r.entrada, r.status, r.preparacao, r.tempoPrep, r.liberacao, r.tempoLib, r.retornos])];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [22,26,10,12,18,12,18,16,18,16].map(w => ({ wch: w }));
+    ws['!cols'] = [22,26,10,12,18,12,18,16,18,16,10].map(w => ({ wch: w }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Preparação');
     XLSX.writeFile(wb, `preparacao_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -363,8 +364,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
     autoTable(doc, {
       startY: 64,
-      head: [['Cliente','Modelo','Placa','Tipo','Entrada','Status','Preparação','Tempo Prep.','Liberação','Tempo Lib.']],
-      body: rows.map(r => [r.cliente, r.modelo, r.placa, r.tipo, r.entrada, r.status, r.preparacao, r.tempoPrep, r.liberacao, r.tempoLib]),
+      head: [['Cliente','Modelo','Placa','Tipo','Entrada','Status','Preparação','Tempo Prep.','Liberação','Tempo Lib.','Retornos']],
+      body: rows.map(r => [r.cliente, r.modelo, r.placa, r.tipo, r.entrada, r.status, r.preparacao, r.tempoPrep, r.liberacao, r.tempoLib, r.retornos]),
       styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
       headStyles: { fillColor: [47, 111, 132], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
       alternateRowStyles: { fillColor: [245, 247, 250] },
@@ -502,11 +503,12 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                 <TableHead>Tempo Prep.</TableHead>
                 <TableHead>Liberação</TableHead>
                 <TableHead>Tempo Lib.</TableHead>
+                <TableHead className="text-center">Retornos</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredRows.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">Nenhum registro encontrado</TableCell></TableRow>
               ) : filteredRows.map(r => {
                 const status = r.dataLiberacao
                   ? { label: 'Estoque', hex: '#169d53' }
@@ -529,6 +531,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                     <TableCell className="text-xs whitespace-nowrap">{fmtDuration(r.tempoPrepMs)}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDate(r.dataLiberacao)}</TableCell>
                     <TableCell className="text-xs whitespace-nowrap">{fmtDuration(r.tempoLibMs)}</TableCell>
+                    <TableCell className="text-xs text-center">{r.retornos ?? 0}</TableCell>
                   </TableRow>
                 );
               })}
