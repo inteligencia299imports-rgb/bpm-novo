@@ -267,11 +267,14 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const tempoPrepValid = preparadas.map(r => r.tempoPrepMs).filter((v): v is number => v != null && v >= 0);
     const tempoLibValid = liberadas.map(r => r.tempoLibMs).filter((v): v is number => v != null && v >= 0);
     const avg = (arr: number[]) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+    const liberadasSemRetorno = liberadas.filter(r => (r.retornos ?? 0) === 0).length;
+    const aceitePct = liberadas.length ? (liberadasSemRetorno / liberadas.length) * 100 : null;
     return {
       qtdPreparadas: preparadas.length,
       tempoMedioPrep: avg(tempoPrepValid),
       qtdLiberadas: liberadas.length,
       tempoMedioLib: avg(tempoLibValid),
+      aceitePct,
     };
   };
 
