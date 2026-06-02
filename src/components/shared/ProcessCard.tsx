@@ -14,6 +14,7 @@ interface ProcessCardProps {
   phone?: string;
   motoLabel?: string;
   loja?: string;
+  patio?: string;
   date: string;
   statusColor: string;
   extraBadge?: { label: string; className?: string };
