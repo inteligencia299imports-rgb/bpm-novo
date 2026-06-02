@@ -58,3 +58,20 @@ export const formatDeltaPct = (pct: number | null): string => {
   const sign = rounded > 0 ? '+' : '';
   return `${sign}${rounded.toFixed(1)}%`;
 };
+
+/**
+ * Divide um payload retornado pelos RPCs `*_comparado` (colunas com sufixo
+ * `_atual` / `_anterior`) em dois objetos limpos.
+ */
+export const splitComparado = (
+  data: Record<string, unknown> | null | undefined,
+): { atual: Record<string, any>; anterior: Record<string, any> } => {
+  const atual: Record<string, any> = {};
+  const anterior: Record<string, any> = {};
+  if (!data) return { atual, anterior };
+  for (const [key, value] of Object.entries(data)) {
+    if (key.endsWith('_atual')) atual[key.slice(0, -6)] = value;
+    else if (key.endsWith('_anterior')) anterior[key.slice(0, -9)] = value;
+  }
+  return { atual, anterior };
+};
