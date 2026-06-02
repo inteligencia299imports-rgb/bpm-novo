@@ -160,15 +160,34 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     };
   });
 
+  const computeTotals = (rows: ReturnType<typeof buildRows>) => {
+    const sum = (k: keyof typeof rows[number]) => rows.reduce((s, r) => s + (Number(r[k]) || 0), 0);
+    const avg = (k: keyof typeof rows[number]) => rows.length ? sum(k) / rows.length : 0;
+    const withCompra = rows.filter(r => (r.compra as number) > 0);
+    const avgMargemPct = withCompra.length ? withCompra.reduce((s, r) => s + (r.margemPct as number), 0) / withCompra.length : 0;
+    return {
+      diasAvg: avg('dias'),
+      precoSum: sum('preco'),
+      compraSum: sum('compra'),
+      margemAbsSum: sum('margemAbs'),
+      margemPctAvg: avgMargemPct,
+    };
+  };
+
   const handleExportExcel = async () => {
     const XLSX = await import('xlsx');
     const rows = buildRows();
+    const t = computeTotals(rows);
     const aoa = [[
       'Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa','Entrada','Situação','Preço','Compra','Margem (R$)','Margem (%)',
     ], ...rows.map(r => [
       r.empresa, r.tipo, r.patio, r.dias, r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao,
       r.preco, r.compra || '', r.compra > 0 ? r.margemAbs : '', r.compra > 0 ? r.margemPct / 100 : '',
     ])];
+    aoa.push([
+      `TOTAL (${rows.length})`, '', '', Math.round(t.diasAvg), '', '', '', '', '', '', '',
+      t.precoSum, t.compraSum, t.margemAbsSum, t.margemPctAvg / 100,
+    ]);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = [10,12,12,6,12,22,12,10,10,11,13,14,14,14,10].map(w => ({ wch: w }));
     // Format currency and percent columns
@@ -177,6 +196,9 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       ['L','M','N'].forEach(c => { const cell = ws[`${c}${R+1}`]; if (cell && typeof cell.v === 'number') cell.z = 'R$ #,##0.00'; });
       const pct = ws[`O${R+1}`]; if (pct && typeof pct.v === 'number') pct.z = '0.0%';
     }
+    // Bold totals row
+    const totalRow = range.e.r + 1;
+    ['A','D','L','M','N','O'].forEach(c => { const cell = ws[`${c}${totalRow}`]; if (cell) cell.s = { font: { bold: true } }; });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Estoque');
     XLSX.writeFile(wb, `estoque_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -187,6 +209,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const autoTable = (await import('jspdf-autotable')).default;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     const rows = buildRows();
+    const t = computeTotals(rows);
     const cutoffStr = (dateTo ?? new Date()).toLocaleDateString('pt-BR');
     doc.setFontSize(14);
     doc.setTextColor(30, 41, 59);
@@ -203,8 +226,14 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         fmtBRL(r.preco), r.compra > 0 ? fmtBRL(r.compra) : '—',
         r.compra > 0 ? `${fmtBRL(r.margemAbs)} (${r.margemPct.toFixed(1)}%)` : '—',
       ]),
+      foot: [[
+        `TOTAL (${rows.length})`, '', '', `Méd. ${Math.round(t.diasAvg)}`, '', '', '', '', '', '', '',
+        fmtBRL(t.precoSum), fmtBRL(t.compraSum),
+        `${fmtBRL(t.margemAbsSum)} (${t.margemPctAvg.toFixed(1)}%)`,
+      ]],
       styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
       headStyles: { fillColor: [47, 111, 132], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      footStyles: { fillColor: [241, 244, 247], textColor: [30, 41, 59], fontStyle: 'bold', fontSize: 7.5 },
       alternateRowStyles: { fillColor: [245, 247, 250] },
       columnStyles: {
         3: { halign: 'right' }, 11: { halign: 'right' }, 12: { halign: 'right' }, 13: { halign: 'right' },
@@ -230,6 +259,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     });
     doc.save(`estoque_${new Date().toISOString().slice(0,10)}.pdf`);
   };
+
 
 
   if (loading) {
