@@ -131,7 +131,11 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
   const lojaLabel = (loja: string | null) => {
     if (!loja) return '-';
-    return loja.charAt(0).toUpperCase() + loja.slice(1).toLowerCase();
+    return loja
+      .toLowerCase()
+      .split(/\s+/)
+      .map((p) => (['bsb', 'poa', 'fln'].includes(p) ? p.toUpperCase() : p.charAt(0).toUpperCase() + p.slice(1)))
+      .join(' ');
   };
 
   const buildRows = (list: any[], dataLabel: 'dataVenda' | 'dataSinal') => list.map((m: any) => ({
