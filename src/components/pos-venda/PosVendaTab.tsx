@@ -41,7 +41,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
     const statuses = POS_VENDA_COLUMNS.map(c => c.value);
-    const estRes = await fetchAllRange(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes, tipo'));
+    const estRes = await fetchAllRange(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes, tipo, loja'));
 
     let atData: any[];
     let atError: any;
@@ -134,7 +134,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
                       return (
                          <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone}
                           motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
-                          loja={a.loja} date={a.data_venda || a.updated_at} statusColor={col.hex}
+                          loja={a.loja} patio={est?.loja} date={a.data_venda || a.updated_at} statusColor={col.hex}
                           onClick={() => setSelectedItem(a)} />
                       );
                     })}

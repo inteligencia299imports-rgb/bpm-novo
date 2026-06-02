@@ -14,6 +14,7 @@ interface ProcessCardProps {
   phone?: string;
   motoLabel?: string;
   loja?: string;
+  patio?: string;
   date: string;
   statusColor: string;
   extraBadge?: { label: string; className?: string };
@@ -32,7 +33,7 @@ const formatPhone = (value: string): string => {
 };
 
 const ProcessCard: React.FC<ProcessCardProps> = ({
-  clientName, phone, motoLabel, loja, date, statusColor, extraBadge, secondaryBadge, readyIndicator, dateLabel, onClick,
+  clientName, phone, motoLabel, loja, patio, date, statusColor, extraBadge, secondaryBadge, readyIndicator, dateLabel, onClick,
 }) => (
   <div
     className="bg-card rounded-lg border border-border shadow-soft hover:shadow-card hover:bg-surface-hover transition-all cursor-pointer group overflow-hidden"
@@ -68,9 +69,12 @@ const ProcessCard: React.FC<ProcessCardProps> = ({
             {dateLabel ? `${dateLabel}: ` : ''}{format(new Date(date), 'dd/MM HH:mm', { locale: ptBR })}
           </span>
         </div>
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           {loja && (
             <Badge variant="secondary" className="text-[10px]">{loja}</Badge>
+          )}
+          {patio && patio !== loja && (
+            <Badge variant="outline" className="text-[10px] border-primary/30 text-primary" title="Loja onde a moto está fisicamente">Pátio: {patio}</Badge>
           )}
           {extraBadge && (
             <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ${extraBadge.className || ''}`}>

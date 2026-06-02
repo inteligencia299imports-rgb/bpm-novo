@@ -70,7 +70,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const estRes = await fetchAllRange<any>(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id, status, observacoes').eq('tipo', 'consignada'));
+    const estRes = await fetchAllRange<any>(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id, status, observacoes, loja').eq('tipo', 'consignada'));
 
     const result = await fetchAllRange<any>(() => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
     const atError = result.error;
@@ -239,7 +239,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
                       const owner = a._proprietario;
                       const clientName = parte === 'parte1' && owner ? owner.nome_cliente : a.nome_cliente;
                       const clientPhone = parte === 'parte1' && owner ? owner.telefone : a.telefone;
-                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} date={a.data_venda || a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />;
+                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={est?.loja} date={a.data_venda || a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />;
                     })}
                   </div>
                 </div>
