@@ -74,21 +74,22 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
     const { prevFromIso, prevToIso } = getPreviousPeriodIso(dateFrom, dateTo);
-    const hasPrev = Boolean(prevFromIso && prevToIso);
 
-    const [kpisRes, kpisPrevRes, vendedoresRes, vendidasRes, sinaisRes, mensalRes] = await Promise.all([
-      supabase.rpc('relatorio_showroom_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja, _tipo: filterTipo }),
-      hasPrev
-        ? supabase.rpc('relatorio_showroom_kpis', { _date_from: prevFromIso, _date_to: prevToIso, _loja: filterLoja, _tipo: filterTipo })
-        : Promise.resolve({ data: null } as any),
+    const [kpisRes, vendedoresRes, vendidasRes, sinaisRes, mensalRes] = await Promise.all([
+      supabase.rpc('relatorio_showroom_kpis_comparado', {
+        _date_from: dfParam, _date_to: dtParam,
+        _prev_from: prevFromIso, _prev_to: prevToIso,
+        _loja: filterLoja, _tipo: filterTipo,
+      }),
       supabase.rpc('relatorio_showroom_vendedores', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja, _tipo: filterTipo }),
       supabase.rpc('relatorio_showroom_vendidas', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja, _tipo: filterTipo }),
       supabase.rpc('relatorio_showroom_sinais', { _loja: filterLoja, _tipo: filterTipo }),
       supabase.rpc('relatorio_showroom_mensal', { _loja: filterLoja, _tipo: filterTipo }),
     ]);
 
-    setIndicadores(kpisRes.data || {});
-    setIndicadoresPrev(kpisPrevRes?.data || {});
+    const { atual, anterior } = splitComparado(kpisRes.data as any);
+    setIndicadores(atual);
+    setIndicadoresPrev(anterior);
     const vendedoresData = (vendedoresRes.data || []) as any[];
     setChartByVendedor(vendedoresData.map((v: any) => ({ ...v, nome: abbreviateName(v.nome || 'Desconhecido') })));
     setMotosVendidas((vendidasRes.data || []) as any[]);
