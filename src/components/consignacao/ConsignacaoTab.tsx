@@ -9,6 +9,7 @@ import ProcessCard from '@/components/shared/ProcessCard';
 import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 interface ConsignacaoTabProps {
   initialAvaliacaoId?: string | null;
