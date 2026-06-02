@@ -9,7 +9,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from '@/lib/reportDateRange';
-import { getPreviousPeriodIso } from '@/lib/reportComparison';
+import { getPreviousPeriodIso, splitComparado } from '@/lib/reportComparison';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
 import DeltaBadge from './DeltaBadge';
@@ -56,19 +56,21 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
     const { prevFromIso, prevToIso } = getPreviousPeriodIso(dateFrom, dateTo);
-    const hasPrev = Boolean(prevFromIso && prevToIso);
 
-    const [myKpisRes, myKpisPrevRes, equipeRes, mensalRes] = await Promise.all([
-      supabase.rpc('relatorio_vendedor_kpis', { _user_id: user.id, _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
-      hasPrev
-        ? supabase.rpc('relatorio_vendedor_kpis', { _user_id: user.id, _date_from: prevFromIso, _date_to: prevToIso, _loja: filterLoja })
-        : Promise.resolve({ data: null } as any),
+    const [myKpisRes, equipeRes, mensalRes] = await Promise.all([
+      supabase.rpc('relatorio_vendedor_kpis_comparado', {
+        _user_id: user.id,
+        _date_from: dfParam, _date_to: dtParam,
+        _prev_from: prevFromIso, _prev_to: prevToIso,
+        _loja: filterLoja,
+      }),
       supabase.rpc('relatorio_vendedor_equipe', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja }),
       supabase.rpc('relatorio_vendedor_mensal', { _user_id: user.id, _loja: filterLoja }),
     ]);
 
-    setMyIndicadores(myKpisRes.data || {});
-    setMyIndicadoresPrev(myKpisPrevRes?.data || {});
+    const { atual, anterior } = splitComparado(myKpisRes.data as any);
+    setMyIndicadores(atual);
+    setMyIndicadoresPrev(anterior);
     const equipeData = (equipeRes.data || []) as any[];
     setChartByVendedor(equipeData.map((v: any) => ({ ...v, nome: abbreviateName(v.nome || 'Desconhecido') })));
     setChartByMonth((mensalRes.data || []) as any[]);

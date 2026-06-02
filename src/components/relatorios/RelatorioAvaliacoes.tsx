@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from '@/lib/reportDateRange';
-import { getPreviousPeriodIso, getPreviousPeriod } from '@/lib/reportComparison';
+import { getPreviousPeriodIso, getPreviousPeriod, splitComparado } from '@/lib/reportComparison';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
 import DeltaBadge from './DeltaBadge';
@@ -82,7 +82,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const hasPrev = Boolean(prevFromIso && prevToIso);
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
-    const [mensalRes, detalhesBaseRes, nomesRes, kpisRes, kpisPrevRes] = await Promise.all([
+    const [mensalRes, detalhesBaseRes, nomesRes, kpisRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
       fetchAllRange<any>(() =>
         supabase
@@ -92,11 +92,14 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           .in('atendimentos.interesse', ['trocar', 'vender']),
       ),
       supabase.from('user_roles').select('user_id,nome'),
-      supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: dfParam, _date_to: dtParam, _loja: lojaParam }),
-      hasPrev
-        ? supabase.rpc('relatorio_avaliacoes_kpis', { _date_from: prevFromIso, _date_to: prevToIso, _loja: lojaParam })
-        : Promise.resolve({ data: null } as any),
+      supabase.rpc('relatorio_avaliacoes_kpis_comparado', {
+        _date_from: dfParam, _date_to: dtParam,
+        _prev_from: prevFromIso, _prev_to: prevToIso,
+        _loja: lojaParam,
+      }),
     ]);
+    const { atual: kpisAtual, anterior: kpisAnterior } = splitComparado(kpisRes.data as any);
+    const kpisPrevRes = { data: kpisAnterior } as any;
 
     const normLoja = (loja: string | null | undefined) =>
       (loja || '').toUpperCase().includes('DUCATI') ? 'Ducati' : '299';
