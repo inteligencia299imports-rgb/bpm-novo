@@ -48,6 +48,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [parte, setParte] = useState<Parte>(initialParte || 'parte1');
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
 
   useEffect(() => {
     if (initialParte) setParte(initialParte);
