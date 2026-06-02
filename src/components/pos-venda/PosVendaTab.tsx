@@ -9,7 +9,7 @@ import PosVendaDetail from './PosVendaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { fetchAllRange } from '@/lib/fetchAllRange';
-import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import CidadeFilter, { matchesCidade, getCidadeFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 interface PosVendaTabProps {
   initialAtendimentoId?: string | null;
@@ -134,7 +134,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
                       return (
                          <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone}
                           motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
-                          loja={a.loja} patio={est?.loja} date={a.data_venda || a.updated_at} statusColor={col.hex}
+                          loja={a.loja} patio={getCidadeFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex}
                           onClick={() => setSelectedItem(a)} />
                       );
                     })}

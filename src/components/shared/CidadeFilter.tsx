@@ -16,6 +16,14 @@ export const matchesCidade = (loja: string | null | undefined, cidade: CidadeFil
   return CIDADE_LOJAS[cidade].includes(loja);
 };
 
+export const getCidadeFromLoja = (loja: string | null | undefined): string | null => {
+  if (!loja) return null;
+  for (const [cidade, lojas] of Object.entries(CIDADE_LOJAS)) {
+    if (lojas.includes(loja)) return cidade;
+  }
+  return null;
+};
+
 interface Props {
   value: CidadeFilterValue;
   onChange: (v: CidadeFilterValue) => void;

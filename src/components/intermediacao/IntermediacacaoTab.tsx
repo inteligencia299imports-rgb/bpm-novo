@@ -8,7 +8,7 @@ import ProcessCard from '@/components/shared/ProcessCard';
 import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
-import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import CidadeFilter, { matchesCidade, getCidadeFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 type Parte = 'parte1' | 'parte2';
 
@@ -239,7 +239,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
                       const owner = a._proprietario;
                       const clientName = parte === 'parte1' && owner ? owner.nome_cliente : a.nome_cliente;
                       const clientPhone = parte === 'parte1' && owner ? owner.telefone : a.telefone;
-                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={est?.loja} date={a.data_venda || a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />;
+                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={getCidadeFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />;
                     })}
                   </div>
                 </div>
