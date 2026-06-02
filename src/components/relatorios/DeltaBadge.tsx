@@ -29,7 +29,7 @@ const DeltaBadge: React.FC<Props> = ({ current, previous, invert = false, classN
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 text-[10px] font-semibold whitespace-nowrap',
+        'inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 text-[10px] font-bold whitespace-nowrap',
         color,
         className,
       )}
