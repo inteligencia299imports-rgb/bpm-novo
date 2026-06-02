@@ -533,10 +533,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                     <TableCell className="text-xs whitespace-nowrap">{fmtDuration(r.tempoLibMs)}</TableCell>
                     <TableCell className="text-xs text-center">
                       {(r.retornos ?? 0) > 0 ? (
-                        <span
-                          className="inline-flex items-center justify-center rounded-full text-[10px] font-bold border-2 w-6 h-6"
-                          style={{ borderColor: 'hsl(270, 60%, 48%)', color: 'hsl(270, 60%, 48%)' }}
-                        >
+                        <span className="inline-flex items-center justify-center rounded-full text-[10px] font-bold text-purple-600 border-2 border-purple-500 w-6 h-6">
                           {r.retornos}
                         </span>
                       ) : (
