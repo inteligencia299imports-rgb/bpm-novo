@@ -231,6 +231,8 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 // Sub-components
 const iconColorMap: Record<string, string> = {
   teal: 'bg-[#2F6F84]/10 text-[#2F6F84]',
+  purple: 'bg-[#7e6d9b]/10 text-[#7e6d9b]',
+  emerald: 'bg-[#3a8f6a]/10 text-[#3a8f6a]',
 };
 
 const IndicatorCard: React.FC<{ title: string; value: string | number; current?: number | null; previous?: number | null; icon?: React.ReactNode; iconClass?: string }> = ({ title, value, current, previous, icon, iconClass }) => (
