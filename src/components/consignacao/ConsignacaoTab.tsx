@@ -21,6 +21,8 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
+
 
   useEffect(() => {
     if (initialAvaliacaoId) {
