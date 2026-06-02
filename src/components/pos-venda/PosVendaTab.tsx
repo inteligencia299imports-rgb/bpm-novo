@@ -41,7 +41,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
     const statuses = POS_VENDA_COLUMNS.map(c => c.value);
-    const estRes = await fetchAllRange(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes, tipo'));
+    const estRes = await fetchAllRange(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes, tipo, loja'));
 
     let atData: any[];
     let atError: any;
