@@ -124,6 +124,7 @@ const RelatoriosTab: React.FC = () => {
               </TabsList>
             </div>
           )}
+          {dept !== 'vendedores' && (
           <div className="w-full sm:w-auto flex flex-col items-end gap-1">
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {dept !== 'estoque' && (
@@ -175,6 +176,8 @@ const RelatoriosTab: React.FC = () => {
               );
             })()}
           </div>
+          )}
+
         </div>
         {isGestorOrAvaliador && (
           <>
