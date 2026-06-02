@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Wrench, CheckCircle, Clock, Package, FileSpreadsheet, FileDown } from 'lucide-react';
+import { Wrench, CheckCircle, Clock, Package, FileSpreadsheet, FileDown, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Separator } from '@/components/ui/separator';
@@ -186,6 +186,9 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       const tempoPrepMs = dataPreparacao && dataEntradaPrep ? diffExcludingSundays(new Date(dataEntradaPrep).getTime(), new Date(dataPreparacao).getTime()) : null;
       const tempoLibMs = dataLiberacao && dataEntradaPrep ? diffExcludingSundays(new Date(dataEntradaPrep).getTime(), new Date(dataLiberacao).getTime()) : null;
 
+      // Retornos: cada vez que a moto saiu do estoque e voltou para preparação
+      const retornos = prepHist.filter(h => h.status === 'reenviada_preparacao').length;
+
       const tipoNorm = (a.tipo_aquisicao || '').toLowerCase();
       const tipoCat: 'propria' | 'consignada' = ['consignada', 'consignacao'].includes(tipoNorm) ? 'consignada' : 'propria';
 
@@ -205,6 +208,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         dataLiberacao,
         tempoPrepMs,
         tempoLibMs,
+        retornos,
       };
     });
 
@@ -263,11 +267,14 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const tempoPrepValid = preparadas.map(r => r.tempoPrepMs).filter((v): v is number => v != null && v >= 0);
     const tempoLibValid = liberadas.map(r => r.tempoLibMs).filter((v): v is number => v != null && v >= 0);
     const avg = (arr: number[]) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+    const liberadasSemRetorno = liberadas.filter(r => (r.retornos ?? 0) === 0).length;
+    const aceitePct = liberadas.length ? (liberadasSemRetorno / liberadas.length) * 100 : null;
     return {
       qtdPreparadas: preparadas.length,
       tempoMedioPrep: avg(tempoPrepValid),
       qtdLiberadas: liberadas.length,
       tempoMedioLib: avg(tempoLibValid),
+      aceitePct,
     };
   };
 
@@ -402,12 +409,13 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <KpiCard title="Em Preparação" value={fmtInt(kpis.emPreparacao)} icon={<Wrench className="h-5 w-5" />} color="orange" />
         <KpiCard title="Motos Preparadas" value={fmtInt(kpis.qtdPreparadas)} current={kpis.qtdPreparadas} previous={kpisPrev?.qtdPreparadas} icon={<CheckCircle className="h-5 w-5" />} color="teal" />
         <KpiCard title="Tempo Preparação" value={fmtDuration(kpis.tempoMedioPrep)} current={kpis.tempoMedioPrep ?? 0} previous={kpisPrev?.tempoMedioPrep ?? undefined} invert icon={<Clock className="h-5 w-5" />} color="teal" />
         <KpiCard title="Motos Liberadas" value={fmtInt(kpis.qtdLiberadas)} current={kpis.qtdLiberadas} previous={kpisPrev?.qtdLiberadas} icon={<CheckCircle className="h-5 w-5" />} color="emerald" />
         <KpiCard title="Tempo Liberação" value={fmtDuration(kpis.tempoMedioLib)} current={kpis.tempoMedioLib ?? 0} previous={kpisPrev?.tempoMedioLib ?? undefined} invert icon={<Clock className="h-5 w-5" />} color="emerald" />
+        <KpiCard title="Aceite" value={kpis.aceitePct == null ? '-' : `${Math.round(kpis.aceitePct)}%`} current={kpis.aceitePct ?? 0} previous={kpisPrev?.aceitePct ?? undefined} icon={<Target className="h-5 w-5" />} color="purple" />
       </div>
 
       {/* Charts */}
