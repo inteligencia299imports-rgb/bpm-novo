@@ -186,6 +186,9 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       const tempoPrepMs = dataPreparacao && dataEntradaPrep ? diffExcludingSundays(new Date(dataEntradaPrep).getTime(), new Date(dataPreparacao).getTime()) : null;
       const tempoLibMs = dataLiberacao && dataEntradaPrep ? diffExcludingSundays(new Date(dataEntradaPrep).getTime(), new Date(dataLiberacao).getTime()) : null;
 
+      // Retornos: cada vez que a moto saiu do estoque e voltou para preparação
+      const retornos = prepHist.filter(h => h.status === 'reenviada_preparacao').length;
+
       const tipoNorm = (a.tipo_aquisicao || '').toLowerCase();
       const tipoCat: 'propria' | 'consignada' = ['consignada', 'consignacao'].includes(tipoNorm) ? 'consignada' : 'propria';
 
@@ -205,6 +208,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         dataLiberacao,
         tempoPrepMs,
         tempoLibMs,
+        retornos,
       };
     });
 
