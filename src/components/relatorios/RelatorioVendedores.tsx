@@ -108,22 +108,62 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+        <div className="flex flex-col items-start sm:items-end gap-1">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateFrom && 'text-muted-foreground')}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+            <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateTo && 'text-muted-foreground')}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} disabled={(date: Date) => (dateFrom ? date < dateFrom : false)} locale={ptBR} className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+          </div>
+          {(() => {
+            if (!dateFrom || !dateTo) return null;
+            const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
+            if (!prevFrom || !prevTo) return null;
+            return (
+              <p className="text-xs text-muted-foreground pr-1">
+                Comparado com {format(prevFrom, 'dd/MM/yyyy')} a {format(prevTo, 'dd/MM/yyyy')}
+              </p>
+            );
+          })()}
+        </div>
+      </div>
 
       {myIndicadores && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <IndicatorCard title="Atendimentos" value={fmtInt(myIndicadores.qtdAtendimentos ?? 0)} current={myIndicadores.qtdAtendimentos} previous={myIndicadoresPrev.qtdAtendimentos} icon={<Users className="h-5 w-5" />} />
-          <IndicatorCard title="Sinais" value={fmtInt(myIndicadores.qtdSinais ?? 0)} current={myIndicadores.qtdSinais} previous={myIndicadoresPrev.qtdSinais} icon={<CreditCard className="h-5 w-5" />} iconClass="bg-purple-100 text-purple-600" />
+          <IndicatorCard title="Atendimentos" value={fmtInt(myIndicadores.qtdAtendimentos ?? 0)} current={myIndicadores.qtdAtendimentos} previous={myIndicadoresPrev.qtdAtendimentos} icon={<Users className="h-5 w-5" />} iconClass={iconColorMap.teal} />
+          <IndicatorCard title="Sinais" value={fmtInt(myIndicadores.qtdSinais ?? 0)} current={myIndicadores.qtdSinais} previous={myIndicadoresPrev.qtdSinais} icon={<CreditCard className="h-5 w-5" />} iconClass={iconColorMap.purple} />
           <IndicatorCard
             title="Vendas"
             value={`${fmtInt(myIndicadores.qtdVendas ?? 0)} (${fmtPctInt(myIndicadores.taxaConversao ?? 0)})`}
             current={myIndicadores.qtdVendas}
             previous={myIndicadoresPrev.qtdVendas}
-            icon={<Check className="h-5 w-5 text-green-600" />}
-            iconClass="bg-green-100 text-green-600"
+            icon={<Check className="h-5 w-5" />}
+            iconClass={iconColorMap.emerald}
           />
         </div>
       )}
+
 
       <div className="space-y-1 !mt-8">
         <h2 className="text-lg font-bold text-foreground">Resultado da Equipe</h2>
