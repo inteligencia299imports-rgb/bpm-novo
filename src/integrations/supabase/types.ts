@@ -1318,6 +1318,16 @@ export type Database = {
         Args: { _date_from?: string; _date_to?: string; _loja?: string }
         Returns: Json
       }
+      relatorio_avaliacoes_kpis_comparado: {
+        Args: {
+          _date_from?: string
+          _date_to?: string
+          _loja?: string
+          _prev_from?: string
+          _prev_to?: string
+        }
+        Returns: Json
+      }
       relatorio_avaliacoes_mensal: { Args: { _loja?: string }; Returns: Json }
       relatorio_estoque_kpis:
         | { Args: never; Returns: Json }
@@ -1326,6 +1336,15 @@ export type Database = {
             Args: { p_cutoff?: string; p_loja?: string; p_tipo?: string }
             Returns: Json
           }
+      relatorio_estoque_kpis_comparado: {
+        Args: {
+          p_cutoff: string
+          p_loja?: string
+          p_prev_cutoff?: string
+          p_tipo?: string
+        }
+        Returns: Json
+      }
       relatorio_estoque_mensal:
         | { Args: never; Returns: Json }
         | { Args: { p_cutoff?: string }; Returns: Json }
@@ -1338,6 +1357,17 @@ export type Database = {
           _date_from?: string
           _date_to?: string
           _loja?: string
+          _tipo?: string
+        }
+        Returns: Json
+      }
+      relatorio_showroom_kpis_comparado: {
+        Args: {
+          _date_from?: string
+          _date_to?: string
+          _loja?: string
+          _prev_from?: string
+          _prev_to?: string
           _tipo?: string
         }
         Returns: Json
@@ -1377,6 +1407,17 @@ export type Database = {
           _date_from?: string
           _date_to?: string
           _loja?: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      relatorio_vendedor_kpis_comparado: {
+        Args: {
+          _date_from?: string
+          _date_to?: string
+          _loja?: string
+          _prev_from?: string
+          _prev_to?: string
           _user_id: string
         }
         Returns: Json
