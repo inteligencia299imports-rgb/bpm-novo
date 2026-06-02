@@ -13,7 +13,7 @@ import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
-import { getPreviousMonthDate } from '@/lib/reportComparison';
+import { getPreviousMonthDate, splitComparado } from '@/lib/reportComparison';
 import DeltaBadge from './DeltaBadge';
 
 
@@ -69,9 +69,11 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const prevCutoff = prevCutoffDate.toISOString();
     // Gráficos mensais ignoram filtro de data (apenas cidade e tipo)
     const chartCutoff = new Date().toISOString();
-    const [kpisRes, kpisPrevRes, mensalRes, motosRes] = await Promise.all([
-      supabase.rpc('relatorio_estoque_kpis', { p_cutoff: cutoff, p_loja: filterLoja, p_tipo: filterTipo }),
-      supabase.rpc('relatorio_estoque_kpis', { p_cutoff: prevCutoff, p_loja: filterLoja, p_tipo: filterTipo }),
+    const [kpisRes, mensalRes, motosRes] = await Promise.all([
+      supabase.rpc('relatorio_estoque_kpis_comparado', {
+        p_cutoff: cutoff, p_prev_cutoff: prevCutoff,
+        p_loja: filterLoja, p_tipo: filterTipo,
+      }),
       supabase.rpc('relatorio_estoque_mensal', { p_cutoff: chartCutoff, p_loja: filterLoja, p_tipo: filterTipo }),
       fetchAllRange(() => {
         let q = supabase
@@ -86,8 +88,9 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       }),
     ]);
 
-    setIndicadores(kpisRes.data || {});
-    setIndicadoresPrev(kpisPrevRes?.data || {});
+    const { atual, anterior } = splitComparado(kpisRes.data as any);
+    setIndicadores(atual);
+    setIndicadoresPrev(anterior);
     setChartByMonth((mensalRes.data || []) as any[]);
 
     // Filtro de loja client-side (mesma lógica do RPC: '299' = não Ducati)
