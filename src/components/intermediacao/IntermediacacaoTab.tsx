@@ -139,9 +139,16 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       return status !== 'concluido';
     });
 
+    if (filterCidade !== 'todos') {
+      filtered = filtered.filter((a: any) => {
+        const loja = parte === 'parte1' ? (a._proprietario?.loja || a.loja) : a.loja;
+        return matchesCidade(loja, filterCidade);
+      });
+    }
+
     setItems(filtered);
     setLoading(false);
-  }, [search, parte]);
+  }, [search, parte, filterCidade]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
