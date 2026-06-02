@@ -153,9 +153,29 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     ? { rows: buildRows(motosVendidas, 'dataVenda'), title: 'Vendidas', dateHeader: 'Data Venda', count: motosVendidas.length }
     : { rows: buildRows(motosSinal, 'dataSinal'), title: 'Com Sinal', dateHeader: 'Data Sinal', count: motosSinal.length };
 
+  const computeShowroomTotals = (rows: ReturnType<typeof buildRows>) => {
+    const sum = (k: keyof typeof rows[number]) => rows.reduce((s, r) => s + (Number(r[k]) || 0), 0);
+    const avgNonZero = (k: keyof typeof rows[number]) => {
+      const arr = rows.filter(r => Number(r[k]) !== 0);
+      return arr.length ? arr.reduce((s, r) => s + Number(r[k]), 0) / arr.length : 0;
+    };
+    return {
+      quantoVende: sum('quantoVende'),
+      valorFechamento: sum('valorFechamento'),
+      margemPrevista: sum('margemPrevista'),
+      pctMargemPrevista: avgNonZero('pctMargemPrevista'),
+      valorVenda: sum('valorVenda'),
+      margemOficina: sum('margemOficina'),
+      abatimentos: sum('abatimentos'),
+      margemRealizada: sum('margemRealizada'),
+      pctMargemRealizada: avgNonZero('pctMargemRealizada'),
+    };
+  };
+
   const handleExportExcel = async () => {
     const XLSX = await import('xlsx');
     const { rows, title, dateHeader } = currentList();
+    const t = computeShowroomTotals(rows);
     const aoa = [[
       'Cliente','Vendedor','Loja','Tipo','Modelo','Placa', dateHeader,
       'Quanto Vende','V. Fechamento','Margem Prev. (R$)','Margem Prev. (%)',
@@ -165,6 +185,11 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       r.quantoVende, r.valorFechamento, r.margemPrevista, r.pctMargemPrevista,
       r.valorVenda, r.margemOficina, r.abatimentos, r.margemRealizada, r.pctMargemRealizada,
     ])];
+    aoa.push([
+      `TOTAL (${rows.length})`, '', '', '', '', '', '',
+      t.quantoVende, t.valorFechamento, t.margemPrevista, t.pctMargemPrevista,
+      t.valorVenda, t.margemOficina, t.abatimentos, t.margemRealizada, t.pctMargemRealizada,
+    ]);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = [22,18,10,12,22,10,11,14,14,14,10,14,12,12,14,10].map(w => ({ wch: w }));
     const range = XLSX.utils.decode_range(ws['!ref'] as string);
@@ -182,6 +207,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     const autoTable = (await import('jspdf-autotable')).default;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     const { rows, title, dateHeader, count } = currentList();
+    const t = computeShowroomTotals(rows);
     const periodo = (dateFrom || dateTo)
       ? `${dateFrom ? format(dateFrom, 'dd/MM/yyyy') : '...'} a ${dateTo ? format(dateTo, 'dd/MM/yyyy') : '...'}`
       : 'Todos';
@@ -200,8 +226,16 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         fmtBRL(r.valorVenda), fmtBRL(r.margemOficina), fmtBRL(r.abatimentos),
         `${fmtBRL(r.margemRealizada)} (${fmtPct(r.pctMargemRealizada)})`,
       ]),
+      foot: [[
+        `TOTAL (${count})`, '', '', '', '', '', '',
+        fmtBRL(t.quantoVende), fmtBRL(t.valorFechamento),
+        `${fmtBRL(t.margemPrevista)} (${fmtPct(t.pctMargemPrevista)})`,
+        fmtBRL(t.valorVenda), fmtBRL(t.margemOficina), fmtBRL(t.abatimentos),
+        `${fmtBRL(t.margemRealizada)} (${fmtPct(t.pctMargemRealizada)})`,
+      ]],
       styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
       headStyles: { fillColor: [47, 111, 132], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      footStyles: { fillColor: [241, 244, 247], textColor: [30, 41, 59], fontStyle: 'bold', fontSize: 7.5 },
       alternateRowStyles: { fillColor: [245, 247, 250] },
       columnStyles: { 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right' }, 11: { halign: 'right' }, 12: { halign: 'right' }, 13: { halign: 'right' } },
       didParseCell: (data) => {
@@ -215,6 +249,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     });
     doc.save(`showroom_${title.toLowerCase().replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
   };
+
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;

@@ -332,16 +332,34 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       tempoPrep: fmtDuration(r.tempoPrepMs),
       liberacao: r.dataLiberacao ? format(new Date(r.dataLiberacao), 'dd/MM/yyyy HH:mm') : '-',
       tempoLib: fmtDuration(r.tempoLibMs),
-      retornos: String(r.retornos ?? 0),
+      retornos: Number(r.retornos ?? 0),
+      _tempoPrepMs: r.tempoPrepMs,
+      _tempoLibMs: r.tempoLibMs,
     };
   });
+
+  const computePrepTotals = (rows: ReturnType<typeof buildExportRows>) => {
+    const prepMs = rows.map(r => r._tempoPrepMs).filter((v): v is number => v != null && v >= 0);
+    const libMs = rows.map(r => r._tempoLibMs).filter((v): v is number => v != null && v >= 0);
+    const avg = (arr: number[]) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
+    const sumRet = rows.reduce((s, r) => s + (r.retornos || 0), 0);
+    return {
+      tempoPrepAvg: fmtDuration(Math.round(avg(prepMs))),
+      tempoLibAvg: fmtDuration(Math.round(avg(libMs))),
+      retornosSum: sumRet,
+    };
+  };
 
   const handleExportExcel = async () => {
     const XLSX = await import('xlsx');
     const rows = buildExportRows();
-    const aoa = [[
+    const t = computePrepTotals(rows);
+    const aoa: any[][] = [[
       'Cliente','Modelo','Placa','Tipo','Entrada','Status','Preparação','Tempo Prep.','Liberação','Tempo Lib.','Retornos',
     ], ...rows.map(r => [r.cliente, r.modelo, r.placa, r.tipo, r.entrada, r.status, r.preparacao, r.tempoPrep, r.liberacao, r.tempoLib, r.retornos])];
+    aoa.push([
+      `TOTAL (${rows.length})`, '', '', '', '', '', `Méd.`, t.tempoPrepAvg, `Méd.`, t.tempoLibAvg, t.retornosSum,
+    ]);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = [22,26,10,12,18,12,18,16,18,16,10].map(w => ({ wch: w }));
     const wb = XLSX.utils.book_new();
@@ -354,6 +372,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const autoTable = (await import('jspdf-autotable')).default;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     const rows = buildExportRows();
+    const t = computePrepTotals(rows);
     const periodo = (dateFrom || dateTo)
       ? `${dateFrom ? format(dateFrom, 'dd/MM/yyyy') : '...'} a ${dateTo ? format(dateTo, 'dd/MM/yyyy') : '...'}`
       : 'Todos';
@@ -365,9 +384,13 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     autoTable(doc, {
       startY: 64,
       head: [['Cliente','Modelo','Placa','Tipo','Entrada','Status','Preparação','Tempo Prep.','Liberação','Tempo Lib.','Retornos']],
-      body: rows.map(r => [r.cliente, r.modelo, r.placa, r.tipo, r.entrada, r.status, r.preparacao, r.tempoPrep, r.liberacao, r.tempoLib, r.retornos]),
+      body: rows.map(r => [r.cliente, r.modelo, r.placa, r.tipo, r.entrada, r.status, r.preparacao, r.tempoPrep, r.liberacao, r.tempoLib, String(r.retornos)]),
+      foot: [[
+        `TOTAL (${rows.length})`, '', '', '', '', '', 'Média', t.tempoPrepAvg, 'Média', t.tempoLibAvg, String(t.retornosSum),
+      ]],
       styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
       headStyles: { fillColor: [47, 111, 132], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      footStyles: { fillColor: [241, 244, 247], textColor: [30, 41, 59], fontStyle: 'bold', fontSize: 7.5 },
       alternateRowStyles: { fillColor: [245, 247, 250] },
       didParseCell: (data) => {
         if (data.section !== 'body') return;
@@ -382,6 +405,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     });
     doc.save(`preparacao_${new Date().toISOString().slice(0,10)}.pdf`);
   };
+
 
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
 
