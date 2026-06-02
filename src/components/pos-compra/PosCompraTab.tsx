@@ -72,10 +72,11 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
       let mapped = (data || [])
         .map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
+      if (filterCidade !== 'todos') { mapped = mapped.filter((a: any) => matchesCidade(a.atendimento?.loja, filterCidade)); }
       setItems(mapped);
     }
     setLoading(false);
-  }, [search]);
+  }, [search, filterCidade]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
   const getColumnItems = (status: PosCompraStatus) => items.filter((a: any) => (a.pos_compra_status || 'em_aberto') === status);
