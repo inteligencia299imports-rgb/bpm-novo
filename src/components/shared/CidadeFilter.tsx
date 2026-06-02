@@ -24,6 +24,17 @@ export const getCidadeFromLoja = (loja: string | null | undefined): string | nul
   return null;
 };
 
+export const LOJA_SIGLA: Record<string, string> = {
+  '299i': 'BSB', '299s': 'BSB', 'Aventura': 'BSB', 'Ducati BSB': 'BSB',
+  '299f': 'FLN', 'Ducati FLN': 'FLN',
+  '299p': 'POA', 'Ducati POA': 'POA',
+};
+
+export const getSiglaFromLoja = (loja: string | null | undefined): string | null => {
+  if (!loja) return null;
+  return LOJA_SIGLA[loja] || null;
+};
+
 interface Props {
   value: CidadeFilterValue;
   onChange: (v: CidadeFilterValue) => void;
