@@ -503,7 +503,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                 <TableHead>Tempo Prep.</TableHead>
                 <TableHead>Liberação</TableHead>
                 <TableHead>Tempo Lib.</TableHead>
-                <TableHead className="text-center">Retornos</TableHead>
+                <TableHead className="text-center">Rt</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
