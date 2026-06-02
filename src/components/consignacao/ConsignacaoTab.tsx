@@ -9,6 +9,7 @@ import ProcessCard from '@/components/shared/ProcessCard';
 import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 interface ConsignacaoTabProps {
   initialAvaliacaoId?: string | null;
@@ -20,6 +21,8 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
+
 
   useEffect(() => {
     if (initialAvaliacaoId) {
@@ -65,10 +68,11 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
       let mapped = (data || [])
         .map((d: any) => ({ ...d, atendimento: d.atendimentos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
+      if (filterCidade !== 'todos') { mapped = mapped.filter((a: any) => matchesCidade(a.atendimento?.loja, filterCidade)); }
       setItems(mapped);
     }
     setLoading(false);
-  }, [search]);
+  }, [search, filterCidade]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
   const getColumnItems = (status: ConsignacaoStatus) => items.filter((a: any) => (a.consignacao_status || 'em_aberto') === status);
@@ -88,6 +92,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
           {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>}
         </div>
       </div>
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
       {loading ? (
         <KanbanSkeleton columns={4} />
       ) : (

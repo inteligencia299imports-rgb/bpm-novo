@@ -9,6 +9,7 @@ import PosVendaDetail from './PosVendaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { fetchAllRange } from '@/lib/fetchAllRange';
+import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 interface PosVendaTabProps {
   initialAtendimentoId?: string | null;
@@ -20,6 +21,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
 
   useEffect(() => {
     if (initialAtendimentoId) {
@@ -79,9 +81,12 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
       const s = search.trim().toLowerCase();
       filtered = filtered.filter((a: any) => [a.nome_cliente, a.telefone, a.loja].some(f => f && String(f).toLowerCase().includes(s)));
     }
+    if (filterCidade !== 'todos') {
+      filtered = filtered.filter((a: any) => matchesCidade(a.loja, filterCidade));
+    }
     setItems(filtered);
     setLoading(false);
-  }, [search]);
+  }, [search, filterCidade]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
   const getColumnItems = (status: PosVendaStatus) => items.filter((a: any) => (a.pos_venda_status || 'em_aberto') === status);
@@ -106,6 +111,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
           {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>}
         </div>
       </div>
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
       {loading ? (
         <KanbanSkeleton columns={4} />
       ) : (

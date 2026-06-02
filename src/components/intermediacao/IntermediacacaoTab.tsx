@@ -8,6 +8,7 @@ import ProcessCard from '@/components/shared/ProcessCard';
 import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 type Parte = 'parte1' | 'parte2';
 
@@ -47,6 +48,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [parte, setParte] = useState<Parte>(initialParte || 'parte1');
+  const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
 
   useEffect(() => {
     if (initialParte) setParte(initialParte);
@@ -137,9 +139,16 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       return status !== 'concluido';
     });
 
+    if (filterCidade !== 'todos') {
+      filtered = filtered.filter((a: any) => {
+        const loja = parte === 'parte1' ? (a._proprietario?.loja || a.loja) : a.loja;
+        return matchesCidade(loja, filterCidade);
+      });
+    }
+
     setItems(filtered);
     setLoading(false);
-  }, [search, parte]);
+  }, [search, parte, filterCidade]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
@@ -207,6 +216,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
           {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>}
         </div>
       </div>
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
       {loading ? (
         <KanbanSkeleton columns={3} />
       ) : (
