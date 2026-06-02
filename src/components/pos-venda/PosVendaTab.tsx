@@ -9,6 +9,7 @@ import PosVendaDetail from './PosVendaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { fetchAllRange } from '@/lib/fetchAllRange';
+import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 interface PosVendaTabProps {
   initialAtendimentoId?: string | null;
