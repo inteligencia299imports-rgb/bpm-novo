@@ -69,9 +69,12 @@ const ProcessCard: React.FC<ProcessCardProps> = ({
             {dateLabel ? `${dateLabel}: ` : ''}{format(new Date(date), 'dd/MM HH:mm', { locale: ptBR })}
           </span>
         </div>
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           {loja && (
             <Badge variant="secondary" className="text-[10px]">{loja}</Badge>
+          )}
+          {patio && patio !== loja && (
+            <Badge variant="outline" className="text-[10px] border-primary/30 text-primary" title="Loja onde a moto está fisicamente">Pátio: {patio}</Badge>
           )}
           {extraBadge && (
             <Badge variant="outline" className={`text-[10px] shrink-0 whitespace-nowrap ${extraBadge.className || ''}`}>
