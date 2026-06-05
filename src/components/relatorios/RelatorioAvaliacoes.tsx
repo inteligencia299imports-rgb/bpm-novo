@@ -13,6 +13,8 @@ import { getPreviousPeriodIso, getPreviousPeriod, splitComparado } from '@/lib/r
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
 import DeltaBadge from './DeltaBadge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface RelatorioAvaliacoesProps {
   dateFrom: Date | undefined;
