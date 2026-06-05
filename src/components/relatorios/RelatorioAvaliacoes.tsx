@@ -64,6 +64,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   const [chartByAvaliador, setChartByAvaliador] = useState<any[]>([]);
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
+  const [compararPeriodo, setCompararPeriodo] = useState(false);
 
   const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v); };
 
