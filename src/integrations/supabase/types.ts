@@ -1251,6 +1251,16 @@ export type Database = {
       }
     }
     Functions: {
+      _debug_aquisicoes_tipos: {
+        Args: { _date_from: string; _date_to: string }
+        Returns: {
+          in_window_by_created: number
+          in_window_by_sh: number
+          in_window_by_updated: number
+          tipo: string
+          total: number
+        }[]
+      }
       atendimento_has_avaliacao: {
         Args: { _atendimento_id: string }
         Returns: boolean
