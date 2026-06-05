@@ -82,15 +82,39 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const hasPrev = Boolean(prevFromIso && prevToIso);
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
-    const [mensalRes, detalhesBaseRes, nomesRes, kpisRes] = await Promise.all([
+    // Janela ampla cobrindo período atual + anterior (se houver)
+    const windowFromIso = hasPrev && prevFromIso && dfParam
+      ? (prevFromIso < dfParam ? prevFromIso : dfParam)
+      : dfParam;
+    const windowToIso = dtParam;
+
+    const baseSelect = 'id,avaliador_id,tipo_aquisicao,created_at,updated_at,situacao,atendimentos!inner(interesse,loja)';
+
+    const [mensalRes, baseByCreatedRes, histPeriodoRes, nomesRes, kpisRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
-      fetchAllRange<any>(() =>
-        supabase
+      // Apenas avaliações criadas na janela do período (atual + anterior)
+      fetchAllRange<any>(() => {
+        let q = supabase
           .from('avaliacoes')
-          .select('id,avaliador_id,tipo_aquisicao,created_at,updated_at,situacao,atendimentos!inner(interesse,loja)')
+          .select(baseSelect)
           .neq('situacao', 'sem_avaliar')
-          .in('atendimentos.interesse', ['trocar', 'vender']),
-      ),
+          .in('atendimentos.interesse', ['trocar', 'vender']);
+        if (windowFromIso) q = q.gte('created_at', windowFromIso);
+        if (windowToIso) q = q.lte('created_at', windowToIso);
+        return q;
+      }),
+      // Status history "adquirida" dentro do período atual — captura aquisições de avaliações criadas antes
+      dfParam && dtParam
+        ? fetchAllRange<any>(() =>
+            supabase
+              .from('status_history')
+              .select('entity_id,created_at')
+              .eq('entity_type', 'avaliacao')
+              .eq('status', 'adquirida')
+              .gte('created_at', dfParam)
+              .lte('created_at', dtParam),
+          )
+        : Promise.resolve({ data: [], error: null } as any),
       supabase.from('user_roles').select('user_id,nome'),
       supabase.rpc('relatorio_avaliacoes_kpis_comparado', {
         _date_from: dfParam, _date_to: dtParam,
@@ -104,40 +128,48 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const normLoja = (loja: string | null | undefined) =>
       (loja || '').toUpperCase().includes('DUCATI') ? 'Ducati' : '299';
 
-    const detalhesBase = ((detalhesBaseRes.data || []) as any[]).filter((item: any) => {
+    // Histórico do período atual — menor created_at por avaliação
+    const historicosPorAvaliacao = new Map<string, string>();
+    for (const item of ((histPeriodoRes as any).data || []) as any[]) {
+      const current = historicosPorAvaliacao.get(item.entity_id);
+      if (!current || item.created_at < current) {
+        historicosPorAvaliacao.set(item.entity_id, item.created_at);
+      }
+    }
+
+    const baseByCreated = ((baseByCreatedRes.data || []) as any[]).filter((item: any) => {
       if (lojaParam === 'todos') return true;
       return normLoja(item.atendimentos?.loja) === lojaParam;
     });
+    const baseByCreatedIds = new Set(baseByCreated.map((item: any) => item.id));
+
+    // Buscar avaliações adquiridas no período mas criadas fora da janela
+    const extraIds = Array.from(historicosPorAvaliacao.keys()).filter((id) => !baseByCreatedIds.has(id));
+    let baseExtra: any[] = [];
+    if (extraIds.length > 0) {
+      const extraRes = await Promise.all(
+        chunkArray(extraIds, 200).map((ids) =>
+          fetchAllRange<any>(() =>
+            supabase
+              .from('avaliacoes')
+              .select(baseSelect)
+              .neq('situacao', 'sem_avaliar')
+              .in('atendimentos.interesse', ['trocar', 'vender'])
+              .in('id', ids),
+          ),
+        ),
+      );
+      baseExtra = extraRes.flatMap((r) => (r.data || []) as any[]).filter((item: any) => {
+        if (lojaParam === 'todos') return true;
+        return normLoja(item.atendimentos?.loja) === lojaParam;
+      });
+    }
+
+    const detalhesBase = [...baseByCreated, ...baseExtra];
     const detalhesPeriodo = detalhesBase.filter((item: any) => isInDateRange(item.created_at, dfParam, dtParam));
     const detalhesPeriodoPrev = hasPrev
       ? detalhesBase.filter((item: any) => isInDateRange(item.created_at, prevFromIso, prevToIso))
       : [];
-    const aquisicaoIds = detalhesBase.map((item: any) => item.id).filter(Boolean);
-    const historicosPorAvaliacao = new Map<string, string>();
-
-    if (aquisicaoIds.length > 0) {
-      const historicoRes = await Promise.all(
-        chunkArray(aquisicaoIds, 200).map((ids) =>
-          fetchAllRange<any>(() =>
-            supabase
-              .from('status_history')
-              .select('entity_id,created_at')
-              .eq('entity_type', 'avaliacao')
-              .eq('status', 'adquirida')
-              .in('entity_id', ids),
-          ),
-        ),
-      );
-
-      for (const response of historicoRes) {
-        for (const item of response.data || []) {
-          const current = historicosPorAvaliacao.get(item.entity_id);
-          if (!current || item.created_at < current) {
-            historicosPorAvaliacao.set(item.entity_id, item.created_at);
-          }
-        }
-      }
-    }
 
     const aquisicoesPeriodo = detalhesBase.filter((item: any) => {
       const tipo = normalizeText(item.tipo_aquisicao);
