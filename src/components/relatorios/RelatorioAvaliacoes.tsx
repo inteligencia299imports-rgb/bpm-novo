@@ -182,7 +182,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const totalAvaliacoesPrev = detalhesPeriodoPrev.filter((item: any) => Boolean(item.avaliador_id)).length;
 
     setIndicadores({
-      ...((kpisRes.data as any) || {}),
+      ...kpisAtual,
       total_avaliacoes: totalAvaliacoesComAvaliador,
     });
     setIndicadoresPrev({
