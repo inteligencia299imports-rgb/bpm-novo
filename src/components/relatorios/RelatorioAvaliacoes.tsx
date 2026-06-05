@@ -13,8 +13,6 @@ import { getPreviousPeriodIso, getPreviousPeriod, splitComparado } from '@/lib/r
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
 import DeltaBadge from './DeltaBadge';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 
 interface RelatorioAvaliacoesProps {
   dateFrom: Date | undefined;
@@ -64,7 +62,6 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   const [chartByAvaliador, setChartByAvaliador] = useState<any[]>([]);
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [filterLoja, setFilterLojaState] = useState('todos');
-  const [compararPeriodo, setCompararPeriodo] = useState(false);
 
   const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v); };
 
@@ -82,10 +79,10 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
     const { prevFromIso, prevToIso } = getPreviousPeriodIso(dateFrom, dateTo);
     const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
-    const hasPrev = compararPeriodo && Boolean(prevFromIso && prevToIso);
+    const hasPrev = Boolean(prevFromIso && prevToIso);
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
-    // Janela: só amplia para o período anterior se a comparação estiver ativa
+    // Janela ampla cobrindo período atual + anterior (se houver)
     const windowFromIso = hasPrev && prevFromIso && dfParam
       ? (prevFromIso < dfParam ? prevFromIso : dfParam)
       : dfParam;
@@ -93,19 +90,9 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
     const baseSelect = 'id,avaliador_id,tipo_aquisicao,created_at,updated_at,situacao,atendimentos!inner(interesse,loja)';
 
-    const kpisPromise = hasPrev
-      ? supabase.rpc('relatorio_avaliacoes_kpis_comparado', {
-          _date_from: dfParam, _date_to: dtParam,
-          _prev_from: prevFromIso, _prev_to: prevToIso,
-          _loja: lojaParam,
-        })
-      : supabase.rpc('relatorio_avaliacoes_kpis', {
-          _date_from: dfParam, _date_to: dtParam, _loja: lojaParam,
-        });
-
     const [mensalRes, baseByCreatedRes, histPeriodoRes, nomesRes, kpisRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
-      // Apenas avaliações criadas na janela do período (atual + anterior se comparando)
+      // Apenas avaliações criadas na janela do período (atual + anterior)
       fetchAllRange<any>(() => {
         let q = supabase
           .from('avaliacoes')
@@ -129,11 +116,13 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           )
         : Promise.resolve({ data: [], error: null } as any),
       supabase.from('user_roles').select('user_id,nome'),
-      kpisPromise,
+      supabase.rpc('relatorio_avaliacoes_kpis_comparado', {
+        _date_from: dfParam, _date_to: dtParam,
+        _prev_from: prevFromIso, _prev_to: prevToIso,
+        _loja: lojaParam,
+      }),
     ]);
-    const { atual: kpisAtual, anterior: kpisAnterior } = hasPrev
-      ? splitComparado(kpisRes.data as any)
-      : { atual: (kpisRes.data as any) || {}, anterior: {} };
+    const { atual: kpisAtual, anterior: kpisAnterior } = splitComparado(kpisRes.data as any);
     const kpisPrevRes = { data: kpisAnterior } as any;
 
     const normLoja = (loja: string | null | undefined) =>
@@ -248,7 +237,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     setChartByAvaliador(avalData);
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
-  }, [dateFrom, dateTo, filterLoja, compararPeriodo]);
+  }, [dateFrom, dateTo, filterLoja]);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
@@ -299,15 +288,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <LojaFilter value={filterLoja} onChange={setFilterLoja} />
-        <div className="flex items-center gap-2">
-          <Switch id="comparar-periodo-aval" checked={compararPeriodo} onCheckedChange={setCompararPeriodo} />
-          <Label htmlFor="comparar-periodo-aval" className="text-sm text-muted-foreground cursor-pointer">
-            Comparar com período anterior
-          </Label>
-        </div>
-      </div>
+      <LojaFilter value={filterLoja} onChange={setFilterLoja} />
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
