@@ -82,10 +82,10 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
     const { prevFromIso, prevToIso } = getPreviousPeriodIso(dateFrom, dateTo);
     const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
-    const hasPrev = Boolean(prevFromIso && prevToIso);
+    const hasPrev = compararPeriodo && Boolean(prevFromIso && prevToIso);
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
-    // Janela ampla cobrindo período atual + anterior (se houver)
+    // Janela: só amplia para o período anterior se a comparação estiver ativa
     const windowFromIso = hasPrev && prevFromIso && dfParam
       ? (prevFromIso < dfParam ? prevFromIso : dfParam)
       : dfParam;
@@ -93,9 +93,19 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
     const baseSelect = 'id,avaliador_id,tipo_aquisicao,created_at,updated_at,situacao,atendimentos!inner(interesse,loja)';
 
+    const kpisPromise = hasPrev
+      ? supabase.rpc('relatorio_avaliacoes_kpis_comparado', {
+          _date_from: dfParam, _date_to: dtParam,
+          _prev_from: prevFromIso, _prev_to: prevToIso,
+          _loja: lojaParam,
+        })
+      : supabase.rpc('relatorio_avaliacoes_kpis', {
+          _date_from: dfParam, _date_to: dtParam, _loja: lojaParam,
+        });
+
     const [mensalRes, baseByCreatedRes, histPeriodoRes, nomesRes, kpisRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
-      // Apenas avaliações criadas na janela do período (atual + anterior)
+      // Apenas avaliações criadas na janela do período (atual + anterior se comparando)
       fetchAllRange<any>(() => {
         let q = supabase
           .from('avaliacoes')
@@ -119,13 +129,11 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           )
         : Promise.resolve({ data: [], error: null } as any),
       supabase.from('user_roles').select('user_id,nome'),
-      supabase.rpc('relatorio_avaliacoes_kpis_comparado', {
-        _date_from: dfParam, _date_to: dtParam,
-        _prev_from: prevFromIso, _prev_to: prevToIso,
-        _loja: lojaParam,
-      }),
+      kpisPromise,
     ]);
-    const { atual: kpisAtual, anterior: kpisAnterior } = splitComparado(kpisRes.data as any);
+    const { atual: kpisAtual, anterior: kpisAnterior } = hasPrev
+      ? splitComparado(kpisRes.data as any)
+      : { atual: (kpisRes.data as any) || {}, anterior: {} };
     const kpisPrevRes = { data: kpisAnterior } as any;
 
     const normLoja = (loja: string | null | undefined) =>
