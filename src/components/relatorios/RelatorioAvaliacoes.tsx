@@ -299,7 +299,15 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+        <div className="flex items-center gap-2">
+          <Switch id="comparar-periodo-aval" checked={compararPeriodo} onCheckedChange={setCompararPeriodo} />
+          <Label htmlFor="comparar-periodo-aval" className="text-sm text-muted-foreground cursor-pointer">
+            Comparar com período anterior
+          </Label>
+        </div>
+      </div>
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
