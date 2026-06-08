@@ -167,14 +167,15 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
     }
   };
 
-  const handleEnviarPesquisa = async (e: React.MouseEvent, atendimento: any) => {
+  const handleEnviarPesquisa = async (e: React.MouseEvent, atendimento: any, forceCopy = false) => {
     e.stopPropagation();
     const telefone = atendimento.telefone?.replace(/\D/g, '') || '';
     const id = atendimento.id;
     const previousStatus = atendimento.nps_status || 'em_aberto';
     const link = `https://tally.so/r/OD4Gp7?id=${id}`;
+    const useCopy = forceCopy || previousStatus === 'enviado';
 
-    if (previousStatus === 'enviado') {
+    if (useCopy) {
       try {
         await navigator.clipboard.writeText(link);
         toast.success('Link copiado');
@@ -199,12 +200,13 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
         status: isManual ? 'NPS ENVIADO MANUALMENTE' : 'enviado',
         changed_by: user?.id,
         changed_by_name: userName,
-        observacoes: isManual ? 'Pesquisa reenviada (link copiado)' : 'Pesquisa enviada',
+        observacoes: isManual ? 'Pesquisa reenviada (link copiado)' : (forceCopy ? 'Pesquisa enviada (link copiado)' : 'Pesquisa enviada'),
       });
       if (!isManual) toast.success('Pesquisa enviada');
       fetchData();
     }
   };
+
 
   return (
     <div className="space-y-4">
@@ -273,6 +275,11 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                           readyReason={reason}
                           actions={
                             <>
+                              {(a.nps_status || 'em_aberto') === 'em_aberto' && entregaMap[a.id] && (
+                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a, true)}>
+                                  <Copy className="h-3 w-3" /> Copiar Link
+                                </Button>
+                              )}
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
                                 <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
                                   <Copy className="h-3 w-3" /> Copiar Link
@@ -284,6 +291,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                                 </Button>
                               )}
                             </>
+
                           }
                         />
                       );})
