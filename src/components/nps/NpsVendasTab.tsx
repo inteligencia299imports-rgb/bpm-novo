@@ -275,6 +275,11 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                           readyReason={reason}
                           actions={
                             <>
+                              {(a.nps_status || 'em_aberto') === 'em_aberto' && entregaMap[a.id] && (
+                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a, true)}>
+                                  <Copy className="h-3 w-3" /> Copiar Link
+                                </Button>
+                              )}
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
                                 <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
                                   <Copy className="h-3 w-3" /> Copiar Link
@@ -286,6 +291,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                                 </Button>
                               )}
                             </>
+
                           }
                         />
                       );})
