@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
-import { Search, X, Send, Eye } from 'lucide-react';
+import { Search, X, Send, Eye, Copy } from 'lucide-react';
 import { SITUACOES_NPS } from '@/types/crm';
 import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
@@ -282,7 +282,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                               )}
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
                                 <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
-                                  <Send className="h-3 w-3" /> Enviar
+                                  <Copy className="h-3 w-3" /> Copiar Link
                                 </Button>
                               )}
                               {(a.nps_status || 'em_aberto') === 'respondido' && (
