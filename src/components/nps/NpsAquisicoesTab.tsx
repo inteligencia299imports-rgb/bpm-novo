@@ -226,7 +226,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     const telefone = item.atendimento?.telefone?.replace(/\D/g, '') || '';
     const atendimentoId = item.atendimento_id;
     const previousStatus = item.nps_status || 'em_aberto';
-    const link = `https://tally.so/r/VLZ5Ej?id=${atendimentoId}`;
+    const link = `https://tally.so/r/VLZ5Ej?id=${item.id}`;
 
     if (previousStatus === 'enviado') {
       try {
