@@ -35,9 +35,10 @@ interface RelatorioShowroomProps {
   setDateTo: (d: Date | undefined) => void;
   onRegisterClear?: (fn: () => void) => void;
   onFilterChange?: (loja: string, tipo: string) => void;
+  showFilters?: boolean;
 }
 
-const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
+const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const { userName } = useAuth();
   const isMobile = useIsMobile();
   const chartH = isMobile ? 220 : 300;
