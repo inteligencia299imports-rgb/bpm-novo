@@ -108,7 +108,7 @@ const RelatoriosTab: React.FC = () => {
       <Tabs value={dept} onValueChange={setDept}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-full">
           {isGestorOrAvaliador && (
-            <div className="w-full sm:w-auto overflow-x-auto">
+            <div className="w-full sm:w-auto overflow-x-auto flex items-center gap-2">
               <TabsList className="w-max">
                 <TabsTrigger value="showroom" className="gap-1.5">
                   <Bike className="h-4 w-4" /> Showroom
@@ -123,10 +123,18 @@ const RelatoriosTab: React.FC = () => {
                   <Package className="h-4 w-4" /> Estoque
                 </TabsTrigger>
               </TabsList>
+              <Button variant="outline" size="icon" className="md:hidden shrink-0" onClick={() => setShowFilters(!showFilters)}>
+                <Filter className="h-4 w-4" />
+              </Button>
             </div>
           )}
+          {!isGestorOrAvaliador && dept !== 'vendedores' && (
+            <Button variant="outline" size="icon" className="md:hidden shrink-0 self-end" onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="h-4 w-4" />
+            </Button>
+          )}
           {dept !== 'vendedores' && (
-          <div className="w-full sm:w-auto flex flex-col items-end gap-1">
+          <div className={`w-full sm:w-auto flex flex-col items-end gap-1 ${showFilters ? 'flex' : 'hidden md:flex'}`}>
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {dept !== 'estoque' && (
                 <>
