@@ -132,19 +132,22 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
           <Filter className="h-4 w-4" />
         </Button>
       </div>
-      <div className={cn('flex flex-wrap items-center gap-1', !showFilters && 'hidden md:flex')}>
-        {(['todos', 'Brasília', 'Florianópolis', 'Porto Alegre'] as const).map(c => (
-          <Button
-            key={c}
-            size="sm"
-            variant={filterCidade === c ? 'default' : 'outline'}
-            className={cn('rounded-full px-4 h-8 text-xs font-medium', filterCidade === c && 'shadow-sm')}
-            onClick={() => setFilterCidade(c)}
-          >
-            {c === 'todos' ? 'Todas Cidades' : c}
-          </Button>
-        ))}
-      </div>
+      <FiltersPanel show={showFilters}>
+        <div className="flex flex-wrap items-center gap-1">
+          {(['todos', 'Brasília', 'Florianópolis', 'Porto Alegre'] as const).map(c => (
+            <Button
+              key={c}
+              size="sm"
+              variant={filterCidade === c ? 'default' : 'outline'}
+              className={cn('rounded-full px-4 h-8 text-xs font-medium', filterCidade === c && 'shadow-sm')}
+              onClick={() => setFilterCidade(c)}
+            >
+              {c === 'todos' ? 'Todas Cidades' : c}
+            </Button>
+          ))}
+        </div>
+      </FiltersPanel>
+
       {loading ? (
         <KanbanSkeleton columns={4} />
       ) : (
