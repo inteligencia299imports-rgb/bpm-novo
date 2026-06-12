@@ -27,6 +27,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [showFilters, setShowFilters] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
