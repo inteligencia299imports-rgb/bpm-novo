@@ -259,7 +259,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className={cn('flex-col gap-3 sm:flex-row sm:items-center sm:justify-between', showFilters ? 'flex' : 'hidden md:flex')}>
         <LojaFilter value={filterLoja} onChange={setFilterLoja} />
         <div className="flex flex-wrap items-center gap-2 max-w-full">
           <span className="text-xs font-medium text-muted-foreground shrink-0">Tipo:</span>
