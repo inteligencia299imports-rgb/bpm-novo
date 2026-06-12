@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
-import { Search, X, Send, Eye, Copy } from 'lucide-react';
+import { Search, X, Send, Eye, Copy, Filter } from 'lucide-react';
 import { SITUACOES_NPS } from '@/types/crm';
 import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
@@ -29,6 +29,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [showFilters, setShowFilters] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
