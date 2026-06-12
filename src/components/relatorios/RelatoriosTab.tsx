@@ -80,6 +80,7 @@ const RelatoriosTab: React.FC = () => {
     }
   }, [dept]);
   const [hasInternalFilters, setHasInternalFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   const hasActiveFilters = !!(dateFrom || dateTo || hasInternalFilters);
 
