@@ -261,21 +261,22 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+      <div className="flex flex-row gap-3 items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
             <Bike className="h-7 w-7 text-primary" />
             <h1 className="text-2xl font-bold text-foreground">Showroom</h1>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">Pipeline de atendimentos</p>
+          <p className="text-sm text-muted-foreground mt-0.5 hidden sm:block">Pipeline de atendimentos</p>
         </div>
-        <Button onClick={() => setShowForm(true)} className="gap-2 bg-primary hover:bg-primary-dark text-primary-foreground shadow-soft">
-          <Plus className="h-4 w-4" /> Novo Atendimento
+        <Button onClick={() => setShowForm(true)} className="gap-2 bg-primary hover:bg-primary-dark text-primary-foreground shadow-soft shrink-0">
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Novo Atendimento</span>
         </Button>
       </div>
 
       {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -285,8 +286,9 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
             className="pl-10 bg-card border-border"
           />
         </div>
-        <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="gap-2 border-border text-foreground hover:bg-surface-hover">
-          <Filter className="h-4 w-4" /> Filtros
+        <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="gap-2 border-border text-foreground hover:bg-surface-hover shrink-0">
+          <Filter className="h-4 w-4" />
+          <span className="hidden sm:inline">Filtros</span>
         </Button>
       </div>
 
