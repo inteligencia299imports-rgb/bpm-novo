@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import CidadeFilter, { matchesCidade, getSiglaFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import FiltersPanel from '@/components/shared/FiltersPanel';
+
 
 interface PosVendaTabProps {
   initialAtendimentoId?: string | null;
@@ -116,7 +118,10 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
           <Filter className="h-4 w-4" />
         </Button>
       </div>
-      <CidadeFilter value={filterCidade} onChange={setFilterCidade} className={showFilters ? 'flex' : 'hidden md:flex'} />
+      <FiltersPanel show={showFilters}>
+        <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+      </FiltersPanel>
+
       {loading ? (
         <KanbanSkeleton columns={4} />
       ) : (

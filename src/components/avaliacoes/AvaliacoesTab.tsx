@@ -12,6 +12,8 @@ import AvaliacaoForm from './AvaliacaoForm';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import FiltersPanel from '@/components/shared/FiltersPanel';
+
 
 const KANBAN_COLUMNS = SITUACOES_AVALIACAO;
 
@@ -141,7 +143,10 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
       </Button>
       </div>
 
-      <CidadeFilter value={filterCidade} onChange={setFilterCidade} className={showFilters ? 'flex' : 'hidden md:flex'} />
+      <FiltersPanel show={showFilters}>
+        <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+      </FiltersPanel>
+
 
       {/* Kanban Board */}
       {loading ? (

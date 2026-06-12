@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import RespostasNpsDialog from './RespostasNpsDialog';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import FiltersPanel from '@/components/shared/FiltersPanel';
+
 import { isLojaDucati } from '@/lib/lojaUtils';
 import NpsDateFilter from './NpsDateFilter';
 
@@ -231,10 +233,12 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
         </Button>
       </div>
 
-      <div className={`space-y-3 ${showFilters ? 'block' : 'hidden md:block'}`}>
-        <NpsDateFilter dateFrom={dateFrom} dateTo={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
+      <FiltersPanel show={showFilters}>
         <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
-      </div>
+        <NpsDateFilter dateFrom={dateFrom} dateTo={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
+      </FiltersPanel>
+
+
 
       {loading ? (
         <KanbanSkeleton columns={3} />
