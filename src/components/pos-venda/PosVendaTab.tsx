@@ -23,6 +23,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (initialAtendimentoId) {
