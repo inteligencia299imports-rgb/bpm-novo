@@ -11,6 +11,8 @@ import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import FiltersPanel from '@/components/shared/FiltersPanel';
+
 
 interface ConsignacaoTabProps {
   initialAvaliacaoId?: string | null;
