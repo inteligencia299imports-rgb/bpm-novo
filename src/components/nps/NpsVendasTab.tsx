@@ -233,10 +233,11 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
         </Button>
       </div>
 
-      <FiltersPanel show={showFilters} className="space-y-3 md:space-y-3">
+      <FiltersPanel show={showFilters}>
         <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
         <NpsDateFilter dateFrom={dateFrom} dateTo={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
       </FiltersPanel>
+
 
 
       {loading ? (
