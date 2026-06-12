@@ -18,7 +18,7 @@ interface Props {
 const FiltersPanel: React.FC<Props> = ({ show, children, className }) => (
   <div className={cn(show ? 'block' : 'hidden md:block', className)}>
     <Card className="animate-fade-in border-border shadow-soft md:border-0 md:shadow-none md:bg-transparent">
-      <CardContent className="p-3 space-y-3 md:p-0 md:space-y-0">
+      <CardContent className="p-3 space-y-3 md:p-0">
         {children}
       </CardContent>
     </Card>
