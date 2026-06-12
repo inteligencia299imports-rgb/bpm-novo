@@ -285,10 +285,11 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         </Button>
       </div>
 
-      <div className={`space-y-3 ${showFilters ? 'block' : 'hidden md:block'}`}>
-        <NpsDateFilter dateFrom={dateFrom} dateTo={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
+      <FiltersPanel show={showFilters}>
         <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
-      </div>
+        <NpsDateFilter dateFrom={dateFrom} dateTo={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
+      </FiltersPanel>
+
 
       {loading ? (
         <KanbanSkeleton columns={3} />
