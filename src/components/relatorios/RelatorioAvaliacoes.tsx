@@ -21,6 +21,7 @@ interface RelatorioAvaliacoesProps {
   setDateTo: (d: Date | undefined) => void;
   onRegisterClear?: (fn: () => void) => void;
   onFilterChange?: (loja: string) => void;
+  showFilters?: boolean;
 }
 
 const normalizeText = (value: string | null | undefined) =>
