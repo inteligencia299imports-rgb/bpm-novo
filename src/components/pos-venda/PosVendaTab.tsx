@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import CidadeFilter, { matchesCidade, getSiglaFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import FiltersPanel from '@/components/shared/FiltersPanel';
+
 
 interface PosVendaTabProps {
   initialAtendimentoId?: string | null;
