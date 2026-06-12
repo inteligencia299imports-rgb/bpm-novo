@@ -109,8 +109,9 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+      <div className={cn('flex-col sm:flex-row sm:items-start sm:justify-between gap-3', showFilters ? 'flex' : 'hidden md:flex')}>
         <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+        <div className="flex flex-col items-start sm:items-end gap-1">
         <div className="flex flex-col items-start sm:items-end gap-1">
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
             <Popover>
