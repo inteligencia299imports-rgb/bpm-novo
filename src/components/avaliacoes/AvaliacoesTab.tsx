@@ -141,7 +141,10 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
       </Button>
       </div>
 
-      <CidadeFilter value={filterCidade} onChange={setFilterCidade} className={showFilters ? 'flex' : 'hidden md:flex'} />
+      <FiltersPanel show={showFilters}>
+        <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+      </FiltersPanel>
+
 
       {/* Kanban Board */}
       {loading ? (
