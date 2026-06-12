@@ -5,7 +5,7 @@ import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Search, X, Wrench } from 'lucide-react';
+import { Search, X, Wrench, Filter } from 'lucide-react';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
 import type { PreparacaoStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
@@ -29,6 +29,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterCidade, setFilterCidade] = useState<'todos' | 'Brasília' | 'Florianópolis' | 'Porto Alegre'>('todos');
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
   useEffect(() => {
@@ -119,14 +120,17 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
         <div className="flex items-center gap-2"><Wrench className="h-7 w-7 text-primary" /><h1 className="text-2xl font-bold text-foreground">Preparação</h1></div>
         <p className="text-sm text-muted-foreground mt-0.5">Preparação de motos adquiridas</p>
       </div>
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card border-border" />
           {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>}
         </div>
+        <Button variant="outline" size="icon" className="md:hidden shrink-0" onClick={() => setShowFilters(!showFilters)}>
+          <Filter className="h-4 w-4" />
+        </Button>
       </div>
-      <div className="flex flex-wrap items-center gap-1">
+      <div className={cn('flex flex-wrap items-center gap-1', !showFilters && 'hidden md:flex')}>
         {(['todos', 'Brasília', 'Florianópolis', 'Porto Alegre'] as const).map(c => (
           <Button
             key={c}

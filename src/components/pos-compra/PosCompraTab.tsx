@@ -3,7 +3,8 @@ import { TIPOS_PROPRIA, getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Input } from '@/components/ui/input';
-import { Search, X, ShoppingCart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Search, X, ShoppingCart, Filter } from 'lucide-react';
 import { POS_COMPRA_COLUMNS } from '@/types/crm';
 import type { PosCompraStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
@@ -26,6 +27,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
+  const [showFilters, setShowFilters] = useState(false);
 
 
   useEffect(() => {
@@ -89,14 +91,17 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
         <div className="flex items-center gap-2"><ShoppingCart className="h-7 w-7 text-primary" /><h1 className="text-2xl font-bold text-foreground">Pós-Compra</h1></div>
         <p className="text-sm text-muted-foreground mt-0.5">Motos adquiridas próprias</p>
       </div>
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card border-border" />
           {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>}
         </div>
+        <Button variant="outline" size="icon" className="md:hidden shrink-0" onClick={() => setShowFilters(!showFilters)}>
+          <Filter className="h-4 w-4" />
+        </Button>
       </div>
-      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} className={showFilters ? 'flex' : 'hidden md:flex'} />
       {loading ? (
         <KanbanSkeleton columns={4} />
       ) : (
