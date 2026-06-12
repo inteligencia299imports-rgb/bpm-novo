@@ -27,9 +27,10 @@ interface Props {
   setDateTo: (d: Date | undefined) => void;
   onRegisterClear?: (fn: () => void) => void;
   onFilterChange?: (loja: string) => void;
+  showFilters?: boolean;
 }
 
-const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
+const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const { user, role } = useAuth();
   const isMobile = useIsMobile();
   const chartH = isMobile ? 220 : 300;
