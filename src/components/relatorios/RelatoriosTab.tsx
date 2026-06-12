@@ -223,21 +223,21 @@ const RelatoriosTab: React.FC = () => {
         {isGestorOrAvaliador && (
           <>
             <TabsContent value="showroom" className="w-full max-w-full overflow-x-hidden">
-              <RelatorioShowroom dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
+              <RelatorioShowroom showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
             </TabsContent>
             <TabsContent value="avaliacoes">
-              <RelatorioAvaliacoes dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'avaliacoes') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
+              <RelatorioAvaliacoes showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'avaliacoes') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
             </TabsContent>
             <TabsContent value="preparacao" className="w-full max-w-full overflow-x-hidden">
-              <RelatorioPreparacao dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'preparacao') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
+              <RelatorioPreparacao showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'preparacao') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
             </TabsContent>
             <TabsContent value="estoque">
-              <RelatorioEstoque dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
+              <RelatorioEstoque showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
             </TabsContent>
           </>
         )}
         <TabsContent value="vendedores">
-          <RelatorioVendedores dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'vendedores') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
+          <RelatorioVendedores showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'vendedores') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
         </TabsContent>
       </Tabs>
     </div>
