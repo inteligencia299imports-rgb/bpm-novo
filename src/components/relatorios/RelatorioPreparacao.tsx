@@ -24,6 +24,7 @@ interface Props {
   setDateTo: (d: Date | undefined) => void;
   onRegisterClear?: (fn: () => void) => void;
   onFilterChange?: (loja: string, tipo: string) => void;
+  showFilters?: boolean;
 }
 
 const matchesLoja = (loja: string, filter: string) =>
