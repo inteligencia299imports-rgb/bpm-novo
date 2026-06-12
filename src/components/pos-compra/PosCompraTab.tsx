@@ -12,6 +12,8 @@ import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import FiltersPanel from '@/components/shared/FiltersPanel';
+
 
 // Filter concluido from kanban display
 const VISIBLE_COLUMNS = POS_COMPRA_COLUMNS.filter(c => c.value !== 'concluido');
