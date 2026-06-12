@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Input } from '@/components/ui/input';
-import { Search, X, Handshake } from 'lucide-react';
+import { Search, X, Handshake, Filter } from 'lucide-react';
 import { INTERMEDIACAO_PARTE1_COLUMNS, INTERMEDIACAO_PARTE2_COLUMNS, INTERMEDIACAO_PARTE1_ETAPAS, INTERMEDIACAO_PARTE2_ETAPAS } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
 import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
+import { Button } from '@/components/ui/button';
 import CidadeFilter, { matchesCidade, getSiglaFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 type Parte = 'parte1' | 'parte2';
@@ -49,6 +50,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [parte, setParte] = useState<Parte>(initialParte || 'parte1');
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (initialParte) setParte(initialParte);
