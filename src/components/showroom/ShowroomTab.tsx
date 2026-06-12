@@ -292,11 +292,14 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
         </Button>
       </div>
 
-      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} className="hidden md:flex" />
 
       {showFilters && (
         <Card className="animate-fade-in border-border shadow-soft">
           <CardContent className="pt-4 space-y-3">
+            <div className="block md:hidden">
+              <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Select value={filterInteresse} onValueChange={setFilterInteresse}>
               <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Interesse" /></SelectTrigger>
@@ -359,12 +362,12 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
               </PopoverContent>
             </Popover>
             </div>
-            {(filterInteresse !== 'todos' || filterVendedor !== 'todos' || dateFrom || dateTo) && (
+            {(filterInteresse !== 'todos' || filterVendedor !== 'todos' || dateFrom || dateTo || filterCidade !== 'todos') && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                onClick={() => { setFilterInteresse('todos'); setFilterVendedor('todos'); setDateFrom(undefined); setDateTo(undefined); }}
+                onClick={() => { setFilterInteresse('todos'); setFilterVendedor('todos'); setDateFrom(undefined); setDateTo(undefined); setFilterCidade('todos'); }}
               >
                 <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
               </Button>
