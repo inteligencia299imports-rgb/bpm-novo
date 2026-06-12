@@ -12,6 +12,8 @@ import ProcessCard from '@/components/shared/ProcessCard';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
+import FiltersPanel from '@/components/shared/FiltersPanel';
+
 
 interface PreparacaoTabProps {
   initialAvaliacaoId?: string | null;
