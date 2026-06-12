@@ -4,6 +4,7 @@ import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck, W
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -14,6 +15,13 @@ import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
 import RelatorioVendedores from './RelatorioVendedores';
 import RelatorioPreparacao from './RelatorioPreparacao';
+
+const DEPT_OPTIONS = [
+  { value: 'showroom', label: 'Showroom', icon: Bike },
+  { value: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck },
+  { value: 'preparacao', label: 'Preparação', icon: Wrench },
+  { value: 'estoque', label: 'Estoque', icon: Package },
+];
 
 function getCurrentCycleRange(): { start: Date; end: Date } {
   const now = new Date();
