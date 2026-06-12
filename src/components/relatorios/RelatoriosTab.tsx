@@ -116,27 +116,51 @@ const RelatoriosTab: React.FC = () => {
       <Tabs value={dept} onValueChange={setDept}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-full">
           {isGestorOrAvaliador && (
-            <div className="w-full sm:w-auto overflow-x-auto flex items-center gap-2">
-              <TabsList className="w-max">
-                <TabsTrigger value="showroom" className="gap-1.5">
-                  <Bike className="h-4 w-4" /> Showroom
-                </TabsTrigger>
-                <TabsTrigger value="avaliacoes" className="gap-1.5">
-                  <ClipboardCheck className="h-4 w-4" /> Avaliações
-                </TabsTrigger>
-                <TabsTrigger value="preparacao" className="gap-1.5">
-                  <Wrench className="h-4 w-4" /> Preparação
-                </TabsTrigger>
-                <TabsTrigger value="estoque" className="gap-1.5">
-                  <Package className="h-4 w-4" /> Estoque
-                </TabsTrigger>
-              </TabsList>
+            <div className="w-full sm:w-auto flex items-center gap-2">
+              {/* Desktop: tabs list */}
+              <div className="hidden md:block overflow-x-auto">
+                <TabsList className="w-max">
+                  {DEPT_OPTIONS.map(o => (
+                    <TabsTrigger key={o.value} value={o.value} className="gap-1.5">
+                      <o.icon className="h-4 w-4" /> {o.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+              {/* Mobile: select with icons */}
+              <div className="md:hidden flex-1 min-w-0">
+                <Select value={dept} onValueChange={setDept}>
+                  <SelectTrigger className="h-9 w-full">
+                    <SelectValue>
+                      {(() => {
+                        const o = DEPT_OPTIONS.find(o => o.value === dept);
+                        if (!o) return null;
+                        const Icon = o.icon;
+                        return (
+                          <span className="flex items-center gap-2">
+                            <Icon className="h-4 w-4" /> {o.label}
+                          </span>
+                        );
+                      })()}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPT_OPTIONS.map(o => (
+                      <SelectItem key={o.value} value={o.value}>
+                        <span className="flex items-center gap-2">
+                          <o.icon className="h-4 w-4" /> {o.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button variant="outline" size="icon" className="md:hidden shrink-0" onClick={() => setShowFilters(!showFilters)}>
                 <Filter className="h-4 w-4" />
               </Button>
             </div>
           )}
-          {!isGestorOrAvaliador && dept !== 'vendedores' && (
+          {!isGestorOrAvaliador && (
             <Button variant="outline" size="icon" className="md:hidden shrink-0 self-end" onClick={() => setShowFilters(!showFilters)}>
               <Filter className="h-4 w-4" />
             </Button>
