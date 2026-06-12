@@ -24,6 +24,7 @@ interface Props {
   setDateTo: (d: Date | undefined) => void;
   onRegisterClear?: (fn: () => void) => void;
   onFilterChange?: (loja: string, tipo: string) => void;
+  showFilters?: boolean;
 }
 
 const matchesLoja = (loja: string, filter: string) =>
@@ -82,7 +83,7 @@ function getCycleBuckets(): { label: string; start: Date; end: Date }[] {
   return buckets;
 }
 
-const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
+const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const isMobile = useIsMobile();
   const chartH = isMobile ? 220 : 280;
   const xTickProps = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 9, fill: 'hsl(var(--foreground))' };
@@ -420,7 +421,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       <Separator className="my-2" />
 
       {/* Filters: Loja (left) + Tipo (right) */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className={cn('flex-wrap items-start justify-between gap-3', showFilters ? 'flex' : 'hidden md:flex')}>
         <CidadeFilter value={filterLoja as CidadeFilterValue} onChange={(v) => setFilterLoja(v)} />
         <div className="flex flex-wrap items-center gap-1 ml-auto">
           {tipoBtns.map(b => (

@@ -21,6 +21,7 @@ interface RelatorioAvaliacoesProps {
   setDateTo: (d: Date | undefined) => void;
   onRegisterClear?: (fn: () => void) => void;
   onFilterChange?: (loja: string) => void;
+  showFilters?: boolean;
 }
 
 const normalizeText = (value: string | null | undefined) =>
@@ -49,7 +50,7 @@ const chunkArray = <T,>(items: T[], size: number) => {
   return chunks;
 };
 
-const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange }) => {
+const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const isMobile = useIsMobile();
   const chartH = isMobile ? 220 : 300;
   const xTickProps = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 9, fill: 'hsl(var(--foreground))' };
@@ -288,7 +289,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+      <div className={showFilters ? '' : 'hidden md:block'}><LojaFilter value={filterLoja} onChange={setFilterLoja} /></div>
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">

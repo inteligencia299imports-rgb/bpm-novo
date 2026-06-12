@@ -4,6 +4,7 @@ import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck, W
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -14,6 +15,13 @@ import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
 import RelatorioVendedores from './RelatorioVendedores';
 import RelatorioPreparacao from './RelatorioPreparacao';
+
+const DEPT_OPTIONS = [
+  { value: 'showroom', label: 'Showroom', icon: Bike },
+  { value: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck },
+  { value: 'preparacao', label: 'Preparação', icon: Wrench },
+  { value: 'estoque', label: 'Estoque', icon: Package },
+];
 
 function getCurrentCycleRange(): { start: Date; end: Date } {
   const now = new Date();
@@ -108,27 +116,51 @@ const RelatoriosTab: React.FC = () => {
       <Tabs value={dept} onValueChange={setDept}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 max-w-full">
           {isGestorOrAvaliador && (
-            <div className="w-full sm:w-auto overflow-x-auto flex items-center gap-2">
-              <TabsList className="w-max">
-                <TabsTrigger value="showroom" className="gap-1.5">
-                  <Bike className="h-4 w-4" /> Showroom
-                </TabsTrigger>
-                <TabsTrigger value="avaliacoes" className="gap-1.5">
-                  <ClipboardCheck className="h-4 w-4" /> Avaliações
-                </TabsTrigger>
-                <TabsTrigger value="preparacao" className="gap-1.5">
-                  <Wrench className="h-4 w-4" /> Preparação
-                </TabsTrigger>
-                <TabsTrigger value="estoque" className="gap-1.5">
-                  <Package className="h-4 w-4" /> Estoque
-                </TabsTrigger>
-              </TabsList>
+            <div className="w-full sm:w-auto flex items-center gap-2">
+              {/* Desktop: tabs list */}
+              <div className="hidden md:block overflow-x-auto">
+                <TabsList className="w-max">
+                  {DEPT_OPTIONS.map(o => (
+                    <TabsTrigger key={o.value} value={o.value} className="gap-1.5">
+                      <o.icon className="h-4 w-4" /> {o.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+              {/* Mobile: select with icons */}
+              <div className="md:hidden flex-1 min-w-0">
+                <Select value={dept} onValueChange={setDept}>
+                  <SelectTrigger className="h-9 w-full">
+                    <SelectValue>
+                      {(() => {
+                        const o = DEPT_OPTIONS.find(o => o.value === dept);
+                        if (!o) return null;
+                        const Icon = o.icon;
+                        return (
+                          <span className="flex items-center gap-2">
+                            <Icon className="h-4 w-4" /> {o.label}
+                          </span>
+                        );
+                      })()}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEPT_OPTIONS.map(o => (
+                      <SelectItem key={o.value} value={o.value}>
+                        <span className="flex items-center gap-2">
+                          <o.icon className="h-4 w-4" /> {o.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button variant="outline" size="icon" className="md:hidden shrink-0" onClick={() => setShowFilters(!showFilters)}>
                 <Filter className="h-4 w-4" />
               </Button>
             </div>
           )}
-          {!isGestorOrAvaliador && dept !== 'vendedores' && (
+          {!isGestorOrAvaliador && (
             <Button variant="outline" size="icon" className="md:hidden shrink-0 self-end" onClick={() => setShowFilters(!showFilters)}>
               <Filter className="h-4 w-4" />
             </Button>
@@ -191,21 +223,21 @@ const RelatoriosTab: React.FC = () => {
         {isGestorOrAvaliador && (
           <>
             <TabsContent value="showroom" className="w-full max-w-full overflow-x-hidden">
-              <RelatorioShowroom dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
+              <RelatorioShowroom showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
             </TabsContent>
             <TabsContent value="avaliacoes">
-              <RelatorioAvaliacoes dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'avaliacoes') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
+              <RelatorioAvaliacoes showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'avaliacoes') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
             </TabsContent>
             <TabsContent value="preparacao" className="w-full max-w-full overflow-x-hidden">
-              <RelatorioPreparacao dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'preparacao') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
+              <RelatorioPreparacao showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'preparacao') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
             </TabsContent>
             <TabsContent value="estoque">
-              <RelatorioEstoque dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
+              <RelatorioEstoque showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
             </TabsContent>
           </>
         )}
         <TabsContent value="vendedores">
-          <RelatorioVendedores dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'vendedores') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
+          <RelatorioVendedores showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'vendedores') clearFnRef.current = fn; }} onFilterChange={(loja) => setHasInternalFilters(loja !== 'todos')} />
         </TabsContent>
       </Tabs>
     </div>
