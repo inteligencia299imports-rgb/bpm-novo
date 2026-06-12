@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { Button } from '@/components/ui/button';
 import CidadeFilter, { matchesCidade, getSiglaFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import FiltersPanel from '@/components/shared/FiltersPanel';
+
 
 type Parte = 'parte1' | 'parte2';
 
