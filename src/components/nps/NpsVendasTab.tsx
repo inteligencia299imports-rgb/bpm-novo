@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
-import { Search, X, Send, Eye, Copy } from 'lucide-react';
+import { Search, X, Send, Eye, Copy, Filter } from 'lucide-react';
 import { SITUACOES_NPS } from '@/types/crm';
 import type { SituacaoNps } from '@/types/crm';
 import { toast } from 'sonner';
@@ -29,6 +29,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [showFilters, setShowFilters] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -210,7 +211,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -225,10 +226,15 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
             </button>
           )}
         </div>
-        <NpsDateFilter dateFrom={dateFrom} dateTo={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
+        <Button variant="outline" size="icon" className="md:hidden shrink-0" onClick={() => setShowFilters(!showFilters)}>
+          <Filter className="h-4 w-4" />
+        </Button>
       </div>
 
-      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+      <div className={`space-y-3 ${showFilters ? 'block' : 'hidden md:block'}`}>
+        <NpsDateFilter dateFrom={dateFrom} dateTo={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
+        <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+      </div>
 
       {loading ? (
         <KanbanSkeleton columns={3} />
