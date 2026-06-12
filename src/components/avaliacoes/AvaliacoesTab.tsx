@@ -27,6 +27,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (initialAvaliacaoId) {
@@ -120,7 +121,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
       </div>
 
       {/* Search */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -135,9 +136,12 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
             </button>
           )}
       </div>
-
-      <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+      <Button variant="outline" size="icon" className="md:hidden shrink-0" onClick={() => setShowFilters(!showFilters)}>
+        <Filter className="h-4 w-4" />
+      </Button>
       </div>
+
+      <CidadeFilter value={filterCidade} onChange={setFilterCidade} className={showFilters ? 'flex' : 'hidden md:flex'} />
 
       {/* Kanban Board */}
       {loading ? (
