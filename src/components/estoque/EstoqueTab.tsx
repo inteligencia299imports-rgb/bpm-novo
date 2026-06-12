@@ -111,7 +111,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [filterStatus, setFilterStatus] = useState('disponivel');
   
   const [filterCidade, setFilterCidade] = useState<'todos' | 'Brasília' | 'Florianópolis' | 'Porto Alegre'>('todos');
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
   const [allMarcas, setAllMarcas] = useState<string[]>([]);
@@ -429,70 +429,69 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           <Button
             variant={showFilters ? 'default' : 'outline'}
             size="icon"
+            className="md:hidden shrink-0"
             onClick={() => setShowFilters(!showFilters)}
           >
             <Filter className="h-4 w-4" />
           </Button>
         </div>
 
-        {showFilters && (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-1">
-              {(['todos', 'Brasília', 'Florianópolis', 'Porto Alegre'] as const).map(c => (
-                <Button
-                  key={c}
-                  size="sm"
-                  variant={filterCidade === c ? 'default' : 'outline'}
-                  className="rounded-full px-4 h-8 text-xs font-medium"
-                  onClick={() => setFilterCidade(c)}
-                >
-                  {c === 'todos' ? 'Todas Cidades' : c}
-                </Button>
-              ))}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="disponivel">Disponível</SelectItem>
-                  <SelectItem value="servico">Serviço</SelectItem>
-                  <SelectItem value="indisponivel_manual">Indisponível</SelectItem>
-                  <SelectItem value="bloqueio_juridico">Bloqueio Jurídico</SelectItem>
-                  <SelectItem value="sinal">Sinal</SelectItem>
-                  <SelectItem value="vendido">Vendida</SelectItem>
-                  <SelectItem value="retirada">Retirada</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterMarca} onValueChange={setFilterMarca}>
-                <SelectTrigger><SelectValue placeholder="Marca" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todas as marcas</SelectItem>
-                  {allMarcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={filterTipo} onValueChange={setFilterTipo}>
-                <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os tipos</SelectItem>
-                  <SelectItem value="propria">Própria</SelectItem>
-                  <SelectItem value="consignada">Consignada</SelectItem>
-                  <SelectItem value="test-ride">Test-Ride</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterCidade !== 'todos') && (
+        <div className={`space-y-3 ${showFilters ? 'block' : 'hidden md:block'}`}>
+          <div className="flex flex-wrap items-center gap-1">
+            {(['todos', 'Brasília', 'Florianópolis', 'Porto Alegre'] as const).map(c => (
               <Button
-                variant="ghost"
+                key={c}
                 size="sm"
-                className="text-muted-foreground"
-                onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterCidade('todos'); }}
+                variant={filterCidade === c ? 'default' : 'outline'}
+                className="rounded-full px-4 h-8 text-xs font-medium"
+                onClick={() => setFilterCidade(c)}
               >
-                <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
+                {c === 'todos' ? 'Todas Cidades' : c}
               </Button>
-            )}
+            ))}
           </div>
-        )}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="disponivel">Disponível</SelectItem>
+                <SelectItem value="servico">Serviço</SelectItem>
+                <SelectItem value="indisponivel_manual">Indisponível</SelectItem>
+                <SelectItem value="bloqueio_juridico">Bloqueio Jurídico</SelectItem>
+                <SelectItem value="sinal">Sinal</SelectItem>
+                <SelectItem value="vendido">Vendida</SelectItem>
+                <SelectItem value="retirada">Retirada</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterMarca} onValueChange={setFilterMarca}>
+              <SelectTrigger><SelectValue placeholder="Marca" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas as marcas</SelectItem>
+                {allMarcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterTipo} onValueChange={setFilterTipo}>
+              <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os tipos</SelectItem>
+                <SelectItem value="propria">Própria</SelectItem>
+                <SelectItem value="consignada">Consignada</SelectItem>
+                <SelectItem value="test-ride">Test-Ride</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterCidade !== 'todos') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+              onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterCidade('todos'); }}
+            >
+              <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
+            </Button>
+          )}
+        </div>
       </div>
       {/* List */}
       {loading ? (
