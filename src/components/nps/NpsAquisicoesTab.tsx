@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import RespostasNpsDialog from './RespostasNpsDialog';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import FiltersPanel from '@/components/shared/FiltersPanel';
+
 import NpsDateFilter from './NpsDateFilter';
 
 interface NpsAquisicoesTabProps {
