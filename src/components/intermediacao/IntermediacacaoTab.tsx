@@ -223,7 +223,10 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
           <Filter className="h-4 w-4" />
         </Button>
       </div>
-      <CidadeFilter value={filterCidade} onChange={setFilterCidade} className={showFilters ? 'flex' : 'hidden md:flex'} />
+      <FiltersPanel show={showFilters}>
+        <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+      </FiltersPanel>
+
       {loading ? (
         <KanbanSkeleton columns={3} />
       ) : (
