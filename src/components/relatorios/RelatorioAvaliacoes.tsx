@@ -289,7 +289,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+      <div className={showFilters ? '' : 'hidden md:block'}><LojaFilter value={filterLoja} onChange={setFilterLoja} /></div>
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
