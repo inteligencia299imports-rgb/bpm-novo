@@ -337,6 +337,11 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                           interesseLabelOverride={a.tipo_aquisicao === 'consignada' ? 'Consignada' : a.tipo_aquisicao === 'propria' ? 'Própria' : a.tipo_aquisicao === 'convertida' ? 'Convertida' : a.tipo_aquisicao === 'repasse' ? 'Repasse' : undefined}
                           actions={
                             <>
+                              {(a.nps_status || 'em_aberto') === 'em_aberto' && a._ready && (
+                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a, true)}>
+                                  <Send className="h-3 w-3" /> Enviar
+                                </Button>
+                              )}
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
                                 <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
                                   <Copy className="h-3 w-3" /> Copiar Link
