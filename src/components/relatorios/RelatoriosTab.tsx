@@ -166,7 +166,7 @@ const RelatoriosTab: React.FC = () => {
             </Button>
           )}
           {dept !== 'vendedores' && (
-          <div className={`w-full sm:w-auto flex flex-col items-start sm:items-end gap-1 ${showFilters ? 'flex' : 'hidden md:flex'}`}>
+          <div className={`w-full sm:w-auto flex flex-row items-center gap-2 ${showFilters ? 'flex' : 'hidden md:flex'}`}>
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {dept !== 'estoque' && (
                 <>
