@@ -224,14 +224,15 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     }
   };
 
-  const handleEnviarPesquisa = async (e: React.MouseEvent, item: any) => {
+  const handleEnviarPesquisa = async (e: React.MouseEvent, item: any, forceCopy = false) => {
     e.stopPropagation();
     const telefone = item.atendimento?.telefone?.replace(/\D/g, '') || '';
     const atendimentoId = item.atendimento_id;
     const previousStatus = item.nps_status || 'em_aberto';
     const link = `https://tally.so/r/VLZ5Ej?id=${item.id}`;
+    const useCopy = forceCopy || previousStatus === 'enviado';
 
-    if (previousStatus === 'enviado') {
+    if (useCopy) {
       try {
         await navigator.clipboard.writeText(link);
         toast.success('Link copiado');
@@ -256,7 +257,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         status: isManual ? 'NPS ENVIADO MANUALMENTE' : 'enviado',
         changed_by: user?.id,
         changed_by_name: userName,
-        observacoes: isManual ? 'Pesquisa reenviada (link copiado)' : 'Pesquisa enviada',
+        observacoes: isManual ? 'Pesquisa reenviada (link copiado)' : (forceCopy ? 'Pesquisa enviada (link copiado)' : 'Pesquisa enviada'),
       });
       if (!isManual) toast.success('Pesquisa enviada');
       fetchData();
@@ -336,6 +337,11 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                           interesseLabelOverride={a.tipo_aquisicao === 'consignada' ? 'Consignada' : a.tipo_aquisicao === 'propria' ? 'Própria' : a.tipo_aquisicao === 'convertida' ? 'Convertida' : a.tipo_aquisicao === 'repasse' ? 'Repasse' : undefined}
                           actions={
                             <>
+                              {(a.nps_status || 'em_aberto') === 'em_aberto' && a._ready && (
+                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a, true)}>
+                                  <Send className="h-3 w-3" /> Enviar
+                                </Button>
+                              )}
                               {(a.nps_status || 'em_aberto') === 'enviado' && (
                                 <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => handleEnviarPesquisa(e, a)}>
                                   <Copy className="h-3 w-3" /> Copiar Link
