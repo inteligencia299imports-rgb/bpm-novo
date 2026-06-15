@@ -132,10 +132,10 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
           if (tipo === 'propria' || tipo === 'convertida' || tipo === 'repasse') {
             if (!pcMap[m.id]) {
               readyMap[m.id] = false;
-              reasonMap[m.id] = 'Pendente: aguardando conclusão de "Documentação recebida" no Pós-Compra';
+              reasonMap[m.id] = 'Pendente: aguardando conclusão de "Transferência concluída" no Pós-Compra';
             } else {
               readyMap[m.id] = true;
-              reasonMap[m.id] = 'Pronto para envio: documentação recebida';
+              reasonMap[m.id] = 'Pronto para envio: transferência concluída';
             }
           } else if (tipo === 'consignada') {
             const est = estInfoMap[m.id];
