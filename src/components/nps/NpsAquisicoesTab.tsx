@@ -250,14 +250,14 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     if (error) {
       toast.error('Erro ao registrar envio');
     } else {
-      const isManual = previousStatus === 'enviado';
+      const isManual = forceCopy || previousStatus === 'enviado';
       await supabase.from('status_history').insert({
         entity_id: atendimentoId,
         entity_type: 'nps_aquisicao',
         status: isManual ? 'NPS ENVIADO MANUALMENTE' : 'enviado',
         changed_by: user?.id,
         changed_by_name: userName,
-        observacoes: isManual ? 'Pesquisa reenviada (link copiado)' : (forceCopy ? 'Pesquisa enviada (link copiado)' : 'Pesquisa enviada'),
+        observacoes: isManual ? 'Envio realizado manualmente pelo usuário' : (forceCopy ? 'Pesquisa enviada (link copiado)' : 'Pesquisa enviada'),
       });
       if (!isManual) toast.success('Pesquisa enviada');
       fetchData();
