@@ -235,7 +235,9 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
 
       <FiltersPanel show={showFilters}>
         <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
-        <NpsDateFilter dateFrom={dateFrom} dateTo={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
+        <div className="md:ml-auto">
+          <NpsDateFilter dateFrom={dateFrom} dateTo={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
+        </div>
       </FiltersPanel>
 
 
