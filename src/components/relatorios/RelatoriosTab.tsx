@@ -196,26 +196,28 @@ const RelatoriosTab: React.FC = () => {
                 </PopoverContent>
               </Popover>
             </div>
-            {(() => {
-              if (!dateTo) return null;
-              if (dept === 'estoque') {
-                const prev = getPreviousMonthDate(dateTo);
-                if (!prev) return null;
+            <div className="flex items-center">
+              {(() => {
+                if (!dateTo) return null;
+                if (dept === 'estoque') {
+                  const prev = getPreviousMonthDate(dateTo);
+                  if (!prev) return null;
+                  return (
+                    <p className="text-xs text-muted-foreground pr-1 whitespace-nowrap">
+                      Comparado com {format(prev, 'dd/MM/yyyy')}
+                    </p>
+                  );
+                }
+                if (!dateFrom) return null;
+                const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
+                if (!prevFrom || !prevTo) return null;
                 return (
-                  <p className="text-xs text-muted-foreground pr-1">
-                    Comparado com {format(prev, 'dd/MM/yyyy')}
+                  <p className="text-xs text-muted-foreground pr-1 whitespace-nowrap">
+                    Comparado com {format(prevFrom, 'dd/MM/yyyy')} a {format(prevTo, 'dd/MM/yyyy')}
                   </p>
                 );
-              }
-              if (!dateFrom) return null;
-              const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
-              if (!prevFrom || !prevTo) return null;
-              return (
-                <p className="text-xs text-muted-foreground pr-1">
-                  Comparado com {format(prevFrom, 'dd/MM/yyyy')} a {format(prevTo, 'dd/MM/yyyy')}
-                </p>
-              );
-            })()}
+              })()}
+            </div>
           </div>
           )}
 
