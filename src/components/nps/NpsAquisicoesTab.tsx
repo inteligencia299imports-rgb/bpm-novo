@@ -96,11 +96,11 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       const readyMap: Record<string, boolean> = {};
       const reasonMap: Record<string, string> = {};
       if (avalIds.length > 0) {
-        // Pós-compra DOCUMENTAÇÃO RECEBIDA (próprias/convertidas)
+        // Pós-compra TRANSFERÊNCIA CONCLUÍDA (próprias/convertidas)
         const { data: pcData } = await supabase
           .from('pos_compra_processos')
           .select('avaliacao_id, concluida')
-          .eq('etapa', 'DOCUMENTAÇÃO RECEBIDA')
+          .eq('etapa', 'TRANSFERÊNCIA CONCLUÍDA')
           .in('avaliacao_id', avalIds);
         const pcMap: Record<string, boolean> = {};
         (pcData || []).forEach((p: any) => { pcMap[p.avaliacao_id] = !!p.concluida; });
@@ -132,10 +132,10 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
           if (tipo === 'propria' || tipo === 'convertida' || tipo === 'repasse') {
             if (!pcMap[m.id]) {
               readyMap[m.id] = false;
-              reasonMap[m.id] = 'Pendente: aguardando conclusão de "Documentação recebida" no Pós-Compra';
+              reasonMap[m.id] = 'Pendente: aguardando conclusão de "Transferência concluída" no Pós-Compra';
             } else {
               readyMap[m.id] = true;
-              reasonMap[m.id] = 'Pronto para envio: documentação recebida';
+              reasonMap[m.id] = 'Pronto para envio: transferência concluída';
             }
           } else if (tipo === 'consignada') {
             const est = estInfoMap[m.id];
