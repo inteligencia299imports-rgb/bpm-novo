@@ -166,7 +166,7 @@ const RelatoriosTab: React.FC = () => {
             </Button>
           )}
           {dept !== 'vendedores' && (
-          <div className={`w-full sm:w-auto flex flex-row items-center gap-2 ${showFilters ? 'flex' : 'hidden md:flex'}`}>
+          <div className={`w-full sm:w-auto flex flex-col items-start sm:items-end gap-1 ${showFilters ? 'flex' : 'hidden md:flex'}`}>
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {dept !== 'estoque' && (
                 <>
@@ -196,28 +196,26 @@ const RelatoriosTab: React.FC = () => {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="flex items-center">
-              {(() => {
-                if (!dateTo) return null;
-                if (dept === 'estoque') {
-                  const prev = getPreviousMonthDate(dateTo);
-                  if (!prev) return null;
-                  return (
-                    <p className="text-xs text-muted-foreground pr-1 whitespace-nowrap">
-                      Comparado com {format(prev, 'dd/MM/yyyy')}
-                    </p>
-                  );
-                }
-                if (!dateFrom) return null;
-                const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
-                if (!prevFrom || !prevTo) return null;
+            {(() => {
+              if (!dateTo) return null;
+              if (dept === 'estoque') {
+                const prev = getPreviousMonthDate(dateTo);
+                if (!prev) return null;
                 return (
-                  <p className="text-xs text-muted-foreground pr-1 whitespace-nowrap">
-                    Comparado com {format(prevFrom, 'dd/MM/yyyy')} a {format(prevTo, 'dd/MM/yyyy')}
+                  <p className="text-xs text-muted-foreground pr-1">
+                    Comparado com {format(prev, 'dd/MM/yyyy')}
                   </p>
                 );
-              })()}
-            </div>
+              }
+              if (!dateFrom) return null;
+              const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
+              if (!prevFrom || !prevTo) return null;
+              return (
+                <p className="text-xs text-muted-foreground pr-1">
+                  Comparado com {format(prevFrom, 'dd/MM/yyyy')} a {format(prevTo, 'dd/MM/yyyy')}
+                </p>
+              );
+            })()}
           </div>
           )}
 
