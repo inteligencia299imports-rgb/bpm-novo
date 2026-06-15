@@ -224,14 +224,15 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     }
   };
 
-  const handleEnviarPesquisa = async (e: React.MouseEvent, item: any) => {
+  const handleEnviarPesquisa = async (e: React.MouseEvent, item: any, forceCopy = false) => {
     e.stopPropagation();
     const telefone = item.atendimento?.telefone?.replace(/\D/g, '') || '';
     const atendimentoId = item.atendimento_id;
     const previousStatus = item.nps_status || 'em_aberto';
     const link = `https://tally.so/r/VLZ5Ej?id=${item.id}`;
+    const useCopy = forceCopy || previousStatus === 'enviado';
 
-    if (previousStatus === 'enviado') {
+    if (useCopy) {
       try {
         await navigator.clipboard.writeText(link);
         toast.success('Link copiado');
@@ -256,7 +257,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         status: isManual ? 'NPS ENVIADO MANUALMENTE' : 'enviado',
         changed_by: user?.id,
         changed_by_name: userName,
-        observacoes: isManual ? 'Pesquisa reenviada (link copiado)' : 'Pesquisa enviada',
+        observacoes: isManual ? 'Pesquisa reenviada (link copiado)' : (forceCopy ? 'Pesquisa enviada (link copiado)' : 'Pesquisa enviada'),
       });
       if (!isManual) toast.success('Pesquisa enviada');
       fetchData();
