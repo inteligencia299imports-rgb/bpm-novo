@@ -15,7 +15,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
     { id: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: ['gestor', 'vendedor', 'avaliador'] },
     { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
-    { id: 'novidades', label: 'Novidades', icon: Flame, roles: ['vendedor', 'gestor'] },
+    { id: 'novidades', label: 'Novidades', icon: Flame, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador'] },
     { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['avaliador', 'gestor'] },
     { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['avaliador', 'gestor'] },
