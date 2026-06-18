@@ -270,13 +270,6 @@ export type Database = {
             referencedRelation: "avaliacoes"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "consignacao_processos_avaliacao_id_fkey"
-            columns: ["avaliacao_id"]
-            isOneToOne: false
-            referencedRelation: "avaliacoes_estoque_publico"
-            referencedColumns: ["id"]
-          },
         ]
       }
       contratos: {
@@ -405,13 +398,6 @@ export type Database = {
             referencedRelation: "avaliacoes"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "contratos_consignacao_avaliacao_id_fkey"
-            columns: ["avaliacao_id"]
-            isOneToOne: false
-            referencedRelation: "avaliacoes_estoque_publico"
-            referencedColumns: ["id"]
-          },
         ]
       }
       contratos_consignante: {
@@ -523,13 +509,6 @@ export type Database = {
             columns: ["avaliacao_id"]
             isOneToOne: false
             referencedRelation: "avaliacoes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "custos_oficina_avaliacao_id_fkey"
-            columns: ["avaliacao_id"]
-            isOneToOne: false
-            referencedRelation: "avaliacoes_estoque_publico"
             referencedColumns: ["id"]
           },
         ]
@@ -680,13 +659,6 @@ export type Database = {
             columns: ["avaliacao_id"]
             isOneToOne: false
             referencedRelation: "avaliacoes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "estoque_avaliacao_id_fkey"
-            columns: ["avaliacao_id"]
-            isOneToOne: false
-            referencedRelation: "avaliacoes_estoque_publico"
             referencedColumns: ["id"]
           },
           {
@@ -1070,13 +1042,6 @@ export type Database = {
             referencedRelation: "avaliacoes"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "pos_compra_processos_avaliacao_id_fkey"
-            columns: ["avaliacao_id"]
-            isOneToOne: false
-            referencedRelation: "avaliacoes_estoque_publico"
-            referencedColumns: ["id"]
-          },
         ]
       }
       pos_venda_processos: {
@@ -1234,82 +1199,6 @@ export type Database = {
       }
     }
     Views: {
-      avaliacoes_estoque_publico: {
-        Row: {
-          atendimento_id: string | null
-          avaliador_id: string | null
-          classificacao: string | null
-          consignacao_status: string | null
-          created_at: string | null
-          id: string | null
-          moto_avaliacao_id: string | null
-          nps_enviado_at: string | null
-          nps_respondido_at: string | null
-          nps_status: string | null
-          pos_compra_status: string | null
-          preparacao_status: string | null
-          situacao: string | null
-          tipo_aquisicao: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          atendimento_id?: string | null
-          avaliador_id?: string | null
-          classificacao?: string | null
-          consignacao_status?: string | null
-          created_at?: string | null
-          id?: string | null
-          moto_avaliacao_id?: string | null
-          nps_enviado_at?: string | null
-          nps_respondido_at?: string | null
-          nps_status?: string | null
-          pos_compra_status?: string | null
-          preparacao_status?: string | null
-          situacao?: string | null
-          tipo_aquisicao?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          atendimento_id?: string | null
-          avaliador_id?: string | null
-          classificacao?: string | null
-          consignacao_status?: string | null
-          created_at?: string | null
-          id?: string | null
-          moto_avaliacao_id?: string | null
-          nps_enviado_at?: string | null
-          nps_respondido_at?: string | null
-          nps_status?: string | null
-          pos_compra_status?: string | null
-          preparacao_status?: string | null
-          situacao?: string | null
-          tipo_aquisicao?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "avaliacoes_atendimento_id_fkey"
-            columns: ["atendimento_id"]
-            isOneToOne: false
-            referencedRelation: "atendimentos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_atendimento_id_fkey"
-            columns: ["atendimento_id"]
-            isOneToOne: false
-            referencedRelation: "vw_atendimentos"
-            referencedColumns: ["atendimento_id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_moto_avaliacao_id_fkey"
-            columns: ["moto_avaliacao_id"]
-            isOneToOne: false
-            referencedRelation: "motos_avaliacao"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       vw_atendimentos: {
         Row: {
           abatimentos: number | null
