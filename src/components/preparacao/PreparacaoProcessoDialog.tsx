@@ -897,7 +897,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 <div className="space-y-3 bg-primary/5 border border-primary/20 rounded-lg p-4">
                   <label className="text-sm font-medium">Dados para Registro no Estoque</label>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-4 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">Empresa *</label>
                       <div className="flex gap-2">
@@ -918,6 +918,24 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                           onClick={() => setEmpresa('FAG')}
                         >
                           FAG
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={empresa === 'FLN' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-9"
+                          onClick={() => setEmpresa('FLN')}
+                        >
+                          FLN
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={empresa === 'POA' ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1 h-9"
+                          onClick={() => setEmpresa('POA')}
+                        >
+                          POA
                         </Button>
                       </div>
                     </div>
