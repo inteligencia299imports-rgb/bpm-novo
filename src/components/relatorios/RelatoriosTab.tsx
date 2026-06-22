@@ -10,7 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPreviousPeriod, getPreviousMonthDate } from '@/lib/reportComparison';
-import { getCurrentCycle } from '@/lib/reportCycle';
+import { getCurrentDefaultStart } from '@/lib/reportCycle';
 import RelatorioShowroom from './RelatorioShowroom';
 import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
@@ -27,7 +27,7 @@ const DEPT_OPTIONS = [
 const RelatoriosTab: React.FC = () => {
   const { role, loading } = useAuth();
   const isGestorOrAvaliador = role === 'gestor' || role === 'avaliador';
-  const cycle = getCurrentCycle();
+  
   const [dept, setDept] = useState('showroom');
 
   // Update default tab once role is known
@@ -51,7 +51,7 @@ const RelatoriosTab: React.FC = () => {
       : (dept === 'showroom' || dept === 'avaliacoes')
         ? (date: Date) => date < SHOWROOM_AVAL_MIN_DATE || date > todayEnd
         : (date: Date) => date > todayEnd;
-  const initFrom = cycle.start;
+  const initFrom = getCurrentDefaultStart();
   initFrom.setHours(0, 0, 0, 0);
   const initTo = new Date();
   initTo.setHours(23, 59, 59, 999);
