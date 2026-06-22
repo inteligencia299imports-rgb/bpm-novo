@@ -1290,6 +1290,14 @@ export type Database = {
         Args: { _moto_avaliacao_id: string }
         Returns: boolean
       }
+      next_report_cycle: {
+        Args: { _start: string }
+        Returns: {
+          cycle_end: string
+          cycle_start: string
+          next_start: string
+        }[]
+      }
       norm_loja: { Args: { _loja: string }; Returns: string }
       notify_consulta: {
         Args: {
