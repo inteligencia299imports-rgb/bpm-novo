@@ -51,7 +51,7 @@ const RelatoriosTab: React.FC = () => {
       : (dept === 'showroom' || dept === 'avaliacoes')
         ? (date: Date) => date < SHOWROOM_AVAL_MIN_DATE || date > todayEnd
         : (date: Date) => date > todayEnd;
-  const initFrom = cycle.start;
+  const initFrom = getCurrentDefaultStart();
   initFrom.setHours(0, 0, 0, 0);
   const initTo = new Date();
   initTo.setHours(23, 59, 59, 999);
