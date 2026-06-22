@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
 import CidadeFilter, { CidadeFilterValue, matchesCidade } from '@/components/shared/CidadeFilter';
 import { getPreviousPeriod } from '@/lib/reportComparison';
+import { getCycleForDate } from '@/lib/reportCycle';
 import DeltaBadge from './DeltaBadge';
 
 interface Props {
@@ -74,11 +75,14 @@ function getCycleBuckets(): { label: string; start: Date; end: Date }[] {
   const buckets: { label: string; start: Date; end: Date }[] = [];
   let cur = new Date(2026, 2, 21); // 21/03/2026
   const now = new Date();
-  while (cur <= now) {
-    const end = new Date(cur.getFullYear(), cur.getMonth() + 1, 20, 23, 59, 59, 999);
-    const label = `${format(cur, 'dd/MM')} - ${format(end, 'dd/MM')}`;
-    buckets.push({ label, start: new Date(cur), end });
-    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 21);
+  // Limite duro para evitar loop em caso de regressão
+  let guard = 0;
+  while (cur <= now && guard++ < 120) {
+    const cycle = getCycleForDate(cur);
+    const label = `${format(cycle.start, 'dd/MM')} - ${format(cycle.end, 'dd/MM')}`;
+    buckets.push({ label, start: new Date(cycle.start), end: new Date(cycle.end) });
+    // Avança para o dia seguinte ao fim do ciclo
+    cur = new Date(cycle.end.getFullYear(), cycle.end.getMonth(), cycle.end.getDate() + 1, 0, 0, 0, 0);
   }
   return buckets;
 }
