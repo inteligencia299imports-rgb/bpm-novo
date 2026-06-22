@@ -27,7 +27,7 @@ const DEPT_OPTIONS = [
 const RelatoriosTab: React.FC = () => {
   const { role, loading } = useAuth();
   const isGestorOrAvaliador = role === 'gestor' || role === 'avaliador';
-  const cycle = getCurrentCycle();
+  
   const [dept, setDept] = useState('showroom');
 
   // Update default tab once role is known
