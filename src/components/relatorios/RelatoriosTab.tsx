@@ -10,6 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPreviousPeriod, getPreviousMonthDate } from '@/lib/reportComparison';
+import { getCurrentCycle } from '@/lib/reportCycle';
 import RelatorioShowroom from './RelatorioShowroom';
 import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
@@ -23,22 +24,10 @@ const DEPT_OPTIONS = [
   { value: 'estoque', label: 'Estoque', icon: Package },
 ];
 
-function getCurrentCycleRange(): { start: Date; end: Date } {
-  const now = new Date();
-  let start: Date;
-  if (now.getDate() >= 21) {
-    start = new Date(now.getFullYear(), now.getMonth(), 21);
-  } else {
-    start = new Date(now.getFullYear(), now.getMonth() - 1, 21);
-  }
-  const end = new Date(start.getFullYear(), start.getMonth() + 1, 20, 23, 59, 59, 999);
-  return { start, end };
-}
-
 const RelatoriosTab: React.FC = () => {
   const { role, loading } = useAuth();
   const isGestorOrAvaliador = role === 'gestor' || role === 'avaliador';
-  const cycle = getCurrentCycleRange();
+  const cycle = getCurrentCycle();
   const [dept, setDept] = useState('showroom');
 
   // Update default tab once role is known
