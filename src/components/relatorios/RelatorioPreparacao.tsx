@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
 import CidadeFilter, { CidadeFilterValue, matchesCidade } from '@/components/shared/CidadeFilter';
 import { getPreviousPeriod } from '@/lib/reportComparison';
+import { getCycleForDate } from '@/lib/reportCycle';
 import DeltaBadge from './DeltaBadge';
 
 interface Props {
