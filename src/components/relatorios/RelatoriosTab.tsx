@@ -10,7 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPreviousPeriod, getPreviousMonthDate } from '@/lib/reportComparison';
-import { getCurrentCycle } from '@/lib/reportCycle';
+import { getCurrentCycle, getCurrentDefaultStart } from '@/lib/reportCycle';
 import RelatorioShowroom from './RelatorioShowroom';
 import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
