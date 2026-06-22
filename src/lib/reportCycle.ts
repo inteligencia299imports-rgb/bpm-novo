@@ -56,6 +56,26 @@ export function getCurrentCycle(): CycleRange {
   return getCycleForDate(new Date());
 }
 
+/**
+ * Data de início padrão para o filtro de "período em andamento".
+ * - A partir de 01/07/2026: dia 01 do mês atual (ciclo mensal).
+ * - Antes disso: dia 21 do mês atual (se hoje >= 21) ou do mês anterior.
+ *   Mantém a âncora histórica do dia 21 mesmo dentro do ciclo de transição
+ *   estendido, para o filtro default não retroceder demais.
+ */
+export function getCurrentDefaultStart(): Date {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const d = now.getDate();
+  if (now >= MONTHLY_START) {
+    return new Date(y, m, 1, 0, 0, 0, 0);
+  }
+  return d >= 21
+    ? new Date(y, m, 21, 0, 0, 0, 0)
+    : new Date(y, m - 1, 21, 0, 0, 0, 0);
+}
+
 /** Verifica se um intervalo arbitrário corresponde exatamente a um ciclo. */
 export function isCycleAligned(from: Date, to: Date): boolean {
   const cycle = getCycleForDate(from);
