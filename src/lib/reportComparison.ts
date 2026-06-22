@@ -1,17 +1,23 @@
 import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from './reportDateRange';
-
-const MS_DAY = 86400000;
+import { getPreviousCycle, isCycleAligned } from './reportCycle';
 
 /**
- * Calcula o período equivalente no mês anterior (mesmos dias, um mês antes).
+ * Calcula o período de comparação anterior.
  *
- * Ex: 21/05/2026 a 20/06/2026 -> 21/04/2026 a 20/05/2026
+ * - Se o intervalo informado corresponder a um ciclo (legado 21→20, transição
+ *   21/05–30/06/2026 ou mensal a partir de 07/2026), retorna o ciclo anterior.
+ * - Caso contrário (intervalo customizado), desloca um mês para trás mantendo
+ *   o mesmo dia inicial/final.
  */
 export const getPreviousPeriod = (
   dateFrom: Date | undefined,
   dateTo: Date | undefined,
 ): { prevFrom: Date | undefined; prevTo: Date | undefined } => {
   if (!dateFrom || !dateTo) return { prevFrom: undefined, prevTo: undefined };
+  if (isCycleAligned(dateFrom, dateTo)) {
+    const prev = getPreviousCycle(dateFrom);
+    return { prevFrom: prev.start, prevTo: prev.end };
+  }
   const prevFrom = new Date(dateFrom.getFullYear(), dateFrom.getMonth() - 1, dateFrom.getDate());
   const prevTo = new Date(dateTo.getFullYear(), dateTo.getMonth() - 1, dateTo.getDate());
   return { prevFrom, prevTo };
