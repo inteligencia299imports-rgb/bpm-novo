@@ -64,16 +64,7 @@ export function getCurrentCycle(): CycleRange {
  *   estendido, para o filtro default não retroceder demais.
  */
 export function getCurrentDefaultStart(): Date {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const d = now.getDate();
-  if (now >= MONTHLY_START) {
-    return new Date(y, m, 1, 0, 0, 0, 0);
-  }
-  return d >= 21
-    ? new Date(y, m, 21, 0, 0, 0, 0)
-    : new Date(y, m - 1, 21, 0, 0, 0, 0);
+  return getCycleForDate(new Date()).start;
 }
 
 /** Verifica se um intervalo arbitrário corresponde exatamente a um ciclo. */
