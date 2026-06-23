@@ -84,10 +84,24 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
           }
         });
       }
+      // Fetch RETIRADA status_history for consignadas (by avaliacao_id)
+      const retiradaDateMap: Record<string, string> = {};
+      if (avalIds.length > 0) {
+        const { data: retDateData } = await supabase
+          .from('status_history')
+          .select('entity_id, created_at')
+          .eq('status', 'RETIRADA')
+          .in('entity_id', avalIds)
+          .order('created_at', { ascending: true });
+        (retDateData || []).forEach((r: any) => {
+          if (!retiradaDateMap[r.entity_id]) retiradaDateMap[r.entity_id] = r.created_at;
+        });
+      }
+
       mapped = mapped.map((m: any) => {
         if (m.tipo_aquisicao === 'consignada') {
-          // Consignada: data_negociacao = estoque.data_venda OU status_history.RETIRADA
-          return { ...m, _dataAquisicao: estVendaMap[m.id] || (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null };
+          // Consignada: data_negociacao = estoque.data_venda OU data RETIRADA OU adquirida
+          return { ...m, _dataAquisicao: estVendaMap[m.id] || retiradaDateMap[m.id] || (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null };
         }
         return { ...m, _dataAquisicao: (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null };
       });
@@ -105,12 +119,12 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         const pcMap: Record<string, boolean> = {};
         (pcData || []).forEach((p: any) => { pcMap[p.avaliacao_id] = !!p.concluida; });
 
-        // RETIRADA via status_history (consignadas retiradas)
+        // RETIRADA via status_history (consignadas retiradas) - by avaliacao_id
         const { data: retData } = await supabase
           .from('status_history')
           .select('entity_id')
           .eq('status', 'RETIRADA')
-          .in('entity_id', motoIds.length > 0 ? motoIds : ['00000000-0000-0000-0000-000000000000']);
+          .in('entity_id', avalIds);
         const retSet = new Set((retData || []).map((r: any) => r.entity_id));
 
         // PREVISÃO DE PAGAMENTO no pos_venda do atendimento_venda_id (consignadas vendidas)
@@ -139,7 +153,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
             }
           } else if (tipo === 'consignada') {
             const est = estInfoMap[m.id];
-            const isRetirada = m.moto_avaliacao_id && retSet.has(m.moto_avaliacao_id);
+            const isRetirada = retSet.has(m.id) || est?.status === 'retirada';
             const isVendida = est?.status === 'vendido' && !!est?.data_venda;
             const pvOk = est?.atendimento_venda_id ? !!pvMap[est.atendimento_venda_id] : false;
 
