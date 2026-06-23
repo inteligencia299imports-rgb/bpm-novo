@@ -49,7 +49,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
     setLoading(true);
     const selectStr = `*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida, resultado_consulta)`;
 
-    const estResult = await fetchAllRange(() => supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null));
+    const estResult = await fetchAllRange(() => supabase.from('estoque').select('avaliacao_id, status, observacoes, data_entrada').not('avaliacao_id', 'is', null));
     const result = await fetchAllRange(() =>
       supabase.from('avaliacoes').select(selectStr).in('situacao', ['adquirida', 'estoque']).order('updated_at', { ascending: false })
     );
@@ -57,8 +57,8 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
     const allData = result.data || [];
     if (err1) { toast.error('Erro ao carregar preparação'); } else {
       const estData = estResult.data;
-      const estoqueMap: Record<string, { status: string; observacoes: string | null }> = {};
-      (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes }; });
+      const estoqueMap: Record<string, { status: string; observacoes: string | null; data_entrada: string | null }> = {};
+      (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes, data_entrada: e.data_entrada }; });
 
       // Fetch release readiness data
       const avaliacaoIds = allData.map((d: any) => d.id);
@@ -99,7 +99,8 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
       allData.forEach((d: any) => {
         const byMoto = d.moto_avaliacao_id ? histByEntity[d.moto_avaliacao_id] : null;
         const byAval = histByEntity[d.id];
-        const picked = [byMoto, byAval].filter(Boolean).sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0];
+        const picked = [byMoto, byAval].filter(Boolean).sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0]
+          || estoqueMap[d.id]?.data_entrada || null;
         if (picked) acquDateMap[d.id] = picked;
       });
 
