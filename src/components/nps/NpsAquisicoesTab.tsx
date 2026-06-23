@@ -156,6 +156,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
             const isRetirada = retSet.has(m.id) || est?.status === 'retirada';
             const isVendida = est?.status === 'vendido' && !!est?.data_venda;
             const pvOk = est?.atendimento_venda_id ? !!pvMap[est.atendimento_venda_id] : false;
+            m._isRetirada = isRetirada;
 
             if (isRetirada) {
               readyMap[m.id] = true;
