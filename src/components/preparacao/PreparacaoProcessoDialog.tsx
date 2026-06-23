@@ -213,8 +213,30 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       };
       const remapStatus = (s: string) => STATUS_REMAP[s] || s;
 
+      const acquisitionHistory = avalHistory.reduce<HistoryEntry[]>((acc, entry) => {
+        const status = String(entry.status || '').trim().toLowerCase();
+        if (status !== 'adquirida') {
+          acc.push(entry);
+          return acc;
+        }
+
+        const existingIndex = acc.findIndex(item => String(item.status || '').trim().toLowerCase() === 'adquirida');
+        if (existingIndex === -1) {
+          acc.push(entry);
+          return acc;
+        }
+
+        const existing = acc[existingIndex];
+        const existingIsBackfill = existing.changed_by_name === 'Sistema (Backfill)';
+        const currentIsBackfill = entry.changed_by_name === 'Sistema (Backfill)';
+        if (existingIsBackfill && !currentIsBackfill) {
+          acc[existingIndex] = entry;
+        }
+        return acc;
+      }, []);
+
       // Merge and sort by date descending
-      const merged = [...prepHistory, ...avalHistory, ...showroomHistory]
+      const merged = [...prepHistory, ...acquisitionHistory, ...showroomHistory]
         .map(h => ({ ...h, status: remapStatus(h.status) }))
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
