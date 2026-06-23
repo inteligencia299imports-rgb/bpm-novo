@@ -144,7 +144,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
                       return (
                          <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone}
                            motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
-                           loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex}
+                           loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} dateLabel={a.data_venda ? 'Venda' : undefined} statusColor={col.hex}
                            onClick={() => setSelectedItem(a)} />
                       );
                     })}
