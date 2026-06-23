@@ -119,12 +119,12 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         const pcMap: Record<string, boolean> = {};
         (pcData || []).forEach((p: any) => { pcMap[p.avaliacao_id] = !!p.concluida; });
 
-        // RETIRADA via status_history (consignadas retiradas)
+        // RETIRADA via status_history (consignadas retiradas) - by avaliacao_id
         const { data: retData } = await supabase
           .from('status_history')
           .select('entity_id')
           .eq('status', 'RETIRADA')
-          .in('entity_id', motoIds.length > 0 ? motoIds : ['00000000-0000-0000-0000-000000000000']);
+          .in('entity_id', avalIds);
         const retSet = new Set((retData || []).map((r: any) => r.entity_id));
 
         // PREVISÃO DE PAGAMENTO no pos_venda do atendimento_venda_id (consignadas vendidas)
