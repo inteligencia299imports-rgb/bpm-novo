@@ -56,7 +56,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
       const motoIds = (data || []).map((d: any) => d.moto_avaliacao_id).filter(Boolean);
       const avalIds = (data || []).map((d: any) => d.id);
       const histEntityIds = Array.from(new Set([...motoIds, ...avalIds]));
-      const histResult = await fetchAllRange(() => supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', histEntityIds.length ? histEntityIds : ['']));
+      const histResult = await fetchAllRange(() => supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida'));
       const histByEntity: Record<string, string> = {};
       (histResult.data || []).forEach((h: any) => {
         const prev = histByEntity[h.entity_id];
