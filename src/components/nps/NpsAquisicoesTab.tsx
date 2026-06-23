@@ -153,7 +153,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
             }
           } else if (tipo === 'consignada') {
             const est = estInfoMap[m.id];
-            const isRetirada = m.moto_avaliacao_id && retSet.has(m.moto_avaliacao_id);
+            const isRetirada = retSet.has(m.id) || est?.status === 'retirada';
             const isVendida = est?.status === 'vendido' && !!est?.data_venda;
             const pvOk = est?.atendimento_venda_id ? !!pvMap[est.atendimento_venda_id] : false;
 
