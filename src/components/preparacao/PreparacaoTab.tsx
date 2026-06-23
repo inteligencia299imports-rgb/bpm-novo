@@ -99,7 +99,8 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
       allData.forEach((d: any) => {
         const byMoto = d.moto_avaliacao_id ? histByEntity[d.moto_avaliacao_id] : null;
         const byAval = histByEntity[d.id];
-        const picked = [byMoto, byAval].filter(Boolean).sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0];
+        const picked = [byMoto, byAval].filter(Boolean).sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0]
+          || estoqueMap[d.id]?.data_entrada || null;
         if (picked) acquDateMap[d.id] = picked;
       });
 
