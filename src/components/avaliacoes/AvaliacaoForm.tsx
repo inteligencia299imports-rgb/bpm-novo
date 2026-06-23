@@ -270,8 +270,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     const motoId = avaliacao.moto_avaliacao_id;
     const atId = avaliacao.atendimento_id;
     if (!motoId) return;
+    const avalIds = [motoId, avaliacao.id].filter(Boolean) as string[];
     const [{ data: histAval }, { data: histShowroom }, { data: histConsignacao }] = await Promise.all([
-      supabase.from('status_history').select('*').in('entity_type', ['avaliacao', 'consulta']).eq('entity_id', motoId).order('created_at', { ascending: true }),
+      supabase.from('status_history').select('*').in('entity_type', ['avaliacao', 'consulta']).in('entity_id', avalIds).order('created_at', { ascending: true }),
       supabase.from('status_history').select('*').in('entity_type', ['showroom', 'contrato']).eq('entity_id', atId).order('created_at', { ascending: true }),
       supabase.from('status_history').select('*').eq('entity_type', 'consignacao').eq('entity_id', avaliacao.id).order('created_at', { ascending: true }),
     ]);
