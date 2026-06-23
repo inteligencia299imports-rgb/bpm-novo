@@ -119,6 +119,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [reenviarAvaliacaoData, setReenviarAvaliacaoData] = useState<any>(null);
   const [reenviarLoading, setReenviarLoading] = useState(false);
   const [idsWithHistory, setIdsWithHistory] = useState<Set<string>>(new Set());
+  const [retiradaDates, setRetiradaDates] = useState<Record<string, string>>({});
   const [statusChangeItem, setStatusChangeItem] = useState<EstoqueItem | null>(null);
   const [historyItem, setHistoryItem] = useState<EstoqueItem | null>(null);
   const [historyEntries, setHistoryEntries] = useState<any[]>([]);
@@ -199,12 +200,19 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       if (estoqueIds.length > 0) {
         const { data: histData } = await supabase
           .from('status_history')
-          .select('entity_id')
+          .select('entity_id, status, created_at')
           .eq('entity_type', 'estoque')
-          .in('entity_id', estoqueIds);
+          .in('entity_id', estoqueIds)
+          .order('created_at', { ascending: true });
         setIdsWithHistory(new Set((histData || []).map((h: any) => h.entity_id)));
+        const retMap: Record<string, string> = {};
+        (histData || []).forEach((h: any) => {
+          if (h.status === 'RETIRADA' && !retMap[h.entity_id]) retMap[h.entity_id] = h.created_at;
+        });
+        setRetiradaDates(retMap);
       } else {
         setIdsWithHistory(new Set());
+        setRetiradaDates({});
       }
     } catch (err: any) {
       toast.error('Erro ao carregar estoque');
@@ -613,6 +621,12 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
                                 {item.status === 'sinal' ? 'Sinal' : 'Venda'}: {format(new Date(item.data_venda), 'dd/MM/yyyy', { locale: ptBR })}
+                              </span>
+                            )}
+                            {item.status === 'retirada' && retiradaDates[item.id] && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Retirada: {format(new Date(retiradaDates[item.id]), 'dd/MM/yyyy', { locale: ptBR })}
                               </span>
                             )}
                             {item.vendedor_nome && (
