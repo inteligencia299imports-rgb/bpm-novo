@@ -129,7 +129,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
                       <ProcessCard key={a.id} clientName={a.atendimento?.nome_cliente || 'N/A'} phone={a.atendimento?.telefone}
                         motoLabel={a.moto ? [a.moto.placa?.replace(/-/g, ''), `${a.moto.marca} ${(a.moto.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
                         loja={a.atendimento?.loja} date={a._dataAquisicao || a.updated_at}
-                        dateLabel="Aquisição"
+                        
                         statusColor={col.hex}
                         extraBadge={a.tipo_aquisicao && a.tipo_aquisicao !== 'propria' ? { label: getTipoAquisicaoLabel(a.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(a.tipo_aquisicao) } : undefined}
                         secondaryBadge={a.atendimento?.interesse === 'trocar' ? { label: 'Troca', className: 'border-primary/30 text-primary' } : undefined}
