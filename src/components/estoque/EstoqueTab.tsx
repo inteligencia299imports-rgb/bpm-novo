@@ -200,12 +200,19 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       if (estoqueIds.length > 0) {
         const { data: histData } = await supabase
           .from('status_history')
-          .select('entity_id')
+          .select('entity_id, status, created_at')
           .eq('entity_type', 'estoque')
-          .in('entity_id', estoqueIds);
+          .in('entity_id', estoqueIds)
+          .order('created_at', { ascending: true });
         setIdsWithHistory(new Set((histData || []).map((h: any) => h.entity_id)));
+        const retMap: Record<string, string> = {};
+        (histData || []).forEach((h: any) => {
+          if (h.status === 'RETIRADA' && !retMap[h.entity_id]) retMap[h.entity_id] = h.created_at;
+        });
+        setRetiradaDates(retMap);
       } else {
         setIdsWithHistory(new Set());
+        setRetiradaDates({});
       }
     } catch (err: any) {
       toast.error('Erro ao carregar estoque');
