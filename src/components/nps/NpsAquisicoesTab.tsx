@@ -84,10 +84,24 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
           }
         });
       }
+      // Fetch RETIRADA status_history for consignadas (by avaliacao_id)
+      const retiradaDateMap: Record<string, string> = {};
+      if (avalIds.length > 0) {
+        const { data: retDateData } = await supabase
+          .from('status_history')
+          .select('entity_id, created_at')
+          .eq('status', 'RETIRADA')
+          .in('entity_id', avalIds)
+          .order('created_at', { ascending: true });
+        (retDateData || []).forEach((r: any) => {
+          if (!retiradaDateMap[r.entity_id]) retiradaDateMap[r.entity_id] = r.created_at;
+        });
+      }
+
       mapped = mapped.map((m: any) => {
         if (m.tipo_aquisicao === 'consignada') {
-          // Consignada: data_negociacao = estoque.data_venda OU status_history.RETIRADA
-          return { ...m, _dataAquisicao: estVendaMap[m.id] || (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null };
+          // Consignada: data_negociacao = estoque.data_venda OU data RETIRADA OU adquirida
+          return { ...m, _dataAquisicao: estVendaMap[m.id] || retiradaDateMap[m.id] || (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null };
         }
         return { ...m, _dataAquisicao: (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null };
       });
