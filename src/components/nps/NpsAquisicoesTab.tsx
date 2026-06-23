@@ -349,7 +349,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                           statusColorOverride={SITUACOES_NPS.find(s => s.value === status)?.hex}
                           readyIndicator={indicator}
                           readyReason={reason}
-                          interesseLabelOverride={a.tipo_aquisicao === 'consignada' ? 'Consignada' : a.tipo_aquisicao === 'propria' ? 'Própria' : a.tipo_aquisicao === 'convertida' ? 'Convertida' : a.tipo_aquisicao === 'repasse' ? 'Repasse' : undefined}
+                          interesseLabelOverride={a._isRetirada ? 'Retirada' : a.tipo_aquisicao === 'consignada' ? 'Consignada' : a.tipo_aquisicao === 'propria' ? 'Própria' : a.tipo_aquisicao === 'convertida' ? 'Convertida' : a.tipo_aquisicao === 'repasse' ? 'Repasse' : undefined}
                           actions={
                             <>
                               {(a.nps_status || 'em_aberto') === 'em_aberto' && a._ready && (
