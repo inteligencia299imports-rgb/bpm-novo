@@ -119,6 +119,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [reenviarAvaliacaoData, setReenviarAvaliacaoData] = useState<any>(null);
   const [reenviarLoading, setReenviarLoading] = useState(false);
   const [idsWithHistory, setIdsWithHistory] = useState<Set<string>>(new Set());
+  const [retiradaDates, setRetiradaDates] = useState<Record<string, string>>({});
   const [statusChangeItem, setStatusChangeItem] = useState<EstoqueItem | null>(null);
   const [historyItem, setHistoryItem] = useState<EstoqueItem | null>(null);
   const [historyEntries, setHistoryEntries] = useState<any[]>([]);
