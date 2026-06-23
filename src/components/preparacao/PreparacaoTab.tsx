@@ -49,7 +49,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
     setLoading(true);
     const selectStr = `*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida, resultado_consulta)`;
 
-    const estResult = await fetchAllRange(() => supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null));
+    const estResult = await fetchAllRange(() => supabase.from('estoque').select('avaliacao_id, status, observacoes, data_entrada').not('avaliacao_id', 'is', null));
     const result = await fetchAllRange(() =>
       supabase.from('avaliacoes').select(selectStr).in('situacao', ['adquirida', 'estoque']).order('updated_at', { ascending: false })
     );
