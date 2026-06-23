@@ -1,0 +1,1 @@
+DELETE FROM public.status_history WHERE changed_by_name ILIKE '%backfill%' OR observacoes ILIKE '%backfill%';
