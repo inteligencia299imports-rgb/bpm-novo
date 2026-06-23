@@ -51,8 +51,8 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
     const data = result.data || [];
     const estData = estResult.data;
     if (error) { toast.error('Erro ao carregar consignações'); } else {
-      const estoqueMap: Record<string, { status: string; observacoes: string | null }> = {};
-      (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes }; });
+      const estoqueMap: Record<string, { status: string; observacoes: string | null; data_entrada: string | null }> = {};
+      (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes, data_entrada: e.data_entrada }; });
       const motoIds = (data || []).map((d: any) => d.moto_avaliacao_id).filter(Boolean);
       const avalIds = (data || []).map((d: any) => d.id);
       const histEntityIds = Array.from(new Set([...motoIds, ...avalIds]));
@@ -66,7 +66,8 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
       (data || []).forEach((d: any) => {
         const byMoto = d.moto_avaliacao_id ? histByEntity[d.moto_avaliacao_id] : null;
         const byAval = histByEntity[d.id];
-        const picked = [byMoto, byAval].filter(Boolean).sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0];
+        const picked = [byMoto, byAval].filter(Boolean).sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0]
+          || estoqueMap[d.id]?.data_entrada || null;
         if (picked) acquDateMap[d.id] = picked;
       });
       let mapped = (data || [])
