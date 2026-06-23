@@ -57,8 +57,8 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
     const allData = result.data || [];
     if (err1) { toast.error('Erro ao carregar preparação'); } else {
       const estData = estResult.data;
-      const estoqueMap: Record<string, { status: string; observacoes: string | null }> = {};
-      (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes }; });
+      const estoqueMap: Record<string, { status: string; observacoes: string | null; data_entrada: string | null }> = {};
+      (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes, data_entrada: e.data_entrada }; });
 
       // Fetch release readiness data
       const avaliacaoIds = allData.map((d: any) => d.id);
