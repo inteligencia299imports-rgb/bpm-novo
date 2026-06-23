@@ -623,6 +623,12 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                                 {item.status === 'sinal' ? 'Sinal' : 'Venda'}: {format(new Date(item.data_venda), 'dd/MM/yyyy', { locale: ptBR })}
                               </span>
                             )}
+                            {item.status === 'retirada' && retiradaDates[item.id] && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Retirada: {format(new Date(retiradaDates[item.id]), 'dd/MM/yyyy', { locale: ptBR })}
+                              </span>
+                            )}
                             {item.vendedor_nome && (
                               <span className="flex items-center gap-1">
                                 <User className="h-3 w-3" />
