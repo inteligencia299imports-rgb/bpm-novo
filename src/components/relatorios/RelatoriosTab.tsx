@@ -16,12 +16,14 @@ import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
 import RelatorioVendedores from './RelatorioVendedores';
 import RelatorioPreparacao from './RelatorioPreparacao';
+import RelatorioNps from './RelatorioNps';
 
 const DEPT_OPTIONS = [
   { value: 'showroom', label: 'Showroom', icon: Bike },
   { value: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck },
   { value: 'preparacao', label: 'Preparação', icon: Wrench },
   { value: 'estoque', label: 'Estoque', icon: Package },
+  { value: 'nps', label: 'NPS', icon: Award },
 ];
 
 const RelatoriosTab: React.FC = () => {
