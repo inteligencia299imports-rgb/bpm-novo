@@ -225,6 +225,9 @@ const RelatoriosTab: React.FC = () => {
             <TabsContent value="estoque">
               <RelatorioEstoque showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
             </TabsContent>
+            <TabsContent value="nps" className="w-full max-w-full overflow-x-hidden">
+              <RelatorioNps showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'nps') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
+            </TabsContent>
           </>
         )}
         <TabsContent value="vendedores">
