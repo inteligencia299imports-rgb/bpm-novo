@@ -120,9 +120,9 @@ const RelatoriosTab: React.FC = () => {
                     href="https://app.powerbi.com/view?r=eyJrIjoiODEwYWM3MWMtODRhYi00MWU1LWJiZmMtNGM0NDMyZmYzYjlmIiwidCI6ImY4NmI3N2RjLWZjMjYtNGY0My1hNjEyLTAzYzU2NjE3NjlhMSJ9"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-muted-foreground hover:text-foreground"
+                    className="inline-flex items-center gap-1.5 justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-muted-foreground hover:text-foreground"
                   >
-                    NPS
+                    <Award className="h-4 w-4" /> NPS
                   </a>
                 </TabsList>
               </div>
