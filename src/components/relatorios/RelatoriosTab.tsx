@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck, Wrench, Filter } from 'lucide-react';
+import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck, Wrench, Filter, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -16,12 +16,14 @@ import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
 import RelatorioVendedores from './RelatorioVendedores';
 import RelatorioPreparacao from './RelatorioPreparacao';
+import RelatorioNps from './RelatorioNps';
 
 const DEPT_OPTIONS = [
   { value: 'showroom', label: 'Showroom', icon: Bike },
   { value: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck },
   { value: 'preparacao', label: 'Preparação', icon: Wrench },
   { value: 'estoque', label: 'Estoque', icon: Package },
+  { value: 'nps', label: 'NPS', icon: Award },
 ];
 
 const RelatoriosTab: React.FC = () => {
@@ -222,6 +224,9 @@ const RelatoriosTab: React.FC = () => {
             </TabsContent>
             <TabsContent value="estoque">
               <RelatorioEstoque showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
+            </TabsContent>
+            <TabsContent value="nps" className="w-full max-w-full overflow-x-hidden">
+              <RelatorioNps showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'nps') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
             </TabsContent>
           </>
         )}
