@@ -125,14 +125,6 @@ const RelatoriosTab: React.FC = () => {
                     NPS
                   </a>
                 </TabsList>
-                <a
-                  href="https://app.powerbi.com/view?r=eyJrIjoiODEwYWM3MWMtODRhYi00MWU1LWJiZmMtNGM0NDMyZmYz:5mIiwidCI6ImY4NmI3N2RjLWZjMjYtNGY0My1hNjEyLTAzYzU2NjE3NjlhMSJ9"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-muted-foreground hover:text-foreground"
-                >
-                  NPS
-                </a>
               </div>
               {/* Mobile: select with icons */}
               <div className="md:hidden flex-1 min-w-0">
@@ -162,14 +154,6 @@ const RelatoriosTab: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <a
-                href="https://app.powerbi.com/view?r=eyJrIjoiODEwYWM3MWMtODRhYi00MWU1LWJiZmMtNGM0NDMyZmYz:5mIiwidCI6ImY4NmI3N2RjLWZjMjYtNGY0My1hNjEyLTAzYzU2NjE3NjlhMSJ9"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="md:hidden inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground shrink-0"
-              >
-                NPS
-              </a>
               <Button variant="outline" size="icon" className="md:hidden shrink-0" onClick={() => setShowFilters(!showFilters)}>
                 <Filter className="h-4 w-4" />
               </Button>
