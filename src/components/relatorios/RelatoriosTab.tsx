@@ -90,16 +90,6 @@ const RelatoriosTab: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2"><BarChart3 className="h-7 w-7 text-primary" /><h1 className="text-2xl font-bold text-foreground">Relatórios</h1></div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full h-9 px-3 text-sm"
-            asChild
-          >
-            <a href="https://app.powerbi.com/view?r=eyJrIjoiODEwYWM3MWMtODRhYi00MWU1LWJiZmMtNGM0NDMyZmYz:5mIiwidCI6ImY4NmI3N2RjLWZjMjYtNGY0My1hNjEyLTAzYzU2NjE3NjlhMSJ9" target="_blank" rel="noopener noreferrer">
-              NPS
-            </a>
-          </Button>
           {hasActiveFilters && (
             <Button
               variant="ghost"
@@ -119,7 +109,7 @@ const RelatoriosTab: React.FC = () => {
           {isGestorOrAvaliador && (
             <div className="w-full sm:w-auto flex items-center gap-2">
               {/* Desktop: tabs list */}
-              <div className="hidden md:block overflow-x-auto">
+              <div className="hidden md:flex items-center gap-2 overflow-x-auto">
                 <TabsList className="w-max">
                   {DEPT_OPTIONS.map(o => (
                     <TabsTrigger key={o.value} value={o.value} className="gap-1.5">
@@ -127,6 +117,14 @@ const RelatoriosTab: React.FC = () => {
                     </TabsTrigger>
                   ))}
                 </TabsList>
+                <a
+                  href="https://app.powerbi.com/view?r=eyJrIjoiODEwYWM3MWMtODRhYi00MWU1LWJiZmMtNGM0NDMyZmYz:5mIiwidCI6ImY4NmI3N2RjLWZjMjYtNGY0My1hNjEyLTAzYzU2NjE3NjlhMSJ9"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-muted-foreground hover:text-foreground"
+                >
+                  NPS
+                </a>
               </div>
               {/* Mobile: select with icons */}
               <div className="md:hidden flex-1 min-w-0">
@@ -156,6 +154,14 @@ const RelatoriosTab: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <a
+                href="https://app.powerbi.com/view?r=eyJrIjoiODEwYWM3MWMtODRhYi00MWU1LWJiZmMtNGM0NDMyZmYz:5mIiwidCI6ImY4NmI3N2RjLWZjMjYtNGY0My1hNjEyLTAzYzU2NjE3NjlhMSJ9"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="md:hidden inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground shrink-0"
+              >
+                NPS
+              </a>
               <Button variant="outline" size="icon" className="md:hidden shrink-0" onClick={() => setShowFilters(!showFilters)}>
                 <Filter className="h-4 w-4" />
               </Button>
