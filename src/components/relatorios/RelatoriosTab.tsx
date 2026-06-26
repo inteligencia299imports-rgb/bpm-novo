@@ -90,16 +90,6 @@ const RelatoriosTab: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2"><BarChart3 className="h-7 w-7 text-primary" /><h1 className="text-2xl font-bold text-foreground">Relatórios</h1></div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full h-9 px-3 text-sm"
-            asChild
-          >
-            <a href="https://app.powerbi.com/view?r=eyJrIjoiODEwYWM3MWMtODRhYi00MWU1LWJiZmMtNGM0NDMyZmYz:5mIiwidCI6ImY4NmI3N2RjLWZjMjYtNGY0My1hNjEyLTAzYzU2NjE3NjlhMSJ9" target="_blank" rel="noopener noreferrer">
-              NPS
-            </a>
-          </Button>
           {hasActiveFilters && (
             <Button
               variant="ghost"
