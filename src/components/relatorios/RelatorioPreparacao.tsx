@@ -168,13 +168,14 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         .filter(h => h.entity_type === 'preparacao')
         .sort((x, y) => new Date(x.created_at).getTime() - new Date(y.created_at).getTime());
 
-      // Última despausa = último 'pendencia_concluida' (reenviada_preparacao NÃO conta)
+      // Última despausa = mais recente entre PENDÊNCIA/OFICINA/SERVIÇO EXTERNO CONCLUÍDO
+      const CONCLUSION_STATUSES = ['pendencia_concluida', 'oficina_concluida', 'servico_externo_concluido'];
       const resets = prepHist
-        .filter(h => h.status === 'pendencia_concluida')
+        .filter(h => CONCLUSION_STATUSES.includes(h.status))
         .map(h => h.created_at);
       const ultimaDespausa = resets.length ? resets[resets.length - 1] : null;
 
-      // Data Entrada Preparação = última despausa OU data de aquisição
+      // Data Entrada Preparação = última conclusão de pausa OU data de aquisição
       const dataEntradaPrep = ultimaDespausa || dataAquisicao;
 
       // Data de preparação = última 'repreparacao_concluida' (se houver, independente de despausa) OU primeira 'aguardando_aceite' após dataEntradaPrep
