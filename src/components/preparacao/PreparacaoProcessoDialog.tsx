@@ -207,10 +207,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         bloqueio_juridico: 'BLOQUEIO JURÍDICO',
         reenviada_preparacao: 'REENVIADA PREPARAÇÃO',
         pendencia_concluida: 'PENDÊNCIA CONCLUÍDA',
+        oficina_concluida: 'OFICINA CONCLUÍDA',
+        servico_externo_concluido: 'SERVIÇO EXTERNO CONCLUÍDO',
         repreparacao_concluida: 'REPREPARAÇÃO CONCLUÍDA',
         preparacao_concluida: 'PREPARAÇÃO CONCLUÍDA',
         ...Object.fromEntries(PREPARACAO_COLUMNS.map(c => [c.value, c.label])),
       };
+
       const remapStatus = (s: string) => STATUS_REMAP[s] || s;
 
       const acquisitionHistory = avalHistory.reduce<HistoryEntry[]>((acc, entry) => {
@@ -379,9 +382,14 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         return;
       }
 
-      const isPendenciaConcluida = targetStatus === 'em_aberto' && statusFrom === 'pendente';
+      const CONCLUSION_MAP: Record<string, { status: string; label: string }> = {
+        pendente: { status: 'pendencia_concluida', label: 'Pendência Concluída' },
+        oficina: { status: 'oficina_concluida', label: 'Oficina Concluída' },
+        servico_externo: { status: 'servico_externo_concluido', label: 'Serviço Externo Concluído' },
+      };
+      const conclusion = targetStatus === 'em_aberto' ? CONCLUSION_MAP[statusFrom] : undefined;
       const historySaved = await insertHistory({
-        statusTo: isPendenciaConcluida ? 'pendencia_concluida' : targetStatus,
+        statusTo: conclusion?.status || targetStatus,
         observacoes,
         changedBy: user.id,
         changedByName: userName,
@@ -390,8 +398,9 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       if (!historySaved) {
         toast.error('Status alterado, mas erro ao registrar histórico');
       } else {
-        toast.success(`Status alterado para ${isPendenciaConcluida ? 'Em Aberto' : getStatusLabel(targetStatus)}`);
+        toast.success(`Status alterado para ${conclusion?.label || getStatusLabel(targetStatus)}`);
       }
+
 
       setActiveStatus(targetStatus);
       onStatusChanged?.(targetStatus);
@@ -514,19 +523,28 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     }
   };
 
+  const isPausedStatus = ['pendente', 'oficina', 'servico_externo'].includes(activeStatus);
+  const CONCLUSAO_LABELS: Record<string, string> = {
+    pendente: 'Pendência Concluída',
+    oficina: 'Oficina Concluída',
+    servico_externo: 'Serviço Externo Concluído',
+  };
+
   const visibleButtons = ACTION_BUTTONS.filter(btn => {
     if (btn.targetStatus === activeStatus) return false;
-    // "Em Aberto" só aparece quando o status atual é "pendente"
-    if (btn.value === 'em_aberto' && activeStatus !== 'pendente') return false;
-    // For estoque tracking: only allow em_aberto (se pendente), pendente, oficina, servico_externo
+    // "Em Aberto" é renderizado como botão primário de conclusão quando pausado
+    if (btn.value === 'em_aberto') return false;
+    // For estoque tracking: only allow pendente, oficina, servico_externo (em_aberto handled above)
     if (isEstoqueTracking) {
-      return ['em_aberto', 'pendente', 'oficina', 'servico_externo'].includes(btn.value);
+      return ['pendente', 'oficina', 'servico_externo'].includes(btn.value);
     }
-    if (btn.value === 'preparacao' && (activeStatus === 'aguardando_aceite' || activeStatus === 'aguardando_liberacao_estoque')) return false;
+    // Oculta Preparação quando pausado (pendente/oficina/servico_externo) — usa botão de conclusão
+    if (btn.value === 'preparacao' && (isPausedStatus || activeStatus === 'aguardando_aceite' || activeStatus === 'aguardando_liberacao_estoque')) return false;
     if (btn.value === 'aceite' && activeStatus !== 'aguardando_aceite') return false;
     if (btn.value === 'liberar' && activeStatus !== 'aguardando_liberacao_estoque') return false;
     return true;
   });
+
 
   const handlePreparacaoConcluida = async () => {
     if (!detalhes.trim()) {
@@ -898,6 +916,20 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       </Button>
                     );
                   })}
+
+                  {/* Botão primário de conclusão quando pausado (Pendente/Oficina/Serviço Externo) */}
+                  {!isEstoqueTracking && isPausedStatus && (
+                    <Button
+                      variant="default"
+                      disabled={saving}
+                      onClick={() => handleAction('em_aberto', CONCLUSAO_LABELS[activeStatus])}
+                      className="gap-2 w-full h-10 text-sm font-medium"
+                    >
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                      {CONCLUSAO_LABELS[activeStatus]}
+                    </Button>
+                  )}
+
 
                   {/* Preparação Concluída for estoque tracking */}
                   {isEstoqueTracking && (
