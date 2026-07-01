@@ -372,7 +372,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    if (item.avaliacao_id && item.status === 'disponivel') {
+    if (item.avaliacao_id && (item.status === 'disponivel' || item.status === 'sinal' || item.status === 'vendido')) {
       options.push({
         label: 'Preparação',
         icon: <Wrench className="h-4 w-4" />,
