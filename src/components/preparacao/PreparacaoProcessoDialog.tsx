@@ -523,19 +523,28 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     }
   };
 
+  const isPausedStatus = ['pendente', 'oficina', 'servico_externo'].includes(activeStatus);
+  const CONCLUSAO_LABELS: Record<string, string> = {
+    pendente: 'Pendência Concluída',
+    oficina: 'Oficina Concluída',
+    servico_externo: 'Serviço Externo Concluído',
+  };
+
   const visibleButtons = ACTION_BUTTONS.filter(btn => {
     if (btn.targetStatus === activeStatus) return false;
-    // "Em Aberto" só aparece quando o status atual é "pendente"
-    if (btn.value === 'em_aberto' && activeStatus !== 'pendente') return false;
-    // For estoque tracking: only allow em_aberto (se pendente), pendente, oficina, servico_externo
+    // "Em Aberto" é renderizado como botão primário de conclusão quando pausado
+    if (btn.value === 'em_aberto') return false;
+    // For estoque tracking: only allow pendente, oficina, servico_externo (em_aberto handled above)
     if (isEstoqueTracking) {
-      return ['em_aberto', 'pendente', 'oficina', 'servico_externo'].includes(btn.value);
+      return ['pendente', 'oficina', 'servico_externo'].includes(btn.value);
     }
-    if (btn.value === 'preparacao' && (activeStatus === 'aguardando_aceite' || activeStatus === 'aguardando_liberacao_estoque')) return false;
+    // Oculta Preparação quando pausado (pendente/oficina/servico_externo) — usa botão de conclusão
+    if (btn.value === 'preparacao' && (isPausedStatus || activeStatus === 'aguardando_aceite' || activeStatus === 'aguardando_liberacao_estoque')) return false;
     if (btn.value === 'aceite' && activeStatus !== 'aguardando_aceite') return false;
     if (btn.value === 'liberar' && activeStatus !== 'aguardando_liberacao_estoque') return false;
     return true;
   });
+
 
   const handlePreparacaoConcluida = async () => {
     if (!detalhes.trim()) {
