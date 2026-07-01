@@ -371,14 +371,21 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       const statusFrom = activeStatus || currentStatus || 'em_aberto';
       const observacoes = detalhes.trim();
 
-      const { error: updateError } = await supabase
+      const { data: updatedRows, error: updateError } = await supabase
         .from('avaliacoes')
         .update({ preparacao_status: targetStatus } as any)
-        .eq('id', avaliacaoId);
+        .eq('id', avaliacaoId)
+        .select('id, preparacao_status');
 
       if (updateError) {
         console.error('Erro ao atualizar status:', updateError);
-        toast.error('Erro ao atualizar status');
+        toast.error('Erro ao atualizar status: ' + updateError.message);
+        return;
+      }
+
+      if (!updatedRows || updatedRows.length === 0) {
+        console.error('Nenhuma linha atualizada — verifique permissões (RLS).', { avaliacaoId, targetStatus });
+        toast.error('Não foi possível atualizar o status (permissão negada).');
         return;
       }
 
