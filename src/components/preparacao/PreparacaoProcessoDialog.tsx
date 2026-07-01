@@ -917,6 +917,20 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     );
                   })}
 
+                  {/* Botão primário de conclusão quando pausado (Pendente/Oficina/Serviço Externo) */}
+                  {!isEstoqueTracking && isPausedStatus && (
+                    <Button
+                      variant="default"
+                      disabled={saving}
+                      onClick={() => handleAction('em_aberto', CONCLUSAO_LABELS[activeStatus])}
+                      className="gap-2 w-full h-10 text-sm font-medium"
+                    >
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                      {CONCLUSAO_LABELS[activeStatus]}
+                    </Button>
+                  )}
+
+
                   {/* Preparação Concluída for estoque tracking */}
                   {isEstoqueTracking && (
                     <Button
