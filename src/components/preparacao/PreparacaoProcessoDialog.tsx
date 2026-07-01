@@ -382,9 +382,14 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         return;
       }
 
-      const isPendenciaConcluida = targetStatus === 'em_aberto' && statusFrom === 'pendente';
+      const CONCLUSION_MAP: Record<string, { status: string; label: string }> = {
+        pendente: { status: 'pendencia_concluida', label: 'Pendência Concluída' },
+        oficina: { status: 'oficina_concluida', label: 'Oficina Concluída' },
+        servico_externo: { status: 'servico_externo_concluido', label: 'Serviço Externo Concluído' },
+      };
+      const conclusion = targetStatus === 'em_aberto' ? CONCLUSION_MAP[statusFrom] : undefined;
       const historySaved = await insertHistory({
-        statusTo: isPendenciaConcluida ? 'pendencia_concluida' : targetStatus,
+        statusTo: conclusion?.status || targetStatus,
         observacoes,
         changedBy: user.id,
         changedByName: userName,
@@ -393,8 +398,9 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       if (!historySaved) {
         toast.error('Status alterado, mas erro ao registrar histórico');
       } else {
-        toast.success(`Status alterado para ${isPendenciaConcluida ? 'Em Aberto' : getStatusLabel(targetStatus)}`);
+        toast.success(`Status alterado para ${conclusion?.label || getStatusLabel(targetStatus)}`);
       }
+
 
       setActiveStatus(targetStatus);
       onStatusChanged?.(targetStatus);
