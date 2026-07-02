@@ -24,31 +24,7 @@ interface RelatorioAvaliacoesProps {
   showFilters?: boolean;
 }
 
-const normalizeText = (value: string | null | undefined) =>
-  (value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
 
-const TIPOS_PROPRIA = new Set(['propria', 'convertida', 'repasse', 'test-ride', 'test ride']);
-const TIPOS_CONSIGNADA = new Set(['consignada', 'consignacao']);
-const TIPOS_AQUISICAO = new Set([...TIPOS_PROPRIA, ...TIPOS_CONSIGNADA]);
-
-const isInDateRange = (value: string | null | undefined, dateFromIso: string | null, dateToIso: string | null) => {
-  if (!value) return false;
-  if (dateFromIso && value < dateFromIso) return false;
-  if (dateToIso && value > dateToIso) return false;
-  return true;
-};
-
-const chunkArray = <T,>(items: T[], size: number) => {
-  const chunks: T[][] = [];
-  for (let index = 0; index < items.length; index += size) {
-    chunks.push(items.slice(index, index + size));
-  }
-  return chunks;
-};
 
 const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const isMobile = useIsMobile();
