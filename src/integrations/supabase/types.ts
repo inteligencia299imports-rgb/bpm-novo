@@ -1337,6 +1337,10 @@ export type Database = {
         Returns: Json
       }
       relatorio_avaliacoes_mensal: { Args: { _loja?: string }; Returns: Json }
+      relatorio_avaliacoes_por_avaliador: {
+        Args: { _date_from?: string; _date_to?: string; _loja?: string }
+        Returns: Json
+      }
       relatorio_estoque_kpis:
         | { Args: never; Returns: Json }
         | { Args: { p_cutoff?: string }; Returns: Json }

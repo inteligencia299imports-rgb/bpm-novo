@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { abbreviateName, fmtInt } from '@/lib/utils';
-import { fetchAllRange } from '@/lib/fetchAllRange';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, ArrowDownToLine, Repeat, Package } from 'lucide-react';
@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from '@/lib/reportDateRange';
-import { getPreviousPeriodIso, getPreviousPeriod, splitComparado } from '@/lib/reportComparison';
+import { getPreviousPeriodIso, splitComparado } from '@/lib/reportComparison';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
 import DeltaBadge from './DeltaBadge';
@@ -24,31 +24,7 @@ interface RelatorioAvaliacoesProps {
   showFilters?: boolean;
 }
 
-const normalizeText = (value: string | null | undefined) =>
-  (value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase();
 
-const TIPOS_PROPRIA = new Set(['propria', 'convertida', 'repasse', 'test-ride', 'test ride']);
-const TIPOS_CONSIGNADA = new Set(['consignada', 'consignacao']);
-const TIPOS_AQUISICAO = new Set([...TIPOS_PROPRIA, ...TIPOS_CONSIGNADA]);
-
-const isInDateRange = (value: string | null | undefined, dateFromIso: string | null, dateToIso: string | null) => {
-  if (!value) return false;
-  if (dateFromIso && value < dateFromIso) return false;
-  if (dateToIso && value > dateToIso) return false;
-  return true;
-};
-
-const chunkArray = <T,>(items: T[], size: number) => {
-  const chunks: T[][] = [];
-  for (let index = 0; index < items.length; index += size) {
-    chunks.push(items.slice(index, index + size));
-  }
-  return chunks;
-};
 
 const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const isMobile = useIsMobile();
@@ -79,166 +55,46 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const dfParam = toSaoPauloStartOfDayIso(dateFrom);
     const dtParam = toSaoPauloEndOfDayIso(dateTo);
     const { prevFromIso, prevToIso } = getPreviousPeriodIso(dateFrom, dateTo);
-    const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
-    const hasPrev = Boolean(prevFromIso && prevToIso);
     const lojaParam = filterLoja === 'todos' ? 'todos' : filterLoja;
 
-    // Janela ampla cobrindo período atual + anterior (se houver)
-    const windowFromIso = hasPrev && prevFromIso && dfParam
-      ? (prevFromIso < dfParam ? prevFromIso : dfParam)
-      : dfParam;
-    const windowToIso = dtParam;
-
-    const baseSelect = 'id,avaliador_id,tipo_aquisicao,created_at,updated_at,situacao,atendimentos!inner(interesse,loja)';
-
-    const [mensalRes, baseByCreatedRes, histPeriodoRes, nomesRes, kpisRes] = await Promise.all([
+    const [mensalRes, kpisRes, avaliadorRes, nomesRes] = await Promise.all([
       supabase.rpc('relatorio_avaliacoes_mensal', { _loja: lojaParam }),
-      // Apenas avaliações criadas na janela do período (atual + anterior)
-      fetchAllRange<any>(() => {
-        let q = supabase
-          .from('avaliacoes')
-          .select(baseSelect)
-          .neq('situacao', 'sem_avaliar')
-          .in('atendimentos.interesse', ['trocar', 'vender']);
-        if (windowFromIso) q = q.gte('created_at', windowFromIso);
-        if (windowToIso) q = q.lte('created_at', windowToIso);
-        return q;
-      }),
-      // Status history "adquirida" dentro do período atual — captura aquisições de avaliações criadas antes
-      dfParam && dtParam
-        ? fetchAllRange<any>(() =>
-            supabase
-              .from('status_history')
-              .select('entity_id,created_at')
-              .eq('entity_type', 'avaliacao')
-              .eq('status', 'adquirida')
-              .gte('created_at', dfParam)
-              .lte('created_at', dtParam),
-          )
-        : Promise.resolve({ data: [], error: null } as any),
-      supabase.from('user_roles').select('user_id,nome'),
       supabase.rpc('relatorio_avaliacoes_kpis_comparado', {
         _date_from: dfParam, _date_to: dtParam,
         _prev_from: prevFromIso, _prev_to: prevToIso,
         _loja: lojaParam,
       }),
+      supabase.rpc('relatorio_avaliacoes_por_avaliador', {
+        _date_from: dfParam, _date_to: dtParam, _loja: lojaParam,
+      }),
+      supabase.from('user_roles').select('user_id,nome'),
     ]);
+
     const { atual: kpisAtual, anterior: kpisAnterior } = splitComparado(kpisRes.data as any);
-    const kpisPrevRes = { data: kpisAnterior } as any;
-
-    const normLoja = (loja: string | null | undefined) =>
-      (loja || '').toUpperCase().includes('DUCATI') ? 'Ducati' : '299';
-
-    // Histórico do período atual — menor created_at por avaliação
-    const historicosPorAvaliacao = new Map<string, string>();
-    for (const item of ((histPeriodoRes as any).data || []) as any[]) {
-      const current = historicosPorAvaliacao.get(item.entity_id);
-      if (!current || item.created_at < current) {
-        historicosPorAvaliacao.set(item.entity_id, item.created_at);
-      }
-    }
-
-    const baseByCreated = ((baseByCreatedRes.data || []) as any[]).filter((item: any) => {
-      if (lojaParam === 'todos') return true;
-      return normLoja(item.atendimentos?.loja) === lojaParam;
-    });
-    const baseByCreatedIds = new Set(baseByCreated.map((item: any) => item.id));
-
-    // Buscar avaliações adquiridas no período mas criadas fora da janela
-    const extraIds = Array.from(historicosPorAvaliacao.keys()).filter((id) => !baseByCreatedIds.has(id));
-    let baseExtra: any[] = [];
-    if (extraIds.length > 0) {
-      const extraRes = await Promise.all(
-        chunkArray(extraIds, 200).map((ids) =>
-          fetchAllRange<any>(() =>
-            supabase
-              .from('avaliacoes')
-              .select(baseSelect)
-              .neq('situacao', 'sem_avaliar')
-              .in('atendimentos.interesse', ['trocar', 'vender'])
-              .in('id', ids),
-          ),
-        ),
-      );
-      baseExtra = extraRes.flatMap((r) => (r.data || []) as any[]).filter((item: any) => {
-        if (lojaParam === 'todos') return true;
-        return normLoja(item.atendimentos?.loja) === lojaParam;
-      });
-    }
-
-    const detalhesBase = [...baseByCreated, ...baseExtra];
-    const detalhesPeriodo = detalhesBase.filter((item: any) => isInDateRange(item.created_at, dfParam, dtParam));
-    const detalhesPeriodoPrev = hasPrev
-      ? detalhesBase.filter((item: any) => isInDateRange(item.created_at, prevFromIso, prevToIso))
-      : [];
-
-    const aquisicoesPeriodo = detalhesBase.filter((item: any) => {
-      const tipo = normalizeText(item.tipo_aquisicao);
-      if (!TIPOS_AQUISICAO.has(tipo)) return false;
-      const dataAquisicao = historicosPorAvaliacao.get(item.id) || item.updated_at || item.created_at;
-      return isInDateRange(dataAquisicao, dfParam, dtParam);
-    });
-
-    const totalAvaliacoesComAvaliador = detalhesPeriodo.filter((item: any) => Boolean(item.avaliador_id)).length;
-    const totalAvaliacoesPrev = detalhesPeriodoPrev.filter((item: any) => Boolean(item.avaliador_id)).length;
-
-    setIndicadores({
-      ...kpisAtual,
-      total_avaliacoes: totalAvaliacoesComAvaliador,
-    });
-    setIndicadoresPrev({
-      ...((kpisPrevRes?.data as any) || {}),
-      total_avaliacoes: totalAvaliacoesPrev,
-    });
+    setIndicadores(kpisAtual || {});
+    setIndicadoresPrev(kpisAnterior || {});
 
     const nomeById = new Map(((nomesRes.data || []) as any[]).map((item: any) => [item.user_id, item.nome || 'Desconhecido']));
-    const chartMap = new Map<string, { nomeCompleto: string; avaliacoes: number; aqTrocar: number; aqVender: number; aqPropria: number; aqConsignada: number }>();
-
-    for (const item of detalhesPeriodo) {
-      const avaliadorId = item.avaliador_id;
-      if (!avaliadorId) continue;
-      const atual = chartMap.get(avaliadorId) || {
-        nomeCompleto: nomeById.get(avaliadorId) || 'Desconhecido',
-        avaliacoes: 0,
-        aqTrocar: 0,
-        aqVender: 0,
-        aqPropria: 0,
-        aqConsignada: 0,
+    const avalData = (((avaliadorRes.data as any[]) || []) as any[]).map((item: any) => {
+      const nomeCompleto = nomeById.get(item.avaliador_id) || 'Desconhecido';
+      const aqTrocar = Number(item.aqTrocar || item.aqtrocar || 0);
+      const aqVender = Number(item.aqVender || item.aqvender || 0);
+      const aqPropria = Number(item.aqPropria || item.aqpropria || 0);
+      const aqConsignada = Number(item.aqConsignada || item.aqconsignada || 0);
+      return {
+        nomeCompleto,
+        nome: abbreviateName(nomeCompleto),
+        avaliacoes: Number(item.avaliacoes || 0),
+        aqTrocar, aqVender, aqPropria, aqConsignada,
+        total: aqTrocar + aqVender,
       };
-      atual.avaliacoes += 1;
-      chartMap.set(avaliadorId, atual);
-    }
-
-    for (const item of aquisicoesPeriodo) {
-      const avaliadorId = item.avaliador_id;
-      if (!avaliadorId) continue;
-      const tipo = normalizeText(item.tipo_aquisicao);
-      const interesse = normalizeText(item.atendimentos?.interesse);
-      const atual = chartMap.get(avaliadorId) || {
-        nomeCompleto: nomeById.get(avaliadorId) || 'Desconhecido',
-        avaliacoes: 0,
-        aqTrocar: 0,
-        aqVender: 0,
-        aqPropria: 0,
-        aqConsignada: 0,
-      };
-      if (interesse === 'trocar') atual.aqTrocar += 1;
-      if (interesse === 'vender') atual.aqVender += 1;
-      if (TIPOS_PROPRIA.has(tipo)) atual.aqPropria += 1;
-      if (TIPOS_CONSIGNADA.has(tipo)) atual.aqConsignada += 1;
-      chartMap.set(avaliadorId, atual);
-    }
-
-    const avalData = Array.from(chartMap.values()).map((item) => ({
-      ...item,
-      nome: abbreviateName(item.nomeCompleto),
-      total: item.aqTrocar + item.aqVender,
-    }));
+    });
 
     setChartByAvaliador(avalData);
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
   }, [dateFrom, dateTo, filterLoja]);
+
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
