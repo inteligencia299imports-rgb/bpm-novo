@@ -600,7 +600,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             manutencaoVencida={item.manutencao_vencida}
                           />
 
-                          {item.tipo === 'propria' && item.tipo_aquisicao !== 'test-ride' && item.avaliacao_id && item.pos_compra_status !== 'concluido' && (
+                          {item.tipo === 'propria' && item.tipo_aquisicao !== 'test-ride' && item.avaliacao_id && item.pos_compra_status !== 'concluido' && !item.data_venda && (
                             <div className="flex items-start gap-1.5 text-xs text-amber-700 font-medium bg-amber-500/10 border border-amber-500/30 rounded p-2">
                               <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                               <span>Transferência para loja pendente</span>
