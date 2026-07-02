@@ -81,6 +81,7 @@ interface EstoqueItem {
   venda_vendedor_id?: string | null;
   // From avaliacoes join
   tipo_aquisicao?: string | null;
+  pos_compra_status?: string | null;
   displayTipo?: string | null;
 }
 
@@ -158,7 +159,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta), avaliacoes:avaliacao_id(tipo_aquisicao, atendimentos:atendimento_id(loja)), atendimentos:atendimento_venda_id(vendedor_id, loja)').order('data_entrada', { ascending: false });
+      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta), avaliacoes:avaliacao_id(tipo_aquisicao, pos_compra_status, atendimentos:atendimento_id(loja)), atendimentos:atendimento_venda_id(vendedor_id, loja)').order('data_entrada', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
       if (filterTipo !== 'todos' && filterTipo !== 'test-ride') query = query.eq('tipo', filterTipo);
@@ -184,6 +185,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         venda_vendedor_id: d.atendimentos?.vendedor_id ?? null,
         vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
         tipo_aquisicao: d.avaliacoes?.tipo_aquisicao ?? null,
+        pos_compra_status: d.avaliacoes?.pos_compra_status ?? null,
         displayTipo: d.avaliacoes?.tipo_aquisicao || d.tipo,
         loja_origem: d.atendimentos?.loja ?? d.avaliacoes?.atendimentos?.loja ?? null,
       }));
@@ -597,6 +599,13 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             temChaveReserva={item.tem_chave_reserva}
                             manutencaoVencida={item.manutencao_vencida}
                           />
+
+                          {item.tipo === 'propria' && item.tipo_aquisicao !== 'test-ride' && item.avaliacao_id && item.pos_compra_status !== 'concluido' && (
+                            <div className="flex items-start gap-1.5 text-xs text-amber-700 font-medium bg-amber-500/10 border border-amber-500/30 rounded p-2">
+                              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                              <span>Transferência pendente — processo de pós-compra não concluído.</span>
+                            </div>
+                          )}
 
                           <div className="flex items-center justify-between pt-2 border-t border-border">
                             <div>
