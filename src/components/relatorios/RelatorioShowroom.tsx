@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllRange } from '@/lib/fetchAllRange';
 import { abbreviateName, fmtInt } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, ShoppingCart, CreditCard, TrendingUp, DollarSign, Target, BarChart3, PieChart, FileSpreadsheet, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, AreaChart, Area, ComposedChart } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,11 +14,16 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
-import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from '@/lib/reportDateRange';
-import { getPreviousPeriodIso, splitComparado } from '@/lib/reportComparison';
+import { getPreviousPeriod } from '@/lib/reportComparison';
+import { getCycleForDate } from '@/lib/reportCycle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
 import DeltaBadge from './DeltaBadge';
+import {
+  buildIndexes, computeRowMetrics, filterVendidas, filterSinais, filterAtendimentosGeneric,
+  matchesLoja, tipoDefault, matchesTipo,
+  type AtendimentoRow, type ShowroomIndexes,
+} from '@/lib/showroomMetrics';
 
 const fmtBRL = (v: number | null | undefined) =>
   (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -38,6 +43,49 @@ interface RelatorioShowroomProps {
   showFilters?: boolean;
 }
 
+// KPI aggregation compatível com a RPC antiga (usa 445 fixo, não condicional)
+function aggregateKpis(vendidas: { m: ReturnType<typeof computeRowMetrics>; }[]) {
+  let faturamentoPrevisto = 0, faturamentoRealizado = 0;
+  let margemPrevista = 0, margemRealizada = 0, totalQV = 0;
+  for (const { m } of vendidas) {
+    faturamentoPrevisto += m.quantoVende;
+    totalQV += m.quantoVende;
+    faturamentoRealizado += m.fatReal;
+    margemPrevista += m.quantoVende - m.valorFechamento;
+    // KPI original: sempre +445 (não condicional), portanto reconstruímos a margemRealizada com 445 fixo
+    // margemRealizada_kpi = fatReal - (valorFechamento + 445 + custo_oficina_exec + custo_processo + custo_op_loja)
+    // = margemRealizada_row + taxa_fixa_row - 445
+    const taxaFixaRow = ['propria', 'convertida'].includes(m.tipo) ? 445 : 0;
+    margemRealizada += m.margemRealizada + taxaFixaRow - 445;
+  }
+  return {
+    faturamentoPrevisto: round2(faturamentoPrevisto),
+    faturamentoRealizado: round2(faturamentoRealizado),
+    margemPrevista: round2(margemPrevista),
+    margemRealizada: round2(margemRealizada),
+    pctMargemPrevista: totalQV > 0 ? margemPrevista / totalQV : 0,
+    pctMargemRealizada: faturamentoRealizado > 0 ? margemRealizada / faturamentoRealizado : 0,
+  };
+}
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+// Buckets do "Resultado do Ano" — a partir de 21/12/2025
+function getYearBuckets(): { label: string; start: Date; end: Date }[] {
+  const buckets: { label: string; start: Date; end: Date }[] = [];
+  let cur = new Date(2025, 11, 21);
+  const now = new Date();
+  let guard = 0;
+  while (cur <= now && guard++ < 120) {
+    const cycle = getCycleForDate(cur);
+    buckets.push({
+      label: `${format(cycle.start, 'dd/MM')} - ${format(cycle.end, 'dd/MM')}`,
+      start: new Date(cycle.start), end: new Date(cycle.end),
+    });
+    cur = new Date(cycle.end.getFullYear(), cycle.end.getMonth(), cycle.end.getDate() + 1, 0, 0, 0, 0);
+  }
+  return buckets;
+}
+
 const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const { userName } = useAuth();
   const isMobile = useIsMobile();
@@ -47,12 +95,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const chartMarginBottom = isMobile ? 40 : 0;
 
   const [loading, setLoading] = useState(true);
-  const [indicadores, setIndicadores] = useState<any>({});
-  const [indicadoresPrev, setIndicadoresPrev] = useState<any>({});
-  const [chartByVendedor, setChartByVendedor] = useState<any[]>([]);
-  const [motosVendidas, setMotosVendidas] = useState<any[]>([]);
-  const [motosSinal, setMotosSinal] = useState<any[]>([]);
-  const [chartByMonth, setChartByMonth] = useState<any[]>([]);
+  const [atendimentos, setAtendimentos] = useState<AtendimentoRow[]>([]);
+  const [indexes, setIndexes] = useState<ShowroomIndexes | null>(null);
 
   const [filterLoja, setFilterLojaState] = useState('todos');
   const [filterTipo, setFilterTipoState] = useState('todos');
@@ -72,32 +116,31 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const dfParam = toSaoPauloStartOfDayIso(dateFrom);
-    const dtParam = toSaoPauloEndOfDayIso(dateTo);
-    const { prevFromIso, prevToIso } = getPreviousPeriodIso(dateFrom, dateTo);
-
-    const [kpisRes, vendedoresRes, vendidasRes, sinaisRes, mensalRes] = await Promise.all([
-      supabase.rpc('relatorio_showroom_kpis_comparado', {
-        _date_from: dfParam, _date_to: dtParam,
-        _prev_from: prevFromIso, _prev_to: prevToIso,
-        _loja: filterLoja, _tipo: filterTipo,
-      }),
-      supabase.rpc('relatorio_showroom_vendedores', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja, _tipo: filterTipo }),
-      supabase.rpc('relatorio_showroom_vendidas', { _date_from: dfParam, _date_to: dtParam, _loja: filterLoja, _tipo: filterTipo }),
-      supabase.rpc('relatorio_showroom_sinais', { _loja: filterLoja, _tipo: filterTipo }),
-      supabase.rpc('relatorio_showroom_mensal', { _loja: filterLoja, _tipo: filterTipo }),
+    const [aRes, eRes, avRes, coRes, copRes, ccRes, cRes, miRes, urRes] = await Promise.all([
+      fetchAllRange<any>(() => supabase.from('atendimentos').select('id, loja, nome_cliente, vendedor_id, situacao, valor_venda, data_venda, created_at')),
+      fetchAllRange<any>(() => supabase.from('estoque').select('id, atendimento_venda_id, avaliacao_id, moto_avaliacao_id, tipo, marca, modelo, placa, preco, preco_acao, valor_venda, updated_at, created_at')),
+      fetchAllRange<any>(() => supabase.from('avaliacoes').select('id, moto_avaliacao_id, quanto_vende, valor_fechamento, avaliacao_compra, avaliacao_consignacao, updated_at, created_at')),
+      fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado')),
+      fetchAllRange<any>(() => supabase.from('custos_operacionais').select('contrato_consignante_id, responsavel, valor')),
+      fetchAllRange<any>(() => supabase.from('contratos_consignante').select('id, atendimento_id, valor_fechamento')),
+      fetchAllRange<any>(() => supabase.from('contratos').select('atendimento_id, valor_fechamento')),
+      fetchAllRange<any>(() => supabase.from('motos_interesse').select('atendimento_id, marca, modelo, estoque_moto_id, created_at')),
+      supabase.from('user_roles').select('user_id, nome'),
     ]);
 
-    const { atual, anterior } = splitComparado(kpisRes.data as any);
-    setIndicadores(atual);
-    setIndicadoresPrev(anterior);
-    const vendedoresData = (vendedoresRes.data || []) as any[];
-    setChartByVendedor(vendedoresData.map((v: any) => ({ ...v, nome: abbreviateName(v.nome || 'Desconhecido') })));
-    setMotosVendidas((vendidasRes.data || []) as any[]);
-    setMotosSinal((sinaisRes.data || []) as any[]);
-    setChartByMonth((mensalRes.data || []) as any[]);
+    setAtendimentos((aRes.data || []) as AtendimentoRow[]);
+    setIndexes(buildIndexes({
+      estoque: (eRes.data || []) as any,
+      avaliacoes: (avRes.data || []) as any,
+      custosOficina: (coRes.data || []) as any,
+      custosOperacionais: (copRes.data || []) as any,
+      contratos: (cRes.data || []) as any,
+      consignantes: (ccRes.data || []) as any,
+      interesses: (miRes.data || []) as any,
+      userRoles: (urRes.data || []) as any,
+    }));
     setLoading(false);
-  }, [dateFrom, dateTo, filterLoja, filterTipo]);
+  }, []);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const debouncedLoad = useCallback(() => {
@@ -108,7 +151,6 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   useEffect(() => {
     setLoading(true);
     loadData();
-
     const channel = supabase
       .channel('relatorio-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'atendimentos' }, debouncedLoad)
@@ -118,12 +160,110 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contratos' }, debouncedLoad)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'custos_operacionais' }, debouncedLoad)
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [loadData, debouncedLoad]);
+
+  // ---------- Derivados ----------
+  const kpisFor = useCallback((from?: Date, to?: Date) => {
+    if (!indexes) return { qtdAtendimentos: 0, qtdVendas: 0, qtdSinais: 0, taxaConversao: 0, faturamentoPrevisto: 0, faturamentoRealizado: 0, margemPrevista: 0, margemRealizada: 0, pctMargemPrevista: 0, pctMargemRealizada: 0 };
+    const qtdAtendimentos = filterAtendimentosGeneric(atendimentos, indexes, filterLoja, from, to).length;
+    const vendidas = filterVendidas(atendimentos, indexes, filterLoja, filterTipo, from, to);
+    const sinais = atendimentos.filter(a => a.situacao === 'sinal' && matchesLoja(a.loja, filterLoja));
+    const metrics = vendidas.map(a => ({ a, m: computeRowMetrics(a, indexes, 'venda') }));
+    const agg = aggregateKpis(metrics);
+    return {
+      qtdAtendimentos, qtdVendas: vendidas.length, qtdSinais: sinais.length,
+      taxaConversao: qtdAtendimentos > 0 ? vendidas.length / qtdAtendimentos : 0,
+      ...agg,
+    };
+  }, [atendimentos, indexes, filterLoja, filterTipo]);
+
+  const indicadores = useMemo(() => kpisFor(dateFrom, dateTo), [kpisFor, dateFrom, dateTo]);
+  const indicadoresPrev = useMemo(() => {
+    const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
+    return kpisFor(prevFrom, prevTo);
+  }, [kpisFor, dateFrom, dateTo]);
+
+  const chartByVendedor = useMemo(() => {
+    if (!indexes) return [] as any[];
+    const map = new Map<string, { nomeCompleto: string; atendimentos: number; vendas: number; sinais: number; faturamento: number }>();
+    const inRangeCreated = (a: AtendimentoRow) => (!dateFrom || new Date(a.created_at) >= dateFrom) && (!dateTo || new Date(a.created_at) <= dateTo);
+    const inRangeVenda = (a: AtendimentoRow) => a.data_venda && (!dateFrom || new Date(a.data_venda) >= dateFrom) && (!dateTo || new Date(a.data_venda) <= dateTo);
+    for (const a of atendimentos) {
+      if (!a.vendedor_id) continue;
+      if (!matchesLoja(a.loja, filterLoja)) continue;
+      const entry = map.get(a.vendedor_id) || { nomeCompleto: indexes.nomeByUser.get(a.vendedor_id) || 'Desconhecido', atendimentos: 0, vendas: 0, sinais: 0, faturamento: 0 };
+      if (inRangeCreated(a)) entry.atendimentos += 1;
+      if (a.situacao === 'vendido' && inRangeVenda(a)) {
+        const est = indexes.estoqueByAtendVenda.get(a.id);
+        const t = est?.tipo || tipoDefault(a.loja);
+        if (matchesTipo(t, filterTipo)) {
+          entry.vendas += 1;
+          entry.faturamento += Number(est?.preco ?? a.valor_venda ?? 0);
+        }
+      }
+      if (a.situacao === 'sinal') entry.sinais += 1;
+      map.set(a.vendedor_id, entry);
+    }
+    return Array.from(map.values())
+      .filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0)
+      .map(v => ({ ...v, nome: abbreviateName(v.nomeCompleto), conversao: v.atendimentos > 0 ? v.vendas / v.atendimentos : 0 }));
+  }, [atendimentos, indexes, filterLoja, filterTipo, dateFrom, dateTo]);
+
+  const motosVendidas = useMemo(() => {
+    if (!indexes) return [] as any[];
+    return filterVendidas(atendimentos, indexes, filterLoja, filterTipo, dateFrom, dateTo)
+      .sort((a, b) => new Date(b.data_venda!).getTime() - new Date(a.data_venda!).getTime())
+      .map((a) => {
+        const m = computeRowMetrics(a, indexes, 'venda');
+        return {
+          nomeCliente: a.nome_cliente, loja: a.loja, vendedor: indexes.nomeByUser.get(a.vendedor_id || '') || '-',
+          tipo: m.tipo, modelo: m.modelo, placa: m.placa, dataVenda: a.data_venda,
+          quantoVende: m.quantoVende, valorFechamento: m.valorFechamento,
+          margemPrevista: m.margemPrevista, pctMargemPrevista: m.pctMargemPrevista,
+          valorVenda: m.valorVenda, margemOficina: m.margemOficina, abatimentos: m.abatimentos,
+          margemRealizada: m.margemRealizada, pctMargemRealizada: m.pctMargemRealizada,
+        };
+      });
+  }, [atendimentos, indexes, filterLoja, filterTipo, dateFrom, dateTo]);
+
+  const motosSinal = useMemo(() => {
+    if (!indexes) return [] as any[];
+    return filterSinais(atendimentos, indexes, filterLoja, filterTipo)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .map((a) => {
+        const m = computeRowMetrics(a, indexes, 'sinal');
+        return {
+          nomeCliente: a.nome_cliente, loja: a.loja, vendedor: indexes.nomeByUser.get(a.vendedor_id || '') || '-',
+          tipo: m.tipo, modelo: m.modelo, placa: m.placa, dataSinal: a.created_at,
+          quantoVende: m.quantoVende, valorFechamento: m.valorFechamento,
+          margemPrevista: m.margemPrevista, pctMargemPrevista: m.pctMargemPrevista,
+          valorVenda: m.valorVenda, margemOficina: m.margemOficina, abatimentos: m.abatimentos,
+          margemRealizada: m.margemRealizada, pctMargemRealizada: m.pctMargemRealizada,
+        };
+      });
+  }, [atendimentos, indexes, filterLoja, filterTipo]);
+
+  const chartByMonth = useMemo(() => {
+    if (!indexes) return [] as any[];
+    const buckets = getYearBuckets();
+    return buckets.map((b) => {
+      const kp = kpisFor(b.start, b.end);
+      return {
+        mes: b.label, label: b.label,
+        atendimentos: kp.qtdAtendimentos,
+        vendas: kp.qtdVendas,
+        conversao: kp.taxaConversao,
+        faturamento: kp.faturamentoPrevisto,
+        pctMargemPrevista: kp.pctMargemPrevista,
+        pctMargemRealizada: kp.pctMargemRealizada,
+      };
+    });
+  }, [kpisFor, indexes]);
+
 
   const tipoLabel = (t: string) => {
     const map: Record<string, string> = { propria: 'Própria', consignada: 'Consignada', 'test-ride': 'Test-Ride', repasse: 'Repasse', convertida: 'Convertida', ducati: 'Ducati' };
