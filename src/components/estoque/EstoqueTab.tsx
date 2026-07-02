@@ -81,6 +81,7 @@ interface EstoqueItem {
   venda_vendedor_id?: string | null;
   // From avaliacoes join
   tipo_aquisicao?: string | null;
+  pos_compra_status?: string | null;
   displayTipo?: string | null;
 }
 
@@ -158,7 +159,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta), avaliacoes:avaliacao_id(tipo_aquisicao, atendimentos:atendimento_id(loja)), atendimentos:atendimento_venda_id(vendedor_id, loja)').order('data_entrada', { ascending: false });
+      let query = supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta), avaliacoes:avaliacao_id(tipo_aquisicao, pos_compra_status, atendimentos:atendimento_id(loja)), atendimentos:atendimento_venda_id(vendedor_id, loja)').order('data_entrada', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
       if (filterTipo !== 'todos' && filterTipo !== 'test-ride') query = query.eq('tipo', filterTipo);
@@ -184,6 +185,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         venda_vendedor_id: d.atendimentos?.vendedor_id ?? null,
         vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
         tipo_aquisicao: d.avaliacoes?.tipo_aquisicao ?? null,
+        pos_compra_status: d.avaliacoes?.pos_compra_status ?? null,
         displayTipo: d.avaliacoes?.tipo_aquisicao || d.tipo,
         loja_origem: d.atendimentos?.loja ?? d.avaliacoes?.atendimentos?.loja ?? null,
       }));
