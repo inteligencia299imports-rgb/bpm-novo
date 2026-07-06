@@ -353,11 +353,21 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   {motoConsignada.cor && <InfoItem label="Cor" value={<span className="uppercase">{motoConsignada.cor}</span>} />}
                   {motoConsignada.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{motoConsignada.categoria}</span>} />}
                 </div>
-                {motoConsignada.crlv_url && (
+                {motoConsignada.id && (
                   <div className="mt-3">
-                    <Button variant="outline" size="sm" onClick={() => window.open(motoConsignada.crlv_url, '_blank')} className="gap-2">
-                      <FileText className="h-4 w-4" /> Ver CRLV
-                    </Button>
+                    <DocumentUpload
+                      label="CRLV"
+                      currentUrl={motoConsignada.crlv_url || null}
+                      bucketPath={`docs/${motoConsignada.id}/crlv`}
+                      onUploaded={async (url) => {
+                        await supabase.from('motos_avaliacao').update({ crlv_url: url } as any).eq('id', motoConsignada.id);
+                        setMotoConsignada({ ...motoConsignada, crlv_url: url });
+                      }}
+                      onRemoved={async () => {
+                        await supabase.from('motos_avaliacao').update({ crlv_url: null } as any).eq('id', motoConsignada.id);
+                        setMotoConsignada({ ...motoConsignada, crlv_url: null });
+                      }}
+                    />
                   </div>
                 )}
                 {motoConsignada.observacoes && (
