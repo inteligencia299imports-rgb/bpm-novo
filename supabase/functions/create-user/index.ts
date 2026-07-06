@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
   // Check if caller is a gestor
   const { data: roleData } = await supabaseAdmin
-    .from("user_roles")
+    .from("user_roles_motos" as any)
     .select("role")
     .eq("user_id", caller.id)
     .single();
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
   }
 
   const { error: roleError } = await supabaseAdmin
-    .from("user_roles")
+    .from("user_roles_motos" as any)
     .insert({ user_id: user.user.id, nome, role, loja });
 
   if (roleError) {

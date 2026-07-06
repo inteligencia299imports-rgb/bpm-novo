@@ -365,7 +365,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       // Fetch vendedor name
       const vendedorId = (data.atendimentos as any)?.vendedor_id;
       if (vendedorId) {
-        const { data: vendedorData } = await supabase.from('user_roles').select('nome').eq('user_id', vendedorId).single();
+        const { data: vendedorData } = await supabase.from('user_roles_motos' as any).select('nome').eq('user_id', vendedorId).single();
         if (vendedorData?.nome) setVendedorNome(vendedorData.nome);
       }
 

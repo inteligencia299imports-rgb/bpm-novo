@@ -125,7 +125,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       fetchAllRange<any>(() => supabase.from('contratos_consignante').select('id, atendimento_id, valor_fechamento')),
       fetchAllRange<any>(() => supabase.from('contratos').select('atendimento_id, valor_fechamento')),
       fetchAllRange<any>(() => supabase.from('motos_interesse').select('atendimento_id, marca, modelo, estoque_moto_id, created_at')),
-      supabase.from('user_roles').select('user_id, nome'),
+      supabase.from('user_roles_motos' as any).select('user_id, nome'),
     ]);
 
     setAtendimentos((aRes.data || []) as AtendimentoRow[]);
