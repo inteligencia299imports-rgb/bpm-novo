@@ -137,7 +137,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         ? (supabase as any).from('user_roles_motos').select('nome').eq('user_id', item.vendedor_id).single()
         : Promise.resolve({ data: null as any });
       const [estoqueResult, rolesResult, vendedorResult] = await Promise.all([
-        estoqueIds.length > 0 ? supabase.from('estoque').select('*, motos_avaliacao(crlv_url)').in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
+        estoqueIds.length > 0 ? supabase.from('estoque').select('*, motos_avaliacao(id, crlv_url)').in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
         avaliadorIds.length > 0 ? (supabase as any).from('user_roles_motos').select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
         vendedorPromise,
       ]);
