@@ -347,6 +347,13 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   {motoConsignada.cor && <InfoItem label="Cor" value={<span className="uppercase">{motoConsignada.cor}</span>} />}
                   {motoConsignada.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{motoConsignada.categoria}</span>} />}
                 </div>
+                {motoConsignada.crlv_url && (
+                  <div className="mt-3">
+                    <Button variant="outline" size="sm" onClick={() => window.open(motoConsignada.crlv_url, '_blank')} className="gap-2">
+                      <FileText className="h-4 w-4" /> Ver CRLV
+                    </Button>
+                  </div>
+                )}
                 {motoConsignada.observacoes && (
                   <>
                     <Separator className="my-3" />
