@@ -3,7 +3,7 @@ import { getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -137,7 +137,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         ? (supabase as any).from('user_roles_motos').select('nome').eq('user_id', item.vendedor_id).single()
         : Promise.resolve({ data: null as any });
       const [estoqueResult, rolesResult, vendedorResult] = await Promise.all([
-        estoqueIds.length > 0 ? supabase.from('estoque').select('*').in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
+        estoqueIds.length > 0 ? supabase.from('estoque').select('*, motos_avaliacao(crlv_url)').in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
         avaliadorIds.length > 0 ? (supabase as any).from('user_roles_motos').select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
         vendedorPromise,
       ]);
@@ -347,6 +347,13 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   {motoConsignada.cor && <InfoItem label="Cor" value={<span className="uppercase">{motoConsignada.cor}</span>} />}
                   {motoConsignada.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{motoConsignada.categoria}</span>} />}
                 </div>
+                {motoConsignada.crlv_url && (
+                  <div className="mt-3">
+                    <Button variant="outline" size="sm" onClick={() => window.open(motoConsignada.crlv_url, '_blank')} className="gap-2">
+                      <FileText className="h-4 w-4" /> Ver CRLV
+                    </Button>
+                  </div>
+                )}
                 {motoConsignada.observacoes && (
                   <>
                     <Separator className="my-3" />
@@ -527,6 +534,13 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                           </div>
                           {estItem.observacoes && (
                             <p className="text-xs text-muted-foreground italic">{estItem.observacoes}</p>
+                          )}
+                          {estItem.motos_avaliacao?.crlv_url && (
+                            <div>
+                              <Button variant="outline" size="sm" onClick={() => window.open(estItem.motos_avaliacao.crlv_url, '_blank')} className="gap-2">
+                                <FileText className="h-4 w-4" /> Ver CRLV
+                              </Button>
+                            </div>
                           )}
                         </>
                       ) : (
