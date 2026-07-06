@@ -535,6 +535,13 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                           {estItem.observacoes && (
                             <p className="text-xs text-muted-foreground italic">{estItem.observacoes}</p>
                           )}
+                          {estItem.motos_avaliacao?.crlv_url && (
+                            <div>
+                              <Button variant="outline" size="sm" onClick={() => window.open(estItem.motos_avaliacao.crlv_url, '_blank')} className="gap-2">
+                                <FileText className="h-4 w-4" /> Ver CRLV
+                              </Button>
+                            </div>
+                          )}
                         </>
                       ) : (
                         <div className="grid grid-cols-2 gap-4">
