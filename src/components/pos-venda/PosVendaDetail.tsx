@@ -551,11 +551,23 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                           {estItem.observacoes && (
                             <p className="text-xs text-muted-foreground italic">{estItem.observacoes}</p>
                           )}
-                          {estItem.motos_avaliacao?.crlv_url && (
+                          {estItem.motos_avaliacao?.id && (
                             <div>
-                              <Button variant="outline" size="sm" onClick={() => window.open(estItem.motos_avaliacao.crlv_url, '_blank')} className="gap-2">
-                                <FileText className="h-4 w-4" /> Ver CRLV
-                              </Button>
+                              <DocumentUpload
+                                label="CRLV"
+                                currentUrl={estoqueCrlvUrls[estItem.motos_avaliacao.id] ?? estItem.motos_avaliacao.crlv_url ?? null}
+                                bucketPath={`docs/${estItem.motos_avaliacao.id}/crlv`}
+                                onUploaded={async (url) => {
+                                  const maId = estItem.motos_avaliacao.id;
+                                  await supabase.from('motos_avaliacao').update({ crlv_url: url } as any).eq('id', maId);
+                                  setEstoqueCrlvUrls((prev) => ({ ...prev, [maId]: url }));
+                                }}
+                                onRemoved={async () => {
+                                  const maId = estItem.motos_avaliacao.id;
+                                  await supabase.from('motos_avaliacao').update({ crlv_url: null } as any).eq('id', maId);
+                                  setEstoqueCrlvUrls((prev) => ({ ...prev, [maId]: null }));
+                                }}
+                              />
                             </div>
                           )}
                         </>
