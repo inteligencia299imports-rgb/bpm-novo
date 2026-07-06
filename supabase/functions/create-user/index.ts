@@ -25,8 +25,8 @@ Deno.serve(async (req) => {
   }
 
   // Check if caller is a gestor
-  const { data: roleData } = await supabaseAdmin
-    .from("user_roles_motos" as any)
+  const { data: roleData } = await (supabaseAdmin as any)
+    .from("user_roles_motos")
     .select("role")
     .eq("user_id", caller.id)
     .single();
