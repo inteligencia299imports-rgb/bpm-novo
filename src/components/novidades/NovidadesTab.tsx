@@ -154,7 +154,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
       let vendedorMap: Record<string, string> = {};
       if (vendedorIds.length > 0) {
         const { data: roles } = await supabase
-          .from('user_roles')
+          .from('user_roles_motos' as any)
           .select('user_id, nome')
           .in('user_id', vendedorIds);
         if (roles) {

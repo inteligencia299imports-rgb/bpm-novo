@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchRole = async (userId: string) => {
     const { data } = await supabase
-      .from('user_roles')
+      .from('user_roles_motos' as any)
       .select('role, nome')
       .eq('user_id', userId)
       .maybeSingle();
