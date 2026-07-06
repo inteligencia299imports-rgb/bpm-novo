@@ -103,6 +103,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const moto = item.motos_avaliacao?.[0];
   const [cnhUrl, setCnhUrl] = useState<string | null>(item.cnh_url || null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto?.crlv_url || null);
+  const [estoqueCrlvUrls, setEstoqueCrlvUrls] = useState<Record<string, string | null>>({});
   const cols = statusColumns || POS_VENDA_COLUMNS;
   const statusCol = cols.find(c => c.value === ((item as any)[statusField] || 'em_aberto'));
   const int = INTERESSES.find(i => i.value === item.interesse);
@@ -137,7 +138,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         ? (supabase as any).from('user_roles_motos').select('nome').eq('user_id', item.vendedor_id).single()
         : Promise.resolve({ data: null as any });
       const [estoqueResult, rolesResult, vendedorResult] = await Promise.all([
-        estoqueIds.length > 0 ? supabase.from('estoque').select('*, motos_avaliacao(crlv_url)').in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
+        estoqueIds.length > 0 ? supabase.from('estoque').select('*, motos_avaliacao(id, crlv_url)').in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
         avaliadorIds.length > 0 ? (supabase as any).from('user_roles_motos').select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
         vendedorPromise,
       ]);
@@ -146,8 +147,13 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
       // Process estoque
       const estoqueMap: Record<string, any> = {};
-      (estoqueResult.data || []).forEach((est: any) => { estoqueMap[est.id] = est; });
+      const crlvMap: Record<string, string | null> = {};
+      (estoqueResult.data || []).forEach((est: any) => {
+        estoqueMap[est.id] = est;
+        if (est.motos_avaliacao?.id) crlvMap[est.motos_avaliacao.id] = est.motos_avaliacao.crlv_url || null;
+      });
       setEstoqueData(estoqueMap);
+      setEstoqueCrlvUrls(crlvMap);
 
       // Process avaliacoes with avaliador names
       const avaliadorNames: Record<string, string> = {};
@@ -347,11 +353,21 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   {motoConsignada.cor && <InfoItem label="Cor" value={<span className="uppercase">{motoConsignada.cor}</span>} />}
                   {motoConsignada.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{motoConsignada.categoria}</span>} />}
                 </div>
-                {motoConsignada.crlv_url && (
+                {motoConsignada.id && (
                   <div className="mt-3">
-                    <Button variant="outline" size="sm" onClick={() => window.open(motoConsignada.crlv_url, '_blank')} className="gap-2">
-                      <FileText className="h-4 w-4" /> Ver CRLV
-                    </Button>
+                    <DocumentUpload
+                      label="CRLV"
+                      currentUrl={motoConsignada.crlv_url || null}
+                      bucketPath={`docs/${motoConsignada.id}/crlv`}
+                      onUploaded={async (url) => {
+                        await supabase.from('motos_avaliacao').update({ crlv_url: url } as any).eq('id', motoConsignada.id);
+                        setMotoConsignada({ ...motoConsignada, crlv_url: url });
+                      }}
+                      onRemoved={async () => {
+                        await supabase.from('motos_avaliacao').update({ crlv_url: null } as any).eq('id', motoConsignada.id);
+                        setMotoConsignada({ ...motoConsignada, crlv_url: null });
+                      }}
+                    />
                   </div>
                 )}
                 {motoConsignada.observacoes && (
@@ -535,11 +551,23 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                           {estItem.observacoes && (
                             <p className="text-xs text-muted-foreground italic">{estItem.observacoes}</p>
                           )}
-                          {estItem.motos_avaliacao?.crlv_url && (
+                          {estItem.motos_avaliacao?.id && (
                             <div>
-                              <Button variant="outline" size="sm" onClick={() => window.open(estItem.motos_avaliacao.crlv_url, '_blank')} className="gap-2">
-                                <FileText className="h-4 w-4" /> Ver CRLV
-                              </Button>
+                              <DocumentUpload
+                                label="CRLV"
+                                currentUrl={estoqueCrlvUrls[estItem.motos_avaliacao.id] ?? estItem.motos_avaliacao.crlv_url ?? null}
+                                bucketPath={`docs/${estItem.motos_avaliacao.id}/crlv`}
+                                onUploaded={async (url) => {
+                                  const maId = estItem.motos_avaliacao.id;
+                                  await supabase.from('motos_avaliacao').update({ crlv_url: url } as any).eq('id', maId);
+                                  setEstoqueCrlvUrls((prev) => ({ ...prev, [maId]: url }));
+                                }}
+                                onRemoved={async () => {
+                                  const maId = estItem.motos_avaliacao.id;
+                                  await supabase.from('motos_avaliacao').update({ crlv_url: null } as any).eq('id', maId);
+                                  setEstoqueCrlvUrls((prev) => ({ ...prev, [maId]: null }));
+                                }}
+                              />
                             </div>
                           )}
                         </>
