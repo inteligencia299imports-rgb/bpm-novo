@@ -134,11 +134,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
       // Step 2: Estoque + Avaliador names in parallel
       const vendedorPromise = item.vendedor_id
-        ? supabase.from('user_roles_motos' as any).select('nome').eq('user_id', item.vendedor_id).single()
+        ? (supabase as any).from('user_roles_motos').select('nome').eq('user_id', item.vendedor_id).single()
         : Promise.resolve({ data: null as any });
       const [estoqueResult, rolesResult, vendedorResult] = await Promise.all([
         estoqueIds.length > 0 ? supabase.from('estoque').select('*').in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
-        avaliadorIds.length > 0 ? supabase.from('user_roles_motos' as any).select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
+        avaliadorIds.length > 0 ? (supabase as any).from('user_roles_motos').select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
         vendedorPromise,
       ]);
 
@@ -183,7 +183,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             }
             // Fetch avaliador name
             if (avalData.avaliador_id) {
-              const { data: avaliadorRole } = await supabase.from('user_roles_motos' as any).select('nome').eq('user_id', avalData.avaliador_id).single();
+              const { data: avaliadorRole } = await (supabase as any).from('user_roles_motos').select('nome').eq('user_id', avalData.avaliador_id).single();
               if (avaliadorRole?.nome) setAvaliadorNome(avaliadorRole.nome);
             }
           }

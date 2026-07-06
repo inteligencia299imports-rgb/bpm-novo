@@ -244,7 +244,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       setDataAquisicao(histRes.data?.created_at || null);
 
       if (avRes.data?.avaliador_id) {
-        const { data: roleData } = await supabase.from('user_roles_motos' as any).select('nome').eq('user_id', avRes.data.avaliador_id).single();
+        const { data: roleData } = await (supabase as any).from('user_roles_motos').select('nome').eq('user_id', avRes.data.avaliador_id).single();
         if (roleData?.nome) setAvaliadorNome(roleData.nome);
       }
 

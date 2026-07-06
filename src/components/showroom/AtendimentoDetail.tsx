@@ -167,11 +167,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         ? [...new Set(resAval.data.map((av: any) => av.avaliador_id).filter(Boolean))]
         : [];
       const vendedorPromise = atendimento.vendedor_id
-        ? supabase.from('user_roles_motos' as any).select('nome').eq('user_id', atendimento.vendedor_id).single().then(r => r)
+        ? (supabase as any).from('user_roles_motos').select('nome').eq('user_id', atendimento.vendedor_id).single().then(r => r)
         : Promise.resolve({ data: null as any });
       const allRoleIds = [...new Set([...avaliadorIds, atendimento.vendedor_id].filter(Boolean))];
       const avaliadorPromise = avaliadorIds.length > 0
-        ? supabase.from('user_roles_motos' as any).select('user_id, nome').in('user_id', avaliadorIds).then(r => r)
+        ? (supabase as any).from('user_roles_motos').select('user_id, nome').in('user_id', avaliadorIds).then(r => r)
         : Promise.resolve({ data: null as any[] | null });
 
       const consultaPromise = motoIds.length > 0
