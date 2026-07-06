@@ -162,7 +162,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         .eq('entity_type', 'avaliacao')
         .eq('status', 'adquirida')
       ),
-      supabase.from('user_roles_motos' as any).select('user_id, nome'),
+      (supabase as any).from('user_roles_motos').select('user_id, nome'),
     ]);
 
     // menor created_at por avaliação

@@ -276,8 +276,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     const { data: { user } } = await supabase.auth.getUser();
     let userName = 'Usuário';
     if (user) {
-      const { data: roleData } = await supabase
-        .from('user_roles_motos' as any)
+      const { data: roleData } = await (supabase as any)
+        .from('user_roles_motos')
         .select('nome')
         .eq('user_id', user.id)
         .maybeSingle();

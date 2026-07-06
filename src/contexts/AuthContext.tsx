@@ -29,8 +29,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const fetchRole = async (userId: string) => {
-    const { data } = await supabase
-      .from('user_roles_motos' as any)
+    const { data } = await (supabase as any)
+      .from('user_roles_motos')
       .select('role, nome')
       .eq('user_id', userId)
       .maybeSingle();

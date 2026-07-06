@@ -55,7 +55,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   };
 
   useEffect(() => {
-    supabase.from('user_roles_motos' as any).select('user_id, nome').order('nome').then(({ data }) => {
+    (supabase as any).from('user_roles_motos').select('user_id, nome').order('nome').then(({ data }) => {
       if (data) setVendedores(data);
     });
   }, []);
