@@ -65,43 +65,104 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
   const loadData = useCallback(async () => {
     const cutoffDate = dateTo ?? new Date();
-    const cutoff = cutoffDate.toISOString();
     const prevCutoffDate = getPreviousMonthDate(cutoffDate)!;
-    const prevCutoff = prevCutoffDate.toISOString();
-    // Gráficos mensais ignoram filtro de data (apenas cidade e tipo)
-    const chartCutoff = new Date().toISOString();
-    const [kpisRes, mensalRes, motosRes] = await Promise.all([
-      supabase.rpc('relatorio_estoque_kpis_comparado', {
-        p_cutoff: cutoff, p_prev_cutoff: prevCutoff,
-        p_loja: filterLoja, p_tipo: filterTipo,
-      }),
-      supabase.rpc('relatorio_estoque_mensal', { p_cutoff: chartCutoff, p_loja: filterLoja, p_tipo: filterTipo }),
+    // Faixa expandida para cobrir cutoff atual e anterior num único fetch
+    const upperCutoff = cutoffDate > prevCutoffDate ? cutoffDate : prevCutoffDate;
+    const lowerCutoff = cutoffDate < prevCutoffDate ? cutoffDate : prevCutoffDate;
+    const STATUSES = ['disponivel', 'servico', 'indisponivel_manual', 'bloqueio_juridico'];
+    const PREP_STATUS = ['em_aberto', 'pendente', 'oficina', 'servico_externo'];
+
+    const [estoqueRes, avaliacoesRes] = await Promise.all([
       fetchAllRange(() => {
         let q = supabase
           .from('estoque')
           .select('id, empresa, tipo, loja, marca, modelo, cor, ano_fabricacao, ano_modelo, placa, data_entrada, data_venda, preco, status, avaliacoes:avaliacao_id(valor_fechamento, tipo_aquisicao)')
-          .in('status', ['disponivel', 'servico', 'indisponivel_manual', 'bloqueio_juridico'])
-          .lte('data_entrada', cutoff)
-          .or(`data_venda.is.null,data_venda.gt.${cutoff}`)
+          .in('status', STATUSES)
+          .lte('data_entrada', upperCutoff.toISOString())
+          .or(`data_venda.is.null,data_venda.gt.${lowerCutoff.toISOString()}`)
           .order('data_entrada', { ascending: false });
         if (filterTipo !== 'todos') q = q.eq('tipo', filterTipo);
         return q;
       }),
+      fetchAllRange(() => supabase
+        .from('avaliacoes')
+        .select('id, quanto_pede, created_at, situacao, preparacao_status')
+        .in('situacao', ['adquirida', 'estoque'])),
     ]);
 
-    const { atual, anterior } = splitComparado(kpisRes.data as any);
-    setIndicadores(atual);
-    setIndicadoresPrev(anterior);
-    setChartByMonth((mensalRes.data || []) as any[]);
-
-    // Filtro de loja client-side (mesma lógica do RPC: '299' = não Ducati)
-    const motosData = (motosRes.data || []) as any[];
-    const filtered = motosData.filter((m: any) => {
+    const estoqueAll = (estoqueRes.data || []) as any[];
+    // Filtro de loja (cidade) — mesma lógica do RPC
+    const estoqueFiltrado = estoqueAll.filter((m: any) => {
       const loja = (m.loja || '').toString();
       if (filterLoja === 'todos') return true;
       return matchesCidade(loja, filterLoja as CidadeFilterValue);
     });
-    setMotos(filtered);
+
+    // Preparação (avaliacoes) — não depende de loja/tipo; média em dias varia por cutoff
+    const prepRows = (avaliacoesRes.data || []).filter((a: any) => {
+      const ps = a.preparacao_status || 'em_aberto';
+      return PREP_STATUS.includes(ps);
+    });
+
+    const computeKpis = (cutoffMs: number) => {
+      const active = estoqueFiltrado.filter((m: any) => {
+        const entrada = m.data_entrada ? new Date(m.data_entrada).getTime() : 0;
+        const venda = m.data_venda ? new Date(m.data_venda).getTime() : null;
+        return entrada <= cutoffMs && (venda === null || venda > cutoffMs);
+      });
+      const total = active.length;
+      const somaTotal = active.reduce((s, m) => s + (Number(m.preco) || 0), 0);
+      const buildBlock = (st: string) => {
+        const rows = active.filter(m => m.status === st);
+        const qtd = rows.length;
+        const soma = rows.reduce((s, m) => s + (Number(m.preco) || 0), 0);
+        const mediaDias = qtd > 0
+          ? Math.round(rows.reduce((s, m) => s + Math.max(0, (cutoffMs - new Date(m.data_entrada).getTime()) / 86400000), 0) / qtd)
+          : 0;
+        return {
+          qtd,
+          pct: total > 0 ? Math.round((qtd / total) * 1000) / 10 : 0,
+          soma: Math.round(soma * 100) / 100,
+          mediaDias,
+        };
+      };
+      const mediaDiasAll = total > 0
+        ? Math.round(active.reduce((s, m) => s + Math.max(0, (cutoffMs - new Date(m.data_entrada).getTime()) / 86400000), 0) / total)
+        : 0;
+      const disponivel = buildBlock('disponivel');
+      const bloqueio = buildBlock('bloqueio_juridico');
+      const servico = buildBlock('servico');
+      const indisponivel = buildBlock('indisponivel_manual');
+      const qtdPrep = prepRows.length;
+      const somaQuantoPede = prepRows.reduce((s, a) => s + (Number(a.quanto_pede) || 0), 0);
+      const mediaDiasPrep = qtdPrep > 0
+        ? Math.round(prepRows.reduce((s, a) => s + Math.max(0, (cutoffMs - new Date(a.created_at).getTime()) / 86400000), 0) / qtdPrep)
+        : 0;
+      return {
+        total,
+        somaTotal: Math.round(somaTotal * 100) / 100,
+        mediaDias: mediaDiasAll,
+        disponivel, bloqueio, servico, indisponivel,
+        qtdPreparacao: qtdPrep,
+        somaQuantoPede: Math.round(somaQuantoPede * 100) / 100,
+        mediaDiasPrep,
+        patrimonioDisponivel: disponivel.soma,
+        patrimonioParado: Math.round((bloqueio.soma + servico.soma + indisponivel.soma) * 100) / 100,
+      };
+    };
+
+    setIndicadores(computeKpis(cutoffDate.getTime()));
+    setIndicadoresPrev(computeKpis(prevCutoffDate.getTime()));
+    setChartByMonth([]);
+
+    // Lista de motos: apenas cutoff atual
+    const cutoffMs = cutoffDate.getTime();
+    const motosFiltradas = estoqueFiltrado.filter((m: any) => {
+      const entrada = m.data_entrada ? new Date(m.data_entrada).getTime() : 0;
+      const venda = m.data_venda ? new Date(m.data_venda).getTime() : null;
+      return entrada <= cutoffMs && (venda === null || venda > cutoffMs);
+    });
+    setMotos(motosFiltradas);
     setLoading(false);
   }, [dateTo, filterLoja, filterTipo]);
 
