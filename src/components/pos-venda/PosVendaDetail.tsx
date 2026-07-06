@@ -147,8 +147,13 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
       // Process estoque
       const estoqueMap: Record<string, any> = {};
-      (estoqueResult.data || []).forEach((est: any) => { estoqueMap[est.id] = est; });
+      const crlvMap: Record<string, string | null> = {};
+      (estoqueResult.data || []).forEach((est: any) => {
+        estoqueMap[est.id] = est;
+        if (est.motos_avaliacao?.id) crlvMap[est.motos_avaliacao.id] = est.motos_avaliacao.crlv_url || null;
+      });
       setEstoqueData(estoqueMap);
+      setEstoqueCrlvUrls(crlvMap);
 
       // Process avaliacoes with avaliador names
       const avaliadorNames: Record<string, string> = {};
