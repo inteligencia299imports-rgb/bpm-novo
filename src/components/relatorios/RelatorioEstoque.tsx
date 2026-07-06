@@ -13,7 +13,7 @@ import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
-import { getPreviousMonthDate, splitComparado } from '@/lib/reportComparison';
+import { getPreviousMonthDate } from '@/lib/reportComparison';
 import DeltaBadge from './DeltaBadge';
 
 
