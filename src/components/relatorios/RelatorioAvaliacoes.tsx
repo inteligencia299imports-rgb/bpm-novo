@@ -262,7 +262,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       for (const r of rows) {
         if (!matchesLoja(r.loja, filterLoja)) continue;
         if (inRange(r.createdAt, b.start, b.end)) avaliacoes += 1;
-        if (r.situacao === 'adquirida' && inRange(r.dataAquisicao, b.start, b.end)) {
+        if (r.dataAquisicao && inRange(r.dataAquisicao, b.start, b.end)) {
           aquisicoes += 1;
           if (['propria', 'convertida', 'repasse', 'test-ride'].includes(r.tipoNorm)) proprias += 1;
           if (r.tipoNorm === 'consignada') consignadas += 1;
