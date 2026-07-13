@@ -94,8 +94,8 @@ const computeKpis = (rows: AvalRow[], loja: string, from: Date | undefined, to: 
       kpi.total_avaliacoes += 1;
       if (r.situacao === 'retirada') kpi.retiradas += 1;
     }
-    // aquisições contadas pela data de aquisição
-    if (r.situacao === 'adquirida' && inRange(r.dataAquisicao, from, to)) {
+    // aquisições: INNER JOIN status_history (status='adquirida') filtrado por s.created_at
+    if (r.dataAquisicao && inRange(r.dataAquisicao, from, to)) {
       kpi.total_aquisicoes += 1;
       if (['propria', 'convertida', 'repasse', 'test-ride'].includes(r.tipoNorm)) kpi.aquisicoes_propria += 1;
       if (r.tipoNorm === 'consignada') kpi.aquisicoes_consignada += 1;
