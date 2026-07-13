@@ -107,11 +107,12 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       }
 
       mapped = mapped.map((m: any) => {
+        const acqDate = (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || avalAcqMap[m.id] || null;
         if (m.tipo_aquisicao === 'consignada') {
           // Consignada: data_negociacao = estoque.data_venda OU data RETIRADA OU adquirida
-          return { ...m, _dataAquisicao: estVendaMap[m.id] || retiradaDateMap[m.id] || (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null };
+          return { ...m, _dataAquisicao: estVendaMap[m.id] || retiradaDateMap[m.id] || acqDate };
         }
-        return { ...m, _dataAquisicao: (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || null };
+        return { ...m, _dataAquisicao: acqDate };
       });
 
       // Readiness indicators (vw_envio_nps rules)
