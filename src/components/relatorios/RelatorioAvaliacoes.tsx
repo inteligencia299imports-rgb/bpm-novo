@@ -94,8 +94,8 @@ const computeKpis = (rows: AvalRow[], loja: string, from: Date | undefined, to: 
       kpi.total_avaliacoes += 1;
       if (r.situacao === 'retirada') kpi.retiradas += 1;
     }
-    // aquisições contadas pela data de aquisição
-    if (r.situacao === 'adquirida' && inRange(r.dataAquisicao, from, to)) {
+    // aquisições: INNER JOIN status_history (status='adquirida') filtrado por s.created_at
+    if (r.dataAquisicao && inRange(r.dataAquisicao, from, to)) {
       kpi.total_aquisicoes += 1;
       if (['propria', 'convertida', 'repasse', 'test-ride'].includes(r.tipoNorm)) kpi.aquisicoes_propria += 1;
       if (r.tipoNorm === 'consignada') kpi.aquisicoes_consignada += 1;
@@ -189,7 +189,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       interesse: a.atendimentos?.interesse || null,
       loja: a.atendimentos?.loja || null,
       createdAt: a.created_at,
-      dataAquisicao: aquisicaoByAval.get(a.id) || a.updated_at || a.created_at,
+      dataAquisicao: aquisicaoByAval.get(a.id) || null,
     }));
 
     setRows(parsed);
@@ -239,7 +239,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       const inAval = (!dateFrom || new Date(r.createdAt) >= dateFrom) && (!dateTo || new Date(r.createdAt) <= dateTo);
       if (inAval) entry.avaliacoes += 1;
 
-      if (r.situacao === 'adquirida' && inRange(r.dataAquisicao, dateFrom, dateTo)) {
+      if (r.dataAquisicao && inRange(r.dataAquisicao, dateFrom, dateTo)) {
         if (r.interesse === 'trocar') entry.aqTrocar += 1;
         if (r.interesse === 'vender') entry.aqVender += 1;
         if (['propria', 'convertida', 'repasse', 'test-ride'].includes(r.tipoNorm)) entry.aqPropria += 1;
@@ -262,7 +262,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       for (const r of rows) {
         if (!matchesLoja(r.loja, filterLoja)) continue;
         if (inRange(r.createdAt, b.start, b.end)) avaliacoes += 1;
-        if (r.situacao === 'adquirida' && inRange(r.dataAquisicao, b.start, b.end)) {
+        if (r.dataAquisicao && inRange(r.dataAquisicao, b.start, b.end)) {
           aquisicoes += 1;
           if (['propria', 'convertida', 'repasse', 'test-ride'].includes(r.tipoNorm)) proprias += 1;
           if (r.tipoNorm === 'consignada') consignadas += 1;
