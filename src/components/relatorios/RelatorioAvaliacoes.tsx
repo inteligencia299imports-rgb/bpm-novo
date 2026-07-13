@@ -239,7 +239,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       const inAval = (!dateFrom || new Date(r.createdAt) >= dateFrom) && (!dateTo || new Date(r.createdAt) <= dateTo);
       if (inAval) entry.avaliacoes += 1;
 
-      if (r.situacao === 'adquirida' && inRange(r.dataAquisicao, dateFrom, dateTo)) {
+      if (r.dataAquisicao && inRange(r.dataAquisicao, dateFrom, dateTo)) {
         if (r.interesse === 'trocar') entry.aqTrocar += 1;
         if (r.interesse === 'vender') entry.aqVender += 1;
         if (['propria', 'convertida', 'repasse', 'test-ride'].includes(r.tipoNorm)) entry.aqPropria += 1;
