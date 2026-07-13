@@ -152,27 +152,36 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const [avalRes, histRes, rolesRes] = await Promise.all([
       fetchAllRange<any>(() => supabase
         .from('avaliacoes')
-        .select('id, avaliador_id, tipo_aquisicao, situacao, created_at, updated_at, atendimentos!inner(interesse, loja)')
+        .select('id, moto_avaliacao_id, avaliador_id, tipo_aquisicao, situacao, created_at, updated_at, atendimentos!inner(interesse, loja)')
         .neq('situacao', 'sem_avaliar')
         .in('atendimentos.interesse', ['trocar', 'vender'])
       ),
       fetchAllRange<any>(() => supabase
         .from('status_history')
         .select('entity_id, created_at')
-        .eq('entity_type', 'avaliacao')
         .eq('status', 'adquirida')
       ),
       (supabase as any).from('user_roles_motos').select('user_id, nome'),
     ]);
 
-    // menor created_at por avaliação
-    const aquisicaoByAval = new Map<string, string>();
-    for (const h of (histRes.data || []) as any[]) {
-      const cur = aquisicaoByAval.get(h.entity_id);
-      if (!cur || h.created_at < cur) aquisicaoByAval.set(h.entity_id, h.created_at);
+    const avals = ((avalRes.data || []) as any[]);
+    // status_history.entity_id pode referenciar avaliacao.id OU moto_avaliacao.id
+    const avalIdSet = new Set<string>(avals.map((a) => a.id));
+    const motoToAval = new Map<string, string>();
+    for (const a of avals) {
+      if (a.moto_avaliacao_id) motoToAval.set(a.moto_avaliacao_id, a.id);
     }
 
-    const parsed: AvalRow[] = ((avalRes.data || []) as any[]).map((a) => ({
+    // menor created_at por avaliação (INNER JOIN status_history via IN (av.id, moto_avaliacao_id))
+    const aquisicaoByAval = new Map<string, string>();
+    for (const h of (histRes.data || []) as any[]) {
+      const avalId = avalIdSet.has(h.entity_id) ? h.entity_id : motoToAval.get(h.entity_id);
+      if (!avalId) continue;
+      const cur = aquisicaoByAval.get(avalId);
+      if (!cur || h.created_at < cur) aquisicaoByAval.set(avalId, h.created_at);
+    }
+
+    const parsed: AvalRow[] = avals.map((a) => ({
       id: a.id,
       avaliadorId: a.avaliador_id || null,
       tipoNorm: normTipo(a.tipo_aquisicao),
