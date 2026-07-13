@@ -189,7 +189,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       interesse: a.atendimentos?.interesse || null,
       loja: a.atendimentos?.loja || null,
       createdAt: a.created_at,
-      dataAquisicao: aquisicaoByAval.get(a.id) || a.updated_at || a.created_at,
+      dataAquisicao: aquisicaoByAval.get(a.id) || null,
     }));
 
     setRows(parsed);
