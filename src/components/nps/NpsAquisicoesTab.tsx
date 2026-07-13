@@ -62,12 +62,20 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         }));
 
       // Fetch acquisition dates from status_history (próprias/convertidas/repasse)
+      // status_history.entity_id pode referenciar avaliacao.id OU moto_avaliacao.id
       const motoIds = mapped.map((m: any) => m.moto_avaliacao_id).filter(Boolean);
       const avalIds = mapped.map((m: any) => m.id).filter(Boolean);
       const motoAcqMap: Record<string, string> = {};
-      if (motoIds.length > 0) {
-        const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida').in('entity_id', motoIds);
-        (histData || []).forEach((h: any) => { motoAcqMap[h.entity_id] = h.created_at; });
+      const avalAcqMap: Record<string, string> = {};
+      const acqEntityIds = Array.from(new Set([...motoIds, ...avalIds]));
+      if (acqEntityIds.length > 0) {
+        const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('status', 'adquirida').in('entity_id', acqEntityIds);
+        const motoSet = new Set(motoIds);
+        const avalSet = new Set(avalIds);
+        (histData || []).forEach((h: any) => {
+          if (motoSet.has(h.entity_id) && !motoAcqMap[h.entity_id]) motoAcqMap[h.entity_id] = h.created_at;
+          if (avalSet.has(h.entity_id) && !avalAcqMap[h.entity_id]) avalAcqMap[h.entity_id] = h.created_at;
+        });
       }
       // Fetch estoque info for consignadas (data_venda, status, atendimento_venda_id)
       const estInfoMap: Record<string, { data_venda?: string; status?: string; atendimento_venda_id?: string }> = {};
