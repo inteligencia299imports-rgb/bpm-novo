@@ -262,7 +262,9 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
                       const owner = a._proprietario;
                       const clientName = parte === 'parte1' && owner ? owner.nome_cliente : a.nome_cliente;
                       const clientPhone = parte === 'parte1' && owner ? owner.telefone : a.telefone;
-                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex} onClick={() => setSelectedItem(a)} />;
+                      const prev = a._previsaoPagamento;
+                      const prevBadge = prev ? { label: `Prev. Pgto: ${new Date(prev).toLocaleDateString('pt-BR')}`, className: 'border-primary/30 text-primary' } : undefined;
+                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex} extraBadge={prevBadge} onClick={() => setSelectedItem(a)} />;
                     })}
                   </div>
                 </div>
