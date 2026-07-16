@@ -17,7 +17,7 @@ interface ProcessCardProps {
   patio?: string;
   date: string;
   statusColor: string;
-  extraBadge?: { label: string; className?: string };
+  extraBadge?: { label: React.ReactNode; className?: string };
   secondaryBadge?: { label: string; className?: string };
   readyIndicator?: 'ready' | 'not_ready' | null;
   dateLabel?: string;

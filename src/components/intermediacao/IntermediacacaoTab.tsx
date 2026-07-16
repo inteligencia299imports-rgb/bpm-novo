@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Input } from '@/components/ui/input';
-import { Search, X, Handshake, Filter } from 'lucide-react';
+import { Search, X, Handshake, Filter, DollarSign } from 'lucide-react';
 import { INTERMEDIACAO_PARTE1_COLUMNS, INTERMEDIACAO_PARTE2_COLUMNS, INTERMEDIACAO_PARTE1_ETAPAS, INTERMEDIACAO_PARTE2_ETAPAS } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
 import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
@@ -263,7 +263,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
                       const clientName = parte === 'parte1' && owner ? owner.nome_cliente : a.nome_cliente;
                       const clientPhone = parte === 'parte1' && owner ? owner.telefone : a.telefone;
                       const prev = a._previsaoPagamento;
-                      const prevBadge = prev ? { label: `Prev. Pgto: ${new Date(prev).toLocaleDateString('pt-BR')}`, className: 'border-primary/30 text-primary' } : undefined;
+                      const prevBadge = prev ? { label: (<span className="inline-flex items-center gap-1"><DollarSign className="h-3 w-3" />{new Date(prev).toLocaleDateString('pt-BR')}</span>), className: 'border-primary/30 text-primary' } : undefined;
                       return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex} extraBadge={prevBadge} onClick={() => setSelectedItem(a)} />;
                     })}
                   </div>
