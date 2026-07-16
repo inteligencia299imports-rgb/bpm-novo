@@ -150,6 +150,19 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       });
     }
 
+    // Fetch Previsão de Pagamento for all filtered items to show on the card
+    const allIds = filtered.map(a => a.id);
+    if (allIds.length > 0) {
+      const { data: prevData } = await supabase
+        .from('pos_venda_processos')
+        .select('atendimento_id, data_conclusao')
+        .eq('etapa', 'PREVISÃO DE PAGAMENTO')
+        .in('atendimento_id', allIds);
+      const prevMap: Record<string, string> = {};
+      (prevData || []).forEach((p: any) => { if (p.data_conclusao) prevMap[p.atendimento_id] = p.data_conclusao; });
+      filtered = filtered.map(a => ({ ...a, _previsaoPagamento: prevMap[a.id] || null }));
+    }
+
     setItems(filtered);
     setLoading(false);
   }, [search, parte, filterCidade]);
