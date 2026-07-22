@@ -136,18 +136,29 @@ async function loadImage(path: string): Promise<string> {
   });
 }
 
-// Justified text helper with bold support using **text** markers
-function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number, y: number, lineHeight: number, boldSegments?: string[]): number {
-  // First, split text to size using normal font to get line breaks
+// Justified text helper with bold support and optional per-line page break
+function drawJustifiedText(
+  doc: jsPDF,
+  text: string,
+  x: number,
+  maxWidth: number,
+  startY: number,
+  lineHeight: number,
+  boldSegments?: string[],
+  pageBreakCheck?: (currentY: number, needed: number) => number,
+): number {
   doc.setFont('helvetica', 'normal');
   const lines = doc.splitTextToSize(text, maxWidth);
-  
+  let y = startY;
+
   for (let i = 0; i < lines.length; i++) {
+    if (pageBreakCheck) {
+      y = pageBreakCheck(y, lineHeight);
+    }
     const line: string = lines[i];
     const isLastLine = i === lines.length - 1;
-    
+
     if (!boldSegments || boldSegments.length === 0) {
-      // No bold segments - simple rendering
       if (isLastLine || !line.trim()) {
         doc.text(line, x, y);
       } else {
@@ -166,16 +177,12 @@ function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number
         }
       }
     } else {
-      // Render with bold segments
       const words = line.split(/\s+/);
-      
-      // Calculate space width for justification
       let spaceWidth: number;
       if (isLastLine || words.length <= 1) {
         doc.setFont('helvetica', 'normal');
         spaceWidth = doc.getTextWidth(' ');
       } else {
-        // Calculate total words width considering bold
         let totalWordsW = 0;
         for (const w of words) {
           const isBold = boldSegments.some(seg => w.includes(seg) || seg.split(/\s+/).includes(w));
@@ -184,10 +191,9 @@ function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number
         }
         spaceWidth = (maxWidth - totalWordsW) / (words.length - 1);
       }
-      
+
       let currentX = x;
       for (const w of words) {
-        // Check if this word is part of a bold segment
         const isBold = boldSegments.some(seg => {
           const segWords = seg.split(/\s+/);
           return segWords.includes(w) || w === seg;
@@ -273,12 +279,21 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   doc.line(marginLeft, y, pageWidth - marginRight, y);
   y += sectionGap * 2;
   
-  // Helper to check page break
+  // Helper to check page break (block-level)
   const checkPageBreak = (neededSpace: number) => {
     if (y + neededSpace > 297 - marginBottom) {
       doc.addPage();
       y = marginTop;
     }
+  };
+
+  // Per-line page break for justified text (allows paragraphs to split across pages)
+  const lineCheckPageBreak = (currentY: number, needed: number): number => {
+    if (currentY + needed > 297 - marginBottom) {
+      doc.addPage();
+      return marginTop;
+    }
+    return currentY;
   };
   
   // Section header helper
@@ -335,7 +350,7 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
       transferenciaText = 'Transferência: O cliente realizará a transferência de propriedade no seu estado de origem.';
     }
     if (transferenciaText) {
-      y = drawJustifiedText(doc, transferenciaText, marginLeft, contentWidth, y, lineHeight);
+      y = drawJustifiedText(doc, transferenciaText, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
       y += sectionGap;
     }
   }
@@ -353,7 +368,7 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
       ipvaText = `IPVA: Os débitos de IPVA e licenciamento referente ao ano de 2026 serão divididos entre a empresa e o comprador, sendo que: as cotas de IPVA n° ${data.ipvaCotas || '-'} serão de responsabilidade do comprador, e as demais serão pagas pela 299 Imports.`;
     }
     if (ipvaText) {
-      y = drawJustifiedText(doc, ipvaText, marginLeft, contentWidth, y, lineHeight);
+      y = drawJustifiedText(doc, ipvaText, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
       y += sectionGap;
     }
   }
@@ -364,8 +379,8 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     setNormal();
     const reciboText = `Recebemos o valor de ${data.valorSinal} a título de sinal de negócio, referente a compra de uma motocicleta descrita nas condições de negócio, reconhecido neste documento no campo "comprador" e assinando no campo "assinatura do cliente" declarando para os devidos fins que efetuei o sinal de negócio do veículo acima descrito no campo "condições da venda", e me comprometo a efetuar o pagamento do valor restante até o dia ${data.dataVencimento} conforme as condições da venda descritas neste recibo, o comprador também declara, estar ciente que o prazo para entrega da moto é de até 7 dias úteis após ter efetuado o pagamento total da mesma.`;
     const reciboBoldSegments = [...data.valorSinal.split(/\s+/), ...data.dataVencimento.split(/\s+/)];
-    checkPageBreak(40);
-    y = drawJustifiedText(doc, reciboText, marginLeft, contentWidth, y, lineHeight, reciboBoldSegments);
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, reciboText, marginLeft, contentWidth, y, lineHeight, reciboBoldSegments, lineCheckPageBreak);
     y += sectionGap;
   }
   
@@ -438,8 +453,8 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     const trocaMarca = data.troca?.marca || data.produtoMarca || '';
     // Intro
     const introVenda = `Pelo presente instrumento particular de compra e venda de motocicleta usada, de um lado, ${template.empresaNome}, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº ${template.cnpj}, com sede em ${template.endereco}, doravante denominada simplesmente VENDEDORA, e, de outro lado, ${data.nomeCliente}, portador(a) do CPF/CNPJ nº ${data.cpfCnpj}, doravante denominado(a) COMPRADOR(A), têm entre si justo e contratado o presente instrumento, que se regerá pelas cláusulas e condições a seguir estabelecidas.`;
-    checkPageBreak(30);
-    y = drawJustifiedText(doc, introVenda, marginLeft, contentWidth, y, lineHeight);
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, introVenda, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
 
     const clausulas: { titulo: string; paragrafos: string[] }[] = [
@@ -521,8 +536,8 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
       y += lineHeight;
       setNormal();
       for (const p of cl.paragrafos) {
-        checkPageBreak(12);
-        y = drawJustifiedText(doc, p, marginLeft, contentWidth, y, lineHeight);
+        checkPageBreak(lineHeight);
+        y = drawJustifiedText(doc, p, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
       }
       y += sectionGap;
     }
@@ -535,8 +550,8 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     ];
 
     for (const txt of condicoesTexts) {
-      checkPageBreak(20);
-      y = drawJustifiedText(doc, txt, marginLeft, contentWidth, y, lineHeight);
+      checkPageBreak(lineHeight);
+      y = drawJustifiedText(doc, txt, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
       y += sectionGap;
     }
     y += sectionGap;
@@ -573,13 +588,13 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   if (!isVenda) {
     // LGPD (justified)
     const lgpdText = 'Em conformidade com a Lei Geral de Proteção de Dados (LGPD), Lei n.º 13.709/2018, o cliente consente expressamente com a utilização dos seus dados pessoais, fornecidos neste contrato a fins de contato e comunicação comercial pela empresa.';
-    checkPageBreak(20);
-    y = drawJustifiedText(doc, lgpdText, marginLeft, contentWidth, y, lineHeight);
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, lgpdText, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
 
     const digitalText = 'Ao confirmar e revisar este documento por via digital, estamos de acordo que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas dos envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o relativo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º, §2º.';
-    checkPageBreak(25);
-    y = drawJustifiedText(doc, digitalText, marginLeft, contentWidth, y, lineHeight);
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, digitalText, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   } else {
     // Venda: declarações finais após assinaturas
     const vendaDeclParas = [
@@ -590,8 +605,8 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     ];
     setNormal();
     for (const p of vendaDeclParas) {
-      checkPageBreak(20);
-      y = drawJustifiedText(doc, p, marginLeft, contentWidth, y, lineHeight);
+      checkPageBreak(lineHeight);
+      y = drawJustifiedText(doc, p, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
       y += sectionGap;
     }
   }
