@@ -279,12 +279,21 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   doc.line(marginLeft, y, pageWidth - marginRight, y);
   y += sectionGap * 2;
   
-  // Helper to check page break
+  // Helper to check page break (block-level)
   const checkPageBreak = (neededSpace: number) => {
     if (y + neededSpace > 297 - marginBottom) {
       doc.addPage();
       y = marginTop;
     }
+  };
+
+  // Per-line page break for justified text (allows paragraphs to split across pages)
+  const lineCheckPageBreak = (currentY: number, needed: number): number => {
+    if (currentY + needed > 297 - marginBottom) {
+      doc.addPage();
+      return marginTop;
+    }
+    return currentY;
   };
   
   // Section header helper
