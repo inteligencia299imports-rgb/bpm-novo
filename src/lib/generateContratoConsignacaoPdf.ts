@@ -207,7 +207,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
     const logoWidth = 30;
     const logoHeight = logoWidth / aspect;
     doc.addImage(logoData, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
-    y += logoHeight + 6;
+    y += logoHeight + 10;
   } catch {
     y += 10;
   }
