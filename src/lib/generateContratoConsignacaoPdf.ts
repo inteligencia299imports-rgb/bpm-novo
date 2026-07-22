@@ -565,7 +565,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
 
   // Signatures
   // Client signature
-  checkPageBreak(50);
+  checkPageBreak(lineHeight * 3);
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
