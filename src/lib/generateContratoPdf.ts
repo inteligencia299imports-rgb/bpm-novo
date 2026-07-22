@@ -203,10 +203,13 @@ function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number
   return y;
 }
 
-export async function generateContratoPdf(data: ContratoPdfData): Promise<void> {
+export type ContratoVariant = 'sinal' | 'venda';
+
+export async function generateContratoPdf(data: ContratoPdfData, variant: ContratoVariant = 'sinal'): Promise<void> {
   const templateType = getTemplateType(data.loja, data.empresaMotoInteresse);
   const template = TEMPLATES[templateType];
-  
+  const isVenda = variant === 'venda';
+
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = 210;
   const marginTop = 10; // 1cm
