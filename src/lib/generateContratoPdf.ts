@@ -145,7 +145,8 @@ function drawJustifiedText(
   startY: number,
   lineHeight: number,
   boldSegments?: string[],
-  pageBreakCheck?: (currentY: number, needed: number) => number, lineCheckPageBreak): number {
+  pageBreakCheck?: (currentY: number, needed: number) => number,
+): number {
   doc.setFont('helvetica', 'normal');
   const lines = doc.splitTextToSize(text, maxWidth);
   let y = startY;
