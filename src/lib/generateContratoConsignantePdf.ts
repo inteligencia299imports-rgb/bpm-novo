@@ -225,8 +225,12 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   sectionHeader('OBSERVAÇÕES');
   setNormal();
   if (data.observacoesContrato) {
-    checkPageBreak(lineHeight);
-    y = drawJustifiedText(doc, data.observacoesContrato, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
+    const obsLines = doc.splitTextToSize(data.observacoesContrato, contentWidth);
+    for (const ln of obsLines) {
+      y = lineCheckPageBreak(y, lineHeight);
+      doc.text(ln, marginLeft, y);
+      y += lineHeight;
+    }
   } else {
     doc.text('-', marginLeft, y);
     y += lineHeight;

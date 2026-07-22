@@ -163,8 +163,12 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   if (data.observacoes) {
     sectionHeader('OBSERVAÇÕES');
     setNormal();
-    checkPageBreak(lineHeight);
-    y = drawJustifiedText(doc, data.observacoes, marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+    const obsLines = doc.splitTextToSize(data.observacoes, contentWidth);
+    for (const ln of obsLines) {
+      y = lineCheckPageBreak(y, lineHeight);
+      doc.text(ln, marginLeft, y);
+      y += lineHeight;
+    }
     y += sectionGap;
   }
 
