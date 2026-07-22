@@ -203,10 +203,13 @@ function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number
   return y;
 }
 
-export async function generateContratoPdf(data: ContratoPdfData): Promise<void> {
+export type ContratoVariant = 'sinal' | 'venda';
+
+export async function generateContratoPdf(data: ContratoPdfData, variant: ContratoVariant = 'sinal'): Promise<void> {
   const templateType = getTemplateType(data.loja, data.empresaMotoInteresse);
   const template = TEMPLATES[templateType];
-  
+  const isVenda = variant === 'venda';
+
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = 210;
   const marginTop = 10; // 1cm
@@ -249,7 +252,7 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   // Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
-  doc.text('SINAL DE NEGÓCIO', pageWidth / 2, y, { align: 'center' });
+  doc.text(isVenda ? 'CONTRATO DE COMPRA E VENDA' : 'SINAL DE NEGÓCIO', pageWidth / 2, y, { align: 'center' });
   y += 7;
   
   // Company info
@@ -426,21 +429,117 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   y += sectionGap;
   
   // CONDIÇÕES DO CONTRATO (justified)
-  sectionHeader('CONDIÇÕES DO CONTRATO');
+  sectionHeader(isVenda ? 'DAS CLÁUSULAS E CONDIÇÕES' : 'CONDIÇÕES DO CONTRATO');
   setNormal();
+
   
-  const condicoesTexts = [
-    'No caso de Arrependimento por parte do COMPRADOR, o mesmo perde o valor dado ao VENDEDOR. E se o Arrependimento por parte do VENDEDOR, o COMPRADOR pode exigir a devolução do valor em dobro. Art. 417. Se, por ocasião da conclusão do contrato, uma parte der à outra, a título de arras, dinheiro ou outro bem móvel, deverá as arras, em caso de execução, ser restituídas ou computadas nas prestações devidas, se do mesmo gênero da vida diretor.',
-    'Art. 418. Se a parte que deu as arras não executar o contrato, poderá a outra tê-lo por desfeito, retendo-as; se a inexecução para quem recebeu as arras, poderá quem tiver o contrato por desfeito, e exigir sua devolução mais o equivalente, com atualizada segundo índices oficiais regularmente estabelecidos, juros e honorários de advogado.',
-    'Art. 420. Se nenhum contrato para estipulado o direito de reclamação para qualquer das partes, as arras ou sinal terão função unicamente indenizatória. Neste caso, quem as deu perdê-las-á em benefício da outra parte; e quem recebeu devolvê-las-á, mais o equivalente. Em ambos os casos não há direito a indenização suplementar. (Código Civil – Lei 10.406/2001)',
-  ];
-  
-  for (const txt of condicoesTexts) {
-    checkPageBreak(20);
-    y = drawJustifiedText(doc, txt, marginLeft, contentWidth, y, lineHeight);
+  if (isVenda) {
+    const trocaMarca = data.troca?.marca || data.produtoMarca || '';
+    // Intro
+    const introVenda = `Pelo presente instrumento particular de compra e venda de motocicleta usada, de um lado, ${template.empresaNome}, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº ${template.cnpj}, com sede em ${template.endereco}, doravante denominada simplesmente VENDEDORA, e, de outro lado, ${data.nomeCliente}, portador(a) do CPF/CNPJ nº ${data.cpfCnpj}, doravante denominado(a) COMPRADOR(A), têm entre si justo e contratado o presente instrumento, que se regerá pelas cláusulas e condições a seguir estabelecidas.`;
+    checkPageBreak(30);
+    y = drawJustifiedText(doc, introVenda, marginLeft, contentWidth, y, lineHeight);
+    y += sectionGap;
+
+    const clausulas: { titulo: string; paragrafos: string[] }[] = [
+      {
+        titulo: 'DO CONTRATO',
+        paragrafos: [
+          'I. Natureza Jurídica: O presente instrumento é regido pelas disposições do Código Civil Brasileiro (Lei nº 10.406/2002), especialmente pelos artigos 481 e seguintes, que tratam do contrato de compra e venda.',
+          'II. Disposição Legal: Fica ajustado que o presente contrato é celebrado em caráter irrevogável e irretratável, obrigando as partes, seus herdeiros e sucessores a qualquer título.',
+        ],
+      },
+      {
+        titulo: 'CLÁUSULA PRIMEIRA – DO OBJETO',
+        paragrafos: [
+          `O presente contrato tem por objeto a compra e venda da motocicleta usada de marca ${data.produtoMarca}, modelo ${data.produtoModelo}, ano/modelo ${data.produtoAnoFabMod}, placa/chassi ${data.produtoPlacaChassi}, de propriedade da VENDEDORA, livre e desembaraçada de quaisquer ônus, dívidas ou pendências, salvo aquelas expressamente ressalvadas neste instrumento.`,
+          '§1º. O COMPRADOR declara que vistoriou o veículo, tomando ciência de seu estado geral de conservação, e o aceita nas condições em que se encontra.',
+          '§2º. A VENDEDORA se responsabiliza pela regularidade documental do veículo até a data da assinatura deste contrato.',
+        ],
+      },
+      {
+        titulo: 'CLÁUSULA SEGUNDA – DO PAGAMENTO E SUA FORMA',
+        paragrafos: [
+          `O COMPRADOR pagará à VENDEDORA, pelo objeto descrito na Cláusula Primeira, o valor de ${data.valorVenda}, na forma e condições descritas nas condições da venda acima estabelecidas.`,
+          '§1º. O pagamento poderá ser realizado por meio de recursos próprios, financiamento bancário, consórcio, dação em pagamento (troca) ou quaisquer outras modalidades previamente ajustadas entre as partes.',
+          '§2º. Em caso de financiamento, o COMPRADOR se obriga a apresentar toda a documentação necessária à instituição financeira e a arcar com as taxas, juros e encargos decorrentes da operação.',
+          '§3º. O eventual ANUENTE, quando indicado, assume solidariamente as obrigações aqui pactuadas, inclusive quanto ao pagamento e à regularidade do bem.',
+          '§4º. A quitação integral do preço é condição essencial para a transferência definitiva da propriedade da motocicleta.',
+        ],
+      },
+      {
+        titulo: 'CLÁUSULA TERCEIRA – PACTO DE RESERVA DE DOMÍNIO',
+        paragrafos: [
+          'A propriedade da motocicleta objeto deste contrato somente se transferirá ao COMPRADOR após a quitação integral do preço ajustado, permanecendo o bem sob domínio da VENDEDORA até tal evento, nos termos dos artigos 521 a 528 do Código Civil.',
+          'Parágrafo único. Enquanto perdurar a reserva de domínio, a posse direta será transferida ao COMPRADOR, que responderá integralmente por eventuais danos, avarias, multas, tributos e demais encargos incidentes sobre o veículo.',
+        ],
+      },
+      {
+        titulo: 'CLÁUSULA QUARTA – DAS OBRIGAÇÕES DO COMPRADOR',
+        paragrafos: [
+          'São obrigações do COMPRADOR:',
+          'a) Efetuar o pagamento nos exatos termos e prazos ajustados;',
+          'b) Providenciar a transferência de propriedade junto ao órgão de trânsito competente no prazo legal;',
+          'c) Arcar com todos os tributos, taxas, seguros, multas e demais encargos incidentes sobre o veículo a partir da data de retirada;',
+          'd) Zelar pela conservação e adequada utilização do bem.',
+        ],
+      },
+      {
+        titulo: 'CLÁUSULA QUINTA – DO LOCAL DE RETIRADA DA MOTOCICLETA',
+        paragrafos: [
+          `A retirada da motocicleta ocorrerá na sede da VENDEDORA, localizada em ${template.endereco}, após a confirmação da quitação integral do preço ou, no caso de financiamento, após a liberação dos recursos pela instituição financeira.`,
+          'Parágrafo único. O prazo para a entrega do veículo é de até 7 (sete) dias úteis contados da data do pagamento integral.',
+        ],
+      },
+      {
+        titulo: 'CLÁUSULA SEXTA – DA GARANTIA',
+        paragrafos: [
+          'A VENDEDORA não oferece garantia sobre o funcionamento mecânico, elétrico ou estrutural do veículo, tendo em vista tratar-se de bem usado, salvo disposição em contrário expressamente pactuada por escrito.',
+          'Parágrafo único. O COMPRADOR declara ter conhecimento das condições atuais da motocicleta e assume os riscos inerentes à sua utilização.',
+        ],
+      },
+      {
+        titulo: 'CLÁUSULA SÉTIMA – DA RESCISÃO CONTRATUAL',
+        paragrafos: [
+          'O descumprimento de qualquer das cláusulas deste contrato ensejará sua rescisão de pleno direito, sujeitando a parte inadimplente ao pagamento de multa correspondente a 20% (vinte por cento) do valor total do contrato, sem prejuízo das perdas e danos apurados.',
+        ],
+      },
+      {
+        titulo: 'CLÁUSULA OITAVA – DAS DISPOSIÇÕES FINAIS',
+        paragrafos: [
+          'As partes elegem o foro da comarca da sede da VENDEDORA para dirimir quaisquer controvérsias oriundas deste contrato, com renúncia expressa a qualquer outro, por mais privilegiado que seja.',
+          'E, por estarem assim justas e contratadas, firmam o presente instrumento em via digital, com validade legal, na forma da MP nº 2.200-2/2001.',
+        ],
+      },
+    ];
+
+    for (const cl of clausulas) {
+      checkPageBreak(14);
+      setBold();
+      doc.text(cl.titulo, marginLeft, y);
+      y += lineHeight;
+      setNormal();
+      for (const p of cl.paragrafos) {
+        checkPageBreak(12);
+        y = drawJustifiedText(doc, p, marginLeft, contentWidth, y, lineHeight);
+      }
+      y += sectionGap;
+    }
+    y += sectionGap;
+  } else {
+    const condicoesTexts = [
+      'No caso de Arrependimento por parte do COMPRADOR, o mesmo perde o valor dado ao VENDEDOR. E se o Arrependimento por parte do VENDEDOR, o COMPRADOR pode exigir a devolução do valor em dobro. Art. 417. Se, por ocasião da conclusão do contrato, uma parte der à outra, a título de arras, dinheiro ou outro bem móvel, deverá as arras, em caso de execução, ser restituídas ou computadas nas prestações devidas, se do mesmo gênero da vida diretor.',
+      'Art. 418. Se a parte que deu as arras não executar o contrato, poderá a outra tê-lo por desfeito, retendo-as; se a inexecução para quem recebeu as arras, poderá quem tiver o contrato por desfeito, e exigir sua devolução mais o equivalente, com atualizada segundo índices oficiais regularmente estabelecidos, juros e honorários de advogado.',
+      'Art. 420. Se nenhum contrato para estipulado o direito de reclamação para qualquer das partes, as arras ou sinal terão função unicamente indenizatória. Neste caso, quem as deu perdê-las-á em benefício da outra parte; e quem recebeu devolvê-las-á, mais o equivalente. Em ambos os casos não há direito a indenização suplementar. (Código Civil – Lei 10.406/2001)',
+    ];
+
+    for (const txt of condicoesTexts) {
+      checkPageBreak(20);
+      y = drawJustifiedText(doc, txt, marginLeft, contentWidth, y, lineHeight);
+      y += sectionGap;
+    }
     y += sectionGap;
   }
-  y += sectionGap;
   
   // Signature lines - spacing for digital signature
   y += lineHeight * 5; // space before company signature for digital signature
@@ -480,7 +579,7 @@ export async function generateContratoPdf(data: ContratoPdfData): Promise<void> 
   y = drawJustifiedText(doc, digitalText, marginLeft, contentWidth, y, lineHeight);
   
   // Save
-  const fileName = `SINAL_${data.nomeCliente.replace(/\s+/g, '_').toUpperCase()}.pdf`;
+  const fileName = `${isVenda ? 'CONTRATO_VENDA' : 'SINAL'}_${data.nomeCliente.replace(/\s+/g, '_').toUpperCase()}.pdf`;
   doc.save(fileName);
 }
 
