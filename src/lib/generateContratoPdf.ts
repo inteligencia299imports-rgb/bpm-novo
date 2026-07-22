@@ -358,15 +358,16 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     }
   }
   
-  // RECIBO DE SINAL DE NEGÓCIO (justified with bold values)
-  sectionHeader('RECIBO DE SINAL DE NEGÓCIO');
-  setNormal();
-  const reciboText = `Recebemos o valor de ${data.valorSinal} a título de sinal de negócio, referente a compra de uma motocicleta descrita nas condições de negócio, reconhecido neste documento no campo "comprador" e assinando no campo "assinatura do cliente" declarando para os devidos fins que efetuei o sinal de negócio do veículo acima descrito no campo "condições da venda", e me comprometo a efetuar o pagamento do valor restante até o dia ${data.dataVencimento} conforme as condições da venda descritas neste recibo, o comprador também declara, estar ciente que o prazo para entrega da moto é de até 7 dias úteis após ter efetuado o pagamento total da mesma.`;
-  // Bold segments: valor do sinal and data de vencimento
-  const reciboBoldSegments = [...data.valorSinal.split(/\s+/), ...data.dataVencimento.split(/\s+/)];
-  checkPageBreak(40);
-  y = drawJustifiedText(doc, reciboText, marginLeft, contentWidth, y, lineHeight, reciboBoldSegments);
-  y += sectionGap;
+  // RECIBO DE SINAL DE NEGÓCIO (justified with bold values) - not shown for venda
+  if (!isVenda) {
+    sectionHeader('RECIBO DE SINAL DE NEGÓCIO');
+    setNormal();
+    const reciboText = `Recebemos o valor de ${data.valorSinal} a título de sinal de negócio, referente a compra de uma motocicleta descrita nas condições de negócio, reconhecido neste documento no campo "comprador" e assinando no campo "assinatura do cliente" declarando para os devidos fins que efetuei o sinal de negócio do veículo acima descrito no campo "condições da venda", e me comprometo a efetuar o pagamento do valor restante até o dia ${data.dataVencimento} conforme as condições da venda descritas neste recibo, o comprador também declara, estar ciente que o prazo para entrega da moto é de até 7 dias úteis após ter efetuado o pagamento total da mesma.`;
+    const reciboBoldSegments = [...data.valorSinal.split(/\s+/), ...data.dataVencimento.split(/\s+/)];
+    checkPageBreak(40);
+    y = drawJustifiedText(doc, reciboText, marginLeft, contentWidth, y, lineHeight, reciboBoldSegments);
+    y += sectionGap;
+  }
   
   // CONDIÇÕES DA VENDA
   sectionHeader('CONDIÇÕES DA VENDA');
