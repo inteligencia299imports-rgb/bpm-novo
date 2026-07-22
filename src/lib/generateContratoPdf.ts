@@ -235,12 +235,12 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     let logoWidth: number;
     let logoHeight: number;
     if (templateType === 'ducati') {
-      // Ducati shield: constrain by height ~24mm
-      logoHeight = 24;
+      // Ducati shield: constrain by height
+      logoHeight = isVenda ? 18 : 24;
       logoWidth = logoHeight * aspect;
     } else {
-      // 299 Imports: constrain by width ~30mm
-      logoWidth = 30;
+      // 299 Imports: constrain by width
+      logoWidth = isVenda ? 24 : 30;
       logoHeight = logoWidth / aspect;
     }
     doc.addImage(logoData, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
@@ -358,15 +358,16 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     }
   }
   
-  // RECIBO DE SINAL DE NEGÓCIO (justified with bold values)
-  sectionHeader('RECIBO DE SINAL DE NEGÓCIO');
-  setNormal();
-  const reciboText = `Recebemos o valor de ${data.valorSinal} a título de sinal de negócio, referente a compra de uma motocicleta descrita nas condições de negócio, reconhecido neste documento no campo "comprador" e assinando no campo "assinatura do cliente" declarando para os devidos fins que efetuei o sinal de negócio do veículo acima descrito no campo "condições da venda", e me comprometo a efetuar o pagamento do valor restante até o dia ${data.dataVencimento} conforme as condições da venda descritas neste recibo, o comprador também declara, estar ciente que o prazo para entrega da moto é de até 7 dias úteis após ter efetuado o pagamento total da mesma.`;
-  // Bold segments: valor do sinal and data de vencimento
-  const reciboBoldSegments = [...data.valorSinal.split(/\s+/), ...data.dataVencimento.split(/\s+/)];
-  checkPageBreak(40);
-  y = drawJustifiedText(doc, reciboText, marginLeft, contentWidth, y, lineHeight, reciboBoldSegments);
-  y += sectionGap;
+  // RECIBO DE SINAL DE NEGÓCIO (justified with bold values) - not shown for venda
+  if (!isVenda) {
+    sectionHeader('RECIBO DE SINAL DE NEGÓCIO');
+    setNormal();
+    const reciboText = `Recebemos o valor de ${data.valorSinal} a título de sinal de negócio, referente a compra de uma motocicleta descrita nas condições de negócio, reconhecido neste documento no campo "comprador" e assinando no campo "assinatura do cliente" declarando para os devidos fins que efetuei o sinal de negócio do veículo acima descrito no campo "condições da venda", e me comprometo a efetuar o pagamento do valor restante até o dia ${data.dataVencimento} conforme as condições da venda descritas neste recibo, o comprador também declara, estar ciente que o prazo para entrega da moto é de até 7 dias úteis após ter efetuado o pagamento total da mesma.`;
+    const reciboBoldSegments = [...data.valorSinal.split(/\s+/), ...data.dataVencimento.split(/\s+/)];
+    checkPageBreak(40);
+    y = drawJustifiedText(doc, reciboText, marginLeft, contentWidth, y, lineHeight, reciboBoldSegments);
+    y += sectionGap;
+  }
   
   // CONDIÇÕES DA VENDA
   sectionHeader('CONDIÇÕES DA VENDA');
@@ -508,7 +509,10 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
         titulo: 'CLÁUSULA OITAVA – DAS DISPOSIÇÕES FINAIS',
         paragrafos: [
           'As partes elegem o foro da comarca da sede da VENDEDORA para dirimir quaisquer controvérsias oriundas deste contrato, com renúncia expressa a qualquer outro, por mais privilegiado que seja.',
-          'E, por estarem assim justas e contratadas, firmam o presente instrumento em via digital, com validade legal, na forma da MP nº 2.200-2/2001.',
+          'O COMPRADOR declara que, previamente a aquisição do veículo objeto deste contrato, recebeu clara e satisfatoriamente as informações sobre o valor dos tributos incidentes na comercialização e da situação de regularidade, bem como sobre a inexistência de multas, taxas, débitos de impostos (inclusive a periodicidade de incidência) ou quaisquer fatos conhecidos que limitem ou impeçam a circulação do veículo. Igualmente lhe foi esclarecido sobre a não existência de registros conhecidos de furto ou de registro de gravame (alienação fiduciária). Recebeu o alerta que as informações fornecidas sobre a regularidade poderão ser obtidas e confirmadas nos sítios eletrônicos das autoridades policiais, de trânsito e fazendárias da unidade da Federação onde o veículo está registrado. A presente declaração tem como finalidade o cumprimento do quanto disposto na Lei 13.111/15 cujo texto teve ciência.',
+          'A VENDEDORA declara que cumpre a Lei 13709/2028 – Lei Geral de Privacidade de Dados – LGPD e que utiliza dados pessoais para cumprimentos de requisitos legais, compartilhamento de informações por obrigações com ao fabricante, contatos para avisos de garantia e, quando consentido, campanhas de marketing. Mais informações estão constantes em nossa Política de Privacidade no endereço eletrônico https://ducatiflorianopolis.com.br/politica-de-privacidade.',
+          'A eventual tolerância de qualquer das partes quanto ao descumprimento de obrigação prevista neste contrato constituirá mera liberalidade, não implicando renúncia de direito, alteração contratual ou novação. As partes reconhecem como válidas as assinaturas eletrônicas apostas neste instrumento, bem como aquelas realizadas por plataformas certificadas, produzindo os mesmos efeitos jurídicos das assinaturas manuscritas.',
+          'E por estarem assim justos e contratados, assinam o presente Contrato de Compra e Venda, na presença de duas testemunhas, que a tudo assistiram e conhecimentos tiveram, para que surta os seus jurídicos e legais efeitos.',
         ],
       },
     ];
@@ -558,25 +562,28 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y);
   y += sectionGap * 2;
   
-  // Data do sinal
+  // Data do sinal / venda
   checkPageBreak(25);
   setNormal();
-  doc.text('Data do Sinal: ', marginLeft, y);
-  const dsLabelW = doc.getTextWidth('Data do Sinal: ');
+  const dataLabel = isVenda ? 'Data da Venda: ' : 'Data do Sinal: ';
+  doc.text(dataLabel, marginLeft, y);
+  const dsLabelW = doc.getTextWidth(dataLabel);
   setBold();
   doc.text(data.dataSinal, marginLeft + dsLabelW, y);
   setNormal();
   y += lineHeight + sectionGap;
-  
-  // LGPD (justified)
-  const lgpdText = 'Em conformidade com a Lei Geral de Proteção de Dados (LGPD), Lei n.º 13.709/2018, o cliente consente expressamente com a utilização dos seus dados pessoais, fornecidos neste contrato a fins de contato e comunicação comercial pela empresa.';
-  checkPageBreak(20);
-  y = drawJustifiedText(doc, lgpdText, marginLeft, contentWidth, y, lineHeight);
-  y += sectionGap;
-  
-  const digitalText = 'Ao confirmar e revisar este documento por via digital, estamos de acordo que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas dos envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o relativo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º, §2º.';
-  checkPageBreak(25);
-  y = drawJustifiedText(doc, digitalText, marginLeft, contentWidth, y, lineHeight);
+
+  if (!isVenda) {
+    // LGPD (justified)
+    const lgpdText = 'Em conformidade com a Lei Geral de Proteção de Dados (LGPD), Lei n.º 13.709/2018, o cliente consente expressamente com a utilização dos seus dados pessoais, fornecidos neste contrato a fins de contato e comunicação comercial pela empresa.';
+    checkPageBreak(20);
+    y = drawJustifiedText(doc, lgpdText, marginLeft, contentWidth, y, lineHeight);
+    y += sectionGap;
+
+    const digitalText = 'Ao confirmar e revisar este documento por via digital, estamos de acordo que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas dos envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o relativo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º, §2º.';
+    checkPageBreak(25);
+    y = drawJustifiedText(doc, digitalText, marginLeft, contentWidth, y, lineHeight);
+  }
   
   // Save
   const fileName = `${isVenda ? 'CONTRATO_VENDA' : 'SINAL'}_${data.nomeCliente.replace(/\s+/g, '_').toUpperCase()}.pdf`;
