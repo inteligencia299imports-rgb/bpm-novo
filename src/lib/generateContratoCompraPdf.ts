@@ -39,7 +39,6 @@ function drawJustifiedText(
   maxWidth: number,
   startY: number,
   lineHeight: number,
-  _boldSegments?: string[],
   pageBreakCheck?: (currentY: number, needed: number) => number,
 ): number {
   doc.setFont('helvetica', 'normal');
