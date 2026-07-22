@@ -160,7 +160,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
     const logoWidth = 30;
     const logoHeight = logoWidth / aspect;
     doc.addImage(logo.data, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
-    y += logoHeight + 6;
+    y += logoHeight + 10;
   } catch (e) {
     console.error('Erro ao carregar logo:', e);
     y += 10;
