@@ -512,7 +512,7 @@ const ContratoDialog: React.FC<Props> = ({
     return true;
   };
 
-  const handleGerar = async () => {
+  const handleGerar = async (variant: 'sinal' | 'venda' = 'sinal') => {
     if (!validateForGeneration()) return;
 
     setGenerating(true);
@@ -526,21 +526,21 @@ const ContratoDialog: React.FC<Props> = ({
       const pdfData = buildPdfData();
       if (!pdfData) throw new Error('Dados insuficientes');
 
-      await generateContratoPdf(pdfData);
+      await generateContratoPdf(pdfData, variant);
 
       // Registrar no histórico de movimentações
       if (user) {
         await supabase.from('status_history').insert({
           entity_type: 'showroom',
           entity_id: atendimento.id,
-          status: 'contrato_de_sinal',
+          status: variant === 'venda' ? 'contrato_de_venda' : 'contrato_de_sinal',
           changed_by: user.id,
           changed_by_name: userName || 'Vendedor',
         });
       }
 
       setJaGerado(true);
-      toast.success('Contrato gerado com sucesso!');
+      toast.success(variant === 'venda' ? 'Contrato de venda gerado com sucesso!' : 'Contrato gerado com sucesso!');
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
       toast.error('Erro ao gerar o contrato PDF');
@@ -560,7 +560,7 @@ const ContratoDialog: React.FC<Props> = ({
       if (!id) { setViewing(false); return; }
       const pdfData = buildPdfData();
       if (!pdfData) throw new Error('Dados insuficientes');
-      await generateContratoPdf(pdfData);
+      await generateContratoPdf(pdfData, 'sinal');
       toast.success('Contrato visualizado');
     } catch (err) {
       console.error('Erro ao visualizar PDF:', err);
@@ -569,6 +569,9 @@ const ContratoDialog: React.FC<Props> = ({
       setViewing(false);
     }
   };
+
+  const lojaLower = (atendimento.loja || '').toLowerCase();
+  const canGerarVenda = lojaLower === 'ducati fln' || lojaLower === '299f';
 
   const tipoLabel = (tipo: string) => TIPOS_PAGAMENTO.find(t => t.value === tipo)?.label || tipo;
 
