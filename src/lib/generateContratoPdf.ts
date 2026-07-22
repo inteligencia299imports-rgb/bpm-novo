@@ -579,7 +579,7 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   y = drawJustifiedText(doc, digitalText, marginLeft, contentWidth, y, lineHeight);
   
   // Save
-  const fileName = `SINAL_${data.nomeCliente.replace(/\s+/g, '_').toUpperCase()}.pdf`;
+  const fileName = `${isVenda ? 'CONTRATO_VENDA' : 'SINAL'}_${data.nomeCliente.replace(/\s+/g, '_').toUpperCase()}.pdf`;
   doc.save(fileName);
 }
 
