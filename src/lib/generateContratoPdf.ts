@@ -562,25 +562,28 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y);
   y += sectionGap * 2;
   
-  // Data do sinal
+  // Data do sinal / venda
   checkPageBreak(25);
   setNormal();
-  doc.text('Data do Sinal: ', marginLeft, y);
-  const dsLabelW = doc.getTextWidth('Data do Sinal: ');
+  const dataLabel = isVenda ? 'Data da Venda: ' : 'Data do Sinal: ';
+  doc.text(dataLabel, marginLeft, y);
+  const dsLabelW = doc.getTextWidth(dataLabel);
   setBold();
   doc.text(data.dataSinal, marginLeft + dsLabelW, y);
   setNormal();
   y += lineHeight + sectionGap;
-  
-  // LGPD (justified)
-  const lgpdText = 'Em conformidade com a Lei Geral de Proteção de Dados (LGPD), Lei n.º 13.709/2018, o cliente consente expressamente com a utilização dos seus dados pessoais, fornecidos neste contrato a fins de contato e comunicação comercial pela empresa.';
-  checkPageBreak(20);
-  y = drawJustifiedText(doc, lgpdText, marginLeft, contentWidth, y, lineHeight);
-  y += sectionGap;
-  
-  const digitalText = 'Ao confirmar e revisar este documento por via digital, estamos de acordo que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas dos envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o relativo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º, §2º.';
-  checkPageBreak(25);
-  y = drawJustifiedText(doc, digitalText, marginLeft, contentWidth, y, lineHeight);
+
+  if (!isVenda) {
+    // LGPD (justified)
+    const lgpdText = 'Em conformidade com a Lei Geral de Proteção de Dados (LGPD), Lei n.º 13.709/2018, o cliente consente expressamente com a utilização dos seus dados pessoais, fornecidos neste contrato a fins de contato e comunicação comercial pela empresa.';
+    checkPageBreak(20);
+    y = drawJustifiedText(doc, lgpdText, marginLeft, contentWidth, y, lineHeight);
+    y += sectionGap;
+
+    const digitalText = 'Ao confirmar e revisar este documento por via digital, estamos de acordo que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas dos envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o relativo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º, §2º.';
+    checkPageBreak(25);
+    y = drawJustifiedText(doc, digitalText, marginLeft, contentWidth, y, lineHeight);
+  }
   
   // Save
   const fileName = `${isVenda ? 'CONTRATO_VENDA' : 'SINAL'}_${data.nomeCliente.replace(/\s+/g, '_').toUpperCase()}.pdf`;
