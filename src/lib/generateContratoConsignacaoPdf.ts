@@ -318,10 +318,10 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   // §1 and §2 of DO PAGAMENTO
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§1º A transferência do valor será realizada, preferencialmente, por meio de depósito ou transferência bancária para a conta indicada pelo(a) CONSIGNANTE, após a entrega de toda a documentação solicitada.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§1º A transferência do valor será realizada, preferencialmente, por meio de depósito ou transferência bancária para a conta indicada pelo(a) CONSIGNANTE, após a entrega de toda a documentação solicitada.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§2º Após a concretização da venda, a CONSIGNATÁRIA se compromete a prestar o suporte necessário ao comprador para a efetivação da transferência do veículo, auxiliando-o no cumprimento dos trâmites administrativos e burocráticos junto aos órgãos competentes.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§2º Após a concretização da venda, a CONSIGNATÁRIA se compromete a prestar o suporte necessário ao comprador para a efetivação da transferência do veículo, auxiliando-o no cumprimento dos trâmites administrativos e burocráticos junto aos órgãos competentes.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // DA COMISSÃO
@@ -329,27 +329,27 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   setNormal();
   checkPageBreak(25);
   if (data.comPercentual5) {
-    y = drawJustifiedText(doc, 'Fica desde já convencionado entre as partes que, na hipótese de o veículo objeto do presente contrato vir a ser alienado, seja pelo valor indicado no campo "VALOR" ou por quantia inferior, desde que haja anuência expressa do(a) CONSIGNANTE —, será devida à CONSIGNATÁRIA comissão correspondente a 5% (cinco por cento) do valor efetivo da transação. Tal comissão será automaticamente retida pela CONSIGNATÁRIA no ato do pagamento efetuado pelo comprador, por ocasião da quitação final.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+    y = drawJustifiedText(doc, 'Fica desde já convencionado entre as partes que, na hipótese de o veículo objeto do presente contrato vir a ser alienado, seja pelo valor indicado no campo "VALOR" ou por quantia inferior, desde que haja anuência expressa do(a) CONSIGNANTE —, será devida à CONSIGNATÁRIA comissão correspondente a 5% (cinco por cento) do valor efetivo da transação. Tal comissão será automaticamente retida pela CONSIGNATÁRIA no ato do pagamento efetuado pelo comprador, por ocasião da quitação final.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
     checkPageBreak(lineHeight);
-    y = drawJustifiedText(doc, '§1º Caso o(a) CONSIGNANTE deseje fixar o valor líquido que pretende auferir com a venda, deverá informar tal quantia de maneira clara e expressa no momento da consignação, a fim de que conste no campo "Observações" do presente contrato.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+    y = drawJustifiedText(doc, '§1º Caso o(a) CONSIGNANTE deseje fixar o valor líquido que pretende auferir com a venda, deverá informar tal quantia de maneira clara e expressa no momento da consignação, a fim de que conste no campo "Observações" do presente contrato.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
     checkPageBreak(lineHeight);
-    y = drawJustifiedText(doc, '§2º Os valores previstos nesta cláusula, inclusive a comissão ora estipulada, permanecerão devidos à CONSIGNATÁRIA mesmo que a venda do veículo se concretize após a devolução do bem ao(à) CONSIGNANTE, desde que o(a) comprador(a) tenha sido por ela apresentado(a) ao(à) CONSIGNANTE, de forma direta ou indireta, durante a vigência deste instrumento.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+    y = drawJustifiedText(doc, '§2º Os valores previstos nesta cláusula, inclusive a comissão ora estipulada, permanecerão devidos à CONSIGNATÁRIA mesmo que a venda do veículo se concretize após a devolução do bem ao(à) CONSIGNANTE, desde que o(a) comprador(a) tenha sido por ela apresentado(a) ao(à) CONSIGNANTE, de forma direta ou indireta, durante a vigência deste instrumento.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
     checkPageBreak(lineHeight);
-    y = drawJustifiedText(doc, '§3º O(a) CONSIGNANTE declara ter pleno conhecimento de que, enquanto vigente o presente contrato, não poderá dispor do veículo para venda direta a terceiros. Qualquer divulgação do bem por iniciativa própria, inclusive por meio de plataformas de venda online ou quaisquer outros meios, será considerada infração contratual, caracterizando violação às obrigações aqui assumidas.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+    y = drawJustifiedText(doc, '§3º O(a) CONSIGNANTE declara ter pleno conhecimento de que, enquanto vigente o presente contrato, não poderá dispor do veículo para venda direta a terceiros. Qualquer divulgação do bem por iniciativa própria, inclusive por meio de plataformas de venda online ou quaisquer outros meios, será considerada infração contratual, caracterizando violação às obrigações aqui assumidas.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   } else {
-    y = drawJustifiedText(doc, 'Fica desde já estabelecido, que independentemente do valor de venda, será repassado ao consignante o valor estipulado no campo "VALOR", ao proprietário do veículo.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+    y = drawJustifiedText(doc, 'Fica desde já estabelecido, que independentemente do valor de venda, será repassado ao consignante o valor estipulado no campo "VALOR", ao proprietário do veículo.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
     checkPageBreak(lineHeight);
-    y = drawJustifiedText(doc, '§1º Caso o CONSIGNANTE estabeleça o valor líquido pretendido com a venda, este deverá informar de forma clara no momento da consignação para ser especificado no campo "Observações".', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+    y = drawJustifiedText(doc, '§1º Caso o CONSIGNANTE estabeleça o valor líquido pretendido com a venda, este deverá informar de forma clara no momento da consignação para ser especificado no campo "Observações".', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
     checkPageBreak(lineHeight);
-    y = drawJustifiedText(doc, '§2° Os valores referidos nesta cláusula, persistirão em favor da CONSIGNATÁRIA, acaso o veículo objeto desta seja negociado após sua devolução ao CONSIGNANTE, diretamente por este ou por outrem e o comprador seja, justamente, pessoa que tenha sido apresentada, na vigência deste, ao CONSIGNANTE, pela CONSIGNATÁRIA;', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+    y = drawJustifiedText(doc, '§2° Os valores referidos nesta cláusula, persistirão em favor da CONSIGNATÁRIA, acaso o veículo objeto desta seja negociado após sua devolução ao CONSIGNANTE, diretamente por este ou por outrem e o comprador seja, justamente, pessoa que tenha sido apresentada, na vigência deste, ao CONSIGNANTE, pela CONSIGNATÁRIA;', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
     checkPageBreak(lineHeight);
-    y = drawJustifiedText(doc, '§3° O CONSIGNANTE fica ciente que durante a vigência deste contrato, não poderá dispor do objeto para venda direta e o ato contrário, como a publicação em canais de venda, se caracteriza como quebra deste contrato.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+    y = drawJustifiedText(doc, '§3° O CONSIGNANTE fica ciente que durante a vigência deste contrato, não poderá dispor do objeto para venda direta e o ato contrário, como a publicação em canais de venda, se caracteriza como quebra deste contrato.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   }
   y += sectionGap;
 
@@ -357,7 +357,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   sectionHeader('DA AVALIAÇÃO E VERIFICAÇÃO:');
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§1° O Consignante, ao deixar a motocicleta para consignação, declara-se ciente e concorda que a mesma somente será exposta à venda após a realização de uma avaliação e verificação mecânica, conhecida como check-in list, bem como a pesquisa junto aos órgãos competentes para identificação de eventuais pendências financeiras, como multas, IPVA atrasados, bloqueios, dentre outros que possam interferir na futura venda e/ou transferência do veículo.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§1° O Consignante, ao deixar a motocicleta para consignação, declara-se ciente e concorda que a mesma somente será exposta à venda após a realização de uma avaliação e verificação mecânica, conhecida como check-in list, bem como a pesquisa junto aos órgãos competentes para identificação de eventuais pendências financeiras, como multas, IPVA atrasados, bloqueios, dentre outros que possam interferir na futura venda e/ou transferência do veículo.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, '§2° A Consignatária informará ao Consignante o resultado da avaliação imediatamente após sua conclusão e disponibilizará a motocicleta para a venda após conclusão dos trâmites necessários.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
@@ -367,7 +367,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   sectionHeader('DA IRRETRATABILIDADE APÓS SINAL DE NEGÓCIO E RESPONSABILIDADE POR IMPEDIMENTO:');
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'Caso haja manifestação de interesse de comprador com pagamento de sinal, o CONSIGNANTE não poderá retirar o veículo até:', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'Caso haja manifestação de interesse de comprador com pagamento de sinal, o CONSIGNANTE não poderá retirar o veículo até:', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += 2;
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, 'a, undefined, undefined, undefined, undefined, undefined, lineCheckPageBreak) conclusão da venda; ou b) desistência formal do comprador.', marginLeft, contentWidth, y, lineHeight);
@@ -376,7 +376,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y = drawJustifiedText(doc, 'O sinal caracteriza início de vínculo contratual.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'Caso o CONSIGNANTE inviabilize a venda, pagará multa de 20% sobre o valor do veículo, além de perdas e danos.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'Caso o CONSIGNANTE inviabilize a venda, pagará multa de 20% sobre o valor do veículo, além de perdas e danos.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, 'Durante a vigência: I – não poderá gerar ônus ou restrições; II – deverá manter regularidade do veículo; III – não poderá negociar fora da consignação.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
@@ -385,7 +385,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y = drawJustifiedText(doc, 'O descumprimento autoriza rescisão imediata.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'Parágrafo único: Caso haja impedimento no CPF do CONSIGNANTE que inviabilize a transferência, este será responsável por toda regularização, custos, despesas e prejuízos, nada podendo ser imputado à CONSIGNATÁRIA.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'Parágrafo único: Caso haja impedimento no CPF do CONSIGNANTE que inviabilize a transferência, este será responsável por toda regularização, custos, despesas e prejuízos, nada podendo ser imputado à CONSIGNATÁRIA.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // DO DIREITO DE IMAGEM
@@ -394,32 +394,32 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, 'Todas as imagens produzidas na transação de consignação são de direito exclusivo da CONSIGNATÁRIA.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
-  y = drawJustifiedText(doc, '§1° As imagens produzidas pela CONSIGNATÁRIA serão de uso e direito para esta comercialização, vetado o repasse ou uso sem permissão, sob pena de impor despesas evasivas.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§1° As imagens produzidas pela CONSIGNATÁRIA serão de uso e direito para esta comercialização, vetado o repasse ou uso sem permissão, sob pena de impor despesas evasivas.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, '§2° O CONSIGNANTE fica ciente que durante a vigência deste contrato não poderá dispor do objeto para anúncios particulares e venda direta. Sob pena de eventuais cobranças judiciais.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§3° O CONSIGNANTE DEVE RETIRAR IMEDIATAMENTE QUALQUER ANÚNCIO REFERENTE A MOTO, OBJETO DESTE CONTRATO, DE CANAIS DE VENDAS DIVERSOS, E NÃO PODERÁ FAZER NOVOS ANÚNCIOS ENQUANTO A MOTO ESTIVER CONSIGNADA NA LOJA.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§3° O CONSIGNANTE DEVE RETIRAR IMEDIATAMENTE QUALQUER ANÚNCIO REFERENTE A MOTO, OBJETO DESTE CONTRATO, DE CANAIS DE VENDAS DIVERSOS, E NÃO PODERÁ FAZER NOVOS ANÚNCIOS ENQUANTO A MOTO ESTIVER CONSIGNADA NA LOJA.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // DAS RESPONSABILIDADES
   sectionHeader('DAS RESPONSABILIDADES:');
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'O CONSIGNANTE se responsabiliza pela evicção, por eventuais vícios redibitórios, bem como todas as multas, sejam elas Federais, Estaduais e/ou Municipais, até a presente data. Diante disso, esta CONSIGNATÁRIA fica desde já autorizada, após tentativa amigável de cobrança, mediante notificação extrajudicial, a qual deverá ser respaldada nos documentos de origem dos débitos, a proceder à execução do valor atualizado do débito, devidamente acrescido da multa eventualmente impingida pelos órgãos públicos, mais juros de mora de 1% ao mês, a contar da data em que a CONSIGNATÁRIA, ou alguém por ela despenda tais valores. Deste modo, o (a) CONSIGNANTE declara que reconhece que o presente instrumento é firmado no termo do artigo 585, II do CPC, razão pela qual o presente é um título executivo extrajudicial, mesmo porque, o "quantum debeatur" depende de simples cálculo aritmético, a partir de dados consignados em documentos comprobatórios do débito (multas de trânsito, IPVA e outros). Nesta seara, a CONSIGNATÁRIA poderá executar o presente para cobrar os valores eventualmente devidos e de responsabilidade do (a) CONSIGNANTE. Para dirimir quaisquer dúvidas decorrentes do presente, as partes estabelecem desde já o foro da comarca de Brasília, por mais privilegiado que outro possa ser, sendo que o CONSIGNANTE RENUNCIA ao foro previsto no inciso I, do artigo 101, do Código de Defesa do Consumidor. O veículo objeto do presente ficará sob guarda e responsabilidade da CONSIGNATÁRIA, até o dia da venda ou sua devolução ao CONSIGNANTE;', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'O CONSIGNANTE se responsabiliza pela evicção, por eventuais vícios redibitórios, bem como todas as multas, sejam elas Federais, Estaduais e/ou Municipais, até a presente data. Diante disso, esta CONSIGNATÁRIA fica desde já autorizada, após tentativa amigável de cobrança, mediante notificação extrajudicial, a qual deverá ser respaldada nos documentos de origem dos débitos, a proceder à execução do valor atualizado do débito, devidamente acrescido da multa eventualmente impingida pelos órgãos públicos, mais juros de mora de 1% ao mês, a contar da data em que a CONSIGNATÁRIA, ou alguém por ela despenda tais valores. Deste modo, o (a) CONSIGNANTE declara que reconhece que o presente instrumento é firmado no termo do artigo 585, II do CPC, razão pela qual o presente é um título executivo extrajudicial, mesmo porque, o "quantum debeatur" depende de simples cálculo aritmético, a partir de dados consignados em documentos comprobatórios do débito (multas de trânsito, IPVA e outros). Nesta seara, a CONSIGNATÁRIA poderá executar o presente para cobrar os valores eventualmente devidos e de responsabilidade do (a) CONSIGNANTE. Para dirimir quaisquer dúvidas decorrentes do presente, as partes estabelecem desde já o foro da comarca de Brasília, por mais privilegiado que outro possa ser, sendo que o CONSIGNANTE RENUNCIA ao foro previsto no inciso I, do artigo 101, do Código de Defesa do Consumidor. O veículo objeto do presente ficará sob guarda e responsabilidade da CONSIGNATÁRIA, até o dia da venda ou sua devolução ao CONSIGNANTE;', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, '§1° O CONSIGNANTE declara que o veículo acima descrito encontra-se desobstruído para transferência em todo TERRITÓRIO NACIONAL. Sendo de sua responsabilidade multas e débitos até a presente data.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§2° O CONSIGNANTE que optou pela ISENÇÃO DE IPVA, no momento da compra do veículo acima descrito, deverá arcar com os débitos em aberto junto à Secretaria de Fazenda do estado de origem. Visando a transferência de propriedade após a conclusão da venda.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§2° O CONSIGNANTE que optou pela ISENÇÃO DE IPVA, no momento da compra do veículo acima descrito, deverá arcar com os débitos em aberto junto à Secretaria de Fazenda do estado de origem. Visando a transferência de propriedade após a conclusão da venda.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§3° Fica desde já estabelecido que, o início da contagem do prazo de responsabilidade, do consignante por eventuais defeitos e vícios ocultos se dará após a concretização da venda, com a assinatura e reconhecimento do CRV (DUT).', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§3° Fica desde já estabelecido que, o início da contagem do prazo de responsabilidade, do consignante por eventuais defeitos e vícios ocultos se dará após a concretização da venda, com a assinatura e reconhecimento do CRV (DUT).', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§4° Caso o CONSIGNANTE precise se ausentar do Distrito Federal, deverá deixar uma procuração para alguém de sua confiança, autorizando essa pessoa a agir em seu nome.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§4° Caso o CONSIGNANTE precise se ausentar do Distrito Federal, deverá deixar uma procuração para alguém de sua confiança, autorizando essa pessoa a agir em seu nome.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // SÃO OBRIGAÇÕES DO CONSIGNANTE
@@ -445,12 +445,12 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   sectionHeader('DOS VÍCIOS OCULTOS');
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'A previsão legal dos Vícios Redibitórios está contida no art. 441 do Código Civil, sendo que esses Vícios são DEFEITOS OCULTOS em coisa recebida em virtude de contrato comutativo, que a tornem imprópria para o uso ou lhe diminuam o valor.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'A previsão legal dos Vícios Redibitórios está contida no art. 441 do Código Civil, sendo que esses Vícios são DEFEITOS OCULTOS em coisa recebida em virtude de contrato comutativo, que a tornem imprópria para o uso ou lhe diminuam o valor.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // CONTRATO DE CONSIGNAÇÃO (continuation header)
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§1° O CONSIGNANTE é responsável pelo objeto deste contrato e pelos seus defeitos, ainda que os desconheça até o momento.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§1° O CONSIGNANTE é responsável pelo objeto deste contrato e pelos seus defeitos, ainda que os desconheça até o momento.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, '§2° O check list não exime o CONSIGNANTE de sua responsabilidade em relação ao objeto. A 299 Imports realizará um laudo técnico de verificação da motocicleta após a assinatura deste contrato. Este laudo é caracterizado conforme abaixo:', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
@@ -488,7 +488,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y += sectionGap;
 
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'Posterior ao scanner será feito o teste de rodagem por nosso mecânico para verificações mais amplas em funcionamento. Os resultados deste laudo serão anexados ao processo de consignação e caso solicitado serão enviados ao cliente. Ciente de que, caso o laudo técnico aponte que a motocicleta possui falhas, problemas técnicos ou condições de qualidade que não condizem com os objetivos da empresa, cabe a negociação para:', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'Posterior ao scanner será feito o teste de rodagem por nosso mecânico para verificações mais amplas em funcionamento. Os resultados deste laudo serão anexados ao processo de consignação e caso solicitado serão enviados ao cliente. Ciente de que, caso o laudo técnico aponte que a motocicleta possui falhas, problemas técnicos ou condições de qualidade que não condizem com os objetivos da empresa, cabe a negociação para:', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(10);
   doc.text('- Autorização para o ajuste em nossa própria oficina.', marginLeft, y); y += lineHeight;
@@ -496,43 +496,43 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y += sectionGap;
 
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§3° O CONSIGNANTE será contatado a qualquer momento pela CONSIGNATÁRIA, durante a vigência deste contrato ou no período de garantia legal (após a concretização da venda e tradição do objeto), para ser comunicado sobre defeitos ocultos e tomar as medidas cabíveis, ainda que o perecimento ocorra em poder do adquirente/comprador.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§3° O CONSIGNANTE será contatado a qualquer momento pela CONSIGNATÁRIA, durante a vigência deste contrato ou no período de garantia legal (após a concretização da venda e tradição do objeto), para ser comunicado sobre defeitos ocultos e tomar as medidas cabíveis, ainda que o perecimento ocorra em poder do adquirente/comprador.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // DO PRAZO
   sectionHeader('DO PRAZO:');
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'A presente autorização de venda se dá pelo prazo de 30 dias, prorrogando-se automaticamente no caso de silêncio do CONSIGNANTE;', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'A presente autorização de venda se dá pelo prazo de 30 dias, prorrogando-se automaticamente no caso de silêncio do CONSIGNANTE;', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§1° Caso o CONSIGNANTE retire o objeto deste contrato antes do prazo estipulado acima, este tem a obrigação de custear despesas evasivas da CONSIGNATÁRIA. Sendo pré-fixado o valor de R$ 100,00.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§1° Caso o CONSIGNANTE retire o objeto deste contrato antes do prazo estipulado acima, este tem a obrigação de custear despesas evasivas da CONSIGNATÁRIA. Sendo pré-fixado o valor de R$ 100,00.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, '§2° Consignante não pode dispor do objeto deste contrato antes de lhe ser restituída ou e lhe ser comunicada a restituição (CC/2002, art. 537).', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§3° A empresa 299 Imports se compromete a postar e disponibilizar o veículo para a venda no prazo máximo de 7 dias uteis, a partir do momento da assinatura deste. O prazo sugerido se deve aos processos de diagnóstico, tratamento e higienização da motocicleta.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§3° A empresa 299 Imports se compromete a postar e disponibilizar o veículo para a venda no prazo máximo de 7 dias uteis, a partir do momento da assinatura deste. O prazo sugerido se deve aos processos de diagnóstico, tratamento e higienização da motocicleta.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§4° A empresa consignatária poderá rescindir unilateralmente o presente instrumento, sem ônus, mediante aviso por escrito, que deverá ser encaminhado via e-mail ou WhatsApp, indicado no presente termo ou notificação por AR-MP, com antecedência de, no mínimo, 1 (um) dia.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§4° A empresa consignatária poderá rescindir unilateralmente o presente instrumento, sem ônus, mediante aviso por escrito, que deverá ser encaminhado via e-mail ou WhatsApp, indicado no presente termo ou notificação por AR-MP, com antecedência de, no mínimo, 1 (um) dia.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§5º Durante o prazo estipulado para a venda, é permitido ao CONSIGNANTE rescindir unilateralmente o presente instrumento, sem ônus, mediante aviso por escrito, que deverá ser encaminhado por o e-mail, notificação por AR ou via WhatsApp, com antecedência mínima de 5 (cinco) dias, a fim de possibilitar proceder-se os trâmites administrativos necessários, sob pena de imposição de multa de R$ 2.000,00 (dois mil reais).', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§5º Durante o prazo estipulado para a venda, é permitido ao CONSIGNANTE rescindir unilateralmente o presente instrumento, sem ônus, mediante aviso por escrito, que deverá ser encaminhado por o e-mail, notificação por AR ou via WhatsApp, com antecedência mínima de 5 (cinco) dias, a fim de possibilitar proceder-se os trâmites administrativos necessários, sob pena de imposição de multa de R$ 2.000,00 (dois mil reais).', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // DAS INCONFORMIDADES
   sectionHeader('DAS INCONFORMIDADES NO ÂMBITO LEGAL:');
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'O CONSIGNANTE fica ciente que durante a vigência deste contrato, a CONSIGNATÁRIA fará consultas periódicas em órgãos públicos de: seu nome, do veículo objeto deste contrato e da pessoa cujo nome constar no CRLV. Com intuito de resguardar seus clientes e negócios. Havendo qualquer inconformidade, a CONSIGNATÁRIA comunicará o CONSIGNANTE, ficando a escolha da CONSIGNATÁRIA se permanecerá com o contrato de consignação. Fica acordado, ainda, que não haverá restituição de valores pagos na assinatura deste.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'O CONSIGNANTE fica ciente que durante a vigência deste contrato, a CONSIGNATÁRIA fará consultas periódicas em órgãos públicos de: seu nome, do veículo objeto deste contrato e da pessoa cujo nome constar no CRLV. Com intuito de resguardar seus clientes e negócios. Havendo qualquer inconformidade, a CONSIGNATÁRIA comunicará o CONSIGNANTE, ficando a escolha da CONSIGNATÁRIA se permanecerá com o contrato de consignação. Fica acordado, ainda, que não haverá restituição de valores pagos na assinatura deste.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // DO DESLOCAMENTO
   sectionHeader('DO DESLOCAMENTO:');
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'O CONSIGNANTE dará aprovação ao deslocamento entre lojas (loja 1- SCIA QUADRA 15 CONJUNTO 03 LOJA 06 CIDADE DO AUTOMÓVEL CEP: 71.250-015, loja 2 - Q QMSW 2 BLOCO A LOJA 20 SETOR SUDOESTE CEP:70.680-203 e loja 3 – SAI TRECHO 3 LOTE 1205 ZONA INDUSTRIAL, GUARÁ CEP: 71.200-037) por meio de autorização em anexo, ficará ciente que poderá ocorrer a venda em qualquer unidade 299 Imports e que o transporte se dará por conta da CONSIGNATÁRIA por meio de van totalmente equipada para deslocamento.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'O CONSIGNANTE dará aprovação ao deslocamento entre lojas (loja 1- SCIA QUADRA 15 CONJUNTO 03 LOJA 06 CIDADE DO AUTOMÓVEL CEP: 71.250-015, loja 2 - Q QMSW 2 BLOCO A LOJA 20 SETOR SUDOESTE CEP:70.680-203 e loja 3 – SAI TRECHO 3 LOTE 1205 ZONA INDUSTRIAL, GUARÁ CEP: 71.200-037) por meio de autorização em anexo, ficará ciente que poderá ocorrer a venda em qualquer unidade 299 Imports e que o transporte se dará por conta da CONSIGNATÁRIA por meio de van totalmente equipada para deslocamento.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // DA COMUNICAÇÃO
@@ -546,23 +546,23 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y += sectionGap;
 
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'As partes elegem o Foro da Comarca de BRASÍLIA - DF, renunciando a qualquer outro, por mais privilegiado que seja, para dirimir quaisquer dúvidas ou litígios resultantes do presente instrumento. E, por estarem de pleno acordo, as partes firmam o presente instrumento em duas vias, de igual forma e teor, juntamente com duas testemunhas, para surtirem os seus efeitos jurídicos e legais.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'As partes elegem o Foro da Comarca de BRASÍLIA - DF, renunciando a qualquer outro, por mais privilegiado que seja, para dirimir quaisquer dúvidas ou litígios resultantes do presente instrumento. E, por estarem de pleno acordo, as partes firmam o presente instrumento em duas vias, de igual forma e teor, juntamente com duas testemunhas, para surtirem os seus efeitos jurídicos e legais.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // FORO DE ELEIÇÃO
   sectionHeader('FORO DE ELEIÇÃO:');
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'Para dirimir quaisquer dúvidas decorrentes do presente, as partes estabelecem desde já, com exclusividade, o foro da comarca de Brasília–DF, por mais privilegiado que outro possa ser. O comprador de livre e espontânea vontade renuncia ao foro previsto no artigo 101, I, do Código de Defesa do Consumidor.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'Para dirimir quaisquer dúvidas decorrentes do presente, as partes estabelecem desde já, com exclusividade, o foro da comarca de Brasília–DF, por mais privilegiado que outro possa ser. O comprador de livre e espontânea vontade renuncia ao foro previsto no artigo 101, I, do Código de Defesa do Consumidor.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // LGPD + Digital
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'Conforme a Lei Geral de Proteção de Dados (LGPD), Lei n.º 13.709/2018, o cliente consente expressamente com a utilização dos seus dados pessoais, fornecidos neste contrato a fins de contato e comunicação comercial pela empresa.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'Conforme a Lei Geral de Proteção de Dados (LGPD), Lei n.º 13.709/2018, o cliente consente expressamente com a utilização dos seus dados pessoais, fornecidos neste contrato a fins de contato e comunicação comercial pela empresa.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'Ao confirmar e revisar este documento por via digital, estamos de acordo que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas dos envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o relativo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º, §2º.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'Ao confirmar e revisar este documento por via digital, estamos de acordo que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas dos envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o relativo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º, §2º.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += lineHeight * 4;
 
   // Signatures
@@ -597,7 +597,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
 
   sectionHeader('DEVOLUÇÃO DO VEÍCULO:');
   setNormal();
-  y = drawJustifiedText(doc, 'Declaro a quem possa interessar que retirei o veículo objeto desta consignação e o mesmo encontra-se nas mesmas condições de funcionamento e conservação de quando foi consignado, não tendo, portanto, nada a reclamar.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'Declaro a quem possa interessar que retirei o veículo objeto desta consignação e o mesmo encontra-se nas mesmas condições de funcionamento e conservação de quando foi consignado, não tendo, portanto, nada a reclamar.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += lineHeight * 4;
 
   doc.line(marginLeft, y, marginLeft + 70, y);
