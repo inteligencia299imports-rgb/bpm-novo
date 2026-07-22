@@ -186,7 +186,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   sectionHeader('CLÁUSULA PRIMEIRA – DO OBJETO');
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'Descrito no campo item da proposta comercial o objeto deste contrato.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'Descrito no campo item da proposta comercial o objeto deste contrato.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
   y += sectionGap;
 
   // CLÁUSULA SEGUNDA
@@ -246,7 +246,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   sectionHeader('CLÁUSULA NONA - DO DIREITO DE IMAGEM');
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'O VENDEDOR autoriza o COMPRADOR a utilizar sua imagem para fins publicitários nos canais de divulgação próprio e outros que achar pertinente. Esta autorização se dará por prazo INDETERMINADO.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
+  y = drawJustifiedText(doc, 'O VENDEDOR autoriza o COMPRADOR a utilizar sua imagem para fins publicitários nos canais de divulgação próprio e outros que achar pertinente. Esta autorização se dará por prazo INDETERMINADO.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
   y += sectionGap;
 
   // CLÁUSULA DÉCIMA
