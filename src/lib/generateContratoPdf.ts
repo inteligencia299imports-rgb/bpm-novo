@@ -429,8 +429,9 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   y += sectionGap;
   
   // CONDIÇÕES DO CONTRATO (justified)
-  sectionHeader('CONDIÇÕES DO CONTRATO');
+  sectionHeader(isVenda ? 'DAS CLÁUSULAS E CONDIÇÕES' : 'CONDIÇÕES DO CONTRATO');
   setNormal();
+
   
   if (isVenda) {
     const trocaMarca = data.troca?.marca || data.produtoMarca || '';
