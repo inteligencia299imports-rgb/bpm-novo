@@ -136,18 +136,29 @@ async function loadImage(path: string): Promise<string> {
   });
 }
 
-// Justified text helper with bold support using **text** markers
-function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number, y: number, lineHeight: number, boldSegments?: string[]): number {
-  // First, split text to size using normal font to get line breaks
+// Justified text helper with bold support and optional per-line page break
+function drawJustifiedText(
+  doc: jsPDF,
+  text: string,
+  x: number,
+  maxWidth: number,
+  startY: number,
+  lineHeight: number,
+  boldSegments?: string[],
+  pageBreakCheck?: (currentY: number, needed: number) => number,
+): number {
   doc.setFont('helvetica', 'normal');
   const lines = doc.splitTextToSize(text, maxWidth);
-  
+  let y = startY;
+
   for (let i = 0; i < lines.length; i++) {
+    if (pageBreakCheck) {
+      y = pageBreakCheck(y, lineHeight);
+    }
     const line: string = lines[i];
     const isLastLine = i === lines.length - 1;
-    
+
     if (!boldSegments || boldSegments.length === 0) {
-      // No bold segments - simple rendering
       if (isLastLine || !line.trim()) {
         doc.text(line, x, y);
       } else {
@@ -166,16 +177,12 @@ function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number
         }
       }
     } else {
-      // Render with bold segments
       const words = line.split(/\s+/);
-      
-      // Calculate space width for justification
       let spaceWidth: number;
       if (isLastLine || words.length <= 1) {
         doc.setFont('helvetica', 'normal');
         spaceWidth = doc.getTextWidth(' ');
       } else {
-        // Calculate total words width considering bold
         let totalWordsW = 0;
         for (const w of words) {
           const isBold = boldSegments.some(seg => w.includes(seg) || seg.split(/\s+/).includes(w));
@@ -184,10 +191,9 @@ function drawJustifiedText(doc: jsPDF, text: string, x: number, maxWidth: number
         }
         spaceWidth = (maxWidth - totalWordsW) / (words.length - 1);
       }
-      
+
       let currentX = x;
       for (const w of words) {
-        // Check if this word is part of a bold segment
         const isBold = boldSegments.some(seg => {
           const segWords = seg.split(/\s+/);
           return segWords.includes(w) || w === seg;
