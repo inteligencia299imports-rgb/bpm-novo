@@ -163,10 +163,8 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   if (data.observacoes) {
     sectionHeader('OBSERVAÇÕES');
     setNormal();
-    const obsLines = doc.splitTextToSize(data.observacoes, contentWidth);
-    checkPageBreak(obsLines.length * lineHeight + 5);
-    doc.text(obsLines, marginLeft, y);
-    y += obsLines.length * lineHeight;
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, data.observacoes, marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
     y += sectionGap;
   }
 
@@ -261,11 +259,10 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   setNormal();
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, 'Para dirimir quaisquer dúvidas decorrentes do presente, as partes estabelecem desde já, com exclusividade, o foro da Comarca do COMPRADOR, por mais privilegiado que outro possa ser. O VENDEDOR, de livre e espontânea vontade, RENUNCIA ao foro previsto no artigo 101, I do Código de Defesa do Consumidor; E, para produzir seus legais efeitos, firmo o presente termo, na presença de 2 (duas) testemunhas.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
-  y += lineHeight * 4;
-
   // Signatures - keep entire block together on same page
   const sigBlockHeight = lineHeight * 8;
-  checkPageBreak(sigBlockHeight);
+  checkPageBreak(lineHeight * 4 + sigBlockHeight);
+  y += lineHeight * 4;
 
   const colWidth = contentWidth / 2 - 5;
   const lineLen = 70;

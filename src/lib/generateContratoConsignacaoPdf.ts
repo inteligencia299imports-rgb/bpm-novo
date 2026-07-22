@@ -261,10 +261,8 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   if (data.observacoes) {
     sectionHeader('OBSERVAÇÕES:');
     setNormal();
-    const obsLines = doc.splitTextToSize(data.observacoes, contentWidth);
-    checkPageBreak(obsLines.length * lineHeight + 5);
-    doc.text(obsLines, marginLeft, y);
-    y += obsLines.length * lineHeight;
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, data.observacoes, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
   }
 
@@ -305,7 +303,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   // DO PAGAMENTO
   sectionHeader('DO PAGAMENTO:');
   setNormal();
-  checkPageBreak(30);
+  checkPageBreak(lineHeight);
   if (data.comPercentual5) {
     const pagText = 'O repasse do valor acordado será efetuado após a entrega integral da documentação exigida pela empresa, conforme especificado no campo "Observações". Ressalta-se que o DUT (Documento Único de Transferência) ou ATPV-e (Autorização para Transferência de Propriedade de Veículo Eletrônica) deverá estar devidamente preenchido e com firma reconhecida. Concluída essa etapa documental, proceder-se-á ao pagamento da motocicleta consignada.';
     y = drawJustifiedText(doc, pagText, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
@@ -327,7 +325,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   // DA COMISSÃO
   sectionHeader('DA COMISSÃO:');
   setNormal();
-  checkPageBreak(25);
+  checkPageBreak(lineHeight);
   if (data.comPercentual5) {
     y = drawJustifiedText(doc, 'Fica desde já convencionado entre as partes que, na hipótese de o veículo objeto do presente contrato vir a ser alienado, seja pelo valor indicado no campo "VALOR" ou por quantia inferior, desde que haja anuência expressa do(a) CONSIGNANTE —, será devida à CONSIGNATÁRIA comissão correspondente a 5% (cinco por cento) do valor efetivo da transação. Tal comissão será automaticamente retida pela CONSIGNATÁRIA no ato do pagamento efetuado pelo comprador, por ocasião da quitação final.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
@@ -370,7 +368,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y = drawJustifiedText(doc, 'Caso haja manifestação de interesse de comprador com pagamento de sinal, o CONSIGNANTE não poderá retirar o veículo até:', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += 2;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'a, undefined, undefined, undefined, undefined, undefined, lineCheckPageBreak) conclusão da venda; ou b) desistência formal do comprador.', marginLeft, contentWidth, y, lineHeight);
+  y = drawJustifiedText(doc, 'a) conclusão da venda; ou b) desistência formal do comprador.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += 2;
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, 'O sinal caracteriza início de vínculo contratual.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
@@ -567,7 +565,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
 
   // Signatures
   // Client signature
-  checkPageBreak(50);
+  checkPageBreak(lineHeight * 3);
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
@@ -593,8 +591,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y += lineHeight;
 
   // DEVOLUÇÃO DO VEÍCULO
-  checkPageBreak(40);
-
+  checkPageBreak(lineHeight);
   sectionHeader('DEVOLUÇÃO DO VEÍCULO:');
   setNormal();
   y = drawJustifiedText(doc, 'Declaro a quem possa interessar que retirei o veículo objeto desta consignação e o mesmo encontra-se nas mesmas condições de funcionamento e conservação de quando foi consignado, não tendo, portanto, nada a reclamar.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
