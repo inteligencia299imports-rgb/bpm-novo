@@ -225,10 +225,8 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   sectionHeader('OBSERVAÇÕES');
   setNormal();
   if (data.observacoesContrato) {
-    const obsLines = doc.splitTextToSize(data.observacoesContrato, contentWidth);
-    checkPageBreak(obsLines.length * lineHeight + 5);
-    doc.text(obsLines, marginLeft, y);
-    y += obsLines.length * lineHeight;
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, data.observacoesContrato, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   } else {
     doc.text('-', marginLeft, y);
     y += lineHeight;
@@ -236,7 +234,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   y += sectionGap;
 
   // ===== LEGAL TEXT =====
-  checkPageBreak(50);
+  checkPageBreak(lineHeight);
   setNormal();
 
   const para1 = 'AUTORIZAÇÃO PARA PAGAMENTO DE INTERMEDIAÇÃO DE VENDA DE MOTOCICLETA PREVIAMENTE RECEBIDO EM CONSIGNAÇÃO, QUE ENTRE SI CELEBRAM:';
@@ -255,9 +253,8 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
 
   const para4pre = 'Venda de uma motocicleta citada neste documento no campo "item da proposta comercial", posta à venda neste estabelecimento comercial, por meio de consignação no valor ajustado de ';
   const para4post = '.';
-  checkPageBreak(15);
+  checkPageBreak(lineHeight);
   setNormal();
-  const lines4pre = doc.splitTextToSize(para4pre + data.valorConsignacao + para4post, contentWidth);
   // Render with bold valorConsignacao
   y = drawJustifiedText(
     doc,
@@ -278,7 +275,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
     ...data.dadosBancarios.split(/\s+/),
     ...data.titularConta.split(/\s+/),
   ];
-  checkPageBreak(30);
+  checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, para5, marginLeft, contentWidth, y, lineHeight, boldSegments, lineCheckPageBreak);
   y += 2;
 
@@ -319,11 +316,8 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
 
   // ===== Digital signature + LGPD (same page, after company signature) =====
   const digitalPara = 'Ao confirmar e assinar este documento por via digital, estamos em acordo de que este será apresentado somente neste formato digital, e que os registros serão mantidos originalmente protegidos e inalteráveis em https://acrobat.adobe.com/link/documents/agreements, após coletadas todas as evidências de assinaturas de todos os envolvidos, o documento poderá ser baixado em formato PDF juntamente com o comprovante de assinatura eletrônica e todas as validações, histórico de assinaturas e o respectivo ID da transação, e uma cópia será mantida inalterada nos respectivos e-mails envolvidos, conforme determina a MP 2.200/01, art. 10º,§2.';
-  const digitalLines = doc.splitTextToSize(digitalPara, contentWidth);
   const lgpdPara = 'A Lei Geral de Proteção de Dados será obedecida, em todos os seus termos, pela CONTRATADA, obrigando-se ela a tratar os dados da CONTRATANTE que forem eventualmente coletados, conforme sua necessidade ou obrigatoriedade. Manter e utilizar medidas de segurança administrativas, técnicas e físicas apropriadas e suficientes para proteger a confidencialidade e integridade de todos os dados pessoais mantidos ou consultados/transmitidos eletronicamente, para garantir a proteção desses dados contra acesso não autorizado, destruição, uso, modificação, divulgação ou perda acidental ou indevida, conforme a Legislação vigente sobre Proteção de Dados Pessoais e as determinações de órgãos reguladores/fiscalizadores sobre a matéria, em especial a Lei 13.709/2018.';
-  const lgpdLines = doc.splitTextToSize(lgpdPara, contentWidth);
-  const totalNeeded = (digitalLines.length + lgpdLines.length + 3) * lineHeight + 10;
-  checkPageBreak(totalNeeded);
+  checkPageBreak(lineHeight);
   setNormal();
   y = drawJustifiedText(doc, digitalPara, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;

@@ -399,31 +399,43 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   
   // Moto troca
   if (data.troca) {
-    checkPageBreak(35);
+    checkPageBreak(lineHeight);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(fontSize);
     doc.text('Moto na Troca:', marginLeft, y); y += lineHeight;
     setNormal();
+    checkPageBreak(lineHeight);
     doc.text(`Marca: ${data.troca.marca}`, marginLeft + 5, y); y += lineHeight;
+    checkPageBreak(lineHeight);
     doc.text(`Modelo: ${data.troca.modelo}`, marginLeft + 5, y); y += lineHeight;
+    checkPageBreak(lineHeight);
     doc.text(`Fab/Mod: ${data.troca.anoFabMod}`, marginLeft + 5, y); y += lineHeight;
+    checkPageBreak(lineHeight);
     doc.text(`Placa/Chassi: ${data.troca.placaChassi}`, marginLeft + 5, y); y += lineHeight;
+    checkPageBreak(lineHeight);
     doc.text(`Km: ${data.troca.km}`, marginLeft + 5, y); y += lineHeight;
+    checkPageBreak(lineHeight);
     doc.text(`Valor de Quitação: ${data.troca.valorQuitacao}`, marginLeft + 5, y); y += lineHeight;
+    checkPageBreak(lineHeight);
     doc.text(`Valor Negociado: ${data.troca.valorNegociado}`, marginLeft + 5, y); y += lineHeight + sectionGap;
   }
   
   // Formas de pagamento
   for (const forma of data.formasPagamento) {
     if (forma.tipo === 'financiamento') {
-      checkPageBreak(30);
+      checkPageBreak(lineHeight);
       setBold();
       doc.text('Financiamento', marginLeft, y); y += lineHeight;
       setNormal();
+      checkPageBreak(lineHeight);
       doc.text(`Banco: ${forma.financeira || '-'}`, marginLeft + 5, y); y += lineHeight;
+      checkPageBreak(lineHeight);
       doc.text(`Valor de Entrada: ${forma.valorEntrada || '-'}`, marginLeft + 5, y); y += lineHeight;
+      checkPageBreak(lineHeight);
       doc.text(`Nº Parcelas: ${forma.numeroParcelas || '-'}`, marginLeft + 5, y); y += lineHeight;
+      checkPageBreak(lineHeight);
       doc.text(`Valor Parcelas: ${forma.valorParcelas || '-'}`, marginLeft + 5, y); y += lineHeight;
+      checkPageBreak(lineHeight);
       doc.text(`Valor Financiado: ${forma.valorFinanciado || '-'}`, marginLeft + 5, y); y += lineHeight;
     } else {
       checkPageBreak(6);
@@ -437,10 +449,8 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   sectionHeader('OBSERVAÇÕES');
   setNormal();
   if (data.observacoes) {
-    const obsLines = doc.splitTextToSize(data.observacoes, contentWidth);
-    checkPageBreak(obsLines.length * lineHeight + 5);
-    doc.text(obsLines, marginLeft, y);
-    y += obsLines.length * lineHeight;
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, data.observacoes, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   }
   y += sectionGap;
   
@@ -530,7 +540,7 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     ];
 
     for (const cl of clausulas) {
-      checkPageBreak(14);
+      checkPageBreak(lineHeight * 2);
       setBold();
       doc.text(cl.titulo, marginLeft, y);
       y += lineHeight;
@@ -558,8 +568,8 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   }
   
   // Signature lines - spacing for digital signature
+  checkPageBreak(lineHeight * 5 + 50);
   y += lineHeight * 5; // space before company signature for digital signature
-  checkPageBreak(70);
   doc.setLineWidth(0.3);
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
@@ -575,7 +585,7 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   y += sectionGap * 2;
   
   // Data do sinal / venda
-  checkPageBreak(25);
+  checkPageBreak(lineHeight);
   setNormal();
   const dataLabel = isVenda ? 'Data da Venda: ' : 'Data do Sinal: ';
   doc.text(dataLabel, marginLeft, y);
