@@ -897,9 +897,14 @@ const ContratoDialog: React.FC<Props> = ({
               <Eye className="h-4 w-4 mr-1" />{viewing ? 'Abrindo...' : 'Visualizar'}
             </Button>
           )}
-          <Button variant="outline" onClick={handleGerar} disabled={generating}>
-            <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar PDF'}
+          <Button variant="outline" onClick={() => handleGerar('sinal')} disabled={generating}>
+            <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar Sinal'}
           </Button>
+          {canGerarVenda && (
+            <Button variant="outline" onClick={() => handleGerar('venda')} disabled={generating}>
+              <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar Venda'}
+            </Button>
+          )}
           
           <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
             <Save className="h-4 w-4 mr-1" />
