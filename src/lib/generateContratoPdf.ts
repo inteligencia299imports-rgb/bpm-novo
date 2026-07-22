@@ -235,12 +235,12 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     let logoWidth: number;
     let logoHeight: number;
     if (templateType === 'ducati') {
-      // Ducati shield: constrain by height ~24mm
-      logoHeight = 24;
+      // Ducati shield: constrain by height
+      logoHeight = isVenda ? 18 : 24;
       logoWidth = logoHeight * aspect;
     } else {
-      // 299 Imports: constrain by width ~30mm
-      logoWidth = 30;
+      // 299 Imports: constrain by width
+      logoWidth = isVenda ? 24 : 30;
       logoHeight = logoWidth / aspect;
     }
     doc.addImage(logoData, 'PNG', (pageWidth - logoWidth) / 2, y, logoWidth, logoHeight);
