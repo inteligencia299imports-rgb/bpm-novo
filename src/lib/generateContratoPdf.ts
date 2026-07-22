@@ -451,7 +451,7 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   if (data.observacoes) {
     const obsLines = doc.splitTextToSize(data.observacoes, contentWidth);
     for (const ln of obsLines) {
-      lineCheckPageBreak(lineHeight);
+      y = lineCheckPageBreak(y, lineHeight);
       doc.text(ln, marginLeft, y);
       y += lineHeight;
     }
