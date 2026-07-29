@@ -573,7 +573,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
               </TableHeader>
               <TableBody>
                 {motosAdquiridas.length === 0 ? (
-                  <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">Nenhuma moto adquirida encontrada</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">Nenhuma moto adquirida encontrada</TableCell></TableRow>
                 ) : motosAdquiridas.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell className="text-xs">{m.cliente}</TableCell>
