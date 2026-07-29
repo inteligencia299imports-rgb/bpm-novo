@@ -360,19 +360,20 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const XLSX = await import('xlsx');
     const aoa = [[
       'Cliente','Avaliador','Loja','Tipo','Modelo','Placa','Data Aquisição',
-      'V. Fechamento','Bônus','Previsão Custo','Custos Realizados','Assertividade','Quanto Vende','Margem Prev.',
+      'V. Fechamento','Bônus','Previsão Custo','Custos Realizados','Assertividade','Quanto Vende','Margem Prev.','%',
     ], ...motosAdquiridas.map(m => [
       m.cliente, abbreviateName(m.avaliador), lojaLabel(m.loja), tipoDisplayLabel(m.tipo), m.modelo, m.placa,
       m.dataAquisicao ? format(new Date(m.dataAquisicao), 'dd/MM/yyyy') : '-',
       m.valorFechamento, m.bonus, m.previsaoCusto, m.custosRealizados, m.previsaoCusto > 0 ? m.assertividade : null,
-      m.quantoVende, m.margemPrevista,
+      m.quantoVende, m.margemPrevista, m.quantoVende > 0 ? m.margemPrevista / m.quantoVende : null,
     ])];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [22,18,10,12,22,10,12,14,12,14,14,12,14,14].map(w => ({ wch: w }));
+    ws['!cols'] = [22,18,10,12,22,10,12,14,12,14,14,12,14,14,8].map(w => ({ wch: w }));
     const range = XLSX.utils.decode_range(ws['!ref'] as string);
     for (let R = 1; R <= range.e.r; R++) {
       ['H','I','J','K','M','N'].forEach(c => { const cell = ws[`${c}${R+1}`]; if (cell && typeof cell.v === 'number') cell.z = 'R$ #,##0.00'; });
       const cellL = ws[`L${R+1}`]; if (cellL && typeof cellL.v === 'number') cellL.z = '0.0%';
+      const cellO = ws[`O${R+1}`]; if (cellO && typeof cellO.v === 'number') cellO.z = '0.0%';
     }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Motos Adquiridas');
@@ -393,22 +394,23 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
     autoTable(doc, {
       startY: 64,
-      head: [['Cliente','Avaliador','Loja','Tipo','Modelo','Placa','Data Aquis.','V. Fechamento','Bônus','Previsão Custo','Custos Real.','Quanto Vende','Margem Prev.']],
+      head: [['Cliente','Avaliador','Loja','Tipo','Modelo','Placa','Data Aquis.','V. Fechamento','Bônus','Previsão Custo','Custos Real.','Quanto Vende','Margem Prev.','%']],
       body: motosAdquiridas.map(m => [
         m.cliente, abbreviateName(m.avaliador), lojaLabel(m.loja), tipoDisplayLabel(m.tipo), m.modelo, m.placa,
         m.dataAquisicao ? format(new Date(m.dataAquisicao), 'dd/MM/yy') : '-',
         fmtBRL(m.valorFechamento), fmtBRL(m.bonus), fmtBRL(m.previsaoCusto),
         m.previsaoCusto > 0 ? `${fmtBRL(m.custosRealizados)} (${fmtPct(m.assertividade)})` : fmtBRL(m.custosRealizados),
         fmtBRL(m.quantoVende), fmtBRL(m.margemPrevista),
+        m.quantoVende > 0 ? `${(m.margemPrevista / m.quantoVende * 100).toFixed(1).replace('.', ',')}%` : '-',
       ]),
       styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
       headStyles: { fillColor: [47, 111, 132], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
       alternateRowStyles: { fillColor: [245, 247, 250] },
-      columnStyles: { 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right' }, 11: { halign: 'right' }, 12: { halign: 'right' } },
+      columnStyles: { 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right' }, 11: { halign: 'right' }, 12: { halign: 'right' }, 13: { halign: 'right' } },
       didParseCell: (data) => {
         if (data.section !== 'body') return;
         const m = motosAdquiridas[data.row.index];
-        if (data.column.index === 12 && m.margemPrevista !== 0) data.cell.styles.textColor = m.margemPrevista >= 0 ? [58, 143, 106] : [220, 38, 38];
+        if ((data.column.index === 12 || data.column.index === 13) && m.margemPrevista !== 0) data.cell.styles.textColor = m.margemPrevista >= 0 ? [58, 143, 106] : [220, 38, 38];
       },
       margin: { left: 20, right: 20 },
     });
@@ -567,11 +569,12 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                   <TableHead className="text-right">Custos Realizados</TableHead>
                   <TableHead className="text-right">Quanto Vende</TableHead>
                   <TableHead className="text-right">Margem Prev.</TableHead>
+                  <TableHead className="text-right">%</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {motosAdquiridas.length === 0 ? (
-                  <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">Nenhuma moto adquirida encontrada</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">Nenhuma moto adquirida encontrada</TableCell></TableRow>
                 ) : motosAdquiridas.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell className="text-xs">{m.cliente}</TableCell>
@@ -590,6 +593,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                     </TableCell>
                     <TableCell className="text-xs text-right">{fmtBRL(m.quantoVende)}</TableCell>
                     <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)}</TableCell>
+                    <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{m.quantoVende > 0 ? `${(m.margemPrevista / m.quantoVende * 100).toFixed(1).replace('.', ',')}%` : '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
