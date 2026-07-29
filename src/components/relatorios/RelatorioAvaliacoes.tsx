@@ -591,6 +591,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                     </TableCell>
                     <TableCell className="text-xs text-right">{fmtBRL(m.quantoVende)}</TableCell>
                     <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)}</TableCell>
+                    <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{m.quantoVende > 0 ? `${(m.margemPrevista / m.quantoVende * 100).toFixed(1).replace('.', ',')}%` : '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
