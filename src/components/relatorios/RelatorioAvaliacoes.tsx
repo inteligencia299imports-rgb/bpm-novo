@@ -517,8 +517,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                       {fmtBRL(m.custosRealizados)}
                       {m.previsaoCusto > 0 && <span className="ml-1 text-muted-foreground">({fmtPct(m.assertividade)})</span>}
                     </TableCell>
+                    <TableCell className="text-xs text-right">{fmtBRL(m.quantoVende)}</TableCell>
                     <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)}</TableCell>
-                    <TableCell className={`text-xs text-right font-medium ${m.margemExecutada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemExecutada)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
