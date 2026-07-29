@@ -190,7 +190,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         .eq('status', 'adquirida')
       ),
       (supabase as any).from('user_roles_motos').select('user_id, nome'),
-      fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, valor_previsto, valor_executado')),
+      fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado')),
     ]);
 
     const avals = ((avalRes.data || []) as any[]);
@@ -210,10 +210,12 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       if (!cur || h.created_at < cur) aquisicaoByAval.set(avalId, h.created_at);
     }
 
-    // Agregação de custos por avaliação
+    // Agregação de custos por avaliação — considera apenas responsável = cliente para o realizado (executado)
     const custosByAval = new Map<string, { previsto: number; executado: number }>();
     for (const c of (coRes.data || []) as any[]) {
       if (!c.avaliacao_id) continue;
+      const resp = (c.responsavel || '').toLowerCase();
+      if (resp !== 'cliente') continue;
       const cur = custosByAval.get(c.avaliacao_id) || { previsto: 0, executado: 0 };
       cur.previsto += Number(c.valor_previsto || 0);
       if (c.valor_executado != null) cur.executado += Number(c.valor_executado);
@@ -360,7 +362,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const XLSX = await import('xlsx');
     const aoa = [[
       'Cliente','Avaliador','Loja','Tipo','Modelo','Placa','Data Aquisição',
-      'V. Fechamento','Bônus','Previsão Custo','Custos Realizados','Δ Custo','Quanto Vende','Margem Prev.','Margem %',
+      'V. Fechamento','Trade-in','Previsão Custo','Custos Realizados','Δ Custo','Quanto Vende','Margem Prev.','Margem %',
     ], ...motosAdquiridas.map(m => [
       m.cliente, abbreviateName(m.avaliador), lojaLabel(m.loja), tipoDisplayLabel(m.tipo), m.modelo, m.placa,
       m.dataAquisicao ? format(new Date(m.dataAquisicao), 'dd/MM/yyyy') : '-',
@@ -395,7 +397,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
     autoTable(doc, {
       startY: 64,
-      head: [['Cliente','Avaliador','Loja','Tipo','Modelo','Placa','Data Aquis.','V. Fechamento','Bônus','Previsão Custo','Custos Real.','Quanto Vende','Margem Prev.']],
+      head: [['Cliente','Avaliador','Loja','Tipo','Modelo','Placa','Data Aquis.','V. Fechamento','Trade-in','Previsão Custo','Custos Real.','Quanto Vende','Margem Prev.']],
       body: motosAdquiridas.map(m => {
         const diff = m.previsaoCusto > 0 ? (m.custosRealizados - m.previsaoCusto) / m.previsaoCusto : null;
         const custoStr = diff !== null
@@ -575,7 +577,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                   <TableHead>Placa</TableHead>
                   <TableHead>Data Aquisição</TableHead>
                   <TableHead className="text-right">V. Fechamento</TableHead>
-                  <TableHead className="text-right">Bônus</TableHead>
+                  <TableHead className="text-right">Trade-in</TableHead>
                   <TableHead className="text-right">Previsão Custo</TableHead>
                   <TableHead className="text-right">Custos Realizados</TableHead>
                   <TableHead className="text-right">Quanto Vende</TableHead>

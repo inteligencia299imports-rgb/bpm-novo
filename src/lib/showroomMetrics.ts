@@ -70,6 +70,8 @@ export interface ShowroomIndexes {
   consignanteByAtend: Map<string, number>;
   interesseByAtend: Map<string, InteresseRow>;
   nomeByUser: Map<string, string>;
+  /** destino da transferência por avaliação — 'loja' | 'novo_proprietario' | null */
+  destinoTransferenciaByAvaliacao: Map<string, string | null>;
 }
 
 export function buildIndexes(params: {
@@ -77,6 +79,7 @@ export function buildIndexes(params: {
   custosOficina: CostRow[]; custosOperacionais: OpCostRow[];
   contratos: ContratoRow[]; consignantes: ConsignanteRow[];
   interesses: InteresseRow[]; userRoles: { user_id: string; nome: string | null }[];
+  posCompraProcessos?: { avaliacao_id: string | null; etapa: string | null; concluida: boolean | null; destino_transferencia: string | null }[];
 }): ShowroomIndexes {
   const estoqueByAtendVenda = new Map<string, EstoqueRow>();
   const estoqueById = new Map<string, EstoqueRow>();
@@ -166,7 +169,15 @@ export function buildIndexes(params: {
   const nomeByUser = new Map<string, string>();
   for (const u of params.userRoles) nomeByUser.set(u.user_id, u.nome || 'Desconhecido');
 
-  return { estoqueByAtendVenda, estoqueById, avaliacoesById, avaliacoesByMotoAv, costsByAvaliacao, opLojaByAtend, contratoByAtend, consignanteByAtend, interesseByAtend, nomeByUser };
+  const destinoTransferenciaByAvaliacao = new Map<string, string | null>();
+  for (const p of (params.posCompraProcessos || [])) {
+    if (!p.avaliacao_id) continue;
+    if ((p.etapa || '').toUpperCase() !== 'TRANSFERÊNCIA CONCLUÍDA') continue;
+    if (!p.concluida) continue;
+    destinoTransferenciaByAvaliacao.set(p.avaliacao_id, p.destino_transferencia || null);
+  }
+
+  return { estoqueByAtendVenda, estoqueById, avaliacoesById, avaliacoesByMotoAv, costsByAvaliacao, opLojaByAtend, contratoByAtend, consignanteByAtend, interesseByAtend, nomeByUser, destinoTransferenciaByAvaliacao };
 }
 
 const nz = (v: number | null | undefined) => (v == null || Number(v) === 0 ? null : Number(v));
@@ -225,8 +236,16 @@ export function computeRowMetrics(atend: AtendimentoRow, idx: ShowroomIndexes, m
   const fatReal = valorVendaReal + (costs.custo_prev_cliente - costs.custo_real_cliente) + (costs.custo_oficina_loja_prev - costs.custo_oficina_loja_exec);
   const margemPrevista = quantoVende - valorFechamento;
   const margemOficina = (costs.custo_prev_cliente - costs.custo_real_cliente) + (costs.custo_oficina_loja_prev - costs.custo_oficina_loja_exec);
-  const abatimentos = taxaFixa + costs.custo_oficina_loja_exec + costs.custo_processo_loja + opLoja;
-  const margemRealizada = fatReal - (valorFechamento + taxaFixa + costs.custo_oficina_loja_exec + costs.custo_processo_loja + opLoja);
+
+  // Abatimentos só aplicam quando a transferência foi para a Loja (ou tipo sem transferência: consignada/ducati/etc não têm)
+  const destino = avaliacao ? idx.destinoTransferenciaByAvaliacao.get(avaliacao.id) : null;
+  const aplicaAbatimentos = !['propria', 'convertida'].includes(tipo) || destino === 'loja';
+  const abatimentos = aplicaAbatimentos
+    ? (taxaFixa + costs.custo_oficina_loja_exec + costs.custo_processo_loja + opLoja)
+    : 0;
+  const margemRealizada = aplicaAbatimentos
+    ? fatReal - (valorFechamento + taxaFixa + costs.custo_oficina_loja_exec + costs.custo_processo_loja + opLoja)
+    : fatReal - valorFechamento;
 
   return {
     tipo, modelo, placa,
