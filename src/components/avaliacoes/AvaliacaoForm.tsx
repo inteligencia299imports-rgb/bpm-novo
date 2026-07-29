@@ -455,6 +455,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       avaliacao_compra: parseCurrencyToNumber(avalCompra),
       previsao_custos_loja: parseCurrencyToNumber(prevCustosLoja),
       previsao_custos_cliente: parseCurrencyToNumber(prevCustosCliente),
+      valor_bonus: parseCurrencyToNumber(valorBonus) || null,
       observacao_avaliador: obsAvaliador || null,
       classificacao: classificacao || null,
       avaliador_id: user!.id,
