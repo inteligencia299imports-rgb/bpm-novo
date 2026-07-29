@@ -176,10 +176,10 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const [avalRes, histRes, rolesRes] = await Promise.all([
+    const [avalRes, histRes, rolesRes, coRes] = await Promise.all([
       fetchAllRange<any>(() => supabase
         .from('avaliacoes')
-        .select('id, moto_avaliacao_id, avaliador_id, tipo_aquisicao, situacao, created_at, updated_at, atendimentos!inner(interesse, loja)')
+        .select('id, moto_avaliacao_id, avaliador_id, tipo_aquisicao, situacao, quanto_vende, valor_fechamento, valor_bonus, created_at, updated_at, atendimentos!inner(nome_cliente, interesse, loja), motos_avaliacao(marca, modelo, placa)')
         .neq('situacao', 'sem_avaliar')
         .in('atendimentos.interesse', ['trocar', 'vender'])
       ),
@@ -189,6 +189,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         .eq('status', 'adquirida')
       ),
       (supabase as any).from('user_roles_motos').select('user_id, nome'),
+      fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, valor_previsto, valor_executado')),
     ]);
 
     const avals = ((avalRes.data || []) as any[]);
@@ -208,16 +209,38 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       if (!cur || h.created_at < cur) aquisicaoByAval.set(avalId, h.created_at);
     }
 
-    const parsed: AvalRow[] = avals.map((a) => ({
-      id: a.id,
-      avaliadorId: a.avaliador_id || null,
-      tipoNorm: normTipo(a.tipo_aquisicao),
-      situacao: a.situacao,
-      interesse: a.atendimentos?.interesse || null,
-      loja: a.atendimentos?.loja || null,
-      createdAt: a.created_at,
-      dataAquisicao: aquisicaoByAval.get(a.id) || null,
-    }));
+    // Agregação de custos por avaliação
+    const custosByAval = new Map<string, { previsto: number; executado: number }>();
+    for (const c of (coRes.data || []) as any[]) {
+      if (!c.avaliacao_id) continue;
+      const cur = custosByAval.get(c.avaliacao_id) || { previsto: 0, executado: 0 };
+      cur.previsto += Number(c.valor_previsto || 0);
+      if (c.valor_executado != null) cur.executado += Number(c.valor_executado);
+      custosByAval.set(c.avaliacao_id, cur);
+    }
+
+    const parsed: AvalRow[] = avals.map((a) => {
+      const custos = custosByAval.get(a.id) || { previsto: 0, executado: 0 };
+      return {
+        id: a.id,
+        avaliadorId: a.avaliador_id || null,
+        tipoNorm: normTipo(a.tipo_aquisicao),
+        situacao: a.situacao,
+        interesse: a.atendimentos?.interesse || null,
+        loja: a.atendimentos?.loja || null,
+        createdAt: a.created_at,
+        dataAquisicao: aquisicaoByAval.get(a.id) || null,
+        nomeCliente: a.atendimentos?.nome_cliente || null,
+        marca: a.motos_avaliacao?.marca || null,
+        modelo: a.motos_avaliacao?.modelo || null,
+        placa: a.motos_avaliacao?.placa || null,
+        quantoVende: Number(a.quanto_vende || 0),
+        valorFechamento: Number(a.valor_fechamento || 0),
+        valorBonus: Number(a.valor_bonus || 0),
+        previsaoCusto: custos.previsto,
+        custosRealizados: custos.executado,
+      };
+    });
 
     setRows(parsed);
     setNomeById(new Map(((rolesRes.data || []) as any[]).map((r: any) => [r.user_id, r.nome || 'Desconhecido'])));
