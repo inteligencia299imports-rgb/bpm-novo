@@ -588,11 +588,18 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                     <TableCell className="text-xs text-right">{fmtBRL(m.previsaoCusto)}</TableCell>
                     <TableCell className="text-xs text-right">
                       {fmtBRL(m.custosRealizados)}
-                      {m.previsaoCusto > 0 && <span className="ml-1 text-muted-foreground">({fmtPct(m.assertividade)})</span>}
+                      {m.previsaoCusto > 0 && (() => {
+                        const diff = (m.custosRealizados - m.previsaoCusto) / m.previsaoCusto;
+                        const sign = diff > 0 ? '+' : '';
+                        const cls = diff > 0 ? 'text-red-600' : 'text-green-600';
+                        return <span className={`ml-1 ${cls}`}>({sign}{(diff * 100).toFixed(1).replace('.', ',')}%)</span>;
+                      })()}
                     </TableCell>
                     <TableCell className="text-xs text-right">{fmtBRL(m.quantoVende)}</TableCell>
-                    <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)}</TableCell>
-                    <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{m.quantoVende > 0 ? `${(m.margemPrevista / m.quantoVende * 100).toFixed(1).replace('.', ',')}%` : '-'}</TableCell>
+                    <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {fmtBRL(m.margemPrevista)}
+                      {m.quantoVende > 0 && <span className="ml-1">({(m.margemPrevista / m.quantoVende * 100).toFixed(1).replace('.', ',')}%)</span>}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
