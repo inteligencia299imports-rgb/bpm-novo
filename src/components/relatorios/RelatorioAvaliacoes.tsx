@@ -324,6 +324,36 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     });
   }, [rows, filterLoja]);
 
+  // ---------- Motos Adquiridas (list) ----------
+  const motosAdquiridas = useMemo(() => {
+    return rows
+      .filter((r) => r.dataAquisicao && matchesLoja(r.loja, filterLoja) && inRange(r.dataAquisicao, dateFrom, dateTo))
+      .sort((a, b) => new Date(b.dataAquisicao!).getTime() - new Date(a.dataAquisicao!).getTime())
+      .map((r) => {
+        const modelo = [r.marca, r.modelo].filter(Boolean).join(' ') || '-';
+        const assertividade = r.previsaoCusto > 0 ? r.custosRealizados / r.previsaoCusto : 0;
+        const margemPrevista = r.quantoVende - r.valorFechamento - r.valorBonus - r.previsaoCusto;
+        const margemExecutada = r.quantoVende - r.valorFechamento - r.valorBonus - r.custosRealizados;
+        return {
+          id: r.id,
+          cliente: r.nomeCliente || '-',
+          avaliador: r.avaliadorId ? (nomeById.get(r.avaliadorId) || '-') : '-',
+          loja: r.loja,
+          tipo: r.tipoNorm,
+          modelo,
+          placa: r.placa || '-',
+          dataAquisicao: r.dataAquisicao,
+          valorFechamento: r.valorFechamento,
+          bonus: r.valorBonus,
+          previsaoCusto: r.previsaoCusto,
+          custosRealizados: r.custosRealizados,
+          assertividade,
+          margemPrevista,
+          margemExecutada,
+        };
+      });
+  }, [rows, nomeById, filterLoja, dateFrom, dateTo]);
+
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
   }
