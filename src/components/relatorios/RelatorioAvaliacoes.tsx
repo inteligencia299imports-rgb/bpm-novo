@@ -348,6 +348,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           previsaoCusto: r.previsaoCusto,
           custosRealizados: r.custosRealizados,
           assertividade,
+          quantoVende: r.quantoVende,
           margemPrevista,
           margemExecutada,
         };
@@ -494,8 +495,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                   <TableHead className="text-right">Bônus</TableHead>
                   <TableHead className="text-right">Previsão Custo</TableHead>
                   <TableHead className="text-right">Custos Realizados</TableHead>
+                  <TableHead className="text-right">Quanto Vende</TableHead>
                   <TableHead className="text-right">Margem Prev.</TableHead>
-                  <TableHead className="text-right">Margem Exec.</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -517,8 +518,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                       {fmtBRL(m.custosRealizados)}
                       {m.previsaoCusto > 0 && <span className="ml-1 text-muted-foreground">({fmtPct(m.assertividade)})</span>}
                     </TableCell>
+                    <TableCell className="text-xs text-right">{fmtBRL(m.quantoVende)}</TableCell>
                     <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)}</TableCell>
-                    <TableCell className={`text-xs text-right font-medium ${m.margemExecutada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemExecutada)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
