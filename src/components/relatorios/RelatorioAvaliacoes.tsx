@@ -82,6 +82,15 @@ interface AvalRow {
   loja: string | null;
   createdAt: string;
   dataAquisicao: string | null;
+  nomeCliente: string | null;
+  marca: string | null;
+  modelo: string | null;
+  placa: string | null;
+  quantoVende: number;
+  valorFechamento: number;
+  valorBonus: number;
+  previsaoCusto: number;
+  custosRealizados: number;
 }
 
 interface KpiSet {
