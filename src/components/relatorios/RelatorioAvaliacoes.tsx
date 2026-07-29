@@ -466,11 +466,66 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
                 <Bar dataKey="negTrocar" name="Trocar" fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
                 <Bar dataKey="negVender" name="Vender" fill="#E8913A" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
-              </BarChart>
+          </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
+
+      {/* Section: Motos Adquiridas */}
+      <div className="space-y-1 !mt-8">
+        <h2 className="text-lg font-bold text-foreground">Motos Adquiridas</h2>
+        <Separator />
+      </div>
+      <Card className="overflow-hidden">
+        <CardContent className="pt-4">
+          <div className="overflow-x-auto pb-2">
+            <Table className="min-w-[1200px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Avaliador</TableHead>
+                  <TableHead>Loja</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Modelo</TableHead>
+                  <TableHead>Placa</TableHead>
+                  <TableHead>Data Aquisição</TableHead>
+                  <TableHead className="text-right">V. Fechamento</TableHead>
+                  <TableHead className="text-right">Bônus</TableHead>
+                  <TableHead className="text-right">Previsão Custo</TableHead>
+                  <TableHead className="text-right">Custos Realizados</TableHead>
+                  <TableHead className="text-right">Margem Prev.</TableHead>
+                  <TableHead className="text-right">Margem Exec.</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {motosAdquiridas.length === 0 ? (
+                  <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">Nenhuma moto adquirida encontrada</TableCell></TableRow>
+                ) : motosAdquiridas.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="text-xs">{m.cliente}</TableCell>
+                    <TableCell className="text-xs">{abbreviateName(m.avaliador)}</TableCell>
+                    <TableCell className="text-xs font-medium">{lojaLabel(m.loja)}</TableCell>
+                    <TableCell><Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(m.tipo)}`}>{tipoDisplayLabel(m.tipo)}</Badge></TableCell>
+                    <TableCell className="text-xs">{m.modelo}</TableCell>
+                    <TableCell className="text-xs font-mono">{m.placa}</TableCell>
+                    <TableCell className="text-xs">{m.dataAquisicao ? format(new Date(m.dataAquisicao), 'dd/MM/yy') : '-'}</TableCell>
+                    <TableCell className="text-xs text-right">{fmtBRL(m.valorFechamento)}</TableCell>
+                    <TableCell className="text-xs text-right">{fmtBRL(m.bonus)}</TableCell>
+                    <TableCell className="text-xs text-right">{fmtBRL(m.previsaoCusto)}</TableCell>
+                    <TableCell className="text-xs text-right">
+                      {fmtBRL(m.custosRealizados)}
+                      {m.previsaoCusto > 0 && <span className="ml-1 text-muted-foreground">({fmtPct(m.assertividade)})</span>}
+                    </TableCell>
+                    <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)}</TableCell>
+                    <TableCell className={`text-xs text-right font-medium ${m.margemExecutada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemExecutada)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
