@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, Building2, User } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
@@ -32,6 +34,7 @@ interface EtapaData {
   etapa: string;
   concluida: boolean;
   data_conclusao: string | null;
+  destino_transferencia?: string | null;
 }
 
 interface Props {
@@ -45,13 +48,15 @@ interface Props {
 const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, motoAvaliacaoId, onStatusChanged }) => {
   const { userName } = useAuth();
   const [etapas, setEtapas] = useState<EtapaData[]>(
-    ETAPAS.map(e => ({ etapa: e, concluida: false, data_conclusao: null }))
+    ETAPAS.map(e => ({ etapa: e, concluida: false, data_conclusao: null, destino_transferencia: null }))
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
   const [observacoes, setObservacoes] = useState('');
   const [previousStatus, setPreviousStatus] = useState('em_aberto');
+  const [destinoDialogOpen, setDestinoDialogOpen] = useState(false);
+  const [destinoValue, setDestinoValue] = useState<'loja' | 'novo_proprietario'>('loja');
 
   useEffect(() => {
     if (!open) return;
@@ -61,7 +66,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       const [{ data }, { data: avData }] = await Promise.all([
         supabase
           .from('pos_compra_processos' as any)
-          .select('id, etapa, concluida, data_conclusao')
+          .select('id, etapa, concluida, data_conclusao, destino_transferencia')
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
@@ -139,13 +144,41 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   }, [open, avaliacaoId, motoAvaliacaoId]);
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
+    if (etapa === 'TRANSFERÊNCIA CONCLUÍDA' && checked) {
+      // pre-selecionar destino atual (se houver) e abrir popup
+      const cur = etapas.find(e => e.etapa === etapa)?.destino_transferencia;
+      setDestinoValue((cur === 'novo_proprietario' ? 'novo_proprietario' : 'loja'));
+      setDestinoDialogOpen(true);
+      return;
+    }
     setEtapas(prev =>
       prev.map(e =>
         e.etapa === etapa
-          ? { ...e, concluida: checked, data_conclusao: checked ? (e.data_conclusao || new Date().toISOString()) : null }
+          ? {
+              ...e,
+              concluida: checked,
+              data_conclusao: checked ? (e.data_conclusao || new Date().toISOString()) : null,
+              destino_transferencia: etapa === 'TRANSFERÊNCIA CONCLUÍDA' && !checked ? null : e.destino_transferencia,
+            }
           : e
       )
     );
+  };
+
+  const confirmDestino = () => {
+    setEtapas(prev =>
+      prev.map(e =>
+        e.etapa === 'TRANSFERÊNCIA CONCLUÍDA'
+          ? {
+              ...e,
+              concluida: true,
+              data_conclusao: e.data_conclusao || new Date().toISOString(),
+              destino_transferencia: destinoValue,
+            }
+          : e
+      )
+    );
+    setDestinoDialogOpen(false);
   };
 
   const setDate = (etapa: string, date: Date | undefined) => {
@@ -188,6 +221,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         etapa: e.etapa,
         concluida: e.concluida,
         data_conclusao: e.data_conclusao,
+        destino_transferencia: e.etapa === 'TRANSFERÊNCIA CONCLUÍDA' ? (e.destino_transferencia ?? null) : null,
       }));
 
       const { error: persistError } = await persistChecklistRows({
@@ -302,6 +336,19 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                         {format(new Date(e.data_conclusao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </p>
                     )}
+                    {e.etapa === 'TRANSFERÊNCIA CONCLUÍDA' && e.concluida && e.destino_transferencia && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDestinoValue(e.destino_transferencia === 'novo_proprietario' ? 'novo_proprietario' : 'loja');
+                          setDestinoDialogOpen(true);
+                        }}
+                        className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                      >
+                        {e.destino_transferencia === 'loja' ? <Building2 className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                        Destino: {e.destino_transferencia === 'loja' ? 'Loja' : 'Novo Proprietário'}
+                      </button>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
@@ -369,6 +416,33 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           </div>
         )}
       </DialogContent>
+
+      <Dialog open={destinoDialogOpen} onOpenChange={setDestinoDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Destino da Transferência</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <p className="text-sm text-muted-foreground mb-4">Para onde a moto foi transferida?</p>
+            <RadioGroup value={destinoValue} onValueChange={(v: any) => setDestinoValue(v)} className="space-y-3">
+              <div className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-accent" onClick={() => setDestinoValue('loja')}>
+                <RadioGroupItem value="loja" id="dest-loja" />
+                <Building2 className="h-4 w-4 text-primary" />
+                <Label htmlFor="dest-loja" className="cursor-pointer flex-1">Loja</Label>
+              </div>
+              <div className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-accent" onClick={() => setDestinoValue('novo_proprietario')}>
+                <RadioGroupItem value="novo_proprietario" id="dest-novo" />
+                <User className="h-4 w-4 text-primary" />
+                <Label htmlFor="dest-novo" className="cursor-pointer flex-1">Novo Proprietário</Label>
+              </div>
+            </RadioGroup>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDestinoDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmDestino}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };

@@ -1012,6 +1012,7 @@ export type Database = {
           concluida: boolean
           created_at: string
           data_conclusao: string | null
+          destino_transferencia: string | null
           etapa: string
           id: string
           updated_at: string
@@ -1021,6 +1022,7 @@ export type Database = {
           concluida?: boolean
           created_at?: string
           data_conclusao?: string | null
+          destino_transferencia?: string | null
           etapa: string
           id?: string
           updated_at?: string
@@ -1030,6 +1032,7 @@ export type Database = {
           concluida?: boolean
           created_at?: string
           data_conclusao?: string | null
+          destino_transferencia?: string | null
           etapa?: string
           id?: string
           updated_at?: string
