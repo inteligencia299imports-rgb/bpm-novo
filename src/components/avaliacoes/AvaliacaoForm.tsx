@@ -348,6 +348,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setAvalCompra(numberToCurrencyMask(data.avaliacao_compra));
       setPrevCustosLoja(numberToCurrencyMask(data.previsao_custos_loja));
       setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
+      setValorBonus(numberToCurrencyMask((data as any).valor_bonus));
       setObsAvaliador(data.observacao_avaliador || '');
       setClassificacao((data as any).classificacao || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
