@@ -569,7 +569,6 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                   <TableHead className="text-right">Custos Realizados</TableHead>
                   <TableHead className="text-right">Quanto Vende</TableHead>
                   <TableHead className="text-right">Margem Prev.</TableHead>
-                  <TableHead className="text-right">%</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
