@@ -6,12 +6,30 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, ArrowDownToLine, Repeat, Package } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { getPreviousPeriod } from '@/lib/reportComparison';
 import { getCycleForDate } from '@/lib/reportCycle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
 import DeltaBadge from './DeltaBadge';
 import { format } from 'date-fns';
+
+const fmtBRL = (v: number | null | undefined) =>
+  (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtPct = (v: number | null | undefined) => {
+  const raw = (v ?? 0) * 100;
+  return `${(Math.round(raw * 10) / 10).toFixed(1)}%`;
+};
+const tipoDisplayLabel = (t: string) => {
+  const map: Record<string, string> = { propria: 'Própria', consignada: 'Consignada', 'test-ride': 'Test-Ride', repasse: 'Repasse', convertida: 'Convertida' };
+  return map[t] || t;
+};
+const lojaLabel = (loja: string | null) => {
+  if (!loja) return '-';
+  return loja.toLowerCase().split(/\s+/).map((p) => (['bsb', 'poa', 'fln'].includes(p) ? p.toUpperCase() : p.charAt(0).toUpperCase() + p.slice(1))).join(' ');
+};
 
 interface RelatorioAvaliacoesProps {
   dateFrom: Date | undefined;
@@ -64,6 +82,15 @@ interface AvalRow {
   loja: string | null;
   createdAt: string;
   dataAquisicao: string | null;
+  nomeCliente: string | null;
+  marca: string | null;
+  modelo: string | null;
+  placa: string | null;
+  quantoVende: number;
+  valorFechamento: number;
+  valorBonus: number;
+  previsaoCusto: number;
+  custosRealizados: number;
 }
 
 interface KpiSet {
@@ -149,10 +176,10 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const [avalRes, histRes, rolesRes] = await Promise.all([
+    const [avalRes, histRes, rolesRes, coRes] = await Promise.all([
       fetchAllRange<any>(() => supabase
         .from('avaliacoes')
-        .select('id, moto_avaliacao_id, avaliador_id, tipo_aquisicao, situacao, created_at, updated_at, atendimentos!inner(interesse, loja)')
+        .select('id, moto_avaliacao_id, avaliador_id, tipo_aquisicao, situacao, quanto_vende, valor_fechamento, valor_bonus, created_at, updated_at, atendimentos!inner(nome_cliente, interesse, loja), motos_avaliacao(marca, modelo, placa)')
         .neq('situacao', 'sem_avaliar')
         .in('atendimentos.interesse', ['trocar', 'vender'])
       ),
@@ -162,6 +189,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         .eq('status', 'adquirida')
       ),
       (supabase as any).from('user_roles_motos').select('user_id, nome'),
+      fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, valor_previsto, valor_executado')),
     ]);
 
     const avals = ((avalRes.data || []) as any[]);
@@ -181,16 +209,38 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       if (!cur || h.created_at < cur) aquisicaoByAval.set(avalId, h.created_at);
     }
 
-    const parsed: AvalRow[] = avals.map((a) => ({
-      id: a.id,
-      avaliadorId: a.avaliador_id || null,
-      tipoNorm: normTipo(a.tipo_aquisicao),
-      situacao: a.situacao,
-      interesse: a.atendimentos?.interesse || null,
-      loja: a.atendimentos?.loja || null,
-      createdAt: a.created_at,
-      dataAquisicao: aquisicaoByAval.get(a.id) || null,
-    }));
+    // Agregação de custos por avaliação
+    const custosByAval = new Map<string, { previsto: number; executado: number }>();
+    for (const c of (coRes.data || []) as any[]) {
+      if (!c.avaliacao_id) continue;
+      const cur = custosByAval.get(c.avaliacao_id) || { previsto: 0, executado: 0 };
+      cur.previsto += Number(c.valor_previsto || 0);
+      if (c.valor_executado != null) cur.executado += Number(c.valor_executado);
+      custosByAval.set(c.avaliacao_id, cur);
+    }
+
+    const parsed: AvalRow[] = avals.map((a) => {
+      const custos = custosByAval.get(a.id) || { previsto: 0, executado: 0 };
+      return {
+        id: a.id,
+        avaliadorId: a.avaliador_id || null,
+        tipoNorm: normTipo(a.tipo_aquisicao),
+        situacao: a.situacao,
+        interesse: a.atendimentos?.interesse || null,
+        loja: a.atendimentos?.loja || null,
+        createdAt: a.created_at,
+        dataAquisicao: aquisicaoByAval.get(a.id) || null,
+        nomeCliente: a.atendimentos?.nome_cliente || null,
+        marca: a.motos_avaliacao?.marca || null,
+        modelo: a.motos_avaliacao?.modelo || null,
+        placa: a.motos_avaliacao?.placa || null,
+        quantoVende: Number(a.quanto_vende || 0),
+        valorFechamento: Number(a.valor_fechamento || 0),
+        valorBonus: Number(a.valor_bonus || 0),
+        previsaoCusto: custos.previsto,
+        custosRealizados: custos.executado,
+      };
+    });
 
     setRows(parsed);
     setNomeById(new Map(((rolesRes.data || []) as any[]).map((r: any) => [r.user_id, r.nome || 'Desconhecido'])));
@@ -273,6 +323,36 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       return { mes: b.label, label: b.label, avaliacoes, aquisicoes, proprias, consignadas, negTrocar, negVender };
     });
   }, [rows, filterLoja]);
+
+  // ---------- Motos Adquiridas (list) ----------
+  const motosAdquiridas = useMemo(() => {
+    return rows
+      .filter((r) => r.dataAquisicao && matchesLoja(r.loja, filterLoja) && inRange(r.dataAquisicao, dateFrom, dateTo))
+      .sort((a, b) => new Date(b.dataAquisicao!).getTime() - new Date(a.dataAquisicao!).getTime())
+      .map((r) => {
+        const modelo = [r.marca, r.modelo].filter(Boolean).join(' ') || '-';
+        const assertividade = r.previsaoCusto > 0 ? r.custosRealizados / r.previsaoCusto : 0;
+        const margemPrevista = r.quantoVende - r.valorFechamento - r.valorBonus - r.previsaoCusto;
+        const margemExecutada = r.quantoVende - r.valorFechamento - r.valorBonus - r.custosRealizados;
+        return {
+          id: r.id,
+          cliente: r.nomeCliente || '-',
+          avaliador: r.avaliadorId ? (nomeById.get(r.avaliadorId) || '-') : '-',
+          loja: r.loja,
+          tipo: r.tipoNorm,
+          modelo,
+          placa: r.placa || '-',
+          dataAquisicao: r.dataAquisicao,
+          valorFechamento: r.valorFechamento,
+          bonus: r.valorBonus,
+          previsaoCusto: r.previsaoCusto,
+          custosRealizados: r.custosRealizados,
+          assertividade,
+          margemPrevista,
+          margemExecutada,
+        };
+      });
+  }, [rows, nomeById, filterLoja, dateFrom, dateTo]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
@@ -386,11 +466,66 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
                 <Bar dataKey="negTrocar" name="Trocar" fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
                 <Bar dataKey="negVender" name="Vender" fill="#E8913A" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
-              </BarChart>
+          </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
+
+      {/* Section: Motos Adquiridas */}
+      <div className="space-y-1 !mt-8">
+        <h2 className="text-lg font-bold text-foreground">Motos Adquiridas</h2>
+        <Separator />
+      </div>
+      <Card className="overflow-hidden">
+        <CardContent className="pt-4">
+          <div className="overflow-x-auto pb-2">
+            <Table className="min-w-[1200px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Avaliador</TableHead>
+                  <TableHead>Loja</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Modelo</TableHead>
+                  <TableHead>Placa</TableHead>
+                  <TableHead>Data Aquisição</TableHead>
+                  <TableHead className="text-right">V. Fechamento</TableHead>
+                  <TableHead className="text-right">Bônus</TableHead>
+                  <TableHead className="text-right">Previsão Custo</TableHead>
+                  <TableHead className="text-right">Custos Realizados</TableHead>
+                  <TableHead className="text-right">Margem Prev.</TableHead>
+                  <TableHead className="text-right">Margem Exec.</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {motosAdquiridas.length === 0 ? (
+                  <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">Nenhuma moto adquirida encontrada</TableCell></TableRow>
+                ) : motosAdquiridas.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="text-xs">{m.cliente}</TableCell>
+                    <TableCell className="text-xs">{abbreviateName(m.avaliador)}</TableCell>
+                    <TableCell className="text-xs font-medium">{lojaLabel(m.loja)}</TableCell>
+                    <TableCell><Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(m.tipo)}`}>{tipoDisplayLabel(m.tipo)}</Badge></TableCell>
+                    <TableCell className="text-xs">{m.modelo}</TableCell>
+                    <TableCell className="text-xs font-mono">{m.placa}</TableCell>
+                    <TableCell className="text-xs">{m.dataAquisicao ? format(new Date(m.dataAquisicao), 'dd/MM/yy') : '-'}</TableCell>
+                    <TableCell className="text-xs text-right">{fmtBRL(m.valorFechamento)}</TableCell>
+                    <TableCell className="text-xs text-right">{fmtBRL(m.bonus)}</TableCell>
+                    <TableCell className="text-xs text-right">{fmtBRL(m.previsaoCusto)}</TableCell>
+                    <TableCell className="text-xs text-right">
+                      {fmtBRL(m.custosRealizados)}
+                      {m.previsaoCusto > 0 && <span className="ml-1 text-muted-foreground">({fmtPct(m.assertividade)})</span>}
+                    </TableCell>
+                    <TableCell className={`text-xs text-right font-medium ${m.margemPrevista >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemPrevista)}</TableCell>
+                    <TableCell className={`text-xs text-right font-medium ${m.margemExecutada >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtBRL(m.margemExecutada)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
