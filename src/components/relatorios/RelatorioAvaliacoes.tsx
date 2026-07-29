@@ -348,6 +348,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           previsaoCusto: r.previsaoCusto,
           custosRealizados: r.custosRealizados,
           assertividade,
+          quantoVende: r.quantoVende,
           margemPrevista,
           margemExecutada,
         };
