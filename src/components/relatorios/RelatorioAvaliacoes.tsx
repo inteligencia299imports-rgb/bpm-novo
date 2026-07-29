@@ -563,7 +563,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                   <TableHead>Data Aquisição</TableHead>
                   <TableHead className="text-right">V. Fechamento</TableHead>
                   <TableHead className="text-right">Bônus</TableHead>
-                  <TableHead className="text-right">Custo Loja</TableHead>
+                  <TableHead className="text-right">Previsão Custo</TableHead>
                   <TableHead className="text-right">Custos Realizados</TableHead>
                   <TableHead className="text-right">Quanto Vende</TableHead>
                   <TableHead className="text-right">Margem Prev.</TableHead>
