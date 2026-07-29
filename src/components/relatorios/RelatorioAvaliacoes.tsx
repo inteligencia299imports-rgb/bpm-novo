@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { abbreviateName, fmtInt, cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, ArrowDownToLine, Repeat, Package } from 'lucide-react';
+import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, ArrowDownToLine, Repeat, Package, FileSpreadsheet, FileDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -355,6 +356,65 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       });
   }, [rows, nomeById, filterLoja, dateFrom, dateTo]);
 
+  const handleExportExcel = async () => {
+    const XLSX = await import('xlsx');
+    const aoa = [[
+      'Cliente','Avaliador','Loja','Tipo','Modelo','Placa','Data Aquisição',
+      'V. Fechamento','Bônus','Previsão Custo','Custos Realizados','Assertividade','Quanto Vende','Margem Prev.',
+    ], ...motosAdquiridas.map(m => [
+      m.cliente, abbreviateName(m.avaliador), lojaLabel(m.loja), tipoDisplayLabel(m.tipo), m.modelo, m.placa,
+      m.dataAquisicao ? format(new Date(m.dataAquisicao), 'dd/MM/yyyy') : '-',
+      m.valorFechamento, m.bonus, m.previsaoCusto, m.custosRealizados, m.previsaoCusto > 0 ? m.assertividade : null,
+      m.quantoVende, m.margemPrevista,
+    ])];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [22,18,10,12,22,10,12,14,12,14,14,12,14,14].map(w => ({ wch: w }));
+    const range = XLSX.utils.decode_range(ws['!ref'] as string);
+    for (let R = 1; R <= range.e.r; R++) {
+      ['H','I','J','K','M','N'].forEach(c => { const cell = ws[`${c}${R+1}`]; if (cell && typeof cell.v === 'number') cell.z = 'R$ #,##0.00'; });
+      const cellL = ws[`L${R+1}`]; if (cellL && typeof cellL.v === 'number') cellL.z = '0.0%';
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Motos Adquiridas');
+    XLSX.writeFile(wb, `avaliacoes_motos_adquiridas_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
+
+  const handleExportPdf = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const autoTable = (await import('jspdf-autotable')).default;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const periodo = (dateFrom || dateTo)
+      ? `${dateFrom ? format(dateFrom, 'dd/MM/yyyy') : '...'} a ${dateTo ? format(dateTo, 'dd/MM/yyyy') : '...'}`
+      : 'Todos';
+    doc.setFontSize(14); doc.setTextColor(30, 41, 59);
+    doc.text(`Avaliações — Motos Adquiridas — ${motosAdquiridas.length} registro(s)`, 40, 36);
+    doc.setFontSize(9); doc.setTextColor(100);
+    doc.text(`Loja: ${filterLoja === 'todos' ? 'Todas' : filterLoja}  •  Período: ${periodo}`, 40, 52);
+
+    autoTable(doc, {
+      startY: 64,
+      head: [['Cliente','Avaliador','Loja','Tipo','Modelo','Placa','Data Aquis.','V. Fechamento','Bônus','Previsão Custo','Custos Real.','Quanto Vende','Margem Prev.']],
+      body: motosAdquiridas.map(m => [
+        m.cliente, abbreviateName(m.avaliador), lojaLabel(m.loja), tipoDisplayLabel(m.tipo), m.modelo, m.placa,
+        m.dataAquisicao ? format(new Date(m.dataAquisicao), 'dd/MM/yy') : '-',
+        fmtBRL(m.valorFechamento), fmtBRL(m.bonus), fmtBRL(m.previsaoCusto),
+        m.previsaoCusto > 0 ? `${fmtBRL(m.custosRealizados)} (${fmtPct(m.assertividade)})` : fmtBRL(m.custosRealizados),
+        fmtBRL(m.quantoVende), fmtBRL(m.margemPrevista),
+      ]),
+      styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
+      headStyles: { fillColor: [47, 111, 132], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      columnStyles: { 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right' }, 11: { halign: 'right' }, 12: { halign: 'right' } },
+      didParseCell: (data) => {
+        if (data.section !== 'body') return;
+        const m = motosAdquiridas[data.row.index];
+        if (data.column.index === 12 && m.margemPrevista !== 0) data.cell.styles.textColor = m.margemPrevista >= 0 ? [58, 143, 106] : [220, 38, 38];
+      },
+      margin: { left: 20, right: 20 },
+    });
+    doc.save(`avaliacoes_motos_adquiridas_${new Date().toISOString().slice(0,10)}.pdf`);
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
   }
@@ -475,7 +535,17 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
       {/* Section: Motos Adquiridas */}
       <div className="space-y-1 !mt-8">
-        <h2 className="text-lg font-bold text-foreground">Motos Adquiridas</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-bold text-foreground">Motos Adquiridas</h2>
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportExcel} disabled={motosAdquiridas.length === 0} title="Baixar Excel">
+              <FileSpreadsheet className="h-4 w-4 text-[#3a8f6a]" />
+            </Button>
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportPdf} disabled={motosAdquiridas.length === 0} title="Baixar PDF (paisagem)">
+              <FileDown className="h-4 w-4 text-red-600" />
+            </Button>
+          </div>
+        </div>
         <Separator />
       </div>
       <Card className="overflow-hidden">
@@ -493,7 +563,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                   <TableHead>Data Aquisição</TableHead>
                   <TableHead className="text-right">V. Fechamento</TableHead>
                   <TableHead className="text-right">Bônus</TableHead>
-                  <TableHead className="text-right">Custo Loja</TableHead>
+                  <TableHead className="text-right">Previsão Custo</TableHead>
                   <TableHead className="text-right">Custos Realizados</TableHead>
                   <TableHead className="text-right">Quanto Vende</TableHead>
                   <TableHead className="text-right">Margem Prev.</TableHead>
