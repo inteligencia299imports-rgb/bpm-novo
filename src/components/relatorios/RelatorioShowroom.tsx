@@ -116,7 +116,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const [aRes, eRes, avRes, coRes, copRes, ccRes, cRes, miRes, urRes] = await Promise.all([
+    const [aRes, eRes, avRes, coRes, copRes, ccRes, cRes, miRes, urRes, pcpRes] = await Promise.all([
       fetchAllRange<any>(() => supabase.from('atendimentos').select('id, loja, nome_cliente, vendedor_id, situacao, valor_venda, data_venda, created_at')),
       fetchAllRange<any>(() => supabase.from('estoque').select('id, atendimento_venda_id, avaliacao_id, moto_avaliacao_id, tipo, marca, modelo, placa, preco, preco_acao, valor_venda, updated_at, created_at')),
       fetchAllRange<any>(() => supabase.from('avaliacoes').select('id, moto_avaliacao_id, quanto_vende, valor_fechamento, avaliacao_compra, avaliacao_consignacao, updated_at, created_at')),
@@ -126,6 +126,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       fetchAllRange<any>(() => supabase.from('contratos').select('atendimento_id, valor_fechamento')),
       fetchAllRange<any>(() => supabase.from('motos_interesse').select('atendimento_id, marca, modelo, estoque_moto_id, created_at')),
       (supabase as any).from('user_roles_motos').select('user_id, nome'),
+      fetchAllRange<any>(() => (supabase as any).from('pos_compra_processos').select('avaliacao_id, etapa, concluida, destino_transferencia')),
     ]);
 
     setAtendimentos((aRes.data || []) as AtendimentoRow[]);
@@ -138,6 +139,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       consignantes: (ccRes.data || []) as any,
       interesses: (miRes.data || []) as any,
       userRoles: (urRes.data || []) as any,
+      posCompraProcessos: (pcpRes.data || []) as any,
     }));
     setLoading(false);
   }, []);
