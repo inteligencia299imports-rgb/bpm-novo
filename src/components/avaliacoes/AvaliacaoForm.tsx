@@ -349,7 +349,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setAvalCompra(numberToCurrencyMask(data.avaliacao_compra));
       setPrevCustosLoja(numberToCurrencyMask(data.previsao_custos_loja));
       setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
-      setValorBonus(numberToCurrencyMask((data as any).valor_bonus));
+      setValorBonus(numberToCurrencyMask((data as any).trade_in));
       setObsAvaliador(data.observacao_avaliador || '');
       setClassificacao((data as any).classificacao || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
@@ -456,7 +456,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       avaliacao_compra: parseCurrencyToNumber(avalCompra),
       previsao_custos_loja: parseCurrencyToNumber(prevCustosLoja),
       previsao_custos_cliente: parseCurrencyToNumber(prevCustosCliente),
-      valor_bonus: parseCurrencyToNumber(valorBonus) || null,
+      trade_in: parseCurrencyToNumber(valorBonus) || null,
       observacao_avaliador: obsAvaliador || null,
       classificacao: classificacao || null,
       avaliador_id: user!.id,
@@ -1150,10 +1150,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                         </div>
                       );
                     })()}
-                    {isLojaDucati(at?.loja) && interesse === 'trocar' && (avaliacao as any)?.valor_bonus != null && (
+                    {isLojaDucati(at?.loja) && interesse === 'trocar' && (avaliacao as any)?.trade_in != null && (
                       <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
                         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor do Bônus</span>
-                        <p className="text-base font-bold text-primary">{formatCurrency((avaliacao as any).valor_bonus)}</p>
+                        <p className="text-base font-bold text-primary">{formatCurrency((avaliacao as any).trade_in)}</p>
                       </div>
                     )}
                   </div>
