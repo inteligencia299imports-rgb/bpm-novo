@@ -1150,6 +1150,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                         </div>
                       );
                     })()}
+                    {isLojaDucati(at?.loja) && interesse === 'trocar' && (avaliacao as any)?.valor_bonus != null && (
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor do Bônus</span>
+                        <p className="text-base font-bold text-primary">{formatCurrency((avaliacao as any).valor_bonus)}</p>
+                      </div>
+                    )}
                   </div>
                   {avaliacao?.observacao_avaliador && (
                     <div className="mt-2">
