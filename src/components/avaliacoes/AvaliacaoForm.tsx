@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { isLojaDucati } from '@/lib/lojaUtils';
 
 interface Props {
   avaliacaoId: string;
@@ -307,6 +308,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [avalCompra, setAvalCompra] = useState('');
   const [prevCustosLoja, setPrevCustosLoja] = useState('');
   const [prevCustosCliente, setPrevCustosCliente] = useState('');
+  const [valorBonus, setValorBonus] = useState('');
   const [obsAvaliador, setObsAvaliador] = useState('');
   const [classificacao, setClassificacao] = useState('');
   const [valorFechamentoEdit, setValorFechamentoEdit] = useState('');
@@ -347,6 +349,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setAvalCompra(numberToCurrencyMask(data.avaliacao_compra));
       setPrevCustosLoja(numberToCurrencyMask(data.previsao_custos_loja));
       setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
+      setValorBonus(numberToCurrencyMask((data as any).valor_bonus));
       setObsAvaliador(data.observacao_avaliador || '');
       setClassificacao((data as any).classificacao || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
@@ -453,6 +456,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       avaliacao_compra: parseCurrencyToNumber(avalCompra),
       previsao_custos_loja: parseCurrencyToNumber(prevCustosLoja),
       previsao_custos_cliente: parseCurrencyToNumber(prevCustosCliente),
+      valor_bonus: parseCurrencyToNumber(valorBonus) || null,
       observacao_avaliador: obsAvaliador || null,
       classificacao: classificacao || null,
       avaliador_id: user!.id,
@@ -1280,6 +1284,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CurrencyField label="Avaliação Compra" value={avalCompra} onChange={handleCurrencyChange(setAvalCompra)} />
             <CurrencyField label="Previsão Custos Loja" value={prevCustosLoja} onChange={handleCurrencyChange(setPrevCustosLoja)} />
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
+            {isLojaDucati(avaliacao?.atendimento?.loja) && avaliacao?.atendimento?.interesse === 'trocar' && (
+              <CurrencyField label="Valor do Bônus" value={valorBonus} onChange={handleCurrencyChange(setValorBonus)} />
+            )}
             {estoqueId && (
               <div className="space-y-1.5">
                 <Label>Preço Ação</Label>
