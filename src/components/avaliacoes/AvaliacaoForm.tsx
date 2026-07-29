@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { isLojaDucati } from '@/lib/lojaUtils';
 
 interface Props {
   avaliacaoId: string;
