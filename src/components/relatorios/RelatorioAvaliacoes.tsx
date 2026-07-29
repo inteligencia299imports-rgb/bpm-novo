@@ -394,23 +394,33 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
 
     autoTable(doc, {
       startY: 64,
-      head: [['Cliente','Avaliador','Loja','Tipo','Modelo','Placa','Data Aquis.','V. Fechamento','Bônus','Previsão Custo','Custos Real.','Quanto Vende','Margem Prev.','%']],
-      body: motosAdquiridas.map(m => [
-        m.cliente, abbreviateName(m.avaliador), lojaLabel(m.loja), tipoDisplayLabel(m.tipo), m.modelo, m.placa,
-        m.dataAquisicao ? format(new Date(m.dataAquisicao), 'dd/MM/yy') : '-',
-        fmtBRL(m.valorFechamento), fmtBRL(m.bonus), fmtBRL(m.previsaoCusto),
-        m.previsaoCusto > 0 ? `${fmtBRL(m.custosRealizados)} (${fmtPct(m.assertividade)})` : fmtBRL(m.custosRealizados),
-        fmtBRL(m.quantoVende), fmtBRL(m.margemPrevista),
-        m.quantoVende > 0 ? `${(m.margemPrevista / m.quantoVende * 100).toFixed(1).replace('.', ',')}%` : '-',
-      ]),
+      head: [['Cliente','Avaliador','Loja','Tipo','Modelo','Placa','Data Aquis.','V. Fechamento','Bônus','Previsão Custo','Custos Real.','Quanto Vende','Margem Prev.']],
+      body: motosAdquiridas.map(m => {
+        const diff = m.previsaoCusto > 0 ? (m.custosRealizados - m.previsaoCusto) / m.previsaoCusto : null;
+        const custoStr = diff !== null
+          ? `${fmtBRL(m.custosRealizados)} (${diff > 0 ? '+' : ''}${(diff * 100).toFixed(1).replace('.', ',')}%)`
+          : fmtBRL(m.custosRealizados);
+        const margemStr = m.quantoVende > 0
+          ? `${fmtBRL(m.margemPrevista)} (${(m.margemPrevista / m.quantoVende * 100).toFixed(1).replace('.', ',')}%)`
+          : fmtBRL(m.margemPrevista);
+        return [
+          m.cliente, abbreviateName(m.avaliador), lojaLabel(m.loja), tipoDisplayLabel(m.tipo), m.modelo, m.placa,
+          m.dataAquisicao ? format(new Date(m.dataAquisicao), 'dd/MM/yy') : '-',
+          fmtBRL(m.valorFechamento), fmtBRL(m.bonus), fmtBRL(m.previsaoCusto),
+          custoStr, fmtBRL(m.quantoVende), margemStr,
+        ];
+      }),
       styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
       headStyles: { fillColor: [47, 111, 132], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
       alternateRowStyles: { fillColor: [245, 247, 250] },
-      columnStyles: { 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right' }, 11: { halign: 'right' }, 12: { halign: 'right' }, 13: { halign: 'right' } },
+      columnStyles: { 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right' }, 11: { halign: 'right' }, 12: { halign: 'right' } },
       didParseCell: (data) => {
         if (data.section !== 'body') return;
         const m = motosAdquiridas[data.row.index];
-        if ((data.column.index === 12 || data.column.index === 13) && m.margemPrevista !== 0) data.cell.styles.textColor = m.margemPrevista >= 0 ? [58, 143, 106] : [220, 38, 38];
+        if (data.column.index === 12 && m.margemPrevista !== 0) data.cell.styles.textColor = m.margemPrevista >= 0 ? [58, 143, 106] : [220, 38, 38];
+        if (data.column.index === 10 && m.previsaoCusto > 0 && m.custosRealizados !== m.previsaoCusto) {
+          data.cell.styles.textColor = m.custosRealizados > m.previsaoCusto ? [220, 38, 38] : [58, 143, 106];
+        }
       },
       margin: { left: 20, right: 20 },
     });
