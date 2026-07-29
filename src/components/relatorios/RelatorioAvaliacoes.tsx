@@ -360,19 +360,20 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const XLSX = await import('xlsx');
     const aoa = [[
       'Cliente','Avaliador','Loja','Tipo','Modelo','Placa','Data Aquisição',
-      'V. Fechamento','Bônus','Previsão Custo','Custos Realizados','Assertividade','Quanto Vende','Margem Prev.',
+      'V. Fechamento','Bônus','Previsão Custo','Custos Realizados','Assertividade','Quanto Vende','Margem Prev.','%',
     ], ...motosAdquiridas.map(m => [
       m.cliente, abbreviateName(m.avaliador), lojaLabel(m.loja), tipoDisplayLabel(m.tipo), m.modelo, m.placa,
       m.dataAquisicao ? format(new Date(m.dataAquisicao), 'dd/MM/yyyy') : '-',
       m.valorFechamento, m.bonus, m.previsaoCusto, m.custosRealizados, m.previsaoCusto > 0 ? m.assertividade : null,
-      m.quantoVende, m.margemPrevista,
+      m.quantoVende, m.margemPrevista, m.quantoVende > 0 ? m.margemPrevista / m.quantoVende : null,
     ])];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [22,18,10,12,22,10,12,14,12,14,14,12,14,14].map(w => ({ wch: w }));
+    ws['!cols'] = [22,18,10,12,22,10,12,14,12,14,14,12,14,14,8].map(w => ({ wch: w }));
     const range = XLSX.utils.decode_range(ws['!ref'] as string);
     for (let R = 1; R <= range.e.r; R++) {
       ['H','I','J','K','M','N'].forEach(c => { const cell = ws[`${c}${R+1}`]; if (cell && typeof cell.v === 'number') cell.z = 'R$ #,##0.00'; });
       const cellL = ws[`L${R+1}`]; if (cellL && typeof cellL.v === 'number') cellL.z = '0.0%';
+      const cellO = ws[`O${R+1}`]; if (cellO && typeof cellO.v === 'number') cellO.z = '0.0%';
     }
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Motos Adquiridas');
