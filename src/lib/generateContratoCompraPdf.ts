@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 
 interface ContratoCompraPdfData {
+  loja?: string | null;
   nomeCliente: string;
   telefone: string;
   cpfCnpj: string;
@@ -74,10 +75,48 @@ function drawJustifiedText(
   return y;
 }
 
+interface CidadeOverride {
+  empresaNome: string;
+  cnpj: string;
+  enderecoSede: string;
+  cidadeAssinatura: string;
+}
+
+const CIDADE_OVERRIDES: { match: (l: string) => boolean; data: CidadeOverride }[] = [
+  {
+    match: (l) => l.includes('POA') || l.includes('299P'),
+    data: {
+      empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
+      cnpj: '05.564.902/0002-55',
+      enderecoSede: 'Rua Pereira Franco, 283 A, bairro São João, CEP: 90240-520, Porto Alegre–RS',
+      cidadeAssinatura: 'Porto Alegre',
+    },
+  },
+  {
+    match: (l) => l.includes('FLN') || l.includes('299F'),
+    data: {
+      empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
+      cnpj: '05.564.902/0001-74',
+      enderecoSede: 'R. São Bento, 125 A, bairro Jardim Capoeiras, CEP: 88090-725, Florianópolis–SC',
+      cidadeAssinatura: 'Florianópolis',
+    },
+  },
+];
+
+const getCidadeOverride = (loja?: string | null): CidadeOverride | null => {
+  const l = (loja || '').toUpperCase();
+  return CIDADE_OVERRIDES.find(o => o.match(l))?.data || null;
+};
+
 export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Promise<void> {
-  const empresaNome = 'MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA';
-  const cnpj = '21.194.795/0001-96';
-  const logoPath = '/logos/299-logo.jpg';
+  const override = getCidadeOverride(data.loja);
+  const empresaNome = override?.empresaNome || 'MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA';
+  const cnpj = override?.cnpj || '21.194.795/0001-96';
+  const enderecoSede = override?.enderecoSede || 'Setor SCIA Quadra 15 Conjunto 3 loja, n.º 06 bairro Zona Industrial(Guará), Brasília–DF';
+  const cidadeAssinatura = override?.cidadeAssinatura || 'Brasília';
+  const logoPath = override && (data.loja || '').toUpperCase().includes('DUCATI')
+    ? '/logos/ducati-logo.png'
+    : '/logos/299-logo.jpg';
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = 210;
@@ -176,7 +215,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   sectionHeader('COMPRADOR');
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, `${empresaNome}, pessoa jurídica de direito privado, inscrita no CNPJ: ${cnpj}, com sede em Brasília–DF, na Setor SCIA Quadra 15 Conjunto 3 loja, n.º 06 bairro Zona Industrial(Guará).`, marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y = drawJustifiedText(doc, `${empresaNome}, pessoa jurídica de direito privado, inscrita no CNPJ: ${cnpj}, com sede em ${enderecoSede}.`, marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
   y += sectionGap;
 
   setNormal();
@@ -294,7 +333,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   y += lineHeight * 3;
 
   setBold();
-  doc.text(`Brasília, ${data.dataContrato}`, pageWidth / 2, y, { align: 'center' });
+  doc.text(`${cidadeAssinatura}, ${data.dataContrato}`, pageWidth / 2, y, { align: 'center' });
   setNormal();
 
   // Save

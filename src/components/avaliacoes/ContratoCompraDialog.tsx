@@ -230,6 +230,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
         : tel;
 
     return {
+      loja: atendimento?.loja || null,
       nomeCliente: atendimento?.nome_cliente || '',
       telefone: telefoneFormatado,
       cpfCnpj: cpfCnpj || '-',

@@ -94,6 +94,9 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
   const [dadosBancarios, setDadosBancarios] = useState('');
   const [titularConta, setTitularConta] = useState('');
 
+  // Loja da venda (define a filial/CNPJ do contrato)
+  const [loja, setLoja] = useState<string | null>(null);
+
   // Moto / financeiro from avaliacao
   const [motoInfo, setMotoInfo] = useState<any>(null);
   const [avaliacaoInfo, setAvaliacaoInfo] = useState<any>(null);
@@ -130,12 +133,16 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     setLoading(true);
 
     // Find the estoque item that is consignada and linked to this atendimento_id (as atendimento_venda_id)
-    const { data: estoqueItems } = await supabase
-      .from('estoque')
-      .select('*')
-      .eq('atendimento_venda_id', atendimentoId)
-      .eq('tipo', 'consignada')
-      .limit(1);
+    const [{ data: estoqueItems }, { data: vendaAtendimento }] = await Promise.all([
+      supabase
+        .from('estoque')
+        .select('*')
+        .eq('atendimento_venda_id', atendimentoId)
+        .eq('tipo', 'consignada')
+        .limit(1),
+      supabase.from('atendimentos').select('loja').eq('id', atendimentoId).maybeSingle(),
+    ]);
+    setLoja(vendaAtendimento?.loja || null);
 
     const estoque = estoqueItems?.[0];
     setEstoqueInfo(estoque);
@@ -404,6 +411,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     const anoFabMod = anoFab && anoMod ? `${anoFab}/${anoMod}` : anoFab || anoMod || '-';
 
     return {
+      loja,
       nomeConsignante: nomeConsignante || '-',
       telefoneConsignante: telefoneConsignante || '-',
       cpfCnpj: cpfCnpj || '-',

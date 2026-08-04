@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 
 interface ContratoConsignantePdfData {
+  loja?: string | null;
   nomeConsignante: string;
   telefoneConsignante: string;
   cpfCnpj: string;
@@ -109,10 +110,48 @@ function drawJustifiedText(
   return y;
 }
 
+interface CidadeOverride {
+  empresaNome: string;
+  cnpj: string;
+  enderecoSede: string;
+  cidadeAssinatura: string;
+}
+
+const CIDADE_OVERRIDES: { match: (l: string) => boolean; data: CidadeOverride }[] = [
+  {
+    match: (l) => l.includes('POA') || l.includes('299P'),
+    data: {
+      empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
+      cnpj: '05.564.902/0002-55',
+      enderecoSede: 'Rua Pereira Franco, 283 A, bairro São João, CEP: 90240-520, Porto Alegre–RS',
+      cidadeAssinatura: 'Porto Alegre',
+    },
+  },
+  {
+    match: (l) => l.includes('FLN') || l.includes('299F'),
+    data: {
+      empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
+      cnpj: '05.564.902/0001-74',
+      enderecoSede: 'R. São Bento, 125 A, bairro Jardim Capoeiras, CEP: 88090-725, Florianópolis–SC',
+      cidadeAssinatura: 'Florianópolis',
+    },
+  },
+];
+
+const getCidadeOverride = (loja?: string | null): CidadeOverride | null => {
+  const l = (loja || '').toUpperCase();
+  return CIDADE_OVERRIDES.find(o => o.match(l))?.data || null;
+};
+
 export async function generateContratoConsignantePdf(data: ContratoConsignantePdfData): Promise<void> {
-  const empresaNome = 'MMATOS COMERCIO DE VEÍCULOS E PEÇAS LTDA';
-  const cnpj = '21.194.795/0001-96';
-  const logoPath = '/logos/299-logo.jpg';
+  const override = getCidadeOverride(data.loja);
+  const isDucati = (data.loja || '').toUpperCase().includes('DUCATI');
+  const empresaNome = override?.empresaNome || 'MMATOS COMERCIO DE VEÍCULOS E PEÇAS LTDA';
+  const cnpj = override?.cnpj || '21.194.795/0001-96';
+  const nomeFantasiaSuffix = override && isDucati ? '' : ', 299 Imports';
+  const enderecoSede = override?.enderecoSede || 'SCIA QD 15 Conjunto 03 Loja 06 parte a Brasília–DF';
+  const cidadeAssinatura = override?.cidadeAssinatura || 'Brasília';
+  const logoPath = override && isDucati ? '/logos/ducati-logo.png' : '/logos/299-logo.jpg';
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = 210;
@@ -251,7 +290,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   y = drawJustifiedText(doc, para2, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += 2;
 
-  const para3 = `E de outro lado ${empresaNome} CNPJ: ${cnpj}, 299 Imports, sediada na SCIA QD 15 Conjunto 03 Loja 06 parte a Brasília–DF, denominado simplesmente intermediador, tem justo contrato o que se segue:`;
+  const para3 = `E de outro lado ${empresaNome} CNPJ: ${cnpj}${nomeFantasiaSuffix}, sediada na ${enderecoSede}, denominado simplesmente intermediador, tem justo contrato o que se segue:`;
   y = drawJustifiedText(doc, para3, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += 2;
 
@@ -330,7 +369,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
 
   // Date centered
   setNormal();
-  doc.text(`Brasília, ${data.dataContrato}`, pageWidth / 2, y, { align: 'center' });
+  doc.text(`${cidadeAssinatura}, ${data.dataContrato}`, pageWidth / 2, y, { align: 'center' });
 
   const fileName = `AUTORIZACAO_PAGAMENTO_${data.nomeConsignante.replace(/\s+/g, '_').toUpperCase()}.pdf`;
   doc.save(fileName);

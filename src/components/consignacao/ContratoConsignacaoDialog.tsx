@@ -266,6 +266,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       };
 
       await generateContratoConsignacaoPdf({
+        loja: atendimento?.loja || null,
         nomeCliente: atendimento?.nome_cliente || '',
         telefone: (() => {
           const t = atendimento?.telefone || '';
@@ -326,6 +327,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       };
 
       await generateContratoConsignacaoPdf({
+        loja: atendimento?.loja || null,
         nomeCliente: atendimento?.nome_cliente || '',
         telefone: (() => {
           const t = atendimento?.telefone || '';

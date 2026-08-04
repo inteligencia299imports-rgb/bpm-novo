@@ -62,7 +62,7 @@ interface ContratoPdfData {
   dataVencimento: string;
 }
 
-type TemplateType = 'ducati' | 'ducati_fln' | 'ducati_poa' | 'fag' | 'mmatos';
+type TemplateType = 'ducati' | 'ducati_fln' | 'ducati_poa' | 'fag' | 'mmatos' | 'inter_poa_299' | 'inter_fln_299';
 
 const TEMPLATES: Record<TemplateType, {
   empresaNome: string;
@@ -81,14 +81,14 @@ const TEMPLATES: Record<TemplateType, {
   ducati_fln: {
     empresaNome: 'Intercontinental Motorsport LTDA',
     cnpj: '05.564.902/0001-74',
-    endereco: 'Rua Professor Egidio Ferreira 198, Capoeiras - 88090-500 - Florianópolis, SC',
+    endereco: 'R. São Bento, 125 A - Jardim Capoeiras, Florianópolis - SC, CEP: 88090-725',
     telefone: '(48) 3031-3992',
     logoPath: '/logos/ducati-logo.png',
   },
   ducati_poa: {
     empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
     cnpj: '05.564.902/0002-55',
-    endereco: 'Pereira Franco 283-A, São João - 90240-520 - Porto Alegre, RS',
+    endereco: 'Rua Pereira Franco, 283 A - São João, Porto Alegre - RS, CEP: 90240-520',
     telefone: '(51) 3373-7608',
     logoPath: '/logos/ducati-logo.png',
   },
@@ -106,6 +106,20 @@ const TEMPLATES: Record<TemplateType, {
     telefone: '(61) 3710-5687',
     logoPath: '/logos/299-logo.jpg',
   },
+  inter_poa_299: {
+    empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
+    cnpj: '05.564.902/0002-55',
+    endereco: 'Rua Pereira Franco, 283 A - São João, Porto Alegre - RS, CEP: 90240-520',
+    telefone: '(51) 3373-7608',
+    logoPath: '/logos/299-logo.jpg',
+  },
+  inter_fln_299: {
+    empresaNome: 'Intercontinental Motorsport LTDA',
+    cnpj: '05.564.902/0001-74',
+    endereco: 'R. São Bento, 125 A - Jardim Capoeiras, Florianópolis - SC, CEP: 88090-725',
+    telefone: '(48) 3031-3992',
+    logoPath: '/logos/299-logo.jpg',
+  },
 };
 
 function getTemplateType(loja: string, empresaMotoInteresse: string | null): TemplateType {
@@ -115,6 +129,8 @@ function getTemplateType(loja: string, empresaMotoInteresse: string | null): Tem
     if (l.includes('POA')) return 'ducati_poa';
     return 'ducati';
   }
+  if (l.includes('299P')) return 'inter_poa_299';
+  if (l.includes('299F')) return 'inter_fln_299';
   if (empresaMotoInteresse?.toUpperCase()?.includes('MMATOS')) return 'mmatos';
   return 'fag';
 }

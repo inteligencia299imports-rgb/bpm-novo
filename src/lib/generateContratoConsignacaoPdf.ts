@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 
 interface ContratoConsignacaoPdfData {
+  loja?: string | null;
   nomeCliente: string;
   telefone: string;
   cpfCnpj: string;
@@ -152,10 +153,56 @@ function drawJustifiedText(
   return y;
 }
 
+interface CidadeOverride {
+  empresaNome: string;
+  cnpj: string;
+  enderecoSede: string;
+  cidadeSede: string;
+  foroSede: string;
+  cidadeAssinatura: string;
+}
+
+const CIDADE_OVERRIDES: { match: (l: string) => boolean; data: CidadeOverride }[] = [
+  {
+    match: (l) => l.includes('POA') || l.includes('299P'),
+    data: {
+      empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
+      cnpj: '05.564.902/0002-55',
+      enderecoSede: 'Rua Pereira Franco, 283 A, bairro São João, CEP: 90240-520, Porto Alegre–RS',
+      cidadeSede: 'Porto Alegre',
+      foroSede: 'PORTO ALEGRE - RS',
+      cidadeAssinatura: 'Porto Alegre',
+    },
+  },
+  {
+    match: (l) => l.includes('FLN') || l.includes('299F'),
+    data: {
+      empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
+      cnpj: '05.564.902/0001-74',
+      enderecoSede: 'R. São Bento, 125 A, bairro Jardim Capoeiras, CEP: 88090-725, Florianópolis–SC',
+      cidadeSede: 'Florianópolis',
+      foroSede: 'FLORIANÓPOLIS - SC',
+      cidadeAssinatura: 'Florianópolis',
+    },
+  },
+];
+
+const getCidadeOverride = (loja?: string | null): CidadeOverride | null => {
+  const l = (loja || '').toUpperCase();
+  return CIDADE_OVERRIDES.find(o => o.match(l))?.data || null;
+};
+
 export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPdfData): Promise<void> {
-  const empresaNome = 'MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA';
-  const cnpj = '21.194.795/0001-96';
-  const logoPath = '/logos/299-logo.jpg';
+  const override = getCidadeOverride(data.loja);
+  const isDucati = (data.loja || '').toUpperCase().includes('DUCATI');
+  const empresaNome = override?.empresaNome || 'MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA';
+  const cnpj = override?.cnpj || '21.194.795/0001-96';
+  const nomeFantasiaSuffix = override && isDucati ? '' : ' - 299 Imports';
+  const enderecoSede = override?.enderecoSede || 'Setor SCIA Quadra 15 Conjunto 3 loja n.º 06, bairro Zona Industrial (Guará), CEP 71250-015, Brasília–DF';
+  const cidadeSede = override?.cidadeSede || 'Distrito Federal';
+  const foroSede = override?.foroSede || 'BRASÍLIA - DF';
+  const cidadeAssinatura = override?.cidadeAssinatura || 'Brasília';
+  const logoPath = override && isDucati ? '/logos/ducati-logo.png' : '/logos/299-logo.jpg';
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = 210;
@@ -241,7 +288,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   // CONSIGNATÁRIA
   sectionHeader('CONSIGNATÁRIA');
   setNormal();
-  const consignatariaText = `${empresaNome} - 299 Imports, pessoa jurídica de direito privado, inscrita no CNPJ Nº ${cnpj}, com sede em Brasília–DF, na rua Setor SCIA Quadra 15 Conjunto 3 loja n.º 06, bairro Zona Industrial (Guará), CEP 71250-015, doravante denominada CONSIGNATÁRIA. As partes acima qualificadas têm, entre si, justo e acertado, o presente Contrato de Consignação, através do qual o CONSIGNANTE autoriza a CONSIGNATÁRIA, a promover a venda do veículo objeto da presente, o qual o consignante declara ser proprietário, pelo valor, prazo e demais condições a seguir expostos.`;
+  const consignatariaText = `${empresaNome}${nomeFantasiaSuffix}, pessoa jurídica de direito privado, inscrita no CNPJ Nº ${cnpj}, com sede em ${enderecoSede}, doravante denominada CONSIGNATÁRIA. As partes acima qualificadas têm, entre si, justo e acertado, o presente Contrato de Consignação, através do qual o CONSIGNANTE autoriza a CONSIGNATÁRIA, a promover a venda do veículo objeto da presente, o qual o consignante declara ser proprietário, pelo valor, prazo e demais condições a seguir expostos.`;
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, consignatariaText, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
@@ -421,7 +468,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y = drawJustifiedText(doc, '§3° Fica desde já estabelecido que, o início da contagem do prazo de responsabilidade, do consignante por eventuais defeitos e vícios ocultos se dará após a concretização da venda, com a assinatura e reconhecimento do CRV (DUT).', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§4° Caso o CONSIGNANTE precise se ausentar do Distrito Federal, deverá deixar uma procuração para alguém de sua confiança, autorizando essa pessoa a agir em seu nome.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
+  y = drawJustifiedText(doc, `§4° Caso o CONSIGNANTE precise se ausentar de ${cidadeSede}, deverá deixar uma procuração para alguém de sua confiança, autorizando essa pessoa a agir em seu nome.`, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // SÃO OBRIGAÇÕES DO CONSIGNANTE
@@ -455,7 +502,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y = drawJustifiedText(doc, '§1° O CONSIGNANTE é responsável pelo objeto deste contrato e pelos seus defeitos, ainda que os desconheça até o momento.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§2° O check list não exime o CONSIGNANTE de sua responsabilidade em relação ao objeto. A 299 Imports realizará um laudo técnico de verificação da motocicleta após a assinatura deste contrato. Este laudo é caracterizado conforme abaixo:', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§2° O check list não exime o CONSIGNANTE de sua responsabilidade em relação ao objeto. A CONSIGNATÁRIA realizará um laudo técnico de verificação da motocicleta após a assinatura deste contrato. Este laudo é caracterizado conforme abaixo:', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // Photo checklist
@@ -514,7 +561,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y = drawJustifiedText(doc, '§2° Consignante não pode dispor do objeto deste contrato antes de lhe ser restituída ou e lhe ser comunicada a restituição (CC/2002, art. 537).', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, '§3° A empresa 299 Imports se compromete a postar e disponibilizar o veículo para a venda no prazo máximo de 7 dias uteis, a partir do momento da assinatura deste. O prazo sugerido se deve aos processos de diagnóstico, tratamento e higienização da motocicleta.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
+  y = drawJustifiedText(doc, '§3° A CONSIGNATÁRIA se compromete a postar e disponibilizar o veículo para a venda no prazo máximo de 7 dias uteis, a partir do momento da assinatura deste. O prazo sugerido se deve aos processos de diagnóstico, tratamento e higienização da motocicleta.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, '§4° A empresa consignatária poderá rescindir unilateralmente o presente instrumento, sem ônus, mediante aviso por escrito, que deverá ser encaminhado via e-mail ou WhatsApp, indicado no presente termo ou notificação por AR-MP, com antecedência de, no mínimo, 1 (um) dia.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
@@ -530,12 +577,14 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y = drawJustifiedText(doc, 'O CONSIGNANTE fica ciente que durante a vigência deste contrato, a CONSIGNATÁRIA fará consultas periódicas em órgãos públicos de: seu nome, do veículo objeto deste contrato e da pessoa cujo nome constar no CRLV. Com intuito de resguardar seus clientes e negócios. Havendo qualquer inconformidade, a CONSIGNATÁRIA comunicará o CONSIGNANTE, ficando a escolha da CONSIGNATÁRIA se permanecerá com o contrato de consignação. Fica acordado, ainda, que não haverá restituição de valores pagos na assinatura deste.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
-  // DO DESLOCAMENTO
-  sectionHeader('DO DESLOCAMENTO:');
-  setNormal();
-  checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'O CONSIGNANTE dará aprovação ao deslocamento entre lojas (loja 1- SCIA QUADRA 15 CONJUNTO 03 LOJA 06 CIDADE DO AUTOMÓVEL CEP: 71.250-015, loja 2 - Q QMSW 2 BLOCO A LOJA 20 SETOR SUDOESTE CEP:70.680-203 e loja 3 – SAI TRECHO 3 LOTE 1205 ZONA INDUSTRIAL, GUARÁ CEP: 71.200-037) por meio de autorização em anexo, ficará ciente que poderá ocorrer a venda em qualquer unidade 299 Imports e que o transporte se dará por conta da CONSIGNATÁRIA por meio de van totalmente equipada para deslocamento.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
-  y += sectionGap;
+  // DO DESLOCAMENTO (aplicável apenas à rede de lojas do Distrito Federal)
+  if (!override) {
+    sectionHeader('DO DESLOCAMENTO:');
+    setNormal();
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, 'O CONSIGNANTE dará aprovação ao deslocamento entre lojas (loja 1- SCIA QUADRA 15 CONJUNTO 03 LOJA 06 CIDADE DO AUTOMÓVEL CEP: 71.250-015, loja 2 - Q QMSW 2 BLOCO A LOJA 20 SETOR SUDOESTE CEP:70.680-203 e loja 3 – SAI TRECHO 3 LOTE 1205 ZONA INDUSTRIAL, GUARÁ CEP: 71.200-037) por meio de autorização em anexo, ficará ciente que poderá ocorrer a venda em qualquer unidade 299 Imports e que o transporte se dará por conta da CONSIGNATÁRIA por meio de van totalmente equipada para deslocamento.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
+    y += sectionGap;
+  }
 
   // DA COMUNICAÇÃO
   sectionHeader('DA COMUNICAÇÃO:');
@@ -548,14 +597,14 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y += sectionGap;
 
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'As partes elegem o Foro da Comarca de BRASÍLIA - DF, renunciando a qualquer outro, por mais privilegiado que seja, para dirimir quaisquer dúvidas ou litígios resultantes do presente instrumento. E, por estarem de pleno acordo, as partes firmam o presente instrumento em duas vias, de igual forma e teor, juntamente com duas testemunhas, para surtirem os seus efeitos jurídicos e legais.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
+  y = drawJustifiedText(doc, `As partes elegem o Foro da Comarca de ${foroSede}, renunciando a qualquer outro, por mais privilegiado que seja, para dirimir quaisquer dúvidas ou litígios resultantes do presente instrumento. E, por estarem de pleno acordo, as partes firmam o presente instrumento em duas vias, de igual forma e teor, juntamente com duas testemunhas, para surtirem os seus efeitos jurídicos e legais.`, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // FORO DE ELEIÇÃO
   sectionHeader('FORO DE ELEIÇÃO:');
   setNormal();
   checkPageBreak(lineHeight);
-  y = drawJustifiedText(doc, 'Para dirimir quaisquer dúvidas decorrentes do presente, as partes estabelecem desde já, com exclusividade, o foro da comarca de Brasília–DF, por mais privilegiado que outro possa ser. O comprador de livre e espontânea vontade renuncia ao foro previsto no artigo 101, I, do Código de Defesa do Consumidor.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
+  y = drawJustifiedText(doc, `Para dirimir quaisquer dúvidas decorrentes do presente, as partes estabelecem desde já, com exclusividade, o foro da comarca de ${foroSede}, por mais privilegiado que outro possa ser. O comprador de livre e espontânea vontade renuncia ao foro previsto no artigo 101, I, do Código de Defesa do Consumidor.`, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
 
   // LGPD + Digital
@@ -615,7 +664,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   doc.text(empresaNome, marginLeft, y); y += lineHeight;
   doc.text(`CNPJ: ${cnpj}`, marginLeft, y); y += lineHeight * 2;
   setBold();
-  doc.text(`Brasília, ${data.dataContrato}`, pageWidth / 2, y, { align: 'center' });
+  doc.text(`${cidadeAssinatura}, ${data.dataContrato}`, pageWidth / 2, y, { align: 'center' });
   setNormal();
 
   // Save
