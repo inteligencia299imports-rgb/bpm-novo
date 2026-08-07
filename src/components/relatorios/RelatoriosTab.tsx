@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck, Wrench, Filter, Award, History } from 'lucide-react';
+import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck, Wrench, Filter, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -90,6 +90,13 @@ const RelatoriosTab: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2"><BarChart3 className="h-7 w-7 text-primary" /><h1 className="text-2xl font-bold text-foreground">Relatórios</h1></div>
         <div className="flex items-center gap-2">
+          {dept === 'showroom' && (
+            <a href="https://datastudio.google.com/reporting/deed15ee-7c89-4011-8f21-84667ce16e6c" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap gap-2">
+                <BarChart3 className="h-4 w-4" /> Histórico
+              </Button>
+            </a>
+          )}
           {hasActiveFilters && (
             <Button
               variant="ghost"
@@ -165,15 +172,7 @@ const RelatoriosTab: React.FC = () => {
             </Button>
           )}
           {dept !== 'vendedores' && dept !== 'estoque' && (
-          <div className={`w-full sm:w-auto flex flex-col sm:flex-row sm:items-center items-start gap-2 ${showFilters ? 'flex' : 'hidden md:flex'}`}>
-            {dept === 'showroom' && (
-              <a href="https://datastudio.google.com/reporting/deed15ee-7c89-4011-8f21-84667ce16e6c" target="_blank" rel="noopener noreferrer" className="shrink-0">
-                <Button variant="outline" size="sm" className="rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap gap-2">
-                  <History className="h-4 w-4" /> Histórico
-                </Button>
-              </a>
-            )}
-            <div className="flex flex-col items-start sm:items-end gap-1">
+          <div className={`w-full sm:w-auto flex flex-col items-start sm:items-end gap-1 ${showFilters ? 'flex' : 'hidden md:flex'}`}>
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {dept !== 'estoque' && (
                 <>
@@ -223,7 +222,6 @@ const RelatoriosTab: React.FC = () => {
                 </p>
               );
             })()}
-            </div>
           </div>
           )}
 
