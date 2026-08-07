@@ -1,25 +1,17 @@
+import { subMonths } from 'date-fns';
 import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from './reportDateRange';
-import { getPreviousCycle, isCycleAligned } from './reportCycle';
 
 /**
- * Calcula o período de comparação anterior.
- *
- * - Se o intervalo informado corresponder a um ciclo (legado 21→20, transição
- *   21/05–30/06/2026 ou mensal a partir de 07/2026), retorna o ciclo anterior.
- * - Caso contrário (intervalo customizado), desloca um mês para trás mantendo
- *   o mesmo dia inicial/final.
+ * Calcula o período de comparação anterior: sempre o mesmo intervalo de dias,
+ * um mês antes, independente de o período selecionado corresponder a um ciclo.
  */
 export const getPreviousPeriod = (
   dateFrom: Date | undefined,
   dateTo: Date | undefined,
 ): { prevFrom: Date | undefined; prevTo: Date | undefined } => {
   if (!dateFrom || !dateTo) return { prevFrom: undefined, prevTo: undefined };
-  if (isCycleAligned(dateFrom, dateTo)) {
-    const prev = getPreviousCycle(dateFrom);
-    return { prevFrom: prev.start, prevTo: prev.end };
-  }
-  const prevFrom = new Date(dateFrom.getFullYear(), dateFrom.getMonth() - 1, dateFrom.getDate());
-  const prevTo = new Date(dateTo.getFullYear(), dateTo.getMonth() - 1, dateTo.getDate());
+  const prevFrom = subMonths(dateFrom, 1);
+  const prevTo = subMonths(dateTo, 1);
   return { prevFrom, prevTo };
 };
 
@@ -36,8 +28,7 @@ export const getPreviousPeriodIso = (dateFrom: Date | undefined, dateTo: Date | 
  */
 export const getPreviousMonthDate = (date: Date | undefined): Date | undefined => {
   if (!date) return undefined;
-  const d = new Date(date.getFullYear(), date.getMonth() - 1, date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
-  return d;
+  return subMonths(date, 1);
 };
 
 export interface DeltaInfo {

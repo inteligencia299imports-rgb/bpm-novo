@@ -43,14 +43,6 @@ export function getCycleForDate(date: Date): CycleRange {
   return { start, end };
 }
 
-/** Retorna o ciclo imediatamente anterior ao que começa em `cycleStart`. */
-export function getPreviousCycle(cycleStart: Date): CycleRange {
-  const dayBefore = new Date(cycleStart);
-  dayBefore.setDate(dayBefore.getDate() - 1);
-  dayBefore.setHours(12, 0, 0, 0);
-  return getCycleForDate(dayBefore);
-}
-
 /** Ciclo atual (baseado em "hoje"). */
 export function getCurrentCycle(): CycleRange {
   return getCycleForDate(new Date());
@@ -65,17 +57,4 @@ export function getCurrentCycle(): CycleRange {
  */
 export function getCurrentDefaultStart(): Date {
   return getCycleForDate(new Date()).start;
-}
-
-/** Verifica se um intervalo arbitrário corresponde exatamente a um ciclo. */
-export function isCycleAligned(from: Date, to: Date): boolean {
-  const cycle = getCycleForDate(from);
-  return (
-    cycle.start.getFullYear() === from.getFullYear() &&
-    cycle.start.getMonth() === from.getMonth() &&
-    cycle.start.getDate() === from.getDate() &&
-    cycle.end.getFullYear() === to.getFullYear() &&
-    cycle.end.getMonth() === to.getMonth() &&
-    cycle.end.getDate() === to.getDate()
-  );
 }
