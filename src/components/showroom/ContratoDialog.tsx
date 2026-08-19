@@ -428,6 +428,7 @@ const ContratoDialog: React.FC<Props> = ({
     const produtoAnoFab = estItem?.ano_fabricacao || '';
     const produtoAnoMod = estItem?.ano_modelo || motoInt?.ano || '';
     const produtoPlaca = (estItem?.placa || '')?.replace(/-/g, '') || motoInt?.chassi || 'N/A';
+    const produtoCor = (estItem?.cor || '').toUpperCase();
 
     const pdfData: ContratoPdfData = {
       loja: atendimento.loja,
@@ -438,6 +439,9 @@ const ContratoDialog: React.FC<Props> = ({
       produtoMarca: produtoMarca.toUpperCase(),
       produtoModelo: produtoModelo.toUpperCase(),
       produtoAnoFabMod: [produtoAnoFab, produtoAnoMod].filter(Boolean).join('/'),
+      produtoAnoFabricacao: produtoAnoFab,
+      produtoAnoModelo: produtoAnoMod,
+      produtoCor,
       produtoPlacaChassi: produtoPlaca,
       vendedorNome: userName || 'Vendedor',
       valorSinal: `R$ ${valorSinal}`,
