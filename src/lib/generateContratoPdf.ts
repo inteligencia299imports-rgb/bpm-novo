@@ -74,6 +74,7 @@ const TEMPLATES: Record<TemplateType, {
   telefone: string;
   logoPath: string;
   comarca: string;
+  politicaPrivacidadeUrl: string;
 }> = {
   ducati: {
     empresaNome: 'FAG SOLUCOES E COMERCIO DE VEICULOS LTDA',
@@ -82,6 +83,7 @@ const TEMPLATES: Record<TemplateType, {
     telefone: '(61) 3710-5687',
     logoPath: '/logos/ducati-logo.png',
     comarca: 'Brasília/DF',
+    politicaPrivacidadeUrl: 'https://ducatibsb.com.br/politica-de-privacidade',
   },
   ducati_fln: {
     empresaNome: 'Intercontinental Motorsport LTDA',
@@ -90,6 +92,7 @@ const TEMPLATES: Record<TemplateType, {
     telefone: '(48) 3031-3992',
     logoPath: '/logos/ducati-logo.png',
     comarca: 'Florianópolis/SC',
+    politicaPrivacidadeUrl: 'https://ducatiflorianopolis.com.br/politica-de-privacidade',
   },
   ducati_poa: {
     empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
@@ -97,6 +100,7 @@ const TEMPLATES: Record<TemplateType, {
     endereco: 'Rua Pereira Franco, 283 A - São João, Porto Alegre - RS, CEP: 90240-520',
     telefone: '(51) 3373-7608',
     logoPath: '/logos/ducati-logo.png',
+    politicaPrivacidadeUrl: 'https://ducatiportoalegre.com.br/politica-de-privacidade',
     comarca: 'Porto Alegre/RS',
   },
   fag: {
@@ -106,6 +110,7 @@ const TEMPLATES: Record<TemplateType, {
     telefone: '(61) 3710-5687',
     logoPath: '/logos/299-logo.jpg',
     comarca: 'Brasília/DF',
+    politicaPrivacidadeUrl: 'https://ducatibsb.com.br/politica-de-privacidade',
   },
   mmatos: {
     empresaNome: 'MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA',
@@ -114,6 +119,7 @@ const TEMPLATES: Record<TemplateType, {
     telefone: '(61) 3710-5687',
     logoPath: '/logos/299-logo.jpg',
     comarca: 'Brasília/DF',
+    politicaPrivacidadeUrl: 'https://ducatibsb.com.br/politica-de-privacidade',
   },
   inter_poa_299: {
     empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
@@ -122,6 +128,7 @@ const TEMPLATES: Record<TemplateType, {
     telefone: '(51) 3373-7608',
     logoPath: '/logos/299-logo.jpg',
     comarca: 'Porto Alegre/RS',
+    politicaPrivacidadeUrl: 'https://ducatiportoalegre.com.br/politica-de-privacidade',
   },
   inter_fln_299: {
     empresaNome: 'Intercontinental Motorsport LTDA',
@@ -130,6 +137,7 @@ const TEMPLATES: Record<TemplateType, {
     telefone: '(48) 3031-3992',
     logoPath: '/logos/299-logo.jpg',
     comarca: 'Florianópolis/SC',
+    politicaPrivacidadeUrl: 'https://ducatiflorianopolis.com.br/politica-de-privacidade',
   },
 };
 
@@ -773,7 +781,7 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     // Venda: declarações finais após assinaturas
     const vendaDeclParas = [
       'O COMPRADOR declara que, previamente a aquisição do veículo objeto deste contrato, recebeu clara e satisfatoriamente as informações sobre o valor dos tributos incidentes na comercialização e da situação de regularidade, bem como sobre a inexistência de multas, taxas, débitos de impostos (inclusive a periodicidade de incidência) ou quaisquer fatos conhecidos que limitem ou impeçam a circulação do veículo. Igualmente lhe foi esclarecido sobre a não existência de registros conhecidos de furto ou de registro de gravame (alienação fiduciária). Recebeu o alerta que as informações fornecidas sobre a regularidade poderão ser obtidas e confirmadas nos sítios eletrônicos das autoridades policiais, de trânsito e fazendárias da unidade da Federação onde o veículo está registrado. A presente declaração tem como finalidade o cumprimento do quanto disposto na Lei 13.111/15 cujo texto teve ciência.',
-      'A VENDEDORA declara que cumpre a Lei 13709/2028 – Lei Geral de Privacidade de Dados – LGPD e que utiliza dados pessoais para cumprimentos de requisitos legais, compartilhamento de informações por obrigações com ao fabricante, contatos para avisos de garantia e, quando consentido, campanhas de marketing. Mais informações estão constantes em nossa Política de Privacidade no endereço eletrônico https://ducatiflorianopolis.com.br/politica-de-privacidade.',
+      `A VENDEDORA declara que cumpre a Lei 13709/2028 – Lei Geral de Privacidade de Dados – LGPD e que utiliza dados pessoais para cumprimentos de requisitos legais, compartilhamento de informações por obrigações com ao fabricante, contatos para avisos de garantia e, quando consentido, campanhas de marketing.${template.politicaPrivacidadeUrl ? ` Mais informações estão constantes em nossa Política de Privacidade no endereço eletrônico ${template.politicaPrivacidadeUrl}.` : ''}`,
       'A eventual tolerância de qualquer das partes quanto ao descumprimento de obrigação prevista neste contrato constituirá mera liberalidade, não implicando renúncia de direito, alteração contratual ou novação. As partes reconhecem como válidas as assinaturas eletrônicas apostas neste instrumento, bem como aquelas realizadas por plataformas certificadas, produzindo os mesmos efeitos jurídicos das assinaturas manuscritas.',
       'E por estarem assim justos e contratados, assinam o presente Contrato de Compra e Venda, na presença de duas testemunhas, que a tudo assistiram e conhecimentos tiveram, para que surta os seus jurídicos e legais efeitos.',
     ];

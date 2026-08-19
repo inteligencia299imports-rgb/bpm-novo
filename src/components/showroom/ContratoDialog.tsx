@@ -575,7 +575,7 @@ const ContratoDialog: React.FC<Props> = ({
   };
 
   const lojaLower = (atendimento.loja || '').toLowerCase();
-  const canGerarVenda = ['ducati fln', 'ducati poa', '299f', '299p'].includes(lojaLower) && atendimento.situacao === 'vendido';
+  const canGerarVenda = ['ducati bsb', 'ducati fln', 'ducati poa', '299i', '299s', '299f', '299p', 'aventura'].includes(lojaLower) && atendimento.situacao === 'vendido';
 
   const tipoLabel = (tipo: string) => TIPOS_PAGAMENTO.find(t => t.value === tipo)?.label || tipo;
 
