@@ -242,6 +242,7 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   const templateType = getTemplateType(data.loja, data.empresaMotoInteresse);
   const template = TEMPLATES[templateType];
   const isVenda = variant === 'venda';
+  const is0km = templateType === 'ducati' || templateType === 'ducati_fln' || templateType === 'ducati_poa';
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = 210;
@@ -356,6 +357,9 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   doc.text(`Marca: ${data.produtoMarca}`, marginLeft, y); y += lineHeight;
   doc.text(`Modelo: ${data.produtoModelo}`, marginLeft, y); y += lineHeight;
   doc.text(`Fab/Mod: ${data.produtoAnoFabMod}`, marginLeft, y); y += lineHeight;
+  if (!is0km) {
+    doc.text(`Cor: ${data.produtoCor}`, marginLeft, y); y += lineHeight;
+  }
   doc.text(`Placa/Chassi: ${data.produtoPlacaChassi}`, marginLeft, y); y += lineHeight + sectionGap;
 
   // TRANSFERÊNCIA
@@ -465,7 +469,15 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     }
     y += sectionGap; // one line gap between each payment method
   }
-  
+
+  // Confirmação das formas de pagamento (apenas seminovas, venda)
+  if (isVenda && !is0km) {
+    const confirmacaoPagamento = 'As partes reconhecem que os valores acima descritos compõem a forma de pagamento ajustada neste contrato, conferindo plena quitação das respectivas parcelas após a efetiva compensação dos respectivos pagamentos.';
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, confirmacaoPagamento, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
+    y += sectionGap;
+  }
+
   // OBSERVAÇÕES
   sectionHeader('OBSERVAÇÕES');
   setNormal();
@@ -479,9 +491,11 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   }
   y += sectionGap;
 
-  // Preâmbulo de venda (apenas 0km BSB/FLN/POA)
-  if (isVenda && (templateType === 'ducati' || templateType === 'ducati_fln' || templateType === 'ducati_poa')) {
-    const preambuloVenda = 'Pelo presente Contrato Particular de Compra e Venda Motocicleta, as partes acima qualificadas têm justo e contratado entre si, exercendo sua livre vontade e dentro dos padrões da boa-fé contratual, o abaixo convencionado.';
+  // Preâmbulo de venda
+  if (isVenda) {
+    const preambuloVenda = is0km
+      ? 'Pelo presente Contrato Particular de Compra e Venda Motocicleta, as partes acima qualificadas têm justo e contratado entre si, exercendo sua livre vontade e dentro dos padrões da boa-fé contratual, o abaixo convencionado.'
+      : 'Pelo presente Contrato Particular de Compra e Venda, as partes acima qualificadas têm justo e contratado entre si, exercendo sua livre vontade e dentro dos padrões da boa-fé contratual, o abaixo convencionado.';
     checkPageBreak(lineHeight);
     y = drawJustifiedText(doc, preambuloVenda, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
@@ -494,9 +508,12 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     doc.text('DO CONTRATO', marginLeft, y);
     y += lineHeight;
     setNormal();
-    const doContratoParagrafos = [
+    const doContratoParagrafos = is0km ? [
       'I. Natureza Jurídica: O presente instrumento é regido pelas disposições do Código Civil Brasileiro (Lei nº 10.406/2002), especialmente pelos artigos 481 e seguintes, que tratam do contrato de compra e venda.',
       'II. Disposição Legal: Fica ajustado que o presente contrato é celebrado em caráter irrevogável e irretratável, obrigando as partes, seus herdeiros e sucessores a qualquer título.',
+    ] : [
+      '1. Natureza Jurídica: Instrumento Particular de Compra e Venda de motocicleta com reserva de domínio e outros pactos, realizada de comum acordo e vontade das partes, isentas de qualquer coação ou vícios de consentimento;',
+      '2. Disposição Legal: Art. 481 e seguintes do Código Civil, Art. 521 e seguintes do Código Civil, e demais normas vigentes pertinentes as matérias.',
     ];
     for (const p of doContratoParagrafos) {
       checkPageBreak(lineHeight);
@@ -507,6 +524,9 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
 
   // CONDIÇÕES DO CONTRATO (justified)
   if (isVenda) {
+    if (!is0km) {
+      sectionHeader('CLÁUSULAS E CONDIÇÕES');
+    }
     checkPageBreak(lineHeight);
     setNormal();
     const clausulasIntro = 'Mediante as cláusulas e condições adiante transcritas, o presente instrumento se regerá, sendo que as partes contratantes, mutuamente, aceitam e outorgam, comprometendo-se por si, seus herdeiros e sucessores em fazê-lo cumprir em todos seus termos:';
@@ -526,22 +546,21 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     y = drawJustifiedText(doc, introVenda, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
 
-    const is0km = templateType === 'ducati' || templateType === 'ducati_fln' || templateType === 'ducati_poa';
-
     const clausulas: { titulo: string; paragrafos: string[] }[] = [
       is0km ? {
         titulo: 'CLÁUSULA PRIMEIRA – DO OBJETO',
         paragrafos: [
-          `Compra e venda da motocicleta ZERO-QUILÔMETRO, marca ${data.produtoMarca}, modelo ${data.produtoModelo}, ano de fabricação ${data.produtoAnoFabricacao} e modelo ${data.produtoAnoModelo}, cor ${data.produtoCor}, chassi ${data.produtoPlacaChassi}, o qual é de propriedade e posse da VENDEDORA e se encontra livre e desembaraçado de quaisquer ônus.`,
+          `Compra e venda da motocicleta ZERO-QUILÔMETRO, marca ${data.produtoMarca}, modelo ${data.produtoModelo}, ano de fabricação ${data.produtoAnoFabricacao} e modelo ${data.produtoAnoModelo}, o qual é de propriedade e posse da VENDEDORA e se encontra livre e desembaraçado de quaisquer ônus.`,
           '§1º. O COMPRADOR declara que teve acesso aos manuais da motocicleta, assim como todas as informações acerca de seus opcionais, características técnicas, uso correto, revisões e garantia de fábrica (período, direitos e obrigações).',
           '§2º. O COMPRADOR declara que lhe foram prestadas todas as informações relativas às características técnicas da motocicleta, equipamentos, acessórios, forma correta de utilização, plano de revisões, condições da garantia de fábrica e demais esclarecimentos necessários à perfeita utilização do bem, declarando não possuir dúvidas quanto ao objeto adquirido.',
         ],
       } : {
         titulo: 'CLÁUSULA PRIMEIRA – DO OBJETO',
         paragrafos: [
-          `O presente contrato tem por objeto a compra e venda da motocicleta usada de marca ${data.produtoMarca}, modelo ${data.produtoModelo}, ano/modelo ${data.produtoAnoFabMod}, placa/chassi ${data.produtoPlacaChassi}, de propriedade da VENDEDORA, livre e desembaraçada de quaisquer ônus, dívidas ou pendências, salvo aquelas expressamente ressalvadas neste instrumento.`,
-          '§1º. O COMPRADOR declara que vistoriou o veículo, tomando ciência de seu estado geral de conservação, e o aceita nas condições em que se encontra.',
-          '§2º. A VENDEDORA se responsabiliza pela regularidade documental do veículo até a data da assinatura deste contrato.',
+          `Compra e venda da motocicleta usada, marca ${data.produtoMarca}, modelo ${data.produtoModelo} ano de fabricação ${data.produtoAnoFabricacao} e modelo ${data.produtoAnoModelo}, cor ${data.produtoCor}, placa ${data.produtoPlacaChassi}, o qual é de propriedade e posse da VENDEDORA e se encontra livre e desembaraçado de quaisquer ônus.`,
+          '§1º. O COMPRADOR declara que teve acesso aos manuais da motocicleta, assim como todas as informações acerca de seus opcionais, características técnicas, uso correto, revisões e garantia de fábrica (período, direitos e obrigações).',
+          '§2º. O COMPRADOR declara que lhe foi oportunizado avaliar a motocicleta em oficina de sua confiança, e que está ciente que a motocicleta objeto deste contrato é usada e apresenta um desgaste natural decorrente do tempo e uso, já tendo sido devidamente vistoriado e inspecionado pelo mesmo, o qual tomou ciência de suas condições, funções, características e estado de conservação e funcionamento, não tendo delas o que reclamar no presente ou no futuro a qualquer título.',
+          '§3º. O COMPRADOR declara que teve pleno acesso à motocicleta objeto deste contrato antes da aquisição, podendo submetê-la à vistoria de sua confiança, tendo examinado seu estado geral de conservação, funcionamento, características, opcionais e quilometragem, declarando estar ciente de que se trata de veículo seminovo, compatível com o tempo de uso e quilometragem apresentados.',
         ],
       },
       is0km ? {
@@ -564,6 +583,8 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
           '§2º. Em caso de financiamento, o COMPRADOR se obriga a apresentar toda a documentação necessária à instituição financeira e a arcar com as taxas, juros e encargos decorrentes da operação.',
           '§3º. O eventual ANUENTE, quando indicado, assume solidariamente as obrigações aqui pactuadas, inclusive quanto ao pagamento e à regularidade do bem.',
           '§4º. A quitação integral do preço é condição essencial para a transferência definitiva da propriedade da motocicleta.',
+          '§5º. A tradição da motocicleta dado em pagamento se dá neste momento, sendo que a VENDEDORA, a partir da data da assinatura deste, passa a exercer a posse direta sobre o mesmo, motivo pelo qual assume a responsabilidade pelo seu uso, como multas, tributos, entre outras que se façam necessárias à sua e guarda.',
+          '§6º. Caso, por solicitação exclusiva do COMPRADOR, tenha sido emitida documentação, providenciado registro, transferência, contratação de financiamento ou praticado qualquer ato administrativo para conclusão da negociação, eventual desistência injustificada implicará o ressarcimento das despesas efetivamente suportadas pela VENDEDORA, observada a legislação aplicável.',
         ],
       },
       ...(is0km ? [
@@ -628,45 +649,55 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
         {
           titulo: 'CLÁUSULA TERCEIRA – PACTO DE RESERVA DE DOMÍNIO',
           paragrafos: [
-            'A propriedade da motocicleta objeto deste contrato somente se transferirá ao COMPRADOR após a quitação integral do preço ajustado, permanecendo o bem sob domínio da VENDEDORA até tal evento, nos termos dos artigos 521 a 528 do Código Civil.',
-            'Parágrafo único. Enquanto perdurar a reserva de domínio, a posse direta será transferida ao COMPRADOR, que responderá integralmente por eventuais danos, avarias, multas, tributos e demais encargos incidentes sobre o veículo.',
+            'Por força do pacto de reserva de domínio, aqui expressamente instituído e aceito pelas partes, fica reservada à VENDEDORA a propriedade do bem descrito e caracterizado na cláusula primeira deste instrumento, até a comprovação, pelo COMPRADOR, do cumprimento integral das obrigações decorrentes deste contrato, em especial quanto ao pagamento do preço e encargos pela aquisição.',
           ],
         },
         {
           titulo: 'CLÁUSULA QUARTA – DAS OBRIGAÇÕES DO COMPRADOR',
           paragrafos: [
-            'São obrigações do COMPRADOR:',
-            'a) Efetuar o pagamento nos exatos termos e prazos ajustados;',
-            'b) Providenciar a transferência de propriedade junto ao órgão de trânsito competente no prazo legal;',
-            'c) Arcar com todos os tributos, taxas, seguros, multas e demais encargos incidentes sobre o veículo a partir da data de retirada;',
-            'd) Zelar pela conservação e adequada utilização do bem.',
+            'O COMPRADOR, a partir da data da assinatura deste contrato, torna-se automaticamente responsável pela motocicleta objeto da compra e venda, inclusive com relação a todos os tributos incidentes sobre o mesmo, multas, seguros e demais responsabilidades civis, administrativas e criminais decorrentes de sua guarda, depósito, manutenção e uso.',
+            '§1º. Compete ao COMPRADOR a transferência da motocicleta perante os órgãos administrativos competentes, que deverá efetuá-la no prazo máximo de 10 dias a contar do recebimento da nota fiscal, somente após a devida quitação do valor estabelecido neste instrumento.',
+            '§2º. O COMPRADOR obriga-se a manter atualizados seus dados cadastrais, reputando-se válidas as comunicações encaminhadas aos endereços físico e eletrônico, inclusive e-mail e aplicativo WhatsApp, informados neste contrato.',
+            '§3º. As partes reconhecem como válidas as comunicações eletrônicas realizadas pela VENDEDORA aos contatos fornecidos pelo COMPRADOR.',
+            '§4º. A instalação de acessórios, equipamentos ou modificações não homologadas pelo fabricante poderá acarretar restrições à cobertura da garantia relativamente aos componentes afetados.',
+            '§5º. A inobservância do §1º sujeita a aplicação de multa de 10% (dez por cento) sobre o valor total da transação, sem prejuízo das perdas e danos porventura sofridos pela VENDEDORA, cabendo a esta, inclusive direito de regresso em face do COMPRADOR.',
+            '§6º. Caso a VENDEDORA seja acionada judicialmente em virtude de atos e fatos relativos a motocicleta objeto deste contrato, em função do não adimplemento do COMPRADOR de qualquer das responsabilidades previstas no caput da presente cláusula, ou desrespeito à previsão do §1º, convenciona-se a denunciação da lide ao COMPRADOR, sendo este responsável por indenizar os prejuízos que porventura sofridos pela VENDEDORA em Juízo e fora dele, na forma do art. 70, inciso III, do Código de Processo Civil, além das despesas advocatícias, honorários de sucumbência, custas judiciais e demais que se façam necessárias à completa e eficiente defesa da VENDEDORA.',
           ],
         },
         {
           titulo: 'CLÁUSULA QUINTA – DO LOCAL DE RETIRADA DA MOTOCICLETA',
           paragrafos: [
-            `A retirada da motocicleta ocorrerá na sede da VENDEDORA, localizada em ${template.endereco}, após a confirmação da quitação integral do preço ou, no caso de financiamento, após a liberação dos recursos pela instituição financeira.`,
-            'Parágrafo único. O prazo para a entrega do veículo é de até 7 (sete) dias úteis contados da data do pagamento integral.',
+            'A entrega da motocicleta dar-se-á na sede da VENDEDORA, sendo o COMPRADOR responsável pela remoção física do bem no momento quando comunicado de sua chegada, salvo negociação em contrário entre as partes.',
+            '§1º. A partir da entrega da motocicleta ao COMPRADOR ou a terceiro por ele indicado, todos os riscos relacionados ao bem, inclusive perdas, furtos, roubos, avarias, multas, tributos e demais responsabilidades passam a ser exclusivamente do COMPRADOR.',
+            '§2º. Comunicada a disponibilidade da motocicleta para retirada, caso o COMPRADOR deixe de retirá-la no prazo de 10 (dez) dias, sem justificativa aceita pela VENDEDORA, esta poderá promover a cobrança das despesas decorrentes de guarda e armazenamento, mediante prévia comunicação.',
           ],
         },
         {
           titulo: 'CLÁUSULA SEXTA – DA GARANTIA',
           paragrafos: [
-            'A VENDEDORA não oferece garantia sobre o funcionamento mecânico, elétrico ou estrutural do veículo, tendo em vista tratar-se de bem usado, salvo disposição em contrário expressamente pactuada por escrito.',
-            'Parágrafo único. O COMPRADOR declara ter conhecimento das condições atuais da motocicleta e assume os riscos inerentes à sua utilização.',
+            'Todas as especificações de manutenção, bem como o prazo de garantia contratual dos produtos entregues e que integram a motocicleta deste instrumento, constam do Manual de Garantias elaborado pela montadora, neste ato recebido pelo COMPRADOR, que devem ser observadas para fins de eventual responsabilidade civil, caracterizando-se como fundamental para fins de reparação de eventuais defeitos/vícios.',
+            '§1º. A garantia contratual e as dicas para manutenção adequada, seguem padrões de normas técnicas e de razoabilidade do tempo de desgaste de cada produto indicados pela própria montadora;',
+            '§2º. Ao término da garantia contratual passará a ser observado o prazo de 90 (noventa) dias previsto no Código de Defesa do Consumidor para eventuais reclamações em face dos produtos entregues pela VENDEDORA ter apresentado defeitos ou vícios aparentes;',
+            '§3º. Após o término do prazo da garantia contratual, acrescida do prazo de 90 (noventa) dias acima disposto, a VENDEDORA não estará mais obrigada a proceder a manutenção ou eventual troca dos produtos que sejam impróprios ou tenham reduzidas a sua capacidade, exceto nos casos em que se tratem de vícios ocultos, cujo prazo para reclamação se iniciará quando seu conhecimento.',
+            'Parágrafo Único. Os pneus são cobertos separadamente por seu fabricante.',
           ],
         },
         {
           titulo: 'CLÁUSULA SÉTIMA – DA RESCISÃO CONTRATUAL',
           paragrafos: [
-            'O descumprimento de qualquer das cláusulas deste contrato ensejará sua rescisão de pleno direito, sujeitando a parte inadimplente ao pagamento de multa correspondente a 20% (vinte por cento) do valor total do contrato, sem prejuízo das perdas e danos apurados.',
+            'No caso de descumprimento de quaisquer das cláusulas previstas neste instrumento, à parte prejudicada caberá o direito de rescisão contratual, desde que previamente notificada a parte inadimplente, mediante meio escrito, idôneo e de comprovado recebimento, para que cumpra a obrigação inadimplida em prazo não inferior a 10 (dez) dias do recebimento da referida notificação;',
+            '§1º. Em havendo a rescisão contratual, o veículo voltará à propriedade e posse da VENDEDORA, no estado em que se encontrava quando da assinatura do presente contrato e os valores eventualmente pagos pelo COMPRADOR, salvo aqueles dados a título de sinal de negócio, serão ao mesmo ressarcidos, corrigidos pelo índice IGP-M/FGV, ou outro que o substitua.',
+            '§2º. Na hipótese de a devolução da motocicleta se tornar impossível, por qualquer razão ou motivo, deverá o COMPRADOR ressarcir a VENDEDORA em perdas e danos equivalentes ao valor total desta negociação, devidamente corrigido pelo índice IGP-M/FGV, ou outro que o substitua.',
+            '§3º. Salvo negociação em contrário entre as partes, a devolução da motocicleta e dos valores eventualmente pagos pelo COMPRADOR, serão realizadas no prazo máximo de 10 (dez) dias a contar da comprovação do recebimento da notificação escrita de rescisão contratual.',
+            '§4º. Em não sendo cumprido o prazo estipulado no parágrafo acima, a parte inadimplente pagará à prejudicada, a título de cláusula penal, o valor de 10% (dez por cento) sobre o total desta negociação, que será mantido atualizado pelo índice IGP-M/FGV, além de juros de mora de 1% (um por cento) ao mês sobre o valor de compra e venda da motocicleta no caso de ressarcimento à VENDEDORA, ou dos eventualmente pagos pelo COMPRADOR no caso de ressarcimento ao mesmo.',
+            '§5º. O abandono da motocicleta nas dependências da VENDEDORA por período superior a 30 (trinta) dias, após notificação, autoriza a adoção das medidas judiciais e extrajudiciais cabíveis.',
           ],
         },
         {
           titulo: 'CLÁUSULA OITAVA – DAS DISPOSIÇÕES FINAIS',
           paragrafos: [
-            'As partes elegem o foro da comarca da sede da VENDEDORA para dirimir quaisquer controvérsias oriundas deste contrato, com renúncia expressa a qualquer outro, por mais privilegiado que seja.',
-            'E por estarem assim justos e contratados, assinam o presente Contrato de Compra e Venda, na presença de duas testemunhas, que a tudo assistiram e conhecimentos tiveram, para que surta os seus jurídicos e legais efeitos.',
+            `As partes, em comum acordo, elegem o Foro da Comarca de ${template.comarca}, para dirimirem quaisquer dúvidas a respeito do presente contato, renunciando a qualquer outro por mais privilegiado que seja.`,
+            'O COMPRADOR declara que, previamente a aquisição da motocicleta objeto deste contrato, recebeu clara e satisfatoriamente as informações sobre o valor dos tributos incidentes na comercialização e da situação de regularidade, bem como sobre a inexistência de multas, taxas, débitos de impostos (inclusive a periodicidade de incidência) ou quaisquer fatos conhecidos que limitem ou impeçam a circulação do veículo. Igualmente lhe foi esclarecido sobre a não existência de registros conhecidos de furto ou de registro de gravame (alienação fiduciária). Recebeu o alerta que as informações fornecidas sobre a regularidade poderão ser obtidas e confirmadas nos sítios eletrônicos das autoridades policiais, de trânsito e fazendárias da unidade da Federação onde o veículo está registrado. A presente declaração tem como finalidade o cumprimento do quanto disposto na Lei 13.111/15 cujo texto teve ciência.',
           ],
         },
       ]),
