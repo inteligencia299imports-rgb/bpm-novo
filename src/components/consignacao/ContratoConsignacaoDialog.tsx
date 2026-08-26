@@ -138,12 +138,22 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       let atendimentoFresh: any = atendimento || {};
       if (atendimentoId) {
         const { data: at, error: atErr } = await supabase
-          .from('atendimentos')
-          .select('nome_cliente, cpf_cnpj, email, endereco, cep')
+          .from('atendimentos_motos')
+          .select('cliente:clientes_fornecedores(nome_razao_social, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro))')
           .eq('id', atendimentoId)
           .maybeSingle();
         console.log('[ContratoConsignacao] atendimentoId:', atendimentoId, 'fresh:', at, 'err:', atErr);
-        if (at) atendimentoFresh = { ...atendimentoFresh, ...at };
+        if (at?.cliente) {
+          const end = (at.cliente as any).clientes_fornecedores_enderecos?.[0];
+          atendimentoFresh = {
+            ...atendimentoFresh,
+            nome_cliente: (at.cliente as any).nome_razao_social,
+            cpf_cnpj: (at.cliente as any).cpf_cnpj,
+            email: (at.cliente as any).email,
+            endereco: end?.logradouro,
+            cep: end?.cep,
+          };
+        }
       } else {
         console.warn('[ContratoConsignacao] sem atendimentoId! avaliacao:', avaliacao);
       }
@@ -195,15 +205,22 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       data_contrato: dataContrato ? format(dataContrato, 'yyyy-MM-dd') : null,
     };
 
-    // Sync client data back to atendimentos
+    // Sync client data back to o cliente vinculado
     const atendimentoId = atendimento?.id;
     if (atendimentoId) {
-      await supabase.from('atendimentos').update({
-        cpf_cnpj: cpfCnpj || null,
-        email: email || null,
-        endereco: endereco || null,
-        cep: cep || null,
-      }).eq('id', atendimentoId);
+      const { data: atRow } = await supabase.from('atendimentos_motos').select('cliente_id').eq('id', atendimentoId).maybeSingle();
+      if (atRow?.cliente_id) {
+        await supabase.from('clientes_fornecedores').update({
+          cpf_cnpj: cpfCnpj || null,
+          email: email || null,
+        }).eq('id', atRow.cliente_id);
+        const { data: endRow } = await supabase.from('clientes_fornecedores_enderecos').select('id').eq('cliente_fornecedor_id', atRow.cliente_id).eq('tipo', 'fiscal').maybeSingle();
+        if (endRow) {
+          await supabase.from('clientes_fornecedores_enderecos').update({ logradouro: endereco || null, cep: cep || null }).eq('id', endRow.id);
+        } else if (endereco || cep) {
+          await supabase.from('clientes_fornecedores_enderecos').insert({ cliente_fornecedor_id: atRow.cliente_id, tipo: 'fiscal', logradouro: endereco || null, cep: cep || null });
+        }
+      }
     }
 
     if (contratoId) {
@@ -267,9 +284,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
       await generateContratoConsignacaoPdf({
         loja: atendimento?.loja || null,
-        nomeCliente: atendimento?.nome_cliente || '',
+        nomeCliente: atendimento?.cliente?.nome_razao_social || '',
         telefone: (() => {
-          const t = atendimento?.telefone || '';
+          const t = atendimento?.cliente?.telefone || '';
           const digits = t.replace(/\D/g, '');
           if (digits.length === 11) return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
           if (digits.length === 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
@@ -328,9 +345,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
       await generateContratoConsignacaoPdf({
         loja: atendimento?.loja || null,
-        nomeCliente: atendimento?.nome_cliente || '',
+        nomeCliente: atendimento?.cliente?.nome_razao_social || '',
         telefone: (() => {
-          const t = atendimento?.telefone || '';
+          const t = atendimento?.cliente?.telefone || '';
           const digits = t.replace(/\D/g, '');
           if (digits.length === 11) return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
           if (digits.length === 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
@@ -382,7 +399,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Dados do Cliente</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <InfoDisplay label="Nome" value={atendimento?.nome_cliente} />
+                  <InfoDisplay label="Nome" value={atendimento?.cliente?.nome_razao_social} />
                   <div>
                     <label className="text-sm font-medium text-foreground">CPF/CNPJ</label>
                     <Input

@@ -93,7 +93,7 @@ const parseCurrencyValue = (value: string): number | null => {
 
 const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, currentStatus, avaliacaoData, onStatusChanged, reenviarFromEstoque, onReenviarSuccess }) => {
   const { role } = useAuth();
-  const isReadOnly = role !== 'gestor';
+  const isReadOnly = role !== 'master' && role !== 'gerente';
   const isInEstoque = avaliacaoData?.situacao === 'estoque';
   const isEstoqueIdle = isInEstoque && (currentStatus === 'estoque' || !currentStatus);
   const isEstoqueTracking = isInEstoque && !isEstoqueIdle;
@@ -277,7 +277,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     let userName = 'Usuário';
     if (user) {
       const { data: roleData } = await (supabase as any)
-        .from('user_roles_motos')
+        .from('user_roles')
         .select('nome')
         .eq('user_id', user.id)
         .maybeSingle();
@@ -654,7 +654,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-4 text-sm">
                   <div>
                     <span className="text-xs text-muted-foreground block">Cliente</span>
-                    <span className="font-medium text-foreground">{avaliacaoData.atendimento?.nome_cliente || 'N/A'}</span>
+                    <span className="font-medium text-foreground">{avaliacaoData.atendimento?.cliente?.nome_razao_social || 'N/A'}</span>
                   </div>
                   {avaliacaoData.moto?.placa && (
                     <div>

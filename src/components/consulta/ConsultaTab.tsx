@@ -22,7 +22,7 @@ const ConsultaTab = () => {
     const { data, error } = await fetchAllRange(() =>
       supabase
         .from('motos_avaliacao')
-        .select('*, atendimentos!inner(id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco), avaliacoes(tipo_aquisicao, situacao)')
+        .select('*, atendimentos_motos!inner(id, loja, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro))), avaliacoes(tipo_aquisicao, situacao)')
         .eq('consulta_solicitada', true)
         .order('created_at', { ascending: false })
     );
@@ -34,13 +34,13 @@ const ConsultaTab = () => {
       let results = (data || [])
         .map((d: any) => ({
           ...d,
-          atendimento: d.atendimentos,
+          atendimento: d.atendimentos_motos,
           tipo_aquisicao: d.avaliacoes?.[0]?.tipo_aquisicao || null,
         }));
       if (search.trim()) {
         const s = search.trim().toLowerCase();
         results = results.filter((m: any) => {
-          const fields = [m.marca, m.modelo, m.placa, m.cor, m.atendimento?.nome_cliente, m.atendimento?.telefone];
+          const fields = [m.marca, m.modelo, m.placa, m.cor, m.atendimento?.cliente?.nome_razao_social, m.atendimento?.cliente?.telefone];
           return fields.some(f => f && String(f).toLowerCase().includes(s));
         });
       }
@@ -97,8 +97,8 @@ const ConsultaTab = () => {
               pendingMotos.map(m => (
                 <ProcessCard
                   key={m.id}
-                  clientName={m.atendimento?.nome_cliente || 'N/A'}
-                  phone={m.atendimento?.telefone}
+                  clientName={m.atendimento?.cliente?.nome_razao_social || 'N/A'}
+                  phone={m.atendimento?.cliente?.telefone}
                   motoLabel={[m.placa?.replace(/-/g, ''), `${m.marca} ${(m.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ')}
                   loja={m.atendimento?.loja}
                   date={m.created_at}

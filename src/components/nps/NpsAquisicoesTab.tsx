@@ -37,7 +37,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       .from('avaliacoes')
       .select(`
         *,
-        atendimentos!inner (id, nome_cliente, telefone, loja, interesse, situacao, temperatura, created_at, updated_at, nps_status, sexo, uf, tipo_atendimento, vendedor_id, origem),
+        atendimentos_motos!inner (id, loja, interesse, situacao, temperatura, created_at, updated_at, nps_status, tipo_atendimento, vendedor_id, origem, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, clientes_fornecedores_enderecos(uf))),
         motos_avaliacao!inner (id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada)
       `)
       .in('tipo_aquisicao', TODOS_TIPOS_AQUISICAO.filter(t => t !== 'test-ride'))
@@ -48,16 +48,16 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       console.error(error);
     } else {
       let mapped = (data || [])
-        .filter((a: any) => a.atendimentos?.interesse === 'vender')
+        .filter((a: any) => a.atendimentos_motos?.interesse === 'vender')
         .map((d: any) => ({
           ...d,
           _atendimentoCard: {
-            ...d.atendimentos,
+            ...d.atendimentos_motos,
             motos_avaliacao: [d.motos_avaliacao],
             motos_interesse: [],
             interesse: 'vender',
           },
-          atendimento: d.atendimentos,
+          atendimento: d.atendimentos_motos,
           moto_avaliacao: d.motos_avaliacao,
         }));
 
@@ -209,7 +209,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       if (search.trim()) {
         const s = search.trim().toLowerCase();
         mapped = mapped.filter((a: any) =>
-          [a.atendimento?.nome_cliente, a.atendimento?.telefone, a.moto_avaliacao?.modelo, a.moto_avaliacao?.placa]
+          [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto_avaliacao?.modelo, a.moto_avaliacao?.placa]
             .some(f => f && String(f).toLowerCase().includes(s))
         );
       }
@@ -250,7 +250,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
 
   const handleEnviarPesquisa = async (e: React.MouseEvent, item: any, forceCopy = false) => {
     e.stopPropagation();
-    const telefone = item.atendimento?.telefone?.replace(/\D/g, '') || '';
+    const telefone = item.atendimento?.cliente?.telefone?.replace(/\D/g, '') || '';
     const atendimentoId = item.atendimento_id;
     const previousStatus = item.nps_status || 'em_aberto';
     const link = `https://tally.so/r/VLZ5Ej?id=${item.id}`;
@@ -372,7 +372,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                                 </Button>
                               )}
                               {(a.nps_status || 'em_aberto') === 'respondido' && (
-                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => { e.stopPropagation(); setRespostasDialog({ open: true, atendimentoId: a.id, nomeCliente: a.atendimento?.nome_cliente || '' }); }}>
+                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => { e.stopPropagation(); setRespostasDialog({ open: true, atendimentoId: a.id, nomeCliente: a.atendimento?.cliente?.nome_razao_social || '' }); }}>
                                   <Eye className="h-3 w-3" /> Visualizar Respostas
                                 </Button>
                               )}

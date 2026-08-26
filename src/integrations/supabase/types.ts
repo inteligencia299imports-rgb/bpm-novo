@@ -10,25 +10,45 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.17"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
-      atendimentos: {
+      atendimentos_motos: {
         Row: {
-          cep: string | null
-          cnh_url: string | null
-          cpf_cnpj: string | null
+          cliente_id: string
           created_at: string
           data_venda: string | null
-          email: string | null
-          endereco: string | null
           id: string
           interesse: string
           intermediacao_parte1_status: string
           intermediacao_parte2_status: string
           loja: string
-          nome_cliente: string
           nps_enviado_at: string | null
           nps_respondido_at: string | null
           nps_status: string
@@ -36,31 +56,23 @@ export type Database = {
           origem: string | null
           pos_venda_observacoes: string | null
           pos_venda_status: string
-          sexo: string
           situacao: string
-          telefone: string
           temperatura: string | null
           tipo_atendimento: string
-          uf: string
           updated_at: string
           valor_sinal: number | null
           valor_venda: number | null
           vendedor_id: string
         }
         Insert: {
-          cep?: string | null
-          cnh_url?: string | null
-          cpf_cnpj?: string | null
+          cliente_id: string
           created_at?: string
           data_venda?: string | null
-          email?: string | null
-          endereco?: string | null
           id?: string
           interesse: string
           intermediacao_parte1_status?: string
           intermediacao_parte2_status?: string
           loja: string
-          nome_cliente: string
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
           nps_status?: string
@@ -68,31 +80,23 @@ export type Database = {
           origem?: string | null
           pos_venda_observacoes?: string | null
           pos_venda_status?: string
-          sexo: string
           situacao?: string
-          telefone: string
           temperatura?: string | null
           tipo_atendimento: string
-          uf: string
           updated_at?: string
           valor_sinal?: number | null
           valor_venda?: number | null
           vendedor_id: string
         }
         Update: {
-          cep?: string | null
-          cnh_url?: string | null
-          cpf_cnpj?: string | null
+          cliente_id?: string
           created_at?: string
           data_venda?: string | null
-          email?: string | null
-          endereco?: string | null
           id?: string
           interesse?: string
           intermediacao_parte1_status?: string
           intermediacao_parte2_status?: string
           loja?: string
-          nome_cliente?: string
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
           nps_status?: string
@@ -100,18 +104,23 @@ export type Database = {
           origem?: string | null
           pos_venda_observacoes?: string | null
           pos_venda_status?: string
-          sexo?: string
           situacao?: string
-          telefone?: string
           temperatura?: string | null
           tipo_atendimento?: string
-          uf?: string
           updated_at?: string
           valor_sinal?: number | null
           valor_venda?: number | null
           vendedor_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "atendimentos_motos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_fornecedores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       avaliacoes: {
         Row: {
@@ -218,21 +227,251 @@ export type Database = {
             foreignKeyName: "avaliacoes_atendimento_id_fkey"
             columns: ["atendimento_id"]
             isOneToOne: false
-            referencedRelation: "atendimentos"
+            referencedRelation: "atendimentos_motos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_atendimento_id_fkey"
-            columns: ["atendimento_id"]
-            isOneToOne: false
-            referencedRelation: "vw_atendimentos"
-            referencedColumns: ["atendimento_id"]
           },
           {
             foreignKeyName: "avaliacoes_moto_avaliacao_id_fkey"
             columns: ["moto_avaliacao_id"]
             isOneToOne: false
             referencedRelation: "motos_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes_fornecedores: {
+        Row: {
+          aceite_politica_privacidade: boolean
+          agencia: string | null
+          autoriza_contato: boolean
+          banco: string | null
+          chave_pix: string | null
+          cnae_principal: string | null
+          consumidor_final: boolean
+          conta: string | null
+          contribuinte_icms: boolean
+          cpf_cnpj: string | null
+          cpf_cnpj_favorecido: string | null
+          created_at: string
+          created_by: string | null
+          data_aceite_politica_privacidade: string | null
+          data_nascimento: string | null
+          data_validacao_receita: string | null
+          deleted_at: string | null
+          digito_conta: string | null
+          email: string | null
+          email_nf: string | null
+          favorecido: string | null
+          finalidade_cadastro: string | null
+          id: string
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
+          isento_inscricao_estadual: boolean | null
+          motivo_bloqueio: string | null
+          nome_fantasia: string | null
+          nome_razao_social: string
+          observacoes_internas: string | null
+          origem_cadastro: string | null
+          ramo: string | null
+          regime_tributario: string | null
+          sexo: string | null
+          situacao_cadastral: string | null
+          status: string | null
+          telefone: string | null
+          telefone_comercial: string | null
+          tipo_cadastro: string
+          tipo_conta: string | null
+          tipo_pessoa: string
+          updated_at: string
+          updated_by: string | null
+          validado_receita: boolean | null
+        }
+        Insert: {
+          aceite_politica_privacidade?: boolean
+          agencia?: string | null
+          autoriza_contato?: boolean
+          banco?: string | null
+          chave_pix?: string | null
+          cnae_principal?: string | null
+          consumidor_final?: boolean
+          conta?: string | null
+          contribuinte_icms?: boolean
+          cpf_cnpj?: string | null
+          cpf_cnpj_favorecido?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_aceite_politica_privacidade?: string | null
+          data_nascimento?: string | null
+          data_validacao_receita?: string | null
+          deleted_at?: string | null
+          digito_conta?: string | null
+          email?: string | null
+          email_nf?: string | null
+          favorecido?: string | null
+          finalidade_cadastro?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          isento_inscricao_estadual?: boolean | null
+          motivo_bloqueio?: string | null
+          nome_fantasia?: string | null
+          nome_razao_social: string
+          observacoes_internas?: string | null
+          origem_cadastro?: string | null
+          ramo?: string | null
+          regime_tributario?: string | null
+          sexo?: string | null
+          situacao_cadastral?: string | null
+          status?: string | null
+          telefone?: string | null
+          telefone_comercial?: string | null
+          tipo_cadastro?: string
+          tipo_conta?: string | null
+          tipo_pessoa?: string
+          updated_at?: string
+          updated_by?: string | null
+          validado_receita?: boolean | null
+        }
+        Update: {
+          aceite_politica_privacidade?: boolean
+          agencia?: string | null
+          autoriza_contato?: boolean
+          banco?: string | null
+          chave_pix?: string | null
+          cnae_principal?: string | null
+          consumidor_final?: boolean
+          conta?: string | null
+          contribuinte_icms?: boolean
+          cpf_cnpj?: string | null
+          cpf_cnpj_favorecido?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_aceite_politica_privacidade?: string | null
+          data_nascimento?: string | null
+          data_validacao_receita?: string | null
+          deleted_at?: string | null
+          digito_conta?: string | null
+          email?: string | null
+          email_nf?: string | null
+          favorecido?: string | null
+          finalidade_cadastro?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
+          isento_inscricao_estadual?: boolean | null
+          motivo_bloqueio?: string | null
+          nome_fantasia?: string | null
+          nome_razao_social?: string
+          observacoes_internas?: string | null
+          origem_cadastro?: string | null
+          ramo?: string | null
+          regime_tributario?: string | null
+          sexo?: string | null
+          situacao_cadastral?: string | null
+          status?: string | null
+          telefone?: string | null
+          telefone_comercial?: string | null
+          tipo_cadastro?: string
+          tipo_conta?: string | null
+          tipo_pessoa?: string
+          updated_at?: string
+          updated_by?: string | null
+          validado_receita?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_fornecedores_ramo_fkey"
+            columns: ["ramo"]
+            isOneToOne: false
+            referencedRelation: "ramos_atividade"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes_fornecedores_documentos: {
+        Row: {
+          arquivo_url: string
+          cliente_fornecedor_id: string
+          created_at: string
+          id: string
+          tipo_documento: string
+        }
+        Insert: {
+          arquivo_url: string
+          cliente_fornecedor_id: string
+          created_at?: string
+          id?: string
+          tipo_documento: string
+        }
+        Update: {
+          arquivo_url?: string
+          cliente_fornecedor_id?: string
+          created_at?: string
+          id?: string
+          tipo_documento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_fornecedores_documentos_cliente_fornecedor_id_fkey"
+            columns: ["cliente_fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_fornecedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes_fornecedores_enderecos: {
+        Row: {
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          cliente_fornecedor_id: string
+          complemento: string | null
+          created_at: string
+          id: string
+          logradouro: string | null
+          numero: string | null
+          pais: string
+          tipo: string
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cliente_fornecedor_id: string
+          complemento?: string | null
+          created_at?: string
+          id?: string
+          logradouro?: string | null
+          numero?: string | null
+          pais?: string
+          tipo?: string
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          cliente_fornecedor_id?: string
+          complemento?: string | null
+          created_at?: string
+          id?: string
+          logradouro?: string | null
+          numero?: string | null
+          pais?: string
+          tipo?: string
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_fornecedores_enderecos_cliente_fornecedor_id_fkey"
+            columns: ["cliente_fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_fornecedores"
             referencedColumns: ["id"]
           },
         ]
@@ -335,15 +574,8 @@ export type Database = {
             foreignKeyName: "contratos_atendimento_id_fkey"
             columns: ["atendimento_id"]
             isOneToOne: false
-            referencedRelation: "atendimentos"
+            referencedRelation: "atendimentos_motos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contratos_atendimento_id_fkey"
-            columns: ["atendimento_id"]
-            isOneToOne: false
-            referencedRelation: "vw_atendimentos"
-            referencedColumns: ["atendimento_id"]
           },
         ]
       }
@@ -457,15 +689,8 @@ export type Database = {
             foreignKeyName: "contratos_consignante_atendimento_id_fkey"
             columns: ["atendimento_id"]
             isOneToOne: false
-            referencedRelation: "atendimentos"
+            referencedRelation: "atendimentos_motos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "contratos_consignante_atendimento_id_fkey"
-            columns: ["atendimento_id"]
-            isOneToOne: false
-            referencedRelation: "vw_atendimentos"
-            referencedColumns: ["atendimento_id"]
           },
         ]
       }
@@ -553,6 +778,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      empresas: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
       }
       estoque: {
         Row: {
@@ -647,15 +890,8 @@ export type Database = {
             foreignKeyName: "estoque_atendimento_venda_id_fkey"
             columns: ["atendimento_venda_id"]
             isOneToOne: false
-            referencedRelation: "atendimentos"
+            referencedRelation: "atendimentos_motos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "estoque_atendimento_venda_id_fkey"
-            columns: ["atendimento_venda_id"]
-            isOneToOne: false
-            referencedRelation: "vw_atendimentos"
-            referencedColumns: ["atendimento_id"]
           },
           {
             foreignKeyName: "estoque_avaliacao_id_fkey"
@@ -883,15 +1119,8 @@ export type Database = {
             foreignKeyName: "motos_avaliacao_atendimento_id_fkey"
             columns: ["atendimento_id"]
             isOneToOne: false
-            referencedRelation: "atendimentos"
+            referencedRelation: "atendimentos_motos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "motos_avaliacao_atendimento_id_fkey"
-            columns: ["atendimento_id"]
-            isOneToOne: false
-            referencedRelation: "vw_atendimentos"
-            referencedColumns: ["atendimento_id"]
           },
         ]
       }
@@ -934,15 +1163,8 @@ export type Database = {
             foreignKeyName: "motos_interesse_atendimento_id_fkey"
             columns: ["atendimento_id"]
             isOneToOne: false
-            referencedRelation: "atendimentos"
+            referencedRelation: "atendimentos_motos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "motos_interesse_atendimento_id_fkey"
-            columns: ["atendimento_id"]
-            isOneToOne: false
-            referencedRelation: "vw_atendimentos"
-            referencedColumns: ["atendimento_id"]
           },
         ]
       }
@@ -1083,17 +1305,55 @@ export type Database = {
             foreignKeyName: "pos_venda_processos_atendimento_id_fkey"
             columns: ["atendimento_id"]
             isOneToOne: false
-            referencedRelation: "atendimentos"
+            referencedRelation: "atendimentos_motos"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "pos_venda_processos_atendimento_id_fkey"
-            columns: ["atendimento_id"]
-            isOneToOne: false
-            referencedRelation: "vw_atendimentos"
-            referencedColumns: ["atendimento_id"]
-          },
         ]
+      }
+      projetos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ramos_atividade: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
       }
       respostas_nps: {
         Row: {
@@ -1173,88 +1433,85 @@ export type Database = {
         }
         Relationships: []
       }
-      user_roles: {
+      user_empresas: {
         Row: {
           created_at: string
+          empresa_id: string
           id: string
-          loja: string | null
-          nome: string
-          recebe_notif_consulta: boolean
-          role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           created_at?: string
+          empresa_id: string
           id?: string
-          loja?: string | null
-          nome?: string
-          recebe_notif_consulta?: boolean
-          role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           created_at?: string
+          empresa_id?: string
           id?: string
-          loja?: string | null
-          nome?: string
-          recebe_notif_consulta?: boolean
-          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_empresas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          app_role: Database["public"]["Enums"]["app_role"]
+          ativo: boolean
+          created_at: string
+          email: string | null
+          id: string
+          limite_desconto_percentual: number
+          nome: string | null
+          projeto_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          app_role: Database["public"]["Enums"]["app_role"]
+          ativo?: boolean
+          created_at?: string
+          email?: string | null
+          id?: string
+          limite_desconto_percentual?: number
+          nome?: string | null
+          projeto_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          app_role?: Database["public"]["Enums"]["app_role"]
+          ativo?: boolean
+          created_at?: string
+          email?: string | null
+          id?: string
+          limite_desconto_percentual?: number
+          nome?: string | null
+          projeto_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
-      vw_atendimentos: {
-        Row: {
-          abatimentos: number | null
-          atendimento_id: string | null
-          data_atendimento: string | null
-          data_sinal: string | null
-          data_venda: string | null
-          interesse: string | null
-          loja: string | null
-          margem_oficina: number | null
-          margem_prevista: number | null
-          margem_realizada: number | null
-          modelo: string | null
-          nome_cliente: string | null
-          placa: string | null
-          quanto_vende: number | null
-          sexo: string | null
-          status: string | null
-          telefone: string | null
-          tipo_moto: string | null
-          uf: string | null
-          valor_fechamento: number | null
-          valor_venda: number | null
-          vendedor: string | null
-        }
-        Relationships: []
-      }
-      vw_nps_respostas: {
-        Row: {
-          atendimento: string | null
-          data_envio: string | null
-          data_resposta: string | null
-          data_venda: string | null
-          departamento: string | null
-          espaco_livre: string | null
-          experiencia: string | null
-          id_atendimento: string | null
-          id_resposta: string | null
-          melhorias: string | null
-          nome_cliente: string | null
-          nps: string | null
-          objeto: string | null
-          origem: string | null
-          outros_setores: string | null
-          produto: string | null
-          telefone: string | null
-          vendedor: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       atendimento_has_avaliacao: {
@@ -1265,13 +1522,9 @@ export type Database = {
         Args: { _atendimento_id: string }
         Returns: boolean
       }
-      can_manage_contrato_compra: {
-        Args: { _atendimento_id: string; _user_id: string }
-        Returns: boolean
-      }
-      can_manage_contrato_consignacao: {
-        Args: { _avaliacao_id: string; _user_id: string }
-        Returns: boolean
+      current_app_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
       }
       delete_atendimento_cascade: {
         Args: { _atendimento_id: string }
@@ -1281,15 +1534,15 @@ export type Database = {
         Args: { _avaliacao_id: string }
         Returns: undefined
       }
-      get_user_role: {
-        Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
-      has_role: {
+      has_app_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      has_master_or_gerente_empresa: {
+        Args: { _loja: string; _user_id: string }
         Returns: boolean
       }
       moto_has_avaliacao_preparacao: {
@@ -1394,10 +1647,17 @@ export type Database = {
         Args: { _loja?: string; _tipo?: string }
         Returns: Json
       }
-      relatorio_showroom_sinais: {
-        Args: { _loja?: string; _tipo?: string }
-        Returns: Json
-      }
+      relatorio_showroom_sinais:
+        | {
+            Args: {
+              _date_from?: string
+              _date_to?: string
+              _loja?: string
+              _tipo?: string
+            }
+            Returns: Json
+          }
+        | { Args: { _loja?: string; _tipo?: string }; Returns: Json }
       relatorio_showroom_vendedores: {
         Args: {
           _date_from?: string
@@ -1444,9 +1704,21 @@ export type Database = {
         Args: { _loja?: string; _user_id: string }
         Returns: Json
       }
+      user_has_empresa: {
+        Args: { _loja: string; _user_id: string }
+        Returns: boolean
+      }
+      user_shares_empresa: {
+        Args: { _empresa_id: string; _user_id: string }
+        Returns: boolean
+      }
+      users_share_any_empresa: {
+        Args: { _user_id_a: string; _user_id_b: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      app_role: "vendedor" | "gestor" | "avaliador" | "secretaria"
+      app_role: "master" | "gerente" | "vendedor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1572,9 +1844,12 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
-      app_role: ["vendedor", "gestor", "avaliador", "secretaria"],
+      app_role: ["master", "gerente", "vendedor"],
     },
   },
 } as const

@@ -180,7 +180,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const [avalRes, histRes, rolesRes, coRes] = await Promise.all([
       fetchAllRange<any>(() => supabase
         .from('avaliacoes')
-        .select('id, moto_avaliacao_id, avaliador_id, tipo_aquisicao, situacao, quanto_vende, valor_fechamento, trade_in, created_at, updated_at, atendimentos!inner(nome_cliente, interesse, loja), motos_avaliacao(marca, modelo, placa)')
+        .select('id, moto_avaliacao_id, avaliador_id, tipo_aquisicao, situacao, quanto_vende, valor_fechamento, trade_in, created_at, updated_at, atendimentos_motos!inner(interesse, loja, cliente:clientes_fornecedores(nome_razao_social)), motos_avaliacao(marca, modelo, placa)')
         .neq('situacao', 'sem_avaliar')
         .in('atendimentos.interesse', ['trocar', 'vender'])
       ),
@@ -189,7 +189,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         .select('entity_id, created_at')
         .eq('status', 'adquirida')
       ),
-      (supabase as any).from('user_roles_motos').select('user_id, nome'),
+      (supabase as any).from('user_roles').select('user_id, nome'),
       fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado')),
     ]);
 
@@ -229,11 +229,11 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         avaliadorId: a.avaliador_id || null,
         tipoNorm: normTipo(a.tipo_aquisicao),
         situacao: a.situacao,
-        interesse: a.atendimentos?.interesse || null,
-        loja: a.atendimentos?.loja || null,
+        interesse: a.atendimentos_motos?.interesse || null,
+        loja: a.atendimentos_motos?.loja || null,
         createdAt: a.created_at,
         dataAquisicao: aquisicaoByAval.get(a.id) || null,
-        nomeCliente: a.atendimentos?.nome_cliente || null,
+        nomeCliente: a.atendimentos_motos?.cliente?.nome_razao_social || null,
         marca: a.motos_avaliacao?.marca || null,
         modelo: a.motos_avaliacao?.modelo || null,
         placa: a.motos_avaliacao?.placa || null,

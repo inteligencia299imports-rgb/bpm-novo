@@ -1,4 +1,4 @@
-export type AppRole = 'vendedor' | 'gestor' | 'avaliador';
+export type AppRole = 'master' | 'gerente' | 'vendedor';
 
 export type Interesse = 'comprar' | 'vender' | 'trocar';
 export type SituacaoShowroom = 'em_aberto' | 'pendente' | 'sinal' | 'perdido' | 'vendido' | 'dispensada';
@@ -175,14 +175,37 @@ export const MODELOS_POR_MARCA: Record<string, string[]> = {
   Outra: ['Outro'],
 };
 
+export interface ClienteEndereco {
+  id?: string;
+  cliente_fornecedor_id?: string;
+  tipo?: string;
+  cep?: string | null;
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  uf?: string | null;
+  pais?: string;
+}
+
+export interface ClienteFornecedor {
+  id: string;
+  nome_razao_social: string;
+  cpf_cnpj?: string | null;
+  tipo_pessoa?: string;
+  telefone?: string | null;
+  email?: string | null;
+  sexo?: string | null;
+  clientes_fornecedores_enderecos?: ClienteEndereco[];
+}
+
 export interface Atendimento {
   id: string;
   vendedor_id: string;
   loja: string;
-  nome_cliente: string;
-  telefone: string;
-  sexo: string;
-  uf: string;
+  cliente_id: string;
+  cliente?: ClienteFornecedor;
   tipo_atendimento: string;
   origem: string | null;
   temperatura: string | null;
@@ -195,13 +218,8 @@ export interface Atendimento {
   moto_interesse?: MotoInteresse;
   moto_avaliacao?: MotoAvaliacao;
   avaliacao?: Avaliacao;
-  cnh_url?: string | null;
   valor_sinal?: number | null;
   valor_venda?: number | null;
-  cpf_cnpj?: string | null;
-  email?: string | null;
-  endereco?: string | null;
-  cep?: string | null;
 }
 
 export interface MotoInteresse {

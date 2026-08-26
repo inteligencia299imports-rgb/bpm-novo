@@ -116,7 +116,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     // Fetch avaliacoes that reached preparation flow (situacao adquirida or estoque)
     const avalRes = await fetchAllRange<any>(() => supabase
       .from('avaliacoes')
-      .select('id, moto_avaliacao_id, atendimento_id, tipo_aquisicao, situacao, preparacao_status, atendimentos!inner(id, nome_cliente, loja), motos_avaliacao!inner(id, marca, modelo, placa)')
+      .select('id, moto_avaliacao_id, atendimento_id, tipo_aquisicao, situacao, preparacao_status, atendimentos_motos!inner(id, loja, cliente:clientes_fornecedores(nome_razao_social)), motos_avaliacao!inner(id, marca, modelo, placa)')
       .in('situacao', ['adquirida', 'estoque', 'perdido'])
     );
     const avals = (avalRes.data || []);
@@ -200,8 +200,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
       return {
         id: a.id,
-        nomeCliente: a.atendimentos?.nome_cliente || '-',
-        loja: a.atendimentos?.loja || '-',
+        nomeCliente: a.atendimentos_motos?.cliente?.nome_razao_social || '-',
+        loja: a.atendimentos_motos?.loja || '-',
         modelo: [a.motos_avaliacao?.marca, a.motos_avaliacao?.modelo].filter(Boolean).join(' '),
         placa: a.motos_avaliacao?.placa || '-',
         tipo: a.tipo_aquisicao,

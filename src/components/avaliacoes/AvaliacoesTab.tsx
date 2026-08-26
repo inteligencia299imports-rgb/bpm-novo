@@ -43,7 +43,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
     const statuses = KANBAN_COLUMNS.map(c => c.value);
-    const selectStr = `*, atendimentos!inner (id, nome_cliente, telefone, loja, vendedor_id, interesse, cpf_cnpj, email, cep, endereco, temperatura), motos_avaliacao!inner (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria)`;
+    const selectStr = `*, atendimentos_motos!inner (id, loja, vendedor_id, interesse, temperatura, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro))), motos_avaliacao!inner (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria)`;
 
     let data: any[];
     let error: any;
@@ -68,7 +68,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
 
       let mapped = (data || []).map((d: any) => ({
         ...d,
-        atendimento: d.atendimentos,
+        atendimento: d.atendimentos_motos,
         moto_avaliacao: d.motos_avaliacao,
         _estoqueInfo: estoqueMap[d.id] || null,
       }));
@@ -76,8 +76,8 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
         const s = search.trim().toLowerCase();
         mapped = mapped.filter((a: any) => {
           const fields = [
-            a.atendimento?.nome_cliente,
-            a.atendimento?.telefone,
+            a.atendimento?.cliente?.nome_razao_social,
+            a.atendimento?.cliente?.telefone,
             a.atendimento?.loja,
             a.moto_avaliacao?.marca,
             a.moto_avaliacao?.modelo,

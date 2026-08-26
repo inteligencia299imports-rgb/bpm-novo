@@ -90,7 +90,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     if (consignadaEstoque?.avaliacao_id) {
       const { data: avalData } = await supabase
         .from('avaliacoes')
-        .select('*, motos_avaliacao(*), atendimentos!inner(id, nome_cliente, telefone, loja, cnh_url, cpf_cnpj, email, cep, endereco)')
+        .select('*, motos_avaliacao(*), atendimentos_motos!inner(id, loja, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))')
         .eq('id', consignadaEstoque.avaliacao_id)
         .single();
       if (avalData) {
@@ -101,7 +101,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   };
 
   const moto = item.motos_avaliacao?.[0];
-  const [cnhUrl, setCnhUrl] = useState<string | null>(item.cnh_url || null);
+  const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto?.crlv_url || null);
   const [estoqueCrlvUrls, setEstoqueCrlvUrls] = useState<Record<string, string | null>>({});
   const cols = statusColumns || POS_VENDA_COLUMNS;
@@ -109,13 +109,18 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const int = INTERESSES.find(i => i.value === item.interesse);
   const isIntermParte1 = !!processoProps?.showContratoConsignante;
   const displayClient = isIntermParte1 && proprietario ? proprietario : item;
-  const displayName = formatPersonName(displayClient.nome_cliente);
-  const displayPhone = displayClient.telefone;
+  const displayName = formatPersonName(displayClient.cliente?.nome_razao_social || '');
+  const displayPhone = displayClient.cliente?.telefone || '';
   const whatsappUrl = displayPhone ? `https://wa.me/55${displayPhone.replace(/\D/g, '')}` : '';
 
   useEffect(() => {
     const fetchRelated = async () => {
       setLoading(true);
+
+      if (!processoProps?.showContratoConsignante && (item as any).cliente_id) {
+        supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', (item as any).cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
+          .then(({ data }) => setCnhUrl(data?.arquivo_url || null));
+      }
 
       // Step 1: All initial queries in parallel
       const [resInt, resAv, resAval] = await Promise.all([
@@ -135,11 +140,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
       // Step 2: Estoque + Avaliador names in parallel
       const vendedorPromise = item.vendedor_id
-        ? (supabase as any).from('user_roles_motos').select('nome').eq('user_id', item.vendedor_id).single()
+        ? (supabase as any).from('user_roles').select('nome').eq('user_id', item.vendedor_id).single()
         : Promise.resolve({ data: null as any });
       const [estoqueResult, rolesResult, vendedorResult] = await Promise.all([
         estoqueIds.length > 0 ? supabase.from('estoque').select('*, motos_avaliacao(id, crlv_url)').in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
-        avaliadorIds.length > 0 ? (supabase as any).from('user_roles_motos').select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
+        avaliadorIds.length > 0 ? (supabase as any).from('user_roles').select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
         vendedorPromise,
       ]);
 
@@ -176,20 +181,23 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         if (consignadaEstoque?.avaliacao_id) {
           const { data: avalData } = await supabase
             .from('avaliacoes')
-            .select('*, motos_avaliacao(*), atendimentos!inner(id, nome_cliente, telefone, loja, cnh_url, cpf_cnpj, email, cep, endereco)')
+            .select('*, motos_avaliacao(*), atendimentos_motos!inner(id, loja, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))')
             .eq('id', consignadaEstoque.avaliacao_id)
             .single();
           if (avalData) {
             setAvaliacaoConsignada(avalData);
             if (avalData.motos_avaliacao) setMotoConsignada(avalData.motos_avaliacao);
-            const owner = (avalData as any).atendimentos;
+            const owner = (avalData as any).atendimentos_motos;
             if (owner) {
               setProprietario({ ...owner, id: owner.id || avalData.atendimento_id });
-              setCnhUrl(owner.cnh_url || null);
+              if (owner.cliente_id) {
+                const { data: cnhDoc } = await supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', owner.cliente_id).eq('tipo_documento', 'cnh').maybeSingle();
+                setCnhUrl(cnhDoc?.arquivo_url || null);
+              }
             }
             // Fetch avaliador name
             if (avalData.avaliador_id) {
-              const { data: avaliadorRole } = await (supabase as any).from('user_roles_motos').select('nome').eq('user_id', avalData.avaliador_id).single();
+              const { data: avaliadorRole } = await (supabase as any).from('user_roles').select('nome').eq('user_id', avalData.avaliador_id).single();
               if (avaliadorRole?.nome) setAvaliadorNome(avaliadorRole.nome);
             }
           }
@@ -275,30 +283,20 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                     )}
                   </div>
                 </div>
-                {!isIntermParte1 && <InfoItem label="Sexo" value={item.sexo} />}
-                {!isIntermParte1 && <InfoItem label="UF" value={item.uf} />}
+                {!isIntermParte1 && <InfoItem label="Sexo" value={displayClient.cliente?.sexo} />}
+                {!isIntermParte1 && <InfoItem label="UF" value={displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.uf} />}
                 {isIntermParte1 && proprietario?.loja && <InfoItem label="Loja" value={proprietario.loja} />}
-                {(displayClient as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj((displayClient as any).cpf_cnpj)} />}
-                {(displayClient as any)?.email && <InfoItem label="E-mail" value={(displayClient as any).email} />}
-                {(displayClient as any)?.cep && <InfoItem label="CEP" value={formatCep((displayClient as any).cep)} />}
-                {(displayClient as any)?.endereco && <InfoItem label="Endereço" value={(displayClient as any).endereco} />}
+                {displayClient.cliente?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj(displayClient.cliente.cpf_cnpj)} />}
+                {displayClient.cliente?.email && <InfoItem label="E-mail" value={displayClient.cliente.email} />}
+                {displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.cep && <InfoItem label="CEP" value={formatCep(displayClient.cliente.clientes_fornecedores_enderecos[0].cep)} />}
+                {displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.logradouro && <InfoItem label="Endereço" value={displayClient.cliente.clientes_fornecedores_enderecos[0].logradouro} />}
               </div>
-              <Separator className="my-2" />
-              <DocumentUpload
-                label="CNH"
-                currentUrl={cnhUrl}
-                bucketPath={`docs/${isIntermParte1 && proprietario?.id ? proprietario.id : item.id}/cnh`}
-                onUploaded={async (url) => {
-                  const targetId = isIntermParte1 && proprietario?.id ? proprietario.id : item.id;
-                  await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', targetId);
-                  setCnhUrl(url);
-                }}
-                onRemoved={async () => {
-                  const targetId = isIntermParte1 && proprietario?.id ? proprietario.id : item.id;
-                  await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', targetId);
-                  setCnhUrl(null);
-                }}
-              />
+              {cnhUrl && (
+                <>
+                  <Separator className="my-2" />
+                  <span className="text-xs text-green-600 font-medium">CNH anexada</span>
+                </>
+              )}
             </CardContent>
           </Card>
 

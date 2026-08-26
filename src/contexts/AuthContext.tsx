@@ -3,12 +3,17 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { AppRole } from '@/types/crm';
 
+const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
   userName: string;
+  lojas: string[];
+  limiteDescontoPercentual: number;
   loading: boolean;
+  roleChecked: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -26,18 +31,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [userName, setUserName] = useState('');
+  const [lojas, setLojas] = useState<string[]>([]);
+  const [limiteDescontoPercentual, setLimiteDescontoPercentual] = useState(8);
   const [loading, setLoading] = useState(true);
+  const [roleChecked, setRoleChecked] = useState(false);
+
+  const resetRoleState = () => {
+    setRole(null);
+    setUserName('');
+    setLojas([]);
+    setLimiteDescontoPercentual(8);
+  };
 
   const fetchRole = async (userId: string) => {
-    const { data } = await (supabase as any)
-      .from('user_roles_motos')
-      .select('role, nome')
+    const { data } = await supabase
+      .from('user_roles')
+      .select('app_role, nome, limite_desconto_percentual')
       .eq('user_id', userId)
+      .eq('ativo', true)
+      .eq('projeto_id', BPM_PROJETO_ID)
       .maybeSingle();
+
     if (data) {
-      setRole(data.role as AppRole);
+      setRole(data.app_role as AppRole);
       setUserName(data.nome || '');
+      setLimiteDescontoPercentual(data.limite_desconto_percentual ?? 8);
+
+      const { data: empresasData } = await supabase
+        .from('user_empresas')
+        .select('empresas(nome)')
+        .eq('user_id', userId);
+      setLojas((empresasData || []).map((e: any) => e.empresas?.nome).filter(Boolean));
+    } else {
+      resetRoleState();
     }
+    setRoleChecked(true);
   };
 
   useEffect(() => {
@@ -47,6 +75,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchRole(session.user.id);
+      } else {
+        setRoleChecked(true);
       }
       setLoading(false);
     });
@@ -63,8 +93,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else if (event === 'SIGNED_OUT') {
           setSession(null);
           setUser(null);
-          setRole(null);
-          setUserName('');
+          resetRoleState();
+          setRoleChecked(true);
         } else {
           setSession(session);
           if (session?.user) {
@@ -86,12 +116,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    setRole(null);
-    setUserName('');
+    resetRoleState();
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, userName, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, userName, lojas, limiteDescontoPercentual, loading, roleChecked, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

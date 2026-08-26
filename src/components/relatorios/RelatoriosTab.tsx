@@ -26,14 +26,14 @@ const DEPT_OPTIONS = [
 
 const RelatoriosTab: React.FC = () => {
   const { role, loading } = useAuth();
-  const isGestorOrAvaliador = role === 'gestor' || role === 'avaliador';
+  const isGestorOrAvaliador = role === 'master' || role === 'gerente';
   
   const [dept, setDept] = useState('showroom');
 
   // Update default tab once role is known
   React.useEffect(() => {
     if (role) {
-      setDept((role === 'gestor' || role === 'avaliador') ? 'showroom' : 'vendedores');
+      setDept((role === 'master' || role === 'gerente') ? 'showroom' : 'vendedores');
     }
   }, [role]);
 

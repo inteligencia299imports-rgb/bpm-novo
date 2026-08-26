@@ -12,18 +12,18 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
   const { role, signOut } = useAuth();
 
   const tabs = [
-    { id: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: ['gestor', 'vendedor', 'avaliador'] },
-    { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['avaliador', 'gestor'] },
-    { id: 'novidades', label: 'Novidades', icon: Flame, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'gestor', 'avaliador'] },
-    { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['avaliador', 'gestor'] },
-    { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['avaliador', 'gestor'] },
-    { id: 'intermediacao', label: 'Intermed.', icon: Handshake, roles: ['avaliador', 'gestor'] },
-    { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['avaliador', 'gestor'] },
-    { id: 'consignacao', label: 'Consign.', icon: FileText, roles: ['avaliador', 'gestor'] },
-    { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['vendedor', 'avaliador', 'gestor'] },
-    { id: 'nps', label: 'NPS', icon: Award, roles: ['vendedor', 'gestor', 'avaliador'] },
+    { id: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: ['master', 'gerente', 'vendedor'] },
+    { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'master', 'gerente'] },
+    { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['gerente', 'master'] },
+    { id: 'novidades', label: 'Novidades', icon: Flame, roles: ['vendedor', 'master', 'gerente'] },
+    { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'master', 'gerente'] },
+    { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['gerente', 'master'] },
+    { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['gerente', 'master'] },
+    { id: 'intermediacao', label: 'Intermed.', icon: Handshake, roles: ['gerente', 'master'] },
+    { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['gerente', 'master'] },
+    { id: 'consignacao', label: 'Consign.', icon: FileText, roles: ['gerente', 'master'] },
+    { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['vendedor', 'gerente', 'master'] },
+    { id: 'nps', label: 'NPS', icon: Award, roles: ['vendedor', 'master', 'gerente'] },
   ].filter(t => role && t.roles.includes(role));
 
   return (

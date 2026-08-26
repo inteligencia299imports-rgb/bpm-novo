@@ -37,6 +37,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [loading, setLoading] = useState(isEditing);
   const [searchingPhone, setSearchingPhone] = useState(false);
   const [clientFound, setClientFound] = useState<boolean | null>(null);
+  const [clienteId, setClienteId] = useState<string | null>(null);
 
   // form state
   const [loja, setLoja] = useState('');
@@ -84,14 +85,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     if (!atendimentoId) return;
     const load = async () => {
       try {
-        const { data: at } = await supabase.from('atendimentos').select('*').eq('id', atendimentoId).single();
+        const { data: at } = await supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))').eq('id', atendimentoId).single();
         if (at) {
           setLoja(at.loja);
           setLojaOriginal(at.loja);
-          setNomeCliente(at.nome_cliente);
-          setTelefone(formatPhone(at.telefone));
-          setSexo(at.sexo);
-          setUf(at.uf);
+          setClienteId(at.cliente_id);
+          setNomeCliente(at.cliente?.nome_razao_social || '');
+          setTelefone(formatPhone(at.cliente?.telefone || ''));
+          setSexo(at.cliente?.sexo || '');
+          setUf(at.cliente?.clientes_fornecedores_enderecos?.[0]?.uf || 'DF');
           setTipoAtendimento(at.tipo_atendimento);
           setOrigem(at.origem || '');
           setTemperatura(at.temperatura || '');
@@ -158,24 +160,24 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     setSearchingPhone(true);
     try {
       const { data } = await supabase
-        .from('atendimentos')
-        .select('nome_cliente, sexo, uf, origem')
+        .from('clientes_fornecedores')
+        .select('id, nome_razao_social, sexo, clientes_fornecedores_enderecos(uf)')
         .eq('telefone', digits)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (data) {
-        setNomeCliente(data.nome_cliente);
-        setSexo(data.sexo);
-        setUf(data.uf);
-        if (data.origem) setOrigem(data.origem);
+        setClienteId(data.id);
+        setNomeCliente(data.nome_razao_social);
+        setSexo(data.sexo || '');
+        setUf(data.clientes_fornecedores_enderecos?.[0]?.uf || 'DF');
         setClientFound(true);
       } else {
+        setClienteId(null);
         setNomeCliente('');
         setSexo('');
         setUf('DF');
-        setOrigem('');
         setClientFound(false);
       }
     } catch (err) {
@@ -231,10 +233,33 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     }
     setSaving(true);
 
+    // Cria ou atualiza o cliente antes de gravar o atendimento
+    let finalClienteId = clienteId;
+    const clientePayload = {
+      nome_razao_social: formatPersonName(nomeCliente),
+      telefone: unformatPhone(telefone),
+      sexo,
+    };
+    if (finalClienteId) {
+      const { error: clienteError } = await supabase.from('clientes_fornecedores').update(clientePayload).eq('id', finalClienteId);
+      if (clienteError) { toast.error('Erro ao salvar dados do cliente'); setSaving(false); return; }
+    } else {
+      const { data: novoCliente, error: clienteError } = await supabase.from('clientes_fornecedores').insert(clientePayload).select('id').single();
+      if (clienteError || !novoCliente) { toast.error('Erro ao criar cliente'); setSaving(false); return; }
+      finalClienteId = novoCliente.id;
+      setClienteId(finalClienteId);
+    }
+    // Endereço mínimo (só UF, capturado neste formulário rápido)
+    const { data: enderecoExistente } = await supabase.from('clientes_fornecedores_enderecos').select('id').eq('cliente_fornecedor_id', finalClienteId).eq('tipo', 'fiscal').maybeSingle();
+    if (enderecoExistente) {
+      await supabase.from('clientes_fornecedores_enderecos').update({ uf }).eq('id', enderecoExistente.id);
+    } else {
+      await supabase.from('clientes_fornecedores_enderecos').insert({ cliente_fornecedor_id: finalClienteId, tipo: 'fiscal', uf });
+    }
+
     const atData = {
       vendedor_id: user!.id,
-      loja, nome_cliente: formatPersonName(nomeCliente), telefone: unformatPhone(telefone),
-      sexo, uf, tipo_atendimento: tipoAtendimento,
+      loja, cliente_id: finalClienteId as string, tipo_atendimento: tipoAtendimento,
       origem: origem || null, temperatura: temperatura || null,
       observacoes: observacoes || null, interesse, situacao: isEditing ? situacao : 'em_aberto' as SituacaoShowroom,
     };
@@ -242,10 +267,10 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     let atId = atendimentoId;
 
     if (isEditing) {
-      const { error } = await supabase.from('atendimentos').update(atData).eq('id', atendimentoId);
+      const { error } = await supabase.from('atendimentos_motos').update(atData).eq('id', atendimentoId);
       if (error) { toast.error('Erro ao salvar'); setSaving(false); return; }
     } else {
-      const { data, error } = await supabase.from('atendimentos').insert(atData).select('id').single();
+      const { data, error } = await supabase.from('atendimentos_motos').insert(atData).select('id').single();
       if (error) { toast.error('Erro ao criar atendimento'); setSaving(false); return; }
       atId = data.id;
 
@@ -352,7 +377,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       } as any);
       // Notificar avaliadores
       await supabase.rpc('notify_role', {
-        _role: 'avaliador' as any,
+        _role: 'gerente' as any,
         _title: 'Avaliação Solicitada',
         _message: `Nova avaliação solicitada para o atendimento | Por: ${userName || user?.email || 'Usuário'}`,
         _entity_id: atendimentoId,

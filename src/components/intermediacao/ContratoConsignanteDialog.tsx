@@ -140,7 +140,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
         .eq('atendimento_venda_id', atendimentoId)
         .eq('tipo', 'consignada')
         .limit(1),
-      supabase.from('atendimentos').select('loja').eq('id', atendimentoId).maybeSingle(),
+      supabase.from('atendimentos_motos').select('loja').eq('id', atendimentoId).maybeSingle(),
     ]);
     setLoja(vendaAtendimento?.loja || null);
 
@@ -164,11 +164,11 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       // Fetch the original consignante's atendimento (the person who left the moto)
       if (avalData?.atendimento_id) {
         const { data: origAtend } = await supabase
-          .from('atendimentos')
-          .select('nome_cliente, telefone')
+          .from('atendimentos_motos')
+          .select('cliente:clientes_fornecedores(nome_razao_social, telefone)')
           .eq('id', avalData.atendimento_id)
           .maybeSingle();
-        consignanteAtendimento = origAtend;
+        consignanteAtendimento = origAtend?.cliente ? { nome_cliente: (origAtend.cliente as any).nome_razao_social, telefone: (origAtend.cliente as any).telefone } : null;
       }
     }
 

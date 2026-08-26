@@ -66,7 +66,7 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
           {/* Header: client name + badges */}
           <div className="flex items-center gap-2 min-w-0">
             <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">
-              {at?.nome_cliente}
+              {at?.cliente?.nome_razao_social}
             </h3>
             {at?.interesse && (
               <Badge variant="outline" className="text-[10px] shrink-0 whitespace-nowrap border-primary/30 text-primary">
@@ -85,10 +85,10 @@ const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
 
           {/* Phone + Date */}
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            {at?.telefone && (
+            {at?.cliente?.telefone && (
               <span className="flex items-center gap-1">
                 <Phone className="h-3 w-3" />
-                {formatPhone(at.telefone)}
+                {formatPhone(at.cliente.telefone)}
               </span>
             )}
             <span className="flex items-center gap-1">

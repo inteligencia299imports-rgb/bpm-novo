@@ -17,7 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { SEXOS, UFS, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
-import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
+import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
+import { formatPersonName } from '@/lib/utils';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -72,15 +73,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
   const [pendingSteps, setPendingSteps] = useState<string[]>([]);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
-  const [editNome, setEditNome] = useState('');
-  const [editTelefone, setEditTelefone] = useState('');
-  const [editSexo, setEditSexo] = useState('');
-  const [editUf, setEditUf] = useState('');
-  const [editCpfCnpj, setEditCpfCnpj] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [editEndereco, setEditEndereco] = useState('');
-  const [editCep, setEditCep] = useState('');
-  const [savingCliente, setSavingCliente] = useState(false);
 
   // Moto edit state
   const [editMotoOpen, setEditMotoOpen] = useState(false);
@@ -107,25 +99,10 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const statusValue = item[statusField] || 'em_aberto';
   const statusCol = statusColumns.find(c => c.value === statusValue);
   const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
-  const whatsappUrl = atendimento?.telefone ? `https://wa.me/55${atendimento.telefone.replace(/\D/g, '')}` : '';
-
-  const formatPhoneInput = (value: string): string => {
-    const digits = value.replace(/\D/g, '').slice(0, 11);
-    if (digits.length <= 2) return digits.length ? `(${digits}` : '';
-    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-  };
+  const whatsappUrl = atendimento?.cliente?.telefone ? `https://wa.me/55${atendimento.cliente.telefone.replace(/\D/g, '')}` : '';
 
   const openEditCliente = () => {
     if (!atendimento) return;
-    setEditNome(formatPersonName(atendimento.nome_cliente || ''));
-    setEditTelefone(formatPhoneInput(atendimento.telefone || ''));
-    setEditSexo(atendimento.sexo || '');
-    setEditUf(atendimento.uf || '');
-    setEditCpfCnpj(atendimento.cpf_cnpj ? formatCpfCnpj(atendimento.cpf_cnpj) : '');
-    setEditEmail(atendimento.email || '');
-    setEditEndereco(atendimento.endereco || '');
-    setEditCep(atendimento.cep ? formatCep(atendimento.cep) : '');
     setEditClienteOpen(true);
   };
 
@@ -195,39 +172,12 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     }
   };
 
-  const handleSaveCliente = async () => {
-    const digits = editTelefone.replace(/\D/g, '');
-    if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
-      toast.error('Preencha todos os campos corretamente');
-      return;
-    }
-    setSavingCliente(true);
-    const { error } = await supabase.from('atendimentos').update({
-      nome_cliente: formatPersonName(editNome),
-      telefone: digits,
-      sexo: editSexo,
-      uf: editUf,
-      cpf_cnpj: editCpfCnpj.replace(/\D/g, '') || null,
-      email: editEmail.trim() || null,
-      endereco: editEndereco.trim() || null,
-      cep: editCep.replace(/\D/g, '') || null,
-    }).eq('id', atendimento.id);
-    setSavingCliente(false);
-    if (error) {
-      toast.error('Erro ao salvar dados do cliente');
-      console.error('Erro ao atualizar cliente:', error);
-    } else {
-      toast.success('Dados do cliente atualizados!');
-      setEditClienteOpen(false);
-    }
-  };
-
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
       const [cnhRes, crlvRes, avRes, estRes, histRes] = await Promise.all([
-        atendimento?.id
-          ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
+        atendimento?.cliente_id
+          ? supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
           : Promise.resolve({ data: null }),
         moto?.id
           ? supabase.from('motos_avaliacao').select('crlv_url').eq('id', moto.id).single()
@@ -236,7 +186,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
         supabase.from('estoque').select('status, observacoes').eq('avaliacao_id', item.id).maybeSingle(),
         supabase.from('status_history').select('created_at').eq('entity_type', 'avaliacao').eq('entity_id', item.moto_avaliacao_id || item.id).eq('status', 'adquirida').order('created_at', { ascending: true }).limit(1).maybeSingle(),
       ]);
-      setCnhUrl(cnhRes.data?.cnh_url || null);
+      setCnhUrl((cnhRes.data as any)?.arquivo_url || null);
       setCrlvUrl(crlvRes.data?.crlv_url || null);
       setQuantoPede(avRes.data?.quanto_pede ?? null);
       setValorFechamento(avRes.data?.valor_fechamento ?? null);
@@ -244,7 +194,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       setDataAquisicao(histRes.data?.created_at || null);
 
       if (avRes.data?.avaliador_id) {
-        const { data: roleData } = await (supabase as any).from('user_roles_motos').select('nome').eq('user_id', avRes.data.avaliador_id).single();
+        const { data: roleData } = await (supabase as any).from('user_roles').select('nome').eq('user_id', avRes.data.avaliador_id).single();
         if (roleData?.nome) setAvaliadorNome(roleData.nome);
       }
 
@@ -294,7 +244,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg sm:text-xl font-bold truncate uppercase">
-                {moto ? `${moto.marca} ${moto.modelo}` : atendimento?.nome_cliente || 'N/A'}
+                {moto ? `${moto.marca} ${moto.modelo}` : atendimento?.cliente?.nome_razao_social || 'N/A'}
               </h1>
               {statusCol && (
                 <Badge className="text-[10px] shrink-0" style={{ backgroundColor: `${statusCol.hex}20`, color: statusCol.hex }}>
@@ -398,12 +348,12 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
-                <InfoItem label="Nome" value={formatPersonName(atendimento?.nome_cliente)} />
-                {atendimento?.telefone && (
+                <InfoItem label="Nome" value={formatPersonName(atendimento?.cliente?.nome_razao_social || '')} />
+                {atendimento?.cliente?.telefone && (
                   <div>
                     <span className="text-xs text-muted-foreground">Telefone</span>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium">{formatPhone(atendimento.telefone)}</span>
+                      <span className="text-sm font-medium">{formatPhone(atendimento.cliente.telefone)}</span>
                       {whatsappUrl && (
                         <button onClick={() => window.open(whatsappUrl, '_blank')} className="text-green-600 hover:text-green-700 transition-colors" title="Abrir WhatsApp">
                           <MessageCircle className="h-4 w-4" />
@@ -413,29 +363,17 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   </div>
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
-                {(atendimento as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj((atendimento as any).cpf_cnpj)} />}
-                {(atendimento as any)?.email && <InfoItem label="E-mail" value={(atendimento as any).email} />}
-                {(atendimento as any)?.cep && <InfoItem label="CEP" value={formatCep((atendimento as any).cep)} />}
-                {(atendimento as any)?.endereco && <InfoItem label="Endereço" value={(atendimento as any).endereco} />}
+                {atendimento?.cliente?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj(atendimento.cliente.cpf_cnpj)} />}
+                {atendimento?.cliente?.email && <InfoItem label="E-mail" value={atendimento.cliente.email} />}
+                {atendimento?.cliente?.clientes_fornecedores_enderecos?.[0]?.cep && <InfoItem label="CEP" value={formatCep(atendimento.cliente.clientes_fornecedores_enderecos[0].cep)} />}
+                {atendimento?.cliente?.clientes_fornecedores_enderecos?.[0]?.logradouro && <InfoItem label="Endereço" value={atendimento.cliente.clientes_fornecedores_enderecos[0].logradouro} />}
               </div>
-              <Separator className="my-2" />
-              <DocumentUpload
-                label="CNH"
-                currentUrl={cnhUrl}
-                bucketPath={atendimento?.id ? `cnh/${atendimento.id}` : ''}
-                onUploaded={(url) => {
-                  setCnhUrl(url);
-                  if (atendimento?.id) {
-                    supabase.from('atendimentos').update({ cnh_url: url }).eq('id', atendimento.id);
-                  }
-                }}
-                onRemoved={() => {
-                  setCnhUrl(null);
-                  if (atendimento?.id) {
-                    supabase.from('atendimentos').update({ cnh_url: null }).eq('id', atendimento.id);
-                  }
-                }}
-              />
+              {cnhUrl && (
+                <>
+                  <Separator className="my-2" />
+                  <span className="text-xs text-green-600 font-medium">CNH anexada</span>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -597,59 +535,11 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       )}
 
       {/* Dialog Editar Cliente */}
-      <Dialog open={editClienteOpen} onOpenChange={setEditClienteOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Editar Dados do Cliente</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="col-span-2">
-              <Label>Nome <span className="text-destructive">*</span></Label>
-              <Input value={editNome} onChange={e => setEditNome(formatPersonNameInput(e.target.value))} />
-            </div>
-            <div>
-              <Label>Telefone <span className="text-destructive">*</span></Label>
-              <Input value={editTelefone} onChange={e => { const d = e.target.value.replace(/\D/g,''); setEditTelefone(d.length === 11 ? formatPhone(d) : d); }} maxLength={15} />
-            </div>
-            <div>
-              <Label>CPF/CNPJ</Label>
-              <Input value={editCpfCnpj} onChange={e => setEditCpfCnpj(formatCpfCnpj(e.target.value))} placeholder="000.000.000-00" />
-            </div>
-            <div>
-              <Label>Sexo <span className="text-destructive">*</span></Label>
-              <Select value={editSexo} onValueChange={setEditSexo}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>UF <span className="text-destructive">*</span></Label>
-              <Select value={editUf} onValueChange={setEditUf}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="col-span-2">
-              <Label>E-mail</Label>
-              <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email" />
-            </div>
-            <div className="col-span-2">
-              <Label>Endereço</Label>
-              <Input value={editEndereco} onChange={e => setEditEndereco(e.target.value)} />
-            </div>
-            <div>
-              <Label>CEP</Label>
-              <Input value={editCep} onChange={e => setEditCep(formatCep(e.target.value))} placeholder="00000-000" maxLength={9} />
-            </div>
-            <div className="col-span-2 pt-2">
-              <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
-                {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                Salvar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ClienteEditDialog
+        clienteId={atendimento?.cliente_id || null}
+        open={editClienteOpen}
+        onOpenChange={setEditClienteOpen}
+      />
 
       {/* Dialog Editar Moto */}
       <Dialog open={editMotoOpen} onOpenChange={setEditMotoOpen}>

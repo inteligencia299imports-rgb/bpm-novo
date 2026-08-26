@@ -17,10 +17,11 @@ import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight, ShieldCheck, Handshake, Bike, IdCard, Pencil } from 'lucide-react';
-import { SEXOS, UFS, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
-import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
+import { ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
+import { formatPersonName } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
+import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { Checkbox } from '@/components/ui/checkbox';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -113,20 +114,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [consultaSolicitada, setConsultaSolicitada] = useState(false);
   const [resultadoConsulta, setResultadoConsulta] = useState<string | null>(null);
   const [showResultadoConsulta, setShowResultadoConsulta] = useState(false);
-  const canEdit = role === 'avaliador' || role === 'gestor' || role === 'vendedor';
+  const canEdit = role === 'gerente' || role === 'master' || role === 'vendedor';
   const [history, setHistory] = useState<any[]>([]);
   const [deleting, setDeleting] = useState(false);
   const [custosOpen, setCustosOpen] = useState(false);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
-  const [editNome, setEditNome] = useState('');
-  const [editTelefone, setEditTelefone] = useState('');
-  const [editSexo, setEditSexo] = useState('');
-  const [editUf, setEditUf] = useState('');
-  const [editCpfCnpj, setEditCpfCnpj] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [editEndereco, setEditEndereco] = useState('');
-  const [editCep, setEditCep] = useState('');
-  const [savingCliente, setSavingCliente] = useState(false);
 
   // Moto edit state
   const [editMotoOpen, setEditMotoOpen] = useState(false);
@@ -217,14 +209,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
   const openEditCliente = () => {
     if (!at) return;
-    setEditNome(formatPersonName(at.nome_cliente || ''));
-    setEditTelefone(at.telefone ? formatPhone(at.telefone) : '');
-    setEditSexo(at.sexo || '');
-    setEditUf(at.uf || '');
-    setEditCpfCnpj((at as any).cpf_cnpj ? formatCpfCnpj((at as any).cpf_cnpj) : '');
-    setEditEmail((at as any).email || '');
-    setEditEndereco((at as any).endereco || '');
-    setEditCep((at as any).cep ? formatCep((at as any).cep) : '');
     setEditClienteOpen(true);
   };
 
@@ -236,33 +220,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const formatCep = (v: string) => {
     const d = v.replace(/\D/g, '').slice(0, 8);
     return d.length > 5 ? d.replace(/(\d{5})(\d)/, '$1-$2') : d;
-  };
-
-  const handleSaveCliente = async () => {
-    const digits = editTelefone.replace(/\D/g, '');
-    if (!editNome.trim() || digits.length !== 11 || !editSexo || !editUf) {
-      toast.error('Preencha Nome, Telefone (11 dígitos), Sexo e UF');
-      return;
-    }
-    setSavingCliente(true);
-    const { error } = await supabase.from('atendimentos').update({
-      nome_cliente: formatPersonName(editNome),
-      telefone: digits,
-      sexo: editSexo,
-      uf: editUf,
-      cpf_cnpj: editCpfCnpj.replace(/\D/g, '') || null,
-      email: editEmail || null,
-      endereco: editEndereco || null,
-      cep: editCep.replace(/\D/g, '') || null,
-    } as any).eq('id', at?.id);
-    setSavingCliente(false);
-    if (error) {
-      toast.error('Erro ao salvar: ' + error.message);
-    } else {
-      toast.success('Dados do cliente atualizados!');
-      setEditClienteOpen(false);
-      await loadAvaliacao();
-    }
   };
 
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
@@ -324,15 +281,21 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       .from('avaliacoes')
       .select(`
         *,
-        atendimentos (id, nome_cliente, telefone, loja, vendedor_id, interesse, sexo, uf, tipo_atendimento, origem, temperatura, created_at, cnh_url, cpf_cnpj, email, cep, endereco),
+        atendimentos_motos (id, loja, vendedor_id, interesse, tipo_atendimento, origem, temperatura, created_at, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf))),
         motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, atpv_url, procuracao_url, consulta_realizada, consulta_solicitada, resultado_consulta, tem_manual, tem_chave_reserva, manutencao_vencida)
       `)
       .eq('id', avaliacaoId)
       .single();
 
     if (data) {
-      setAvaliacao({ ...data, atendimento: data.atendimentos, moto_avaliacao: data.motos_avaliacao });
-      setCnhUrl((data.atendimentos as any)?.cnh_url || null);
+      setAvaliacao({ ...data, atendimento: data.atendimentos_motos, moto_avaliacao: data.motos_avaliacao });
+      const clienteId = (data.atendimentos_motos as any)?.cliente_id;
+      if (clienteId) {
+        const { data: cnhDoc } = await supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', clienteId).eq('tipo_documento', 'cnh').maybeSingle();
+        setCnhUrl(cnhDoc?.arquivo_url || null);
+      } else {
+        setCnhUrl(null);
+      }
       setCrlvUrl((data.motos_avaliacao as any)?.crlv_url || null);
       setAtpvUrl((data.motos_avaliacao as any)?.atpv_url || null);
       setProcuracaoUrl((data.motos_avaliacao as any)?.procuracao_url || null);
@@ -366,9 +329,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       }
 
       // Fetch vendedor name
-      const vendedorId = (data.atendimentos as any)?.vendedor_id;
+      const vendedorId = (data.atendimentos_motos as any)?.vendedor_id;
       if (vendedorId) {
-        const { data: vendedorData } = await (supabase as any).from('user_roles_motos').select('nome').eq('user_id', vendedorId).single();
+        const { data: vendedorData } = await (supabase as any).from('user_roles').select('nome').eq('user_id', vendedorId).single();
         if (vendedorData?.nome) setVendedorNome(vendedorData.nome);
       }
 
@@ -550,8 +513,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
       // Sync: dispensada em avaliação → dispensada no showroom + registrar histórico
       if (newStatus === 'dispensada' && avaliacao?.atendimento_id) {
-        const { data: atData } = await supabase.from('atendimentos').select('situacao').eq('id', avaliacao.atendimento_id).maybeSingle();
-        await supabase.from('atendimentos').update({ situacao: 'dispensada' }).eq('id', avaliacao.atendimento_id);
+        const { data: atData } = await supabase.from('atendimentos_motos').select('situacao').eq('id', avaliacao.atendimento_id).maybeSingle();
+        await supabase.from('atendimentos_motos').update({ situacao: 'dispensada' }).eq('id', avaliacao.atendimento_id);
         await supabase.from('status_history').insert({
           entity_type: 'showroom',
           entity_id: avaliacao.atendimento_id,
@@ -678,8 +641,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const hasEvaluation = !!(avaliacao?.valor_fipe || avaliacao?.avaliacao_compra || avaliacao?.avaliacao_consignacao || avaliacao?.quanto_pede);
 
   const whatsappUrl = (() => {
-    if (!at?.telefone) return '';
-    const digits = at.telefone.replace(/\D/g, '');
+    if (!at?.cliente?.telefone) return '';
+    const digits = at.cliente.telefone.replace(/\D/g, '');
     const number = digits.startsWith('55') ? digits : `55${digits}`;
     return `https://wa.me/${number}`;
   })();
@@ -728,7 +691,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </Button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-xl font-bold truncate">{formatPersonName(at?.nome_cliente)}</h1>
+              <h1 className="text-lg sm:text-xl font-bold truncate">{formatPersonName(at?.cliente?.nome_razao_social || '')}</h1>
               {sit && <Badge className={`${sit.color} text-[10px] shrink-0`}>{sit.label}</Badge>}
               {avaliacao?.tipo_aquisicao && (
                 <Badge variant="outline" className={`text-[10px] shrink-0 ${getTipoAquisicaoBadgeClass(avaliacao.tipo_aquisicao)}`}>
@@ -756,7 +719,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <Wrench className="h-4 w-4" /> Custos
               </Button>
             )}
-            {(role === 'gestor') && (
+            {(role === 'master' || role === 'gerente') && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="sm" variant="destructive" className="gap-1.5">
@@ -800,12 +763,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <InfoItem label="Nome" value={formatPersonName(at?.nome_cliente)} />
+                <InfoItem label="Nome" value={formatPersonName(at?.cliente?.nome_razao_social || '')} />
                 <div>
                   <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Telefone</span>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-semibold">{at?.telefone ? formatPhone(at.telefone) : '-'}</span>
-                    {at?.telefone && (
+                    <span className="text-sm font-semibold">{at?.cliente?.telefone ? formatPhone(at.cliente.telefone) : '-'}</span>
+                    {at?.cliente?.telefone && (
                       <button
                         onClick={() => window.open(whatsappUrl, '_blank')}
                         className="text-green-600 hover:text-green-700 transition-colors"
@@ -816,56 +779,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     )}
                   </div>
                 </div>
-                <InfoItem label="Sexo" value={at?.sexo} />
-                <InfoItem label="UF" value={at?.uf} />
-                {(at as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj((at as any).cpf_cnpj)} />}
-                {(at as any)?.email && <InfoItem label="E-mail" value={(at as any).email} />}
-                {(at as any)?.cep && <InfoItem label="CEP" value={formatCep((at as any).cep)} />}
-                {(at as any)?.endereco && <InfoItem label="Endereço" value={(at as any).endereco} />}
+                <InfoItem label="Sexo" value={at?.cliente?.sexo} />
+                <InfoItem label="UF" value={(at?.cliente as any)?.clientes_fornecedores_enderecos?.[0]?.uf} />
+                {(at?.cliente as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj((at.cliente as any).cpf_cnpj)} />}
+                {(at?.cliente as any)?.email && <InfoItem label="E-mail" value={(at.cliente as any).email} />}
+                {(at?.cliente as any)?.clientes_fornecedores_enderecos?.[0]?.cep && <InfoItem label="CEP" value={formatCep((at.cliente as any).clientes_fornecedores_enderecos[0].cep)} />}
+                {(at?.cliente as any)?.clientes_fornecedores_enderecos?.[0]?.logradouro && <InfoItem label="Endereço" value={(at.cliente as any).clientes_fornecedores_enderecos[0].logradouro} />}
               </div>
-              <Separator className="my-2" />
-              <DocumentUpload
-                label="CNH"
-                currentUrl={cnhUrl}
-                bucketPath={`docs/${at?.id}/cnh`}
-                onUploaded={async (url) => {
-                  if (!at?.id) {
-                    toast.error('Atendimento não carregado. Recarregue a página.');
-                    return;
-                  }
-                  const { data, error } = await supabase
-                    .from('atendimentos')
-                    .update({ cnh_url: url } as any)
-                    .eq('id', at.id)
-                    .select('id, cnh_url');
-                  if (error) {
-                    toast.error('Erro ao salvar CNH: ' + error.message);
-                    return;
-                  }
-                  if (!data || data.length === 0) {
-                    toast.error('Sem permissão para salvar a CNH neste atendimento.');
-                    return;
-                  }
-                  setCnhUrl(url);
-                }}
-                onRemoved={async () => {
-                  if (!at?.id) return;
-                  const { data, error } = await supabase
-                    .from('atendimentos')
-                    .update({ cnh_url: null } as any)
-                    .eq('id', at.id)
-                    .select('id');
-                  if (error) {
-                    toast.error('Erro ao remover CNH: ' + error.message);
-                    return;
-                  }
-                  if (!data || data.length === 0) {
-                    toast.error('Sem permissão para remover a CNH.');
-                    return;
-                  }
-                  setCnhUrl(null);
-                }}
-              />
+              {cnhUrl && (
+                <>
+                  <Separator className="my-2" />
+                  <span className="text-xs text-green-600 font-medium">CNH anexada</span>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -1588,59 +1514,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         </DialogContent>
       </Dialog>
       {/* Dialog Editar Cliente */}
-      <Dialog open={editClienteOpen} onOpenChange={setEditClienteOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Editar Dados do Cliente</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="col-span-2">
-              <Label>Nome <span className="text-destructive">*</span></Label>
-              <Input value={editNome} onChange={e => setEditNome(formatPersonNameInput(e.target.value))} />
-            </div>
-            <div>
-              <Label>Telefone <span className="text-destructive">*</span></Label>
-              <Input value={editTelefone} onChange={e => { const d = e.target.value.replace(/\D/g,''); setEditTelefone(d.length === 11 ? formatPhone(d) : d); }} maxLength={15} />
-            </div>
-            <div>
-              <Label>CPF/CNPJ</Label>
-              <Input value={editCpfCnpj} onChange={e => setEditCpfCnpj(formatCpfCnpj(e.target.value))} placeholder="000.000.000-00" />
-            </div>
-            <div>
-              <Label>Sexo <span className="text-destructive">*</span></Label>
-              <Select value={editSexo} onValueChange={setEditSexo}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>UF <span className="text-destructive">*</span></Label>
-              <Select value={editUf} onValueChange={setEditUf}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="col-span-2">
-              <Label>E-mail</Label>
-              <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} type="email" />
-            </div>
-            <div className="col-span-2">
-              <Label>Endereço</Label>
-              <Input value={editEndereco} onChange={e => setEditEndereco(e.target.value)} />
-            </div>
-            <div>
-              <Label>CEP</Label>
-              <Input value={editCep} onChange={e => setEditCep(formatCep(e.target.value))} placeholder="00000-000" maxLength={9} />
-            </div>
-            <div className="col-span-2 pt-2">
-              <Button onClick={handleSaveCliente} disabled={savingCliente} className="w-full gap-2">
-                {savingCliente ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                Salvar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ClienteEditDialog
+        clienteId={at?.cliente_id || null}
+        open={editClienteOpen}
+        onOpenChange={setEditClienteOpen}
+        onSaved={loadAvaliacao}
+      />
 
       {/* Dialog Editar Moto */}
       <Dialog open={editMotoOpen} onOpenChange={setEditMotoOpen}>

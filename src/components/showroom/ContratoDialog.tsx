@@ -186,8 +186,8 @@ const ContratoDialog: React.FC<Props> = ({
           .eq('status', 'contrato_de_sinal')
           .limit(1),
         supabase
-          .from('atendimentos')
-          .select('valor_sinal, valor_venda, cpf_cnpj')
+          .from('atendimentos_motos')
+          .select('valor_sinal, valor_venda, cliente:clientes_fornecedores(cpf_cnpj)')
           .eq('id', atendimento.id)
           .maybeSingle(),
       ]);
@@ -196,7 +196,7 @@ const ContratoDialog: React.FC<Props> = ({
 
       const atSinal = freshAtendimento?.valor_sinal ?? (atendimento as any).valor_sinal;
       const atVenda = freshAtendimento?.valor_venda ?? (atendimento as any).valor_venda;
-      const atCpf = freshAtendimento?.cpf_cnpj ?? (atendimento as any).cpf_cnpj;
+      const atCpf = (freshAtendimento as any)?.cliente?.cpf_cnpj ?? atendimento.cliente?.cpf_cnpj;
 
       if (contrato) {
         setContratoId(contrato.id);
@@ -338,15 +338,17 @@ const ContratoDialog: React.FC<Props> = ({
       data_vencimento_sinal: dataVencimento ? format(dataVencimento, 'yyyy-MM-dd') : null,
     };
 
-    // Save valor_sinal, valor_venda and cpf_cnpj to atendimento
+    // Save valor_sinal/valor_venda to atendimento, cpf_cnpj to cliente
     const atendimentoUpdate: any = {};
     const parsedSinal = parseCurrencyInput(valorSinal);
     const parsedVenda = parseCurrencyInput(valorVenda);
     if (parsedSinal !== null) atendimentoUpdate.valor_sinal = parsedSinal;
     if (parsedVenda !== null) atendimentoUpdate.valor_venda = parsedVenda;
-    if (cpfCnpj) atendimentoUpdate.cpf_cnpj = cpfCnpj;
     if (Object.keys(atendimentoUpdate).length > 0) {
-      await supabase.from('atendimentos').update(atendimentoUpdate).eq('id', atendimento.id);
+      await supabase.from('atendimentos_motos').update(atendimentoUpdate).eq('id', atendimento.id);
+    }
+    if (cpfCnpj && atendimento.cliente_id) {
+      await supabase.from('clientes_fornecedores').update({ cpf_cnpj: cpfCnpj }).eq('id', atendimento.cliente_id);
     }
 
     if (contratoId) {
@@ -433,8 +435,8 @@ const ContratoDialog: React.FC<Props> = ({
     const pdfData: ContratoPdfData = {
       loja: atendimento.loja,
       empresaMotoInteresse: estItem?.empresa || null,
-      nomeCliente: atendimento.nome_cliente,
-      telefone: formatPhone(atendimento.telefone) || atendimento.telefone,
+      nomeCliente: atendimento.cliente?.nome_razao_social || '',
+      telefone: (atendimento.cliente?.telefone ? formatPhone(atendimento.cliente.telefone) : atendimento.cliente?.telefone) || '',
       cpfCnpj,
       produtoMarca: produtoMarca.toUpperCase(),
       produtoModelo: produtoModelo.toUpperCase(),
@@ -597,8 +599,8 @@ const ContratoDialog: React.FC<Props> = ({
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Dados do Cliente</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <InfoDisplay label="Nome" value={atendimento.nome_cliente} />
-                  <InfoDisplay label="Telefone" value={formatPhone(atendimento.telefone)} />
+                  <InfoDisplay label="Nome" value={atendimento.cliente?.nome_razao_social} />
+                  <InfoDisplay label="Telefone" value={atendimento.cliente?.telefone ? formatPhone(atendimento.cliente.telefone) : undefined} />
                 </div>
                 <div className="w-1/2">
                   <label className="text-sm font-medium text-foreground">CPF/CNPJ<span className="text-destructive ml-0.5">*</span></label>

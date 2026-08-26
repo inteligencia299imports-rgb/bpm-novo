@@ -6,8 +6,8 @@ import logoImg from '@/assets/logo-crm.png';
 
 const ROLE_LABELS: Record<string, string> = {
   vendedor: 'Vendedor',
-  gestor: 'Gestor',
-  avaliador: 'Avaliador',
+  gerente: 'Gerente',
+  master: 'Master',
 };
 
 interface HeaderProps {
@@ -19,8 +19,8 @@ const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange }) => {
   const { role, userName, signOut } = useAuth();
 
   const tabs = [
-    { id: 'showroom', label: 'Showroom', roles: ['vendedor', 'gestor'] },
-    { id: 'avaliacoes', label: 'Avaliações', roles: ['avaliador', 'gestor'] },
+    { id: 'showroom', label: 'Showroom', roles: ['vendedor', 'master'] },
+    { id: 'avaliacoes', label: 'Avaliações', roles: ['gerente', 'master'] },
   ].filter(t => role && t.roles.includes(role));
 
   return (

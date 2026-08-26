@@ -55,7 +55,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   };
 
   useEffect(() => {
-    (supabase as any).from('user_roles_motos').select('user_id, nome').order('nome').then(({ data }) => {
+    (supabase as any).from('user_roles').select('user_id, nome').order('nome').then(({ data }) => {
       if (data) setVendedores(data);
     });
   }, []);
@@ -63,7 +63,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   // Open detail from external navigation (e.g. NPS, Estoque)
   useEffect(() => {
     if (initialAtendimentoId) {
-      supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(({ data }) => {
+      supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(({ data }) => {
         if (data) {
           setSelectedAtendimento(data as unknown as Atendimento);
           setDetailOpen(true);
@@ -81,7 +81,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     const statuses = KANBAN_COLUMNS.map(c => c.value);
 
     const buildQuery = (status?: string) => {
-      let q = supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)');
+      let q = supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*), motos_avaliacao(*)');
       if (status) q = q.eq('situacao', status);
       if (filterInteresse !== 'todos') q = q.eq('interesse', filterInteresse);
       q = q.order('created_at', { ascending: false });
@@ -169,8 +169,8 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
         const s = search.trim().toLowerCase();
         results = results.filter(a => {
           const fields = [
-            a.nome_cliente, a.telefone, a.loja, a.interesse, a.situacao,
-            a.observacoes, a.origem, a.temperatura, a.tipo_atendimento, a.uf
+            a.cliente?.nome_razao_social, a.cliente?.telefone, a.loja, a.interesse, a.situacao,
+            a.observacoes, a.origem, a.temperatura, a.tipo_atendimento, a.cliente?.clientes_fornecedores_enderecos?.[0]?.uf
           ];
           const motos = (a as any).motos_interesse || [];
           const motosAv = (a as any).motos_avaliacao || [];
@@ -218,7 +218,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     await fetchAtendimentos();
     if (selectedAtendimento) {
       const { data } = await supabase
-        .from('atendimentos')
+        .from('atendimentos_motos')
         .select('*')
         .eq('id', selectedAtendimento.id)
         .single();
@@ -229,7 +229,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   };
 
   const handleStatusChange = async (id: string, status: SituacaoShowroom) => {
-    const { error } = await supabase.from('atendimentos').update({ situacao: status }).eq('id', id);
+    const { error } = await supabase.from('atendimentos_motos').update({ situacao: status }).eq('id', id);
     if (error) {
       toast.error('Erro ao alterar status');
       console.error(error);

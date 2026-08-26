@@ -82,7 +82,7 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
           {/* Header: name + interest badge */}
           <div className="flex items-center gap-2 min-w-0">
             <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">
-              {atendimento.nome_cliente}
+              {atendimento.cliente?.nome_razao_social}
             </h3>
             {readyIndicator && (
               <span
@@ -113,7 +113,7 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Phone className="h-3 w-3" />
-              {formatPhone(atendimento.telefone)}
+              {atendimento.cliente?.telefone ? formatPhone(atendimento.cliente.telefone) : '-'}
             </span>
             <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />

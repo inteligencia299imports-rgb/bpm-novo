@@ -40,8 +40,8 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
 
     const buildQuery = (status?: SituacaoNps) => {
       let q = supabase
-        .from('atendimentos')
-        .select('*, motos_interesse(*), motos_avaliacao(*)')
+        .from('atendimentos_motos')
+        .select('*, cliente:clientes_fornecedores(*), motos_interesse(*), motos_avaliacao(*)')
         .eq('situacao', 'vendido')
         .in('interesse', ['comprar', 'trocar']);
 
@@ -53,7 +53,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
         }
       }
 
-      if (role !== 'gestor') {
+      if (role !== 'master' && role !== 'gerente') {
         q = q.eq('vendedor_id', user?.id || '');
       }
 
@@ -100,7 +100,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
       if (search.trim()) {
         const s = search.trim().toLowerCase();
         mapped = mapped.filter((a: any) =>
-          [a.nome_cliente, a.telefone, a.loja].some(f => f && String(f).toLowerCase().includes(s))
+          [a.cliente?.nome_razao_social, a.cliente?.telefone, a.loja].some(f => f && String(f).toLowerCase().includes(s))
         );
       }
       setAtendimentos(mapped);
@@ -161,7 +161,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
     if (newStatus === 'enviado') updates.nps_enviado_at = new Date().toISOString();
     if (newStatus === 'respondido') updates.nps_respondido_at = new Date().toISOString();
 
-    const { error } = await supabase.from('atendimentos').update(updates).eq('id', id);
+    const { error } = await supabase.from('atendimentos_motos').update(updates).eq('id', id);
     if (error) {
       toast.error('Erro ao atualizar status');
     } else {
@@ -172,7 +172,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
 
   const handleEnviarPesquisa = async (e: React.MouseEvent, atendimento: any, forceCopy = false) => {
     e.stopPropagation();
-    const telefone = atendimento.telefone?.replace(/\D/g, '') || '';
+    const telefone = atendimento.cliente?.telefone?.replace(/\D/g, '') || '';
     const id = atendimento.id;
     const previousStatus = atendimento.nps_status || 'em_aberto';
     const link = `https://tally.so/r/OD4Gp7?id=${id}`;
@@ -192,7 +192,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
     }
 
     const updates = { nps_status: 'enviado', nps_enviado_at: new Date().toISOString() };
-    const { error } = await supabase.from('atendimentos').update(updates).eq('id', id);
+    const { error } = await supabase.from('atendimentos_motos').update(updates).eq('id', id);
     if (error) {
       toast.error('Erro ao registrar envio');
     } else {
@@ -298,7 +298,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                                 </Button>
                               )}
                               {(a.nps_status || 'em_aberto') === 'respondido' && (
-                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => { e.stopPropagation(); setRespostasDialog({ open: true, atendimentoId: a.id, nomeCliente: a.nome_cliente }); }}>
+                                <Button size="sm" variant="outline" className="gap-1 text-xs h-7 w-full" onClick={(e) => { e.stopPropagation(); setRespostasDialog({ open: true, atendimentoId: a.id, nomeCliente: a.cliente?.nome_razao_social || '' }); }}>
                                   <Eye className="h-3 w-3" /> Visualizar Respostas
                                 </Button>
                               )}

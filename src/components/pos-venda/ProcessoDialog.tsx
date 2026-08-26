@@ -82,7 +82,7 @@ const ProcessoDialog: React.FC<Props> = ({
           .select('id, etapa, concluida, data_conclusao')
           .eq('atendimento_id', atendimentoId),
         supabase
-          .from('atendimentos')
+          .from('atendimentos_motos')
           .select(observacoesField)
           .eq('id', atendimentoId)
           .maybeSingle(),
@@ -206,7 +206,7 @@ const ProcessoDialog: React.FC<Props> = ({
       }
 
       const { error: updateError } = await supabase
-        .from('atendimentos')
+        .from('atendimentos_motos')
         .update({ [statusField]: newStatus, [observacoesField]: observacoes } as any)
         .eq('id', atendimentoId);
 

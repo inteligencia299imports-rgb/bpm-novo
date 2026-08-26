@@ -102,15 +102,14 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
         .select(`
           atendimento_id,
           modelo,
-          atendimentos!motos_interesse_atendimento_id_fkey (
-            nome_cliente,
-            telefone,
+          atendimentos:atendimentos_motos!motos_interesse_atendimento_id_fkey (
             vendedor_id,
             created_at,
             interesse,
             situacao,
             temperatura,
-            loja
+            loja,
+            cliente:clientes_fornecedores(nome_razao_social, telefone)
           )
         `)
         .ilike('marca', selectedMoto.marca)
@@ -138,8 +137,8 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
         if (role === 'vendedor' && a.vendedor_id !== user?.id) continue;
         results.push({
           atendimento_id: mi.atendimento_id,
-          nome_cliente: a.nome_cliente,
-          telefone: a.telefone,
+          nome_cliente: a.cliente?.nome_razao_social,
+          telefone: a.cliente?.telefone,
           vendedor_id: a.vendedor_id,
           created_at: a.created_at,
           interesse: a.interesse,
@@ -154,7 +153,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
       let vendedorMap: Record<string, string> = {};
       if (vendedorIds.length > 0) {
         const { data: roles } = await (supabase as any)
-          .from('user_roles_motos')
+          .from('user_roles')
           .select('user_id, nome')
           .in('user_id', vendedorIds);
         if (roles) {

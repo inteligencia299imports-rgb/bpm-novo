@@ -60,7 +60,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
 
   useEffect(() => {
     if (initialAtendimentoId) {
-      supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
+      supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*), motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
         if (data) {
           const { data: est } = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id').eq('atendimento_venda_id', data.id).eq('tipo', 'consignada').maybeSingle();
           setSelectedItem({ ...data, _estoqueMoto: est });
@@ -76,7 +76,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     setLoading(true);
     const estRes = await fetchAllRange<any>(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id, status, observacoes, loja').eq('tipo', 'consignada'));
 
-    const result = await fetchAllRange<any>(() => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
+    const result = await fetchAllRange<any>(() => supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*), motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
     const atError = result.error;
     const atData = result.data || [];
     if (atError) { toast.error('Erro ao carregar intermediação'); setLoading(false); return; }
@@ -92,7 +92,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       const { data: avalData } = await supabase.from('avaliacoes').select('id, atendimento_id').in('id', avaliacaoIds);
       if (avalData && avalData.length > 0) {
         const ownerAtIds = avalData.map((a: any) => a.atendimento_id).filter(Boolean);
-        const { data: ownerData } = await supabase.from('atendimentos').select('id, nome_cliente, telefone, loja, cpf_cnpj, email, cep, endereco').in('id', ownerAtIds);
+        const { data: ownerData } = await supabase.from('atendimentos_motos').select('id, loja, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro))').in('id', ownerAtIds);
         const ownerMap: Record<string, any> = {};
         (ownerData || []).forEach((o: any) => { ownerMap[o.id] = o; });
         const avalToOwner: Record<string, any> = {};
@@ -105,7 +105,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       }
     }
 
-    if (search.trim()) { const s = search.trim().toLowerCase(); filtered = filtered.filter((a: any) => { const owner = a._proprietario; return [a.nome_cliente, a.telefone, a.loja, owner?.nome_cliente, owner?.telefone].some(f => f && String(f).toLowerCase().includes(s)); }); }
+    if (search.trim()) { const s = search.trim().toLowerCase(); filtered = filtered.filter((a: any) => { const owner = a._proprietario; return [a.cliente?.nome_razao_social, a.cliente?.telefone, a.loja, owner?.cliente?.nome_razao_social, owner?.cliente?.telefone].some(f => f && String(f).toLowerCase().includes(s)); }); }
 
     // Auto-transition: check autorizacao_pagamento items whose previsão date is > 1 day past
     const autoTransitionIds = filtered
@@ -131,7 +131,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       if (idsToComplete.length > 0) {
         // Update in background, don't block UI
         for (const id of idsToComplete) {
-          supabase.from('atendimentos').update({ intermediacao_parte1_status: 'concluido' } as any).eq('id', id).then();
+          supabase.from('atendimentos_motos').update({ intermediacao_parte1_status: 'concluido' } as any).eq('id', id).then();
         }
         filtered = filtered.map(a => idsToComplete.includes(a.id) ? { ...a, intermediacao_parte1_status: 'concluido' } : a);
       }
@@ -260,8 +260,8 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
                     {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => {
                       const est = a._estoqueMoto;
                       const owner = a._proprietario;
-                      const clientName = parte === 'parte1' && owner ? owner.nome_cliente : a.nome_cliente;
-                      const clientPhone = parte === 'parte1' && owner ? owner.telefone : a.telefone;
+                      const clientName = parte === 'parte1' && owner ? owner.cliente?.nome_razao_social : a.cliente?.nome_razao_social;
+                      const clientPhone = parte === 'parte1' && owner ? owner.cliente?.telefone : a.cliente?.telefone;
                       const prev = a._previsaoPagamento;
                       const prevBadge = prev ? { label: (<span className="inline-flex items-center gap-1"><DollarSign className="h-3 w-3" />{new Date(prev).toLocaleDateString('pt-BR')}</span>), className: 'border-primary/30 text-primary' } : undefined;
                       return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex} extraBadge={prevBadge} onClick={() => setSelectedItem(a)} />;

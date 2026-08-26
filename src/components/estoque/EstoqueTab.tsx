@@ -170,7 +170,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       const vendedorIds = [...new Set((data || []).map((d: any) => d.atendimentos?.vendedor_id).filter(Boolean))];
       let vendedorMap: Record<string, string> = {};
       if (vendedorIds.length > 0) {
-        const { data: roles } = await (supabase as any).from('user_roles_motos').select('user_id, nome').in('user_id', vendedorIds);
+        const { data: roles } = await (supabase as any).from('user_roles').select('user_id, nome').in('user_id', vendedorIds);
         if (roles) {
           for (const r of roles) vendedorMap[r.user_id] = r.nome;
         }
@@ -255,14 +255,14 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     try {
       const { data: avaliacao } = await supabase
         .from('avaliacoes')
-        .select('*, motos_avaliacao(*), atendimentos:atendimento_id(nome_cliente, loja)')
+        .select('*, motos_avaliacao(*), atendimento:atendimento_id(loja, cliente:clientes_fornecedores(nome_razao_social))')
         .eq('id', item.avaliacao_id!)
         .single();
       if (avaliacao) {
         setReenviarAvaliacaoData({
           ...avaliacao,
           moto: avaliacao.motos_avaliacao,
-          atendimento: avaliacao.atendimentos,
+          atendimento: (avaliacao as any).atendimento,
           moto_avaliacao_id: avaliacao.moto_avaliacao_id,
         });
       }

@@ -29,7 +29,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
 
   useEffect(() => {
     if (initialAtendimentoId) {
-      supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
+      supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*), motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
         if (data) {
           // Fetch estoque moto info
           const { data: est } = await supabase.from('estoque').select('marca, modelo, placa').eq('atendimento_venda_id', data.id).eq('tipo', 'propria').maybeSingle();
@@ -50,11 +50,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     let atData: any[];
     let atError: any;
     if (isSearching) {
-      const result = await fetchAllRange(() => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
+      const result = await fetchAllRange(() => supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*), motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
       atError = result.error;
       atData = result.data || [];
     } else {
-      const statusResults = await Promise.all(statuses.map(s => supabase.from('atendimentos').select('*, motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
+      const statusResults = await Promise.all(statuses.map(s => supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*), motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
       atError = statusResults.find(r => r.error)?.error;
       atData = statusResults.flatMap(r => r.data || []);
     }
@@ -83,7 +83,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
 
     if (search.trim()) {
       const s = search.trim().toLowerCase();
-      filtered = filtered.filter((a: any) => [a.nome_cliente, a.telefone, a.loja].some(f => f && String(f).toLowerCase().includes(s)));
+      filtered = filtered.filter((a: any) => [a.cliente?.nome_razao_social, a.cliente?.telefone, a.loja].some(f => f && String(f).toLowerCase().includes(s)));
     }
     if (filterCidade !== 'todos') {
       filtered = filtered.filter((a: any) => matchesCidade(a.loja, filterCidade));
@@ -142,7 +142,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
                     {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => {
                       const est = a._estoqueMoto;
                       return (
-                         <ProcessCard key={a.id} clientName={a.nome_cliente} phone={a.telefone}
+                         <ProcessCard key={a.id} clientName={a.cliente?.nome_razao_social} phone={a.cliente?.telefone}
                            motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
                            loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex}
                            onClick={() => setSelectedItem(a)} />

@@ -64,12 +64,12 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
     const loadAll = async () => {
       setLoading(true);
       const [cnhRes, histRes] = await Promise.all([
-        atendimento?.id
-          ? supabase.from('atendimentos').select('cnh_url').eq('id', atendimento.id).single()
+        atendimento?.cliente_id
+          ? supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
           : Promise.resolve({ data: null }),
         supabase.from('status_history').select('*').eq('entity_type', 'consulta').eq('entity_id', moto.id).order('created_at', { ascending: true }),
       ]);
-      setCnhUrl(cnhRes.data?.cnh_url || null);
+      setCnhUrl(cnhRes.data?.arquivo_url || null);
       setHistory(histRes.data || []);
       setLoading(false);
     };
@@ -114,7 +114,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
     // Notify users flagged for consultation
     await supabase.rpc('notify_consulta', {
       _title: 'Consulta Concluída',
-      _message: `${moto.atendimentos?.nome_cliente || ''} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
+      _message: `${atendimento?.cliente?.nome_razao_social || ''} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
       _entity_id: moto.id,
       _entity_type: 'consulta',
     });
@@ -132,7 +132,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
       await supabase.from('notifications').insert({
         user_id: requestHistory.changed_by,
         title: 'Resultado da Consulta',
-        message: `${moto.atendimentos?.nome_cliente || ''} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''}: ${resultadoTexto} | Por: ${userName || user?.email || 'Usuário'}`,
+        message: `${atendimento?.cliente?.nome_razao_social || ''} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''}: ${resultadoTexto} | Por: ${userName || user?.email || 'Usuário'}`,
         entity_id: moto.id,
         entity_type: 'consulta',
       } as any);
@@ -196,7 +196,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               // Notify users flagged for consultation
               await supabase.rpc('notify_consulta', {
                 _title: 'Nova Consulta Solicitada',
-                _message: `${moto.atendimentos?.nome_cliente || ''} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
+                _message: `${atendimento?.cliente?.nome_razao_social || ''} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
                 _entity_id: moto.id,
                 _entity_type: 'consulta',
               });
@@ -229,35 +229,23 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <InfoItem label="Nome" value={formatPersonName(atendimento?.nome_cliente)} />
-                {atendimento?.telefone && (
+                <InfoItem label="Nome" value={formatPersonName(atendimento?.cliente?.nome_razao_social || '')} />
+                {atendimento?.cliente?.telefone && (
                   <div>
                     <span className="text-xs text-muted-foreground">Telefone</span>
-                    <p className="text-sm font-medium">{formatPhone(atendimento.telefone)}</p>
+                    <p className="text-sm font-medium">{formatPhone(atendimento.cliente.telefone)}</p>
                   </div>
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
-                {(atendimento as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj((atendimento as any).cpf_cnpj)} />}
-                {(atendimento as any)?.email && <InfoItem label="E-mail" value={(atendimento as any).email} />}
-                {(atendimento as any)?.cep && <InfoItem label="CEP" value={formatCep((atendimento as any).cep)} />}
-                {(atendimento as any)?.endereco && <InfoItem label="Endereço" value={(atendimento as any).endereco} />}
+                {atendimento?.cliente?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj(atendimento.cliente.cpf_cnpj)} />}
+                {atendimento?.cliente?.email && <InfoItem label="E-mail" value={atendimento.cliente.email} />}
+                {atendimento?.cliente?.clientes_fornecedores_enderecos?.[0]?.cep && <InfoItem label="CEP" value={formatCep(atendimento.cliente.clientes_fornecedores_enderecos[0].cep)} />}
+                {atendimento?.cliente?.clientes_fornecedores_enderecos?.[0]?.logradouro && <InfoItem label="Endereço" value={atendimento.cliente.clientes_fornecedores_enderecos[0].logradouro} />}
               </div>
-              {atendimento?.id && (
+              {cnhUrl && (
                 <>
                   <Separator className="my-2" />
-                  <DocumentUpload
-                    label="CNH"
-                    currentUrl={cnhUrl}
-                    bucketPath={`docs/${atendimento.id}/cnh`}
-                    onUploaded={async (url) => {
-                      await supabase.from('atendimentos').update({ cnh_url: url } as any).eq('id', atendimento.id);
-                      setCnhUrl(url);
-                    }}
-                    onRemoved={async () => {
-                      await supabase.from('atendimentos').update({ cnh_url: null } as any).eq('id', atendimento.id);
-                      setCnhUrl(null);
-                    }}
-                  />
+                  <span className="text-xs text-green-600 font-medium">CNH anexada</span>
                 </>
               )}
             </CardContent>

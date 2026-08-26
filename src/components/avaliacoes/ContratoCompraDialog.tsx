@@ -121,16 +121,17 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
           .eq('entity_id', avaliacao.id)
           .like('status', 'CONTRATO COMPRA GERADO%')
           .limit(1),
-        supabase.from('atendimentos').select('cpf_cnpj').eq('id', atendimentoId).maybeSingle(),
+        supabase.from('atendimentos_motos').select('cliente_id, cliente:clientes_fornecedores(cpf_cnpj)').eq('id', atendimentoId).maybeSingle(),
       ]);
 
       setJaGerado(!!(histGerado && histGerado.length > 0));
 
       const contrato = contratosList && contratosList.length > 0 ? contratosList[0] : null;
+      const atFreshCpf = (atFresh as any)?.cliente?.cpf_cnpj;
 
       if (contrato) {
         setContratoId(contrato.id);
-        setCpfCnpj(contrato.cpf_cnpj || atFresh?.cpf_cnpj || '');
+        setCpfCnpj(contrato.cpf_cnpj || atFreshCpf || '');
         setValorQuitacao(contrato.valor_quitacao ? formatCurrencyInput(String(Math.round(contrato.valor_quitacao * 100))) : '');
         setValorFechamento(contrato.valor_fechamento ? formatCurrencyInput(String(Math.round(contrato.valor_fechamento * 100))) : '');
         setObsInternas(contrato.observacoes_internas || '');
@@ -138,7 +139,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
         setDataContrato(contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined);
       } else {
         setContratoId(null);
-        setCpfCnpj(atFresh?.cpf_cnpj || '');
+        setCpfCnpj(atFreshCpf || '');
         setValorQuitacao('');
         setValorFechamento(avaliacao.valor_fechamento ? formatCurrencyInput(String(Math.round(avaliacao.valor_fechamento * 100))) : '');
         setObsInternas('');
@@ -169,11 +170,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
       ipva_tipo: 'COMPRA', // marcador para distinguir contrato de compra do de venda
     };
 
-    // Sync CPF back to atendimentos
+    // Sync CPF back to o cliente vinculado
     if (cpfCnpj) {
-      await supabase.from('atendimentos').update({
-        cpf_cnpj: cpfCnpj || null,
-      }).eq('id', atendimentoId);
+      const { data: atRow } = await supabase.from('atendimentos_motos').select('cliente_id').eq('id', atendimentoId).maybeSingle();
+      if (atRow?.cliente_id) {
+        await supabase.from('clientes_fornecedores').update({ cpf_cnpj: cpfCnpj || null }).eq('id', atRow.cliente_id);
+      }
     }
 
     if (contratoId) {
@@ -221,7 +223,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
       const num = parseCurrencyInput(val);
       return num ? num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
     };
-    const tel = atendimento?.telefone || '';
+    const tel = atendimento?.cliente?.telefone || '';
     const digits = tel.replace(/\D/g, '');
     const telefoneFormatado = digits.length === 11
       ? `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`
@@ -231,7 +233,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
 
     return {
       loja: atendimento?.loja || null,
-      nomeCliente: atendimento?.nome_cliente || '',
+      nomeCliente: atendimento?.cliente?.nome_razao_social || '',
       telefone: telefoneFormatado,
       cpfCnpj: cpfCnpj || '-',
       marca: moto?.marca || '',
@@ -310,9 +312,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Dados do Cliente</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <InfoDisplay label="Nome" value={atendimento?.nome_cliente} />
+                  <InfoDisplay label="Nome" value={atendimento?.cliente?.nome_razao_social} />
                   <InfoDisplay label="Telefone" value={(() => {
-                    const t = atendimento?.telefone || '';
+                    const t = atendimento?.cliente?.telefone || '';
                     const d = t.replace(/\D/g, '');
                     if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
                     if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
