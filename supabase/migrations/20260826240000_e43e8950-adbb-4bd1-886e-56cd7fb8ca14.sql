@@ -131,7 +131,7 @@ create policy "Acesso fotos" on public.moto_fotos for select to authenticated
     exists (
       select 1 from public.avaliacoes av join public.atendimentos_motos a on a.id = av.atendimento_id
       where av.id = moto_fotos.avaliacao_id
-        and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja))
+        and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja_id))
     )
   );
 
@@ -140,7 +140,7 @@ create policy "Insert fotos" on public.moto_fotos for insert to authenticated
     exists (
       select 1 from public.avaliacoes av join public.atendimentos_motos a on a.id = av.atendimento_id
       where av.id = moto_fotos.avaliacao_id
-        and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja))
+        and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja_id))
     )
   );
 
@@ -149,7 +149,7 @@ create policy "Delete fotos" on public.moto_fotos for delete to authenticated
     exists (
       select 1 from public.avaliacoes av join public.atendimentos_motos a on a.id = av.atendimento_id
       where av.id = moto_fotos.avaliacao_id
-        and public.has_master_or_gerente_empresa(auth.uid(), a.loja)
+        and public.has_master_or_gerente_empresa(auth.uid(), a.loja_id)
     )
   );
 
@@ -169,13 +169,13 @@ create policy "Upload moto photos" on storage.objects for insert to authenticate
         and exists (
           select 1 from public.atendimentos_motos a
           where a.cliente_id::text = (storage.foldername(objects.name))[2]
-            and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja))
+            and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja_id))
         )
       )
       or exists (
         select 1 from public.avaliacoes av join public.atendimentos_motos a on a.id = av.atendimento_id
         where av.id::text = (storage.foldername(objects.name))[1]
-          and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja))
+          and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja_id))
       )
     )
   );
@@ -190,13 +190,13 @@ create policy "Update moto photos" on storage.objects for update to authenticate
         and exists (
           select 1 from public.atendimentos_motos a
           where a.cliente_id::text = (storage.foldername(objects.name))[2]
-            and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja))
+            and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja_id))
         )
       )
       or exists (
         select 1 from public.avaliacoes av join public.atendimentos_motos a on a.id = av.atendimento_id
         where av.id::text = (storage.foldername(objects.name))[1]
-          and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja))
+          and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja_id))
       )
     )
   );
@@ -211,13 +211,13 @@ create policy "Delete moto photos" on storage.objects for delete to authenticate
         and exists (
           select 1 from public.atendimentos_motos a
           where a.cliente_id::text = (storage.foldername(objects.name))[2]
-            and public.has_master_or_gerente_empresa(auth.uid(), a.loja)
+            and public.has_master_or_gerente_empresa(auth.uid(), a.loja_id)
         )
       )
       or exists (
         select 1 from public.avaliacoes av join public.atendimentos_motos a on a.id = av.atendimento_id
         where av.id::text = (storage.foldername(objects.name))[1]
-          and public.has_master_or_gerente_empresa(auth.uid(), a.loja)
+          and public.has_master_or_gerente_empresa(auth.uid(), a.loja_id)
       )
     )
   );
@@ -237,7 +237,7 @@ create policy "Acesso status_history" on public.status_history for select to aut
       and exists (
         select 1 from public.atendimentos_motos a
         where a.id = status_history.entity_id
-          and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja))
+          and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja_id))
       )
     )
     or (
@@ -245,7 +245,7 @@ create policy "Acesso status_history" on public.status_history for select to aut
       and exists (
         select 1 from public.avaliacoes av join public.atendimentos_motos a on a.id = av.atendimento_id
         where av.id = status_history.entity_id
-          and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja))
+          and (a.vendedor_id = auth.uid() or public.has_master_or_gerente_empresa(auth.uid(), a.loja_id))
       )
     )
   );
@@ -268,11 +268,11 @@ as $function$
 DECLARE
   _avaliacao_ids uuid[];
   _contrato_consignante_ids uuid[];
-  _loja text;
+  _loja_id uuid;
 BEGIN
-  SELECT loja INTO _loja FROM public.atendimentos_motos WHERE id = _atendimento_id;
+  SELECT loja_id INTO _loja_id FROM public.atendimentos_motos WHERE id = _atendimento_id;
 
-  IF NOT public.has_master_or_gerente_empresa(auth.uid(), _loja) THEN
+  IF NOT public.has_master_or_gerente_empresa(auth.uid(), _loja_id) THEN
     RAISE EXCEPTION 'Unauthorized: only master/gerente can perform cascade deletes';
   END IF;
 
@@ -314,13 +314,13 @@ as $function$
 DECLARE
   _atendimento_id uuid;
   _contrato_ids uuid[];
-  _loja text;
+  _loja_id uuid;
 BEGIN
-  SELECT a.loja, av.atendimento_id INTO _loja, _atendimento_id
+  SELECT a.loja_id, av.atendimento_id INTO _loja_id, _atendimento_id
   FROM public.avaliacoes av JOIN public.atendimentos_motos a ON a.id = av.atendimento_id
   WHERE av.id = _avaliacao_id;
 
-  IF NOT public.has_master_or_gerente_empresa(auth.uid(), _loja) THEN
+  IF NOT public.has_master_or_gerente_empresa(auth.uid(), _loja_id) THEN
     RAISE EXCEPTION 'Unauthorized: only master/gerente can perform cascade deletes';
   END IF;
 

@@ -8,13 +8,13 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
 
 const ETAPAS = [
   'CONTRATO ASSINADO',
@@ -46,8 +46,8 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
-  const [observacoes, setObservacoes] = useState('');
   const [previousStatus, setPreviousStatus] = useState('em_aberto');
+  const [atendimentoId, setAtendimentoId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -60,7 +60,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('consignacao_observacoes, consignacao_status, consulta_realizada')
+          .select('atendimento_id, consignacao_status, consulta_realizada')
           .eq('id', avaliacaoId)
           .maybeSingle(),
         supabase
@@ -94,7 +94,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       });
 
       setEtapas(built);
-      setObservacoes((avData as any)?.consignacao_observacoes || '');
+      setAtendimentoId((avData as any)?.atendimento_id || null);
       setPreviousStatus((avData as any)?.consignacao_status || 'em_aberto');
       setLoading(false);
     };
@@ -186,7 +186,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       // Update avaliacoes
       const { error: updateError } = await supabase
         .from('avaliacoes')
-        .update({ consignacao_status: newStatus, consignacao_observacoes: observacoes } as any)
+        .update({ consignacao_status: newStatus } as any)
         .eq('id', avaliacaoId);
 
       if (updateError) {
@@ -314,15 +314,11 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
             ))}
 
             <Separator />
-            <div className="space-y-2 pt-3">
-              <label className="text-sm font-medium">Observações</label>
-              <Textarea
-                placeholder="Observações do processo..."
-                value={observacoes}
-                onChange={(e) => setObservacoes(e.target.value)}
-                rows={3}
-              />
-            </div>
+            {atendimentoId && (
+              <div className="pt-3">
+                <AtendimentoObservacoes idOperacao={atendimentoId} />
+              </div>
+            )}
             <div className="flex justify-end pt-3">
               <Button onClick={handleSave} disabled={saving} className="gap-1.5">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

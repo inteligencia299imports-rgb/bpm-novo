@@ -20,12 +20,11 @@ import DocumentUpload from '@/components/showroom/DocumentUpload';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import { formatPersonName } from '@/lib/utils';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
-import ObservacoesProcesso from '@/components/shared/ObservacoesProcesso';
+import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
 import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProcessoDialog';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
@@ -85,7 +84,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [editCor, setEditCor] = useState('');
   const [editCategoria, setEditCategoria] = useState('');
   const [editCilindrada, setEditCilindrada] = useState('');
-  const [editMotoObs, setEditMotoObs] = useState('');
   const [editTemManual, setEditTemManual] = useState(false);
   const [editTemChaveReserva, setEditTemChaveReserva] = useState(false);
   const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
@@ -118,7 +116,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     setEditCor(moto.cor || '');
     setEditCategoria(moto.categoria || '');
     setEditCilindrada(moto.cilindrada ? (parseInt(moto.cilindrada.replace(/\D/g,''),10) || 0).toLocaleString('pt-BR') : '');
-    setEditMotoObs(moto.observacoes || '');
     setEditTemManual(moto.tem_manual ?? false);
     setEditTemChaveReserva(moto.tem_chave_reserva ?? false);
     setEditManutencaoVencida(moto.manutencao_vencida ?? false);
@@ -141,7 +138,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       cor: editCor.trim() || null,
       categoria: editCategoria.trim() || null,
       cilindrada: editCilindrada.replace(/\D/g, '') || null,
-      observacoes: editMotoObs.trim() || null,
       tem_manual: editTemManual,
       tem_chave_reserva: editTemChaveReserva,
       manutencao_vencida: editManutencaoVencida,
@@ -162,7 +158,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
         cor: editCor.trim() || null,
         categoria: editCategoria.trim() || null,
         cilindrada: editCilindrada.replace(/\D/g, '') || null,
-        observacoes: editMotoObs.trim() || null,
         tem_manual: editTemManual,
         tem_chave_reserva: editTemChaveReserva,
         manutencao_vencida: editManutencaoVencida,
@@ -428,7 +423,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 <DocumentUpload
                   label="CRLV"
                   currentUrl={crlvUrl}
-                  bucketPath={moto.id ? `crlv/${moto.id}` : ''}
+                  bucketPath={moto.id ? `docs/${moto.id}/crlv` : ''}
                   onUploaded={(url) => {
                     setCrlvUrl(url);
                     if (moto.id) {
@@ -479,8 +474,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             </Card>
           )}
 
-          {/* Observações do Processo */}
-          <ObservacoesProcesso entityId={item.id} entityType={entityType} />
+          {/* Observações */}
+          {atendimento?.id && <AtendimentoObservacoes idOperacao={atendimento.id} />}
 
         </div>
       </ScrollArea>
@@ -605,22 +600,45 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   <SelectContent>{CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Observações</Label>
-                <Textarea value={editMotoObs} onChange={e => setEditMotoObs(e.target.value)} rows={3} />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Checkbox id="edit-manual" checked={editTemManual} onCheckedChange={(v) => setEditTemManual(!!v)} />
-                  <Label htmlFor="edit-manual" className="cursor-pointer">Tem manual</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                <div className="space-y-1.5">
+                  <Label>Manual</Label>
+                  <RadioGroup value={editTemManual ? 'sim' : 'nao'} onValueChange={(v) => setEditTemManual(v === 'sim')} className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="sim" id="edit-manual-sim" />
+                      <Label htmlFor="edit-manual-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="nao" id="edit-manual-nao" />
+                      <Label htmlFor="edit-manual-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox id="edit-chave" checked={editTemChaveReserva} onCheckedChange={(v) => setEditTemChaveReserva(!!v)} />
-                  <Label htmlFor="edit-chave" className="cursor-pointer">Tem chave reserva</Label>
+                <div className="space-y-1.5">
+                  <Label>Chave Reserva</Label>
+                  <RadioGroup value={editTemChaveReserva ? 'sim' : 'nao'} onValueChange={(v) => setEditTemChaveReserva(v === 'sim')} className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="sim" id="edit-chave-sim" />
+                      <Label htmlFor="edit-chave-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="nao" id="edit-chave-nao" />
+                      <Label htmlFor="edit-chave-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox id="edit-manut" checked={editManutencaoVencida} onCheckedChange={(v) => setEditManutencaoVencida(!!v)} />
-                  <Label htmlFor="edit-manut" className="cursor-pointer">Manutenção vencida</Label>
+                <div className="space-y-1.5">
+                  <Label>Revisão Vencida</Label>
+                  <RadioGroup value={editManutencaoVencida ? 'sim' : 'nao'} onValueChange={(v) => setEditManutencaoVencida(v === 'sim')} className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="sim" id="edit-manut-sim" />
+                      <Label htmlFor="edit-manut-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="nao" id="edit-manut-nao" />
+                      <Label htmlFor="edit-manut-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
               </div>
             </div>

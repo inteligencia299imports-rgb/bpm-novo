@@ -29,7 +29,7 @@ interface InteresseRow { atendimento_id: string | null; marca: string | null; mo
 interface EstoqueRow {
   id: string; atendimento_venda_id: string | null; avaliacao_id: string | null;
   tipo: string | null; marca: string | null; modelo: string | null; placa: string | null;
-  preco: number | null; preco_acao: number | null; valor_venda: number | null;
+  preco: number | null; preco_acao: number | null; valor_venda: number | null; data_venda: string | null;
   updated_at: string | null; created_at: string | null;
 }
 interface AvaliacaoRow {
@@ -40,7 +40,7 @@ interface AvaliacaoRow {
 }
 export interface AtendimentoRow {
   id: string; loja: string | null; nome_cliente: string | null; vendedor_id: string | null;
-  situacao: string | null; valor_venda: number | null; data_venda: string | null; created_at: string;
+  situacao: string | null; created_at: string;
 }
 
 export interface CostAggregate {
@@ -211,12 +211,12 @@ export function computeRowMetrics(atend: AtendimentoRow, idx: ShowroomIndexes, m
   if (mode === 'venda') {
     quantoVende = Number(avaliacao?.quanto_vende || 0);
     valorFechamento = Number(avaliacao?.valor_fechamento || 0);
-    valorVendaReal = Number(atend.valor_venda ?? estoque?.valor_venda ?? estoque?.preco ?? 0);
+    valorVendaReal = Number(estoque?.valor_venda ?? estoque?.preco ?? 0);
   } else {
-    quantoVende = nz(avaliacao?.quanto_vende) ?? nz(estoque?.preco_acao) ?? nz(estoque?.preco) ?? nz(atend.valor_venda) ?? nz(estoque?.valor_venda) ?? 0;
+    quantoVende = nz(avaliacao?.quanto_vende) ?? nz(estoque?.preco_acao) ?? nz(estoque?.preco) ?? nz(estoque?.valor_venda) ?? 0;
     valorFechamento = nz(avaliacao?.valor_fechamento) ?? nz(consignanteV) ?? nz(contratoV)
       ?? (tipo === 'consignada' ? nz(avaliacao?.avaliacao_consignacao) : nz(avaliacao?.avaliacao_compra)) ?? 0;
-    valorVendaReal = Number(atend.valor_venda ?? estoque?.valor_venda ?? estoque?.preco_acao ?? estoque?.preco ?? 0);
+    valorVendaReal = Number(estoque?.valor_venda ?? estoque?.preco_acao ?? estoque?.preco ?? 0);
   }
 
   const taxaFixa = ['propria', 'convertida'].includes(tipo) ? 445 : 0;
@@ -269,12 +269,13 @@ export function filterVendidas(
   dateFrom?: Date, dateTo?: Date,
 ) {
   return atends.filter((a) => {
-    if (a.situacao !== 'vendido' || !a.data_venda) return false;
-    if (!matchesLoja(a.loja, loja)) return false;
+    if (a.situacao !== 'vendido') return false;
     const est = idx.estoqueByAtendVenda.get(a.id);
+    if (!est?.data_venda) return false;
+    if (!matchesLoja(a.loja, loja)) return false;
     const t = est?.tipo || tipoDefault(a.loja);
     if (!matchesTipo(t, tipo)) return false;
-    const dv = new Date(a.data_venda);
+    const dv = new Date(est.data_venda);
     if (dateFrom && dv < dateFrom) return false;
     if (dateTo && dv > dateTo) return false;
     return true;

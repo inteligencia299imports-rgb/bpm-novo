@@ -33,6 +33,7 @@ create unique index if not exists empresas_cnpj_key on public.empresas (cnpj) wh
 update public.empresas set bpm = true where nome in
   ('Ducati BSB', 'Ducati FLN', 'Ducati POA', '299i', '299s', '299f', '299p', 'Aventura');
 
+drop trigger if exists trg_empresas_updated on public.empresas;
 create trigger trg_empresas_updated before
 update on public.empresas for each row
 execute function public.set_updated_at();

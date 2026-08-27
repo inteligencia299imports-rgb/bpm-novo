@@ -37,10 +37,15 @@ $$;
 -- ---------------------------------------------------------------------
 alter table public.atendimentos_motos add column if not exists loja_id uuid references public.loja_empresas(id);
 
-update public.atendimentos_motos a
-set loja_id = le.id
-from public.loja_empresas le
-where le.loja = a.loja and le.sistema = 'motos' and a.loja_id is null;
+do $$
+begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'atendimentos_motos' and column_name = 'loja') then
+    update public.atendimentos_motos a
+    set loja_id = le.id
+    from public.loja_empresas le
+    where le.loja = a.loja and le.sistema = 'motos' and a.loja_id is null;
+  end if;
+end $$;
 
 alter table public.atendimentos_motos alter column loja_id set not null;
 

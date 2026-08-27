@@ -13,7 +13,6 @@ import { POS_VENDA_COLUMNS, INTERESSES } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
-import ObservacoesProcesso from '@/components/shared/ObservacoesProcesso';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProcessoDialog from './ProcessoDialog';
@@ -241,7 +240,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               {statusCol && <Badge className="text-[10px] shrink-0" style={{ backgroundColor: `${statusCol.hex}20`, color: statusCol.hex }}>{statusCol.label}</Badge>}
             </div>
             <p className="text-xs text-muted-foreground">
-              {format(new Date(item.data_venda || item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              {format(new Date(Object.values(estoqueData).find((e: any) => e.data_venda)?.data_venda || item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -512,27 +511,27 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                                 </div>
                               )}
                             </div>
-                            {item.valor_sinal != null && (
+                            {estItem.valor_sinal != null && (
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="text-xs text-muted-foreground">Valor do Sinal</p>
-                                  <p className="font-semibold text-amber-600">{formatCurrency(item.valor_sinal)}</p>
+                                  <p className="font-semibold text-amber-600">{formatCurrency(estItem.valor_sinal)}</p>
                                 </div>
                               </div>
                             )}
-                            {item.valor_venda != null && (
+                            {estItem.valor_venda != null && (
                               <>
                                 <Separator />
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <p className="text-xs text-muted-foreground">Valor de Venda</p>
-                                    <p className="font-semibold text-primary">{formatCurrency(item.valor_venda)}</p>
+                                    <p className="font-semibold text-primary">{formatCurrency(estItem.valor_venda)}</p>
                                   </div>
                                   {estItem.preco_acao != null && (
                                     <div className="text-right">
                                       <p className="text-xs text-muted-foreground">Diferença (Venda - Ação)</p>
                                       {(() => {
-                                        const diff = (item.valor_venda || 0) - (estItem.preco_acao || 0);
+                                        const diff = (estItem.valor_venda || 0) - (estItem.preco_acao || 0);
                                         return (
                                           <p className={`font-semibold ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
                                             {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
@@ -587,17 +586,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
 
           {/* Observações */}
-          <AtendimentoObservacoes atendimentoId={item.id} />
-
-          {/* Observações do Processo */}
-          <ObservacoesProcesso
-            entityId={item.id}
-            entityType={
-              isIntermParte1 ? 'intermediacao_parte1' :
-              statusField === 'intermediacao_parte2_status' ? 'intermediacao_parte2' :
-              'pos_venda'
-            }
-          />
+          <AtendimentoObservacoes idOperacao={item.id} />
 
           {/* Histórico de Movimentações - Intermediação */}
           {isIntermParte1 && intermHistory.length > 0 && (
@@ -650,15 +639,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   </div>
                 )}
               </div>
-              {viewAvaliacaoData.observacao_avaliador && (
-                <>
-                  <Separator />
-                  <div>
-                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações do Avaliador</span>
-                    <p className="text-sm mt-1">{viewAvaliacaoData.observacao_avaliador}</p>
-                  </div>
-                </>
-              )}
               {viewAvaliacaoData.avaliador_nome && (
                 <div>
                   <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Avaliador</span>

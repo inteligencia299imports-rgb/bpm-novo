@@ -117,8 +117,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
   const loadData = useCallback(async () => {
     const [aRes, eRes, avRes, coRes, copRes, ccRes, cRes, miRes, urRes, pcpRes] = await Promise.all([
-      fetchAllRange<any>(() => supabase.from('atendimentos_motos').select('id, loja_id, loja_empresas:loja_id(loja), vendedor_id, situacao, valor_venda, data_venda, created_at, cliente:clientes_fornecedores(nome_razao_social)')),
-      fetchAllRange<any>(() => supabase.from('estoque').select('id, atendimento_venda_id, avaliacao_id, tipo, marca, modelo, placa, preco, preco_acao, valor_venda, updated_at, created_at')),
+      fetchAllRange<any>(() => supabase.from('atendimentos_motos').select('id, loja_id, loja_empresas:loja_id(loja), vendedor_id, situacao, created_at, cliente:clientes_fornecedores(nome_razao_social)')),
+      fetchAllRange<any>(() => supabase.from('estoque').select('id, atendimento_venda_id, avaliacao_id, tipo, marca, modelo, placa, preco, preco_acao, valor_venda, data_venda, updated_at, created_at')),
       fetchAllRange<any>(() => supabase.from('avaliacoes').select('id, quanto_vende, valor_fechamento, avaliacao_compra, avaliacao_consignacao, updated_at, created_at')),
       fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado')),
       fetchAllRange<any>(() => supabase.from('custos_operacionais').select('contrato_consignante_id, responsavel, valor')),
@@ -193,18 +193,18 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     if (!indexes) return [] as any[];
     const map = new Map<string, { nomeCompleto: string; atendimentos: number; vendas: number; sinais: number; faturamento: number }>();
     const inRangeCreated = (a: AtendimentoRow) => (!dateFrom || new Date(a.created_at) >= dateFrom) && (!dateTo || new Date(a.created_at) <= dateTo);
-    const inRangeVenda = (a: AtendimentoRow) => a.data_venda && (!dateFrom || new Date(a.data_venda) >= dateFrom) && (!dateTo || new Date(a.data_venda) <= dateTo);
+    const inRangeVenda = (dataVenda: string | null | undefined) => dataVenda && (!dateFrom || new Date(dataVenda) >= dateFrom) && (!dateTo || new Date(dataVenda) <= dateTo);
     for (const a of atendimentos) {
       if (!a.vendedor_id) continue;
       if (!matchesLoja(a.loja, filterLoja)) continue;
       const entry = map.get(a.vendedor_id) || { nomeCompleto: indexes.nomeByUser.get(a.vendedor_id) || 'Desconhecido', atendimentos: 0, vendas: 0, sinais: 0, faturamento: 0 };
       if (inRangeCreated(a)) entry.atendimentos += 1;
-      if (a.situacao === 'vendido' && inRangeVenda(a)) {
-        const est = indexes.estoqueByAtendVenda.get(a.id);
+      const est = indexes.estoqueByAtendVenda.get(a.id);
+      if (a.situacao === 'vendido' && inRangeVenda(est?.data_venda)) {
         const t = est?.tipo || tipoDefault(a.loja);
         if (matchesTipo(t, filterTipo)) {
           entry.vendas += 1;
-          entry.faturamento += Number(est?.preco ?? a.valor_venda ?? 0);
+          entry.faturamento += Number(est?.preco ?? 0);
         }
       }
       if (a.situacao === 'sinal') entry.sinais += 1;
@@ -218,12 +218,12 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   const motosVendidas = useMemo(() => {
     if (!indexes) return [] as any[];
     return filterVendidas(atendimentos, indexes, filterLoja, filterTipo, dateFrom, dateTo)
-      .sort((a, b) => new Date(b.data_venda!).getTime() - new Date(a.data_venda!).getTime())
+      .sort((a, b) => new Date(indexes.estoqueByAtendVenda.get(b.id)?.data_venda || 0).getTime() - new Date(indexes.estoqueByAtendVenda.get(a.id)?.data_venda || 0).getTime())
       .map((a) => {
         const m = computeRowMetrics(a, indexes, 'venda');
         return {
           nomeCliente: a.nome_cliente, loja: a.loja, vendedor: indexes.nomeByUser.get(a.vendedor_id || '') || '-',
-          tipo: m.tipo, modelo: m.modelo, placa: m.placa, dataVenda: a.data_venda,
+          tipo: m.tipo, modelo: m.modelo, placa: m.placa, dataVenda: indexes.estoqueByAtendVenda.get(a.id)?.data_venda,
           quantoVende: m.quantoVende, valorFechamento: m.valorFechamento,
           margemPrevista: m.margemPrevista, pctMargemPrevista: m.pctMargemPrevista,
           valorVenda: m.valorVenda, margemOficina: m.margemOficina, abatimentos: m.abatimentos,

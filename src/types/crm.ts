@@ -251,7 +251,6 @@ export interface Avaliacao {
   cor: string | null;
   placa: string | null;
   km: string | null;
-  observacoes: string | null;
   tem_manual: boolean | null;
   tem_chave_reserva: boolean | null;
   manutencao_vencida: boolean | null;
@@ -274,7 +273,6 @@ export interface Avaliacao {
   previsao_custos_loja: number | null;
   previsao_custos_cliente: number | null;
   negociacao: Negociacao | null;
-  observacao_avaliador: string | null;
   situacao: SituacaoAvaliacao;
   avaliador_id: string | null;
   created_at: string;

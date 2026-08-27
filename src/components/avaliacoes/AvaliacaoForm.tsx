@@ -23,9 +23,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
-import { Checkbox } from '@/components/ui/checkbox';
 import StatusTimeline from '@/components/shared/StatusTimeline';
-import ObservacoesProcesso from '@/components/shared/ObservacoesProcesso';
+import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
 import type { SituacaoAvaliacao, MotoFoto } from '@/types/crm';
 import { toast } from 'sonner';
@@ -107,6 +106,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [contratoCompraOpen, setContratoCompraOpen] = useState(false);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
+  const [cnhDocId, setCnhDocId] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
   const [atpvUrl, setAtpvUrl] = useState<string | null>(null);
   const [procuracaoUrl, setProcuracaoUrl] = useState<string | null>(null);
@@ -131,7 +131,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [editCor, setEditCor] = useState('');
   const [editCategoria, setEditCategoria] = useState('');
   const [editCilindrada, setEditCilindrada] = useState('');
-  const [editMotoObs, setEditMotoObs] = useState('');
   const [editTemManual, setEditTemManual] = useState(false);
   const [editTemChaveReserva, setEditTemChaveReserva] = useState(false);
   const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
@@ -150,7 +149,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setEditCor(moto.cor || '');
     setEditCategoria(moto.categoria || '');
     setEditCilindrada(moto.cilindrada ? (parseInt(moto.cilindrada.replace(/\D/g,''),10) || 0).toLocaleString('pt-BR') : '');
-    setEditMotoObs(moto.observacoes || '');
     setEditTemManual(moto.tem_manual ?? false);
     setEditTemChaveReserva(moto.tem_chave_reserva ?? false);
     setEditManutencaoVencida(moto.manutencao_vencida ?? false);
@@ -173,7 +171,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       cor: editCor.trim() || null,
       categoria: editCategoria.trim() || null,
       cilindrada: editCilindrada.replace(/\D/g, '') || null,
-      observacoes: editMotoObs.trim() || null,
       tem_manual: editTemManual,
       tem_chave_reserva: editTemChaveReserva,
       manutencao_vencida: editManutencaoVencida,
@@ -195,7 +192,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         cor: updateData.cor,
         categoria: updateData.categoria,
         cilindrada: updateData.cilindrada,
-        observacoes: updateData.observacoes,
       };
       await supabase.from('estoque').update(estoqueUpdate).eq('avaliacao_id', moto.id);
       // Update local state
@@ -263,7 +259,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [prevCustosLoja, setPrevCustosLoja] = useState('');
   const [prevCustosCliente, setPrevCustosCliente] = useState('');
   const [valorBonus, setValorBonus] = useState('');
-  const [obsAvaliador, setObsAvaliador] = useState('');
   const [classificacao, setClassificacao] = useState('');
   const [valorFechamentoEdit, setValorFechamentoEdit] = useState('');
   const [precoAcaoEdit, setPrecoAcaoEdit] = useState('');
@@ -288,10 +283,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setAvaliacao({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja } });
       const clienteId = (data.atendimentos_motos as any)?.cliente_id;
       if (clienteId) {
-        const { data: cnhDoc } = await supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', clienteId).eq('tipo_documento', 'cnh').maybeSingle();
+        const { data: cnhDoc } = await supabase.from('clientes_fornecedores_documentos').select('id, arquivo_url').eq('cliente_fornecedor_id', clienteId).eq('tipo_documento', 'cnh').maybeSingle();
         setCnhUrl(cnhDoc?.arquivo_url || null);
+        setCnhDocId(cnhDoc?.id || null);
       } else {
         setCnhUrl(null);
+        setCnhDocId(null);
       }
       setCrlvUrl(data.crlv_url || null);
       setAtpvUrl(data.atpv_url || null);
@@ -310,7 +307,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setPrevCustosLoja(numberToCurrencyMask(data.previsao_custos_loja));
       setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
       setValorBonus(numberToCurrencyMask((data as any).trade_in));
-      setObsAvaliador(data.observacao_avaliador || '');
       setClassificacao((data as any).classificacao || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
 
@@ -394,7 +390,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   };
 
   const allFieldsFilled = () => {
-    return [valorFipe, menorValor, maiorValor, quantoPede, quantoVende, quantoVendeErrado, avalConsig, avalCompra, prevCustosLoja, prevCustosCliente, obsAvaliador].every(v => v.trim() !== '') && classificacao !== '';
+    return [valorFipe, menorValor, maiorValor, quantoPede, quantoVende, quantoVendeErrado, avalConsig, avalCompra, prevCustosLoja, prevCustosCliente].every(v => v.trim() !== '') && classificacao !== '';
   };
 
   const handleSave = async () => {
@@ -415,7 +411,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       previsao_custos_loja: parseCurrencyToNumber(prevCustosLoja),
       previsao_custos_cliente: parseCurrencyToNumber(prevCustosCliente),
       trade_in: parseCurrencyToNumber(valorBonus) || null,
-      observacao_avaliador: obsAvaliador || null,
       classificacao: classificacao || null,
       avaliador_id: user!.id,
       situacao: avaliacao?.situacao === 'sem_avaliar' ? 'em_aberto' : avaliacao?.situacao ?? 'em_aberto',
@@ -642,6 +637,27 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     return `https://wa.me/${number}`;
   })();
 
+  const handleCnhUploaded = async (url: string) => {
+    if (!at?.cliente_id) return;
+    if (cnhDocId) {
+      await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: url }).eq('id', cnhDocId);
+    } else {
+      const { data } = await supabase.from('clientes_fornecedores_documentos')
+        .insert({ cliente_fornecedor_id: at.cliente_id, tipo_documento: 'cnh', arquivo_url: url })
+        .select('id').single();
+      setCnhDocId(data?.id || null);
+    }
+    setCnhUrl(url);
+  };
+
+  const handleCnhRemoved = async () => {
+    if (cnhDocId) {
+      await supabase.from('clientes_fornecedores_documentos').delete().eq('id', cnhDocId);
+      setCnhDocId(null);
+    }
+    setCnhUrl(null);
+  };
+
   const InfoItem = ({ label, value }: { label: string; value: string | null | undefined }) => (
     value ? (
       <div className="flex flex-col gap-0.5">
@@ -781,10 +797,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 {(at?.cliente as any)?.clientes_fornecedores_enderecos?.[0]?.cep && <InfoItem label="CEP" value={formatCep((at.cliente as any).clientes_fornecedores_enderecos[0].cep)} />}
                 {(at?.cliente as any)?.clientes_fornecedores_enderecos?.[0]?.logradouro && <InfoItem label="Endereço" value={(at.cliente as any).clientes_fornecedores_enderecos[0].logradouro} />}
               </div>
-              {cnhUrl && (
+              {at?.cliente_id && (
                 <>
                   <Separator className="my-2" />
-                  <span className="text-xs text-green-600 font-medium">CNH anexada</span>
+                  <DocumentUpload
+                    label="CNH"
+                    currentUrl={cnhUrl}
+                    bucketPath={`docs/${at.cliente_id}/cnh`}
+                    onUploaded={handleCnhUploaded}
+                    onRemoved={handleCnhRemoved}
+                  />
                 </>
               )}
             </CardContent>
@@ -1078,12 +1100,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       </div>
                     )}
                   </div>
-                  {avaliacao?.observacao_avaliador && (
-                    <div className="mt-2">
-                      <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observação do Avaliador</span>
-                      <p className="text-sm mt-1">{avaliacao.observacao_avaliador}</p>
-                    </div>
-                  )}
                   {canEdit && (
                     <Button size="sm" variant="outline" className="gap-1.5 mt-3" onClick={() => setShowEvalDialog(true)}>
                       <Edit className="h-4 w-4" /> Editar Avaliação
@@ -1104,7 +1120,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </Card>
 
           {/* Observações */}
-          {avaliacaoId && <ObservacoesProcesso entityId={avaliacaoId} entityType="avaliacao" title="Observações do Atendimento" />}
+          {avaliacao?.atendimento_id && <AtendimentoObservacoes idOperacao={avaliacao.atendimento_id} />}
 
           {/* Histórico de Movimentações */}
           <Card className="md:col-span-2">
@@ -1261,10 +1277,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   </button>
                 ))}
               </div>
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Observação do Avaliador <span className="text-destructive">*</span></Label>
-              <Textarea value={obsAvaliador} onChange={e => setObsAvaliador(e.target.value)} rows={3} placeholder="Observações sobre a avaliação..." />
             </div>
           </div>
           <div className="flex gap-3 justify-end pt-4">
@@ -1584,22 +1596,45 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   <SelectContent>{CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Observações</Label>
-                <Textarea value={editMotoObs} onChange={e => setEditMotoObs(e.target.value)} rows={3} />
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Checkbox id="edit-moto-manual" checked={editTemManual} onCheckedChange={(v) => setEditTemManual(!!v)} />
-                  <Label htmlFor="edit-moto-manual" className="cursor-pointer">Tem manual</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                <div className="space-y-1.5">
+                  <Label>Manual</Label>
+                  <RadioGroup value={editTemManual ? 'sim' : 'nao'} onValueChange={(v) => setEditTemManual(v === 'sim')} className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="sim" id="edit-moto-manual-sim" />
+                      <Label htmlFor="edit-moto-manual-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="nao" id="edit-moto-manual-nao" />
+                      <Label htmlFor="edit-moto-manual-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox id="edit-moto-chave" checked={editTemChaveReserva} onCheckedChange={(v) => setEditTemChaveReserva(!!v)} />
-                  <Label htmlFor="edit-moto-chave" className="cursor-pointer">Tem chave reserva</Label>
+                <div className="space-y-1.5">
+                  <Label>Chave Reserva</Label>
+                  <RadioGroup value={editTemChaveReserva ? 'sim' : 'nao'} onValueChange={(v) => setEditTemChaveReserva(v === 'sim')} className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="sim" id="edit-moto-chave-sim" />
+                      <Label htmlFor="edit-moto-chave-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="nao" id="edit-moto-chave-nao" />
+                      <Label htmlFor="edit-moto-chave-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox id="edit-moto-manut" checked={editManutencaoVencida} onCheckedChange={(v) => setEditManutencaoVencida(!!v)} />
-                  <Label htmlFor="edit-moto-manut" className="cursor-pointer">Manutenção vencida</Label>
+                <div className="space-y-1.5">
+                  <Label>Revisão Vencida</Label>
+                  <RadioGroup value={editManutencaoVencida ? 'sim' : 'nao'} onValueChange={(v) => setEditManutencaoVencida(v === 'sim')} className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="sim" id="edit-moto-manut-sim" />
+                      <Label htmlFor="edit-moto-manut-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="nao" id="edit-moto-manut-nao" />
+                      <Label htmlFor="edit-moto-manut-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
               </div>
             </div>

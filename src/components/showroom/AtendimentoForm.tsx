@@ -138,7 +138,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [vendaPlaca, setVendaPlaca] = useState('');
   const [vendaKm, setVendaKm] = useState('');
   const [vendaCilindrada, setVendaCilindrada] = useState('');
-  const [vendaObs, setVendaObs] = useState('');
   const [temManual, setTemManual] = useState('');
   const [temChaveReserva, setTemChaveReserva] = useState('');
   const [manutencaoEmDia, setManutencaoEmDia] = useState('');
@@ -190,7 +189,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             setVendaPlaca(ma.placa || '');
             setVendaKm(ma.km || '');
             setVendaCilindrada((ma as any).cilindrada || '');
-            setVendaObs(ma.observacoes || '');
             setTemManual((ma as any).tem_manual ? 'sim' : (ma as any).tem_manual === false ? 'nao' : '');
             setTemChaveReserva((ma as any).tem_chave_reserva ? 'sim' : (ma as any).tem_chave_reserva === false ? 'nao' : '');
             setManutencaoEmDia((ma as any).manutencao_vencida ? 'sim' : (ma as any).manutencao_vencida === false ? 'nao' : '');
@@ -401,7 +399,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           categoria: vendaCategoria || null, cor: vendaCor || null,
           placa: vendaPlaca || null, km: vendaKm || null,
           cilindrada: vendaCilindrada || null,
-          observacoes: vendaObs || null,
           tem_manual: temManual === 'sim',
           tem_chave_reserva: temChaveReserva === 'sim',
           manutencao_vencida: manutencaoEmDia === 'sim',
@@ -645,7 +642,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             placa={vendaPlaca} setPlaca={setVendaPlaca}
             km={vendaKm} setKm={setVendaKm}
             cilindrada={vendaCilindrada} setCilindrada={setVendaCilindrada}
-            obs={vendaObs} setObs={setVendaObs}
             temManual={temManual} setTemManual={setTemManual}
             temChaveReserva={temChaveReserva} setTemChaveReserva={setTemChaveReserva}
             manutencaoEmDia={manutencaoEmDia} setManutencaoEmDia={setManutencaoEmDia}

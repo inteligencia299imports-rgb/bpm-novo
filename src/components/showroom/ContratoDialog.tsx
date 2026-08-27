@@ -172,7 +172,7 @@ const ContratoDialog: React.FC<Props> = ({
     if (!open) return;
     const loadContrato = async () => {
       setLoading(true);
-      const [{ data: contrato }, { data: histGerado }, { data: freshAtendimento }] = await Promise.all([
+      const [{ data: contrato }, { data: histGerado }, { data: freshAtendimento }, { data: freshEstoque }] = await Promise.all([
         supabase
           .from('contratos')
           .select('*')
@@ -187,15 +187,20 @@ const ContratoDialog: React.FC<Props> = ({
           .limit(1),
         supabase
           .from('atendimentos_motos')
-          .select('valor_sinal, valor_venda, cliente:clientes_fornecedores(cpf_cnpj)')
+          .select('cliente:clientes_fornecedores(cpf_cnpj)')
           .eq('id', atendimento.id)
+          .maybeSingle(),
+        supabase
+          .from('estoque')
+          .select('valor_sinal, valor_venda')
+          .eq('atendimento_venda_id', atendimento.id)
           .maybeSingle(),
       ]);
 
       setJaGerado(!!(histGerado && histGerado.length > 0));
 
-      const atSinal = freshAtendimento?.valor_sinal ?? (atendimento as any).valor_sinal;
-      const atVenda = freshAtendimento?.valor_venda ?? (atendimento as any).valor_venda;
+      const atSinal = freshEstoque?.valor_sinal ?? (atendimento as any).valor_sinal;
+      const atVenda = freshEstoque?.valor_venda ?? (atendimento as any).valor_venda;
       const atCpf = (freshAtendimento as any)?.cliente?.cpf_cnpj ?? atendimento.cliente?.cpf_cnpj;
 
       if (contrato) {
@@ -338,14 +343,14 @@ const ContratoDialog: React.FC<Props> = ({
       data_vencimento_sinal: dataVencimento ? format(dataVencimento, 'yyyy-MM-dd') : null,
     };
 
-    // Save valor_sinal/valor_venda to atendimento, cpf_cnpj to cliente
-    const atendimentoUpdate: any = {};
+    // Save valor_sinal/valor_venda to estoque, cpf_cnpj to cliente
+    const estoqueUpdate: any = {};
     const parsedSinal = parseCurrencyInput(valorSinal);
     const parsedVenda = parseCurrencyInput(valorVenda);
-    if (parsedSinal !== null) atendimentoUpdate.valor_sinal = parsedSinal;
-    if (parsedVenda !== null) atendimentoUpdate.valor_venda = parsedVenda;
-    if (Object.keys(atendimentoUpdate).length > 0) {
-      await supabase.from('atendimentos_motos').update(atendimentoUpdate).eq('id', atendimento.id);
+    if (parsedSinal !== null) estoqueUpdate.valor_sinal = parsedSinal;
+    if (parsedVenda !== null) estoqueUpdate.valor_venda = parsedVenda;
+    if (Object.keys(estoqueUpdate).length > 0) {
+      await supabase.from('estoque').update(estoqueUpdate).eq('atendimento_venda_id', atendimento.id);
     }
     if (cpfCnpj && atendimento.cliente_id) {
       await supabase.from('clientes_fornecedores').update({ cpf_cnpj: cpfCnpj }).eq('id', atendimento.cliente_id);

@@ -5,5 +5,11 @@
 alter table public.loja_empresas
   add column if not exists id uuid not null default gen_random_uuid();
 
-alter table public.loja_empresas
-  add constraint loja_empresas_id_key unique (id);
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'loja_empresas_id_key' and conrelid = 'public.loja_empresas'::regclass
+  ) then
+    alter table public.loja_empresas add constraint loja_empresas_id_key unique (id);
+  end if;
+end $$;

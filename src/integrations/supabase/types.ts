@@ -43,7 +43,6 @@ export type Database = {
         Row: {
           cliente_id: string
           created_at: string
-          data_venda: string | null
           id: string
           interesse: string
           intermediacao_parte1_status: string
@@ -58,14 +57,11 @@ export type Database = {
           temperatura: string | null
           tipo_atendimento: string
           updated_at: string
-          valor_sinal: number | null
-          valor_venda: number | null
           vendedor_id: string
         }
         Insert: {
           cliente_id: string
           created_at?: string
-          data_venda?: string | null
           id?: string
           interesse: string
           intermediacao_parte1_status?: string
@@ -80,14 +76,11 @@ export type Database = {
           temperatura?: string | null
           tipo_atendimento: string
           updated_at?: string
-          valor_sinal?: number | null
-          valor_venda?: number | null
           vendedor_id: string
         }
         Update: {
           cliente_id?: string
           created_at?: string
-          data_venda?: string | null
           id?: string
           interesse?: string
           intermediacao_parte1_status?: string
@@ -102,8 +95,6 @@ export type Database = {
           temperatura?: string | null
           tipo_atendimento?: string
           updated_at?: string
-          valor_sinal?: number | null
-          valor_venda?: number | null
           vendedor_id?: string
         }
         Relationships: [
@@ -135,7 +126,6 @@ export type Database = {
           categoria: string | null
           cilindrada: string | null
           classificacao: string | null
-          consignacao_observacoes: string | null
           consignacao_status: string
           consulta_realizada: boolean | null
           consulta_solicitada: boolean | null
@@ -154,10 +144,7 @@ export type Database = {
           nps_enviado_at: string | null
           nps_respondido_at: string | null
           nps_status: string
-          observacao_avaliador: string | null
-          observacoes: string | null
           placa: string | null
-          pos_compra_observacoes: string | null
           pos_compra_status: string
           preparacao_status: string
           previsao_custos_cliente: number | null
@@ -187,7 +174,6 @@ export type Database = {
           categoria?: string | null
           cilindrada?: string | null
           classificacao?: string | null
-          consignacao_observacoes?: string | null
           consignacao_status?: string
           consulta_realizada?: boolean | null
           consulta_solicitada?: boolean | null
@@ -206,10 +192,7 @@ export type Database = {
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
           nps_status?: string
-          observacao_avaliador?: string | null
-          observacoes?: string | null
           placa?: string | null
-          pos_compra_observacoes?: string | null
           pos_compra_status?: string
           preparacao_status?: string
           previsao_custos_cliente?: number | null
@@ -239,7 +222,6 @@ export type Database = {
           categoria?: string | null
           cilindrada?: string | null
           classificacao?: string | null
-          consignacao_observacoes?: string | null
           consignacao_status?: string
           consulta_realizada?: boolean | null
           consulta_solicitada?: boolean | null
@@ -258,10 +240,7 @@ export type Database = {
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
           nps_status?: string
-          observacao_avaliador?: string | null
-          observacoes?: string | null
           placa?: string | null
-          pos_compra_observacoes?: string | null
           pos_compra_status?: string
           preparacao_status?: string
           previsao_custos_cliente?: number | null
@@ -899,44 +878,6 @@ export type Database = {
         }
         Relationships: []
       }
-      loja_empresas: {
-        Row: {
-          ativo: boolean
-          created_at: string
-          empresa_id: string
-          id: string
-          loja: string
-          sistema: string
-          updated_at: string
-        }
-        Insert: {
-          ativo?: boolean
-          created_at?: string
-          empresa_id: string
-          id?: string
-          loja: string
-          sistema: string
-          updated_at?: string
-        }
-        Update: {
-          ativo?: boolean
-          created_at?: string
-          empresa_id?: string
-          id?: string
-          loja?: string
-          sistema?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "loja_empresas_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "empresas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       estoque: {
         Row: {
           ano_fabricacao: string | null
@@ -1082,6 +1023,44 @@ export type Database = {
             columns: ["contrato_id"]
             isOneToOne: false
             referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loja_empresas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          empresa_id: string
+          id: string
+          loja: string
+          sistema: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id: string
+          id?: string
+          loja: string
+          sistema: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          loja?: string
+          sistema?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loja_empresas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]
@@ -1263,36 +1242,6 @@ export type Database = {
           id_operacao?: string
           observacao?: string
           user_id?: string | null
-        }
-        Relationships: []
-      }
-      observacoes_processo: {
-        Row: {
-          created_at: string
-          entity_id: string
-          entity_type: string
-          id: string
-          texto: string
-          usuario_id: string
-          usuario_nome: string
-        }
-        Insert: {
-          created_at?: string
-          entity_id: string
-          entity_type: string
-          id?: string
-          texto: string
-          usuario_id: string
-          usuario_nome: string
-        }
-        Update: {
-          created_at?: string
-          entity_id?: string
-          entity_type?: string
-          id?: string
-          texto?: string
-          usuario_id?: string
-          usuario_nome?: string
         }
         Relationships: []
       }
@@ -1616,10 +1565,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      has_master_or_gerente_empresa: {
-        Args: { _loja: string; _user_id: string }
-        Returns: boolean
-      }
+      has_master_or_gerente_empresa:
+        | { Args: { _loja: string; _user_id: string }; Returns: boolean }
+        | { Args: { _loja_id: string; _user_id: string }; Returns: boolean }
       next_report_cycle: {
         Args: { _start: string }
         Returns: {
@@ -1718,17 +1666,15 @@ export type Database = {
         Args: { _loja?: string; _tipo?: string }
         Returns: Json
       }
-      relatorio_showroom_sinais:
-        | {
-            Args: {
-              _date_from?: string
-              _date_to?: string
-              _loja?: string
-              _tipo?: string
-            }
-            Returns: Json
-          }
-        | { Args: { _loja?: string; _tipo?: string }; Returns: Json }
+      relatorio_showroom_sinais: {
+        Args: {
+          _date_from?: string
+          _date_to?: string
+          _loja?: string
+          _tipo?: string
+        }
+        Returns: Json
+      }
       relatorio_showroom_vendedores: {
         Args: {
           _date_from?: string
@@ -1775,10 +1721,9 @@ export type Database = {
         Args: { _loja?: string; _user_id: string }
         Returns: Json
       }
-      user_has_empresa: {
-        Args: { _loja: string; _user_id: string }
-        Returns: boolean
-      }
+      user_has_empresa:
+        | { Args: { _loja: string; _user_id: string }; Returns: boolean }
+        | { Args: { _loja_id: string; _user_id: string }; Returns: boolean }
       user_shares_empresa: {
         Args: { _empresa_id: string; _user_id: string }
         Returns: boolean

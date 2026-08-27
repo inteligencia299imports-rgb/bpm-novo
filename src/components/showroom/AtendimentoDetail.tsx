@@ -8,14 +8,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar as CalendarIcon, Bike, FileText, MessageCircle, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil, IdCard, Truck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar as CalendarIcon, Bike, FileText, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil, IdCard, Truck } from 'lucide-react';
+import WhatsAppIcon from '@/components/shared/WhatsAppIcon';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { Atendimento, MotoInteresse, Avaliacao, SituacaoShowroom } from '@/types/crm';
-import { SITUACOES_SHOWROOM, INTERESSES } from '@/types/crm';
+import { SITUACOES_SHOWROOM, INTERESSES, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -27,7 +30,6 @@ import PhotoUpload from './PhotoUpload';
 import DocumentUpload from './DocumentUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import StatusTimeline from '@/components/shared/StatusTimeline';
-import ObservacoesProcesso from '@/components/shared/ObservacoesProcesso';
 import AtendimentoObservacoes from './AtendimentoObservacoes';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import ContratoDialog from './ContratoDialog';
@@ -91,6 +93,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [photoMotoId, setPhotoMotoId] = useState<string | null>(null);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
+  const [cnhDocId, setCnhDocId] = useState<string | null>(null);
   const [crlvUrls, setCrlvUrls] = useState<Record<string, string | null>>({});
   const [atpvUrls, setAtpvUrls] = useState<Record<string, string | null>>({});
   const [procuracaoUrls, setProcuracaoUrls] = useState<Record<string, string | null>>({});
@@ -109,6 +112,23 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
 
+  // Edicao de dados da moto avaliada
+  const [editMotoId, setEditMotoId] = useState<string | null>(null);
+  const [editMarca, setEditMarca] = useState('');
+  const [editModelo, setEditModelo] = useState('');
+  const [editPlaca, setEditPlaca] = useState('');
+  const [editKm, setEditKm] = useState('');
+  const [editAnoFab, setEditAnoFab] = useState('');
+  const [editAnoMod, setEditAnoMod] = useState('');
+  const [editCor, setEditCor] = useState('');
+  const [editCategoria, setEditCategoria] = useState('');
+  const [editCilindrada, setEditCilindrada] = useState('');
+  const [editTemManual, setEditTemManual] = useState(false);
+  const [editTemChaveReserva, setEditTemChaveReserva] = useState(false);
+  const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
+  const [savingMotoEdit, setSavingMotoEdit] = useState(false);
+  const { getMarcaNomes, getModelosPorMarca } = useMarcasModelos();
+
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
 
@@ -116,8 +136,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     const fetchRelated = async () => {
       setLoading(true);
 
-      supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
-        .then(({ data }) => setCnhUrl(data?.arquivo_url || null));
+      supabase.from('clientes_fornecedores_documentos').select('id, arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
+        .then(({ data }) => { setCnhUrl(data?.arquivo_url || null); setCnhDocId(data?.id || null); });
 
       // Fetch showroom history immediately (no dependency on motoIds)
       const showroomHistoryPromise = supabase
@@ -283,17 +303,76 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     return `https://wa.me/${number}`;
   })();
 
+  const handleCnhUploaded = async (url: string) => {
+    if (!atendimento.cliente_id) return;
+    if (cnhDocId) {
+      await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: url }).eq('id', cnhDocId);
+    } else {
+      const { data } = await supabase.from('clientes_fornecedores_documentos')
+        .insert({ cliente_fornecedor_id: atendimento.cliente_id, tipo_documento: 'cnh', arquivo_url: url })
+        .select('id').single();
+      setCnhDocId(data?.id || null);
+    }
+    setCnhUrl(url);
+  };
+
+  const handleCnhRemoved = async () => {
+    if (cnhDocId) {
+      await supabase.from('clientes_fornecedores_documentos').delete().eq('id', cnhDocId);
+      setCnhDocId(null);
+    }
+    setCnhUrl(null);
+  };
+
+  const openEditMoto = (moto: Avaliacao) => {
+    setEditMotoId(moto.id);
+    setEditMarca(moto.marca || '');
+    setEditModelo(moto.modelo || '');
+    setEditPlaca(moto.placa || '');
+    setEditKm(moto.km ? (parseInt(moto.km.replace(/\D/g, ''), 10) || 0).toLocaleString('pt-BR') : '');
+    setEditAnoFab(moto.ano_fabricacao || '');
+    setEditAnoMod(moto.ano_modelo || '');
+    setEditCor(moto.cor || '');
+    setEditCategoria(moto.categoria || '');
+    setEditCilindrada(moto.cilindrada ? (parseInt(moto.cilindrada.replace(/\D/g, ''), 10) || 0).toLocaleString('pt-BR') : '');
+    setEditTemManual((moto as any).tem_manual ?? false);
+    setEditTemChaveReserva((moto as any).tem_chave_reserva ?? false);
+    setEditManutencaoVencida((moto as any).manutencao_vencida ?? false);
+  };
+
+  const handleSaveMotoEdit = async () => {
+    if (!editMotoId || !editMarca.trim() || !editModelo.trim()) {
+      toast.error('Marca e Modelo são obrigatórios');
+      return;
+    }
+    setSavingMotoEdit(true);
+    const updateData = {
+      marca: editMarca.trim(),
+      modelo: editModelo.trim(),
+      placa: editPlaca.trim() || null,
+      km: editKm.replace(/\D/g, '') || null,
+      ano_fabricacao: editAnoFab.trim() || null,
+      ano_modelo: editAnoMod.trim() || null,
+      cor: editCor.trim() || null,
+      categoria: editCategoria.trim() || null,
+      cilindrada: editCilindrada.replace(/\D/g, '') || null,
+      tem_manual: editTemManual,
+      tem_chave_reserva: editTemChaveReserva,
+      manutencao_vencida: editManutencaoVencida,
+    };
+    const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', editMotoId);
+    setSavingMotoEdit(false);
+    if (error) {
+      toast.error('Erro ao salvar dados da moto');
+      return;
+    }
+    setMotosAvaliacao(prev => prev.map(m => m.id === editMotoId ? { ...m, ...updateData } : m));
+    toast.success('Dados da moto atualizados!');
+    setEditMotoId(null);
+  };
+
   const handleStatusChange = async (value: SituacaoShowroom, label: string, extraData?: Record<string, any>, observacoes?: string) => {
-    const previousStatus = atendimento.situacao;
     const updateData: any = { situacao: value, ...extraData };
-    // Gravar data_venda no atendimento ao marcar como vendido
-    if (value === 'vendido') {
-      updateData.data_venda = new Date().toISOString();
-    }
-    // Limpar data_venda se reverter de vendido
-    if (previousStatus === 'vendido' && value !== 'vendido') {
-      updateData.data_venda = null;
-    }
     const { error } = await supabase.from('atendimentos_motos').update(updateData).eq('id', atendimento.id);
     if (error) {
       toast.error('Erro ao alterar status');
@@ -422,8 +501,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     
     setSavingValor(true);
     const updateData: any = {};
-    if (sinal > 0) updateData.valor_sinal = sinal;
-    if (venda > 0) updateData.valor_venda = venda;
     const newStatus = valorPopup.modo;
     const label = newStatus === 'vendido' ? 'Vendido' : 'Sinal';
 
@@ -689,7 +766,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       className="text-green-600 hover:text-green-700 transition-colors"
                       title="Abrir WhatsApp"
                     >
-                      <MessageCircle className="h-4 w-4" />
+                      <WhatsAppIcon className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
@@ -700,10 +777,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <InfoItem label="Endereço" value={enderecoResumo(atendimento.cliente?.clientes_fornecedores_enderecos?.[0])} />
                 <InfoItem label="CEP" value={atendimento.cliente?.clientes_fornecedores_enderecos?.[0]?.cep ? formatCep(atendimento.cliente.clientes_fornecedores_enderecos[0].cep!) : undefined} />
               </div>
-              {cnhUrl && (
+              {atendimento.cliente_id && (
                 <>
                   <Separator className="my-2" />
-                  <span className="text-xs text-green-600 font-medium">CNH anexada</span>
+                  <DocumentUpload
+                    label="CNH"
+                    currentUrl={cnhUrl}
+                    bucketPath={`docs/${atendimento.cliente_id}/cnh`}
+                    onUploaded={handleCnhUploaded}
+                    onRemoved={handleCnhRemoved}
+                  />
                 </>
               )}
             </CardContent>
@@ -946,15 +1029,20 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 {motosAvaliacao.map((moto, idx) => (
                   <div key={moto.id} className="space-y-3">
                     {idx > 0 && <Separator className="my-3" />}
-                    <div className="grid grid-cols-2 gap-4">
-                      <InfoItem label="Marca" value={moto.marca} />
-                      <InfoItem label="Modelo" value={(moto.modelo || '').toUpperCase()} />
-                      <InfoItem label="Ano Fabricação" value={moto.ano_fabricacao} />
-                      <InfoItem label="Ano Modelo" value={moto.ano_modelo} />
-                      <InfoItem label="Categoria" value={moto.categoria} />
-                      <InfoItem label="Cor" value={moto.cor} />
-                      <InfoItem label="Placa" value={moto.placa?.replace(/-/g, '')} />
-                      <InfoItem label="KM" value={formatKm(moto.km)} />
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="grid grid-cols-2 gap-4 flex-1">
+                        <InfoItem label="Marca" value={moto.marca} />
+                        <InfoItem label="Modelo" value={(moto.modelo || '').toUpperCase()} />
+                        <InfoItem label="Ano Fabricação" value={moto.ano_fabricacao} />
+                        <InfoItem label="Ano Modelo" value={moto.ano_modelo} />
+                        <InfoItem label="Categoria" value={moto.categoria} />
+                        <InfoItem label="Cor" value={moto.cor} />
+                        <InfoItem label="Placa" value={moto.placa?.replace(/-/g, '')} />
+                        <InfoItem label="KM" value={formatKm(moto.km)} />
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => openEditMoto(moto)} title="Editar dados da moto">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                     <MaintenanceBadges
                       temManual={(moto as any).tem_manual}
@@ -962,12 +1050,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       manutencaoVencida={(moto as any).manutencao_vencida}
                       className="mt-3"
                     />
-                    {moto.observacoes && (
-                      <div className="mt-2">
-                        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações da Moto</span>
-                        <p className="text-sm mt-1">{moto.observacoes}</p>
-                      </div>
-                    )}
                     <div className="flex gap-2 mt-3 flex-wrap">
                       {/* 1. Incluir Fotos */}
                       <Button size="sm" variant="outline" className={`gap-1.5 ${(photoCountMap[moto.id] || 0) > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setPhotoMotoId(moto.id)}>
@@ -1134,10 +1216,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           )}
 
           {/* Observações */}
-          <AtendimentoObservacoes atendimentoId={atendimento.id} />
-
-          {/* Observações */}
-          <ObservacoesProcesso entityId={atendimento.id} entityType="showroom" title="Observações do Atendimento" />
+          <AtendimentoObservacoes idOperacao={atendimento.id} />
 
           {/* Histórico de Movimentações */}
           <Card className="md:col-span-2">
@@ -1237,12 +1316,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         }
                         const toInput = (v: number | null | undefined) => v ? formatCurrencyInput(Math.round(v * 100).toString()) : '';
                         // Fetch latest values from DB to avoid stale data after contract save
-                        const [{ data: freshAtend }, { data: freshContrato }] = await Promise.all([
-                          supabase.from('atendimentos_motos').select('valor_sinal, valor_venda').eq('id', atendimento.id).maybeSingle(),
+                        const [{ data: freshEstoque }, { data: freshContrato }] = await Promise.all([
+                          supabase.from('estoque').select('valor_sinal, valor_venda').eq('atendimento_venda_id', atendimento.id).maybeSingle(),
                           supabase.from('contratos').select('valor_fechamento').eq('atendimento_id', atendimento.id).maybeSingle(),
                         ]);
-                        const freshSinal = freshAtend?.valor_sinal ?? atendimento.valor_sinal;
-                        const freshVenda = freshAtend?.valor_venda ?? atendimento.valor_venda;
+                        const freshSinal = freshEstoque?.valor_sinal ?? atendimento.valor_sinal;
+                        const freshVenda = freshEstoque?.valor_venda ?? atendimento.valor_venda;
                         // Fetch valor_fechamento: first from avaliacoes, fallback to contratos
                         let freshFechamento: number | null = freshContrato?.valor_fechamento ?? null;
                         if (motosAvaliacao.length > 0) {
@@ -1368,17 +1447,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               </div>
 
               <p className="text-[11px] font-medium text-muted-foreground text-center">REPASSE CLIENTE = AVALIAÇÃO − CUSTOS LOJA</p>
-
-              {/* Observação */}
-              {viewAvaliacaoData.observacao_avaliador && (
-                <>
-                  <Separator />
-                  <div className="rounded-lg border bg-muted/30 p-4">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Observação do Avaliador</h4>
-                    <p className="text-sm leading-relaxed">{viewAvaliacaoData.observacao_avaliador}</p>
-                  </div>
-                </>
-              )}
             </div>
           )}
         </DialogContent>
@@ -1519,6 +1587,125 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         onOpenChange={setEditClienteOpen}
         onSaved={() => { if (onStatusUpdated) onStatusUpdated(); else onDeleted(); }}
       />
+      {/* Dialog Editar Dados da Moto */}
+      <Dialog open={!!editMotoId} onOpenChange={(o) => !o && setEditMotoId(null)}>
+        <DialogContent className="max-w-xl h-[85dvh] max-h-[85dvh] flex flex-col overflow-hidden p-0">
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
+            <DialogTitle>Editar Dados da Moto</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2 pr-7" style={{ scrollbarWidth: 'thin' }}>
+            <div className="space-y-3 pb-4">
+              <div>
+                <Label>Marca <span className="text-destructive">*</span></Label>
+                <Select value={editMarca} onValueChange={(v) => { setEditMarca(v); setEditModelo(''); }}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{getMarcaNomes().map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Modelo <span className="text-destructive">*</span></Label>
+                <Select value={editModelo} onValueChange={setEditModelo}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{getModelosPorMarca(editMarca).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Placa</Label>
+                  <Input value={editPlaca} onChange={e => setEditPlaca(e.target.value.toUpperCase())} placeholder="ABC1D23" maxLength={7} />
+                </div>
+                <div>
+                  <Label>KM</Label>
+                  <Input value={editKm} onChange={e => { const d = e.target.value.replace(/\D/g, ''); setEditKm(d ? parseInt(d, 10).toLocaleString('pt-BR') : ''); }} placeholder="0" inputMode="numeric" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Ano Fab.</Label>
+                  <Select value={editAnoFab} onValueChange={setEditAnoFab}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Ano Mod.</Label>
+                  <Select value={editAnoMod} onValueChange={setEditAnoMod}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Cor</Label>
+                  <Select value={editCor} onValueChange={setEditCor}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>{CORES_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Cilindrada</Label>
+                  <Input value={editCilindrada} onChange={e => { const d = e.target.value.replace(/\D/g, ''); setEditCilindrada(d ? parseInt(d, 10).toLocaleString('pt-BR') : ''); }} placeholder="0" inputMode="numeric" />
+                </div>
+              </div>
+              <div>
+                <Label>Categoria</Label>
+                <Select value={editCategoria} onValueChange={setEditCategoria}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                <div className="space-y-1.5">
+                  <Label>Manual</Label>
+                  <RadioGroup value={editTemManual ? 'sim' : 'nao'} onValueChange={(v) => setEditTemManual(v === 'sim')} className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="sim" id="atd-edit-manual-sim" />
+                      <Label htmlFor="atd-edit-manual-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="nao" id="atd-edit-manual-nao" />
+                      <Label htmlFor="atd-edit-manual-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Chave Reserva</Label>
+                  <RadioGroup value={editTemChaveReserva ? 'sim' : 'nao'} onValueChange={(v) => setEditTemChaveReserva(v === 'sim')} className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="sim" id="atd-edit-chave-sim" />
+                      <Label htmlFor="atd-edit-chave-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="nao" id="atd-edit-chave-nao" />
+                      <Label htmlFor="atd-edit-chave-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Revisão Vencida</Label>
+                  <RadioGroup value={editManutencaoVencida ? 'sim' : 'nao'} onValueChange={(v) => setEditManutencaoVencida(v === 'sim')} className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="sim" id="atd-edit-manut-sim" />
+                      <Label htmlFor="atd-edit-manut-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="nao" id="atd-edit-manut-nao" />
+                      <Label htmlFor="atd-edit-manut-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="shrink-0 border-t bg-background px-6 py-4">
+            <Button onClick={handleSaveMotoEdit} disabled={savingMotoEdit} className="w-full gap-2">
+              {savingMotoEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Salvar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Dialog Data de Entrega */}
       <Dialog open={entregaOpen} onOpenChange={setEntregaOpen}>
         <DialogContent className="max-w-sm">

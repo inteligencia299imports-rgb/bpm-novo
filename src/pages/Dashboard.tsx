@@ -18,7 +18,7 @@ import NpsTab from '@/components/nps/NpsTab';
 
 const Dashboard = () => {
   const { role } = useAuth();
-  const getDefaultTab = (r: string | null) => 'relatorios';
+  const getDefaultTab = (r: string | null) => 'showroom';
   const [activeTab, setActiveTab] = useState(getDefaultTab(role));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [hasSetInitialTab, setHasSetInitialTab] = useState(false);
