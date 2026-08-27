@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Save, Loader2, SendHorizonal, CheckCircle } from 'lucide-react';
@@ -25,13 +24,21 @@ const formatPhone = (value: string): string => {
 
 const unformatPhone = (value: string): string => value.replace(/\D/g, '');
 
+const LOJA_GROUPS: Record<'299' | 'Ducati', string[]> = {
+  '299': ['299i', '299s', '299f', '299p', 'Aventura'],
+  Ducati: ['Ducati BSB', 'Ducati FLN', 'Ducati POA'],
+};
+
+const lojaUnidadeLabel = (loja: string): string =>
+  loja.startsWith('Ducati ') ? loja.replace('Ducati ', '') : loja;
+
 interface Props {
   atendimentoId: string | null;
   onClose: () => void;
 }
 
 const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
-  const { user, userName } = useAuth();
+  const { user, userName, lojaPrincipal, ufPrincipal } = useAuth();
   const isEditing = !!atendimentoId;
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
@@ -42,19 +49,76 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   // form state
   const [loja, setLoja] = useState('');
   const [lojaOriginal, setLojaOriginal] = useState('');
+  const [lojaIdOriginal, setLojaIdOriginal] = useState('');
   const [lojaGroup, setLojaGroup] = useState<'299' | 'Ducati' | ''>('');
   const [nomeCliente, setNomeCliente] = useState('');
   const [telefone, setTelefone] = useState('');
   const [sexo, setSexo] = useState('');
-  const [uf, setUf] = useState('DF');
+  const [uf, setUf] = useState('');
   const [tipoAtendimento, setTipoAtendimento] = useState('');
   const [origem, setOrigem] = useState('');
   const [temperatura, setTemperatura] = useState('');
-  const [observacoes, setObservacoes] = useState('');
   const [interesse, setInteresse] = useState<Interesse>('comprar');
   const [situacao, setSituacao] = useState<SituacaoShowroom>('em_aberto');
 
   const isDucati = loja.toLowerCase().startsWith('ducati');
+
+  const detectedLojaGroup: '299' | 'Ducati' | '' =
+    LOJA_GROUPS['299'].includes(loja) ? '299' :
+    LOJA_GROUPS.Ducati.includes(loja) ? 'Ducati' : '';
+  const lojaDisplayGroup = detectedLojaGroup || lojaGroup;
+  const originalLojaGroup: '299' | 'Ducati' | '' =
+    LOJA_GROUPS['299'].includes(lojaOriginal) ? '299' :
+    LOJA_GROUPS.Ducati.includes(lojaOriginal) ? 'Ducati' : '';
+  const lojaGroupLocked = isEditing && (situacao === 'sinal' || situacao === 'vendido') && !!originalLojaGroup;
+
+  // Lojas ativas (sistema 'motos'); null enquanto carrega
+  const [lojasAtivas, setLojasAtivas] = useState<Set<string> | null>(null);
+  const [lojaIdMap, setLojaIdMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    supabase
+      .from('loja_empresas')
+      .select('id, loja')
+      .eq('sistema', 'motos')
+      .eq('ativo', true)
+      .then(({ data }) => {
+        setLojasAtivas(new Set((data || []).map(r => r.loja)));
+        setLojaIdMap(new Map((data || []).map(r => [r.loja, r.id])));
+      });
+  }, []);
+
+  // Mantem a loja atual visivel mesmo se foi desativada depois (edicao)
+  const unidadeOptions = (group: '299' | 'Ducati') => {
+    const all = LOJA_GROUPS[group];
+    if (!lojasAtivas) return all;
+    return all.filter(l => lojasAtivas.has(l) || l === loja);
+  };
+
+  const unidadeInnerRef = useRef<HTMLDivElement>(null);
+  const [unidadeWidth, setUnidadeWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    if (unidadeInnerRef.current) {
+      setUnidadeWidth(unidadeInnerRef.current.scrollWidth);
+    }
+  }, [lojaDisplayGroup, lojasAtivas]);
+
+  useEffect(() => {
+    if (!isEditing && lojaPrincipal && !loja) {
+      setLoja(lojaPrincipal);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, lojaPrincipal]);
+
+  // Default de UF: apenas sugestao inicial (loja_id -> loja_empresas -> empresas.uf),
+  // o usuario pode trocar livremente a qualquer momento.
+  useEffect(() => {
+    if (!isEditing && ufPrincipal && !uf) {
+      setUf(ufPrincipal);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, ufPrincipal]);
 
   // compra
   const [origemMoto, setOrigemMoto] = useState('estoque');
@@ -85,10 +149,12 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     if (!atendimentoId) return;
     const load = async () => {
       try {
-        const { data: at } = await supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))').eq('id', atendimentoId).single();
+        const { data: at } = await supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))').eq('id', atendimentoId).single();
         if (at) {
-          setLoja(at.loja);
-          setLojaOriginal(at.loja);
+          const atLoja = at.loja_empresas?.loja || '';
+          setLoja(atLoja);
+          setLojaOriginal(atLoja);
+          setLojaIdOriginal(at.loja_id);
           setClienteId(at.cliente_id);
           setNomeCliente(at.cliente?.nome_razao_social || '');
           setTelefone(formatPhone(at.cliente?.telefone || ''));
@@ -97,7 +163,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setTipoAtendimento(at.tipo_atendimento);
           setOrigem(at.origem || '');
           setTemperatura(at.temperatura || '');
-          setObservacoes(at.observacoes || '');
           setInteresse(at.interesse as Interesse);
           setSituacao(at.situacao as SituacaoShowroom);
         }
@@ -113,7 +178,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           }
         }
         if (at?.interesse === 'vender' || at?.interesse === 'trocar') {
-          const { data: ma } = await supabase.from('motos_avaliacao').select('*').eq('atendimento_id', atendimentoId).maybeSingle();
+          const { data: ma } = await supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimentoId).maybeSingle();
           if (ma) {
             setMotoAvaliacaoId(ma.id);
             setVendaMarca(ma.marca);
@@ -171,13 +236,13 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         setClienteId(data.id);
         setNomeCliente(data.nome_razao_social);
         setSexo(data.sexo || '');
-        setUf(data.clientes_fornecedores_enderecos?.[0]?.uf || 'DF');
+        setUf(data.clientes_fornecedores_enderecos?.[0]?.uf || ufPrincipal || '');
         setClientFound(true);
       } else {
         setClienteId(null);
         setNomeCliente('');
         setSexo('');
-        setUf('DF');
+        setUf(ufPrincipal || '');
         setClientFound(false);
       }
     } catch (err) {
@@ -185,7 +250,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     } finally {
       setSearchingPhone(false);
     }
-  }, []);
+  }, [ufPrincipal]);
 
 
   const isPhoneValid = unformatPhone(telefone).length === 11;
@@ -257,11 +322,18 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       await supabase.from('clientes_fornecedores_enderecos').insert({ cliente_fornecedor_id: finalClienteId, tipo: 'fiscal', uf });
     }
 
+    const lojaId = loja === lojaOriginal ? lojaIdOriginal : lojaIdMap.get(loja);
+    if (!lojaId) {
+      toast.error('Loja inválida, selecione novamente');
+      setSaving(false);
+      return;
+    }
+
     const atData = {
       vendedor_id: user!.id,
-      loja, cliente_id: finalClienteId as string, tipo_atendimento: tipoAtendimento,
+      loja_id: lojaId, cliente_id: finalClienteId as string, tipo_atendimento: tipoAtendimento,
       origem: origem || null, temperatura: temperatura || null,
-      observacoes: observacoes || null, interesse, situacao: isEditing ? situacao : 'em_aberto' as SituacaoShowroom,
+      interesse, situacao: isEditing ? situacao : 'em_aberto' as SituacaoShowroom,
     };
 
     let atId = atendimentoId;
@@ -335,15 +407,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           manutencao_vencida: manutencaoEmDia === 'sim',
         };
         if (motoAvaliacaoId) {
-          await supabase.from('motos_avaliacao').update(maData).eq('id', motoAvaliacaoId);
+          await supabase.from('avaliacoes').update(maData).eq('id', motoAvaliacaoId);
         } else {
-          await supabase.from('motos_avaliacao').insert(maData);
+          await supabase.from('avaliacoes').insert({ ...maData, enviada_avaliacao: false });
         }
       }
     } else if (isEditing && interesse === 'comprar') {
       // Se mudou para "comprar", remover moto do cliente (avaliação) existente
       if (motoAvaliacaoId) {
-        await supabase.from('motos_avaliacao').delete().eq('id', motoAvaliacaoId);
+        await supabase.from('avaliacoes').delete().eq('id', motoAvaliacaoId);
       }
     }
 
@@ -357,13 +429,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Salve o atendimento primeiro');
       return;
     }
-    
-    await supabase.from('motos_avaliacao').update({ enviada_avaliacao: true }).eq('id', motoAvaliacaoId);
-    const { error } = await supabase.from('avaliacoes').insert({
-      atendimento_id: atendimentoId!,
-      moto_avaliacao_id: motoAvaliacaoId,
-      situacao: 'sem_avaliar',
-    });
+
+    const { error } = await supabase.from('avaliacoes').update({ enviada_avaliacao: true }).eq('id', motoAvaliacaoId);
     if (error) {
       toast.error('Erro ao enviar para avaliação');
     } else {
@@ -481,53 +548,50 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       <Card>
         <CardHeader><CardTitle className="text-base">Dados do Atendimento</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap justify-between gap-4">
-            <div className="space-y-1.5">
-              <Label>Loja *</Label>
-              {(() => {
-                const GROUPS: Record<'299' | 'Ducati', string[]> = {
-                  '299': ['299i', '299s', '299f', '299p', 'Aventura'],
-                  Ducati: ['Ducati BSB', 'Ducati FLN', 'Ducati POA'],
-                };
-                const detected: '299' | 'Ducati' | '' =
-                  GROUPS['299'].includes(loja) ? '299' :
-                  GROUPS.Ducati.includes(loja) ? 'Ducati' : '';
-                const group = detected || lojaGroup;
-                const originalGroup: '299' | 'Ducati' | '' =
-                  GROUPS['299'].includes(lojaOriginal) ? '299' :
-                  GROUPS.Ducati.includes(lojaOriginal) ? 'Ducati' : '';
-                const groupLocked = isEditing && (situacao === 'sinal' || situacao === 'vendido') && !!originalGroup;
-                return (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex flex-wrap gap-2">
-                      {(['299', 'Ducati'] as const).map(g => (
-                        <ToggleButton
-                          key={g}
-                          label={g}
-                          value={g}
-                          selected={group}
-                          onSelect={(v) => {
-                            if (groupLocked && v !== originalGroup) {
-                              toast.error('Atendimentos com Sinal ou Vendido não podem trocar entre 299 e Ducati. Marque o atendimento como perdido primeiro.');
-                              return;
-                            }
-                            setLojaGroup(v as '299' | 'Ducati');
-                            if (!GROUPS[v as '299' | 'Ducati'].includes(loja)) setLoja('');
-                          }}
-                        />
-                      ))}
-                    </div>
-                    {group && (
-                      <div className="flex flex-wrap gap-2 pl-1">
-                        {GROUPS[group as '299' | 'Ducati'].map(l => (
-                          <ToggleButton key={l} label={l} value={l} selected={loja} onSelect={setLoja} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+          <div className="grid grid-cols-[auto_1fr_auto] items-start gap-4">
+            <div className="space-y-1.5 col-start-1">
+              <Label>Concessionária *</Label>
+              <div className="flex flex-wrap gap-2 [&>button]:min-w-[90px]">
+                {(['299', 'Ducati'] as const).map(g => (
+                  <ToggleButton
+                    key={g}
+                    label={g}
+                    value={g}
+                    selected={lojaDisplayGroup}
+                    onSelect={(v) => {
+                      if (lojaGroupLocked && v !== originalLojaGroup) {
+                        toast.error('Atendimentos com Sinal ou Vendido não podem trocar entre 299 e Ducati. Marque o atendimento como perdido primeiro.');
+                        return;
+                      }
+                      setLojaGroup(v as '299' | 'Ducati');
+                      if (!LOJA_GROUPS[v as '299' | 'Ducati'].includes(loja)) setLoja('');
+                    }}
+                  />
+                ))}
+              </div>
             </div>
+            {lojaDisplayGroup && (
+              <div
+                className="space-y-1.5 col-start-2 mx-auto overflow-hidden transition-[width] duration-300 ease-in-out"
+                style={{ width: unidadeWidth || undefined }}
+              >
+                <Label>Unidade *</Label>
+                <div ref={unidadeInnerRef} className="flex flex-nowrap gap-2 w-fit [&>button]:min-w-[90px]">
+                  {unidadeOptions(lojaDisplayGroup as '299' | 'Ducati').map(l => (
+                    <ToggleButton key={l} label={lojaUnidadeLabel(l)} value={l} selected={loja} onSelect={setLoja} />
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="space-y-1.5 w-[220px] col-start-3">
+              <Label>Origem *</Label>
+              <Select value={origem} onValueChange={setOrigem}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex flex-wrap justify-between gap-4">
             <div className="space-y-1.5">
               <Label>Tipo de Atendimento *</Label>
               <div className="flex flex-wrap gap-2 [&>button]:min-w-[90px]">
@@ -544,16 +608,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 ))}
               </div>
             </div>
-          </div>
-          <div className="grid grid-cols-1 max-w-[220px] gap-4">
-            <div className="space-y-1.5">
-              <Label>Origem *</Label>
-              <Select value={origem} onValueChange={setOrigem}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 w-[220px]">
               <Label>Interesse *</Label>
               <Select value={interesse} onValueChange={v => setInteresse(v as Interesse)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -615,14 +670,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           )}
         </>
       )}
-
-      {/* Card: Observações */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Observações do Atendimento</CardTitle></CardHeader>
-        <CardContent>
-          <Textarea value={observacoes} onChange={e => setObservacoes(e.target.value.toUpperCase())} rows={3} placeholder="Observações gerais sobre o atendimento..." className="uppercase" />
-        </CardContent>
-      </Card>
 
       <div className="flex gap-3 justify-end pt-2 pb-8">
         <Button variant="outline" onClick={onClose}>Cancelar</Button>

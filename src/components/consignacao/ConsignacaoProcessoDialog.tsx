@@ -35,11 +35,10 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   avaliacaoId: string;
-  motoAvaliacaoId: string;
   onStatusChanged?: (newStatus: string) => void;
 }
 
-const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, motoAvaliacaoId, onStatusChanged }) => {
+const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, onStatusChanged }) => {
   const { userName } = useAuth();
   const [etapas, setEtapas] = useState<EtapaData[]>(
     ETAPAS.map(e => ({ etapa: e, concluida: false, data_conclusao: null }))
@@ -54,25 +53,20 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     if (!open) return;
     const load = async () => {
       setLoading(true);
-      const [{ data: processoData }, { data: avData }, { data: motoData }, { data: consultaHistory }] = await Promise.all([
+      const [{ data: processoData }, { data: avData }, { data: consultaHistory }] = await Promise.all([
         supabase
           .from('consignacao_processos' as any)
           .select('id, etapa, concluida, data_conclusao')
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('consignacao_observacoes, consignacao_status')
+          .select('consignacao_observacoes, consignacao_status, consulta_realizada')
           .eq('id', avaliacaoId)
-          .maybeSingle(),
-        supabase
-          .from('motos_avaliacao')
-          .select('consulta_realizada')
-          .eq('id', motoAvaliacaoId)
           .maybeSingle(),
         supabase
           .from('status_history')
           .select('created_at')
-          .eq('entity_id', motoAvaliacaoId)
+          .eq('entity_id', avaliacaoId)
           .eq('entity_type', 'consulta')
           .eq('status', 'consulta_realizada')
           .order('created_at', { ascending: false })
@@ -88,8 +82,8 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         }
       }
 
-      // Build etapas, pre-filling CONSULTA REALIZADA from moto_avaliacao with actual date
-      const consultaRealizada = motoData?.consulta_realizada === true;
+      // Build etapas, pre-filling CONSULTA REALIZADA com a data real
+      const consultaRealizada = (avData as any)?.consulta_realizada === true;
       const consultaDate = consultaHistory?.[0]?.created_at || null;
       const built = ETAPAS.map(e => {
         if (map[e]) return map[e];
@@ -105,7 +99,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       setLoading(false);
     };
     load();
-  }, [open, avaliacaoId, motoAvaliacaoId]);
+  }, [open, avaliacaoId]);
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     setEtapas(prev =>

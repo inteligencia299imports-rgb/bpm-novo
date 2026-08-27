@@ -15,7 +15,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import type { Atendimento, MotoInteresse, MotoAvaliacao } from '@/types/crm';
+import type { Atendimento, MotoInteresse, Avaliacao } from '@/types/crm';
 import { generateContratoPdf, type ContratoPdfData } from '@/lib/generateContratoPdf';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -24,7 +24,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   atendimento: Atendimento;
   motosInteresse: MotoInteresse[];
-  motosAvaliacao: MotoAvaliacao[];
+  motosAvaliacao: Avaliacao[];
   estoqueData: Record<string, any>;
   avaliacoes: Record<string, any>;
   onSaved?: () => void;

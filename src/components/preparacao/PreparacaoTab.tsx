@@ -37,9 +37,12 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
   useEffect(() => {
     if (initialAvaliacaoId) {
       supabase.from('avaliacoes')
-        .select(`*, atendimentos_motos!inner(id, loja, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro))), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida, resultado_consulta)`)
+        .select(`*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`)
         .eq('id', initialAvaliacaoId).single().then(({ data }) => {
-          if (data) setSelectedItem({ ...data, atendimento: (data as any).atendimentos_motos, moto: (data as any).motos_avaliacao });
+          if (data) {
+            const am = (data as any).atendimentos_motos;
+            setSelectedItem({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja }, moto: data });
+          }
         });
       onInitialHandled?.();
     }
@@ -47,7 +50,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const selectStr = `*, atendimentos_motos!inner(id, loja, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro))), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida, resultado_consulta)`;
+    const selectStr = `*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`;
 
     const estResult = await fetchAllRange(() => supabase.from('estoque').select('avaliacao_id, status, observacoes, data_entrada').not('avaliacao_id', 'is', null));
     const result = await fetchAllRange(() =>
@@ -95,14 +98,11 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
       });
       const acquDateMap: Record<string, string> = {};
       allData.forEach((d: any) => {
-        const byMoto = d.moto_avaliacao_id ? histByEntity[d.moto_avaliacao_id] : null;
-        const byAval = histByEntity[d.id];
-        const picked = [byMoto, byAval].filter(Boolean).sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0]
-          || estoqueMap[d.id]?.data_entrada || null;
+        const picked = histByEntity[d.id] || estoqueMap[d.id]?.data_entrada || null;
         if (picked) acquDateMap[d.id] = picked;
       });
 
-      let mapped = allData.map((d: any) => ({ ...d, atendimento: d.atendimentos_motos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null, _releaseReady: releaseReadyMap[d.id] ?? null, _dataAquisicao: acquDateMap[d.id] || null }));
+      let mapped = allData.map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _releaseReady: releaseReadyMap[d.id] ?? null, _dataAquisicao: acquDateMap[d.id] || null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       setItems(mapped);
     }

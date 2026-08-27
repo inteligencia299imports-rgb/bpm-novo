@@ -117,9 +117,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
   const loadData = useCallback(async () => {
     const [aRes, eRes, avRes, coRes, copRes, ccRes, cRes, miRes, urRes, pcpRes] = await Promise.all([
-      fetchAllRange<any>(() => supabase.from('atendimentos_motos').select('id, loja, vendedor_id, situacao, valor_venda, data_venda, created_at, cliente:clientes_fornecedores(nome_razao_social)')),
-      fetchAllRange<any>(() => supabase.from('estoque').select('id, atendimento_venda_id, avaliacao_id, moto_avaliacao_id, tipo, marca, modelo, placa, preco, preco_acao, valor_venda, updated_at, created_at')),
-      fetchAllRange<any>(() => supabase.from('avaliacoes').select('id, moto_avaliacao_id, quanto_vende, valor_fechamento, avaliacao_compra, avaliacao_consignacao, updated_at, created_at')),
+      fetchAllRange<any>(() => supabase.from('atendimentos_motos').select('id, loja_id, loja_empresas:loja_id(loja), vendedor_id, situacao, valor_venda, data_venda, created_at, cliente:clientes_fornecedores(nome_razao_social)')),
+      fetchAllRange<any>(() => supabase.from('estoque').select('id, atendimento_venda_id, avaliacao_id, tipo, marca, modelo, placa, preco, preco_acao, valor_venda, updated_at, created_at')),
+      fetchAllRange<any>(() => supabase.from('avaliacoes').select('id, quanto_vende, valor_fechamento, avaliacao_compra, avaliacao_consignacao, updated_at, created_at')),
       fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado')),
       fetchAllRange<any>(() => supabase.from('custos_operacionais').select('contrato_consignante_id, responsavel, valor')),
       fetchAllRange<any>(() => supabase.from('contratos_consignante').select('id, atendimento_id, valor_fechamento')),
@@ -129,7 +129,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       fetchAllRange<any>(() => (supabase as any).from('pos_compra_processos').select('avaliacao_id, etapa, concluida, destino_transferencia')),
     ]);
 
-    setAtendimentos(((aRes.data || []) as any[]).map(a => ({ ...a, nome_cliente: a.cliente?.nome_razao_social || null })) as AtendimentoRow[]);
+    setAtendimentos(((aRes.data || []) as any[]).map(a => ({ ...a, loja: a.loja_empresas?.loja || null, nome_cliente: a.cliente?.nome_razao_social || null })) as AtendimentoRow[]);
     setIndexes(buildIndexes({
       estoque: (eRes.data || []) as any,
       avaliacoes: (avRes.data || []) as any,

@@ -63,9 +63,9 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   // Open detail from external navigation (e.g. NPS, Estoque)
   useEffect(() => {
     if (initialAtendimentoId) {
-      supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(({ data }) => {
+      supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*), avaliacoes(*)').eq('id', initialAtendimentoId).single().then(({ data }) => {
         if (data) {
-          setSelectedAtendimento(data as unknown as Atendimento);
+          setSelectedAtendimento({ ...data, loja: (data as any).loja_empresas?.loja } as unknown as Atendimento);
           setDetailOpen(true);
         }
       });
@@ -81,7 +81,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     const statuses = KANBAN_COLUMNS.map(c => c.value);
 
     const buildQuery = (status?: string) => {
-      let q = supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*), motos_avaliacao(*)');
+      let q = supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*), avaliacoes(*)');
       if (status) q = q.eq('situacao', status);
       if (filterInteresse !== 'todos') q = q.eq('interesse', filterInteresse);
       q = q.order('created_at', { ascending: false });
@@ -112,7 +112,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       toast.error('Erro ao carregar atendimentos');
       console.error(error);
     } else {
-      let results = (data as unknown as Atendimento[]) || [];
+      let results = ((data as any[]) || []).map((a) => ({ ...a, loja: a.loja_empresas?.loja })) as unknown as Atendimento[];
 
       // Fetch estoque data for motos_interesse with estoque origin
       const estoqueIds = results.flatMap((a: any) =>
@@ -170,10 +170,10 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
         results = results.filter(a => {
           const fields = [
             a.cliente?.nome_razao_social, a.cliente?.telefone, a.loja, a.interesse, a.situacao,
-            a.observacoes, a.origem, a.temperatura, a.tipo_atendimento, a.cliente?.clientes_fornecedores_enderecos?.[0]?.uf
+            a.origem, a.temperatura, a.tipo_atendimento, a.cliente?.clientes_fornecedores_enderecos?.[0]?.uf
           ];
           const motos = (a as any).motos_interesse || [];
-          const motosAv = (a as any).motos_avaliacao || [];
+          const motosAv = (a as any).avaliacoes || [];
           const motoFields = motos.flatMap((m: any) => [m.modelo, m.marca, m.ano, m._estoque?.modelo, m._estoque?.marca]);
           const motoAvFields = motosAv.flatMap((m: any) => [m.modelo, m.marca, m.placa, m.cor, m.ano_fabricacao, m.ano_modelo, m.km]);
           const all = [...fields, ...motoFields, ...motoAvFields];
@@ -219,11 +219,11 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     if (selectedAtendimento) {
       const { data } = await supabase
         .from('atendimentos_motos')
-        .select('*')
+        .select('*, loja_empresas:loja_id(loja)')
         .eq('id', selectedAtendimento.id)
         .single();
       if (data) {
-        setSelectedAtendimento(data as Atendimento);
+        setSelectedAtendimento({ ...data, loja: (data as any).loja_empresas?.loja } as Atendimento);
       }
     }
   };

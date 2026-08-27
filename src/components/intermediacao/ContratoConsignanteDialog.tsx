@@ -140,9 +140,9 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
         .eq('atendimento_venda_id', atendimentoId)
         .eq('tipo', 'consignada')
         .limit(1),
-      supabase.from('atendimentos_motos').select('loja').eq('id', atendimentoId).maybeSingle(),
+      supabase.from('atendimentos_motos').select('loja_empresas:loja_id(loja)').eq('id', atendimentoId).maybeSingle(),
     ]);
-    setLoja(vendaAtendimento?.loja || null);
+    setLoja((vendaAtendimento as any)?.loja_empresas?.loja || null);
 
     const estoque = estoqueItems?.[0];
     setEstoqueInfo(estoque);
@@ -154,11 +154,11 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
 
     if (estoque?.avaliacao_id) {
       const [{ data: avalData }, { data: custosData }] = await Promise.all([
-        supabase.from('avaliacoes').select('*, motos_avaliacao:moto_avaliacao_id(*)').eq('id', estoque.avaliacao_id).maybeSingle(),
+        supabase.from('avaliacoes').select('*').eq('id', estoque.avaliacao_id).maybeSingle(),
         supabase.from('custos_oficina').select('*').eq('avaliacao_id', estoque.avaliacao_id),
       ]);
       avaliacao = avalData;
-      moto = avalData?.motos_avaliacao;
+      moto = avalData;
       oficinaCosts = custosData || [];
 
       // Fetch the original consignante's atendimento (the person who left the moto)

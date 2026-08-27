@@ -29,11 +29,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
 
   useEffect(() => {
     if (initialAtendimentoId) {
-      supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*), motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
+      supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
         if (data) {
           // Fetch estoque moto info
           const { data: est } = await supabase.from('estoque').select('marca, modelo, placa').eq('atendimento_venda_id', data.id).eq('tipo', 'propria').maybeSingle();
-          setSelectedItem({ ...data, _estoqueMoto: est });
+          setSelectedItem({ ...data, loja: (data as any).loja_empresas?.loja, _estoqueMoto: est });
         }
       });
       onInitialHandled?.();
@@ -50,15 +50,16 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     let atData: any[];
     let atError: any;
     if (isSearching) {
-      const result = await fetchAllRange(() => supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*), motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
+      const result = await fetchAllRange(() => supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
       atError = result.error;
       atData = result.data || [];
     } else {
-      const statusResults = await Promise.all(statuses.map(s => supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*), motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
+      const statusResults = await Promise.all(statuses.map(s => supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('situacao', 'vendido').eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
       atError = statusResults.find(r => r.error)?.error;
       atData = statusResults.flatMap(r => r.data || []);
     }
     if (atError) { toast.error('Erro ao carregar pós-venda'); setLoading(false); return; }
+    atData = atData.map((a: any) => ({ ...a, loja: a.loja_empresas?.loja }));
 
     // Build estoque map: própria entries by atendimento_venda_id
     const estoquePropria: Record<string, any> = {};

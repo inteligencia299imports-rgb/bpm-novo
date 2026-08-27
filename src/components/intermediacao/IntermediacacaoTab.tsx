@@ -20,7 +20,6 @@ const PARTE_CONFIG = {
     columns: INTERMEDIACAO_PARTE1_COLUMNS,
     statusField: 'intermediacao_parte1_status',
     etapas: INTERMEDIACAO_PARTE1_ETAPAS,
-    observacoesField: 'pos_venda_observacoes',
     statusRules: {
       concluded: 'AUTORIZAÇÃO DE PAGAMENTO',
       default: 'em_andamento',
@@ -30,7 +29,6 @@ const PARTE_CONFIG = {
     columns: INTERMEDIACAO_PARTE2_COLUMNS,
     statusField: 'intermediacao_parte2_status',
     etapas: INTERMEDIACAO_PARTE2_ETAPAS,
-    observacoesField: 'pos_venda_observacoes',
     statusRules: {
       concluded: 'TRANSFERÊNCIA FINALIZADA',
       special: { etapa: 'DOCUMENTAÇÃO COM DESPACHANTE', status: 'doc_despachante' },
@@ -60,10 +58,10 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
 
   useEffect(() => {
     if (initialAtendimentoId) {
-      supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*), motos_interesse(*), motos_avaliacao(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
+      supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
         if (data) {
           const { data: est } = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id').eq('atendimento_venda_id', data.id).eq('tipo', 'consignada').maybeSingle();
-          setSelectedItem({ ...data, _estoqueMoto: est });
+          setSelectedItem({ ...data, loja: (data as any).loja_empresas?.loja, _estoqueMoto: est });
         }
       });
       onInitialHandled?.();
@@ -76,7 +74,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     setLoading(true);
     const estRes = await fetchAllRange<any>(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id, status, observacoes, loja').eq('tipo', 'consignada'));
 
-    const result = await fetchAllRange<any>(() => supabase.from('atendimentos_motos').select('*, cliente:clientes_fornecedores(*), motos_interesse(*), motos_avaliacao(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
+    const result = await fetchAllRange<any>(() => supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
     const atError = result.error;
     const atData = result.data || [];
     if (atError) { toast.error('Erro ao carregar intermediação'); setLoading(false); return; }
@@ -84,7 +82,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     const estoqueMap: Record<string, any> = {};
     (estRes.data || []).forEach((e: any) => { estoqueMap[e.atendimento_venda_id] = e; });
 
-    let filtered = atData.filter(a => estoqueMap[a.id]).map(a => ({ ...a, _estoqueMoto: estoqueMap[a.id] }));
+    let filtered = atData.filter(a => estoqueMap[a.id]).map(a => ({ ...a, loja: a.loja_empresas?.loja, _estoqueMoto: estoqueMap[a.id] }));
 
     // Fetch owners in parallel: avaliacoes → atendimentos
     const avaliacaoIds = Object.values(estoqueMap).map((e: any) => e.avaliacao_id).filter(Boolean);
@@ -92,9 +90,9 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       const { data: avalData } = await supabase.from('avaliacoes').select('id, atendimento_id').in('id', avaliacaoIds);
       if (avalData && avalData.length > 0) {
         const ownerAtIds = avalData.map((a: any) => a.atendimento_id).filter(Boolean);
-        const { data: ownerData } = await supabase.from('atendimentos_motos').select('id, loja, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro))').in('id', ownerAtIds);
+        const { data: ownerData } = await supabase.from('atendimentos_motos').select('id, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro))').in('id', ownerAtIds);
         const ownerMap: Record<string, any> = {};
-        (ownerData || []).forEach((o: any) => { ownerMap[o.id] = o; });
+        (ownerData || []).forEach((o: any) => { ownerMap[o.id] = { ...o, loja: (o as any).loja_empresas?.loja }; });
         const avalToOwner: Record<string, any> = {};
         avalData.forEach((a: any) => { avalToOwner[a.id] = ownerMap[a.atendimento_id]; });
         filtered = filtered.map(a => {
@@ -186,7 +184,6 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
         processoProps={{
           customEtapas: config.etapas,
           statusField: config.statusField,
-          observacoesField: config.observacoesField,
           statusRules: config.statusRules,
           showContratoConsignante: parte === 'parte1',
         }}

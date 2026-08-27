@@ -37,8 +37,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       .from('avaliacoes')
       .select(`
         *,
-        atendimentos_motos!inner (id, loja, interesse, situacao, temperatura, created_at, updated_at, nps_status, tipo_atendimento, vendedor_id, origem, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, clientes_fornecedores_enderecos(uf))),
-        motos_avaliacao!inner (id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, cilindrada)
+        atendimentos_motos!inner (id, loja_id, loja_empresas:loja_id(loja), interesse, situacao, temperatura, created_at, updated_at, nps_status, tipo_atendimento, vendedor_id, origem, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, clientes_fornecedores_enderecos(uf)))
       `)
       .in('tipo_aquisicao', TODOS_TIPOS_AQUISICAO.filter(t => t !== 'test-ride'))
       .order('updated_at', { ascending: false });
@@ -49,32 +48,27 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     } else {
       let mapped = (data || [])
         .filter((a: any) => a.atendimentos_motos?.interesse === 'vender')
-        .map((d: any) => ({
-          ...d,
-          _atendimentoCard: {
-            ...d.atendimentos_motos,
-            motos_avaliacao: [d.motos_avaliacao],
-            motos_interesse: [],
-            interesse: 'vender',
-          },
-          atendimento: d.atendimentos_motos,
-          moto_avaliacao: d.motos_avaliacao,
-        }));
+        .map((d: any) => {
+          const am = { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja };
+          return {
+            ...d,
+            _atendimentoCard: {
+              ...am,
+              avaliacoes: [d],
+              motos_interesse: [],
+              interesse: 'vender',
+            },
+            atendimento: am,
+          };
+        });
 
       // Fetch acquisition dates from status_history (próprias/convertidas/repasse)
-      // status_history.entity_id pode referenciar avaliacao.id OU moto_avaliacao.id
-      const motoIds = mapped.map((m: any) => m.moto_avaliacao_id).filter(Boolean);
       const avalIds = mapped.map((m: any) => m.id).filter(Boolean);
-      const motoAcqMap: Record<string, string> = {};
       const avalAcqMap: Record<string, string> = {};
-      const acqEntityIds = Array.from(new Set([...motoIds, ...avalIds]));
-      if (acqEntityIds.length > 0) {
-        const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('status', 'adquirida').in('entity_id', acqEntityIds);
-        const motoSet = new Set(motoIds);
-        const avalSet = new Set(avalIds);
+      if (avalIds.length > 0) {
+        const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('status', 'adquirida').in('entity_id', avalIds);
         (histData || []).forEach((h: any) => {
-          if (motoSet.has(h.entity_id) && !motoAcqMap[h.entity_id]) motoAcqMap[h.entity_id] = h.created_at;
-          if (avalSet.has(h.entity_id) && !avalAcqMap[h.entity_id]) avalAcqMap[h.entity_id] = h.created_at;
+          if (!avalAcqMap[h.entity_id]) avalAcqMap[h.entity_id] = h.created_at;
         });
       }
       // Fetch estoque info for consignadas (data_venda, status, atendimento_venda_id)
@@ -107,7 +101,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       }
 
       mapped = mapped.map((m: any) => {
-        const acqDate = (m.moto_avaliacao_id && motoAcqMap[m.moto_avaliacao_id]) || avalAcqMap[m.id] || null;
+        const acqDate = avalAcqMap[m.id] || null;
         if (m.tipo_aquisicao === 'consignada') {
           // Consignada: data_negociacao = estoque.data_venda OU data RETIRADA OU adquirida
           return { ...m, _dataAquisicao: estVendaMap[m.id] || retiradaDateMap[m.id] || acqDate };

@@ -41,7 +41,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
     const buildQuery = (status?: SituacaoNps) => {
       let q = supabase
         .from('atendimentos_motos')
-        .select('*, cliente:clientes_fornecedores(*), motos_interesse(*), motos_avaliacao(*)')
+        .select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)')
         .eq('situacao', 'vendido')
         .in('interesse', ['comprar', 'trocar']);
 
@@ -80,7 +80,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
       console.error(error);
     } else {
       // Enrich motos_interesse with estoque data
-      let mapped = data || [];
+      let mapped = (data || []).map((a: any) => ({ ...a, loja: a.loja_empresas?.loja }));
       const atIds = mapped.map((a: any) => a.id);
       if (atIds.length > 0) {
         const { data: estData } = await supabase.from('estoque').select('id, marca, modelo, placa, cor, atendimento_venda_id').in('atendimento_venda_id', atIds);

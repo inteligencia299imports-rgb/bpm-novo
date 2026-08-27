@@ -162,7 +162,7 @@ const MotoVendaSection: React.FC<Props> = ({
           <Label>Observações da Moto *</Label>
           <Textarea value={obs} onChange={e => setObs(e.target.value.toUpperCase())} rows={3} className="uppercase" />
         </div>
-        {motoAvaliacaoId && !isEditing && <PhotoUpload motoAvaliacaoId={motoAvaliacaoId} />}
+        {motoAvaliacaoId && !isEditing && <PhotoUpload avaliacaoId={motoAvaliacaoId} />}
       </CardContent>
     </Card>
   );

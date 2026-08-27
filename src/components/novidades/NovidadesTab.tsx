@@ -29,7 +29,6 @@ interface EstoqueItem {
   cilindrada: string | null;
   categoria: string | null;
   empresa: string | null;
-  moto_avaliacao_id: string | null;
   tem_manual: boolean | null;
   tem_chave_reserva: boolean | null;
   manutencao_vencida: boolean | null;
@@ -66,17 +65,17 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('estoque')
-        .select('id, marca, modelo, ano_fabricacao, ano_modelo, cor, placa, km, preco, preco_acao, data_entrada, tipo, classificacao, cilindrada, categoria, empresa, moto_avaliacao_id, motos_avaliacao!estoque_moto_avaliacao_id_fkey(tem_manual, tem_chave_reserva, manutencao_vencida), avaliacoes:avaliacao_id(atendimentos:atendimento_id(loja))')
+        .select('id, marca, modelo, ano_fabricacao, ano_modelo, cor, placa, km, preco, preco_acao, data_entrada, tipo, classificacao, cilindrada, categoria, empresa, avaliacoes:avaliacao_id(tem_manual, tem_chave_reserva, manutencao_vencida, atendimentos:atendimento_id(loja_id, loja_empresas:loja_id(loja)))')
         .eq('status', 'disponivel')
         .gte('data_entrada', sevenDaysAgo)
         .order('data_entrada', { ascending: false });
       if (error) throw error;
       return (data || []).map((item: any) => ({
         ...item,
-        tem_manual: item.motos_avaliacao?.tem_manual ?? null,
-        tem_chave_reserva: item.motos_avaliacao?.tem_chave_reserva ?? null,
-        manutencao_vencida: item.motos_avaliacao?.manutencao_vencida ?? null,
-        loja_origem: item.avaliacoes?.atendimentos?.loja ?? null,
+        tem_manual: item.avaliacoes?.tem_manual ?? null,
+        tem_chave_reserva: item.avaliacoes?.tem_chave_reserva ?? null,
+        manutencao_vencida: item.avaliacoes?.manutencao_vencida ?? null,
+        loja_origem: item.avaliacoes?.atendimentos?.loja_empresas?.loja ?? null,
       })) as EstoqueItem[];
     },
   });
@@ -108,7 +107,8 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
             interesse,
             situacao,
             temperatura,
-            loja,
+            loja_id,
+            loja_empresas:loja_id(loja),
             cliente:clientes_fornecedores(nome_razao_social, telefone)
           )
         `)
@@ -144,7 +144,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
           interesse: a.interesse,
           situacao: a.situacao,
           temperatura: a.temperatura,
-          loja: a.loja,
+          loja: a.loja_empresas?.loja,
         });
       }
 

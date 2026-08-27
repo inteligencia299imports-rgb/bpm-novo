@@ -7,20 +7,20 @@ import type { MotoFoto } from '@/types/crm';
 import { toast } from 'sonner';
 
 interface Props {
-  motoAvaliacaoId: string;
+  avaliacaoId: string;
 }
 
-const PhotoUpload: React.FC<Props> = ({ motoAvaliacaoId }) => {
+const PhotoUpload: React.FC<Props> = ({ avaliacaoId }) => {
   const [fotos, setFotos] = useState<MotoFoto[]>([]);
   const [uploading, setUploading] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', motoAvaliacaoId);
+      const { data } = await supabase.from('moto_fotos').select('*').eq('avaliacao_id', avaliacaoId);
       if (data) setFotos(data);
     };
     load();
-  }, [motoAvaliacaoId]);
+  }, [avaliacaoId]);
 
   const compressImage = (file: File, maxWidth = 1200, quality = 0.7): Promise<Blob> => {
     return new Promise((resolve, reject) => {
@@ -53,7 +53,7 @@ const PhotoUpload: React.FC<Props> = ({ motoAvaliacaoId }) => {
       uploadFile = file;
     }
 
-    const path = `${motoAvaliacaoId}/${tipo}.webp`;
+    const path = `${avaliacaoId}/${tipo}.webp`;
 
     const { error: upErr } = await supabase.storage.from('moto-fotos').upload(path, uploadFile, { upsert: true, contentType: 'image/webp' });
     if (upErr) { toast.error('Erro no upload'); setUploading(null); return; }
@@ -68,7 +68,7 @@ const PhotoUpload: React.FC<Props> = ({ motoAvaliacaoId }) => {
     }
 
     const { data, error } = await supabase.from('moto_fotos').insert({
-      moto_avaliacao_id: motoAvaliacaoId, tipo, url,
+      avaliacao_id: avaliacaoId, tipo, url,
     }).select().single();
 
     if (error) { toast.error('Erro ao salvar foto'); }
@@ -80,7 +80,7 @@ const PhotoUpload: React.FC<Props> = ({ motoAvaliacaoId }) => {
   };
 
   const handleDelete = async (foto: MotoFoto) => {
-    const path = `${motoAvaliacaoId}/${foto.tipo}.webp`;
+    const path = `${avaliacaoId}/${foto.tipo}.webp`;
     await supabase.storage.from('moto-fotos').remove([path]);
     await supabase.from('moto_fotos').delete().eq('id', foto.id);
     setFotos(prev => prev.filter(f => f.id !== foto.id));

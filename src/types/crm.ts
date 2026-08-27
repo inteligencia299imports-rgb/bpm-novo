@@ -209,14 +209,12 @@ export interface Atendimento {
   tipo_atendimento: string;
   origem: string | null;
   temperatura: string | null;
-  observacoes: string | null;
   interesse: Interesse;
   situacao: SituacaoShowroom;
   created_at: string;
   updated_at: string;
   vendedor_nome?: string;
   moto_interesse?: MotoInteresse;
-  moto_avaliacao?: MotoAvaliacao;
   avaliacao?: Avaliacao;
   valor_sinal?: number | null;
   valor_venda?: number | null;
@@ -233,25 +231,9 @@ export interface MotoInteresse {
   estoque_moto_id: string | null;
 }
 
-export interface MotoAvaliacao {
-  id: string;
-  atendimento_id: string;
-  marca: string;
-  modelo: string;
-  ano_fabricacao: string | null;
-  ano_modelo: string | null;
-  categoria: string | null;
-  cor: string | null;
-  placa: string | null;
-  km: string | null;
-  observacoes: string | null;
-  enviada_avaliacao: boolean;
-  crlv_url?: string | null;
-}
-
 export interface MotoFoto {
   id: string;
-  moto_avaliacao_id: string;
+  avaliacao_id: string;
   tipo: string;
   url: string;
 }
@@ -259,7 +241,28 @@ export interface MotoFoto {
 export interface Avaliacao {
   id: string;
   atendimento_id: string;
-  moto_avaliacao_id: string;
+  // dados da moto (fundidos de motos_avaliacao)
+  marca: string;
+  modelo: string;
+  ano_fabricacao: string | null;
+  ano_modelo: string | null;
+  categoria: string | null;
+  cilindrada: string | null;
+  cor: string | null;
+  placa: string | null;
+  km: string | null;
+  observacoes: string | null;
+  tem_manual: boolean | null;
+  tem_chave_reserva: boolean | null;
+  manutencao_vencida: boolean | null;
+  crlv_url: string | null;
+  atpv_url: string | null;
+  procuracao_url: string | null;
+  consulta_realizada: boolean | null;
+  consulta_solicitada: boolean | null;
+  resultado_consulta: string | null;
+  enviada_avaliacao: boolean | null;
+  // dados do processo/negociacao
   valor_fipe: number | null;
   menor_valor: number | null;
   maior_valor: number | null;
@@ -277,6 +280,5 @@ export interface Avaliacao {
   created_at: string;
   updated_at: string;
   atendimento?: Atendimento;
-  moto_avaliacao?: MotoAvaliacao;
   moto_fotos?: MotoFoto[];
 }

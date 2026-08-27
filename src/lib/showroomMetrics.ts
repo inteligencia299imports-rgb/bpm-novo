@@ -27,13 +27,13 @@ interface ConsignanteRow { id: string; atendimento_id: string | null; valor_fech
 interface ContratoRow { atendimento_id: string | null; valor_fechamento: number | null; }
 interface InteresseRow { atendimento_id: string | null; marca: string | null; modelo: string | null; estoque_moto_id: string | null; created_at: string; }
 interface EstoqueRow {
-  id: string; atendimento_venda_id: string | null; avaliacao_id: string | null; moto_avaliacao_id: string | null;
+  id: string; atendimento_venda_id: string | null; avaliacao_id: string | null;
   tipo: string | null; marca: string | null; modelo: string | null; placa: string | null;
   preco: number | null; preco_acao: number | null; valor_venda: number | null;
   updated_at: string | null; created_at: string | null;
 }
 interface AvaliacaoRow {
-  id: string; moto_avaliacao_id: string | null;
+  id: string;
   quanto_vende: number | null; valor_fechamento: number | null;
   avaliacao_compra: number | null; avaliacao_consignacao: number | null;
   updated_at: string | null; created_at: string | null;
@@ -63,7 +63,6 @@ export interface ShowroomIndexes {
   estoqueByAtendVenda: Map<string, EstoqueRow>;
   estoqueById: Map<string, EstoqueRow>;
   avaliacoesById: Map<string, AvaliacaoRow>;
-  avaliacoesByMotoAv: Map<string, AvaliacaoRow>;
   costsByAvaliacao: Map<string, CostAggregate>;
   opLojaByAtend: Map<string, number>;
   contratoByAtend: Map<string, number>;
@@ -97,18 +96,8 @@ export function buildIndexes(params: {
   }
 
   const avaliacoesById = new Map<string, AvaliacaoRow>();
-  const avaliacoesByMotoAv = new Map<string, AvaliacaoRow>();
-  const pickLatestAv = (a: AvaliacaoRow, b: AvaliacaoRow) => {
-    const ta = new Date(a.updated_at || a.created_at || 0).getTime();
-    const tb = new Date(b.updated_at || b.created_at || 0).getTime();
-    return tb > ta ? b : a;
-  };
   for (const av of params.avaliacoes) {
     avaliacoesById.set(av.id, av);
-    if (av.moto_avaliacao_id) {
-      const cur = avaliacoesByMotoAv.get(av.moto_avaliacao_id);
-      avaliacoesByMotoAv.set(av.moto_avaliacao_id, cur ? pickLatestAv(cur, av) : av);
-    }
   }
 
   const costsByAvaliacao = new Map<string, CostAggregate>();
@@ -177,7 +166,7 @@ export function buildIndexes(params: {
     destinoTransferenciaByAvaliacao.set(p.avaliacao_id, p.destino_transferencia || null);
   }
 
-  return { estoqueByAtendVenda, estoqueById, avaliacoesById, avaliacoesByMotoAv, costsByAvaliacao, opLojaByAtend, contratoByAtend, consignanteByAtend, interesseByAtend, nomeByUser, destinoTransferenciaByAvaliacao };
+  return { estoqueByAtendVenda, estoqueById, avaliacoesById, costsByAvaliacao, opLojaByAtend, contratoByAtend, consignanteByAtend, interesseByAtend, nomeByUser, destinoTransferenciaByAvaliacao };
 }
 
 const nz = (v: number | null | undefined) => (v == null || Number(v) === 0 ? null : Number(v));
@@ -189,9 +178,7 @@ export function resolveJoin(atend: AtendimentoRow, idx: ShowroomIndexes, mode: '
   if (!estoque && mode === 'sinal' && interesse?.estoque_moto_id) {
     estoque = idx.estoqueById.get(interesse.estoque_moto_id);
   }
-  let avaliacao: AvaliacaoRow | undefined;
-  if (estoque?.avaliacao_id) avaliacao = idx.avaliacoesById.get(estoque.avaliacao_id);
-  if (!avaliacao && estoque?.moto_avaliacao_id) avaliacao = idx.avaliacoesByMotoAv.get(estoque.moto_avaliacao_id);
+  const avaliacao: AvaliacaoRow | undefined = estoque?.avaliacao_id ? idx.avaliacoesById.get(estoque.avaliacao_id) : undefined;
   return { estoque, avaliacao, interesse };
 }
 

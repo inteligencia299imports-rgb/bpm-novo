@@ -93,7 +93,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
 
   const { getMarcaNomes, getModelosPorMarca } = useMarcasModelos();
 
-  const [motoData, setMotoData] = useState(item.moto || item.motos_avaliacao);
+  const [motoData, setMotoData] = useState(item);
   const moto = motoData;
   const atendimento = item.atendimento || item.atendimentos;
   const statusValue = item[statusField] || 'em_aberto';
@@ -131,7 +131,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       return;
     }
     setSavingMoto(true);
-    const { error } = await supabase.from('motos_avaliacao').update({
+    const { error } = await supabase.from('avaliacoes').update({
       marca: editMarca.trim(),
       modelo: editModelo.trim(),
       placa: editPlaca.trim() || null,
@@ -175,19 +175,16 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      const [cnhRes, crlvRes, avRes, estRes, histRes] = await Promise.all([
+      const [cnhRes, avRes, estRes, histRes] = await Promise.all([
         atendimento?.cliente_id
           ? supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
           : Promise.resolve({ data: null }),
-        moto?.id
-          ? supabase.from('motos_avaliacao').select('crlv_url').eq('id', moto.id).single()
-          : Promise.resolve({ data: null }),
-        supabase.from('avaliacoes').select('quanto_pede, valor_fechamento, avaliador_id').eq('id', item.id).maybeSingle(),
+        supabase.from('avaliacoes').select('quanto_pede, valor_fechamento, avaliador_id, crlv_url').eq('id', item.id).maybeSingle(),
         supabase.from('estoque').select('status, observacoes').eq('avaliacao_id', item.id).maybeSingle(),
-        supabase.from('status_history').select('created_at').eq('entity_type', 'avaliacao').eq('entity_id', item.moto_avaliacao_id || item.id).eq('status', 'adquirida').order('created_at', { ascending: true }).limit(1).maybeSingle(),
+        supabase.from('status_history').select('created_at').eq('entity_type', 'avaliacao').eq('entity_id', item.id).eq('status', 'adquirida').order('created_at', { ascending: true }).limit(1).maybeSingle(),
       ]);
       setCnhUrl((cnhRes.data as any)?.arquivo_url || null);
-      setCrlvUrl(crlvRes.data?.crlv_url || null);
+      setCrlvUrl((avRes.data as any)?.crlv_url || null);
       setQuantoPede(avRes.data?.quanto_pede ?? null);
       setValorFechamento(avRes.data?.valor_fechamento ?? null);
       setEstoqueStatus(estRes.data ? { status: estRes.data.status, observacoes: estRes.data.observacoes } : null);
@@ -435,13 +432,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   onUploaded={(url) => {
                     setCrlvUrl(url);
                     if (moto.id) {
-                      supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
+                      supabase.from('avaliacoes').update({ crlv_url: url }).eq('id', moto.id);
                     }
                   }}
                   onRemoved={() => {
                     setCrlvUrl(null);
                     if (moto.id) {
-                      supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
+                      supabase.from('avaliacoes').update({ crlv_url: null }).eq('id', moto.id);
                     }
                   }}
                 />
@@ -493,7 +490,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           open={processoConsignacaoOpen}
           onOpenChange={setProcessoConsignacaoOpen}
           avaliacaoId={item.id}
-          motoAvaliacaoId={item.moto_avaliacao_id}
           onStatusChanged={(newStatus) => {
             setCurrentConsignacaoStatus(newStatus);
             item.consignacao_status = newStatus;

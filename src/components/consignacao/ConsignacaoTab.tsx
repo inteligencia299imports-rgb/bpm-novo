@@ -31,9 +31,12 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
   useEffect(() => {
     if (initialAvaliacaoId) {
       supabase.from('avaliacoes')
-        .select(`*, atendimentos_motos!inner(id, loja, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro))), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`)
+        .select(`*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`)
         .eq('id', initialAvaliacaoId).single().then(({ data }) => {
-          if (data) setSelectedItem({ ...data, atendimento: (data as any).atendimentos_motos, moto: (data as any).motos_avaliacao });
+          if (data) {
+            const am = (data as any).atendimentos_motos;
+            setSelectedItem({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja }, moto: data });
+          }
         });
       onInitialHandled?.();
     }
@@ -41,7 +44,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const selectStr = `*, atendimentos_motos!inner(id, loja, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro))), motos_avaliacao!inner(id, marca, modelo, placa, cor, ano_fabricacao, ano_modelo, km, categoria, observacoes, tem_manual, tem_chave_reserva, manutencao_vencida)`;
+    const selectStr = `*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`;
 
     const estResult = await fetchAllRange(() => supabase.from('estoque').select('avaliacao_id, status, observacoes, data_entrada').not('avaliacao_id', 'is', null));
     const result = await fetchAllRange(() =>
@@ -53,9 +56,6 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
     if (error) { toast.error('Erro ao carregar consignações'); } else {
       const estoqueMap: Record<string, { status: string; observacoes: string | null; data_entrada: string | null }> = {};
       (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes, data_entrada: e.data_entrada }; });
-      const motoIds = (data || []).map((d: any) => d.moto_avaliacao_id).filter(Boolean);
-      const avalIds = (data || []).map((d: any) => d.id);
-      const histEntityIds = Array.from(new Set([...motoIds, ...avalIds]));
       const histResult = await fetchAllRange(() => supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida'));
       const histByEntity: Record<string, string> = {};
       (histResult.data || []).forEach((h: any) => {
@@ -64,14 +64,11 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
       });
       const acquDateMap: Record<string, string> = {};
       (data || []).forEach((d: any) => {
-        const byMoto = d.moto_avaliacao_id ? histByEntity[d.moto_avaliacao_id] : null;
-        const byAval = histByEntity[d.id];
-        const picked = [byMoto, byAval].filter(Boolean).sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0]
-          || estoqueMap[d.id]?.data_entrada || null;
+        const picked = histByEntity[d.id] || estoqueMap[d.id]?.data_entrada || null;
         if (picked) acquDateMap[d.id] = picked;
       });
       let mapped = (data || [])
-        .map((d: any) => ({ ...d, atendimento: d.atendimentos_motos, moto: d.motos_avaliacao, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null }));
+        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       if (filterCidade !== 'todos') { mapped = mapped.filter((a: any) => matchesCidade(a.atendimento?.loja, filterCidade)); }
       setItems(mapped);

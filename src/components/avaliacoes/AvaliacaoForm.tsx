@@ -178,7 +178,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       tem_chave_reserva: editTemChaveReserva,
       manutencao_vencida: editManutencaoVencida,
     };
-    const { error } = await supabase.from('motos_avaliacao').update(updateData).eq('id', moto.id);
+    const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', moto.id);
     setSavingMoto(false);
     if (error) {
       toast.error('Erro ao salvar dados da moto');
@@ -197,10 +197,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         cilindrada: updateData.cilindrada,
         observacoes: updateData.observacoes,
       };
-      await supabase.from('estoque').update(estoqueUpdate).eq('moto_avaliacao_id', moto.id);
+      await supabase.from('estoque').update(estoqueUpdate).eq('avaliacao_id', moto.id);
       // Update local state
-      if (avaliacao?.moto_avaliacao) {
-        Object.assign(avaliacao.moto_avaliacao, updateData);
+      if (avaliacao) {
+        Object.assign(avaliacao, updateData);
       }
       toast.success('Dados da moto atualizados!');
       setEditMotoOpen(false);
@@ -225,12 +225,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const refreshHistory = async () => {
     if (!avaliacao) return;
-    const motoId = avaliacao.moto_avaliacao_id;
     const atId = avaliacao.atendimento_id;
-    if (!motoId) return;
-    const avalIds = [motoId, avaliacao.id].filter(Boolean) as string[];
     const [{ data: histAval }, { data: histShowroom }, { data: histConsignacao }] = await Promise.all([
-      supabase.from('status_history').select('*').in('entity_type', ['avaliacao', 'consulta']).in('entity_id', avalIds).order('created_at', { ascending: true }),
+      supabase.from('status_history').select('*').in('entity_type', ['avaliacao', 'consulta']).eq('entity_id', avaliacao.id).order('created_at', { ascending: true }),
       supabase.from('status_history').select('*').in('entity_type', ['showroom', 'contrato']).eq('entity_id', atId).order('created_at', { ascending: true }),
       supabase.from('status_history').select('*').eq('entity_type', 'consignacao').eq('entity_id', avaliacao.id).order('created_at', { ascending: true }),
     ]);
@@ -281,14 +278,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       .from('avaliacoes')
       .select(`
         *,
-        atendimentos_motos (id, loja, vendedor_id, interesse, tipo_atendimento, origem, temperatura, created_at, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf))),
-        motos_avaliacao (id, marca, modelo, ano_fabricacao, ano_modelo, placa, km, cor, categoria, observacoes, crlv_url, atpv_url, procuracao_url, consulta_realizada, consulta_solicitada, resultado_consulta, tem_manual, tem_chave_reserva, manutencao_vencida)
+        atendimentos_motos (id, loja_id, loja_empresas:loja_id(loja), vendedor_id, interesse, tipo_atendimento, origem, temperatura, created_at, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))
       `)
       .eq('id', avaliacaoId)
       .single();
 
     if (data) {
-      setAvaliacao({ ...data, atendimento: data.atendimentos_motos, moto_avaliacao: data.motos_avaliacao });
+      const am = data.atendimentos_motos as any;
+      setAvaliacao({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja } });
       const clienteId = (data.atendimentos_motos as any)?.cliente_id;
       if (clienteId) {
         const { data: cnhDoc } = await supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', clienteId).eq('tipo_documento', 'cnh').maybeSingle();
@@ -296,12 +293,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       } else {
         setCnhUrl(null);
       }
-      setCrlvUrl((data.motos_avaliacao as any)?.crlv_url || null);
-      setAtpvUrl((data.motos_avaliacao as any)?.atpv_url || null);
-      setProcuracaoUrl((data.motos_avaliacao as any)?.procuracao_url || null);
-      setConsultaRealizada(!!(data.motos_avaliacao as any)?.consulta_realizada);
-      setConsultaSolicitada(!!(data.motos_avaliacao as any)?.consulta_solicitada);
-      setResultadoConsulta((data.motos_avaliacao as any)?.resultado_consulta || null);
+      setCrlvUrl(data.crlv_url || null);
+      setAtpvUrl(data.atpv_url || null);
+      setProcuracaoUrl(data.procuracao_url || null);
+      setConsultaRealizada(!!data.consulta_realizada);
+      setConsultaSolicitada(!!data.consulta_solicitada);
+      setResultadoConsulta(data.resultado_consulta || null);
       setValorFipe(numberToCurrencyMask(data.valor_fipe));
       setMenorValor(numberToCurrencyMask(data.menor_valor));
       setMaiorValor(numberToCurrencyMask(data.maior_valor));
@@ -335,36 +332,34 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         if (vendedorData?.nome) setVendedorNome(vendedorData.nome);
       }
 
-      if (data.moto_avaliacao_id) {
-        const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('moto_avaliacao_id', data.moto_avaliacao_id);
-        if (fotosData) setFotos(fotosData);
+      const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('avaliacao_id', data.id);
+      if (fotosData) setFotos(fotosData);
 
-        // Fetch history: avaliacao + consulta (by moto_avaliacao_id) + showroom (by atendimento_id)
-        const [{ data: histAval }, { data: histShowroom }, { data: histConsignacao }] = await Promise.all([
-          supabase
-            .from('status_history')
-            .select('*')
-            .in('entity_type', ['avaliacao', 'consulta'])
-            .eq('entity_id', data.moto_avaliacao_id)
-            .order('created_at', { ascending: true }),
-          supabase
-            .from('status_history')
-            .select('*')
-            .in('entity_type', ['showroom', 'contrato'])
-            .eq('entity_id', data.atendimento_id)
-            .order('created_at', { ascending: true }),
-          supabase
-            .from('status_history')
-            .select('*')
-            .eq('entity_type', 'consignacao')
-            .eq('entity_id', data.id)
-            .order('created_at', { ascending: true }),
-        ]);
-        const merged = [...(histAval || []), ...(histShowroom || []), ...(histConsignacao || [])].sort(
-          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
-        setHistory(merged);
-      }
+      // Fetch history: avaliacao + consulta (by avaliacao id) + showroom (by atendimento_id)
+      const [{ data: histAval }, { data: histShowroom }, { data: histConsignacao }] = await Promise.all([
+        supabase
+          .from('status_history')
+          .select('*')
+          .in('entity_type', ['avaliacao', 'consulta'])
+          .eq('entity_id', data.id)
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('status_history')
+          .select('*')
+          .in('entity_type', ['showroom', 'contrato'])
+          .eq('entity_id', data.atendimento_id)
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('status_history')
+          .select('*')
+          .eq('entity_type', 'consignacao')
+          .eq('entity_id', data.id)
+          .order('created_at', { ascending: true }),
+      ]);
+      const merged = [...(histAval || []), ...(histShowroom || []), ...(histConsignacao || [])].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      setHistory(merged);
     }
     setLoading(false);
   };
@@ -447,10 +442,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       }
       // Registrar no histórico
       const isFirstEvaluation = avaliacao?.situacao === 'sem_avaliar';
-      if (avaliacao?.moto_avaliacao_id) {
+      if (avaliacao?.id) {
         await supabase.from('status_history').insert({
           entity_type: 'avaliacao',
-          entity_id: avaliacao.moto_avaliacao_id,
+          entity_id: avaliacao.id,
           status: isFirstEvaluation ? 'avaliada' : 'avaliacao_editada',
           changed_by: user?.id,
           changed_by_name: userName || user?.email || null,
@@ -458,7 +453,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       }
       // Notificar o vendedor responsável
       const vendedorId = (avaliacao as any)?.atendimento?.vendedor_id || (avaliacao as any)?.atendimentos?.vendedor_id;
-      const motoInfo = (avaliacao as any)?.moto_avaliacao || (avaliacao as any)?.motos_avaliacao;
+      const motoInfo = avaliacao;
       if (vendedorId && vendedorId !== user?.id) {
         await supabase.from('notifications').insert({
           user_id: vendedorId,
@@ -498,11 +493,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setAvaliacao((prev: any) => ({ ...prev, situacao: newStatus }));
 
       // Registrar no histórico
-      if (avaliacao?.moto_avaliacao_id) {
+      if (avaliacao?.id) {
         const historyObs = observacoes?.trim() || null;
         await supabase.from('status_history').insert({
           entity_type: 'avaliacao',
-          entity_id: avaliacao.moto_avaliacao_id,
+          entity_id: avaliacao.id,
           status: newStatus,
           changed_by: user?.id,
           changed_by_name: userName || user?.email || null,
@@ -550,14 +545,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     }
     setSavingAquisicao(true);
     // Salvar dados da moto (observações + manual/chave/revisão)
-    if (avaliacao?.moto_avaliacao_id) {
+    if (avaliacao?.id) {
       const motoUpdate: any = {};
       if (obsMotaAquisicao.trim()) motoUpdate.observacoes = obsMotaAquisicao.trim().toUpperCase();
       if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
       if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
       if (aquisRevisaoVencida) motoUpdate.manutencao_vencida = aquisRevisaoVencida === 'sim';
       if (Object.keys(motoUpdate).length > 0) {
-        await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', avaliacao.moto_avaliacao_id);
+        await supabase.from('avaliacoes').update(motoUpdate).eq('id', avaliacao.id);
       }
     }
     await handleStatusChange('adquirida', tipoSelecionado, valor && valor > 0 ? valor : undefined, obsMotaAquisicao.trim().toUpperCase() || undefined);
@@ -585,31 +580,31 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     // consignada → convertida; any propria-like → consignada
     const newTipo = isTipoConsignada(currentTipo) ? 'convertida' : 'consignada';
     
-    if (avaliacao?.moto_avaliacao_id) {
+    if (avaliacao?.id) {
       const motoUpdate: any = {};
       if (obsMotaAquisicao.trim()) motoUpdate.observacoes = obsMotaAquisicao.trim().toUpperCase();
       if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
       if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
       if (aquisRevisaoVencida) motoUpdate.manutencao_vencida = aquisRevisaoVencida === 'sim';
       if (Object.keys(motoUpdate).length > 0) {
-        await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', avaliacao.moto_avaliacao_id);
+        await supabase.from('avaliacoes').update(motoUpdate).eq('id', avaliacao.id);
       }
     }
-    
+
     const { error } = await supabase.from('avaliacoes').update({
       tipo_aquisicao: newTipo,
       valor_fechamento: valor,
     }).eq('id', avaliacaoId);
-    
+
     if (error) {
       toast.error('Erro ao converter aquisição');
     } else {
       const tipoLabel = getTipoAquisicaoLabel(newTipo) || newTipo;
       const fromLabel = getTipoAquisicaoLabel(currentTipo) || currentTipo;
-      if (avaliacao?.moto_avaliacao_id) {
+      if (avaliacao?.id) {
         await supabase.from('status_history').insert({
           entity_type: 'avaliacao',
-          entity_id: avaliacao.moto_avaliacao_id,
+          entity_id: avaliacao.id,
           status: tipoLabel,
           changed_by: user?.id,
           changed_by_name: userName || user?.email || null,
@@ -633,7 +628,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     return <DetailSkeleton onClose={onClose} cards={6} />;
   }
 
-  const moto = avaliacao?.moto_avaliacao;
+  const moto = avaliacao;
   const at = avaliacao?.atendimento;
   const sit = SITUACOES_AVALIACAO.find(s => s.value === avaliacao?.situacao);
   const interesse = at?.interesse;
@@ -879,11 +874,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   currentUrl={crlvUrl}
                   bucketPath={`docs/${moto?.id}/crlv`}
                   onUploaded={async (url) => {
-                    await supabase.from('motos_avaliacao').update({ crlv_url: url } as any).eq('id', moto?.id);
+                    await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto?.id);
                     setCrlvUrl(url);
                   }}
                   onRemoved={async () => {
-                    await supabase.from('motos_avaliacao').update({ crlv_url: null } as any).eq('id', moto?.id);
+                    await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto?.id);
                     setCrlvUrl(null);
                   }}
                 />
@@ -892,11 +887,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   currentUrl={atpvUrl}
                   bucketPath={`docs/${moto?.id}/atpv`}
                   onUploaded={async (url) => {
-                    await supabase.from('motos_avaliacao').update({ atpv_url: url } as any).eq('id', moto?.id);
+                    await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', moto?.id);
                     setAtpvUrl(url);
                   }}
                   onRemoved={async () => {
-                    await supabase.from('motos_avaliacao').update({ atpv_url: null } as any).eq('id', moto?.id);
+                    await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', moto?.id);
                     setAtpvUrl(null);
                   }}
                 />
@@ -905,11 +900,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   currentUrl={procuracaoUrl}
                   bucketPath={`docs/${moto?.id}/procuracao`}
                   onUploaded={async (url) => {
-                    await supabase.from('motos_avaliacao').update({ procuracao_url: url } as any).eq('id', moto?.id);
+                    await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', moto?.id);
                     setProcuracaoUrl(url);
                   }}
                   onRemoved={async () => {
-                    await supabase.from('motos_avaliacao').update({ procuracao_url: null } as any).eq('id', moto?.id);
+                    await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', moto?.id);
                     setProcuracaoUrl(null);
                   }}
                 />
@@ -919,7 +914,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     variant="outline"
                     className="gap-1.5"
                     onClick={async () => {
-                      await supabase.from('motos_avaliacao').update({ 
+                      await supabase.from('avaliacoes').update({ 
                         consulta_solicitada: true,
                         consulta_realizada: false,
                         resultado_consulta: null,
@@ -966,7 +961,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     variant="outline"
                     className="gap-1.5"
                     onClick={async () => {
-                      await supabase.from('motos_avaliacao').update({ 
+                      await supabase.from('avaliacoes').update({ 
                         consulta_solicitada: true,
                         consulta_realizada: false,
                         resultado_consulta: null,
@@ -1150,7 +1145,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     setIsConvertendo(true);
                     setObsMotaAquisicao('');
                     setValorFechamentoAquisicao('');
-                    const ma = avaliacao?.moto_avaliacao || (avaliacao as any)?.motos_avaliacao;
+                    const ma = avaliacao;
                     setAquisManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
                     setAquisChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
                     setAquisRevisaoVencida(ma?.manutencao_vencida ? 'sim' : ma?.manutencao_vencida === false ? 'nao' : '');
@@ -1174,7 +1169,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     if (btn.value === 'adquirida') {
                       setIsConvertendo(false);
                       setObsMotaAquisicao('');
-                      const ma = avaliacao?.moto_avaliacao || avaliacao?.motos_avaliacao;
+                      const ma = avaliacao;
                       setAquisManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
                       setAquisChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
                       setAquisRevisaoVencida(ma?.manutencao_vencida ? 'sim' : ma?.manutencao_vencida === false ? 'nao' : '');

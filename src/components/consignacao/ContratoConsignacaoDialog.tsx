@@ -109,7 +109,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [dataContrato, setDataContrato] = useState<Date | undefined>();
   const [calOpen, setCalOpen] = useState(false);
 
-  const moto = avaliacao?.moto || avaliacao?.motos_avaliacao;
+  const moto = avaliacao;
   const atendimento = avaliacao?.atendimento || avaliacao?.atendimentos;
 
   useEffect(() => {

@@ -21,8 +21,8 @@ const ConsultaTab = () => {
     setLoading(true);
     const { data, error } = await fetchAllRange(() =>
       supabase
-        .from('motos_avaliacao')
-        .select('*, atendimentos_motos!inner(id, loja, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro))), avaliacoes(tipo_aquisicao, situacao)')
+        .from('avaliacoes')
+        .select('*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))')
         .eq('consulta_solicitada', true)
         .order('created_at', { ascending: false })
     );
@@ -34,8 +34,7 @@ const ConsultaTab = () => {
       let results = (data || [])
         .map((d: any) => ({
           ...d,
-          atendimento: d.atendimentos_motos,
-          tipo_aquisicao: d.avaliacoes?.[0]?.tipo_aquisicao || null,
+          atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja },
         }));
       if (search.trim()) {
         const s = search.trim().toLowerCase();

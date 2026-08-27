@@ -155,28 +155,23 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
     const loadHistory = async () => {
       setLoading(true);
-      const motoAvaliacaoId = avaliacaoData?.moto_avaliacao_id;
-      
+
       // Fetch preparacao history
-      const prepEntityIds = [avaliacaoId, motoAvaliacaoId].filter(Boolean) as string[];
       const prepPromise = supabase
         .from('status_history')
         .select('*')
-        .in('entity_id', prepEntityIds)
+        .eq('entity_id', avaliacaoId)
         .eq('entity_type', 'preparacao')
         .order('created_at', { ascending: false });
 
       // Fetch avaliacao history - only acquisition entry (adquirida)
-      const avalEntityIds = [avaliacaoId, motoAvaliacaoId].filter(Boolean) as string[];
-      const avaliacaoPromise = avalEntityIds.length
-        ? supabase
-            .from('status_history')
-            .select('*')
-            .in('entity_id', avalEntityIds)
-            .eq('entity_type', 'avaliacao')
-            .in('status', ['adquirida'])
-            .order('created_at', { ascending: false })
-        : Promise.resolve({ data: [] as any[] });
+      const avaliacaoPromise = supabase
+        .from('status_history')
+        .select('*')
+        .eq('entity_id', avaliacaoId)
+        .eq('entity_type', 'avaliacao')
+        .in('status', ['adquirida'])
+        .order('created_at', { ascending: false });
 
       // Fetch showroom history - only vendido entry (for troca cases)
       const atendimentoId = avaliacaoData?.atendimento_id;
@@ -270,7 +265,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     };
 
     loadHistory();
-  }, [open, avaliacaoId, currentStatus, avaliacaoData?.moto_avaliacao_id]);
+  }, [open, avaliacaoId, currentStatus]);
 
   const getUserInfo = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -439,7 +434,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       // Load avaliacao with moto data
       const { data: avaliacao, error: avaliacaoError } = await supabase
         .from('avaliacoes')
-        .select('*, motos_avaliacao(*)')
+        .select('*')
         .eq('id', avaliacaoId)
         .single();
 
@@ -449,7 +444,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         return;
       }
 
-      const moto = avaliacao.motos_avaliacao;
+      const moto = avaliacao;
       const precoValue = parseCurrencyValue(precoTabela);
       const fechamentoValue = parseCurrencyValue(valorFechamento);
 
@@ -470,7 +465,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         preco: precoValue,
         status: 'disponivel',
         avaliacao_id: avaliacaoId,
-        moto_avaliacao_id: moto.id,
         observacoes: obsMoto.trim() || null,
         data_entrada: new Date().toISOString(),
         classificacao: avaliacao.classificacao || null,
@@ -482,22 +476,18 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         return;
       }
 
-      // Update moto_avaliacao with manual/chave/revisão
-      const motoUpdate: any = {};
-      if (libManual) motoUpdate.tem_manual = libManual === 'sim';
-      if (libChaveReserva) motoUpdate.tem_chave_reserva = libChaveReserva === 'sim';
-      if (libRevisaoVencida) motoUpdate.manutencao_vencida = libRevisaoVencida === 'sim';
-      if (Object.keys(motoUpdate).length > 0 && moto?.id) {
-        await supabase.from('motos_avaliacao').update(motoUpdate).eq('id', moto.id);
-      }
+      const avaliacaoUpdate: any = {
+        preparacao_status: 'estoque',
+        situacao: 'estoque',
+        valor_fechamento: fechamentoValue,
+      };
+      if (libManual) avaliacaoUpdate.tem_manual = libManual === 'sim';
+      if (libChaveReserva) avaliacaoUpdate.tem_chave_reserva = libChaveReserva === 'sim';
+      if (libRevisaoVencida) avaliacaoUpdate.manutencao_vencida = libRevisaoVencida === 'sim';
 
       const { error: updateError } = await supabase
         .from('avaliacoes')
-        .update({
-          preparacao_status: 'estoque',
-          situacao: 'estoque',
-          valor_fechamento: fechamentoValue,
-        } as any)
+        .update(avaliacaoUpdate)
         .eq('id', avaliacaoId);
 
       if (updateError) {

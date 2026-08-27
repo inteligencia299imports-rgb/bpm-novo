@@ -180,7 +180,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const [avalRes, histRes, rolesRes, coRes] = await Promise.all([
       fetchAllRange<any>(() => supabase
         .from('avaliacoes')
-        .select('id, moto_avaliacao_id, avaliador_id, tipo_aquisicao, situacao, quanto_vende, valor_fechamento, trade_in, created_at, updated_at, atendimentos_motos!inner(interesse, loja, cliente:clientes_fornecedores(nome_razao_social)), motos_avaliacao(marca, modelo, placa)')
+        .select('id, marca, modelo, placa, avaliador_id, tipo_aquisicao, situacao, quanto_vende, valor_fechamento, trade_in, created_at, updated_at, atendimentos_motos!inner(interesse, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
         .neq('situacao', 'sem_avaliar')
         .in('atendimentos.interesse', ['trocar', 'vender'])
       ),
@@ -194,17 +194,12 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     ]);
 
     const avals = ((avalRes.data || []) as any[]);
-    // status_history.entity_id pode referenciar avaliacao.id OU moto_avaliacao.id
     const avalIdSet = new Set<string>(avals.map((a) => a.id));
-    const motoToAval = new Map<string, string>();
-    for (const a of avals) {
-      if (a.moto_avaliacao_id) motoToAval.set(a.moto_avaliacao_id, a.id);
-    }
 
-    // menor created_at por avaliação (INNER JOIN status_history via IN (av.id, moto_avaliacao_id))
+    // menor created_at por avaliação
     const aquisicaoByAval = new Map<string, string>();
     for (const h of (histRes.data || []) as any[]) {
-      const avalId = avalIdSet.has(h.entity_id) ? h.entity_id : motoToAval.get(h.entity_id);
+      const avalId = avalIdSet.has(h.entity_id) ? h.entity_id : undefined;
       if (!avalId) continue;
       const cur = aquisicaoByAval.get(avalId);
       if (!cur || h.created_at < cur) aquisicaoByAval.set(avalId, h.created_at);
@@ -230,13 +225,13 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         tipoNorm: normTipo(a.tipo_aquisicao),
         situacao: a.situacao,
         interesse: a.atendimentos_motos?.interesse || null,
-        loja: a.atendimentos_motos?.loja || null,
+        loja: a.atendimentos_motos?.loja_empresas?.loja || null,
         createdAt: a.created_at,
         dataAquisicao: aquisicaoByAval.get(a.id) || null,
         nomeCliente: a.atendimentos_motos?.cliente?.nome_razao_social || null,
-        marca: a.motos_avaliacao?.marca || null,
-        modelo: a.motos_avaliacao?.modelo || null,
-        placa: a.motos_avaliacao?.placa || null,
+        marca: a.marca || null,
+        modelo: a.modelo || null,
+        placa: a.placa || null,
         quantoVende: Number(a.quanto_vende || 0),
         valorFechamento: Number(a.valor_fechamento || 0),
         valorBonus: Number(a.trade_in || 0),

@@ -48,13 +48,11 @@ export type Database = {
           interesse: string
           intermediacao_parte1_status: string
           intermediacao_parte2_status: string
-          loja: string
+          loja_id: string
           nps_enviado_at: string | null
           nps_respondido_at: string | null
           nps_status: string
-          observacoes: string | null
           origem: string | null
-          pos_venda_observacoes: string | null
           pos_venda_status: string
           situacao: string
           temperatura: string | null
@@ -72,13 +70,11 @@ export type Database = {
           interesse: string
           intermediacao_parte1_status?: string
           intermediacao_parte2_status?: string
-          loja: string
+          loja_id: string
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
           nps_status?: string
-          observacoes?: string | null
           origem?: string | null
-          pos_venda_observacoes?: string | null
           pos_venda_status?: string
           situacao?: string
           temperatura?: string | null
@@ -96,13 +92,11 @@ export type Database = {
           interesse?: string
           intermediacao_parte1_status?: string
           intermediacao_parte2_status?: string
-          loja?: string
+          loja_id?: string
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
           nps_status?: string
-          observacoes?: string | null
           origem?: string | null
-          pos_venda_observacoes?: string | null
           pos_venda_status?: string
           situacao?: string
           temperatura?: string | null
@@ -120,36 +114,62 @@ export type Database = {
             referencedRelation: "clientes_fornecedores"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "atendimentos_motos_loja_id_fkey"
+            columns: ["loja_id"]
+            isOneToOne: false
+            referencedRelation: "loja_empresas"
+            referencedColumns: ["id"]
+          },
         ]
       }
       avaliacoes: {
         Row: {
+          ano_fabricacao: string | null
+          ano_modelo: string | null
           atendimento_id: string
+          atpv_url: string | null
           avaliacao_compra: number | null
           avaliacao_consignacao: number | null
           avaliador_id: string | null
+          categoria: string | null
+          cilindrada: string | null
           classificacao: string | null
           consignacao_observacoes: string | null
           consignacao_status: string
+          consulta_realizada: boolean | null
+          consulta_solicitada: boolean | null
+          cor: string | null
           created_at: string
+          crlv_url: string | null
+          enviada_avaliacao: boolean | null
           id: string
+          km: string | null
           maior_valor: number | null
+          manutencao_vencida: boolean | null
+          marca: string
           menor_valor: number | null
-          moto_avaliacao_id: string
+          modelo: string
           negociacao: string | null
           nps_enviado_at: string | null
           nps_respondido_at: string | null
           nps_status: string
           observacao_avaliador: string | null
+          observacoes: string | null
+          placa: string | null
           pos_compra_observacoes: string | null
           pos_compra_status: string
           preparacao_status: string
           previsao_custos_cliente: number | null
           previsao_custos_loja: number | null
+          procuracao_url: string | null
           quanto_pede: number | null
           quanto_vende: number | null
           quanto_vende_errado: number | null
+          resultado_consulta: string | null
           situacao: string
+          tem_chave_reserva: boolean | null
+          tem_manual: boolean | null
           tipo_aquisicao: string | null
           trade_in: number | null
           updated_at: string
@@ -157,32 +177,51 @@ export type Database = {
           valor_fipe: number | null
         }
         Insert: {
+          ano_fabricacao?: string | null
+          ano_modelo?: string | null
           atendimento_id: string
+          atpv_url?: string | null
           avaliacao_compra?: number | null
           avaliacao_consignacao?: number | null
           avaliador_id?: string | null
+          categoria?: string | null
+          cilindrada?: string | null
           classificacao?: string | null
           consignacao_observacoes?: string | null
           consignacao_status?: string
+          consulta_realizada?: boolean | null
+          consulta_solicitada?: boolean | null
+          cor?: string | null
           created_at?: string
+          crlv_url?: string | null
+          enviada_avaliacao?: boolean | null
           id?: string
+          km?: string | null
           maior_valor?: number | null
+          manutencao_vencida?: boolean | null
+          marca: string
           menor_valor?: number | null
-          moto_avaliacao_id: string
+          modelo: string
           negociacao?: string | null
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
           nps_status?: string
           observacao_avaliador?: string | null
+          observacoes?: string | null
+          placa?: string | null
           pos_compra_observacoes?: string | null
           pos_compra_status?: string
           preparacao_status?: string
           previsao_custos_cliente?: number | null
           previsao_custos_loja?: number | null
+          procuracao_url?: string | null
           quanto_pede?: number | null
           quanto_vende?: number | null
           quanto_vende_errado?: number | null
+          resultado_consulta?: string | null
           situacao?: string
+          tem_chave_reserva?: boolean | null
+          tem_manual?: boolean | null
           tipo_aquisicao?: string | null
           trade_in?: number | null
           updated_at?: string
@@ -190,32 +229,51 @@ export type Database = {
           valor_fipe?: number | null
         }
         Update: {
+          ano_fabricacao?: string | null
+          ano_modelo?: string | null
           atendimento_id?: string
+          atpv_url?: string | null
           avaliacao_compra?: number | null
           avaliacao_consignacao?: number | null
           avaliador_id?: string | null
+          categoria?: string | null
+          cilindrada?: string | null
           classificacao?: string | null
           consignacao_observacoes?: string | null
           consignacao_status?: string
+          consulta_realizada?: boolean | null
+          consulta_solicitada?: boolean | null
+          cor?: string | null
           created_at?: string
+          crlv_url?: string | null
+          enviada_avaliacao?: boolean | null
           id?: string
+          km?: string | null
           maior_valor?: number | null
+          manutencao_vencida?: boolean | null
+          marca?: string
           menor_valor?: number | null
-          moto_avaliacao_id?: string
+          modelo?: string
           negociacao?: string | null
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
           nps_status?: string
           observacao_avaliador?: string | null
+          observacoes?: string | null
+          placa?: string | null
           pos_compra_observacoes?: string | null
           pos_compra_status?: string
           preparacao_status?: string
           previsao_custos_cliente?: number | null
           previsao_custos_loja?: number | null
+          procuracao_url?: string | null
           quanto_pede?: number | null
           quanto_vende?: number | null
           quanto_vende_errado?: number | null
+          resultado_consulta?: string | null
           situacao?: string
+          tem_chave_reserva?: boolean | null
+          tem_manual?: boolean | null
           tipo_aquisicao?: string | null
           trade_in?: number | null
           updated_at?: string
@@ -228,13 +286,6 @@ export type Database = {
             columns: ["atendimento_id"]
             isOneToOne: false
             referencedRelation: "atendimentos_motos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_moto_avaliacao_id_fkey"
-            columns: ["moto_avaliacao_id"]
-            isOneToOne: false
-            referencedRelation: "motos_avaliacao"
             referencedColumns: ["id"]
           },
         ]
@@ -781,21 +832,110 @@ export type Database = {
       }
       empresas: {
         Row: {
+          ativo: boolean
+          banner_url: string | null
+          bpm: boolean
+          cnpj: string
           created_at: string
+          crm: boolean
+          endereco: string | null
+          hcm: boolean
           id: string
+          inscricao_estadual: string | null
+          mini: boolean
           nome: string
+          nome_fantasia: string | null
+          ofc: boolean
+          razao_social: string | null
+          regime_tributario: string | null
+          saldo_inicial: number
+          saldo_inicial_data: string | null
+          uf: string | null
+          updated_at: string
         }
         Insert: {
+          ativo?: boolean
+          banner_url?: string | null
+          bpm?: boolean
+          cnpj?: string
           created_at?: string
+          crm?: boolean
+          endereco?: string | null
+          hcm?: boolean
           id?: string
+          inscricao_estadual?: string | null
+          mini?: boolean
           nome: string
+          nome_fantasia?: string | null
+          ofc?: boolean
+          razao_social?: string | null
+          regime_tributario?: string | null
+          saldo_inicial?: number
+          saldo_inicial_data?: string | null
+          uf?: string | null
+          updated_at?: string
         }
         Update: {
+          ativo?: boolean
+          banner_url?: string | null
+          bpm?: boolean
+          cnpj?: string
           created_at?: string
+          crm?: boolean
+          endereco?: string | null
+          hcm?: boolean
           id?: string
+          inscricao_estadual?: string | null
+          mini?: boolean
           nome?: string
+          nome_fantasia?: string | null
+          ofc?: boolean
+          razao_social?: string | null
+          regime_tributario?: string | null
+          saldo_inicial?: number
+          saldo_inicial_data?: string | null
+          uf?: string | null
+          updated_at?: string
         }
         Relationships: []
+      }
+      loja_empresas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          empresa_id: string
+          id: string
+          loja: string
+          sistema: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id: string
+          id?: string
+          loja: string
+          sistema: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          loja?: string
+          sistema?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loja_empresas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       estoque: {
         Row: {
@@ -816,7 +956,6 @@ export type Database = {
           loja: string | null
           marca: string
           modelo: string
-          moto_avaliacao_id: string | null
           observacoes: string | null
           placa: string | null
           preco: number | null
@@ -845,7 +984,6 @@ export type Database = {
           loja?: string | null
           marca: string
           modelo: string
-          moto_avaliacao_id?: string | null
           observacoes?: string | null
           placa?: string | null
           preco?: number | null
@@ -874,7 +1012,6 @@ export type Database = {
           loja?: string | null
           marca?: string
           modelo?: string
-          moto_avaliacao_id?: string | null
           observacoes?: string | null
           placa?: string | null
           preco?: number | null
@@ -898,13 +1035,6 @@ export type Database = {
             columns: ["avaliacao_id"]
             isOneToOne: false
             referencedRelation: "avaliacoes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "estoque_moto_avaliacao_id_fkey"
-            columns: ["moto_avaliacao_id"]
-            isOneToOne: false
-            referencedRelation: "motos_avaliacao"
             referencedColumns: ["id"]
           },
         ]
@@ -1005,121 +1135,32 @@ export type Database = {
       }
       moto_fotos: {
         Row: {
+          avaliacao_id: string
           created_at: string
           id: string
-          moto_avaliacao_id: string
           tipo: string
           url: string
         }
         Insert: {
+          avaliacao_id: string
           created_at?: string
           id?: string
-          moto_avaliacao_id: string
           tipo: string
           url: string
         }
         Update: {
+          avaliacao_id?: string
           created_at?: string
           id?: string
-          moto_avaliacao_id?: string
           tipo?: string
           url?: string
         }
         Relationships: [
           {
-            foreignKeyName: "moto_fotos_moto_avaliacao_id_fkey"
-            columns: ["moto_avaliacao_id"]
+            foreignKeyName: "moto_fotos_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
             isOneToOne: false
-            referencedRelation: "motos_avaliacao"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      motos_avaliacao: {
-        Row: {
-          ano_fabricacao: string | null
-          ano_modelo: string | null
-          atendimento_id: string
-          atpv_url: string | null
-          categoria: string | null
-          cilindrada: string | null
-          consulta_realizada: boolean | null
-          consulta_solicitada: boolean | null
-          cor: string | null
-          created_at: string
-          crlv_url: string | null
-          enviada_avaliacao: boolean | null
-          id: string
-          km: string | null
-          manutencao_vencida: boolean | null
-          marca: string
-          modelo: string
-          observacoes: string | null
-          placa: string | null
-          procuracao_url: string | null
-          resultado_consulta: string | null
-          tem_chave_reserva: boolean | null
-          tem_manual: boolean | null
-          updated_at: string
-        }
-        Insert: {
-          ano_fabricacao?: string | null
-          ano_modelo?: string | null
-          atendimento_id: string
-          atpv_url?: string | null
-          categoria?: string | null
-          cilindrada?: string | null
-          consulta_realizada?: boolean | null
-          consulta_solicitada?: boolean | null
-          cor?: string | null
-          created_at?: string
-          crlv_url?: string | null
-          enviada_avaliacao?: boolean | null
-          id?: string
-          km?: string | null
-          manutencao_vencida?: boolean | null
-          marca: string
-          modelo: string
-          observacoes?: string | null
-          placa?: string | null
-          procuracao_url?: string | null
-          resultado_consulta?: string | null
-          tem_chave_reserva?: boolean | null
-          tem_manual?: boolean | null
-          updated_at?: string
-        }
-        Update: {
-          ano_fabricacao?: string | null
-          ano_modelo?: string | null
-          atendimento_id?: string
-          atpv_url?: string | null
-          categoria?: string | null
-          cilindrada?: string | null
-          consulta_realizada?: boolean | null
-          consulta_solicitada?: boolean | null
-          cor?: string | null
-          created_at?: string
-          crlv_url?: string | null
-          enviada_avaliacao?: boolean | null
-          id?: string
-          km?: string | null
-          manutencao_vencida?: boolean | null
-          marca?: string
-          modelo?: string
-          observacoes?: string | null
-          placa?: string | null
-          procuracao_url?: string | null
-          resultado_consulta?: string | null
-          tem_chave_reserva?: boolean | null
-          tem_manual?: boolean | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "motos_avaliacao_atendimento_id_fkey"
-            columns: ["atendimento_id"]
-            isOneToOne: false
-            referencedRelation: "atendimentos_motos"
+            referencedRelation: "avaliacoes"
             referencedColumns: ["id"]
           },
         ]
@@ -1198,6 +1239,30 @@ export type Database = {
           read?: boolean
           title?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      observacoes: {
+        Row: {
+          created_at: string
+          id: string
+          id_operacao: string
+          observacao: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          id_operacao: string
+          observacao: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          id_operacao?: string
+          observacao?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1470,6 +1535,7 @@ export type Database = {
           email: string | null
           id: string
           limite_desconto_percentual: number
+          loja_id: string | null
           nome: string | null
           projeto_id: string | null
           updated_at: string
@@ -1482,6 +1548,7 @@ export type Database = {
           email?: string | null
           id?: string
           limite_desconto_percentual?: number
+          loja_id?: string | null
           nome?: string | null
           projeto_id?: string | null
           updated_at?: string
@@ -1494,12 +1561,20 @@ export type Database = {
           email?: string | null
           id?: string
           limite_desconto_percentual?: number
+          loja_id?: string | null
           nome?: string | null
           projeto_id?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_roles_loja_id_fkey"
+            columns: ["loja_id"]
+            isOneToOne: false
+            referencedRelation: "loja_empresas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_roles_projeto_id_fkey"
             columns: ["projeto_id"]
@@ -1543,10 +1618,6 @@ export type Database = {
       }
       has_master_or_gerente_empresa: {
         Args: { _loja: string; _user_id: string }
-        Returns: boolean
-      }
-      moto_has_avaliacao_preparacao: {
-        Args: { _moto_avaliacao_id: string }
         Returns: boolean
       }
       next_report_cycle: {

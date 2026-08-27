@@ -8,7 +8,6 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, DollarSign } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -41,7 +40,6 @@ interface Props {
   atendimentoId: string;
   customEtapas?: string[];
   statusField?: string;
-  observacoesField?: string;
   statusRules?: {
     concluded?: string;
     special?: { etapa: string; status: string };
@@ -54,9 +52,8 @@ interface Props {
 
 const ProcessoDialog: React.FC<Props> = ({ 
   open, onOpenChange, atendimentoId, 
-  customEtapas, 
+  customEtapas,
   statusField = 'pos_venda_status',
-  observacoesField = 'pos_venda_observacoes',
   statusRules,
   onStatusChanged,
   showContratoConsignante,
@@ -69,24 +66,16 @@ const ProcessoDialog: React.FC<Props> = ({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
-  const [observacoes, setObservacoes] = useState('');
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     const load = async () => {
       setLoading(true);
-      const [{ data }, { data: atData }] = await Promise.all([
-        supabase
-          .from('pos_venda_processos')
-          .select('id, etapa, concluida, data_conclusao')
-          .eq('atendimento_id', atendimentoId),
-        supabase
-          .from('atendimentos_motos')
-          .select(observacoesField)
-          .eq('id', atendimentoId)
-          .maybeSingle(),
-      ]);
+      const { data } = await supabase
+        .from('pos_venda_processos')
+        .select('id, etapa, concluida, data_conclusao')
+        .eq('atendimento_id', atendimentoId);
 
       const map: Record<string, EtapaData> = {};
       if (data) {
@@ -95,11 +84,10 @@ const ProcessoDialog: React.FC<Props> = ({
         }
       }
       setEtapas(ETAPAS.map(e => map[e] || { etapa: e, concluida: false, data_conclusao: null }));
-      setObservacoes((atData as any)?.[observacoesField] || '');
       setLoading(false);
     };
     load();
-  }, [open, atendimentoId, observacoesField]);
+  }, [open, atendimentoId]);
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     setEtapas(prev =>
@@ -207,7 +195,7 @@ const ProcessoDialog: React.FC<Props> = ({
 
       const { error: updateError } = await supabase
         .from('atendimentos_motos')
-        .update({ [statusField]: newStatus, [observacoesField]: observacoes } as any)
+        .update({ [statusField]: newStatus } as any)
         .eq('id', atendimentoId);
 
       if (updateError) {
@@ -369,15 +357,6 @@ const ProcessoDialog: React.FC<Props> = ({
             )}
 
             <Separator />
-            <div className="space-y-2 pt-3">
-              <label className="text-sm font-medium">Observações</label>
-              <Textarea
-                placeholder="Observações do processo..."
-                value={observacoes}
-                onChange={(e) => setObservacoes(e.target.value)}
-                rows={3}
-              />
-            </div>
             <div className="flex justify-end pt-3">
               <Button onClick={handleSave} disabled={saving} className="gap-1.5">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

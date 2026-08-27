@@ -11,6 +11,8 @@ interface AuthContextType {
   role: AppRole | null;
   userName: string;
   lojas: string[];
+  lojaPrincipal: string | null;
+  ufPrincipal: string | null;
   limiteDescontoPercentual: number;
   loading: boolean;
   roleChecked: boolean;
@@ -32,6 +34,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [role, setRole] = useState<AppRole | null>(null);
   const [userName, setUserName] = useState('');
   const [lojas, setLojas] = useState<string[]>([]);
+  const [lojaPrincipal, setLojaPrincipal] = useState<string | null>(null);
+  const [ufPrincipal, setUfPrincipal] = useState<string | null>(null);
   const [limiteDescontoPercentual, setLimiteDescontoPercentual] = useState(8);
   const [loading, setLoading] = useState(true);
   const [roleChecked, setRoleChecked] = useState(false);
@@ -40,13 +44,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRole(null);
     setUserName('');
     setLojas([]);
+    setLojaPrincipal(null);
+    setUfPrincipal(null);
     setLimiteDescontoPercentual(8);
   };
 
   const fetchRole = async (userId: string) => {
     const { data } = await supabase
       .from('user_roles')
-      .select('app_role, nome, limite_desconto_percentual')
+      .select('app_role, nome, limite_desconto_percentual, loja_id')
       .eq('user_id', userId)
       .eq('ativo', true)
       .eq('projeto_id', BPM_PROJETO_ID)
@@ -56,6 +62,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setRole(data.app_role as AppRole);
       setUserName(data.nome || '');
       setLimiteDescontoPercentual(data.limite_desconto_percentual ?? 8);
+
+      if (data.loja_id) {
+        const { data: lojaEmpresa } = await (supabase as any)
+          .from('loja_empresas')
+          .select('loja, ativo, empresas(uf)')
+          .eq('id', data.loja_id)
+          .maybeSingle();
+        setLojaPrincipal(lojaEmpresa?.ativo ? lojaEmpresa.loja : null);
+        setUfPrincipal(lojaEmpresa?.ativo ? lojaEmpresa.empresas?.uf ?? null : null);
+      } else {
+        setLojaPrincipal(null);
+        setUfPrincipal(null);
+      }
 
       const { data: empresasData } = await supabase
         .from('user_empresas')
@@ -120,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, userName, lojas, limiteDescontoPercentual, loading, roleChecked, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, role, userName, lojas, lojaPrincipal, ufPrincipal, limiteDescontoPercentual, loading, roleChecked, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

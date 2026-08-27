@@ -89,7 +89,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const handleSaveResultado = async () => {
     setSaving(true);
     const { error } = await supabase
-      .from('motos_avaliacao')
+      .from('avaliacoes')
       .update({ resultado_consulta: resultadoTexto, consulta_realizada: true } as any)
       .eq('id', moto.id);
 
@@ -177,7 +177,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
             </Button>
           ) : (
             <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={async () => {
-              await supabase.from('motos_avaliacao').update({ 
+              await supabase.from('avaliacoes').update({ 
                 consulta_solicitada: true, 
                 consulta_realizada: false, 
                 resultado_consulta: null 
@@ -281,11 +281,11 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                   currentUrl={crlvUrl}
                   bucketPath={`docs/${moto.id}/crlv`}
                   onUploaded={async (url) => {
-                    await supabase.from('motos_avaliacao').update({ crlv_url: url }).eq('id', moto.id);
+                    await supabase.from('avaliacoes').update({ crlv_url: url }).eq('id', moto.id);
                     setCrlvUrl(url);
                   }}
                   onRemoved={async () => {
-                    await supabase.from('motos_avaliacao').update({ crlv_url: null }).eq('id', moto.id);
+                    await supabase.from('avaliacoes').update({ crlv_url: null }).eq('id', moto.id);
                     setCrlvUrl(null);
                   }}
                 />
@@ -294,11 +294,11 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                   currentUrl={atpvUrl}
                   bucketPath={`docs/${moto.id}/atpv`}
                   onUploaded={async (url) => {
-                    await supabase.from('motos_avaliacao').update({ atpv_url: url } as any).eq('id', moto.id);
+                    await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', moto.id);
                     setAtpvUrl(url);
                   }}
                   onRemoved={async () => {
-                    await supabase.from('motos_avaliacao').update({ atpv_url: null } as any).eq('id', moto.id);
+                    await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', moto.id);
                     setAtpvUrl(null);
                   }}
                 />
@@ -307,11 +307,11 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                   currentUrl={procuracaoUrl}
                   bucketPath={`docs/${moto.id}/procuracao`}
                   onUploaded={async (url) => {
-                    await supabase.from('motos_avaliacao').update({ procuracao_url: url } as any).eq('id', moto.id);
+                    await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', moto.id);
                     setProcuracaoUrl(url);
                   }}
                   onRemoved={async () => {
-                    await supabase.from('motos_avaliacao').update({ procuracao_url: null } as any).eq('id', moto.id);
+                    await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', moto.id);
                     setProcuracaoUrl(null);
                   }}
                 />

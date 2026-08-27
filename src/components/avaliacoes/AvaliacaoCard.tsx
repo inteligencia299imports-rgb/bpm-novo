@@ -40,7 +40,7 @@ const STATUS_HEX: Record<string, string> = {
 // Using centralized getTipoAquisicaoLabel from lib
 
 const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
-  const moto = avaliacao.moto_avaliacao;
+  const moto = avaliacao;
   const at = avaliacao.atendimento;
   const statusColor = STATUS_HEX[avaliacao.situacao] || '#6B7280';
 

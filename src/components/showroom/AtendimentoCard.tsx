@@ -9,7 +9,7 @@ import { formatPlaca, formatModelo } from '@/lib/utils';
 
 
 interface Props {
-  atendimento: Atendimento & { motos_interesse?: any[]; motos_avaliacao?: any[] };
+  atendimento: Atendimento & { motos_interesse?: any[]; avaliacoes?: any[] };
   onClick: () => void;
   actions?: React.ReactNode;
   statusColorOverride?: string;
@@ -54,7 +54,7 @@ const getMotoInteresseLabel = (atendimento: Props['atendimento']): string | null
 };
 
 const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null => {
-  const motoAv = atendimento.motos_avaliacao?.[0];
+  const motoAv = atendimento.avaliacoes?.[0];
   if (!motoAv) return null;
   const parts: string[] = [];
   if (motoAv.placa) parts.push(formatPlaca(motoAv.placa)!);

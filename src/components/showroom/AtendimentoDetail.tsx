@@ -12,7 +12,7 @@ import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermome
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import type { Atendimento, MotoInteresse, MotoAvaliacao, SituacaoShowroom } from '@/types/crm';
+import type { Atendimento, MotoInteresse, Avaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES } from '@/types/crm';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,6 +28,7 @@ import DocumentUpload from './DocumentUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import ObservacoesProcesso from '@/components/shared/ObservacoesProcesso';
+import AtendimentoObservacoes from './AtendimentoObservacoes';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import ContratoDialog from './ContratoDialog';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
@@ -83,7 +84,7 @@ const parseCurrencyInput = (value: string): number => {
 const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted, onStatusUpdated }) => {
   const { user, userName, role } = useAuth();
   const [motosInteresse, setMotosInteresse] = useState<MotoInteresse[]>([]);
-  const [motosAvaliacao, setMotosAvaliacao] = useState<MotoAvaliacao[]>([]);
+  const [motosAvaliacao, setMotosAvaliacao] = useState<Avaliacao[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
   const [estoqueData, setEstoqueData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
@@ -126,9 +127,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         .eq('entity_id', atendimento.id)
         .order('created_at', { ascending: true });
 
-      const [resInt, resAv, resAval, showroomRes] = await Promise.all([
+      const [resInt, resAval, showroomRes] = await Promise.all([
         supabase.from('motos_interesse').select('*').eq('atendimento_id', atendimento.id),
-        supabase.from('motos_avaliacao').select('*').eq('atendimento_id', atendimento.id),
         supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimento.id),
         showroomHistoryPromise,
       ]);
@@ -136,7 +136,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       const motosInt = (resInt.data as unknown as MotoInteresse[]) || [];
       setMotosInteresse(motosInt);
 
-      const motosAv = (resAv.data as unknown as MotoAvaliacao[]) || [];
+      // motos_avaliacao foi fundida em avaliacoes: cada linha ja tem os
+      // dados da moto e do processo juntos, com o mesmo id.
+      const motosAv = (resAval.data as unknown as Avaliacao[]) || [];
       setMotosAvaliacao(motosAv);
       
       // Init document URLs from fetched data
@@ -161,7 +163,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       // Fetch all secondary data in parallel
       const estoquePromise = estoqueIds.length > 0
-        ? supabase.from('estoque').select('*, motos_avaliacao(tem_manual, tem_chave_reserva, manutencao_vencida)').in('id', estoqueIds).then(r => r)
+        ? supabase.from('estoque').select('*, avaliacoes(tem_manual, tem_chave_reserva, manutencao_vencida)').in('id', estoqueIds).then(r => r)
         : Promise.resolve({ data: null as any[] | null });
 
       const avaliadorIds = resAval.data
@@ -182,7 +184,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         ? supabase.from('status_history').select('*').eq('entity_type', 'avaliacao').in('entity_id', motoIds).order('created_at', { ascending: true }).then(r => r)
         : Promise.resolve({ data: [] as any[] });
       const fotosCountPromise = motoIds.length > 0
-        ? supabase.from('moto_fotos').select('moto_avaliacao_id').in('moto_avaliacao_id', motoIds).then(r => r)
+        ? supabase.from('moto_fotos').select('avaliacao_id').in('avaliacao_id', motoIds).then(r => r)
         : Promise.resolve({ data: [] as any[] });
 
       const [estoqueRes, rolesRes, consultaRes, avaliacaoRes, fotosCountRes, vendedorRes] = await Promise.all([
@@ -197,9 +199,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         for (const item of estoqueRes.data) {
           estoqueMap[item.id] = {
             ...item,
-            tem_manual: item.motos_avaliacao?.tem_manual ?? null,
-            tem_chave_reserva: item.motos_avaliacao?.tem_chave_reserva ?? null,
-            manutencao_vencida: item.motos_avaliacao?.manutencao_vencida ?? null,
+            tem_manual: item.avaliacoes?.tem_manual ?? null,
+            tem_chave_reserva: item.avaliacoes?.tem_chave_reserva ?? null,
+            manutencao_vencida: item.avaliacoes?.manutencao_vencida ?? null,
           };
         }
         setEstoqueData(estoqueMap);
@@ -209,7 +211,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       if (fotosCountRes.data) {
         const countMap: Record<string, number> = {};
         for (const f of fotosCountRes.data) {
-          countMap[f.moto_avaliacao_id] = (countMap[f.moto_avaliacao_id] || 0) + 1;
+          countMap[f.avaliacao_id] = (countMap[f.avaliacao_id] || 0) + 1;
         }
         setPhotoCountMap(countMap);
       }
@@ -224,7 +226,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           }
         }
         for (const av of resAval.data) {
-          avalMap[(av as any).moto_avaliacao_id] = { ...av, avaliador_nome: avaliadorNames[(av as any).avaliador_id] || null };
+          avalMap[av.id] = { ...av, avaliador_nome: avaliadorNames[(av as any).avaliador_id] || null };
         }
       }
       setAvaliacoes(avalMap);
@@ -310,8 +312,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       // Sync: perdido no showroom → perdido nas avaliações + reverter estoque
       if (value === 'perdido') {
-        const { data: avaliacoesData } = await supabase.from('avaliacoes').select('id, moto_avaliacao_id, situacao').eq('atendimento_id', atendimento.id);
-        
+        const { data: avaliacoesData } = await supabase.from('avaliacoes').select('id, situacao').eq('atendimento_id', atendimento.id);
+
         const promises: PromiseLike<any>[] = [
           historyPromise,
           supabase.from('avaliacoes').update({ situacao: 'perdido' }).eq('atendimento_id', atendimento.id).then(r => r),
@@ -322,7 +324,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           for (const av of avaliacoesData) {
             promises.push(supabase.from('status_history').insert({
               entity_type: 'avaliacao',
-              entity_id: av.moto_avaliacao_id,
+              entity_id: av.id,
               status: 'perdido',
               changed_by: user?.id,
               changed_by_name: userName || user?.email || null,
@@ -358,8 +360,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       }
       // Sync: dispensada no showroom → dispensada nas avaliações
       else if (value === 'dispensada') {
-        const { data: avaliacoesData } = await supabase.from('avaliacoes').select('id, moto_avaliacao_id, situacao').eq('atendimento_id', atendimento.id);
-        
+        const { data: avaliacoesData } = await supabase.from('avaliacoes').select('id, situacao').eq('atendimento_id', atendimento.id);
+
         const promises: PromiseLike<any>[] = [
           historyPromise,
           supabase.from('avaliacoes').update({ situacao: 'dispensada' }).eq('atendimento_id', atendimento.id).then(r => r),
@@ -369,7 +371,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           for (const av of avaliacoesData) {
             promises.push(supabase.from('status_history').insert({
               entity_type: 'avaliacao',
-              entity_id: av.moto_avaliacao_id,
+              entity_id: av.id,
               status: 'dispensada',
               changed_by: user?.id,
               changed_by_name: userName || user?.email || null,
@@ -978,11 +980,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         currentUrl={crlvUrls[moto.id] || null}
                         bucketPath={`docs/${moto.id}/crlv`}
                         onUploaded={async (url) => {
-                          await supabase.from('motos_avaliacao').update({ crlv_url: url } as any).eq('id', moto.id);
+                          await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto.id);
                           setCrlvUrls(prev => ({ ...prev, [moto.id]: url }));
                         }}
                         onRemoved={async () => {
-                          await supabase.from('motos_avaliacao').update({ crlv_url: null } as any).eq('id', moto.id);
+                          await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto.id);
                           setCrlvUrls(prev => ({ ...prev, [moto.id]: null }));
                         }}
                       />
@@ -993,11 +995,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         currentUrl={atpvUrls[moto.id] || null}
                         bucketPath={`docs/${moto.id}/atpv`}
                         onUploaded={async (url) => {
-                          await supabase.from('motos_avaliacao').update({ atpv_url: url } as any).eq('id', moto.id);
+                          await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', moto.id);
                           setAtpvUrls(prev => ({ ...prev, [moto.id]: url }));
                         }}
                         onRemoved={async () => {
-                          await supabase.from('motos_avaliacao').update({ atpv_url: null } as any).eq('id', moto.id);
+                          await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', moto.id);
                           setAtpvUrls(prev => ({ ...prev, [moto.id]: null }));
                         }}
                       />
@@ -1008,11 +1010,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         currentUrl={procuracaoUrls[moto.id] || null}
                         bucketPath={`docs/${moto.id}/procuracao`}
                         onUploaded={async (url) => {
-                          await supabase.from('motos_avaliacao').update({ procuracao_url: url } as any).eq('id', moto.id);
+                          await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', moto.id);
                           setProcuracaoUrls(prev => ({ ...prev, [moto.id]: url }));
                         }}
                         onRemoved={async () => {
-                          await supabase.from('motos_avaliacao').update({ procuracao_url: null } as any).eq('id', moto.id);
+                          await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', moto.id);
                           setProcuracaoUrls(prev => ({ ...prev, [moto.id]: null }));
                         }}
                       />
@@ -1024,23 +1026,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           variant="outline"
                           className="gap-1.5"
                           onClick={async () => {
-                            
-                            const { error: avError } = await supabase.from('avaliacoes').insert({
-                              atendimento_id: atendimento.id,
-                              moto_avaliacao_id: moto.id,
-                            });
+                            const { error: avError } = await supabase
+                              .from('avaliacoes')
+                              .update({ enviada_avaliacao: true })
+                              .eq('id', moto.id);
                             if (avError) {
                               toast.error('Erro ao enviar para avaliação');
                               console.error(avError);
-                              return;
-                            }
-                            const { error: mError } = await supabase
-                              .from('motos_avaliacao')
-                              .update({ enviada_avaliacao: true })
-                              .eq('id', moto.id);
-                            if (mError) {
-                              toast.error('Erro ao atualizar moto');
-                              console.error(mError);
                               return;
                             }
                             // Registrar no histórico
@@ -1100,7 +1092,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           className="gap-1.5"
                           onClick={async () => {
                             const previousStatus = (moto as any).consulta_realizada ? 'consulta_realizada' : 'sem_consulta';
-                            await supabase.from('motos_avaliacao').update({ 
+                            await supabase.from('avaliacoes').update({ 
                               consulta_solicitada: true, 
                               consulta_realizada: false,
                               resultado_consulta: null 
@@ -1142,18 +1134,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           )}
 
           {/* Observações */}
-          {atendimento.observacoes && (
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" /> Observações
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{atendimento.observacoes}</p>
-              </CardContent>
-            </Card>
-          )}
+          <AtendimentoObservacoes atendimentoId={atendimento.id} />
 
           {/* Observações */}
           <ObservacoesProcesso entityId={atendimento.id} entityType="showroom" title="Observações do Atendimento" />
@@ -1293,7 +1274,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       {/* Dialog de Fotos */}
       <Dialog open={!!photoMotoId} onOpenChange={async (o) => {
         if (!o && photoMotoId) {
-          const { data } = await supabase.from('moto_fotos').select('id').eq('moto_avaliacao_id', photoMotoId);
+          const { data } = await supabase.from('moto_fotos').select('id').eq('avaliacao_id', photoMotoId);
           setPhotoCountMap(prev => ({ ...prev, [photoMotoId]: data?.length || 0 }));
           setPhotoMotoId(null);
         }
@@ -1304,11 +1285,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               <Camera className="h-5 w-5" /> Fotos da Moto
             </DialogTitle>
           </DialogHeader>
-          {photoMotoId && <PhotoUpload motoAvaliacaoId={photoMotoId} />}
+          {photoMotoId && <PhotoUpload avaliacaoId={photoMotoId} />}
           <div className="flex justify-end pt-2">
             <Button size="sm" onClick={async () => {
               if (photoMotoId) {
-                const { data } = await supabase.from('moto_fotos').select('id').eq('moto_avaliacao_id', photoMotoId);
+                const { data } = await supabase.from('moto_fotos').select('id').eq('avaliacao_id', photoMotoId);
                 setPhotoCountMap(prev => ({ ...prev, [photoMotoId]: data?.length || 0 }));
               }
               setPhotoMotoId(null);

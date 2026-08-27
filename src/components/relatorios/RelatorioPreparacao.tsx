@@ -116,15 +116,14 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     // Fetch avaliacoes that reached preparation flow (situacao adquirida or estoque)
     const avalRes = await fetchAllRange<any>(() => supabase
       .from('avaliacoes')
-      .select('id, moto_avaliacao_id, atendimento_id, tipo_aquisicao, situacao, preparacao_status, atendimentos_motos!inner(id, loja, cliente:clientes_fornecedores(nome_razao_social)), motos_avaliacao!inner(id, marca, modelo, placa)')
+      .select('id, marca, modelo, placa, atendimento_id, tipo_aquisicao, situacao, preparacao_status, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
       .in('situacao', ['adquirida', 'estoque', 'perdido'])
     );
     const avals = (avalRes.data || []);
 
     const avalIds = avals.map((a: any) => a.id);
-    const motoIds = avals.map((a: any) => a.moto_avaliacao_id).filter(Boolean);
     const atendimentoIds = avals.map((a: any) => a.atendimento_id).filter(Boolean);
-    const allEntityIds = Array.from(new Set([...avalIds, ...motoIds, ...atendimentoIds]));
+    const allEntityIds = Array.from(new Set([...avalIds, ...atendimentoIds]));
 
     if (allEntityIds.length === 0) {
       setRows([]);
@@ -151,11 +150,10 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
     const result = avals.map((a: any) => {
       const histAval = histByEntity[a.id] || [];
-      const histMoto = a.moto_avaliacao_id ? (histByEntity[a.moto_avaliacao_id] || []) : [];
       const histAtendimento = a.atendimento_id ? (histByEntity[a.atendimento_id] || []) : [];
 
       // Data de aquisição: avaliações usam 'adquirida'; parte de pagamento/troca herda o 'vendido' do Showroom
-      const adquiridas = [...histAval, ...histMoto, ...histAtendimento]
+      const adquiridas = [...histAval, ...histAtendimento]
         .filter(h =>
           (h.entity_type === 'avaliacao' && h.status === 'adquirida') ||
           (h.entity_type === 'showroom' && h.status === 'vendido')
@@ -163,8 +161,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         .map(h => h.created_at).sort();
       const dataAquisicao = adquiridas.length ? adquiridas[adquiridas.length - 1] : null;
 
-      // Preparação history (entity_type='preparacao' em avaliacao_id OU moto_avaliacao_id)
-      const prepHist = [...histAval, ...histMoto]
+      // Preparação history (entity_type='preparacao' em avaliacao_id)
+      const prepHist = histAval
         .filter(h => h.entity_type === 'preparacao')
         .sort((x, y) => new Date(x.created_at).getTime() - new Date(y.created_at).getTime());
 
@@ -201,9 +199,9 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       return {
         id: a.id,
         nomeCliente: a.atendimentos_motos?.cliente?.nome_razao_social || '-',
-        loja: a.atendimentos_motos?.loja || '-',
-        modelo: [a.motos_avaliacao?.marca, a.motos_avaliacao?.modelo].filter(Boolean).join(' '),
-        placa: a.motos_avaliacao?.placa || '-',
+        loja: a.atendimentos_motos?.loja_empresas?.loja || '-',
+        modelo: [a.marca, a.modelo].filter(Boolean).join(' '),
+        placa: a.placa || '-',
         tipo: a.tipo_aquisicao,
         tipoCat,
         statusPrep: a.preparacao_status || 'em_aberto',
