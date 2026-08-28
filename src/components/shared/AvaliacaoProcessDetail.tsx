@@ -4,7 +4,7 @@ import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList, DollarSign, AlertTriangle, ShieldAlert, IdCard, Pencil, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, User, Bike, MessageCircle, FileText, ClipboardList, DollarSign, AlertTriangle, ShieldAlert, IdCard, Pencil, Loader2, CheckCircle2, Camera } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -13,9 +13,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { SEXOS, UFS, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
+import type { MotoFoto } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import { formatPersonName } from '@/lib/utils';
@@ -56,6 +58,8 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
 const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColumns, statusField, title, onClose }) => {
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
+  const [atpvUrl, setAtpvUrl] = useState<string | null>(null);
+  const [procuracaoUrl, setProcuracaoUrl] = useState<string | null>(null);
   const [quantoPede, setQuantoPede] = useState<number | null>(null);
   const [valorFechamento, setValorFechamento] = useState<number | null>(null);
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
@@ -72,6 +76,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
   const [pendingSteps, setPendingSteps] = useState<string[]>([]);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
+  const [fotos, setFotos] = useState<MotoFoto[]>([]);
+  const [showPhotosDialog, setShowPhotosDialog] = useState(false);
 
   // Moto edit state
   const [editMotoOpen, setEditMotoOpen] = useState(false);
@@ -84,6 +90,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [editCor, setEditCor] = useState('');
   const [editCategoria, setEditCategoria] = useState('');
   const [editCilindrada, setEditCilindrada] = useState('');
+  const [editObservacoes, setEditObservacoes] = useState('');
   const [editTemManual, setEditTemManual] = useState(false);
   const [editTemChaveReserva, setEditTemChaveReserva] = useState(false);
   const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
@@ -96,7 +103,6 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const atendimento = item.atendimento || item.atendimentos;
   const statusValue = item[statusField] || 'em_aberto';
   const statusCol = statusColumns.find(c => c.value === statusValue);
-  const ano = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
   const whatsappUrl = atendimento?.cliente?.telefone ? `https://wa.me/55${atendimento.cliente.telefone.replace(/\D/g, '')}` : '';
 
   const openEditCliente = () => {
@@ -116,6 +122,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     setEditCor(moto.cor || '');
     setEditCategoria(moto.categoria || '');
     setEditCilindrada(moto.cilindrada ? (parseInt(moto.cilindrada.replace(/\D/g,''),10) || 0).toLocaleString('pt-BR') : '');
+    setEditObservacoes(moto.observacoes || '');
     setEditTemManual(moto.tem_manual ?? false);
     setEditTemChaveReserva(moto.tem_chave_reserva ?? false);
     setEditManutencaoVencida(moto.manutencao_vencida ?? false);
@@ -138,6 +145,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       cor: editCor.trim() || null,
       categoria: editCategoria.trim() || null,
       cilindrada: editCilindrada.replace(/\D/g, '') || null,
+      observacoes: editObservacoes.trim() || null,
       tem_manual: editTemManual,
       tem_chave_reserva: editTemChaveReserva,
       manutencao_vencida: editManutencaoVencida,
@@ -158,6 +166,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
         cor: editCor.trim() || null,
         categoria: editCategoria.trim() || null,
         cilindrada: editCilindrada.replace(/\D/g, '') || null,
+        observacoes: editObservacoes.trim() || null,
         tem_manual: editTemManual,
         tem_chave_reserva: editTemChaveReserva,
         manutencao_vencida: editManutencaoVencida,
@@ -170,17 +179,21 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      const [cnhRes, avRes, estRes, histRes] = await Promise.all([
+      const [cnhRes, avRes, estRes, histRes, fotosRes] = await Promise.all([
         atendimento?.cliente_id
           ? supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
           : Promise.resolve({ data: null }),
-        supabase.from('avaliacoes').select('quanto_pede, valor_fechamento, avaliador_id, crlv_url').eq('id', item.id).maybeSingle(),
+        supabase.from('avaliacoes').select('quanto_pede, valor_fechamento, avaliador_id, crlv_url, atpv_url, procuracao_url').eq('id', item.id).maybeSingle(),
         supabase.from('estoque').select('status, observacoes').eq('avaliacao_id', item.id).maybeSingle(),
         supabase.from('status_history').select('created_at').eq('entity_type', 'avaliacao').eq('entity_id', item.id).eq('status', 'adquirida').order('created_at', { ascending: true }).limit(1).maybeSingle(),
+        supabase.from('moto_fotos').select('*').eq('avaliacao_id', item.id),
       ]);
       setCnhUrl((cnhRes.data as any)?.arquivo_url || null);
       setCrlvUrl((avRes.data as any)?.crlv_url || null);
+      setAtpvUrl((avRes.data as any)?.atpv_url || null);
+      setProcuracaoUrl((avRes.data as any)?.procuracao_url || null);
       setQuantoPede(avRes.data?.quanto_pede ?? null);
+      if (fotosRes.data) setFotos(fotosRes.data);
       setValorFechamento(avRes.data?.valor_fechamento ?? null);
       setEstoqueStatus(estRes.data ? { status: estRes.data.status, observacoes: estRes.data.observacoes } : null);
       setDataAquisicao(histRes.data?.created_at || null);
@@ -371,34 +384,49 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
 
           {/* Dados da Moto */}
           {moto && (
-            <Card>
+            <Card className="flex flex-col">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Bike className="h-4 w-4 text-primary" /> Dados da Moto
-                  <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={openEditMoto} title="Editar dados da moto">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
+                  {entityType !== 'preparacao' && (
+                    <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={openEditMoto} title="Editar dados da moto">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </CardTitle>
+                <Separator className="mt-2" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1 flex flex-col gap-4">
                 {avaliadorNome && (
-                  <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
+                  <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
                     <IdCard className="h-4 w-4 text-primary" />
                     <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
-                  <InfoItem label="Marca / Modelo" value={`${moto.marca} ${(moto.modelo || '').toUpperCase()}`} />
+                  <InfoItem label="Marca" value={moto.marca} />
+                  <InfoItem label="Modelo" value={(moto.modelo || '').toUpperCase()} />
+                  {moto.ano_fabricacao && <InfoItem label="Ano Fabricação" value={moto.ano_fabricacao} />}
+                  {moto.ano_modelo && <InfoItem label="Ano Modelo" value={moto.ano_modelo} />}
+                  {moto.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{moto.categoria}</span>} />}
+                  {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
                   {moto.placa && <InfoItem label="Placa" value={moto.placa.replace(/-/g, '')} />}
                   {moto.km && <InfoItem label="KM" value={formatKm(moto.km)} />}
-                  {ano && <InfoItem label="Ano" value={ano} />}
-                  {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
-                  {moto.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{moto.categoria}</span>} />}
+                  {moto.observacoes && (
+                    <div className="col-span-2">
+                      <InfoItem label="Observações" value={moto.observacoes} />
+                    </div>
+                  )}
                 </div>
+                <MaintenanceBadges
+                  temManual={moto.tem_manual}
+                  temChaveReserva={moto.tem_chave_reserva}
+                  manutencaoVencida={moto.manutencao_vencida}
+                />
                 {/* Estoque Status */}
                 {estoqueStatus && ['servico', 'indisponivel_manual', 'bloqueio_juridico'].includes(estoqueStatus.status) && (
                   <>
-                    <Separator className="my-2" />
+                    <Separator />
                     <div className="space-y-1.5">
                       <Badge variant="outline" className={`text-xs gap-1 ${
                         estoqueStatus.status === 'servico' ? 'border-orange-500 text-orange-600' :
@@ -419,39 +447,61 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                     </div>
                   </>
                 )}
-                <Separator className="my-2" />
-                <DocumentUpload
-                  label="CRLV"
-                  currentUrl={crlvUrl}
-                  bucketPath={moto.id ? `docs/${moto.id}/crlv` : ''}
-                  onUploaded={(url) => {
-                    setCrlvUrl(url);
-                    if (moto.id) {
-                      supabase.from('avaliacoes').update({ crlv_url: url }).eq('id', moto.id);
-                    }
-                  }}
-                  onRemoved={() => {
-                    setCrlvUrl(null);
-                    if (moto.id) {
-                      supabase.from('avaliacoes').update({ crlv_url: null }).eq('id', moto.id);
-                    }
-                  }}
-                />
-                <Separator className="my-3" />
-                <MaintenanceBadges
-                  temManual={moto.tem_manual}
-                  temChaveReserva={moto.tem_chave_reserva}
-                  manutencaoVencida={moto.manutencao_vencida}
-                />
-                {moto.observacoes && (
+                {entityType !== 'preparacao' && (
                   <>
-                    <Separator className="my-3" />
-                    <p className="text-xs text-muted-foreground italic">{moto.observacoes}</p>
+                    <Separator className="mt-auto" />
+                    <div className="flex gap-2 flex-wrap">
+                      <Button size="sm" variant="outline" className={`flex-1 gap-1.5 ${fotos.length > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setShowPhotosDialog(true)}>
+                        <Camera className="h-4 w-4" /> {fotos.length > 0 ? `Fotos (${fotos.length}) ✓` : 'Fotos'}
+                      </Button>
+                      <DocumentUpload
+                        label="CRLV"
+                        className="flex-1"
+                        currentUrl={crlvUrl}
+                        bucketPath={moto.id ? `docs/${moto.id}/crlv` : ''}
+                        onUploaded={(url) => {
+                          setCrlvUrl(url);
+                          if (moto.id) supabase.from('avaliacoes').update({ crlv_url: url }).eq('id', moto.id);
+                        }}
+                        onRemoved={() => {
+                          setCrlvUrl(null);
+                          if (moto.id) supabase.from('avaliacoes').update({ crlv_url: null }).eq('id', moto.id);
+                        }}
+                      />
+                      <DocumentUpload
+                        label="ATPV"
+                        className="flex-1"
+                        currentUrl={atpvUrl}
+                        bucketPath={moto.id ? `docs/${moto.id}/atpv` : ''}
+                        onUploaded={(url) => {
+                          setAtpvUrl(url);
+                          if (moto.id) supabase.from('avaliacoes').update({ atpv_url: url }).eq('id', moto.id);
+                        }}
+                        onRemoved={() => {
+                          setAtpvUrl(null);
+                          if (moto.id) supabase.from('avaliacoes').update({ atpv_url: null }).eq('id', moto.id);
+                        }}
+                      />
+                      <DocumentUpload
+                        label="Procuração"
+                        className="flex-1"
+                        currentUrl={procuracaoUrl}
+                        bucketPath={moto.id ? `docs/${moto.id}/procuracao` : ''}
+                        onUploaded={(url) => {
+                          setProcuracaoUrl(url);
+                          if (moto.id) supabase.from('avaliacoes').update({ procuracao_url: url }).eq('id', moto.id);
+                        }}
+                        onRemoved={() => {
+                          setProcuracaoUrl(null);
+                          if (moto.id) supabase.from('avaliacoes').update({ procuracao_url: null }).eq('id', moto.id);
+                        }}
+                      />
+                    </div>
                   </>
                 )}
                 {(entityType === 'consignacao' || entityType === 'pos_compra') && (quantoPede != null || valorFechamento != null) && (
                   <>
-                    <Separator className="my-3" />
+                    <Separator />
                     <div className="rounded-lg border border-border bg-muted/30 p-4">
                       <div className="grid grid-cols-2 gap-4">
                         {quantoPede != null && (
@@ -473,6 +523,33 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               </CardContent>
             </Card>
           )}
+
+          {/* Dialog Fotos */}
+          <Dialog open={showPhotosDialog} onOpenChange={setShowPhotosDialog}>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Camera className="h-5 w-5" /> Fotos da Moto
+                </DialogTitle>
+              </DialogHeader>
+              {fotos.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+                  {fotos.map(f => (
+                    <div key={f.id} className="aspect-square rounded-lg overflow-hidden bg-muted">
+                      <img src={f.url} alt={f.tipo} className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(f.url, '_blank')} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  Nenhuma foto incluída
+                </div>
+              )}
+              <div className="flex justify-end pt-2">
+                <Button size="sm" variant="outline" onClick={() => setShowPhotosDialog(false)}>Fechar</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Observações */}
           {atendimento?.id && <AtendimentoObservacoes idOperacao={atendimento.id} />}
@@ -534,7 +611,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
 
       {/* Dialog Editar Moto */}
       <Dialog open={editMotoOpen} onOpenChange={setEditMotoOpen}>
-        <DialogContent className="max-w-xl h-[85dvh] max-h-[85dvh] flex flex-col overflow-hidden p-0">
+        <DialogContent className="max-w-xl max-h-[85dvh] flex flex-col overflow-hidden p-0">
           <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
             <DialogTitle>Editar Dados da Moto</DialogTitle>
           </DialogHeader>
@@ -640,6 +717,16 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                     </div>
                   </RadioGroup>
                 </div>
+              </div>
+              <div className="space-y-1.5 pt-3">
+                <Label>Observações</Label>
+                <Textarea
+                  value={editObservacoes}
+                  onChange={e => setEditObservacoes(e.target.value.toUpperCase())}
+                  placeholder="Observações sobre a moto..."
+                  rows={3}
+                  className="uppercase"
+                />
               </div>
             </div>
           </div>

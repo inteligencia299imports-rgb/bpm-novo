@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ANOS_MOTO, CATEGORIAS_MOTO, CORES_MOTO } from '@/types/crm';
 import type { Interesse } from '@/types/crm';
@@ -23,6 +24,7 @@ interface Props {
   temManual: string; setTemManual: (v: string) => void;
   temChaveReserva: string; setTemChaveReserva: (v: string) => void;
   manutencaoEmDia: string; setManutencaoEmDia: (v: string) => void;
+  observacoes: string; setObservacoes: (v: string) => void;
   motoAvaliacaoId: string | null;
   atendimentoId: string | null;
   interesse: Interesse;
@@ -35,6 +37,7 @@ const MotoVendaSection: React.FC<Props> = ({
   placa, setPlaca, km, setKm, cilindrada, setCilindrada,
   temManual, setTemManual, temChaveReserva, setTemChaveReserva,
   manutencaoEmDia, setManutencaoEmDia,
+  observacoes, setObservacoes,
   motoAvaliacaoId, atendimentoId, interesse, isEditing,
 }) => {
   const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
@@ -155,6 +158,16 @@ const MotoVendaSection: React.FC<Props> = ({
               </div>
             </RadioGroup>
           </div>
+        </div>
+        <div className="space-y-1.5 pt-3">
+          <Label>Observações</Label>
+          <Textarea
+            value={observacoes}
+            onChange={e => setObservacoes(e.target.value.toUpperCase())}
+            placeholder="Observações sobre a moto..."
+            rows={3}
+            className="uppercase"
+          />
         </div>
         {motoAvaliacaoId && !isEditing && <PhotoUpload avaliacaoId={motoAvaliacaoId} />}
       </CardContent>

@@ -16,12 +16,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Edit, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight, ShieldCheck, Handshake, Bike, IdCard, Pencil } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight, ShieldCheck, Handshake, Bike, Pencil } from 'lucide-react';
 import { ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import { formatPersonName } from '@/lib/utils';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
+import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
@@ -131,6 +132,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [editCor, setEditCor] = useState('');
   const [editCategoria, setEditCategoria] = useState('');
   const [editCilindrada, setEditCilindrada] = useState('');
+  const [editObservacoes, setEditObservacoes] = useState('');
   const [editTemManual, setEditTemManual] = useState(false);
   const [editTemChaveReserva, setEditTemChaveReserva] = useState(false);
   const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
@@ -149,6 +151,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setEditCor(moto.cor || '');
     setEditCategoria(moto.categoria || '');
     setEditCilindrada(moto.cilindrada ? (parseInt(moto.cilindrada.replace(/\D/g,''),10) || 0).toLocaleString('pt-BR') : '');
+    setEditObservacoes(moto.observacoes || '');
     setEditTemManual(moto.tem_manual ?? false);
     setEditTemChaveReserva(moto.tem_chave_reserva ?? false);
     setEditManutencaoVencida(moto.manutencao_vencida ?? false);
@@ -171,6 +174,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       cor: editCor.trim() || null,
       categoria: editCategoria.trim() || null,
       cilindrada: editCilindrada.replace(/\D/g, '') || null,
+      observacoes: editObservacoes.trim() || null,
       tem_manual: editTemManual,
       tem_chave_reserva: editTemChaveReserva,
       manutencao_vencida: editManutencaoVencida,
@@ -219,6 +223,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   };
 
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
+  const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
   const refreshHistory = async () => {
     if (!avaliacao) return;
     const atId = avaliacao.atendimento_id;
@@ -260,6 +265,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [prevCustosCliente, setPrevCustosCliente] = useState('');
   const [valorBonus, setValorBonus] = useState('');
   const [classificacao, setClassificacao] = useState('');
+  const [obsAvaliador, setObsAvaliador] = useState('');
   const [valorFechamentoEdit, setValorFechamentoEdit] = useState('');
   const [precoAcaoEdit, setPrecoAcaoEdit] = useState('');
   const [precoTabelaEdit, setPrecoTabelaEdit] = useState('');
@@ -308,6 +314,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
       setValorBonus(numberToCurrencyMask((data as any).trade_in));
       setClassificacao((data as any).classificacao || '');
+      setObsAvaliador((data as any).observacao_avaliador || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
 
       // Fetch estoque data if available
@@ -326,6 +333,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       if (vendedorId) {
         const { data: vendedorData } = await (supabase as any).from('user_roles').select('nome').eq('user_id', vendedorId).single();
         if (vendedorData?.nome) setVendedorNome(vendedorData.nome);
+      }
+
+      // Fetch avaliador name
+      if (data.avaliador_id) {
+        const { data: avaliadorData } = await supabase.from('user_roles').select('nome').eq('user_id', data.avaliador_id).single();
+        if (avaliadorData?.nome) setAvaliadorNome(avaliadorData.nome);
       }
 
       const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('avaliacao_id', data.id);
@@ -412,6 +425,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       previsao_custos_cliente: parseCurrencyToNumber(prevCustosCliente),
       trade_in: parseCurrencyToNumber(valorBonus) || null,
       classificacao: classificacao || null,
+      observacao_avaliador: obsAvaliador.trim() || null,
       avaliador_id: user!.id,
       situacao: avaliacao?.situacao === 'sem_avaliar' ? 'em_aberto' : avaliacao?.situacao ?? 'em_aberto',
       ...((avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
@@ -658,11 +672,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setCnhUrl(null);
   };
 
-  const InfoItem = ({ label, value }: { label: string; value: string | null | undefined }) => (
+  const InfoItem = ({ label, value, valueClassName }: { label: string; value: string | null | undefined; valueClassName?: string }) => (
     value ? (
       <div className="flex flex-col gap-0.5">
         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
-        <span className="text-sm font-semibold">{value}</span>
+        <span className={`text-sm font-semibold ${valueClassName || ''}`}>{value}</span>
       </div>
     ) : null
   );
@@ -763,7 +777,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       <ScrollArea className="h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 pr-3">
           {/* Dados do Cliente */}
-          <Card>
+          <Card className="flex flex-col">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
@@ -771,8 +785,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
               </CardTitle>
+              <Separator className="mt-2" />
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="flex-1 flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={formatPersonName(at?.cliente?.nome_razao_social || '')} />
                 <div>
@@ -799,9 +814,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               </div>
               {at?.cliente_id && (
                 <>
-                  <Separator className="my-2" />
+                  <Separator className="mt-auto" />
                   <DocumentUpload
                     label="CNH"
+                    className="w-1/4"
                     currentUrl={cnhUrl}
                     bucketPath={`docs/${at.cliente_id}/cnh`}
                     onUploaded={handleCnhUploaded}
@@ -818,15 +834,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               <CardTitle className="text-sm flex items-center gap-2">
                 <Store className="h-4 w-4 text-primary" /> Dados do Atendimento
               </CardTitle>
+              <Separator className="mt-2" />
             </CardHeader>
             <CardContent>
-              {vendedorNome && (
-                <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
-                  <IdCard className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold text-primary">{vendedorNome}</span>
-                </div>
-              )}
               <div className="grid grid-cols-2 gap-4">
+                <InfoItem label="Vendedor" value={vendedorNome} valueClassName="text-primary" />
                 <InfoItem label="Loja" value={at?.loja} />
                 <InfoItem label="Tipo" value={at?.tipo_atendimento} />
                 <InfoItem label="Interesse" value={at?.interesse ? getInteresseLabel(at.interesse) : null} />
@@ -837,18 +849,24 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </Card>
 
           {/* Dados da Moto */}
-          <Card>
+          <Card className="flex flex-col">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
+              <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                 <Tag className="h-4 w-4 text-primary" /> Moto do Cliente
+                {consultaSolicitada && !consultaRealizada && (
+                  <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
+                    <Clock className="h-3 w-3" /> Consulta Solicitada
+                  </Badge>
+                )}
                 {canEdit && (
                   <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={openEditMoto} title="Editar dados da moto">
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 )}
               </CardTitle>
+              <Separator className="mt-2" />
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="flex-1 flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Marca" value={moto?.marca} />
                 <InfoItem label="Modelo" value={(moto?.modelo || '').toUpperCase()} />
@@ -858,85 +876,29 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <InfoItem label="Cor" value={moto?.cor} />
                 <InfoItem label="Placa" value={moto?.placa?.replace(/-/g, '')} />
                 <InfoItem label="KM" value={formatKm(moto?.km)} />
+                {moto?.observacoes && (
+                  <div className="col-span-2">
+                    <InfoItem label="Observações" value={moto.observacoes} />
+                  </div>
+                )}
               </div>
-              {(moto?.tem_manual != null || moto?.tem_chave_reserva != null || moto?.manutencao_vencida != null) && (
-                <div className="flex items-center gap-3 text-xs">
-                  {moto?.tem_manual != null && (
-                    <span className="flex items-center gap-1">
-                      <span className={`inline-block w-2 h-2 rounded-full ${moto.tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
-                      Manual
-                    </span>
-                  )}
-                  {moto?.tem_chave_reserva != null && (
-                    <span className="flex items-center gap-1">
-                      <span className={`inline-block w-2 h-2 rounded-full ${moto.tem_chave_reserva ? 'bg-green-500' : 'bg-red-500'}`} />
-                      Chave Reserva
-                    </span>
-                  )}
-                  {moto?.manutencao_vencida != null && (
-                    <span className="flex items-center gap-1">
-                      <span className={`inline-block w-2 h-2 rounded-full ${moto.manutencao_vencida ? 'bg-red-500' : 'bg-green-500'}`} />
-                      Revisão
-                    </span>
-                  )}
-                </div>
-              )}
-              {moto?.observacoes && (
-                <div className="mt-2">
-                  <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações</span>
-                  <p className="text-sm mt-1">{moto.observacoes}</p>
-                </div>
-              )}
-              <div className="flex gap-2 mt-3 flex-wrap">
-                <Button size="sm" variant="outline" className={`gap-1.5 ${fotos.length > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setShowPhotosDialog(true)}>
-                  <Camera className="h-4 w-4" /> {fotos.length > 0 ? `Fotos (${fotos.length}) ✓` : 'Incluir Fotos'}
+              <MaintenanceBadges
+                temManual={moto?.tem_manual}
+                temChaveReserva={moto?.tem_chave_reserva}
+                manutencaoVencida={moto?.manutencao_vencida}
+              />
+              <Separator className="mt-auto" />
+              <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant="outline" className={`flex-1 gap-1.5 ${fotos.length > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setShowPhotosDialog(true)}>
+                  <Camera className="h-4 w-4" /> {fotos.length > 0 ? `Fotos (${fotos.length}) ✓` : 'Fotos'}
                 </Button>
-                <DocumentUpload
-                  label="CRLV"
-                  currentUrl={crlvUrl}
-                  bucketPath={`docs/${moto?.id}/crlv`}
-                  onUploaded={async (url) => {
-                    await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto?.id);
-                    setCrlvUrl(url);
-                  }}
-                  onRemoved={async () => {
-                    await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto?.id);
-                    setCrlvUrl(null);
-                  }}
-                />
-                <DocumentUpload
-                  label="ATPV"
-                  currentUrl={atpvUrl}
-                  bucketPath={`docs/${moto?.id}/atpv`}
-                  onUploaded={async (url) => {
-                    await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', moto?.id);
-                    setAtpvUrl(url);
-                  }}
-                  onRemoved={async () => {
-                    await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', moto?.id);
-                    setAtpvUrl(null);
-                  }}
-                />
-                <DocumentUpload
-                  label="Procuração"
-                  currentUrl={procuracaoUrl}
-                  bucketPath={`docs/${moto?.id}/procuracao`}
-                  onUploaded={async (url) => {
-                    await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', moto?.id);
-                    setProcuracaoUrl(url);
-                  }}
-                  onRemoved={async () => {
-                    await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', moto?.id);
-                    setProcuracaoUrl(null);
-                  }}
-                />
                 {cnhUrl && crlvUrl && hasEvaluation && !consultaSolicitada && !consultaRealizada && (
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-1.5"
+                    className="flex-1 gap-1.5"
                     onClick={async () => {
-                      await supabase.from('avaliacoes').update({ 
+                      await supabase.from('avaliacoes').update({
                         consulta_solicitada: true,
                         consulta_realizada: false,
                         resultado_consulta: null,
@@ -959,31 +921,26 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       toast.success('Consulta solicitada com sucesso!');
                     }}
                   >
-                    <Search className="h-4 w-4" /> Solicitar Consulta
+                    <Search className="h-4 w-4" /> Consultar
                   </Button>
-                )}
-                {consultaSolicitada && !consultaRealizada && (
-                  <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
-                    <Clock className="h-3 w-3" /> Consulta Solicitada
-                  </Badge>
                 )}
                 {consultaRealizada && (
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
+                    className="flex-1 gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
                     onClick={() => setShowResultadoConsulta(true)}
                   >
-                    <CheckCircle2 className="h-4 w-4" /> Consulta Realizada ✓
+                    <CheckCircle2 className="h-4 w-4" /> Consulta ✓
                   </Button>
                 )}
                 {cnhUrl && crlvUrl && consultaRealizada && (
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-1.5"
+                    className="flex-1 gap-1.5"
                     onClick={async () => {
-                      await supabase.from('avaliacoes').update({ 
+                      await supabase.from('avaliacoes').update({
                         consulta_solicitada: true,
                         consulta_realizada: false,
                         resultado_consulta: null,
@@ -1010,6 +967,49 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     <Search className="h-4 w-4" /> Nova Consulta
                   </Button>
                 )}
+
+                <DocumentUpload
+                  label="CRLV"
+                  className="flex-1"
+                  currentUrl={crlvUrl}
+                  bucketPath={`docs/${moto?.id}/crlv`}
+                  onUploaded={async (url) => {
+                    await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto?.id);
+                    setCrlvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto?.id);
+                    setCrlvUrl(null);
+                  }}
+                />
+                <DocumentUpload
+                  label="ATPV"
+                  className="flex-1"
+                  currentUrl={atpvUrl}
+                  bucketPath={`docs/${moto?.id}/atpv`}
+                  onUploaded={async (url) => {
+                    await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', moto?.id);
+                    setAtpvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', moto?.id);
+                    setAtpvUrl(null);
+                  }}
+                />
+                <DocumentUpload
+                  label="Procuração"
+                  className="flex-1"
+                  currentUrl={procuracaoUrl}
+                  bucketPath={`docs/${moto?.id}/procuracao`}
+                  onUploaded={async (url) => {
+                    await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', moto?.id);
+                    setProcuracaoUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', moto?.id);
+                    setProcuracaoUrl(null);
+                  }}
+                />
               </div>
             </CardContent>
           </Card>
@@ -1019,12 +1019,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-primary" /> Avaliação Comercial
+                {canEdit && hasEvaluation && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setShowEvalDialog(true)} title="Editar Avaliação">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </CardTitle>
+              <Separator className="mt-2" />
             </CardHeader>
             <CardContent>
               {hasEvaluation ? (
                 <div className="space-y-3">
                   <div className="space-y-3">
+                    <InfoItem label="Avaliador" value={avaliadorNome} valueClassName="text-primary" />
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       <InfoItem label="Valor FIPE" value={formatCurrency(avaliacao?.valor_fipe)} />
                       <InfoItem label="Menor Valor" value={formatCurrency(avaliacao?.menor_valor)} />
@@ -1100,11 +1107,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       </div>
                     )}
                   </div>
-                  {canEdit && (
-                    <Button size="sm" variant="outline" className="gap-1.5 mt-3" onClick={() => setShowEvalDialog(true)}>
-                      <Edit className="h-4 w-4" /> Editar Avaliação
-                    </Button>
-                  )}
                 </div>
               ) : (
                 <div className="text-center py-6 space-y-3">
@@ -1277,6 +1279,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   </button>
                 ))}
               </div>
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Observações</Label>
+              <Textarea
+                value={obsAvaliador}
+                onChange={e => setObsAvaliador(e.target.value.toUpperCase())}
+                placeholder="Observações do avaliador..."
+                rows={3}
+                className="uppercase"
+              />
             </div>
           </div>
           <div className="flex gap-3 justify-end pt-4">
@@ -1530,7 +1542,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
       {/* Dialog Editar Moto */}
       <Dialog open={editMotoOpen} onOpenChange={setEditMotoOpen}>
-        <DialogContent className="max-w-xl h-[85dvh] max-h-[85dvh] flex flex-col overflow-hidden p-0">
+        <DialogContent className="max-w-xl max-h-[85dvh] flex flex-col overflow-hidden p-0">
           <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
             <DialogTitle>Editar Dados da Moto</DialogTitle>
           </DialogHeader>
@@ -1636,6 +1648,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     </div>
                   </RadioGroup>
                 </div>
+              </div>
+              <div className="space-y-1.5 pt-3">
+                <Label>Observações</Label>
+                <Textarea
+                  value={editObservacoes}
+                  onChange={e => setEditObservacoes(e.target.value.toUpperCase())}
+                  placeholder="Observações sobre a moto..."
+                  rows={3}
+                  className="uppercase"
+                />
               </div>
             </div>
           </div>

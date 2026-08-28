@@ -37,20 +37,22 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
 
   return (
     <>
-      <div className="relative pl-4">
-        {/* Vertical line */}
-        <div className="absolute left-[5px] top-2 bottom-2 w-px bg-border" />
+      <div className="relative">
+        {/* Vertical line: centrada no gutter de 20px onde ficam as bolinhas */}
+        <div className="absolute left-[9.5px] top-2 bottom-2 w-px bg-primary/40" />
 
         {sorted.map((h, idx) => {
           const isLatest = idx === 0;
           return (
             <div
               key={h.id}
-              className="relative flex items-start gap-2 pb-4 last:pb-0 cursor-pointer hover:bg-muted/50 rounded-md px-1.5 -mx-1.5"
+              className="flex items-start gap-2 pb-4 last:pb-0 cursor-pointer hover:bg-muted/50 rounded-md px-1.5 -mx-1.5"
               onClick={() => setSelected(h)}
             >
-              {/* Dot */}
-              <div className={`absolute -left-4 top-1 w-2.5 h-2.5 rounded-full border-2 z-10 ${isLatest ? 'border-primary bg-primary' : 'border-primary bg-background'}`} />
+              {/* Gutter: centraliza a bolinha sobre a linha */}
+              <div className="w-5 shrink-0 flex justify-center pt-1">
+                <div className={`w-2.5 h-2.5 rounded-full border-2 z-10 ${isLatest ? 'border-primary bg-primary' : 'border-primary bg-background'}`} />
+              </div>
 
               <div className="flex-1 min-w-0">
                 <span className={`text-sm uppercase ${isLatest ? 'font-bold text-primary' : ''}`}>

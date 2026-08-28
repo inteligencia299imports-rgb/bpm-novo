@@ -4,7 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, User, Phone, MapPin, Bike, Clock, ArrowRight, RotateCw, Calendar, Palette, Tag, FileText, Save, Search } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, Clock, ArrowRight, RotateCw, Calendar, Palette, Tag, FileText, Save, Search, Camera } from 'lucide-react';
+import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
+import type { MotoFoto } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -57,20 +59,24 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const [isConsultada, setIsConsultada] = useState(moto.consulta_realizada === true);
   const [resultadoSalvo, setResultadoSalvo] = useState<string | null>(moto.resultado_consulta || null);
   const [loading, setLoading] = useState(true);
+  const [fotos, setFotos] = useState<MotoFoto[]>([]);
+  const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   
   const atendimento = moto.atendimento || moto.atendimentos;
 
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      const [cnhRes, histRes] = await Promise.all([
+      const [cnhRes, histRes, fotosRes] = await Promise.all([
         atendimento?.cliente_id
           ? supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
           : Promise.resolve({ data: null }),
         supabase.from('status_history').select('*').eq('entity_type', 'consulta').eq('entity_id', moto.id).order('created_at', { ascending: true }),
+        supabase.from('moto_fotos').select('*').eq('avaliacao_id', moto.id),
       ]);
       setCnhUrl(cnhRes.data?.arquivo_url || null);
       setHistory(histRes.data || []);
+      if (fotosRes.data) setFotos(fotosRes.data);
       setLoading(false);
     };
     loadAll();
@@ -145,7 +151,6 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const statusLabel = isConsultada ? 'Consultada' : 'Pendente';
   const statusColor = isConsultada ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning';
   const statusHex = isConsultada ? '#169d53' : '#da6220';
-  const ano = [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/');
 
   if (loading) {
     return <DetailSkeleton onClose={onClose} cards={3} />;
@@ -252,32 +257,42 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
           </Card>
 
           {/* Dados da Moto */}
-          <Card>
+          <Card className="flex flex-col">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Bike className="h-4 w-4 text-primary" /> Dados da Moto
               </CardTitle>
+              <Separator className="mt-2" />
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="flex-1 flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Marca" value={<span className="uppercase">{moto.marca}</span>} />
                 <InfoItem label="Modelo" value={<span className="uppercase">{moto.modelo}</span>} />
+                {moto.ano_fabricacao && <InfoItem label="Ano Fabricação" value={moto.ano_fabricacao} />}
+                {moto.ano_modelo && <InfoItem label="Ano Modelo" value={moto.ano_modelo} />}
+                {moto.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{moto.categoria}</span>} />}
+                {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
                 {moto.placa && <InfoItem label="Placa" value={moto.placa.replace(/-/g, '')} />}
                 <InfoItem label="KM" value={formatKm(moto.km)} />
-                {ano && <InfoItem label="Ano" value={ano} />}
-                {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
-                {moto.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{moto.categoria}</span>} />}
+                {moto.observacoes && (
+                  <div className="col-span-2">
+                    <InfoItem label="Observações" value={moto.observacoes} />
+                  </div>
+                )}
               </div>
-              {moto.observacoes && (
-                <>
-                  <Separator className="my-3" />
-                  <p className="text-xs text-muted-foreground italic">{moto.observacoes}</p>
-                </>
-              )}
-              <Separator className="my-2" />
+              <MaintenanceBadges
+                temManual={moto.tem_manual}
+                temChaveReserva={moto.tem_chave_reserva}
+                manutencaoVencida={moto.manutencao_vencida}
+              />
+              <Separator className="mt-auto" />
               <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant="outline" className={`flex-1 gap-1.5 ${fotos.length > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setShowPhotosDialog(true)}>
+                  <Camera className="h-4 w-4" /> {fotos.length > 0 ? `Fotos (${fotos.length}) ✓` : 'Fotos'}
+                </Button>
                 <DocumentUpload
                   label="CRLV"
+                  className="flex-1"
                   currentUrl={crlvUrl}
                   bucketPath={`docs/${moto.id}/crlv`}
                   onUploaded={async (url) => {
@@ -291,6 +306,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 />
                 <DocumentUpload
                   label="ATPV"
+                  className="flex-1"
                   currentUrl={atpvUrl}
                   bucketPath={`docs/${moto.id}/atpv`}
                   onUploaded={async (url) => {
@@ -304,6 +320,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 />
                 <DocumentUpload
                   label="Procuração"
+                  className="flex-1"
                   currentUrl={procuracaoUrl}
                   bucketPath={`docs/${moto.id}/procuracao`}
                   onUploaded={async (url) => {
@@ -370,6 +387,33 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 <Save className="h-4 w-4" /> {saving ? 'Salvando...' : 'Salvar'}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Fotos */}
+      <Dialog open={showPhotosDialog} onOpenChange={setShowPhotosDialog}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5" /> Fotos da Moto
+            </DialogTitle>
+          </DialogHeader>
+          {fotos.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+              {fotos.map(f => (
+                <div key={f.id} className="aspect-square rounded-lg overflow-hidden bg-muted">
+                  <img src={f.url} alt={f.tipo} className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(f.url, '_blank')} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              Nenhuma foto incluída
+            </div>
+          )}
+          <div className="flex justify-end pt-2">
+            <Button size="sm" variant="outline" onClick={() => setShowPhotosDialog(false)}>Fechar</Button>
           </div>
         </DialogContent>
       </Dialog>

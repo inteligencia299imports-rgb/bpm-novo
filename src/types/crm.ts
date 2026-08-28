@@ -254,6 +254,7 @@ export interface Avaliacao {
   tem_manual: boolean | null;
   tem_chave_reserva: boolean | null;
   manutencao_vencida: boolean | null;
+  observacoes: string | null;
   crlv_url: string | null;
   atpv_url: string | null;
   procuracao_url: string | null;
@@ -275,6 +276,7 @@ export interface Avaliacao {
   negociacao: Negociacao | null;
   situacao: SituacaoAvaliacao;
   avaliador_id: string | null;
+  observacao_avaliador: string | null;
   created_at: string;
   updated_at: string;
   atendimento?: Atendimento;

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { FileUp, FileCheck, Loader2, Eye, Trash2, RefreshCw, Download, Save } from 'lucide-react';
 
 interface Props {
@@ -11,9 +12,10 @@ interface Props {
   bucketPath: string;
   onUploaded: (url: string) => void;
   onRemoved?: () => void;
+  className?: string;
 }
 
-const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUploaded, onRemoved }) => {
+const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUploaded, onRemoved, className }) => {
   const [uploading, setUploading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,7 +85,7 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
       <Button
         size="sm"
         variant="outline"
-        className={`gap-1.5 ${currentUrl ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`}
+        className={cn('gap-1.5', currentUrl && 'border-green-500 text-green-600 hover:bg-green-50', className)}
         disabled={uploading}
         onClick={() => {
           if (currentUrl) {

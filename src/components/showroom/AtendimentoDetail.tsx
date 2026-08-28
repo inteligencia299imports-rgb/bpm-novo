@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar as CalendarIcon, Bike, FileText, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil, IdCard, Truck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar as CalendarIcon, Bike, FileText, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil, Truck } from 'lucide-react';
 import WhatsAppIcon from '@/components/shared/WhatsAppIcon';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -123,6 +123,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [editCor, setEditCor] = useState('');
   const [editCategoria, setEditCategoria] = useState('');
   const [editCilindrada, setEditCilindrada] = useState('');
+  const [editObservacoes, setEditObservacoes] = useState('');
   const [editTemManual, setEditTemManual] = useState(false);
   const [editTemChaveReserva, setEditTemChaveReserva] = useState(false);
   const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
@@ -288,11 +289,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     }
   };
 
-  const InfoItem = ({ label, value }: { label: string; value: string | null | undefined }) => (
+  const InfoItem = ({ label, value, valueClassName }: { label: string; value: string | null | undefined; valueClassName?: string }) => (
     value ? (
       <div className="flex flex-col gap-0.5">
         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
-        <span className="text-sm font-semibold">{value}</span>
+        <span className={`text-sm font-semibold ${valueClassName || ''}`}>{value}</span>
       </div>
     ) : null
   );
@@ -335,6 +336,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setEditCor(moto.cor || '');
     setEditCategoria(moto.categoria || '');
     setEditCilindrada(moto.cilindrada ? (parseInt(moto.cilindrada.replace(/\D/g, ''), 10) || 0).toLocaleString('pt-BR') : '');
+    setEditObservacoes(moto.observacoes || '');
     setEditTemManual((moto as any).tem_manual ?? false);
     setEditTemChaveReserva((moto as any).tem_chave_reserva ?? false);
     setEditManutencaoVencida((moto as any).manutencao_vencida ?? false);
@@ -356,6 +358,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       cor: editCor.trim() || null,
       categoria: editCategoria.trim() || null,
       cilindrada: editCilindrada.replace(/\D/g, '') || null,
+      observacoes: editObservacoes.trim() || null,
       tem_manual: editTemManual,
       tem_chave_reserva: editTemChaveReserva,
       manutencao_vencida: editManutencaoVencida,
@@ -743,18 +746,17 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       <ScrollArea className="h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 pr-3">
           {/* Dados do Cliente */}
-          <Card>
+          <Card className="flex flex-col">
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <User className="h-4 w-4 text-primary" /> Dados do Cliente
-                </CardTitle>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditClienteOpen(true)} title="Editar dados do cliente">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <User className="h-4 w-4 text-primary" /> Dados do Cliente
+                <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" onClick={() => setEditClienteOpen(true)} title="Editar dados do cliente">
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
-              </div>
+              </CardTitle>
+              <Separator className="mt-2" />
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="flex-1 flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <InfoItem label="Nome" value={atendimento.cliente ? formatPersonName(atendimento.cliente.nome_razao_social) : undefined} />
                 <div>
@@ -779,9 +781,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               </div>
               {atendimento.cliente_id && (
                 <>
-                  <Separator className="my-2" />
+                  <Separator className="mt-auto" />
                   <DocumentUpload
                     label="CNH"
+                    className="w-1/4"
                     currentUrl={cnhUrl}
                     bucketPath={`docs/${atendimento.cliente_id}/cnh`}
                     onUploaded={handleCnhUploaded}
@@ -798,15 +801,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               <CardTitle className="text-sm flex items-center gap-2">
                 <Store className="h-4 w-4 text-primary" /> Dados do Atendimento
               </CardTitle>
+              <Separator className="mt-2" />
             </CardHeader>
             <CardContent>
-              {vendedorNome && (
-                <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
-                  <IdCard className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold text-primary">{vendedorNome}</span>
-                </div>
-              )}
               <div className="grid grid-cols-2 gap-4">
+                <InfoItem label="Vendedor" value={vendedorNome} valueClassName="text-primary" />
                 <InfoItem label="Loja" value={atendimento.loja} />
                 <InfoItem label="Tipo de Atendimento" value={atendimento.tipo_atendimento} />
                 <InfoItem label="Interesse" value={int?.label} />
@@ -1000,18 +999,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
           {/* Motos de Avaliação (Venda/Troca) - ocultar quando interesse é compra */}
           {motosAvaliacao.length > 0 && atendimento.interesse !== 'comprar' && (
-            <Card>
+            <Card className="flex flex-col">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                     <Tag className="h-4 w-4 text-primary" /> Moto do Cliente
-                  </CardTitle>
-                  <div className="flex items-center gap-2 flex-wrap">
                     {motosAvaliacao.some(m => (m as any).consulta_solicitada && !(m as any).consulta_realizada) && (
                       <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
                         <Clock className="h-3 w-3" /> Consulta Solicitada
                       </Badge>
                     )}
+                  </CardTitle>
+                  <div className="flex items-center gap-2 flex-wrap">
                     {motosAvaliacao.some(m => m.enviada_avaliacao && !isAvaliada(m.id)) && (
                       <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
                         <Clock className="h-3 w-3" /> Aguardando avaliação
@@ -1024,11 +1023,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     )}
                   </div>
                 </div>
+                <Separator className="mt-2" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1 flex flex-col">
                 {motosAvaliacao.map((moto, idx) => (
-                  <div key={moto.id} className="space-y-3">
-                    {idx > 0 && <Separator className="my-3" />}
+                  <div key={moto.id} className="flex-1 flex flex-col gap-4">
+                    {idx > 0 && <Separator />}
                     <div className="flex items-start justify-between gap-2">
                       <div className="grid grid-cols-2 gap-4 flex-1">
                         <InfoItem label="Marca" value={moto.marca} />
@@ -1039,6 +1039,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         <InfoItem label="Cor" value={moto.cor} />
                         <InfoItem label="Placa" value={moto.placa?.replace(/-/g, '')} />
                         <InfoItem label="KM" value={formatKm(moto.km)} />
+                        {moto.observacoes && (
+                          <div className="col-span-2">
+                            <InfoItem label="Observações" value={moto.observacoes} />
+                          </div>
+                        )}
                       </div>
                       <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => openEditMoto(moto)} title="Editar dados da moto">
                         <Pencil className="h-3.5 w-3.5" />
@@ -1048,65 +1053,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       temManual={(moto as any).tem_manual}
                       temChaveReserva={(moto as any).tem_chave_reserva}
                       manutencaoVencida={(moto as any).manutencao_vencida}
-                      className="mt-3"
                     />
-                    <div className="flex gap-2 mt-3 flex-wrap">
-                      {/* 1. Incluir Fotos */}
-                      <Button size="sm" variant="outline" className={`gap-1.5 ${(photoCountMap[moto.id] || 0) > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setPhotoMotoId(moto.id)}>
-                        <Camera className="h-4 w-4" /> {(photoCountMap[moto.id] || 0) > 0 ? `Fotos (${photoCountMap[moto.id]}) ✓` : 'Incluir Fotos'}
+                    <Separator className="mt-auto" />
+                    <div className="flex gap-2 flex-wrap">
+                      <Button size="sm" variant="outline" className={`flex-1 gap-1.5 ${(photoCountMap[moto.id] || 0) > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setPhotoMotoId(moto.id)}>
+                        <Camera className="h-4 w-4" /> {(photoCountMap[moto.id] || 0) > 0 ? `Fotos (${photoCountMap[moto.id]}) ✓` : 'Fotos'}
                       </Button>
-
-                      {/* 2. CRLV */}
-                      <DocumentUpload
-                        label="CRLV"
-                        currentUrl={crlvUrls[moto.id] || null}
-                        bucketPath={`docs/${moto.id}/crlv`}
-                        onUploaded={async (url) => {
-                          await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto.id);
-                          setCrlvUrls(prev => ({ ...prev, [moto.id]: url }));
-                        }}
-                        onRemoved={async () => {
-                          await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto.id);
-                          setCrlvUrls(prev => ({ ...prev, [moto.id]: null }));
-                        }}
-                      />
-
-                      {/* ATPV */}
-                      <DocumentUpload
-                        label="ATPV"
-                        currentUrl={atpvUrls[moto.id] || null}
-                        bucketPath={`docs/${moto.id}/atpv`}
-                        onUploaded={async (url) => {
-                          await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', moto.id);
-                          setAtpvUrls(prev => ({ ...prev, [moto.id]: url }));
-                        }}
-                        onRemoved={async () => {
-                          await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', moto.id);
-                          setAtpvUrls(prev => ({ ...prev, [moto.id]: null }));
-                        }}
-                      />
-
-                      {/* Procuração */}
-                      <DocumentUpload
-                        label="Procuração"
-                        currentUrl={procuracaoUrls[moto.id] || null}
-                        bucketPath={`docs/${moto.id}/procuracao`}
-                        onUploaded={async (url) => {
-                          await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', moto.id);
-                          setProcuracaoUrls(prev => ({ ...prev, [moto.id]: url }));
-                        }}
-                        onRemoved={async () => {
-                          await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', moto.id);
-                          setProcuracaoUrls(prev => ({ ...prev, [moto.id]: null }));
-                        }}
-                      />
 
                       {/* 3. Avaliada / Solicitar Avaliação */}
                       {!moto.enviada_avaliacao ? (
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1.5"
+                          className="flex-1 gap-1.5"
                           onClick={async () => {
                             const { error: avError } = await supabase
                               .from('avaliacoes')
@@ -1141,14 +1100,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, enviada_avaliacao: true } : m));
                           }}
                         >
-                          <Send className="h-4 w-4" /> Enviar para Avaliação
+                          <Send className="h-4 w-4" /> Avaliação
                         </Button>
                       ) : isAvaliada(moto.id) ? (
                         <>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
+                            className="flex-1 gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
                             onClick={() => setViewAvaliacaoData(avaliacoes[moto.id])}
                           >
                             <CheckCircle2 className="h-4 w-4" /> Avaliada ✓
@@ -1161,17 +1120,17 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
+                          className="flex-1 gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
                           onClick={() => setShowResultadoConsulta((moto as any).resultado_consulta || 'Nenhum resultado registrado.')}
                         >
-                          <CheckCircle2 className="h-4 w-4" /> Consulta Realizada ✓
+                          <CheckCircle2 className="h-4 w-4" /> Consulta ✓
                         </Button>
                       )}
                       {cnhUrl && crlvUrls[moto.id] && isAvaliada(moto.id) && (!(moto as any).consulta_solicitada || (moto as any).consulta_realizada) && (
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1.5"
+                          className="flex-1 gap-1.5"
                           onClick={async () => {
                             const previousStatus = (moto as any).consulta_realizada ? 'consulta_realizada' : 'sem_consulta';
                             await supabase.from('avaliacoes').update({ 
@@ -1200,14 +1159,52 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                             toast.success('Consulta solicitada com sucesso!');
                           }}
                         >
-                          <Search className="h-4 w-4" /> {(moto as any).consulta_realizada ? 'Nova Consulta' : 'Solicitar Consulta'}
+                          <Search className="h-4 w-4" /> {(moto as any).consulta_realizada ? 'Nova Consulta' : 'Consultar'}
                         </Button>
                       )}
-                      {(moto as any).consulta_solicitada && !(moto as any).consulta_realizada && (
-                        <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1 h-7 flex items-center">
-                          <Clock className="h-3 w-3" /> Consulta Solicitada
-                        </Badge>
-                      )}
+
+                      <DocumentUpload
+                        label="CRLV"
+                        className="flex-1"
+                        currentUrl={crlvUrls[moto.id] || null}
+                        bucketPath={`docs/${moto.id}/crlv`}
+                        onUploaded={async (url) => {
+                          await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto.id);
+                          setCrlvUrls(prev => ({ ...prev, [moto.id]: url }));
+                        }}
+                        onRemoved={async () => {
+                          await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto.id);
+                          setCrlvUrls(prev => ({ ...prev, [moto.id]: null }));
+                        }}
+                      />
+                      <DocumentUpload
+                        label="ATPV"
+                        className="flex-1"
+                        currentUrl={atpvUrls[moto.id] || null}
+                        bucketPath={`docs/${moto.id}/atpv`}
+                        onUploaded={async (url) => {
+                          await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', moto.id);
+                          setAtpvUrls(prev => ({ ...prev, [moto.id]: url }));
+                        }}
+                        onRemoved={async () => {
+                          await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', moto.id);
+                          setAtpvUrls(prev => ({ ...prev, [moto.id]: null }));
+                        }}
+                      />
+                      <DocumentUpload
+                        label="Procuração"
+                        className="flex-1"
+                        currentUrl={procuracaoUrls[moto.id] || null}
+                        bucketPath={`docs/${moto.id}/procuracao`}
+                        onUploaded={async (url) => {
+                          await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', moto.id);
+                          setProcuracaoUrls(prev => ({ ...prev, [moto.id]: url }));
+                        }}
+                        onRemoved={async () => {
+                          await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', moto.id);
+                          setProcuracaoUrls(prev => ({ ...prev, [moto.id]: null }));
+                        }}
+                      />
                     </div>
                   </div>
                 ))}
@@ -1589,7 +1586,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       />
       {/* Dialog Editar Dados da Moto */}
       <Dialog open={!!editMotoId} onOpenChange={(o) => !o && setEditMotoId(null)}>
-        <DialogContent className="max-w-xl h-[85dvh] max-h-[85dvh] flex flex-col overflow-hidden p-0">
+        <DialogContent className="max-w-xl max-h-[85dvh] flex flex-col overflow-hidden p-0">
           <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
             <DialogTitle>Editar Dados da Moto</DialogTitle>
           </DialogHeader>
@@ -1695,6 +1692,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     </div>
                   </RadioGroup>
                 </div>
+              </div>
+              <div className="space-y-1.5 pt-3">
+                <Label>Observações</Label>
+                <Textarea
+                  value={editObservacoes}
+                  onChange={e => setEditObservacoes(e.target.value.toUpperCase())}
+                  placeholder="Observações sobre a moto..."
+                  rows={3}
+                  className="uppercase"
+                />
               </div>
             </div>
           </div>

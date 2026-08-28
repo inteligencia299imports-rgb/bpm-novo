@@ -3,7 +3,9 @@ import { getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard, FileText } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard, FileText, Camera } from 'lucide-react';
+import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
+import type { MotoFoto } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -76,6 +78,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [proprietario, setProprietario] = useState<any>(null);
   const [motoConsignada, setMotoConsignada] = useState<any>(null);
   const [avaliacaoConsignada, setAvaliacaoConsignada] = useState<any>(null);
+  const [fotosConsignada, setFotosConsignada] = useState<MotoFoto[]>([]);
+  const [showPhotosDialogConsignada, setShowPhotosDialogConsignada] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [processoOpen, setProcessoOpen] = useState(false);
@@ -95,6 +99,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       if (avalData) {
         setAvaliacaoConsignada(avalData);
         setMotoConsignada(avalData);
+        const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('avaliacao_id', avalData.id);
+        if (fotosData) setFotosConsignada(fotosData);
       }
     }
   };
@@ -185,6 +191,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           if (avalData) {
             setAvaliacaoConsignada(avalData);
             setMotoConsignada(avalData);
+            const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('avaliacao_id', avalData.id);
+            if (fotosData) setFotosConsignada(fotosData);
             const owner = (avalData as any).atendimentos_motos;
             if (owner) {
               setProprietario({ ...owner, loja: owner.loja_empresas?.loja, id: owner.id || avalData.atendimento_id });
@@ -326,55 +334,95 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
           {/* Dados da Moto - for Intermediação Parte 1 (same layout as consignação) */}
           {isIntermParte1 && motoConsignada && (
-            <Card>
+            <Card className="flex flex-col">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Bike className="h-4 w-4 text-primary" /> Dados da Moto
                 </CardTitle>
+                <Separator className="mt-2" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1 flex flex-col gap-4">
                 {avaliadorNome && (
-                  <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
+                  <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
                     <IdCard className="h-4 w-4 text-primary" />
                     <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
-                  <InfoItem label="Marca / Modelo" value={`${motoConsignada.marca} ${(motoConsignada.modelo || '').toUpperCase()}`} />
+                  <InfoItem label="Marca" value={motoConsignada.marca} />
+                  <InfoItem label="Modelo" value={(motoConsignada.modelo || '').toUpperCase()} />
+                  {motoConsignada.ano_fabricacao && <InfoItem label="Ano Fabricação" value={motoConsignada.ano_fabricacao} />}
+                  {motoConsignada.ano_modelo && <InfoItem label="Ano Modelo" value={motoConsignada.ano_modelo} />}
+                  {motoConsignada.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{motoConsignada.categoria}</span>} />}
+                  {motoConsignada.cor && <InfoItem label="Cor" value={<span className="uppercase">{motoConsignada.cor}</span>} />}
                   {motoConsignada.placa && <InfoItem label="Placa" value={motoConsignada.placa.replace(/-/g, '')} />}
                   {motoConsignada.km && <InfoItem label="KM" value={formatKm(motoConsignada.km)} />}
-                  {(motoConsignada.ano_fabricacao || motoConsignada.ano_modelo) && (
-                    <InfoItem label="Ano" value={[motoConsignada.ano_fabricacao, motoConsignada.ano_modelo].filter(Boolean).join('/')} />
+                  {motoConsignada.observacoes && (
+                    <div className="col-span-2">
+                      <InfoItem label="Observações" value={motoConsignada.observacoes} />
+                    </div>
                   )}
-                  {motoConsignada.cor && <InfoItem label="Cor" value={<span className="uppercase">{motoConsignada.cor}</span>} />}
-                  {motoConsignada.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{motoConsignada.categoria}</span>} />}
                 </div>
+                <MaintenanceBadges
+                  temManual={motoConsignada.tem_manual}
+                  temChaveReserva={motoConsignada.tem_chave_reserva}
+                  manutencaoVencida={motoConsignada.manutencao_vencida}
+                />
                 {motoConsignada.id && (
-                  <div className="mt-3">
-                    <DocumentUpload
-                      label="CRLV"
-                      currentUrl={motoConsignada.crlv_url || null}
-                      bucketPath={`docs/${motoConsignada.id}/crlv`}
-                      onUploaded={async (url) => {
-                        await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', motoConsignada.id);
-                        setMotoConsignada({ ...motoConsignada, crlv_url: url });
-                      }}
-                      onRemoved={async () => {
-                        await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', motoConsignada.id);
-                        setMotoConsignada({ ...motoConsignada, crlv_url: null });
-                      }}
-                    />
-                  </div>
-                )}
-                {motoConsignada.observacoes && (
                   <>
-                    <Separator className="my-3" />
-                    <p className="text-xs text-muted-foreground italic">{motoConsignada.observacoes}</p>
+                    <Separator className="mt-auto" />
+                    <div className="flex gap-2 flex-wrap">
+                      <Button size="sm" variant="outline" className={`flex-1 gap-1.5 ${fotosConsignada.length > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setShowPhotosDialogConsignada(true)}>
+                        <Camera className="h-4 w-4" /> {fotosConsignada.length > 0 ? `Fotos (${fotosConsignada.length}) ✓` : 'Fotos'}
+                      </Button>
+                      <DocumentUpload
+                        label="CRLV"
+                        className="flex-1"
+                        currentUrl={motoConsignada.crlv_url || null}
+                        bucketPath={`docs/${motoConsignada.id}/crlv`}
+                        onUploaded={async (url) => {
+                          await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', motoConsignada.id);
+                          setMotoConsignada({ ...motoConsignada, crlv_url: url });
+                        }}
+                        onRemoved={async () => {
+                          await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', motoConsignada.id);
+                          setMotoConsignada({ ...motoConsignada, crlv_url: null });
+                        }}
+                      />
+                      <DocumentUpload
+                        label="ATPV"
+                        className="flex-1"
+                        currentUrl={motoConsignada.atpv_url || null}
+                        bucketPath={`docs/${motoConsignada.id}/atpv`}
+                        onUploaded={async (url) => {
+                          await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', motoConsignada.id);
+                          setMotoConsignada({ ...motoConsignada, atpv_url: url });
+                        }}
+                        onRemoved={async () => {
+                          await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', motoConsignada.id);
+                          setMotoConsignada({ ...motoConsignada, atpv_url: null });
+                        }}
+                      />
+                      <DocumentUpload
+                        label="Procuração"
+                        className="flex-1"
+                        currentUrl={motoConsignada.procuracao_url || null}
+                        bucketPath={`docs/${motoConsignada.id}/procuracao`}
+                        onUploaded={async (url) => {
+                          await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', motoConsignada.id);
+                          setMotoConsignada({ ...motoConsignada, procuracao_url: url });
+                        }}
+                        onRemoved={async () => {
+                          await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', motoConsignada.id);
+                          setMotoConsignada({ ...motoConsignada, procuracao_url: null });
+                        }}
+                      />
+                    </div>
                   </>
                 )}
                 {(avaliacaoConsignada?.quanto_pede != null || avaliacaoConsignada?.valor_fechamento != null) && (
                   <>
-                    <Separator className="my-3" />
+                    <Separator />
                     <div className="rounded-lg border border-border bg-muted/30 p-4">
                       <div className="grid grid-cols-2 gap-4">
                         {avaliacaoConsignada.quanto_pede != null && (
@@ -647,6 +695,33 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Fotos */}
+      <Dialog open={showPhotosDialogConsignada} onOpenChange={setShowPhotosDialogConsignada}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5" /> Fotos da Moto
+            </DialogTitle>
+          </DialogHeader>
+          {fotosConsignada.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+              {fotosConsignada.map(f => (
+                <div key={f.id} className="aspect-square rounded-lg overflow-hidden bg-muted">
+                  <img src={f.url} alt={f.tipo} className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(f.url, '_blank')} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              Nenhuma foto incluída
+            </div>
+          )}
+          <div className="flex justify-end pt-2">
+            <Button size="sm" variant="outline" onClick={() => setShowPhotosDialogConsignada(false)}>Fechar</Button>
+          </div>
         </DialogContent>
       </Dialog>
 
