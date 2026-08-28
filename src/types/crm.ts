@@ -276,7 +276,6 @@ export interface Avaliacao {
   negociacao: Negociacao | null;
   situacao: SituacaoAvaliacao;
   avaliador_id: string | null;
-  observacao_avaliador: string | null;
   created_at: string;
   updated_at: string;
   atendimento?: Atendimento;

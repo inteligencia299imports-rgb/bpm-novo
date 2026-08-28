@@ -103,6 +103,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [avaliacao, setAvaliacao] = useState<any>(null);
   const [fotos, setFotos] = useState<MotoFoto[]>([]);
   const [showEvalDialog, setShowEvalDialog] = useState(false);
+  const [obsRefreshKey, setObsRefreshKey] = useState(0);
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
   const [contratoCompraOpen, setContratoCompraOpen] = useState(false);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
@@ -314,8 +315,18 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
       setValorBonus(numberToCurrencyMask((data as any).trade_in));
       setClassificacao((data as any).classificacao || '');
-      setObsAvaliador((data as any).observacao_avaliador || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
+
+      // Observação da avaliação: última nota registrada em observacoes (id_operacao = atendimento,
+      // mesmo escopo da lista de Observações exibida na tela)
+      const { data: obsData } = await supabase
+        .from('observacoes')
+        .select('observacao')
+        .eq('id_operacao', data.atendimento_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setObsAvaliador(obsData?.observacao || '');
 
       // Fetch estoque data if available
       if (data.id) {
@@ -425,7 +436,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       previsao_custos_cliente: parseCurrencyToNumber(prevCustosCliente),
       trade_in: parseCurrencyToNumber(valorBonus) || null,
       classificacao: classificacao || null,
-      observacao_avaliador: obsAvaliador.trim() || null,
       avaliador_id: user!.id,
       situacao: avaliacao?.situacao === 'sem_avaliar' ? 'em_aberto' : avaliacao?.situacao ?? 'em_aberto',
       ...((avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
@@ -436,6 +446,17 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     if (error) {
       toast.error('Erro ao salvar avaliação');
     } else {
+      // Observação da avaliação: registra uma nova nota em observacoes, no mesmo
+      // id_operacao (atendimento) da lista de Observações exibida na tela
+      if (obsAvaliador.trim() && avaliacao?.atendimento_id) {
+        await supabase.from('observacoes').insert({
+          id_operacao: avaliacao.atendimento_id,
+          observacao: obsAvaliador.trim(),
+          user_id: user?.id || null,
+        });
+        setObsRefreshKey(k => k + 1);
+      }
+
       // Atualizar preço ação e valor de fechamento (preco) no estoque se aplicável
       if (estoqueId) {
         const estoqueUpdate: any = {};
@@ -1122,7 +1143,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </Card>
 
           {/* Observações */}
-          {avaliacao?.atendimento_id && <AtendimentoObservacoes idOperacao={avaliacao.atendimento_id} />}
+          {avaliacao?.atendimento_id && <AtendimentoObservacoes key={obsRefreshKey} idOperacao={avaliacao.atendimento_id} />}
 
           {/* Histórico de Movimentações */}
           <Card className="md:col-span-2">

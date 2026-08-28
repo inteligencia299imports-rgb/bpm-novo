@@ -144,7 +144,6 @@ export type Database = {
           nps_enviado_at: string | null
           nps_respondido_at: string | null
           nps_status: string
-          observacao_avaliador: string | null
           observacoes: string | null
           placa: string | null
           pos_compra_status: string
@@ -194,7 +193,6 @@ export type Database = {
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
           nps_status?: string
-          observacao_avaliador?: string | null
           observacoes?: string | null
           placa?: string | null
           pos_compra_status?: string
@@ -244,7 +242,6 @@ export type Database = {
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
           nps_status?: string
-          observacao_avaliador?: string | null
           observacoes?: string | null
           placa?: string | null
           pos_compra_status?: string
