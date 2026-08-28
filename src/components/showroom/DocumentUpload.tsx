@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { FileUp, FileCheck, Loader2, Eye, Trash2, RefreshCw, Download, Save } from 'lucide-react';
+import { FileUp, FileCheck, Loader2, Eye, Trash2, Download, Save } from 'lucide-react';
 
 interface Props {
   label: string;
@@ -19,7 +19,6 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
   const [uploading, setUploading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const replaceInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
     setUploading(true);
@@ -70,18 +69,6 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
           if (inputRef.current) inputRef.current.value = '';
         }}
       />
-      <input
-        ref={replaceInputRef}
-        type="file"
-        accept="image/*,.pdf"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) handleFile(f);
-          if (replaceInputRef.current) replaceInputRef.current.value = '';
-        }}
-      />
-
       <Button
         size="sm"
         variant="outline"
@@ -102,11 +89,15 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
         ) : (
           <FileUp className="h-4 w-4" />
         )}
-        {currentUrl ? `${label} ✓` : `Anexar ${label}`}
+        {currentUrl ? `${label} ✓` : label}
       </Button>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent
+          className="max-w-md"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileCheck className="h-5 w-5" /> {label}
@@ -140,7 +131,7 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
               </div>
 
               {/* Actions */}
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   size="sm"
                   variant="outline"
@@ -164,20 +155,6 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
                   }}
                 >
                   <Download className="h-4 w-4" /> Baixar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 w-full"
-                  disabled={uploading}
-                  onClick={() => replaceInputRef.current?.click()}
-                >
-                  {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
-                  Substituir
                 </Button>
                 <Button
                   size="sm"

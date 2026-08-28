@@ -176,6 +176,28 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     }
   };
 
+  const extrairDadosCrlv = async (url: string) => {
+    if (!moto.id) return;
+    try {
+      const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
+        body: { avaliacao_id: moto.id, url },
+      });
+      if (error || !data?.extraido) {
+        console.warn('extrair-dados-crlv não extraiu:', error || data?.motivo || data);
+        return;
+      }
+      const campos: Record<string, string> = {};
+      if (data.chassi) campos.chassi = data.chassi;
+      if (data.renavam) campos.renavam = data.renavam;
+      if (data.placa) campos.placa = data.placa;
+      if (Object.keys(campos).length === 0) return;
+      setMotoData((prev: any) => ({ ...prev, ...campos }));
+      toast.success('Chassi/RENAVAM extraídos do CRLV');
+    } catch {
+      // extracao e best-effort -- falha aqui nunca deve incomodar o usuario
+    }
+  };
+
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
@@ -412,6 +434,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
                   {moto.placa && <InfoItem label="Placa" value={moto.placa.replace(/-/g, '')} />}
                   {moto.km && <InfoItem label="KM" value={formatKm(moto.km)} />}
+                  {moto.chassi && <InfoItem label="Chassi" value={moto.chassi} />}
+                  {moto.renavam && <InfoItem label="RENAVAM" value={moto.renavam} />}
                   {moto.observacoes && (
                     <div className="col-span-2">
                       <InfoItem label="Observações" value={moto.observacoes} />
@@ -462,6 +486,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                         onUploaded={(url) => {
                           setCrlvUrl(url);
                           if (moto.id) supabase.from('avaliacoes').update({ crlv_url: url }).eq('id', moto.id);
+                          extrairDadosCrlv(url);
                         }}
                         onRemoved={() => {
                           setCrlvUrl(null);

@@ -693,6 +693,27 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setCnhUrl(null);
   };
 
+  const extrairDadosCrlv = async (avaliacaoId: string, url: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
+        body: { avaliacao_id: avaliacaoId, url },
+      });
+      if (error || !data?.extraido) {
+        console.warn('extrair-dados-crlv não extraiu:', error || data?.motivo || data);
+        return;
+      }
+      const campos: Record<string, string> = {};
+      if (data.chassi) campos.chassi = data.chassi;
+      if (data.renavam) campos.renavam = data.renavam;
+      if (data.placa) campos.placa = data.placa;
+      if (Object.keys(campos).length === 0) return;
+      setAvaliacao((prev: any) => (prev ? { ...prev, ...campos } : prev));
+      toast.success('Chassi/RENAVAM extraídos do CRLV');
+    } catch {
+      // extracao e best-effort -- falha aqui nunca deve incomodar o usuario
+    }
+  };
+
   const InfoItem = ({ label, value, valueClassName }: { label: string; value: string | null | undefined; valueClassName?: string }) => (
     value ? (
       <div className="flex flex-col gap-0.5">
@@ -897,6 +918,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <InfoItem label="Cor" value={moto?.cor} />
                 <InfoItem label="Placa" value={moto?.placa?.replace(/-/g, '')} />
                 <InfoItem label="KM" value={formatKm(moto?.km)} />
+                {moto?.chassi && <InfoItem label="Chassi" value={moto.chassi} />}
+                {moto?.renavam && <InfoItem label="RENAVAM" value={moto.renavam} />}
                 {moto?.observacoes && (
                   <div className="col-span-2">
                     <InfoItem label="Observações" value={moto.observacoes} />
@@ -997,6 +1020,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   onUploaded={async (url) => {
                     await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto?.id);
                     setCrlvUrl(url);
+                    if (moto?.id) extrairDadosCrlv(moto.id, url);
                   }}
                   onRemoved={async () => {
                     await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto?.id);

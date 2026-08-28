@@ -4,8 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, User, Phone, MapPin, Bike, Clock, ArrowRight, RotateCw, Calendar, Palette, Tag, FileText, Save, Search, Camera } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, User, Phone, MapPin, Bike, Clock, ArrowRight, RotateCw, Calendar, Palette, Tag, FileText, Save, Search, Camera, Satellite, Loader2 } from 'lucide-react';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
+import ConsultaVeicularResultado from './ConsultaVeicularResultado';
+import type { ConsultaVeiculoResultado } from '@/types/consultaVeicular';
 import type { MotoFoto } from '@/types/crm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -61,26 +65,99 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [fotos, setFotos] = useState<MotoFoto[]>([]);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
-  
+  const [consultaVeicular, setConsultaVeicular] = useState<ConsultaVeiculoResultado | null>(null);
+  const [consultandoVeicular, setConsultandoVeicular] = useState(false);
+  const [veicularDetalheOpen, setVeicularDetalheOpen] = useState(false);
+  const [placa, setPlaca] = useState<string>(moto.placa || '');
+  const [chassi, setChassi] = useState<string | null>(moto.chassi || null);
+  const [renavam, setRenavam] = useState<string | null>(moto.renavam || null);
+  const [consultaInputOpen, setConsultaInputOpen] = useState(false);
+  const [inputPlaca, setInputPlaca] = useState('');
+  const [inputChassi, setInputChassi] = useState('');
+  const [inputRenavam, setInputRenavam] = useState('');
+
   const atendimento = moto.atendimento || moto.atendimentos;
 
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      const [cnhRes, histRes, fotosRes] = await Promise.all([
+      const [cnhRes, histRes, fotosRes, consultaRes] = await Promise.all([
         atendimento?.cliente_id
           ? supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
           : Promise.resolve({ data: null }),
         supabase.from('status_history').select('*').eq('entity_type', 'consulta').eq('entity_id', moto.id).order('created_at', { ascending: true }),
         supabase.from('moto_fotos').select('*').eq('avaliacao_id', moto.id),
+        (supabase as any).from('consultas_veiculares').select('resultado').eq('avaliacao_id', moto.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       ]);
       setCnhUrl(cnhRes.data?.arquivo_url || null);
       setHistory(histRes.data || []);
       if (fotosRes.data) setFotos(fotosRes.data);
+      if (consultaRes.data?.resultado) setConsultaVeicular(consultaRes.data.resultado as ConsultaVeiculoResultado);
       setLoading(false);
     };
     loadAll();
   }, [moto.id, atendimento?.id]);
+
+  const extrairDadosCrlv = async (url: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
+        body: { avaliacao_id: moto.id, url },
+      });
+      if (error || !data?.extraido) {
+        console.warn('extrair-dados-crlv não extraiu:', error || data?.motivo || data);
+        return;
+      }
+      if (data.chassi) setChassi(data.chassi);
+      if (data.renavam) setRenavam(data.renavam);
+      if (data.chassi || data.renavam) toast.success('Chassi/RENAVAM extraídos do CRLV');
+    } catch {
+      // extracao e best-effort -- falha aqui nunca deve incomodar o usuario
+    }
+  };
+
+  const openConsultaInput = () => {
+    setInputPlaca(placa || '');
+    setInputChassi(chassi || '');
+    setInputRenavam(renavam || '');
+    setConsultaInputOpen(true);
+  };
+
+  const handleConsultarVeicular = async () => {
+    const placaTrim = inputPlaca.trim().toUpperCase();
+    const chassiTrim = inputChassi.trim().toUpperCase();
+    const renavamTrim = inputRenavam.trim();
+    if (!placaTrim || !chassiTrim || !renavamTrim) {
+      toast.error('Placa, chassi e RENAVAM são obrigatórios');
+      return;
+    }
+    setConsultandoVeicular(true);
+    try {
+      await supabase.from('avaliacoes').update({ placa: placaTrim, chassi: chassiTrim, renavam: renavamTrim } as any).eq('id', moto.id);
+      setPlaca(placaTrim);
+      setChassi(chassiTrim);
+      setRenavam(renavamTrim);
+
+      const { data, error } = await supabase.functions.invoke('consulta-veicular', {
+        body: {
+          placa: placaTrim,
+          uf: (moto as any).uf || null,
+          renavam: renavamTrim,
+          avaliacao_id: moto.id,
+        },
+      });
+      if (error || !data?.resultado) {
+        toast.error('Erro ao consultar o veículo');
+        return;
+      }
+      setConsultaVeicular(data.resultado as ConsultaVeiculoResultado);
+      toast.success(data.de_cache ? 'Resultado da última consulta recente' : 'Consulta realizada com sucesso');
+      setConsultaInputOpen(false);
+    } catch {
+      toast.error('Erro ao consultar o veículo');
+    } finally {
+      setConsultandoVeicular(false);
+    }
+  };
 
   const fetchHistory = () => {
     supabase
@@ -172,10 +249,14 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               <Badge className={`${statusColor} text-[10px] shrink-0`}>{statusLabel}</Badge>
             </div>
             <p className="text-xs text-muted-foreground">
-              {moto.placa && <span className="mr-2">{moto.placa.replace(/-/g, '')}</span>}
+              {placa && <span className="mr-2">{placa.replace(/-/g, '')}</span>}
               {format(new Date(moto.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
+          <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={openConsultaInput}>
+            <Satellite className="h-4 w-4" />
+            <span className="hidden sm:inline">Consultar</span>
+          </Button>
           {!isConsultada ? (
             <Button size="sm" className="gap-1.5 shrink-0" onClick={() => setResultadoPopup(true)}>
               <FileText className="h-4 w-4" /> Incluir Resultado
@@ -272,8 +353,10 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 {moto.ano_modelo && <InfoItem label="Ano Modelo" value={moto.ano_modelo} />}
                 {moto.categoria && <InfoItem label="Categoria" value={<span className="uppercase">{moto.categoria}</span>} />}
                 {moto.cor && <InfoItem label="Cor" value={<span className="uppercase">{moto.cor}</span>} />}
-                {moto.placa && <InfoItem label="Placa" value={moto.placa.replace(/-/g, '')} />}
+                {placa && <InfoItem label="Placa" value={placa.replace(/-/g, '')} />}
                 <InfoItem label="KM" value={formatKm(moto.km)} />
+                {chassi && <InfoItem label="Chassi" value={chassi} />}
+                {renavam && <InfoItem label="RENAVAM" value={renavam} />}
                 {moto.observacoes && (
                   <div className="col-span-2">
                     <InfoItem label="Observações" value={moto.observacoes} />
@@ -298,6 +381,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                   onUploaded={async (url) => {
                     await supabase.from('avaliacoes').update({ crlv_url: url }).eq('id', moto.id);
                     setCrlvUrl(url);
+                    extrairDadosCrlv(url);
                   }}
                   onRemoved={async () => {
                     await supabase.from('avaliacoes').update({ crlv_url: null }).eq('id', moto.id);
@@ -335,6 +419,26 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Consulta Veicular (RENAVE/SENATRAN) */}
+          {consultaVeicular && (
+            <Card
+              className="md:col-span-2 border-l-4 cursor-pointer hover:bg-muted/30 transition-colors"
+              style={{ borderLeftColor: consultaVeicular.renave.apto_estoque === true ? '#169d53' : '#da6220' }}
+              onClick={() => setVeicularDetalheOpen(true)}
+            >
+              <CardContent className="py-3 px-4">
+                <span className="text-xs text-muted-foreground">Consulta Realizada</span>
+                <p className="text-sm font-medium uppercase">
+                  {consultaVeicular.renave.apto_estoque === true
+                    ? 'Apto para entrada em estoque'
+                    : consultaVeicular.renave.apto_estoque === false
+                      ? 'Não apto para entrada em estoque'
+                      : 'Aptidão indeterminada'}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Histórico de Movimentações */}
           <Card className="md:col-span-2">
@@ -388,6 +492,53 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Popup Confirmação de dados antes de consultar */}
+      <Dialog open={consultaInputOpen} onOpenChange={setConsultaInputOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Satellite className="h-5 w-5" /> Confirmar dados para consulta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Placa <span className="text-destructive">*</span></Label>
+              <Input value={inputPlaca} onChange={(e) => setInputPlaca(e.target.value.toUpperCase())} placeholder="ABC1D23" maxLength={7} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Chassi <span className="text-destructive">*</span></Label>
+              <Input value={inputChassi} onChange={(e) => setInputChassi(e.target.value.toUpperCase())} placeholder="Número do chassi" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>RENAVAM <span className="text-destructive">*</span></Label>
+              <Input value={inputRenavam} onChange={(e) => setInputRenavam(e.target.value.replace(/\D/g, ''))} placeholder="Número do RENAVAM" />
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button
+                className="gap-1.5"
+                disabled={consultandoVeicular || !inputPlaca.trim() || !inputChassi.trim() || !inputRenavam.trim()}
+                onClick={handleConsultarVeicular}
+              >
+                {consultandoVeicular ? <Loader2 className="h-4 w-4 animate-spin" /> : <Satellite className="h-4 w-4" />}
+                {consultandoVeicular ? 'Consultando...' : 'Consultar'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Popup Detalhe da Consulta Veicular */}
+      <Dialog open={veicularDetalheOpen} onOpenChange={setVeicularDetalheOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Satellite className="h-5 w-5" /> Consulta Veicular
+            </DialogTitle>
+          </DialogHeader>
+          {consultaVeicular && <ConsultaVeicularResultado resultado={consultaVeicular} />}
         </DialogContent>
       </Dialog>
 

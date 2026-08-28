@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   graphql_public: {
     Tables: {
@@ -124,6 +124,7 @@ export type Database = {
           avaliacao_consignacao: number | null
           avaliador_id: string | null
           categoria: string | null
+          chassi: string | null
           cilindrada: string | null
           classificacao: string | null
           consignacao_status: string
@@ -154,12 +155,14 @@ export type Database = {
           quanto_pede: number | null
           quanto_vende: number | null
           quanto_vende_errado: number | null
+          renavam: string | null
           resultado_consulta: string | null
           situacao: string
           tem_chave_reserva: boolean | null
           tem_manual: boolean | null
           tipo_aquisicao: string | null
           trade_in: number | null
+          uf: string | null
           updated_at: string
           valor_fechamento: number | null
           valor_fipe: number | null
@@ -173,6 +176,7 @@ export type Database = {
           avaliacao_consignacao?: number | null
           avaliador_id?: string | null
           categoria?: string | null
+          chassi?: string | null
           cilindrada?: string | null
           classificacao?: string | null
           consignacao_status?: string
@@ -203,12 +207,14 @@ export type Database = {
           quanto_pede?: number | null
           quanto_vende?: number | null
           quanto_vende_errado?: number | null
+          renavam?: string | null
           resultado_consulta?: string | null
           situacao?: string
           tem_chave_reserva?: boolean | null
           tem_manual?: boolean | null
           tipo_aquisicao?: string | null
           trade_in?: number | null
+          uf?: string | null
           updated_at?: string
           valor_fechamento?: number | null
           valor_fipe?: number | null
@@ -222,6 +228,7 @@ export type Database = {
           avaliacao_consignacao?: number | null
           avaliador_id?: string | null
           categoria?: string | null
+          chassi?: string | null
           cilindrada?: string | null
           classificacao?: string | null
           consignacao_status?: string
@@ -252,12 +259,14 @@ export type Database = {
           quanto_pede?: number | null
           quanto_vende?: number | null
           quanto_vende_errado?: number | null
+          renavam?: string | null
           resultado_consulta?: string | null
           situacao?: string
           tem_chave_reserva?: boolean | null
           tem_manual?: boolean | null
           tipo_aquisicao?: string | null
           trade_in?: number | null
+          uf?: string | null
           updated_at?: string
           valor_fechamento?: number | null
           valor_fipe?: number | null
@@ -540,6 +549,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "consignacao_processos_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consultas_veiculares: {
+        Row: {
+          avaliacao_id: string | null
+          correlation_id: string | null
+          created_at: string
+          fontes_consultadas: Json
+          id: string
+          placa: string
+          renavam: string | null
+          resultado: Json
+          tempo_resposta_ms: number | null
+          uf: string | null
+          usuario_id: string
+        }
+        Insert: {
+          avaliacao_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          fontes_consultadas?: Json
+          id?: string
+          placa: string
+          renavam?: string | null
+          resultado: Json
+          tempo_resposta_ms?: number | null
+          uf?: string | null
+          usuario_id: string
+        }
+        Update: {
+          avaliacao_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          fontes_consultadas?: Json
+          id?: string
+          placa?: string
+          renavam?: string | null
+          resultado?: Json
+          tempo_resposta_ms?: number | null
+          uf?: string | null
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultas_veiculares_avaliacao_id_fkey"
             columns: ["avaliacao_id"]
             isOneToOne: false
             referencedRelation: "avaliacoes"

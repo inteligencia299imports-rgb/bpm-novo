@@ -374,6 +374,27 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setEditMotoId(null);
   };
 
+  const extrairDadosCrlv = async (avaliacaoId: string, url: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
+        body: { avaliacao_id: avaliacaoId, url },
+      });
+      if (error || !data?.extraido) {
+        console.warn('extrair-dados-crlv não extraiu:', error || data?.motivo || data);
+        return;
+      }
+      const campos: Record<string, string> = {};
+      if (data.chassi) campos.chassi = data.chassi;
+      if (data.renavam) campos.renavam = data.renavam;
+      if (data.placa) campos.placa = data.placa;
+      if (Object.keys(campos).length === 0) return;
+      setMotosAvaliacao(prev => prev.map(m => m.id === avaliacaoId ? { ...m, ...campos } : m));
+      toast.success('Chassi/RENAVAM extraídos do CRLV');
+    } catch {
+      // extracao e best-effort -- falha aqui nunca deve incomodar o usuario
+    }
+  };
+
   const handleStatusChange = async (value: SituacaoShowroom, label: string, extraData?: Record<string, any>, observacoes?: string) => {
     const updateData: any = { situacao: value, ...extraData };
     const { error } = await supabase.from('atendimentos_motos').update(updateData).eq('id', atendimento.id);
@@ -1039,6 +1060,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         <InfoItem label="Cor" value={moto.cor} />
                         <InfoItem label="Placa" value={moto.placa?.replace(/-/g, '')} />
                         <InfoItem label="KM" value={formatKm(moto.km)} />
+                        {(moto as any).chassi && <InfoItem label="Chassi" value={(moto as any).chassi} />}
+                        {(moto as any).renavam && <InfoItem label="RENAVAM" value={(moto as any).renavam} />}
                         {moto.observacoes && (
                           <div className="col-span-2">
                             <InfoItem label="Observações" value={moto.observacoes} />
@@ -1171,6 +1194,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto.id);
                           setCrlvUrls(prev => ({ ...prev, [moto.id]: url }));
+                          extrairDadosCrlv(moto.id, url);
                         }}
                         onRemoved={async () => {
                           await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto.id);

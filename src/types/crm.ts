@@ -250,6 +250,9 @@ export interface Avaliacao {
   cilindrada: string | null;
   cor: string | null;
   placa: string | null;
+  chassi: string | null;
+  renavam: string | null;
+  uf: string | null;
   km: string | null;
   tem_manual: boolean | null;
   tem_chave_reserva: boolean | null;
