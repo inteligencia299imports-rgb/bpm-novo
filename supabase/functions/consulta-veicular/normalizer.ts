@@ -32,7 +32,7 @@ export function normalizarResultado(params: {
   const { consultaId, entrada, renave, senatranVeiculo, senatranInfracoes } = params;
 
   const { der_df, dnit, prf } = resolverOrgaosInfracao(senatranInfracoes);
-  const restricoes = finalizarStatusRestricoes(resolverRestricoes(senatranVeiculo));
+  const restricoes = finalizarStatusRestricoes(resolverRestricoes(senatranVeiculo, renave));
 
   return {
     consulta_id: consultaId,
@@ -70,7 +70,7 @@ export function normalizarResultado(params: {
       dnit,
       prf,
       autocorp: resolverAutocorp(),
-      gravame: resolverGravame(senatranVeiculo),
+      gravame: resolverGravame(senatranVeiculo, renave),
       restricoes,
       cpf: resolverCpf(),
     },

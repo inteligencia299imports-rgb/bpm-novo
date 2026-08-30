@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { TODOS_TIPOS_AQUISICAO } from '@/lib/tipoAquisicao';
+import { TODOS_TIPOS_AQUISICAO, isTipoPropria } from '@/lib/tipoAquisicao';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
 import { Search, X, Send, Eye, Copy, Filter } from 'lucide-react';
@@ -39,7 +39,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
         *,
         atendimentos_motos!inner (id, loja_id, loja_empresas:loja_id(loja), interesse, situacao, temperatura, created_at, updated_at, nps_status, tipo_atendimento, vendedor_id, origem, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, clientes_fornecedores_enderecos(uf)))
       `)
-      .in('tipo_aquisicao', TODOS_TIPOS_AQUISICAO.filter(t => t !== 'test-ride'))
+      .in('tipo_aquisicao', TODOS_TIPOS_AQUISICAO)
       .order('updated_at', { ascending: false });
 
     if (error) {
@@ -48,6 +48,8 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     } else {
       let mapped = (data || [])
         .filter((a: any) => a.atendimentos_motos?.interesse === 'vender')
+        // Motos próprias só entram no NPS depois de aprovadas no Pós-Compra.
+        .filter((a: any) => !(isTipoPropria(a.tipo_aquisicao) && (a.aprovacao_status === 'aguardando' || a.aprovacao_status === 'recusada')))
         .map((d: any) => {
           const am = { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja };
           return {

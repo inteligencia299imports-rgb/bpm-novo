@@ -25,15 +25,38 @@ const defaultFormatStatusLabel = (raw: string): string => {
   return raw.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação').replace(/\bpreparacao\b/gi, 'preparação').replace(/\breenviada\b/gi, 'reenviada').replace(/\bconcluida\b/gi, 'concluída');
 };
 
+const MIRROR_WINDOW_MS = 15000;
+
+/**
+ * Alguns status (ex.: "dispensada", "em_aberto") são gravados em dois entity_types
+ * ao mesmo tempo (avaliação + showroom). Mostra só uma linha por movimentação.
+ */
+const dedupeMirrorEntries = (entries: TimelineEntry[]): TimelineEntry[] => {
+  const asc = [...entries].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  const kept: TimelineEntry[] = [];
+  for (const h of asc) {
+    const isMirror = kept.some((k) =>
+      k.status === h.status &&
+      (k.changed_by ?? k.changed_by_name ?? null) === (h.changed_by ?? h.changed_by_name ?? null) &&
+      (k.entity_type ?? null) !== (h.entity_type ?? null) &&
+      Math.abs(new Date(k.created_at).getTime() - new Date(h.created_at).getTime()) < MIRROR_WINDOW_MS,
+    );
+    if (!isMirror) kept.push(h);
+  }
+  return kept;
+};
+
 const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExtra, formatLabel }) => {
   const formatStatusLabel = formatLabel || defaultFormatStatusLabel;
   const [selected, setSelected] = useState<TimelineEntry | null>(null);
 
-  if (history.length === 0) {
+  const deduped = dedupeMirrorEntries(history);
+
+  if (deduped.length === 0) {
     return <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>;
   }
 
-  const sorted = [...history].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const sorted = [...deduped].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
     <>

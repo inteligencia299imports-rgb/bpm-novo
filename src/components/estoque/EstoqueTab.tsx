@@ -161,7 +161,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       let query = supabase.from('estoque').select('*, avaliacoes:avaliacao_id(tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta, tipo_aquisicao, pos_compra_status, atendimentos:atendimento_id(loja)), atendimentos:atendimento_venda_id(vendedor_id, loja)').order('data_entrada', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
       if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
-      if (filterTipo !== 'todos' && filterTipo !== 'test-ride') query = query.eq('tipo', filterTipo);
+      if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
       
       const { data, error } = await query;
       if (error) throw error;
@@ -188,12 +188,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         displayTipo: d.avaliacoes?.tipo_aquisicao || d.tipo,
         loja_origem: d.atendimentos?.loja ?? d.avaliacoes?.atendimentos?.loja ?? null,
       }));
-      // Client-side filter: test-ride
-      if (filterTipo === 'test-ride') {
-        mapped = mapped.filter((m: any) => m.tipo_aquisicao === 'test-ride');
-      } else if (filterTipo === 'propria') {
-        mapped = mapped.filter((m: any) => m.tipo_aquisicao !== 'test-ride');
-      }
+      // Motos de repasse ficam ocultas do catálogo de estoque
+      mapped = mapped.filter((m: any) => m.tipo_aquisicao !== 'repasse');
       setItems(mapped);
 
       // Fetch which items have history
@@ -356,7 +352,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    if (item.avaliacao_id && item.tipo === 'propria' && item.tipo_aquisicao !== 'test-ride') {
+    if (item.avaliacao_id && item.tipo === 'propria') {
       options.push({
         label: 'Pós-Compra',
         icon: <ShoppingCart className="h-4 w-4" />,
@@ -485,7 +481,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                 <SelectItem value="todos">Todos os tipos</SelectItem>
                 <SelectItem value="propria">Própria</SelectItem>
                 <SelectItem value="consignada">Consignada</SelectItem>
-                <SelectItem value="test-ride">Test-Ride</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -598,7 +593,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             manutencaoVencida={item.manutencao_vencida}
                           />
 
-                          {item.tipo === 'propria' && item.tipo_aquisicao !== 'test-ride' && item.avaliacao_id && item.pos_compra_status !== 'concluido' && !item.data_venda && (
+                          {item.tipo === 'propria' && item.avaliacao_id && item.pos_compra_status !== 'concluido' && !item.data_venda && (
                             <div className="flex items-start gap-1.5 text-xs text-amber-700 font-medium bg-amber-500/10 border border-amber-500/30 rounded p-2">
                               <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                               <span>Transferência para loja pendente</span>

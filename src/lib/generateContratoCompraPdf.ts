@@ -12,6 +12,8 @@ interface ContratoCompraPdfData {
   km: string;
   valorQuitacao: string;
   valorFechamento: string;
+  abatimentos: string;
+  repasseCliente: string;
   observacoes: string;
   dataContrato: string;
 }
@@ -108,7 +110,7 @@ const getCidadeOverride = (loja?: string | null): CidadeOverride | null => {
   return CIDADE_OVERRIDES.find(o => o.match(l))?.data || null;
 };
 
-export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Promise<void> {
+export async function generateContratoCompraPdf(data: ContratoCompraPdfData, modo: 'download' | 'view' = 'download'): Promise<void> {
   const override = getCidadeOverride(data.loja);
   const empresaNome = override?.empresaNome || 'MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA';
   const cnpj = override?.cnpj || '21.194.795/0001-96';
@@ -196,7 +198,9 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   doc.text(`Placa: ${data.placa}`, marginLeft, y); y += lineHeight;
   doc.text(`Km: ${data.km}`, marginLeft, y); y += lineHeight;
   doc.text(`Valor de Quitação: ${data.valorQuitacao}`, marginLeft, y); y += lineHeight;
-  doc.text(`Valor de Fechamento: ${data.valorFechamento}`, marginLeft, y); y += lineHeight + sectionGap;
+  doc.text(`Abatimentos (Custos+Despesas): ${data.abatimentos}`, marginLeft, y); y += lineHeight;
+  doc.text(`Valor de Fechamento: ${data.valorFechamento}`, marginLeft, y); y += lineHeight;
+  doc.text(`Repasse ao Cliente: ${data.repasseCliente}`, marginLeft, y); y += lineHeight + sectionGap;
 
   // OBSERVAÇÕES
   if (data.observacoes) {
@@ -336,7 +340,10 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData): Pr
   doc.text(`${cidadeAssinatura}, ${data.dataContrato}`, pageWidth / 2, y, { align: 'center' });
   setNormal();
 
-  // Save
   const fileName = `COMPRA_${data.nomeCliente.replace(/\s+/g, '_').toUpperCase()}.pdf`;
-  doc.save(fileName);
+  if (modo === 'view') {
+    window.open(URL.createObjectURL(doc.output('blob')), '_blank');
+  } else {
+    doc.save(fileName);
+  }
 }

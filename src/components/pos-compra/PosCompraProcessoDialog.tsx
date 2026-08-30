@@ -8,8 +8,9 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, Building2, User } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, Building2, User, Plus, Trash2, FileText, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -18,13 +19,22 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
 
+const formatCurrencyInput = (value: string): string => {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '';
+  return (parseInt(digits, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+const parseCurrencyInput = (value: string): number => parseInt(value.replace(/\D/g, '') || '0', 10) / 100;
+const formatCurrency = (v: number | null | undefined) =>
+  v == null ? '-' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 const ETAPAS = [
   'CONSULTA REALIZADA',
   'DOCUMENTAÇÃO RECEBIDA',
   'CADASTRO NBS',
   'DOCUMENTAÇÃO COM DESPACHANTE',
   'VISTORIA/CADEIA DOMINIAL',
-  'NF EMITIDA',
+  'NF-E',
   'PROCESSO PAUSADO',
   'TRANSFERÊNCIA CONCLUÍDA',
 ];
@@ -52,32 +62,76 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
-  const [previousStatus, setPreviousStatus] = useState('em_aberto');
+  const [previousStatus, setPreviousStatus] = useState('aprovada');
   const [atendimentoId, setAtendimentoId] = useState<string | null>(null);
   const [destinoDialogOpen, setDestinoDialogOpen] = useState(false);
   const [destinoValue, setDestinoValue] = useState<'loja' | 'novo_proprietario'>('loja');
 
+  // Abas: "processo" (checklist de etapas) | "financeiro" (fechamento + abatimentos)
+  const [aba, setAba] = useState<'processo' | 'financeiro'>('processo');
+  const [valorFechamento, setValorFechamento] = useState('');
+  const [custosOficina, setCustosOficina] = useState<any[]>([]);
+  const [savingFin, setSavingFin] = useState(false);
+  const [newResp, setNewResp] = useState('Cliente');
+  const [newTipo] = useState('Serviço');
+  const [newDesc, setNewDesc] = useState('');
+  const [newValor, setNewValor] = useState('');
+
+  // ---- NF-e de compra ----
+  const [nfeCompra, setNfeCompra] = useState<any | null>(null);
+  const [aprovacaoStatus, setAprovacaoStatus] = useState<string | null>(null);
+  const [contratoGerado, setContratoGerado] = useState(false);
+  const [emitindoNfe, setEmitindoNfe] = useState(false);
+  const [confirmarNfeOpen, setConfirmarNfeOpen] = useState(false);
+  const [consultaRealizada, setConsultaRealizada] = useState(false);
+
   useEffect(() => {
     if (!open) return;
+    setAba('processo');
     const load = async () => {
       setLoading(true);
 
-      const [{ data }, { data: avData }] = await Promise.all([
+      const [{ data }, { data: avData }, { data: custosData }, { data: nfeData }, { data: contratoHist }] = await Promise.all([
         supabase
           .from('pos_compra_processos' as any)
           .select('id, etapa, concluida, data_conclusao, destino_transferencia')
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('atendimento_id, pos_compra_status, tipo_aquisicao, consulta_realizada')
+          .select('atendimento_id, pos_compra_status, tipo_aquisicao, consulta_realizada, valor_fechamento, aprovacao_status')
           .eq('id', avaliacaoId)
           .maybeSingle(),
+        supabase.from('custos_oficina').select('*').eq('avaliacao_id', avaliacaoId).order('created_at'),
+        supabase
+          .from('nfe_entradas' as any)
+          .select('*')
+          .eq('avaliacao_id', avaliacaoId)
+          .order('created_at', { ascending: false })
+          .limit(1),
+        supabase
+          .from('status_history')
+          .select('id')
+          .eq('entity_type', 'pos_compra')
+          .eq('entity_id', avaliacaoId)
+          .eq('status', 'contrato_compra_gerado')
+          .limit(1),
       ]);
+
+      setCustosOficina(custosData || []);
+      setNfeCompra((nfeData as any[])?.[0] || null);
+      setAprovacaoStatus((avData as any)?.aprovacao_status ?? null);
+      setContratoGerado(((contratoHist as any[]) || []).length > 0);
+      setValorFechamento(
+        (avData as any)?.valor_fechamento
+          ? formatCurrencyInput(String(Math.round((avData as any).valor_fechamento * 100)))
+          : '',
+      );
 
       const tipoAquisicao = (avData as any)?.tipo_aquisicao;
 
       // Fetch consultation date
       const consultaRealizada = (avData as any)?.consulta_realizada === true;
+      setConsultaRealizada(consultaRealizada);
       let consultaDate: string | null = null;
       if (consultaRealizada) {
         const { data: consultaHistory } = await supabase
@@ -127,13 +181,125 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
 
       setEtapas(built);
       setAtendimentoId((avData as any)?.atendimento_id || null);
-      setPreviousStatus((avData as any)?.pos_compra_status || 'em_aberto');
+      setPreviousStatus((avData as any)?.pos_compra_status || 'aprovada');
       setLoading(false);
     };
     load();
   }, [open, avaliacaoId]);
 
+  // ---- Financeiro ----
+  const abatimentos = custosOficina
+    .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
+    .reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
+  const repasseNum = parseCurrencyInput(valorFechamento) - abatimentos;
+
+  const addCusto = async () => {
+    if (!newValor || parseCurrencyInput(newValor) <= 0) {
+      toast.error('Informe o valor do custo');
+      return;
+    }
+    const payload = {
+      avaliacao_id: avaliacaoId,
+      tipo: newTipo.toLowerCase().replace('ç', 'c').replace('ã', 'a'),
+      responsavel: newResp,
+      detalhes: newDesc || null,
+      valor_previsto: parseCurrencyInput(newValor),
+    };
+    const { data, error } = await supabase.from('custos_oficina').insert(payload as any).select().single();
+    if (error) { toast.error('Erro ao adicionar custo'); return; }
+    setCustosOficina(prev => [...prev, data]);
+    setNewResp('Cliente');
+    setNewDesc('');
+    setNewValor('');
+  };
+
+  const removeCusto = async (id: string) => {
+    await supabase.from('custos_oficina').delete().eq('id', id);
+    setCustosOficina(prev => prev.filter(c => c.id !== id));
+    toast.success('Custo removido');
+  };
+
+  const handleSaveFinanceiro = async () => {
+    setSavingFin(true);
+    toast.success('Resumo financeiro salvo!');
+    setSavingFin(false);
+    onOpenChange(false);
+  };
+
+  // ---- NF-e de compra ----
+  const nfeStatus: string | undefined = nfeCompra?.status;
+  const nfeEmitida = nfeStatus === 'processada';
+  const nfePendente = ['recebida', 'validando', 'processando_itens', 'gerando_contas'].includes(nfeStatus || '');
+  const nfeErro = nfeStatus === 'erro';
+  const podeEmitirNfe = aprovacaoStatus === 'aprovada' && contratoGerado && consultaRealizada;
+
+  const invocarNfe = async (acao: 'emitir' | 'consultar') => {
+    const { data, error } = await supabase.functions.invoke('emitir-nfe-compra', {
+      body: { avaliacao_id: avaliacaoId, acao },
+    });
+    if (error) {
+      // A Edge Function devolve { error } no corpo em 4xx.
+      let msg = error.message || 'Falha ao emitir a NF-e';
+      try {
+        const ctx = (error as any).context;
+        const j = ctx && typeof ctx.json === 'function' ? await ctx.json() : null;
+        if (j?.error) msg = j.error;
+      } catch { /* ignore */ }
+      throw new Error(msg);
+    }
+    return data as { nfe: any | null };
+  };
+
+  const refetchNfe = async () => {
+    const { data } = await supabase
+      .from('nfe_entradas' as any)
+      .select('*')
+      .eq('avaliacao_id', avaliacaoId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    setNfeCompra((data as any[])?.[0] || null);
+  };
+
+  const emitirNfe = async () => {
+    setConfirmarNfeOpen(false);
+    setEmitindoNfe(true);
+    try {
+      const res = await invocarNfe('emitir');
+      setNfeCompra(res.nfe);
+      if (res.nfe?.status === 'processada') toast.success('NF-e autorizada!');
+      else toast.success('NF-e enviada para autorização.');
+    } catch (e: any) {
+      toast.error(e.message);
+      await refetchNfe();
+    } finally {
+      setEmitindoNfe(false);
+    }
+  };
+
+  const consultarNfe = async () => {
+    setEmitindoNfe(true);
+    try {
+      const res = await invocarNfe('consultar');
+      if (res.nfe) setNfeCompra(res.nfe);
+      if (res.nfe?.status === 'processada') toast.success('NF-e autorizada!');
+      else if (res.nfe?.status === 'erro') toast.error(res.nfe.erro_mensagem || 'Erro na emissão da NF-e');
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setEmitindoNfe(false);
+    }
+  };
+
+  // Polling enquanto a NF-e estiver em processamento e o dialog aberto.
+  useEffect(() => {
+    if (!open || !nfePendente) return;
+    const t = setInterval(() => { consultarNfe(); }, 6000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, nfePendente]);
+
   const toggleEtapa = (etapa: string, checked: boolean) => {
+    if (etapa === 'NF-E') return; // estado dirigido pela emissao da NF-e, nao manual
     if (etapa === 'TRANSFERÊNCIA CONCLUÍDA' && checked) {
       // pre-selecionar destino atual (se houver) e abrir popup
       const cur = etapas.find(e => e.etapa === etapa)?.destino_transferencia;
@@ -209,8 +375,9 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         id: e.id,
         avaliacao_id: avaliacaoId,
         etapa: e.etapa,
-        concluida: e.concluida,
-        data_conclusao: e.data_conclusao,
+        // A etapa NF-E e dirigida pela emissao da NF-e, nao pelo estado manual.
+        concluida: e.etapa === 'NF-E' ? nfeEmitida : e.concluida,
+        data_conclusao: e.etapa === 'NF-E' ? (nfeCompra?.data_emissao ?? null) : e.data_conclusao,
         destino_transferencia: e.etapa === 'TRANSFERÊNCIA CONCLUÍDA' ? (e.destino_transferencia ?? null) : null,
       }));
 
@@ -226,8 +393,8 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       }
 
       // Determine status
-      let newStatus = 'em_aberto';
-      const anyConcluida = etapas.some(e => e.concluida);
+      let newStatus = 'aprovada';
+      const anyConcluida = etapas.some(e => e.concluida) || nfeEmitida;
       const transferenciaConcluida = etapas.find(e => e.etapa === 'TRANSFERÊNCIA CONCLUÍDA')?.concluida;
       const processoPausado = etapas.find(e => e.etapa === 'PROCESSO PAUSADO')?.concluida;
       const docDespachante = etapas.find(e => e.etapa === 'DOCUMENTAÇÃO COM DESPACHANTE')?.concluida;
@@ -259,6 +426,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       if (newStatus !== previousStatus) {
         const statusLabels: Record<string, string> = {
           em_aberto: 'Em Aberto',
+          aprovada: 'Aprovada',
           em_andamento: 'Em Andamento',
           doc_despachante: 'Doc. com Despachante',
           pausado: 'Pausado',
@@ -285,8 +453,8 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
     }
   };
 
-  const concluidas = etapas.filter(e => e.concluida).length;
-  const statusLabel = concluidas === ETAPAS.length ? 'CONCLUÍDO' : 'EM ABERTO';
+  const concluidas = etapas.filter(e => (e.etapa === 'NF-E' ? nfeEmitida : e.concluida)).length;
+  const statusLabel = concluidas === ETAPAS.length ? 'CONCLUÍDO' : 'APROVADA';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -302,6 +470,25 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
+          <>
+          <div className="grid w-full grid-cols-2 items-center rounded-md bg-muted p-1 text-muted-foreground mb-3">
+            <button
+              type="button"
+              onClick={() => setAba('processo')}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none ${aba === 'processo' ? 'bg-background text-foreground shadow-sm' : 'hover:text-foreground'}`}
+            >
+              Processo
+            </button>
+            <button
+              type="button"
+              onClick={() => setAba('financeiro')}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none ${aba === 'financeiro' ? 'bg-background text-foreground shadow-sm' : 'hover:text-foreground'}`}
+            >
+              Financeiro
+            </button>
+          </div>
+
+          {aba === 'processo' && (
           <div className="space-y-1">
             <div className="text-center mb-4">
               <Badge variant="outline" className="text-xs">
@@ -314,16 +501,38 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                 {idx > 0 && <Separator />}
                 <div className="flex items-center gap-3 py-3">
                   <Checkbox
-                    checked={e.concluida}
+                    checked={e.etapa === 'NF-E' ? nfeEmitida : e.concluida}
+                    disabled={e.etapa === 'NF-E'}
                     onCheckedChange={(checked) => toggleEtapa(e.etapa, !!checked)}
                   />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold uppercase ${e.concluida ? 'text-foreground' : 'text-muted-foreground'}`}>
-                      {e.etapa}
+                    <p className={`text-sm font-semibold uppercase ${(e.etapa === 'NF-E' ? nfeEmitida : e.concluida) ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      {e.etapa === 'NF-E' ? 'NF-e' : e.etapa}
                     </p>
-                    {e.concluida && e.data_conclusao && (
+                    {e.etapa !== 'NF-E' && e.concluida && e.data_conclusao && (
                       <p className="text-xs text-muted-foreground">
                         {format(new Date(e.data_conclusao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    )}
+                    {e.etapa === 'NF-E' && nfeEmitida && (
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        <p>
+                          {nfeCompra?.data_emissao
+                            ? format(new Date(nfeCompra.data_emissao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                            : '-'}
+                        </p>
+                        <p>NF-e nº {nfeCompra?.numero || '-'} • série {nfeCompra?.serie || '-'}</p>
+                        {nfeCompra?.caminho_danfe && (
+                          <a href={nfeCompra.caminho_danfe} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                            <ExternalLink className="h-3 w-3" /> DANFE
+                          </a>
+                        )}
+                      </div>
+                    )}
+                    {e.etapa === 'NF-E' && nfeErro && (
+                      <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                        {nfeCompra?.erro_mensagem || 'Falha na emissão da NF-e'}
                       </p>
                     )}
                     {e.etapa === 'TRANSFERÊNCIA CONCLUÍDA' && e.concluida && e.destino_transferencia && (
@@ -340,6 +549,41 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                       </button>
                     )}
                   </div>
+                  {e.etapa === 'NF-E' ? (
+                    <div className="flex items-center gap-1">
+                      {nfeEmitida ? null : nfePendente ? (
+                        <>
+                          <Badge variant="outline" className="gap-1.5 text-xs">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Emitindo NF-e…
+                          </Badge>
+                          <Button variant="ghost" size="sm" className="h-9 gap-1.5" disabled={emitindoNfe} onClick={consultarNfe}>
+                            <RefreshCw className={`h-4 w-4 ${emitindoNfe ? 'animate-spin' : ''}`} /> Atualizar
+                          </Button>
+                        </>
+                      ) : nfeErro ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          disabled={!podeEmitirNfe || emitindoNfe}
+                          onClick={() => setConfirmarNfeOpen(true)}
+                        >
+                          {emitindoNfe ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Tentar novamente
+                        </Button>
+                      ) : (
+                        <Button
+                          variant={podeEmitirNfe ? 'default' : 'outline'}
+                          size="sm"
+                          className="h-9 gap-2 text-sm"
+                          disabled={!podeEmitirNfe || emitindoNfe}
+                          title={podeEmitirNfe ? undefined : 'Disponível após aprovação, contrato gerado e consulta realizada'}
+                          onClick={() => setConfirmarNfeOpen(true)}
+                        >
+                          {emitindoNfe ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Emitir NF-e
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
                   <div className="flex items-center gap-1">
                     <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
                       <PopoverTrigger asChild>
@@ -383,6 +627,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                       </Button>
                     )}
                   </div>
+                  )}
                 </div>
               </React.Fragment>
             ))}
@@ -400,6 +645,90 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
               </Button>
             </div>
           </div>
+          )}
+
+          {aba === 'financeiro' && (
+          <div className="space-y-6 pt-2">
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Abatimentos</h3>
+              <div className="grid grid-cols-[1fr_2fr_1fr_auto] gap-2 items-end">
+                <div>
+                  <label className="text-xs font-medium">Responsável</label>
+                  <Select value={newResp} onValueChange={setNewResp}>
+                    <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cliente">Cliente</SelectItem>
+                      <SelectItem value="Loja">Loja</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium">Descrição</label>
+                  <Input className="mt-1 h-9" value={newDesc} onChange={e => { const v = e.target.value; setNewDesc(v.charAt(0).toUpperCase() + v.slice(1)); }} placeholder="Descrição" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">Valor</label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                    <Input className="pl-7 h-9" value={newValor} onChange={e => setNewValor(formatCurrencyInput(e.target.value))} inputMode="numeric" placeholder="0,00" />
+                  </div>
+                </div>
+                <Button size="sm" className="h-9" onClick={addCusto}><Plus className="h-4 w-4" /></Button>
+              </div>
+
+              {custosOficina.length > 0 && (
+                <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+                  {custosOficina.map((c: any) => {
+                    const val = c.valor_executado || c.valor_previsto || 0;
+                    if (val <= 0) return null;
+                    const isAbatido = (c.responsavel || '').toLowerCase() === 'cliente';
+                    return (
+                      <div key={c.id} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
+                        <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">
+                          {(c.tipo || '').toUpperCase().replace('PECA', 'PEÇA').replace('SERVICO', 'SERVIÇO')}
+                        </span>
+                        <span className="flex-1 truncate text-xs font-medium">
+                          {(c.responsavel || '').toUpperCase()} - {(c.detalhes || '-').toUpperCase()}
+                        </span>
+                        <span className={`font-semibold text-sm whitespace-nowrap ${isAbatido ? 'text-destructive' : 'text-foreground'}`}>
+                          {formatCurrency(val)}
+                        </span>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeCusto(c.id)}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="rounded-lg border-2 border-muted bg-muted/30 p-3 flex flex-col justify-center">
+                  <span className="text-xs font-semibold text-muted-foreground">Valor de Fechamento</span>
+                  <span className="text-lg font-bold">{formatCurrency(parseCurrencyInput(valorFechamento))}</span>
+                </div>
+                <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-3 flex flex-col justify-center">
+                  <span className="text-xs font-semibold text-muted-foreground">Total de Abatimentos</span>
+                  <span className="text-lg font-bold text-destructive">{formatCurrency(abatimentos)}</span>
+                </div>
+                <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 flex flex-col justify-center">
+                  <span className="text-xs font-semibold text-muted-foreground">Valor de Repasse</span>
+                  <span className={`text-lg font-bold ${repasseNum >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                    {formatCurrency(repasseNum > 0 ? repasseNum : 0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleSaveFinanceiro} disabled={savingFin} className="gap-1.5">
+                {savingFin ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Salvar
+              </Button>
+            </div>
+          </div>
+          )}
+          </>
         )}
       </DialogContent>
 
@@ -426,6 +755,24 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           <DialogFooter>
             <Button variant="outline" onClick={() => setDestinoDialogOpen(false)}>Cancelar</Button>
             <Button onClick={confirmDestino}>Confirmar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmarNfeOpen} onOpenChange={setConfirmarNfeOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar emissão da NF-e de compra?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            Será emitida uma NF-e de entrada pela loja referente à compra desta moto.
+            Após autorizada pela SEFAZ, ela não poderá ser editada nem removida por aqui.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmarNfeOpen(false)}>Cancelar</Button>
+            <Button onClick={emitirNfe} disabled={emitindoNfe} className="gap-1.5">
+              {emitindoNfe ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Emitir NF-e
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

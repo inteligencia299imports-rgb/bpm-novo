@@ -406,7 +406,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         <div className="flex flex-wrap items-center gap-2 max-w-full">
           <span className="text-xs font-medium text-muted-foreground shrink-0">Tipo:</span>
           <div className="flex flex-wrap items-center gap-2">
-            {[{ value: 'todos', label: 'Todos' }, { value: 'propria', label: 'Própria' }, { value: 'consignada', label: 'Consignada' }, { value: 'test-ride', label: 'Test-Ride' }, { value: 'repasse', label: 'Repasse' }].map(t => (
+            {[{ value: 'todos', label: 'Todos' }, { value: 'propria', label: 'Própria' }, { value: 'consignada', label: 'Consignada' }, { value: 'repasse', label: 'Repasse' }].map(t => (
               <Button key={t.value} size="sm" variant={filterTipo === t.value ? 'default' : 'outline'} className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')} onClick={() => setFilterTipo(t.value)}>
                 {t.label}
               </Button>

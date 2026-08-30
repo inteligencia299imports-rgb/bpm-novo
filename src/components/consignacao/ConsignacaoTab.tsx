@@ -7,7 +7,7 @@ import { Search, X, FileText, Filter } from 'lucide-react';
 import { CONSIGNACAO_COLUMNS } from '@/types/crm';
 import type { ConsignacaoStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
-import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
+import AvaliacaoForm from '@/components/avaliacoes/AvaliacaoForm';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
@@ -79,7 +79,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
   useEffect(() => { fetchItems(); }, [fetchItems]);
   const getColumnItems = (status: ConsignacaoStatus) => items.filter((a: any) => (a.consignacao_status || 'em_aberto') === status);
 
-  if (selectedItem) return <AvaliacaoProcessDetail item={selectedItem} entityType="consignacao" statusColumns={CONSIGNACAO_COLUMNS} statusField="consignacao_status" title="Consignação" onClose={() => setSelectedItem(null)} />;
+  if (selectedItem) return <AvaliacaoForm avaliacaoId={selectedItem.id} context="consignacao" onClose={() => { setSelectedItem(null); fetchItems(); }} />;
 
   return (
     <div className="space-y-5">

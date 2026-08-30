@@ -13,9 +13,11 @@ interface Props {
   onUploaded: (url: string) => void;
   onRemoved?: () => void;
   className?: string;
+  /** Somente leitura: permite apenas visualizar/baixar o arquivo (sem anexar nem remover). */
+  readOnly?: boolean;
 }
 
-const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUploaded, onRemoved, className }) => {
+const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUploaded, onRemoved, className, readOnly }) => {
   const [uploading, setUploading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,11 +75,11 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
         size="sm"
         variant="outline"
         className={cn('gap-1.5', currentUrl && 'border-green-500 text-green-600 hover:bg-green-50', className)}
-        disabled={uploading}
+        disabled={uploading || (readOnly && !currentUrl)}
         onClick={() => {
           if (currentUrl) {
             setDialogOpen(true);
-          } else {
+          } else if (!readOnly) {
             inputRef.current?.click();
           }
         }}
@@ -118,20 +120,21 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
                   <div className="flex flex-col items-center gap-2 py-8">
                     <FileCheck className="h-12 w-12 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Documento PDF anexado</span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => window.open(currentUrl, '_blank')}
-                      className="gap-1.5 mt-2"
-                    >
-                      <Eye className="h-4 w-4" /> Abrir PDF
-                    </Button>
+                    {!readOnly && (
+                      <Button
+                        size="sm"
+                        onClick={() => window.open(currentUrl, '_blank')}
+                        className="gap-1.5 mt-2"
+                      >
+                        <Eye className="h-4 w-4" /> Abrir PDF
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
 
               {/* Actions */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className={cn('grid gap-2', readOnly ? 'grid-cols-2' : 'grid-cols-3')}>
                 <Button
                   size="sm"
                   variant="outline"
@@ -156,21 +159,33 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
                 >
                   <Download className="h-4 w-4" /> Baixar
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 w-full text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
-                  onClick={handleRemove}
-                >
-                  <Trash2 className="h-4 w-4" /> Remover
-                </Button>
-                <Button
-                  size="sm"
-                  className="gap-1.5 w-full"
-                  onClick={() => setDialogOpen(false)}
-                >
-                  <Save className="h-4 w-4" /> Salvar
-                </Button>
+                {readOnly ? (
+                  <Button
+                    size="sm"
+                    className="gap-1.5 w-full"
+                    onClick={() => window.open(currentUrl, '_blank')}
+                  >
+                    <Eye className="h-4 w-4" /> Abrir
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 w-full text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={handleRemove}
+                    >
+                      <Trash2 className="h-4 w-4" /> Remover
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="gap-1.5 w-full"
+                      onClick={() => setDialogOpen(false)}
+                    >
+                      <Save className="h-4 w-4" /> Salvar
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           )}

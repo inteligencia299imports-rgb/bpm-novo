@@ -1,0 +1,33 @@
+-- Popula ramos_atividade (lookup do formulário de Cliente/Fornecedor).
+insert into public.ramos_atividade (nome)
+values
+  ('Comércio Varejista'),
+  ('Comércio Atacadista'),
+  ('Serviços'),
+  ('Indústria'),
+  ('Construção Civil'),
+  ('Agropecuária'),
+  ('Tecnologia da Informação'),
+  ('Saúde'),
+  ('Educação'),
+  ('Transporte e Logística'),
+  ('Alimentação e Bebidas'),
+  ('Serviços Financeiros'),
+  ('Imobiliário'),
+  ('Consultoria'),
+  ('Automotivo'),
+  ('Eventos'),
+  ('Turismo e Hotelaria'),
+  ('Comunicação e Marketing'),
+  ('Jurídico'),
+  ('Contabilidade'),
+  ('Energia'),
+  ('Telecomunicações'),
+  ('Têxtil e Vestuário'),
+  ('Metalurgia'),
+  ('Química e Farmacêutica'),
+  ('Mineração'),
+  ('Entretenimento'),
+  ('Pessoa Física'),
+  ('Outros')
+on conflict (nome) do nothing;

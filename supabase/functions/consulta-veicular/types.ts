@@ -151,6 +151,25 @@ export interface RenaveAptidaoRaw {
   falha_comunicacao_detran: boolean;
   debitos: Array<{ tipo: string | null; valor: number | null; descricao?: string }>;
   boletos?: Array<{ valor: number | null; vencimento?: string | null; descricao?: string }>;
+  /** restricoes do veiculo devolvidas pelo RENAVE (veiculo.restricoes). */
+  restricoes: Array<{ codigo: string; descricao: string }>;
+  /** flags de diagnostico da aptidao -- usadas p/ o indicador de restricoes
+   *  quando o SENATRAN nao esta contratado. */
+  diagnostico?: {
+    roubo_furto?: boolean;
+    restricao_judicial?: boolean;
+    restricao_rfb?: boolean;
+    restricao_pgfn?: boolean;
+    restricao_extrajudicial?: boolean;
+    restricao_impeditiva_detran?: boolean;
+    alarme?: boolean;
+    baixado?: boolean;
+    recall?: boolean;
+    pendencia_emissao_crv?: boolean;
+    licenciamento_provisorio?: boolean;
+    comunicacao_venda?: boolean;
+    sem_atpv?: boolean;
+  };
   veiculo?: {
     renavam?: string | null;
     chassi?: string | null;

@@ -118,6 +118,10 @@ export type Database = {
         Row: {
           ano_fabricacao: string | null
           ano_modelo: string | null
+          aprovacao_observacao: string | null
+          aprovacao_status: string | null
+          aprovado_em: string | null
+          aprovado_por: string | null
           atendimento_id: string
           atpv_url: string | null
           avaliacao_compra: number | null
@@ -142,9 +146,11 @@ export type Database = {
           menor_valor: number | null
           modelo: string
           negociacao: string | null
+          numero_crv: string | null
           nps_enviado_at: string | null
           nps_respondido_at: string | null
           nps_status: string
+          observacao_avaliador: string | null
           observacoes: string | null
           placa: string | null
           pos_compra_status: string
@@ -166,10 +172,15 @@ export type Database = {
           updated_at: string
           valor_fechamento: number | null
           valor_fipe: number | null
+          valor_quitacao: number | null
         }
         Insert: {
           ano_fabricacao?: string | null
           ano_modelo?: string | null
+          aprovacao_observacao?: string | null
+          aprovacao_status?: string | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
           atendimento_id: string
           atpv_url?: string | null
           avaliacao_compra?: number | null
@@ -194,9 +205,11 @@ export type Database = {
           menor_valor?: number | null
           modelo: string
           negociacao?: string | null
+          numero_crv?: string | null
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
           nps_status?: string
+          observacao_avaliador?: string | null
           observacoes?: string | null
           placa?: string | null
           pos_compra_status?: string
@@ -218,10 +231,15 @@ export type Database = {
           updated_at?: string
           valor_fechamento?: number | null
           valor_fipe?: number | null
+          valor_quitacao?: number | null
         }
         Update: {
           ano_fabricacao?: string | null
           ano_modelo?: string | null
+          aprovacao_observacao?: string | null
+          aprovacao_status?: string | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
           atendimento_id?: string
           atpv_url?: string | null
           avaliacao_compra?: number | null
@@ -249,6 +267,7 @@ export type Database = {
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
           nps_status?: string
+          observacao_avaliador?: string | null
           observacoes?: string | null
           placa?: string | null
           pos_compra_status?: string
@@ -270,6 +289,7 @@ export type Database = {
           updated_at?: string
           valor_fechamento?: number | null
           valor_fipe?: number | null
+          valor_quitacao?: number | null
         }
         Relationships: [
           {

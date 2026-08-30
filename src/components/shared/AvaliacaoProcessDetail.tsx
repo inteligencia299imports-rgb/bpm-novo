@@ -20,6 +20,9 @@ import { SEXOS, UFS, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm'
 import type { MotoFoto } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
+import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
+import PlacaInput from '@/components/shared/PlacaInput';
+import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import { formatPersonName } from '@/lib/utils';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -84,6 +87,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [editMarca, setEditMarca] = useState('');
   const [editModelo, setEditModelo] = useState('');
   const [editPlaca, setEditPlaca] = useState('');
+  const [editChassi, setEditChassi] = useState('');
+  const [editRenavam, setEditRenavam] = useState('');
   const [editKm, setEditKm] = useState('');
   const [editAnoFab, setEditAnoFab] = useState('');
   const [editAnoMod, setEditAnoMod] = useState('');
@@ -116,6 +121,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     setEditMarca(moto.marca || '');
     setEditModelo(moto.modelo || '');
     setEditPlaca(moto.placa || '');
+    setEditChassi(moto.chassi || '');
+    setEditRenavam(moto.renavam || '');
     setEditKm(moto.km ? (parseInt(moto.km.replace(/\D/g,''),10) || 0).toLocaleString('pt-BR') : '');
     setEditAnoFab(moto.ano_fabricacao || '');
     setEditAnoMod(moto.ano_modelo || '');
@@ -134,11 +141,28 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       toast.error('Marca e Modelo são obrigatórios');
       return;
     }
+    // Placa fora do padrao nao bloqueia o salvamento -- e apenas um aviso
+    // visual no campo (ver PlacaInput).
+    const chassiCheck = validateChassi(editChassi);
+    if (!chassiCheck.valid) {
+      toast.error(chassiCheck.message || 'Chassi inválido');
+      return;
+    }
+    const renavamCheck = validateRenavam(editRenavam);
+    if (!renavamCheck.valid) {
+      toast.error(renavamCheck.message || 'RENAVAM inválido');
+      return;
+    }
+    const placaVal = normalizePlaca(editPlaca) || null;
+    const chassiVal = normalizeChassi(editChassi) || null;
+    const renavamVal = normalizeRenavam(editRenavam) || null;
     setSavingMoto(true);
     const { error } = await supabase.from('avaliacoes').update({
       marca: editMarca.trim(),
       modelo: editModelo.trim(),
-      placa: editPlaca.trim() || null,
+      placa: placaVal,
+      chassi: chassiVal,
+      renavam: renavamVal,
       km: editKm.replace(/\D/g, '') || null,
       ano_fabricacao: editAnoFab.trim() || null,
       ano_modelo: editAnoMod.trim() || null,
@@ -159,7 +183,9 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
         ...moto,
         marca: editMarca.trim(),
         modelo: editModelo.trim(),
-        placa: editPlaca.trim() || null,
+        placa: placaVal,
+        chassi: chassiVal,
+        renavam: renavamVal,
         km: editKm.replace(/\D/g, '') || null,
         ano_fabricacao: editAnoFab.trim() || null,
         ano_modelo: editAnoMod.trim() || null,
@@ -178,23 +204,40 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
 
   const extrairDadosCrlv = async (url: string) => {
     if (!moto.id) return;
+    const toastId = toast.loading('Conferindo o CRLV e extraindo os dados da moto…');
     try {
       const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
         body: { avaliacao_id: moto.id, url },
       });
-      if (error || !data?.extraido) {
-        console.warn('extrair-dados-crlv não extraiu:', error || data?.motivo || data);
+      if (error || !data) {
+        toast.dismiss(toastId);
+        return;
+      }
+      if (data.match === false) {
+        toast.error(data.motivo || 'O documento CRLV não é da mesma moto.', { id: toastId });
+        return;
+      }
+      if (!data.extraido) {
+        console.warn('extrair-dados-crlv não extraiu:', data?.motivo || data);
+        toast.dismiss(toastId);
         return;
       }
       const campos: Record<string, string> = {};
+      if (data.ano_fabricacao) campos.ano_fabricacao = data.ano_fabricacao;
+      if (data.ano_modelo) campos.ano_modelo = data.ano_modelo;
+      if (data.placa) campos.placa = data.placa;
       if (data.chassi) campos.chassi = data.chassi;
       if (data.renavam) campos.renavam = data.renavam;
-      if (data.placa) campos.placa = data.placa;
-      if (Object.keys(campos).length === 0) return;
+      if (data.numero_crv) campos.numero_crv = data.numero_crv;
+      if (Object.keys(campos).length === 0) {
+        toast.dismiss(toastId);
+        return;
+      }
       setMotoData((prev: any) => ({ ...prev, ...campos }));
-      toast.success('Chassi/RENAVAM extraídos do CRLV');
+      toast.success('Dados do CRLV extraídos e conferidos', { id: toastId });
     } catch {
       // extracao e best-effort -- falha aqui nunca deve incomodar o usuario
+      toast.dismiss(toastId);
     }
   };
 
@@ -229,9 +272,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       if (entityType === 'preparacao') {
         const tipo = item.tipo_aquisicao;
         const pending: string[] = [];
-        if (tipo === 'test-ride') {
-          // Test-ride não exige NF nem Vistoria
-        } else if (isTipoPropria(tipo)) {
+        if (isTipoPropria(tipo)) {
           const { data: pcSteps } = await supabase.from('pos_compra_processos')
             .select('etapa, concluida')
             .eq('avaliacao_id', item.id)
@@ -659,13 +700,19 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Placa</Label>
-                  <Input value={editPlaca} onChange={e => setEditPlaca(e.target.value.toUpperCase())} placeholder="ABC1D23" maxLength={7} />
+                  <PlacaInput value={editPlaca} onChange={setEditPlaca} />
                 </div>
                 <div>
                   <Label>KM</Label>
                   <Input value={editKm} onChange={e => { const d = e.target.value.replace(/\D/g, ''); setEditKm(d ? parseInt(d,10).toLocaleString('pt-BR') : ''); }} placeholder="0" inputMode="numeric" />
                 </div>
               </div>
+              <ChassiRenavamFields
+                chassi={editChassi}
+                renavam={editRenavam}
+                onChassiChange={setEditChassi}
+                onRenavamChange={setEditRenavam}
+              />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Ano Fab.</Label>

@@ -102,7 +102,10 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
         if (picked) acquDateMap[d.id] = picked;
       });
 
-      let mapped = allData.map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _releaseReady: releaseReadyMap[d.id] ?? null, _dataAquisicao: acquDateMap[d.id] || null }));
+      let mapped = allData
+        // Motos próprias só entram na Preparação depois de aprovadas no Pós-Compra.
+        .filter((d: any) => !(isTipoPropria(d.tipo_aquisicao) && (d.aprovacao_status === 'aguardando' || d.aprovacao_status === 'recusada')))
+        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _releaseReady: releaseReadyMap[d.id] ?? null, _dataAquisicao: acquDateMap[d.id] || null }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       setItems(mapped);
     }

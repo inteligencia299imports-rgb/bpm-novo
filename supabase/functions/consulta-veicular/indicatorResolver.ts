@@ -126,48 +126,83 @@ const CODIGOS_GRAVAME: Record<string, string> = {
   // (alienacao fiduciaria, arrendamento, ...) assim que confirmados.
 };
 
-export function resolverGravame(senatranVeiculo: SenatranVeiculoRaw): IndicadorGravame {
-  if (!senatranVeiculo.consultado) {
-    return { status: statusFonteNaoConsultada(senatranVeiculo.erro), descricao: senatranVeiculo.erro?.mensagem };
+const GRAVAME_TEXTO = /alien|fiduci|arrend|reserva de dom|leasing/i;
+
+export function resolverGravame(senatranVeiculo: SenatranVeiculoRaw, renave?: RenaveAptidaoRaw): IndicadorGravame {
+  if (senatranVeiculo.consultado) {
+    const restricoesGravame = (senatranVeiculo.restricoes ?? []).filter(
+      (r) => CODIGOS_GRAVAME[r.codigo] || GRAVAME_TEXTO.test(r.descricao),
+    );
+    if (restricoesGravame.length === 0) return { status: 'NADA_CONSTA' };
+    const primeira = restricoesGravame[0];
+    return {
+      status: 'PENDENCIA',
+      tipo: CODIGOS_GRAVAME[primeira.codigo] ?? primeira.descricao,
+      codigo: primeira.codigo,
+      descricao: primeira.descricao,
+      restricoes: restricoesGravame,
+    };
   }
-  const restricoesGravame = (senatranVeiculo.restricoes ?? []).filter((r) => CODIGOS_GRAVAME[r.codigo]);
-  if (restricoesGravame.length === 0) {
-    return { status: 'NADA_CONSTA' };
+
+  // Fallback: usa as restricoes do veiculo devolvidas pelo RENAVE.
+  if (renave?.consultado) {
+    const g = (renave.restricoes ?? []).filter((r) => GRAVAME_TEXTO.test(r.descricao));
+    if (g.length === 0) return { status: 'NADA_CONSTA' };
+    return {
+      status: 'PENDENCIA',
+      tipo: g[0].descricao,
+      codigo: g[0].codigo,
+      descricao: g[0].descricao,
+      restricoes: g,
+    };
   }
-  const primeira = restricoesGravame[0];
-  return {
-    status: 'PENDENCIA',
-    tipo: CODIGOS_GRAVAME[primeira.codigo],
-    codigo: primeira.codigo,
-    descricao: primeira.descricao,
-    restricoes: restricoesGravame,
-  };
+
+  return { status: statusFonteNaoConsultada(senatranVeiculo.erro), descricao: senatranVeiculo.erro?.mensagem };
 }
 
 // §11 Restricoes gerais -- consolida os indicadores do SENATRAN, mantendo
 // a origem de cada um.
-export function resolverRestricoes(senatranVeiculo: SenatranVeiculoRaw): IndicadorRestricoes {
-  if (!senatranVeiculo.consultado) {
+export function resolverRestricoes(
+  senatranVeiculo: SenatranVeiculoRaw,
+  renave?: RenaveAptidaoRaw,
+): IndicadorRestricoes {
+  if (senatranVeiculo.consultado) {
     return {
-      status: statusFonteNaoConsultada(senatranVeiculo.erro),
-      renajud: false,
-      rff: false,
-      roubo_furto: false,
-      leilao: false,
-      circulacao: false,
-      alarme: false,
-      comunicacao_venda: false,
+      status: 'NADA_CONSTA', // recalculado em finalizarStatusRestricoes
+      renajud: !!senatranVeiculo.indicador_restricao_renajud,
+      rff: !!senatranVeiculo.indicador_restricao_rfb,
+      roubo_furto: !!senatranVeiculo.indicador_roubo_furto,
+      leilao: !!senatranVeiculo.indicador_leilao,
+      circulacao: !!senatranVeiculo.indicador_circulacao,
+      alarme: !!senatranVeiculo.indicador_alarme,
+      comunicacao_venda: !!senatranVeiculo.indicador_comunicacao_venda,
     };
   }
+
+  // Fallback: RENAVE traz flags equivalentes no diagnostico da aptidao.
+  if (renave?.consultado && renave.diagnostico) {
+    const d = renave.diagnostico;
+    return {
+      status: 'NADA_CONSTA',
+      renajud: !!d.restricao_judicial,
+      rff: !!d.restricao_rfb,
+      roubo_furto: !!d.roubo_furto,
+      leilao: false, // RENAVE nao expoe leilao diretamente
+      circulacao: !!d.restricao_impeditiva_detran,
+      alarme: !!d.alarme,
+      comunicacao_venda: !!d.comunicacao_venda,
+    };
+  }
+
   return {
-    status: 'NADA_CONSTA', // recalculado abaixo se algum indicador for true
-    renajud: !!senatranVeiculo.indicador_restricao_renajud,
-    rff: !!senatranVeiculo.indicador_restricao_rfb,
-    roubo_furto: !!senatranVeiculo.indicador_roubo_furto,
-    leilao: !!senatranVeiculo.indicador_leilao,
-    circulacao: !!senatranVeiculo.indicador_circulacao,
-    alarme: !!senatranVeiculo.indicador_alarme,
-    comunicacao_venda: !!senatranVeiculo.indicador_comunicacao_venda,
+    status: statusFonteNaoConsultada(senatranVeiculo.erro),
+    renajud: false,
+    rff: false,
+    roubo_furto: false,
+    leilao: false,
+    circulacao: false,
+    alarme: false,
+    comunicacao_venda: false,
   };
 }
 

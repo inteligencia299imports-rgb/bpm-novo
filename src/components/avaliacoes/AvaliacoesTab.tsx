@@ -15,7 +15,8 @@ import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/component
 import FiltersPanel from '@/components/shared/FiltersPanel';
 
 
-const KANBAN_COLUMNS = SITUACOES_AVALIACAO;
+// "Adquirida" sai do board: motos adquiridas passam a viver em Pós-Compra / Consignação.
+const KANBAN_COLUMNS = SITUACOES_AVALIACAO.filter(c => c.value !== 'adquirida');
 
 interface AvaliacoesTabProps {
   initialAvaliacaoId?: string | null;
@@ -48,12 +49,15 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
     let data: any[];
     let error: any;
     const estResult = await supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null);
+    // Só entram no fluxo de avaliação as motos efetivamente enviadas pelo
+    // showroom ("Avaliação (enviar)"). Sem esse filtro, toda avaliacao criada
+    // junto com o atendimento aparecia aqui como "sem_avaliar".
     if (isSearching) {
-      const result = await supabase.from('avaliacoes').select(selectStr).order('created_at', { ascending: false });
+      const result = await supabase.from('avaliacoes').select(selectStr).eq('enviada_avaliacao', true).order('created_at', { ascending: false });
       error = result.error;
       data = result.data || [];
     } else {
-      const statusResults = await Promise.all(statuses.map(s => supabase.from('avaliacoes').select(selectStr).eq('situacao', s).order('created_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
+      const statusResults = await Promise.all(statuses.map(s => supabase.from('avaliacoes').select(selectStr).eq('enviada_avaliacao', true).eq('situacao', s).order('created_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
       error = statusResults.find(r => r.error)?.error;
       data = statusResults.flatMap(r => r.data || []);
     }
@@ -104,8 +108,6 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
 
   const getColumnAvaliacoes = (situacao: SituacaoAvaliacao) =>
     avaliacoes.filter(a => {
-      // Se já foi liberada para estoque, não exibir na coluna "Adquirida"
-      if (situacao === 'adquirida' && (a as any)._estoqueInfo) return false;
       if (!matchesCidade((a as any).atendimento?.loja, filterCidade)) return false;
       return a.situacao === situacao;
     });
@@ -152,7 +154,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
         <KanbanSkeleton columns={4} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-5">
+          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-4">
             {KANBAN_COLUMNS.map(col => {
               const items = getColumnAvaliacoes(col.value);
               const colHexMap: Record<string, string> = { sem_avaliar: '#6B7280', em_aberto: '#2EC5FF', adquirida: '#169d53', dispensada: '#FF8C00', perdido: '#FF3B30' };

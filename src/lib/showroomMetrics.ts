@@ -4,7 +4,7 @@
  */
 
 export type LojaFilterValue = string; // 'todos' | '299' | 'Ducati' | sub-loja
-export type TipoFilterValue = string; // 'todos' | 'propria' | 'consignada' | 'test-ride' | 'repasse' | 'ducati' | 'convertida'
+export type TipoFilterValue = string; // 'todos' | 'propria' | 'consignada' | 'repasse' | 'ducati' | 'convertida'
 
 const isDucati = (loja: string | null | undefined) => (loja || '').toUpperCase().includes('DUCATI');
 

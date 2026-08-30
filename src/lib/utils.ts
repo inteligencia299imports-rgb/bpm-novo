@@ -56,6 +56,16 @@ export function abbreviateName(name: string): string {
   return `${parts[0]} ${parts[parts.length - 1][0]}.`;
 }
 
+/** Primeiro nome + sobrenome, sem conectivos: "João de Souza Silva" → "João Silva" */
+export function firstLastName(name: string | null | undefined): string {
+  const parts = formatPersonName(name || '')
+    .split(/\s+/)
+    .filter((p) => p && !PERSON_NAME_CONNECTORS.has(p.toLowerCase()));
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
 /** Uppercase model name */
 export function formatModelo(modelo: string | null | undefined): string {
   if (!modelo) return '';

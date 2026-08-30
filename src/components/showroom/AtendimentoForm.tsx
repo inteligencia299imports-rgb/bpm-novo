@@ -12,7 +12,7 @@ import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
 import MotoCompraSection from './MotoCompraSection';
 import { toast } from 'sonner';
-import { cn, formatPersonName } from '@/lib/utils';
+import { cn, formatPersonName, firstLastName } from '@/lib/utils';
 
 // Phone mask utility
 const formatPhone = (value: string): string => {
@@ -31,6 +31,8 @@ const LOJA_GROUPS: Record<'299' | 'Ducati', string[]> = {
 
 const lojaUnidadeLabel = (loja: string): string =>
   loja.startsWith('Ducati ') ? loja.replace('Ducati ', '') : loja;
+
+const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
 interface Props {
   atendimentoId: string | null;
@@ -144,6 +146,34 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [manutencaoEmDia, setManutencaoEmDia] = useState('');
   const [motoAvaliacaoId, setMotoAvaliacaoId] = useState<string | null>(null);
   const [enviadaAvaliacao, setEnviadaAvaliacao] = useState(false);
+  const [vendedorId, setVendedorId] = useState<string>('');
+  const [vendedores, setVendedores] = useState<{ id: string; nome: string }[]>([]);
+
+  // Vendedores habilitados no projeto BPM, nome (primeiro + sobrenome) em ordem alfabética.
+  useEffect(() => {
+    supabase
+      .from('user_roles')
+      .select('user_id, nome')
+      .eq('projeto_id', BPM_PROJETO_ID)
+      .eq('ativo', true)
+      .then(({ data }) => {
+        const porId = new Map<string, string>();
+        (data || []).forEach((r) => {
+          if (r.user_id && !porId.has(r.user_id)) porId.set(r.user_id, r.nome || '');
+        });
+        setVendedores(
+          [...porId.entries()]
+            .map(([id, nome]) => ({ id, nome: firstLastName(nome) }))
+            .filter((v) => v.nome)
+            .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+        );
+      });
+  }, []);
+
+  // Ao criar, o vendedor é o usuário atual.
+  useEffect(() => {
+    if (!isEditing && user?.id) setVendedorId(user.id);
+  }, [isEditing, user?.id]);
 
   useEffect(() => {
     if (!atendimentoId) return;
@@ -155,6 +185,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setLoja(atLoja);
           setLojaOriginal(atLoja);
           setLojaIdOriginal(at.loja_id);
+          setVendedorId(at.vendedor_id || '');
           setClienteId(at.cliente_id);
           setNomeCliente(at.cliente?.nome_razao_social || '');
           setTelefone(formatPhone(at.cliente?.telefone || ''));
@@ -292,10 +323,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Informe Manual, Chave Reserva e Revisão Vencida');
       return;
     }
-    if ((interesse === 'vender' || interesse === 'trocar') && vendaPlaca.trim().length !== 7) {
-      toast.error('A placa deve ter exatamente 7 caracteres');
-      return;
-    }
+    // Placa fora do padrao (7 caracteres / formato) nao bloqueia o salvamento --
+    // apenas destaca o campo em vermelho (ver PlacaInput / MotoVendaSection).
     setSaving(true);
 
     // Cria ou atualiza o cliente antes de gravar o atendimento
@@ -330,7 +359,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     }
 
     const atData = {
-      vendedor_id: user!.id,
+      vendedor_id: vendedorId || user!.id,
       loja_id: lojaId, cliente_id: finalClienteId as string, tipo_atendimento: tipoAtendimento,
       origem: origem || null, temperatura: temperatura || null,
       interesse, situacao: isEditing ? situacao : 'em_aberto' as SituacaoShowroom,
@@ -548,9 +577,22 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       <Card>
         <CardHeader><CardTitle className="text-base">Dados do Atendimento</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          {isEditing && (
+            <div className="space-y-1.5 max-w-xs">
+              <Label>Vendedor</Label>
+              <Select value={vendedorId} onValueChange={setVendedorId}>
+                <SelectTrigger><SelectValue placeholder="Selecione o vendedor" /></SelectTrigger>
+                <SelectContent>
+                  {vendedores.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="grid grid-cols-[auto_1fr_auto] items-start gap-4">
             <div className="space-y-1.5 col-start-1">
-              <Label>Concessionária *</Label>
+              <Label>Loja *</Label>
               <div className="flex flex-wrap gap-2 [&>button]:min-w-[90px]">
                 {(['299', 'Ducati'] as const).map(g => (
                   <ToggleButton

@@ -3,7 +3,11 @@ import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTip
 import { useAuth } from '@/contexts/AuthContext';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
-import CustosOficinaDialog from '@/components/avaliacoes/CustosOficinaDialog';
+import { gerarPdfContratoCompra } from '@/lib/contratoCompraPdf';
+import PosCompraProcessoDialog from '@/components/pos-compra/PosCompraProcessoDialog';
+import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProcessoDialog';
+import { podeAprovar } from '@/lib/aprovacao';
+import { marcarAtendimentoPerdido } from '@/lib/atendimentoCascata';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,12 +20,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, Trash2, Wrench, ArrowLeftRight, ShieldCheck, Handshake, Bike, Pencil } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, ArrowLeftRight, ShieldCheck, Handshake, Pencil, RotateCw, AlertTriangle, ClipboardList, ThumbsUp, ThumbsDown, Eye, Download } from 'lucide-react';
 import { ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
-import { formatPersonName } from '@/lib/utils';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { formatPersonName, firstLastName } from '@/lib/utils';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
+import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
+import PlacaInput from '@/components/shared/PlacaInput';
+import { processarCnhAnexada } from '@/lib/cnhAnexo';
+import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -37,6 +44,13 @@ import { isLojaDucati } from '@/lib/lojaUtils';
 interface Props {
   avaliacaoId: string;
   onClose: () => void;
+  /**
+   * Contexto de exibição:
+   * - 'avaliacao'   (default): board de Avaliações
+   * - 'pos_compra'  : detalhe do Pós-Compra (com etapa de aprovação)
+   * - 'consignacao' : detalhe da Consignação (com gerar contrato, sem aprovação)
+   */
+  context?: 'avaliacao' | 'pos_compra' | 'consignacao';
 }
 
 const formatPhone = (value: string): string => {
@@ -80,9 +94,9 @@ const numberToCurrencyMask = (value: number | null): string => {
   return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-const CurrencyField = ({ label, value, onChange }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
+const CurrencyField = ({ label, value, onChange, opcional }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; opcional?: boolean }) => (
   <div className="space-y-1.5">
-    <Label>{label} <span className="text-destructive">*</span></Label>
+    <Label>{label}{opcional ? '' : <> <span className="text-destructive">*</span></>}</Label>
     <div className="relative">
       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
       <Input
@@ -96,16 +110,18 @@ const CurrencyField = ({ label, value, onChange }: { label: string; value: strin
   </div>
 );
 
-const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
+const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avaliacao' }) => {
   const { user, role, userName } = useAuth();
+  const ehProcesso = context !== 'avaliacao';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [avaliacao, setAvaliacao] = useState<any>(null);
   const [fotos, setFotos] = useState<MotoFoto[]>([]);
   const [showEvalDialog, setShowEvalDialog] = useState(false);
-  const [obsRefreshKey, setObsRefreshKey] = useState(0);
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
   const [contratoCompraOpen, setContratoCompraOpen] = useState(false);
+  const [contratoMenuOpen, setContratoMenuOpen] = useState(false);
+  const [gerandoPdfContrato, setGerandoPdfContrato] = useState(false);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [cnhDocId, setCnhDocId] = useState<string | null>(null);
@@ -116,17 +132,23 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [consultaSolicitada, setConsultaSolicitada] = useState(false);
   const [resultadoConsulta, setResultadoConsulta] = useState<string | null>(null);
   const [showResultadoConsulta, setShowResultadoConsulta] = useState(false);
+  const [solicitandoConsulta, setSolicitandoConsulta] = useState(false);
   const canEdit = role === 'gerente' || role === 'master' || role === 'vendedor';
   const [history, setHistory] = useState<any[]>([]);
-  const [deleting, setDeleting] = useState(false);
-  const [custosOpen, setCustosOpen] = useState(false);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
+  // Etapa de aprovação (contexto pos_compra)
+  const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar'; motivo: string } | null>(null);
+  const [savingAprovacao, setSavingAprovacao] = useState(false);
+  const [processoPosCompraOpen, setProcessoPosCompraOpen] = useState(false);
+  const [processoConsignacaoOpen, setProcessoConsignacaoOpen] = useState(false);
 
   // Moto edit state
   const [editMotoOpen, setEditMotoOpen] = useState(false);
   const [editMarca, setEditMarca] = useState('');
   const [editModelo, setEditModelo] = useState('');
   const [editPlaca, setEditPlaca] = useState('');
+  const [editChassi, setEditChassi] = useState('');
+  const [editRenavam, setEditRenavam] = useState('');
   const [editKm, setEditKm] = useState('');
   const [editAnoFab, setEditAnoFab] = useState('');
   const [editAnoMod, setEditAnoMod] = useState('');
@@ -146,6 +168,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setEditMarca(moto.marca || '');
     setEditModelo(moto.modelo || '');
     setEditPlaca(moto.placa || '');
+    setEditChassi(moto.chassi || '');
+    setEditRenavam(moto.renavam || '');
     setEditKm(moto.km ? (parseInt(moto.km.replace(/\D/g,''),10) || 0).toLocaleString('pt-BR') : '');
     setEditAnoFab(moto.ano_fabricacao || '');
     setEditAnoMod(moto.ano_modelo || '');
@@ -164,11 +188,25 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       toast.error('Marca e Modelo são obrigatórios');
       return;
     }
+    // Placa fora do padrao nao bloqueia o salvamento -- e apenas um aviso
+    // visual no campo (ver PlacaInput).
+    const chassiCheck = validateChassi(editChassi);
+    if (!chassiCheck.valid) {
+      toast.error(chassiCheck.message || 'Chassi inválido');
+      return;
+    }
+    const renavamCheck = validateRenavam(editRenavam);
+    if (!renavamCheck.valid) {
+      toast.error(renavamCheck.message || 'RENAVAM inválido');
+      return;
+    }
     setSavingMoto(true);
     const updateData = {
       marca: editMarca.trim(),
       modelo: editModelo.trim(),
-      placa: editPlaca.trim() || null,
+      placa: normalizePlaca(editPlaca) || null,
+      chassi: normalizeChassi(editChassi) || null,
+      renavam: normalizeRenavam(editRenavam) || null,
       km: editKm.replace(/\D/g, '') || null,
       ano_fabricacao: editAnoFab.trim() || null,
       ano_modelo: editAnoMod.trim() || null,
@@ -225,32 +263,51 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
+  const [avaliadorId, setAvaliadorId] = useState<string>('');
+  const [avaliadores, setAvaliadores] = useState<{ id: string; nome: string }[]>([]);
+
+  useEffect(() => {
+    (supabase as any)
+      .from('user_roles')
+      .select('user_id, nome')
+      .eq('projeto_id', 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac')
+      .eq('ativo', true)
+      .then(({ data }: { data: Array<{ user_id: string; nome: string | null }> | null }) => {
+        const porId = new Map<string, string>();
+        (data || []).forEach((r) => { if (r.user_id && !porId.has(r.user_id)) porId.set(r.user_id, r.nome || ''); });
+        setAvaliadores(
+          [...porId.entries()]
+            .map(([id, nome]) => ({ id, nome: firstLastName(nome) }))
+            .filter((v) => v.nome)
+            .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+        );
+      });
+  }, []);
+
   const refreshHistory = async () => {
     if (!avaliacao) return;
     const atId = avaliacao.atendimento_id;
     const [{ data: histAval }, { data: histShowroom }, { data: histConsignacao }] = await Promise.all([
-      supabase.from('status_history').select('*').in('entity_type', ['avaliacao', 'consulta']).eq('entity_id', avaliacao.id).order('created_at', { ascending: true }),
+      supabase.from('status_history').select('*').in('entity_type', ['avaliacao', 'consulta', 'pos_compra']).eq('entity_id', avaliacao.id).order('created_at', { ascending: true }),
       supabase.from('status_history').select('*').in('entity_type', ['showroom', 'contrato']).eq('entity_id', atId).order('created_at', { ascending: true }),
       supabase.from('status_history').select('*').eq('entity_type', 'consignacao').eq('entity_id', avaliacao.id).order('created_at', { ascending: true }),
     ]);
     const merged = [...(histAval || []), ...(histShowroom || []), ...(histConsignacao || [])].sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
-    setHistory(merged);
-  };
-
-  const handleDeleteAvaliacao = async () => {
-    setDeleting(true);
-    try {
-      const { error } = await supabase.rpc('delete_avaliacao_cascade', { _avaliacao_id: avaliacaoId });
-      if (error) throw error;
-      toast.success('Avaliação excluída com sucesso');
-      onClose();
-    } catch (err: any) {
-      toast.error('Erro ao excluir avaliação: ' + (err.message || ''));
-    } finally {
-      setDeleting(false);
+    // Alguns status (ex.: "dispensada") são registrados em dois entity_types ao
+    // mesmo tempo (avaliação + showroom). Mostra só uma linha por movimentação.
+    const semEspelho: typeof merged = [];
+    for (const h of merged) {
+      const espelho = semEspelho.some((k) =>
+        k.status === h.status &&
+        k.changed_by === h.changed_by &&
+        k.entity_type !== h.entity_type &&
+        Math.abs(new Date(k.created_at).getTime() - new Date(h.created_at).getTime()) < 15000,
+      );
+      if (!espelho) semEspelho.push(h);
     }
+    setHistory(semEspelho);
   };
 
   // form fields (stored as masked strings)
@@ -264,6 +321,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
   const [avalCompra, setAvalCompra] = useState('');
   const [prevCustosLoja, setPrevCustosLoja] = useState('');
   const [prevCustosCliente, setPrevCustosCliente] = useState('');
+  const [valorQuitacao, setValorQuitacao] = useState('');
   const [valorBonus, setValorBonus] = useState('');
   const [classificacao, setClassificacao] = useState('');
   const [obsAvaliador, setObsAvaliador] = useState('');
@@ -312,21 +370,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       setAvalConsig(numberToCurrencyMask(data.avaliacao_consignacao));
       setAvalCompra(numberToCurrencyMask(data.avaliacao_compra));
       setPrevCustosLoja(numberToCurrencyMask(data.previsao_custos_loja));
+      setValorQuitacao(numberToCurrencyMask((data as any).valor_quitacao));
       setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
       setValorBonus(numberToCurrencyMask((data as any).trade_in));
       setClassificacao((data as any).classificacao || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
 
-      // Observação da avaliação: última nota registrada em observacoes (id_operacao = atendimento,
-      // mesmo escopo da lista de Observações exibida na tela)
-      const { data: obsData } = await supabase
-        .from('observacoes')
-        .select('observacao')
-        .eq('id_operacao', data.atendimento_id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      setObsAvaliador(obsData?.observacao || '');
+      // Observação do avaliador: nota escrita no pop-up "Avaliação Comercial",
+      // guardada na própria linha da avaliação (avaliacoes.observacao_avaliador).
+      setObsAvaliador((data as any).observacao_avaliador || '');
 
       // Fetch estoque data if available
       if (data.id) {
@@ -347,6 +399,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       }
 
       // Fetch avaliador name
+      setAvaliadorId(data.avaliador_id || '');
       if (data.avaliador_id) {
         const { data: avaliadorData } = await supabase.from('user_roles').select('nome').eq('user_id', data.avaliador_id).single();
         if (avaliadorData?.nome) setAvaliadorNome(avaliadorData.nome);
@@ -360,7 +413,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         supabase
           .from('status_history')
           .select('*')
-          .in('entity_type', ['avaliacao', 'consulta'])
+          .in('entity_type', ['avaliacao', 'consulta', 'pos_compra'])
           .eq('entity_id', data.id)
           .order('created_at', { ascending: true }),
         supabase
@@ -434,9 +487,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       avaliacao_compra: parseCurrencyToNumber(avalCompra),
       previsao_custos_loja: parseCurrencyToNumber(prevCustosLoja),
       previsao_custos_cliente: parseCurrencyToNumber(prevCustosCliente),
+      valor_quitacao: parseCurrencyToNumber(valorQuitacao),
       trade_in: parseCurrencyToNumber(valorBonus) || null,
       classificacao: classificacao || null,
-      avaliador_id: user!.id,
+      observacao_avaliador: obsAvaliador.trim() || null,
+      // Na 1ª avaliação o avaliador é quem está salvando; na edição respeita a seleção.
+      avaliador_id: (avaliacao?.situacao !== 'sem_avaliar' && avaliadorId) ? avaliadorId : user!.id,
       situacao: avaliacao?.situacao === 'sem_avaliar' ? 'em_aberto' : avaliacao?.situacao ?? 'em_aberto',
       ...((avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
     };
@@ -446,17 +502,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     if (error) {
       toast.error('Erro ao salvar avaliação');
     } else {
-      // Observação da avaliação: registra uma nova nota em observacoes, no mesmo
-      // id_operacao (atendimento) da lista de Observações exibida na tela
-      if (obsAvaliador.trim() && avaliacao?.atendimento_id) {
-        await supabase.from('observacoes').insert({
-          id_operacao: avaliacao.atendimento_id,
-          observacao: obsAvaliador.trim(),
-          user_id: user?.id || null,
-        });
-        setObsRefreshKey(k => k + 1);
-      }
-
       // Atualizar preço ação e valor de fechamento (preco) no estoque se aplicável
       if (estoqueId) {
         const estoqueUpdate: any = {};
@@ -503,6 +548,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
   const [tipoAquisicaoPopup, setTipoAquisicaoPopup] = useState(false);
   const [valorFechamentoAquisicao, setValorFechamentoAquisicao] = useState('');
+  const [valorQuitacaoAquisicao, setValorQuitacaoAquisicao] = useState('');
   const [tipoSelecionado, setTipoSelecionado] = useState<string | null>(null);
   const [savingAquisicao, setSavingAquisicao] = useState(false);
   const [obsMotaAquisicao, setObsMotaAquisicao] = useState('');
@@ -514,6 +560,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     const updateData: any = { situacao: newStatus };
     if (tipoAquisicao) updateData.tipo_aquisicao = tipoAquisicao;
     if (valorFechamento && valorFechamento > 0) updateData.valor_fechamento = valorFechamento;
+    // Aquisição como própria entra na fila de aprovação do Pós-Compra.
+    if (newStatus === 'adquirida' && isTipoPropria(tipoAquisicao)) updateData.aprovacao_status = 'aguardando';
    const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
     if (error) {
       toast.error('Erro ao alterar status');
@@ -538,7 +586,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
       // Sync: dispensada em avaliação → dispensada no showroom + registrar histórico
       if (newStatus === 'dispensada' && avaliacao?.atendimento_id) {
-        const { data: atData } = await supabase.from('atendimentos_motos').select('situacao').eq('id', avaliacao.atendimento_id).maybeSingle();
         await supabase.from('atendimentos_motos').update({ situacao: 'dispensada' }).eq('id', avaliacao.atendimento_id);
         await supabase.from('status_history').insert({
           entity_type: 'showroom',
@@ -549,6 +596,82 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           observacoes: observacoes || null,
         } as any);
       }
+
+      // Sync: reabrir em avaliação (dispensada → em aberto) → reabrir no showroom
+      if (newStatus === 'em_aberto' && avaliacao?.atendimento_id) {
+        const { data: atData } = await supabase.from('atendimentos_motos').select('situacao').eq('id', avaliacao.atendimento_id).maybeSingle();
+        if (atData?.situacao === 'dispensada') {
+          await supabase.from('atendimentos_motos').update({ situacao: 'em_aberto' }).eq('id', avaliacao.atendimento_id);
+          await supabase.from('status_history').insert({
+            entity_type: 'showroom',
+            entity_id: avaliacao.atendimento_id,
+            status: 'em_aberto',
+            changed_by: user?.id,
+            changed_by_name: userName || user?.email || null,
+            observacoes: observacoes || null,
+          } as any);
+        }
+      }
+    }
+  };
+
+  const confirmarAprovacao = async () => {
+    if (!aprovacaoPopup || !avaliacao?.id) return;
+    const motivo = aprovacaoPopup.motivo.trim();
+    if (!motivo) { toast.error('Informe o motivo'); return; }
+    if (!podeAprovar(user?.id)) { toast.error('Você não tem permissão para aprovar/recusar'); return; }
+    setSavingAprovacao(true);
+    try {
+      if (aprovacaoPopup.modo === 'aprovar') {
+        const { error } = await supabase.from('avaliacoes').update({
+          aprovacao_status: 'aprovada',
+          aprovacao_observacao: motivo,
+          aprovado_por: user?.id,
+          aprovado_em: new Date().toISOString(),
+          // Pós-compra inicia já na coluna "Aprovada" e segue o fluxo a partir daí.
+          pos_compra_status: 'aprovada',
+        } as any).eq('id', avaliacao.id);
+        if (error) throw error;
+        await supabase.from('status_history').insert({
+          entity_type: 'pos_compra',
+          entity_id: avaliacao.id,
+          status: 'aprovada',
+          changed_by: user?.id,
+          changed_by_name: userName || user?.email || null,
+          observacoes: motivo,
+        } as any);
+        setAvaliacao((prev: any) => ({ ...prev, aprovacao_status: 'aprovada', aprovacao_observacao: motivo }));
+        toast.success('Aquisição aprovada');
+        setAprovacaoPopup(null);
+        refreshHistory();
+      } else {
+        const { error } = await supabase.from('avaliacoes').update({
+          aprovacao_status: 'recusada',
+          aprovacao_observacao: motivo,
+          aprovado_por: user?.id,
+          aprovado_em: new Date().toISOString(),
+        } as any).eq('id', avaliacao.id);
+        if (error) throw error;
+        await supabase.from('status_history').insert({
+          entity_type: 'pos_compra',
+          entity_id: avaliacao.id,
+          status: 'recusada',
+          changed_by: user?.id,
+          changed_by_name: userName || user?.email || null,
+          observacoes: motivo,
+        } as any);
+        if (avaliacao.atendimento_id) {
+          await marcarAtendimentoPerdido({ atendimentoId: avaliacao.atendimento_id, motivo, user, userName });
+        }
+        toast.success('Aquisição recusada — atendimento marcado como perdido');
+        setAprovacaoPopup(null);
+        onClose();
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao registrar a decisão');
+    } finally {
+      setSavingAprovacao(false);
     }
   };
 
@@ -557,10 +680,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       toast.error('Selecione o tipo de aquisição');
       return;
     }
-    // Para tipos que não são consignada nem test-ride, exigir CNH, CRLV e consulta
-    if (tipoSelecionado !== 'consignada' && tipoSelecionado !== 'test-ride') {
-      if (!cnhUrl || !crlvUrl) {
-        toast.error('CNH e CRLV são obrigatórios para adquirir como ' + (getTipoAquisicaoLabel(tipoSelecionado) || tipoSelecionado));
+    // Para tipos que não são consignada, exigir CNH, CRLV, ATPV, Procuração e consulta realizada
+    if (tipoSelecionado !== 'consignada') {
+      const faltando = [
+        !cnhUrl && 'CNH',
+        !crlvUrl && 'CRLV',
+        !atpvUrl && 'ATPV',
+        !procuracaoUrl && 'Procuração',
+      ].filter(Boolean);
+      if (faltando.length > 0) {
+        toast.error(`Anexe ${faltando.join(', ')} antes de adquirir como ${getTipoAquisicaoLabel(tipoSelecionado) || tipoSelecionado}`);
         return;
       }
       if (!consultaRealizada) {
@@ -569,26 +698,31 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       }
     }
     const valor = parseCurrencyToNumber(valorFechamentoAquisicao);
-    if (interesse === 'vender' && (!valor || valor <= 0)) {
-      toast.error('Informe o valor de fechamento');
+    const quitacao = parseCurrencyToNumber(valorQuitacaoAquisicao);
+    // Fechamento e Quitação obrigatórios na aquisição — 0 é aceito.
+    if (valor === null || valorFechamentoAquisicao.trim() === '') {
+      toast.error('Informe o valor de fechamento (pode ser 0)');
+      return;
+    }
+    if (quitacao === null || valorQuitacaoAquisicao.trim() === '') {
+      toast.error('Informe o valor de quitação (pode ser 0)');
       return;
     }
     setSavingAquisicao(true);
-    // Salvar dados da moto (observações + manual/chave/revisão)
+    // Salvar dados da moto (observações + manual/chave/revisão + valores)
     if (avaliacao?.id) {
-      const motoUpdate: any = {};
+      const motoUpdate: any = { valor_fechamento: valor, valor_quitacao: quitacao };
       if (obsMotaAquisicao.trim()) motoUpdate.observacoes = obsMotaAquisicao.trim().toUpperCase();
       if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
       if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
       if (aquisRevisaoVencida) motoUpdate.manutencao_vencida = aquisRevisaoVencida === 'sim';
-      if (Object.keys(motoUpdate).length > 0) {
-        await supabase.from('avaliacoes').update(motoUpdate).eq('id', avaliacao.id);
-      }
+      await supabase.from('avaliacoes').update(motoUpdate).eq('id', avaliacao.id);
     }
     await handleStatusChange('adquirida', tipoSelecionado, valor && valor > 0 ? valor : undefined, obsMotaAquisicao.trim().toUpperCase() || undefined);
     setSavingAquisicao(false);
     setTipoAquisicaoPopup(false);
     setValorFechamentoAquisicao('');
+    setValorQuitacaoAquisicao('');
     setTipoSelecionado(null);
     setObsMotaAquisicao('');
     setIsConvertendo(false);
@@ -604,12 +738,31 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
       toast.error('Informe o valor de fechamento');
       return;
     }
-    setSavingAquisicao(true);
-    
+
     const currentTipo = avaliacao?.tipo_aquisicao;
     // consignada → convertida; any propria-like → consignada
     const newTipo = isTipoConsignada(currentTipo) ? 'convertida' : 'consignada';
-    
+
+    // Converter para própria (convertida) exige a mesma documentação de uma aquisição própria.
+    if (newTipo === 'convertida') {
+      const faltando = [
+        !cnhUrl && 'CNH',
+        !crlvUrl && 'CRLV',
+        !atpvUrl && 'ATPV',
+        !procuracaoUrl && 'Procuração',
+      ].filter(Boolean);
+      if (faltando.length > 0) {
+        toast.error(`Anexe ${faltando.join(', ')} antes de converter para própria`);
+        return;
+      }
+      if (!consultaRealizada) {
+        toast.error('A consulta precisa ser realizada antes de converter para própria');
+        return;
+      }
+    }
+
+    setSavingAquisicao(true);
+
     if (avaliacao?.id) {
       const motoUpdate: any = {};
       if (obsMotaAquisicao.trim()) motoUpdate.observacoes = obsMotaAquisicao.trim().toUpperCase();
@@ -658,12 +811,35 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     return <DetailSkeleton onClose={onClose} cards={6} />;
   }
 
+  // Contrato de compra abre como página (não como pop-up)
+  if (contratoCompraOpen && avaliacao) {
+    return (
+      <ContratoCompraDialog
+        open
+        avaliacao={avaliacao}
+        onOpenChange={() => { setContratoCompraOpen(false); refreshHistory(); }}
+      />
+    );
+  }
+
   const moto = avaliacao;
   const at = avaliacao?.atendimento;
   const sit = SITUACOES_AVALIACAO.find(s => s.value === avaliacao?.situacao);
   const interesse = at?.interesse;
 
   const hasEvaluation = !!(avaliacao?.valor_fipe || avaliacao?.avaliacao_compra || avaliacao?.avaliacao_consignacao || avaliacao?.quanto_pede);
+  const contratoGerado = history.some((h: any) => h.status === 'contrato_compra_gerado');
+
+  // Etapa de aprovação (só no contexto de Pós-Compra, para motos próprias)
+  const apSt: string | null = avaliacao?.aprovacao_status ?? null;
+  const precisaAprovacao = context === 'pos_compra' && isTipoPropria(avaliacao?.tipo_aquisicao);
+  const aguardandoAprovacao = precisaAprovacao && apSt !== 'aprovada' && apSt !== 'recusada';
+  const aprovado = precisaAprovacao && apSt === 'aprovada';
+  const souAprovador = podeAprovar(user?.id);
+  // Após aprovação: nada pode ser editado nem arquivo removido.
+  const travado = aprovado;
+  // Botões de contrato / processo / financeiro liberados: consignação sempre; pós-compra só após aprovar.
+  const liberadoProcesso = context === 'consignacao' || aprovado;
 
   const whatsappUrl = (() => {
     if (!at?.cliente?.telefone) return '';
@@ -674,15 +850,38 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
   const handleCnhUploaded = async (url: string) => {
     if (!at?.cliente_id) return;
-    if (cnhDocId) {
-      await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: url }).eq('id', cnhDocId);
+    const prevUrl = cnhUrl;
+    let docId = cnhDocId;
+    if (docId) {
+      await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: url }).eq('id', docId);
     } else {
       const { data } = await supabase.from('clientes_fornecedores_documentos')
         .insert({ cliente_fornecedor_id: at.cliente_id, tipo_documento: 'cnh', arquivo_url: url })
         .select('id').single();
-      setCnhDocId(data?.id || null);
+      docId = data?.id || null;
+      setCnhDocId(docId);
     }
     setCnhUrl(url);
+
+    const { aceita, resultado } = await processarCnhAnexada({
+      clienteId: at.cliente_id,
+      url,
+      bucketPath: `docs/${at.cliente_id}/cnh`,
+      rollback: async () => {
+        if (docId && !prevUrl) {
+          await supabase.from('clientes_fornecedores_documentos').delete().eq('id', docId);
+          setCnhDocId(null);
+        } else if (docId && prevUrl) {
+          await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: prevUrl }).eq('id', docId);
+        }
+        setCnhUrl(prevUrl);
+      },
+    });
+    if (aceita && resultado?.extraido && at?.cliente) {
+      if (resultado.nome) (at.cliente as any).nome_razao_social = resultado.nome;
+      if (resultado.atualizou_cpf && resultado.cpf) (at.cliente as any).cpf_cnpj = resultado.cpf;
+      setAvaliacao((prev: any) => (prev ? { ...prev } : prev));
+    }
   };
 
   const handleCnhRemoved = async () => {
@@ -693,24 +892,70 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
     setCnhUrl(null);
   };
 
+  const solicitarConsulta = async () => {
+    if (!moto?.id) return;
+    setSolicitandoConsulta(true);
+    await supabase.from('avaliacoes').update({
+      consulta_solicitada: true,
+      consulta_realizada: false,
+      resultado_consulta: null,
+    } as any).eq('id', moto.id);
+    await supabase.from('status_history').insert({
+      entity_type: 'consulta',
+      entity_id: moto.id,
+      status: 'consulta_solicitada',
+      changed_by: user?.id,
+      changed_by_name: userName || user?.email || null,
+    });
+    setConsultaSolicitada(true);
+    setConsultaRealizada(false);
+    refreshHistory();
+    await supabase.rpc('notify_consulta', {
+      _title: 'Consulta Solicitada',
+      _message: `${moto?.marca} ${moto?.modelo}${moto?.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
+      _entity_id: moto.id,
+      _entity_type: 'consulta',
+    });
+    setSolicitandoConsulta(false);
+    setShowResultadoConsulta(false);
+    toast.success('Consulta solicitada com sucesso!');
+  };
+
   const extrairDadosCrlv = async (avaliacaoId: string, url: string) => {
+    const toastId = toast.loading('Conferindo o CRLV e extraindo os dados da moto…');
     try {
       const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
         body: { avaliacao_id: avaliacaoId, url },
       });
-      if (error || !data?.extraido) {
-        console.warn('extrair-dados-crlv não extraiu:', error || data?.motivo || data);
+      if (error || !data) {
+        toast.dismiss(toastId);
+        return;
+      }
+      if (data.match === false) {
+        toast.error(data.motivo || 'O documento CRLV não é da mesma moto.', { id: toastId });
+        return;
+      }
+      if (!data.extraido) {
+        console.warn('extrair-dados-crlv não extraiu:', data?.motivo || data);
+        toast.dismiss(toastId);
         return;
       }
       const campos: Record<string, string> = {};
+      if (data.ano_fabricacao) campos.ano_fabricacao = data.ano_fabricacao;
+      if (data.ano_modelo) campos.ano_modelo = data.ano_modelo;
+      if (data.placa) campos.placa = data.placa;
       if (data.chassi) campos.chassi = data.chassi;
       if (data.renavam) campos.renavam = data.renavam;
-      if (data.placa) campos.placa = data.placa;
-      if (Object.keys(campos).length === 0) return;
+      if (data.numero_crv) campos.numero_crv = data.numero_crv;
+      if (Object.keys(campos).length === 0) {
+        toast.dismiss(toastId);
+        return;
+      }
       setAvaliacao((prev: any) => (prev ? { ...prev, ...campos } : prev));
-      toast.success('Chassi/RENAVAM extraídos do CRLV');
+      toast.success('Dados do CRLV extraídos e conferidos', { id: toastId });
     } catch {
       // extracao e best-effort -- falha aqui nunca deve incomodar o usuario
+      toast.dismiss(toastId);
     }
   };
 
@@ -734,7 +979,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
   // Status buttons config - filter out current status
   // "Adquirida" not available if interesse is "trocar"
-  const statusButtons = [
+  // No contexto de processo (pós-compra/consignação) não há ações de status de avaliação.
+  const statusButtons = ehProcesso ? [] : [
     { value: 'em_aberto' as SituacaoAvaliacao, label: 'Em Aberto', icon: <Clock className="h-4 w-4" />, color: '#2EC5FF' },
     { value: 'adquirida' as SituacaoAvaliacao, label: 'Adquirida', icon: <CheckCircle className="h-4 w-4" />, color: '#169d53' },
     { value: 'dispensada' as SituacaoAvaliacao, label: 'Dispensada', icon: <XCircle className="h-4 w-4" />, color: '#FF3B30' },
@@ -770,45 +1016,75 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               {avaliacao?.created_at && format(new Date(avaliacao.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao === 'consignada' && (
-              <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
-                <FileText className="h-4 w-4" /> Contrato
-              </Button>
-            )}
-            {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && isTipoPropria(avaliacao?.tipo_aquisicao) && (
-              <Button size="sm" onClick={() => setContratoCompraOpen(true)} className="gap-1.5">
-                <FileText className="h-4 w-4" /> Contrato
-              </Button>
-            )}
-            {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && (
-              <Button size="sm" variant="outline" onClick={() => setCustosOpen(true)} className="gap-1.5">
-                <Wrench className="h-4 w-4" /> Custos
-              </Button>
-            )}
-            {(role === 'master' || role === 'gerente') && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive" className="gap-1.5">
-                    <Trash2 className="h-4 w-4" /> Excluir
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+            {/* Etapa de aprovação (Pós-Compra) */}
+            {precisaAprovacao && souAprovador && apSt !== 'recusada' && (
+              <>
+                {aguardandoAprovacao && (
+                  <Button size="sm" onClick={() => setAprovacaoPopup({ modo: 'aprovar', motivo: '' })} className="gap-1.5 bg-green-600 hover:bg-green-700 text-white">
+                    <ThumbsUp className="h-4 w-4" /> Aprovar
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir avaliação?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Esta ação é irreversível. Serão excluídos: avaliação, moto de avaliação, fotos, contrato de consignação, estoque vinculado e todo o histórico de movimentações relacionado.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteAvaliacao} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                      {deleting ? 'Excluindo...' : 'Excluir'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                )}
+                <Button size="sm" variant="outline" onClick={() => setAprovacaoPopup({ modo: 'recusar', motivo: '' })} className="gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive">
+                  <ThumbsDown className="h-4 w-4" /> Recusar
+                </Button>
+              </>
+            )}
+            {ehProcesso && aguardandoAprovacao && !souAprovador && (
+              <Badge variant="outline" className="text-[10px] border-gray-400 text-gray-500 gap-1">
+                <Clock className="h-3 w-3" /> Aguardando Aprovação
+              </Badge>
+            )}
+
+            {/* Contrato / Processo (liberado após aprovar; consignação sempre) */}
+            {ehProcesso ? (
+              liberadoProcesso && (
+                <>
+                  {context === 'pos_compra' && (
+                    <Button size="sm" variant="outline" onClick={() => setProcessoPosCompraOpen(true)} className="gap-1.5">
+                      <ClipboardList className="h-4 w-4" /> Processo
+                    </Button>
+                  )}
+                  {context === 'consignacao' && (
+                    <Button size="sm" variant="outline" onClick={() => setProcessoConsignacaoOpen(true)} className="gap-1.5">
+                      <ClipboardList className="h-4 w-4" /> Processo
+                    </Button>
+                  )}
+                  {context === 'consignacao' && (
+                    <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
+                      <FileText className="h-4 w-4" /> Contrato
+                    </Button>
+                  )}
+                  {context === 'pos_compra' && (
+                    <Button
+                      size="sm"
+                      variant={contratoGerado ? 'default' : 'outline'}
+                      onClick={() => (contratoGerado ? setContratoMenuOpen(true) : setContratoCompraOpen(true))}
+                      className="gap-1.5"
+                    >
+                      <FileText className="h-4 w-4" /> Contrato
+                    </Button>
+                  )}
+                </>
+              )
+            ) : (
+              <>
+                {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao === 'consignada' && (
+                  <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
+                    <FileText className="h-4 w-4" /> Contrato
+                  </Button>
+                )}
+                {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && isTipoPropria(avaliacao?.tipo_aquisicao) && (
+                  <Button
+                    size="sm"
+                    variant={contratoGerado ? 'default' : 'outline'}
+                    onClick={() => (contratoGerado ? setContratoMenuOpen(true) : setContratoCompraOpen(true))}
+                    className="gap-1.5"
+                  >
+                    <FileText className="h-4 w-4" /> Contrato
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -823,9 +1099,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
-                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={openEditCliente} title="Editar dados do cliente">
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
+                {!travado && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={openEditCliente} title="Editar dados do cliente">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </CardTitle>
               <Separator className="mt-2" />
             </CardHeader>
@@ -864,6 +1142,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     bucketPath={`docs/${at.cliente_id}/cnh`}
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
+                    readOnly={travado}
                   />
                 </>
               )}
@@ -900,7 +1179,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     <Clock className="h-3 w-3" /> Consulta Solicitada
                   </Badge>
                 )}
-                {canEdit && (
+                {canEdit && !travado && (
                   <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={openEditMoto} title="Editar dados da moto">
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -936,85 +1215,37 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <Button size="sm" variant="outline" className={`flex-1 gap-1.5 ${fotos.length > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setShowPhotosDialog(true)}>
                   <Camera className="h-4 w-4" /> {fotos.length > 0 ? `Fotos (${fotos.length}) ✓` : 'Fotos'}
                 </Button>
-                {cnhUrl && crlvUrl && hasEvaluation && !consultaSolicitada && !consultaRealizada && (
+                {!travado && cnhUrl && crlvUrl && hasEvaluation && !consultaSolicitada && !consultaRealizada && (
                   <Button
                     size="sm"
                     variant="outline"
                     className="flex-1 gap-1.5"
-                    onClick={async () => {
-                      await supabase.from('avaliacoes').update({
-                        consulta_solicitada: true,
-                        consulta_realizada: false,
-                        resultado_consulta: null,
-                      } as any).eq('id', moto?.id);
-                      await supabase.from('status_history').insert({
-                        entity_type: 'consulta',
-                        entity_id: moto?.id,
-                        status: 'consulta_solicitada',
-                        changed_by: user?.id,
-                        changed_by_name: userName || user?.email || null,
-                      });
-                      setConsultaSolicitada(true);
-                      refreshHistory();
-                      await supabase.rpc('notify_consulta', {
-                        _title: 'Consulta Solicitada',
-                        _message: `${moto?.marca} ${moto?.modelo}${moto?.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
-                        _entity_id: moto?.id,
-                        _entity_type: 'consulta',
-                      });
-                      toast.success('Consulta solicitada com sucesso!');
-                    }}
+                    disabled={solicitandoConsulta}
+                    onClick={solicitarConsulta}
                   >
                     <Search className="h-4 w-4" /> Consultar
                   </Button>
                 )}
-                {consultaRealizada && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
-                    onClick={() => setShowResultadoConsulta(true)}
-                  >
-                    <CheckCircle2 className="h-4 w-4" /> Consulta ✓
-                  </Button>
-                )}
-                {cnhUrl && crlvUrl && consultaRealizada && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 gap-1.5"
-                    onClick={async () => {
-                      await supabase.from('avaliacoes').update({
-                        consulta_solicitada: true,
-                        consulta_realizada: false,
-                        resultado_consulta: null,
-                      } as any).eq('id', moto?.id);
-                      await supabase.from('status_history').insert({
-                        entity_type: 'consulta',
-                        entity_id: moto?.id,
-                        status: 'consulta_solicitada',
-                        changed_by: user?.id,
-                        changed_by_name: userName || user?.email || null,
-                      });
-                      setConsultaSolicitada(true);
-                      setConsultaRealizada(false);
-                      refreshHistory();
-                      await supabase.rpc('notify_consulta', {
-                        _title: 'Consulta Solicitada',
-                        _message: `${moto?.marca} ${moto?.modelo}${moto?.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
-                        _entity_id: moto?.id,
-                        _entity_type: 'consulta',
-                      });
-                      toast.success('Consulta solicitada com sucesso!');
-                    }}
-                  >
-                    <Search className="h-4 w-4" /> Nova Consulta
-                  </Button>
-                )}
+                {consultaRealizada && (() => {
+                  const atencao = String(resultadoConsulta || '').includes('⚠️');
+                  return (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={`flex-1 gap-1.5 ${atencao
+                        ? 'border-amber-500 text-amber-600 hover:bg-amber-50'
+                        : 'border-green-500 text-green-600 hover:bg-green-50'}`}
+                      onClick={() => setShowResultadoConsulta(true)}
+                    >
+                      {atencao ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />} Consulta{atencao ? '' : ' ✓'}
+                    </Button>
+                  );
+                })()}
 
                 <DocumentUpload
                   label="CRLV"
                   className="flex-1"
+                  readOnly={travado}
                   currentUrl={crlvUrl}
                   bucketPath={`docs/${moto?.id}/crlv`}
                   onUploaded={async (url) => {
@@ -1030,6 +1261,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <DocumentUpload
                   label="ATPV"
                   className="flex-1"
+                  readOnly={travado}
                   currentUrl={atpvUrl}
                   bucketPath={`docs/${moto?.id}/atpv`}
                   onUploaded={async (url) => {
@@ -1044,6 +1276,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <DocumentUpload
                   label="Procuração"
                   className="flex-1"
+                  readOnly={travado}
                   currentUrl={procuracaoUrl}
                   bucketPath={`docs/${moto?.id}/procuracao`}
                   onUploaded={async (url) => {
@@ -1064,7 +1297,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-primary" /> Avaliação Comercial
-                {canEdit && hasEvaluation && (
+                {canEdit && hasEvaluation && !travado && (
                   <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setShowEvalDialog(true)} title="Editar Avaliação">
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -1089,33 +1322,41 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       <InfoItem label="Se Der Errado" value={formatCurrency(avaliacao?.quanto_vende_errado)} />
                     </div>
                     <Separator />
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                       <InfoItem label="Aval. Consignação" value={formatCurrency(avaliacao?.avaliacao_consignacao)} />
                       <InfoItem label="Custos Cliente" value={formatCurrency(avaliacao?.previsao_custos_cliente)} />
                       <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
+                      <InfoItem label="Quitação" value={formatCurrency((avaliacao as any)?.valor_quitacao)} />
                       <div>
                         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
                         <p className="text-sm font-semibold text-primary">
                           {formatCurrency(
-                            (avaliacao?.avaliacao_consignacao ?? 0) - (avaliacao?.previsao_custos_loja ?? 0)
+                            (avaliacao?.avaliacao_consignacao ?? 0) - (avaliacao?.previsao_custos_loja ?? 0) - ((avaliacao as any)?.valor_quitacao ?? 0)
                           )}
                         </p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                       <InfoItem label="Aval. Compra" value={formatCurrency(avaliacao?.avaliacao_compra)} />
                       <InfoItem label="Custos Cliente" value={formatCurrency(avaliacao?.previsao_custos_cliente)} />
                       <InfoItem label="Custos Loja" value={formatCurrency(avaliacao?.previsao_custos_loja)} />
+                      <InfoItem label="Quitação" value={formatCurrency((avaliacao as any)?.valor_quitacao)} />
                       <div>
                         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
                         <p className="text-sm font-semibold text-primary">
                           {formatCurrency(
-                            (avaliacao?.avaliacao_compra ?? 0) - (avaliacao?.previsao_custos_loja ?? 0)
+                            (avaliacao?.avaliacao_compra ?? 0) - (avaliacao?.previsao_custos_loja ?? 0) - ((avaliacao as any)?.valor_quitacao ?? 0)
                           )}
                         </p>
                       </div>
                     </div>
-                    <p className="text-xs font-medium text-primary">REPASSE CLIENTE = AVALIAÇÃO - CUSTOS LOJA</p>
+                    <p className="text-xs font-medium text-primary">REPASSE CLIENTE = AVALIAÇÃO - CUSTOS LOJA - QUITAÇÃO</p>
+                    {(avaliacao as any)?.observacao_avaliador && (
+                      <>
+                        <Separator />
+                        <InfoItem label="Observação do Avaliador" value={(avaliacao as any).observacao_avaliador} />
+                      </>
+                    )}
                     <Separator />
                     {/* Destaque: Quanto Vende, Valor de Fechamento, Margem Prevista */}
                     {(() => {
@@ -1156,7 +1397,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               ) : (
                 <div className="text-center py-6 space-y-3">
                   <p className="text-sm text-muted-foreground">Avaliação ainda não realizada</p>
-                  {canEdit && (
+                  {canEdit && !travado && (
                     <Button size="sm" className="gap-1.5" onClick={() => setShowEvalDialog(true)}>
                       <DollarSign className="h-4 w-4" /> Fazer Avaliação
                     </Button>
@@ -1167,7 +1408,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </Card>
 
           {/* Observações */}
-          {avaliacao?.atendimento_id && <AtendimentoObservacoes key={obsRefreshKey} idOperacao={avaliacao.atendimento_id} />}
+          {avaliacao?.atendimento_id && <AtendimentoObservacoes idOperacao={avaliacao.atendimento_id} />}
 
           {/* Histórico de Movimentações */}
           <Card className="md:col-span-2">
@@ -1178,7 +1419,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </CardHeader>
             <CardContent>
               <StatusTimeline history={history} formatLabel={(raw) => {
-                const remap: Record<string, string> = { vendido: 'adquirida' };
+                const remap: Record<string, string> = { vendido: 'adquirida', aprovada: 'aprovada', recusada: 'recusada', contrato_compra_gerado: 'CONTRATO GERADO', nfe_compra_emitida: 'NF-e emitida' };
                 const mapped = remap[raw] || raw;
                 return mapped.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação');
               }} renderPopupExtra={(h) => {
@@ -1186,7 +1427,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                   return (
                     <div>
                       <span className="text-xs text-muted-foreground">
-                        {h.status === 'consulta_realizada' ? 'Resultado da Consulta' : 'Observações'}
+                        {h.status === 'consulta_realizada' ? 'Resultado da Consulta'
+                          : h.status === 'aprovada' ? 'Motivo da Aprovação'
+                          : h.status === 'recusada' ? 'Motivo da Recusa'
+                          : h.status === 'nfe_compra_emitida' ? 'Dados da NF-e'
+                          : 'Observações'}
                       </span>
                       <p className="text-sm mt-0.5 whitespace-pre-wrap">{h.observacoes}</p>
                     </div>
@@ -1199,7 +1444,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
 
            <div className="md:col-span-2 flex flex-col items-center gap-3">
             <div className="flex gap-2 flex-wrap justify-center">
-              {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao && !estoqueVendido && (
+              {!ehProcesso && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao && !estoqueVendido && (
                 <Button
                   size="sm"
                   className="gap-2 text-white hover:opacity-90"
@@ -1226,12 +1471,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                 <Button
                   key={btn.value}
                   size="sm"
-                  className="gap-2 text-white hover:opacity-90"
+                  className="gap-2 text-white hover:opacity-90 min-w-[150px] justify-center"
                   style={{ backgroundColor: btn.color }}
                   onClick={() => {
                     if (btn.value === 'adquirida') {
                       setIsConvertendo(false);
                       setObsMotaAquisicao('');
+                      setValorFechamentoAquisicao('');
+                      setValorQuitacaoAquisicao(numberToCurrencyMask((avaliacao as any)?.valor_quitacao));
                       const ma = avaliacao;
                       setAquisManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
                       setAquisChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
@@ -1263,6 +1510,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               <DollarSign className="h-5 w-5" /> Avaliação Comercial
             </DialogTitle>
           </DialogHeader>
+          {avaliacao?.situacao !== 'sem_avaliar' && (
+            <div className="space-y-1.5 pt-2 max-w-xs">
+              <Label>Avaliador</Label>
+              <Select value={avaliadorId} onValueChange={setAvaliadorId}>
+                <SelectTrigger><SelectValue placeholder="Selecione o avaliador" /></SelectTrigger>
+                <SelectContent>
+                  {avaliadores.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             <CurrencyField label="Valor FIPE" value={valorFipe} onChange={handleCurrencyChange(setValorFipe)} />
             <CurrencyField label="Menor Valor" value={menorValor} onChange={handleCurrencyChange(setMenorValor)} />
@@ -1274,6 +1534,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             <CurrencyField label="Avaliação Compra" value={avalCompra} onChange={handleCurrencyChange(setAvalCompra)} />
             <CurrencyField label="Previsão Custos Loja" value={prevCustosLoja} onChange={handleCurrencyChange(setPrevCustosLoja)} />
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
+            <CurrencyField label="Valor de Quitação" opcional value={valorQuitacao} onChange={handleCurrencyChange(setValorQuitacao)} />
             {isLojaDucati(avaliacao?.atendimento?.loja) && avaliacao?.atendimento?.interesse === 'trocar' && (
               <CurrencyField label="Valor do Bônus" value={valorBonus} onChange={handleCurrencyChange(setValorBonus)} />
             )}
@@ -1326,11 +1587,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               </div>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Observações</Label>
+              <Label>Observação do Avaliador</Label>
               <Textarea
                 value={obsAvaliador}
                 onChange={e => setObsAvaliador(e.target.value.toUpperCase())}
-                placeholder="Observações do avaliador..."
+                placeholder="Observação do avaliador..."
                 rows={3}
                 className="uppercase"
               />
@@ -1373,7 +1634,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         </DialogContent>
       </Dialog>
       {/* Dialog Tipo de Aquisição / Conversão */}
-      <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); } }}>
+      <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setValorQuitacaoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); } }}>
         <DialogContent className="w-[96vw] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1382,22 +1643,39 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-foreground">Valor de Fechamento (R$) <span className="text-destructive">*</span></label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                <Input
-                  className="pl-10"
-                  placeholder="0,00"
-                  value={valorFechamentoAquisicao}
-                  onChange={(e) => setValorFechamentoAquisicao(applyCurrencyMask(e.target.value))}
-                  inputMode="numeric"
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-foreground">Valor de Fechamento (R$) <span className="text-destructive">*</span></label>
+                <div className="relative mt-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                  <Input
+                    className="pl-10"
+                    placeholder="0,00"
+                    value={valorFechamentoAquisicao}
+                    onChange={(e) => setValorFechamentoAquisicao(applyCurrencyMask(e.target.value))}
+                    inputMode="numeric"
+                  />
+                </div>
               </div>
+              {!isConvertendo && (
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-foreground">Valor de Quitação (R$) <span className="text-destructive">*</span></label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                    <Input
+                      className="pl-10"
+                      placeholder="0,00"
+                      value={valorQuitacaoAquisicao}
+                      onChange={(e) => setValorQuitacaoAquisicao(applyCurrencyMask(e.target.value))}
+                      inputMode="numeric"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium text-foreground">Tipo de Aquisição <span className="text-destructive">*</span></label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-2.5">
+              <div className="grid grid-cols-2 gap-2.5 mt-2.5">
                 {isConvertendo ? (
                   (() => {
                     const currentTipo = avaliacao?.tipo_aquisicao;
@@ -1405,7 +1683,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                     return (
                       <Button
                         variant="default"
-                        className="col-span-2 sm:col-span-4"
+                        className="col-span-2"
                         disabled
                       >
                         {oppositeLabel}
@@ -1427,20 +1705,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
                       onClick={() => setTipoSelecionado('consignada')}
                     >
                       <Handshake className="h-4 w-4" /> Consignada
-                    </Button>
-                    <Button
-                      variant={tipoSelecionado === 'test-ride' ? 'default' : 'outline'}
-                      className={`w-full gap-2 ${tipoSelecionado === 'test-ride' ? 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500' : 'border-orange-500 text-orange-600 hover:bg-orange-50'}`}
-                      onClick={() => setTipoSelecionado('test-ride')}
-                    >
-                      <Bike className="h-4 w-4" /> Test-Ride
-                    </Button>
-                    <Button
-                      variant={tipoSelecionado === 'repasse' ? 'default' : 'outline'}
-                      className={`w-full gap-2 ${tipoSelecionado === 'repasse' ? 'bg-muted-foreground hover:bg-muted-foreground/90 text-background border-muted-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`}
-                      onClick={() => setTipoSelecionado('repasse')}
-                    >
-                      <ArrowLeftRight className="h-4 w-4" /> Repasse
                     </Button>
                   </>
                 )}
@@ -1484,11 +1748,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               <Button
                 variant="secondary"
                 className="w-full sm:flex-1 gap-2"
-                onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); }}
+                onClick={() => { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setValorQuitacaoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); }}
               >
                 <ArrowLeft className="h-4 w-4" /> Voltar
               </Button>
-              {valorFechamentoAquisicao.trim() !== '' && parseCurrencyToNumber(valorFechamentoAquisicao) !== null && parseCurrencyToNumber(valorFechamentoAquisicao)! > 0 && tipoSelecionado && (
+              {valorFechamentoAquisicao.trim() !== '' && parseCurrencyToNumber(valorFechamentoAquisicao) !== null && (!isConvertendo || parseCurrencyToNumber(valorFechamentoAquisicao)! > 0) && (isConvertendo || (valorQuitacaoAquisicao.trim() !== '' && parseCurrencyToNumber(valorQuitacaoAquisicao) !== null)) && tipoSelecionado && (
                 <Button
                   className="w-full sm:flex-1 gap-2"
                   onClick={isConvertendo ? handleSaveConversao : handleSaveAquisicao}
@@ -1511,29 +1775,81 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
         />
       )}
 
-      {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && isTipoPropria(avaliacao?.tipo_aquisicao) && (
-        <ContratoCompraDialog
-          open={contratoCompraOpen}
-          onOpenChange={setContratoCompraOpen}
-          avaliacao={avaliacao}
+      {/* Menu do contrato de compra (quando já foi gerado) */}
+      <Dialog open={contratoMenuOpen} onOpenChange={setContratoMenuOpen}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" /> Contrato de Compra
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 pt-1">
+            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { setContratoMenuOpen(false); setContratoCompraOpen(true); }}>
+              <Pencil className="h-4 w-4" /> Editar
+            </Button>
+            <Button className="w-full justify-start gap-2" disabled={gerandoPdfContrato} onClick={async () => {
+              setGerandoPdfContrato(true);
+              try { if (!(await gerarPdfContratoCompra(avaliacaoId, 'view'))) toast.error('Não foi possível gerar o contrato'); }
+              finally { setGerandoPdfContrato(false); }
+            }}>
+              {gerandoPdfContrato ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Visualizar
+            </Button>
+            <Button variant="outline" className="w-full justify-start gap-2" disabled={gerandoPdfContrato} onClick={async () => {
+              setGerandoPdfContrato(true);
+              try { if (!(await gerarPdfContratoCompra(avaliacaoId, 'download'))) toast.error('Não foi possível gerar o contrato'); }
+              finally { setGerandoPdfContrato(false); }
+            }}>
+              {gerandoPdfContrato ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Baixar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
+      {context === 'pos_compra' && (
+        <>
+          <PosCompraProcessoDialog
+            open={processoPosCompraOpen}
+            onOpenChange={setProcessoPosCompraOpen}
+            avaliacaoId={avaliacaoId}
+            onStatusChanged={() => { loadAvaliacao(); }}
+          />
+        </>
+      )}
+      {context === 'consignacao' && (
+        <ConsignacaoProcessoDialog
+          open={processoConsignacaoOpen}
+          onOpenChange={setProcessoConsignacaoOpen}
+          avaliacaoId={avaliacaoId}
+          onStatusChanged={() => { loadAvaliacao(); }}
         />
       )}
-
-      <CustosOficinaDialog
-        open={custosOpen}
-        onOpenChange={setCustosOpen}
-        avaliacaoId={avaliacaoId}
-      />
 
       <Dialog open={showResultadoConsulta} onOpenChange={setShowResultadoConsulta}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" /> Resultado da Consulta
+              <Search className="h-5 w-5 text-primary" /> Resultado da Consulta
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <p className="text-sm whitespace-pre-wrap">{resultadoConsulta || 'Nenhum resultado registrado.'}</p>
+          <div className="space-y-3">
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <p className="text-sm whitespace-pre-wrap">{resultadoConsulta || 'Nenhum resultado registrado.'}</p>
+            </div>
+            {!travado && (
+              <>
+                <Separator className="mt-1" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 w-full"
+                  disabled={solicitandoConsulta}
+                  onClick={solicitarConsulta}
+                >
+                  <RotateCw className="h-4 w-4" /> Nova Consulta
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -1577,6 +1893,43 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Dialog aprovar / recusar aquisição */}
+      <Dialog open={aprovacaoPopup !== null} onOpenChange={(open) => { if (!open) setAprovacaoPopup(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {aprovacaoPopup?.modo === 'recusar'
+                ? <><ThumbsDown className="h-5 w-5 text-destructive" /> Recusar Aquisição</>
+                : <><ThumbsUp className="h-5 w-5 text-green-600" /> Aprovar Aquisição</>}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>{aprovacaoPopup?.modo === 'recusar' ? 'Motivo da recusa' : 'Observação da aprovação'} <span className="text-destructive">*</span></Label>
+            <Textarea
+              value={aprovacaoPopup?.motivo || ''}
+              onChange={(e) => setAprovacaoPopup(p => p ? { ...p, motivo: e.target.value } : p)}
+              placeholder="Informe o motivo..."
+              rows={3}
+            />
+            {aprovacaoPopup?.modo === 'recusar' && (
+              <p className="text-xs text-muted-foreground">O atendimento e a avaliação serão marcados como <strong>perdido</strong>.</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setAprovacaoPopup(null)}>Cancelar</Button>
+              <Button
+                variant={aprovacaoPopup?.modo === 'recusar' ? 'destructive' : 'default'}
+                className={aprovacaoPopup?.modo === 'aprovar' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
+                disabled={!aprovacaoPopup?.motivo.trim() || savingAprovacao}
+                onClick={confirmarAprovacao}
+              >
+                {savingAprovacao ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialog Editar Cliente */}
       <ClienteEditDialog
         clienteId={at?.cliente_id || null}
@@ -1610,13 +1963,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose }) => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Placa</Label>
-                  <Input value={editPlaca} onChange={e => setEditPlaca(e.target.value.toUpperCase())} placeholder="ABC1D23" maxLength={7} />
+                  <PlacaInput value={editPlaca} onChange={setEditPlaca} />
                 </div>
                 <div>
                   <Label>KM</Label>
                   <Input value={editKm} onChange={e => { const d = e.target.value.replace(/\D/g, ''); setEditKm(d ? parseInt(d,10).toLocaleString('pt-BR') : ''); }} placeholder="0" inputMode="numeric" />
                 </div>
               </div>
+              <ChassiRenavamFields
+                chassi={editChassi}
+                renavam={editRenavam}
+                onChassiChange={setEditChassi}
+                onRenavamChange={setEditRenavam}
+              />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Ano Fab.</Label>

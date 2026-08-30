@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { SEXOS, UFS } from '@/types/crm';
 import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
+import { processarCnhAnexada } from '@/lib/cnhAnexo';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 interface Props {
@@ -155,15 +156,37 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
 
   const handleCnhUploaded = async (url: string) => {
     if (!clienteId) return;
-    if (cnhDocId) {
-      await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: url }).eq('id', cnhDocId);
+    const prevUrl = cnhUrl;
+    let docId = cnhDocId;
+    if (docId) {
+      await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: url }).eq('id', docId);
     } else {
       const { data } = await supabase.from('clientes_fornecedores_documentos')
         .insert({ cliente_fornecedor_id: clienteId, tipo_documento: 'cnh', arquivo_url: url })
         .select('id').single();
-      setCnhDocId(data?.id || null);
+      docId = data?.id || null;
+      setCnhDocId(docId);
     }
     setCnhUrl(url);
+
+    const { aceita, resultado } = await processarCnhAnexada({
+      clienteId,
+      url,
+      bucketPath: `docs/${clienteId}/cnh`,
+      rollback: async () => {
+        if (docId && !prevUrl) {
+          await supabase.from('clientes_fornecedores_documentos').delete().eq('id', docId);
+          setCnhDocId(null);
+        } else if (docId && prevUrl) {
+          await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: prevUrl }).eq('id', docId);
+        }
+        setCnhUrl(prevUrl);
+      },
+    });
+    if (aceita && resultado?.extraido) {
+      if (resultado.nome) setNome(resultado.nome);
+      if (resultado.atualizou_cpf && resultado.cpf) setCpfCnpj(resultado.cpf);
+    }
   };
 
   const handleCnhRemoved = async () => {

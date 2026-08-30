@@ -8,6 +8,40 @@ import type { ConsultaEntrada, ConsultaVeiculoResultado, RenaveAptidaoRaw } from
 
 const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutos -- evita chamadas duplicadas em sequencia.
 
+// RENAVE_MOCK=true -> resposta simulada, pra exercitar a tela sem depender de
+// dado de teste do SERPRO. Placa terminando em digito par = veiculo com
+// pendencias; impar (ou letra) = apto.
+function mockRenave(entrada: ConsultaEntrada): RenaveAptidaoRaw {
+  const ultimo = entrada.placa.slice(-1);
+  const comPendencia = /[02468]/.test(ultimo);
+  if (!comPendencia) {
+    return {
+      consultado: true,
+      apto_estoque: true,
+      motivos_nao_aptidao: [],
+      falha_comunicacao_detran: false,
+      debitos: [],
+      restricoes: [],
+      diagnostico: {},
+      veiculo: { renavam: entrada.renavam, chassi: null },
+    };
+  }
+  return {
+    consultado: true,
+    apto_estoque: false,
+    motivos_nao_aptidao: ['Consta roubo/furto', 'Débito com o Detran'],
+    falha_comunicacao_detran: false,
+    debitos: [
+      { tipo: 'IPVA', valor: 1234.56, descricao: 'IPVA' },
+      { tipo: 'MULTA', valor: 293.47, descricao: 'Multas' },
+    ],
+    boletos: [{ valor: 1528.03, vencimento: '2026-09-30', descricao: '00190000090123456789012345678901234567890123' }],
+    restricoes: [{ codigo: '1', descricao: 'ALIENACAO FIDUCIARIA' }],
+    diagnostico: { roubo_furto: true },
+    veiculo: { renavam: entrada.renavam, chassi: null },
+  };
+}
+
 export interface ConsultaContexto {
   avaliacaoId: string | null;
   usuarioId: string;
@@ -51,23 +85,34 @@ export async function executarConsulta(
 
   // 1) RENAVE / Aptidao
   const renaveConfig = loadRenaveConfigFromEnv();
-  const configInvalido = renaveConfig && !(pemPareceValido(renaveConfig.certPem) && pemPareceValido(renaveConfig.keyPem));
-  const renave: RenaveAptidaoRaw = renaveConfig && !configInvalido
-    ? await consultarAptidaoRenave(entrada, renaveConfig)
-    : {
-        consultado: false,
-        apto_estoque: null,
-        motivos_nao_aptidao: [],
-        falha_comunicacao_detran: false,
-        debitos: [],
-        erro: configInvalido
-          ? {
-              motivo: 'ERRO',
-              codigo_http: 0,
-              mensagem: 'RENAVE_CERT_PEM/RENAVE_KEY_PEM não parecem PEM válidos (quebras de linha ausentes) — reconfigure o secret com Get-Content -Raw',
-            }
-          : { motivo: 'NAO_CONFIGURADO', codigo_http: 0, mensagem: 'RENAVE não configurado (secrets ausentes)' },
-      };
+  // So valida o formato do PEM se um certificado FOI configurado -- a
+  // homologação (hom.renave.estaleiro.serpro.gov.br) responde sem certificado.
+  const temCert = !!(renaveConfig?.certPem || renaveConfig?.keyPem);
+  const certInvalido = temCert
+    && !(pemPareceValido(renaveConfig!.certPem ?? '') && pemPareceValido(renaveConfig!.keyPem ?? ''));
+
+  let renave: RenaveAptidaoRaw;
+  if (Deno.env.get('RENAVE_MOCK') === 'true') {
+    renave = mockRenave(entrada);
+  } else if (renaveConfig && !certInvalido) {
+    renave = await consultarAptidaoRenave(entrada, renaveConfig);
+  } else {
+    renave = {
+      consultado: false,
+      apto_estoque: null,
+      motivos_nao_aptidao: [],
+      falha_comunicacao_detran: false,
+      debitos: [],
+      restricoes: [],
+      erro: certInvalido
+        ? {
+            motivo: 'ERRO',
+            codigo_http: 0,
+            mensagem: 'RENAVE_CERT_PEM/RENAVE_KEY_PEM não parecem PEM válidos (quebras de linha ausentes)',
+          }
+        : { motivo: 'NAO_CONFIGURADO', codigo_http: 0, mensagem: 'RENAVE não configurado (defina RENAVE_BASE_URL)' },
+    };
+  }
 
   // 2) SENATRAN / Veiculo (stub ate confirmar habilitacao + Swagger)
   const senatranVeiculo = await consultarVeiculoSenatran(entrada);
@@ -100,16 +145,17 @@ export async function executarConsulta(
   });
 
   // Reaproveita renavam/chassi/uf pra proximas consultas (§1), se a
-  // consulta estiver ligada a uma avaliacao.
-  if (ctx.avaliacaoId && (resultado.veiculo.renavam || resultado.veiculo.chassi || resultado.veiculo.uf)) {
-    await ctx.supabaseAdmin
-      .from('avaliacoes')
-      .update({
-        renavam: resultado.veiculo.renavam,
-        chassi: resultado.veiculo.chassi,
-        uf: resultado.veiculo.uf,
-      })
-      .eq('id', ctx.avaliacaoId);
+  // consulta estiver ligada a uma avaliacao. So grava o que a consulta
+  // realmente retornou -- nunca sobrescreve com null o que o usuario ja
+  // tinha preenchido (ex.: consulta com erro nao deve apagar o chassi).
+  if (ctx.avaliacaoId) {
+    const patch: Record<string, string> = {};
+    if (resultado.veiculo.renavam) patch.renavam = resultado.veiculo.renavam;
+    if (resultado.veiculo.chassi) patch.chassi = resultado.veiculo.chassi;
+    if (resultado.veiculo.uf) patch.uf = resultado.veiculo.uf;
+    if (Object.keys(patch).length > 0) {
+      await ctx.supabaseAdmin.from('avaliacoes').update(patch).eq('id', ctx.avaliacaoId);
+    }
   }
 
   return { resultado, deCache: false };

@@ -8,6 +8,7 @@ import { ANOS_MOTO, CATEGORIAS_MOTO, CORES_MOTO } from '@/types/crm';
 import type { Interesse } from '@/types/crm';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import PhotoUpload from './PhotoUpload';
+import PlacaInput from '@/components/shared/PlacaInput';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
@@ -43,11 +44,6 @@ const MotoVendaSection: React.FC<Props> = ({
   const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
   const marcas = getMarcaNomes();
   const modelos = marca ? getModelosPorMarca(marca) : [];
-
-  const handlePlacaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7).toUpperCase();
-    setPlaca(val);
-  };
 
   const formatKm = (value: string): string => {
     const digits = value.replace(/\D/g, '');
@@ -107,7 +103,7 @@ const MotoVendaSection: React.FC<Props> = ({
           </div>
           <div className="space-y-1.5">
             <Label>Placa *</Label>
-            <Input value={placa} onChange={handlePlacaChange} maxLength={7} placeholder="ABC1D23" />
+            <PlacaInput value={placa} onChange={setPlaca} />
           </div>
           <div className="space-y-1.5">
             <Label>KM *</Label>

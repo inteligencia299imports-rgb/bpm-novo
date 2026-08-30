@@ -8,7 +8,7 @@ import { Search, X, ShoppingCart, Filter } from 'lucide-react';
 import { POS_COMPRA_COLUMNS } from '@/types/crm';
 import type { PosCompraStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
-import AvaliacaoProcessDetail from '@/components/shared/AvaliacaoProcessDetail';
+import AvaliacaoForm from '@/components/avaliacoes/AvaliacaoForm';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
@@ -52,7 +52,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
 
     const estResult = await fetchAllRange(() => supabase.from('estoque').select('avaliacao_id, status, observacoes, data_entrada').not('avaliacao_id', 'is', null));
     const result = await fetchAllRange(() =>
-      supabase.from('avaliacoes').select(selectStr).in('tipo_aquisicao', TIPOS_PROPRIA.filter(t => t !== 'test-ride')).order('updated_at', { ascending: false })
+      supabase.from('avaliacoes').select(selectStr).in('tipo_aquisicao', TIPOS_PROPRIA).order('updated_at', { ascending: false })
     );
     const error = result.error;
     const data = result.data || [];
@@ -85,9 +85,17 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
   }, [search, filterCidade]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
-  const getColumnItems = (status: PosCompraStatus) => items.filter((a: any) => (a.pos_compra_status || 'em_aberto') === status);
+  const columnOf = (a: any): PosCompraStatus => {
+    if (a.aprovacao_status === 'aguardando') return 'aguardando_aprovacao';
+    const s = a.pos_compra_status || 'aprovada';
+    return s === 'em_aberto' ? 'aprovada' : s;
+  };
+  const getColumnItems = (status: PosCompraStatus) => items.filter((a: any) => {
+    if (a.situacao === 'perdido' || a.situacao === 'dispensada') return false;
+    return columnOf(a) === status;
+  });
 
-  if (selectedItem) return <AvaliacaoProcessDetail item={selectedItem} entityType="pos_compra" statusColumns={POS_COMPRA_COLUMNS} statusField="pos_compra_status" title="Pós-Compra" onClose={() => setSelectedItem(null)} />;
+  if (selectedItem) return <AvaliacaoForm avaliacaoId={selectedItem.id} context="pos_compra" onClose={() => { setSelectedItem(null); fetchItems(); }} />;
 
   return (
     <div className="space-y-5">
@@ -110,10 +118,10 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
       </FiltersPanel>
 
       {loading ? (
-        <KanbanSkeleton columns={4} />
+        <KanbanSkeleton columns={5} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-4">
+          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-5">
             {VISIBLE_COLUMNS.map(col => {
               const colItems = getColumnItems(col.value);
               return (

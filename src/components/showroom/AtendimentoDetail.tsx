@@ -4,15 +4,16 @@ import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAqu
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ArrowRight, Edit, Trash2, Phone, MapPin, Tag, User, Thermometer, Store, Calendar as CalendarIcon, Bike, FileText, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil, Truck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Edit, Phone, MapPin, Tag, User, Thermometer, Store, Calendar as CalendarIcon, Bike, FileText, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil, Truck, RotateCw, AlertTriangle } from 'lucide-react';
 import WhatsAppIcon from '@/components/shared/WhatsAppIcon';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
+import { processarCnhAnexada } from '@/lib/cnhAnexo';
 import type { Atendimento, MotoInteresse, Avaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import { Label } from '@/components/ui/label';
@@ -28,6 +29,8 @@ import { formatPersonName } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PhotoUpload from './PhotoUpload';
 import DocumentUpload from './DocumentUpload';
+import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
+import PlacaInput from '@/components/shared/PlacaInput';
 import { useAuth } from '@/contexts/AuthContext';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import AtendimentoObservacoes from './AtendimentoObservacoes';
@@ -94,6 +97,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [cnhDocId, setCnhDocId] = useState<string | null>(null);
+  const [, setClienteRefresh] = useState(0);
   const [crlvUrls, setCrlvUrls] = useState<Record<string, string | null>>({});
   const [atpvUrls, setAtpvUrls] = useState<Record<string, string | null>>({});
   const [procuracaoUrls, setProcuracaoUrls] = useState<Record<string, string | null>>({});
@@ -108,7 +112,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [entregaDataConclusao, setEntregaDataConclusao] = useState<string | null>(null);
   const [motivoPopup, setMotivoPopup] = useState<{ modo: 'pendente' | 'perdido'; motivo: string } | null>(null);
   const [savingMotivo, setSavingMotivo] = useState(false);
-  const [showResultadoConsulta, setShowResultadoConsulta] = useState<string | null>(null);
+  const [showResultadoConsulta, setShowResultadoConsulta] = useState<{ texto: string; motoId: string } | null>(null);
+  const [solicitandoConsulta, setSolicitandoConsulta] = useState(false);
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
 
@@ -117,6 +122,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [editMarca, setEditMarca] = useState('');
   const [editModelo, setEditModelo] = useState('');
   const [editPlaca, setEditPlaca] = useState('');
+  const [editChassi, setEditChassi] = useState('');
+  const [editRenavam, setEditRenavam] = useState('');
   const [editKm, setEditKm] = useState('');
   const [editAnoFab, setEditAnoFab] = useState('');
   const [editAnoMod, setEditAnoMod] = useState('');
@@ -132,6 +139,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
+  // Troca: enquanto a aquisição da moto do cliente não for aprovada no Pós-Compra,
+  // contrato e entrega do lado da venda ficam bloqueados.
+  const aguardandoAprovacaoAquisicao = Object.values(avaliacoes).some((av: any) => av?.aprovacao_status === 'aguardando');
 
   useEffect(() => {
     const fetchRelated = async () => {
@@ -278,17 +288,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     fetchRelated();
   }, [atendimento.id]);
 
-  const handleDelete = async () => {
-    try {
-      const { error } = await supabase.rpc('delete_atendimento_cascade', { _atendimento_id: atendimento.id });
-      if (error) throw error;
-      toast.success('Atendimento excluído');
-      onDeleted();
-    } catch (err: any) {
-      toast.error('Erro ao excluir atendimento: ' + (err.message || ''));
-    }
-  };
-
   const InfoItem = ({ label, value, valueClassName }: { label: string; value: string | null | undefined; valueClassName?: string }) => (
     value ? (
       <div className="flex flex-col gap-0.5">
@@ -306,15 +305,38 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
   const handleCnhUploaded = async (url: string) => {
     if (!atendimento.cliente_id) return;
-    if (cnhDocId) {
-      await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: url }).eq('id', cnhDocId);
+    const prevUrl = cnhUrl;
+    let docId = cnhDocId;
+    if (docId) {
+      await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: url }).eq('id', docId);
     } else {
       const { data } = await supabase.from('clientes_fornecedores_documentos')
         .insert({ cliente_fornecedor_id: atendimento.cliente_id, tipo_documento: 'cnh', arquivo_url: url })
         .select('id').single();
-      setCnhDocId(data?.id || null);
+      docId = data?.id || null;
+      setCnhDocId(docId);
     }
     setCnhUrl(url);
+
+    const { aceita, resultado } = await processarCnhAnexada({
+      clienteId: atendimento.cliente_id,
+      url,
+      bucketPath: `docs/${atendimento.cliente_id}/cnh`,
+      rollback: async () => {
+        if (docId && !prevUrl) {
+          await supabase.from('clientes_fornecedores_documentos').delete().eq('id', docId);
+          setCnhDocId(null);
+        } else if (docId && prevUrl) {
+          await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: prevUrl }).eq('id', docId);
+        }
+        setCnhUrl(prevUrl);
+      },
+    });
+    if (aceita && resultado?.extraido && atendimento.cliente) {
+      if (resultado.nome) (atendimento.cliente as any).nome_razao_social = resultado.nome;
+      if (resultado.atualizou_cpf && resultado.cpf) (atendimento.cliente as any).cpf_cnpj = resultado.cpf;
+      setClienteRefresh((n) => n + 1);
+    }
   };
 
   const handleCnhRemoved = async () => {
@@ -325,11 +347,43 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setCnhUrl(null);
   };
 
+  const solicitarNovaConsultaMoto = async (motoId: string) => {
+    setSolicitandoConsulta(true);
+    const mt = motosAvaliacao.find((m) => m.id === motoId);
+    await supabase.from('avaliacoes').update({
+      consulta_solicitada: true,
+      consulta_realizada: false,
+      resultado_consulta: null,
+    } as any).eq('id', motoId);
+    const { data: inserted } = await supabase.from('status_history').insert({
+      entity_type: 'consulta',
+      entity_id: motoId,
+      status: 'consulta_solicitada',
+      changed_by: user?.id,
+      changed_by_name: userName || user?.email || null,
+    }).select().single();
+    if (inserted) {
+      setHistory(prev => [...prev, inserted].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+    }
+    setMotosAvaliacao(prev => prev.map(m => m.id === motoId ? { ...m, consulta_solicitada: true, consulta_realizada: false, resultado_consulta: null } as any : m));
+    await supabase.rpc('notify_consulta', {
+      _title: 'Consulta Solicitada',
+      _message: `${atendimento?.cliente?.nome_razao_social} - ${mt?.marca} ${mt?.modelo}${mt?.placa ? ` (${mt.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
+      _entity_id: motoId,
+      _entity_type: 'consulta',
+    });
+    setSolicitandoConsulta(false);
+    setShowResultadoConsulta(null);
+    toast.success('Nova consulta solicitada!');
+  };
+
   const openEditMoto = (moto: Avaliacao) => {
     setEditMotoId(moto.id);
     setEditMarca(moto.marca || '');
     setEditModelo(moto.modelo || '');
     setEditPlaca(moto.placa || '');
+    setEditChassi(moto.chassi || '');
+    setEditRenavam(moto.renavam || '');
     setEditKm(moto.km ? (parseInt(moto.km.replace(/\D/g, ''), 10) || 0).toLocaleString('pt-BR') : '');
     setEditAnoFab(moto.ano_fabricacao || '');
     setEditAnoMod(moto.ano_modelo || '');
@@ -347,11 +401,25 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       toast.error('Marca e Modelo são obrigatórios');
       return;
     }
+    // Placa fora do padrao nao bloqueia o salvamento -- e apenas um aviso
+    // visual no campo (ver PlacaInput).
+    const chassiCheck = validateChassi(editChassi);
+    if (!chassiCheck.valid) {
+      toast.error(chassiCheck.message || 'Chassi inválido');
+      return;
+    }
+    const renavamCheck = validateRenavam(editRenavam);
+    if (!renavamCheck.valid) {
+      toast.error(renavamCheck.message || 'RENAVAM inválido');
+      return;
+    }
     setSavingMotoEdit(true);
     const updateData = {
       marca: editMarca.trim(),
       modelo: editModelo.trim(),
-      placa: editPlaca.trim() || null,
+      placa: normalizePlaca(editPlaca) || null,
+      chassi: normalizeChassi(editChassi) || null,
+      renavam: normalizeRenavam(editRenavam) || null,
       km: editKm.replace(/\D/g, '') || null,
       ano_fabricacao: editAnoFab.trim() || null,
       ano_modelo: editAnoMod.trim() || null,
@@ -375,23 +443,40 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   };
 
   const extrairDadosCrlv = async (avaliacaoId: string, url: string) => {
+    const toastId = toast.loading('Conferindo o CRLV e extraindo os dados da moto…');
     try {
       const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
         body: { avaliacao_id: avaliacaoId, url },
       });
-      if (error || !data?.extraido) {
-        console.warn('extrair-dados-crlv não extraiu:', error || data?.motivo || data);
+      if (error || !data) {
+        toast.dismiss(toastId);
+        return;
+      }
+      if (data.match === false) {
+        toast.error(data.motivo || 'O documento CRLV não é da mesma moto.', { id: toastId });
+        return;
+      }
+      if (!data.extraido) {
+        console.warn('extrair-dados-crlv não extraiu:', data?.motivo || data);
+        toast.dismiss(toastId);
         return;
       }
       const campos: Record<string, string> = {};
+      if (data.ano_fabricacao) campos.ano_fabricacao = data.ano_fabricacao;
+      if (data.ano_modelo) campos.ano_modelo = data.ano_modelo;
+      if (data.placa) campos.placa = data.placa;
       if (data.chassi) campos.chassi = data.chassi;
       if (data.renavam) campos.renavam = data.renavam;
-      if (data.placa) campos.placa = data.placa;
-      if (Object.keys(campos).length === 0) return;
+      if (data.numero_crv) campos.numero_crv = data.numero_crv;
+      if (Object.keys(campos).length === 0) {
+        toast.dismiss(toastId);
+        return;
+      }
       setMotosAvaliacao(prev => prev.map(m => m.id === avaliacaoId ? { ...m, ...campos } : m));
-      toast.success('Chassi/RENAVAM extraídos do CRLV');
+      toast.success('Dados do CRLV extraídos e conferidos', { id: toastId });
     } catch {
       // extracao e best-effort -- falha aqui nunca deve incomodar o usuario
+      toast.dismiss(toastId);
     }
   };
 
@@ -567,6 +652,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             const avUpdate: any = {
               situacao: 'adquirida',
               tipo_aquisicao: 'propria',
+              aprovacao_status: 'aguardando',
             };
             if (fechamento > 0) avUpdate.valor_fechamento = fechamento;
             estoquePromises.push(supabase.from('avaliacoes').update(avUpdate).eq('id', av.id).then(r => r));
@@ -683,12 +769,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </div>
           {/* Desktop buttons */}
           <div className="hidden sm:flex items-center gap-2 shrink-0">
-            {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && (
+            {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && !aguardandoAprovacaoAquisicao && (
               <Button size="sm" onClick={() => setContratoOpen(true)} className="gap-1.5">
                 <FileText className="h-4 w-4" /> Contrato
               </Button>
             )}
-            {atendimento.situacao === 'vendido' && (
+            {atendimento.situacao === 'vendido' && !aguardandoAprovacaoAquisicao && (
               <Button size="sm" variant="outline" onClick={openEntrega} className="gap-1.5">
                 <Truck className="h-4 w-4" /> Entrega
               </Button>
@@ -696,39 +782,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onEdit(atendimento.id)}>
               <Edit className="h-4 w-4" /> Editar
             </Button>
-            {(role === 'master' || role === 'gerente') && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive" className="gap-1.5">
-                    <Trash2 className="h-4 w-4" /> Excluir
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir atendimento?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Esta ação é irreversível. O atendimento de <strong>{atendimento.cliente?.nome_razao_social}</strong> e todos os dados relacionados (avaliações, motos, contratos, histórico) serão permanentemente excluídos.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      Excluir
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
           </div>
         </div>
         {/* Mobile buttons - below name/date, centered, equal width */}
         <div className="flex sm:hidden gap-2 justify-center">
-          {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && (
+          {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && !aguardandoAprovacaoAquisicao && (
             <Button size="sm" onClick={() => setContratoOpen(true)} className="flex-1">
               <FileText className="h-4 w-4" />
             </Button>
           )}
-          {atendimento.situacao === 'vendido' && (
+          {atendimento.situacao === 'vendido' && !aguardandoAprovacaoAquisicao && (
             <Button size="sm" variant="outline" onClick={openEntrega} className="flex-1">
               <Truck className="h-4 w-4" />
             </Button>
@@ -736,33 +799,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           <Button size="sm" variant="outline" className="flex-1" onClick={() => onEdit(atendimento.id)}>
             <Edit className="h-4 w-4" />
           </Button>
-          {(role === 'master' || role === 'gerente') && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="sm" variant="destructive" className="flex-1">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir atendimento?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta ação é irreversível. O atendimento de <strong>{atendimento.cliente?.nome_razao_social}</strong> e todos os dados relacionados (avaliações, motos, contratos, histórico) serão permanentemente excluídos.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Excluir
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
         </div>
       </div>
 
       <Separator />
+
+      {aguardandoAprovacaoAquisicao && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 flex items-start gap-2.5">
+          <Clock className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+            Aquisição da moto do cliente aguardando aprovação no Pós-Compra. Contrato e entrega ficam bloqueados até a aprovação.
+          </p>
+        </div>
+      )}
 
       <ScrollArea className="h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 pr-3">
@@ -832,7 +881,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <InfoItem label="Interesse" value={int?.label} />
                 <InfoItem label="Origem" value={atendimento.origem} />
                 <InfoItem label="Temperatura" value={atendimento.temperatura} />
-                <InfoItem label="Situação" value={sit?.label} />
               </div>
             </CardContent>
           </Card>
@@ -1138,51 +1186,31 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         </>
                       ) : null}
 
-                      {/* 4. Consulta Realizada / Nova Consulta */}
-                      {(moto as any).consulta_realizada && (
+                      {/* 4. Consulta Realizada (abre resultado + "Nova Consulta" dentro) */}
+                      {(moto as any).consulta_realizada && (() => {
+                        const atencao = String((moto as any).resultado_consulta || '').includes('⚠️');
+                        return (
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex-1 gap-1.5 border-green-500 text-green-600 hover:bg-green-50"
-                          onClick={() => setShowResultadoConsulta((moto as any).resultado_consulta || 'Nenhum resultado registrado.')}
+                          className={`flex-1 gap-1.5 ${atencao
+                            ? 'border-amber-500 text-amber-600 hover:bg-amber-50'
+                            : 'border-green-500 text-green-600 hover:bg-green-50'}`}
+                          onClick={() => setShowResultadoConsulta({ texto: (moto as any).resultado_consulta || 'Nenhum resultado registrado.', motoId: moto.id })}
                         >
-                          <CheckCircle2 className="h-4 w-4" /> Consulta ✓
+                          {atencao ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />} Consulta{atencao ? '' : ' ✓'}
                         </Button>
-                      )}
-                      {cnhUrl && crlvUrls[moto.id] && isAvaliada(moto.id) && (!(moto as any).consulta_solicitada || (moto as any).consulta_realizada) && (
+                        );
+                      })()}
+                      {cnhUrl && crlvUrls[moto.id] && isAvaliada(moto.id) && !(moto as any).consulta_solicitada && !(moto as any).consulta_realizada && (
                         <Button
                           size="sm"
                           variant="outline"
                           className="flex-1 gap-1.5"
-                          onClick={async () => {
-                            const previousStatus = (moto as any).consulta_realizada ? 'consulta_realizada' : 'sem_consulta';
-                            await supabase.from('avaliacoes').update({ 
-                              consulta_solicitada: true, 
-                              consulta_realizada: false,
-                              resultado_consulta: null 
-                            } as any).eq('id', moto.id);
-                            const { data: insertedConsulta } = await supabase.from('status_history').insert({
-                              entity_type: 'consulta',
-                              entity_id: moto.id,
-                              status: 'consulta_solicitada',
-                              changed_by: user?.id,
-                              changed_by_name: userName || user?.email || null,
-                            }).select().single();
-                            if (insertedConsulta) {
-                              setHistory(prev => [...prev, insertedConsulta].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
-                            }
-                            setMotosAvaliacao(prev => prev.map(m => m.id === moto.id ? { ...m, consulta_solicitada: true, consulta_realizada: false, resultado_consulta: null } as any : m));
-                            // Notify users flagged for consultation
-                            await supabase.rpc('notify_consulta', {
-                              _title: 'Consulta Solicitada',
-                              _message: `${atendimento?.cliente?.nome_razao_social} - ${moto.marca} ${moto.modelo}${moto.placa ? ` (${moto.placa})` : ''} | Por: ${userName || user?.email || 'Usuário'}`,
-                              _entity_id: moto.id,
-                              _entity_type: 'consulta',
-                            });
-                            toast.success('Consulta solicitada com sucesso!');
-                          }}
+                          disabled={solicitandoConsulta}
+                          onClick={() => solicitarNovaConsultaMoto(moto.id)}
                         >
-                          <Search className="h-4 w-4" /> {(moto as any).consulta_realizada ? 'Nova Consulta' : 'Consultar'}
+                          <Search className="h-4 w-4" /> Consultar
                         </Button>
                       )}
 
@@ -1468,6 +1496,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               </div>
 
               <p className="text-[11px] font-medium text-muted-foreground text-center">REPASSE CLIENTE = AVALIAÇÃO − CUSTOS LOJA</p>
+
+              {viewAvaliacaoData.observacao_avaliador && (
+                <div className="rounded-lg border bg-muted/30 p-5 space-y-1.5">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-primary">Observação do Avaliador</h4>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{viewAvaliacaoData.observacao_avaliador}</p>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -1593,11 +1628,23 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" /> Resultado da Consulta
+              <Search className="h-5 w-5 text-primary" /> Resultado da Consulta
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <p className="text-sm whitespace-pre-wrap">{showResultadoConsulta}</p>
+          <div className="space-y-3">
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <p className="text-sm whitespace-pre-wrap">{showResultadoConsulta?.texto}</p>
+            </div>
+            <Separator className="mt-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 w-full"
+              disabled={solicitandoConsulta}
+              onClick={() => showResultadoConsulta && solicitarNovaConsultaMoto(showResultadoConsulta.motoId)}
+            >
+              <RotateCw className="h-4 w-4" /> Nova Consulta
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1633,13 +1680,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Placa</Label>
-                  <Input value={editPlaca} onChange={e => setEditPlaca(e.target.value.toUpperCase())} placeholder="ABC1D23" maxLength={7} />
+                  <PlacaInput value={editPlaca} onChange={setEditPlaca} />
                 </div>
                 <div>
                   <Label>KM</Label>
                   <Input value={editKm} onChange={e => { const d = e.target.value.replace(/\D/g, ''); setEditKm(d ? parseInt(d, 10).toLocaleString('pt-BR') : ''); }} placeholder="0" inputMode="numeric" />
                 </div>
               </div>
+              <ChassiRenavamFields
+                chassi={editChassi}
+                renavam={editRenavam}
+                onChassiChange={setEditChassi}
+                onRenavamChange={setEditRenavam}
+              />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Ano Fab.</Label>

@@ -6,7 +6,8 @@ export type SituacaoAvaliacao = 'sem_avaliar' | 'em_aberto' | 'adquirida' | 'dis
 export type SituacaoNps = 'em_aberto' | 'enviado' | 'respondido';
 export type Negociacao = 'compra' | 'consignacao';
 export type PosVendaStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
-export type PosCompraStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'pausado' | 'concluido';
+export type PosCompraStatus = 'aguardando_aprovacao' | 'aprovada' | 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'pausado' | 'concluido';
+export type AprovacaoStatus = 'aguardando' | 'aprovada' | 'recusada';
 export type ConsignacaoStatus = 'em_aberto' | 'contrato_assinado' | 'cadastro_nbs' | 'pausado' | 'concluido';
 export type PreparacaoStatus = 'em_aberto' | 'pendente' | 'aguardando_aceite' | 'oficina' | 'servico_externo' | 'aguardando_liberacao_estoque' | 'estoque';
 export type IntermediacaoParte1Status = 'em_aberto' | 'em_andamento' | 'autorizacao_pagamento' | 'concluido';
@@ -50,7 +51,8 @@ export const INTERMEDIACAO_PARTE2_ETAPAS = [
 ];
 
 export const POS_COMPRA_COLUMNS: { value: PosCompraStatus; label: string; hex: string }[] = [
-  { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
+  { value: 'aguardando_aprovacao', label: 'Aguardando Aprovação', hex: '#6B7280' },
+  { value: 'aprovada', label: 'Aprovada', hex: '#169d53' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#b376c4' },
   { value: 'pausado', label: 'Pausado', hex: '#FF8C00' },
@@ -252,12 +254,14 @@ export interface Avaliacao {
   placa: string | null;
   chassi: string | null;
   renavam: string | null;
+  numero_crv: string | null;
   uf: string | null;
   km: string | null;
   tem_manual: boolean | null;
   tem_chave_reserva: boolean | null;
   manutencao_vencida: boolean | null;
   observacoes: string | null;
+  observacao_avaliador: string | null;
   crlv_url: string | null;
   atpv_url: string | null;
   procuracao_url: string | null;
@@ -276,8 +280,13 @@ export interface Avaliacao {
   avaliacao_compra: number | null;
   previsao_custos_loja: number | null;
   previsao_custos_cliente: number | null;
+  valor_quitacao: number | null;
   negociacao: Negociacao | null;
   situacao: SituacaoAvaliacao;
+  aprovacao_status: AprovacaoStatus | null;
+  aprovacao_observacao: string | null;
+  aprovado_por: string | null;
+  aprovado_em: string | null;
   avaliador_id: string | null;
   created_at: string;
   updated_at: string;
