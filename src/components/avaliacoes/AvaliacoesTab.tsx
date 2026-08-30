@@ -48,7 +48,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
 
     let data: any[];
     let error: any;
-    const estResult = await supabase.from('estoque').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null);
+    const estResult = await supabase.from('estoque_motos').select('avaliacao_id, status, observacoes').not('avaliacao_id', 'is', null);
     // Só entram no fluxo de avaliação as motos efetivamente enviadas pelo
     // showroom ("Avaliação (enviar)"). Sem esse filtro, toda avaliacao criada
     // junto com o atendimento aparecia aqui como "sem_avaliar".

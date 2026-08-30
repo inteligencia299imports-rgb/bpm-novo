@@ -10,7 +10,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto } from '@/lib/clienteCadastro';
-import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -18,11 +19,14 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateContratoCompraPdf } from '@/lib/generateContratoCompraPdf';
+import { useNfeCompra } from '@/hooks/useNfeCompra';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   avaliacao: any;
+  /** 'nfe' abre a mesma tela em modo somente-leitura para emitir a NF-e de compra. */
+  modo?: 'contrato' | 'nfe';
 }
 
 const formatCurrencyInput = (value: string): string => {
@@ -56,6 +60,24 @@ const tipoContaLabel = (v: string | null | undefined) => {
   return v || undefined;
 };
 
+interface SnapshotVals {
+  cpfCnpj: string;
+  valorQuitacao: string;
+  valorFechamento: string;
+  obsInternas: string;
+  obsContrato: string;
+  dataContrato?: Date;
+}
+const snapshotFields = (v: SnapshotVals) =>
+  JSON.stringify({
+    cpfCnpj: v.cpfCnpj,
+    valorQuitacao: v.valorQuitacao,
+    valorFechamento: v.valorFechamento,
+    obsInternas: v.obsInternas,
+    obsContrato: v.obsContrato,
+    dataContrato: v.dataContrato ? format(v.dataContrato, 'yyyy-MM-dd') : null,
+  });
+
 const InfoDisplay = ({ label, value }: { label: string; value: string | null | undefined }) => (
   value ? (
     <div>
@@ -65,13 +87,18 @@ const InfoDisplay = ({ label, value }: { label: string; value: string | null | u
   ) : null
 );
 
-const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }) => {
+const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, modo = 'contrato' }) => {
   const { user, userName } = useAuth();
+  const ehNfe = modo === 'nfe';
+  const nfe = useNfeCompra(avaliacao?.id, open && ehNfe);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [contratoId, setContratoId] = useState<string | null>(null);
   const [jaGerado, setJaGerado] = useState(false);
+  // Controle de "edição desde a última geração" para liberar o botão Gerar.
+  const [baseline, setBaseline] = useState('');
+  const [clienteTocado, setClienteTocado] = useState(false);
 
   // Client data
   const [cpfCnpj, setCpfCnpj] = useState('');
@@ -87,6 +114,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
   // Observations
   const [obsInternas, setObsInternas] = useState('');
   const [obsContrato, setObsContrato] = useState('');
+  const [obsNfe, setObsNfe] = useState('');
 
   // Date
   const [dataContrato, setDataContrato] = useState<Date | undefined>();
@@ -131,6 +159,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
           .reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0),
       );
       setJaGerado(!!(histGerado && histGerado.length > 0));
+      setClienteTocado(false);
+      if (ehNfe) nfe.carregar();
       setClienteId((atFresh as any)?.cliente_id ?? null);
       setClienteRecord((atFresh as any)?.cliente ?? null);
 
@@ -139,23 +169,35 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
 
       const quitacaoAval = (avaliacao as any).valor_quitacao;
 
+      let vals: SnapshotVals;
       if (contrato) {
         setContratoId(contrato.id);
-        setCpfCnpj(contrato.cpf_cnpj || atFreshCpf || '');
-        setValorQuitacao((contrato.valor_quitacao ?? quitacaoAval) != null ? formatCurrencyInput(String(Math.round((contrato.valor_quitacao ?? quitacaoAval) * 100))) : '');
-        setValorFechamento(contrato.valor_fechamento ? formatCurrencyInput(String(Math.round(contrato.valor_fechamento * 100))) : '');
-        setObsInternas(contrato.observacoes_internas || '');
-        setObsContrato(contrato.observacoes_contrato || '');
-        setDataContrato(contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined);
+        vals = {
+          cpfCnpj: contrato.cpf_cnpj || atFreshCpf || '',
+          valorQuitacao: (contrato.valor_quitacao ?? quitacaoAval) != null ? formatCurrencyInput(String(Math.round((contrato.valor_quitacao ?? quitacaoAval) * 100))) : '',
+          valorFechamento: contrato.valor_fechamento ? formatCurrencyInput(String(Math.round(contrato.valor_fechamento * 100))) : '',
+          obsInternas: contrato.observacoes_internas || '',
+          obsContrato: contrato.observacoes_contrato || '',
+          dataContrato: contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined,
+        };
       } else {
         setContratoId(null);
-        setCpfCnpj(atFreshCpf || '');
-        setValorQuitacao(quitacaoAval != null ? formatCurrencyInput(String(Math.round(quitacaoAval * 100))) : '');
-        setValorFechamento(avaliacao.valor_fechamento ? formatCurrencyInput(String(Math.round(avaliacao.valor_fechamento * 100))) : '');
-        setObsInternas('');
-        setObsContrato('');
-        setDataContrato(undefined);
+        vals = {
+          cpfCnpj: atFreshCpf || '',
+          valorQuitacao: quitacaoAval != null ? formatCurrencyInput(String(Math.round(quitacaoAval * 100))) : '',
+          valorFechamento: avaliacao.valor_fechamento ? formatCurrencyInput(String(Math.round(avaliacao.valor_fechamento * 100))) : '',
+          obsInternas: '',
+          obsContrato: '',
+          dataContrato: undefined,
+        };
       }
+      setCpfCnpj(vals.cpfCnpj);
+      setValorQuitacao(vals.valorQuitacao);
+      setValorFechamento(vals.valorFechamento);
+      setObsInternas(vals.obsInternas);
+      setObsContrato(vals.obsContrato);
+      setDataContrato(vals.dataContrato);
+      setBaseline(snapshotFields(vals));
       setLoading(false);
     };
     loadContrato();
@@ -276,6 +318,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
       }
 
       setJaGerado(true);
+      setBaseline(snapshotFields({ cpfCnpj, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato }));
+      setClienteTocado(false);
       toast.success('Contrato de compra gerado com sucesso!');
     } catch (err) {
       console.error('Erro ao gerar contrato:', err);
@@ -288,10 +332,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
   const handleVisualizar = async () => {
     setGenerating(true);
     try {
-      const id = await saveContrato();
-      if (!id) { setGenerating(false); return; }
       await generateContratoCompraPdf(buildPdfData(), 'view');
-      toast.success('PDF visualizado com sucesso!');
     } catch (err) {
       console.error('Erro ao visualizar contrato:', err);
       toast.error('Erro ao visualizar o contrato');
@@ -300,8 +341,21 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
     }
   };
 
+  const handleBaixar = async () => {
+    setGenerating(true);
+    try {
+      await generateContratoCompraPdf(buildPdfData(), 'download');
+    } catch (err) {
+      console.error('Erro ao baixar contrato:', err);
+      toast.error('Erro ao baixar o contrato');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleClienteSaved = async (savedId: string) => {
     setClienteId(savedId);
+    setClienteTocado(true);
     // Recarrega o cadastro completo (para o CPF do PDF e para decidir o modo compacto).
     const { data } = await supabase
       .from('clientes_fornecedores')
@@ -336,6 +390,17 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
   const quitacaoNum = valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : 0;
   const repasseCliente = fechamentoNum - custosCliente - quitacaoNum;
 
+  // Houve edição desde a última geração/carregamento?
+  const currentSnapshot = snapshotFields({ cpfCnpj, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato });
+  const editado = currentSnapshot !== baseline || clienteTocado;
+  // Contrato já gerado e sem edições -> modo leitura (voltar / baixar / visualizar).
+  const modoLeitura = jaGerado && !editado;
+
+  // Modo NF-e
+  const podeEmitirNfe = (avaliacao as any)?.aprovacao_status === 'aprovada'
+    && jaGerado
+    && (avaliacao as any)?.consulta_realizada === true;
+
   return (
     <div className="space-y-4 animate-fade-in pb-10">
       <div className="flex items-center gap-3">
@@ -343,7 +408,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-xl font-bold flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" /> Contrato de Compra
+          <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Compra' : 'Contrato de Compra'}
         </h1>
       </div>
 
@@ -493,7 +558,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
             </div>
           </div>
 
-          {/* Card: Data do Contrato */}
+          {/* Card: Data do Contrato (só no fluxo de contrato) */}
+          {!ehNfe && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -521,6 +587,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
               </div>
             </CardContent>
           </Card>
+          )}
 
           {/* Card: Observações */}
           <Card>
@@ -531,32 +598,106 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }
               <Separator className="mt-2" />
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Observações Internas</Label>
-                <Textarea rows={3} value={obsInternas} onChange={(e) => setObsInternas(e.target.value)} placeholder="Observações internas..." />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Observações do Contrato</Label>
-                <Textarea rows={3} value={obsContrato} onChange={(e) => setObsContrato(e.target.value)} placeholder="Observações do contrato..." />
-              </div>
+              {ehNfe ? (
+                <div className="space-y-1.5">
+                  <Label>Observações na NF-e</Label>
+                  <Textarea
+                    rows={3}
+                    value={obsNfe}
+                    onChange={(e) => setObsNfe(e.target.value.toUpperCase())}
+                    placeholder="INFORMAÇÕES COMPLEMENTARES QUE SAIRÃO NA NOTA..."
+                    className="uppercase"
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label>Observações Internas</Label>
+                    <Textarea rows={3} value={obsInternas} onChange={(e) => setObsInternas(e.target.value)} placeholder="Observações internas..." />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Observações do Contrato</Label>
+                    <Textarea rows={3} value={obsContrato} onChange={(e) => setObsContrato(e.target.value)} placeholder="Observações do contrato..." />
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
           {/* Ações — só quando todos os obrigatórios estão preenchidos */}
-          {clienteId && cadastroCompleto && !editandoCliente && !!dataContrato && (
-            <div className="flex flex-wrap gap-3 justify-end pt-2">
-              {jaGerado && (
-                <Button variant="outline" onClick={handleVisualizar} disabled={generating}>
-                  <Eye className="h-4 w-4 mr-1" /> Visualizar
-                </Button>
+          {clienteId && cadastroCompleto && !editandoCliente && (ehNfe || !!dataContrato) && (
+            <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
+              {ehNfe ? (
+                <>
+                  {nfe.nfe?.status === 'processada' ? (
+                    <div className="flex flex-wrap items-center gap-3 mr-auto text-sm">
+                      <Badge className="bg-primary/10 text-primary gap-1.5">
+                        <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe.numero || '-'} • série {nfe.nfe.serie || '-'}
+                      </Badge>
+                      {nfe.nfe.caminho_danfe && (
+                        <a href={nfe.nfe.caminho_danfe} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                          <ExternalLink className="h-3.5 w-3.5" /> DANFE
+                        </a>
+                      )}
+                    </div>
+                  ) : nfe.pendente ? (
+                    <div className="flex items-center gap-3 mr-auto">
+                      <Badge variant="outline" className="gap-1.5">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Emitindo NF-e…
+                      </Badge>
+                      <Button variant="ghost" size="sm" disabled={nfe.loading} onClick={nfe.consultar} className="gap-1.5">
+                        <RefreshCw className={`h-4 w-4 ${nfe.loading ? 'animate-spin' : ''}`} /> Atualizar
+                      </Button>
+                    </div>
+                  ) : nfe.erro ? (
+                    <p className="mr-auto text-sm text-destructive flex items-start gap-1 max-w-md">
+                      <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                      {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
+                    </p>
+                  ) : null}
+
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
+                  </Button>
+                  {nfe.nfe?.status !== 'processada' && !nfe.pendente && (
+                    <Button
+                      variant={podeEmitirNfe ? 'default' : 'outline'}
+                      onClick={() => nfe.emitir({ observacoes: obsNfe.trim() || undefined })}
+                      disabled={!podeEmitirNfe || nfe.loading}
+                      title={podeEmitirNfe ? undefined : 'Disponível após aprovação, contrato gerado e consulta realizada'}
+                      className="gap-1.5"
+                    >
+                      {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                      {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
+                    </Button>
+                  )}
+                </>
+              ) : modoLeitura ? (
+                <>
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
+                  </Button>
+                  <Button variant="outline" onClick={handleBaixar} disabled={generating}>
+                    <Download className="h-4 w-4 mr-1" /> Baixar
+                  </Button>
+                  <Button onClick={handleVisualizar} disabled={generating}>
+                    <Eye className="h-4 w-4 mr-1" /> Visualizar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    Cancelar
+                  </Button>
+                  <Button variant="outline" onClick={handleSave} disabled={saving} className="gap-2">
+                    <Save className="h-4 w-4" />
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </Button>
+                  <Button onClick={handleGerar} disabled={generating}>
+                    <Download className="h-4 w-4 mr-1" /> {generating ? 'Gerando...' : 'Gerar'}
+                  </Button>
+                </>
               )}
-              <Button variant="outline" onClick={handleGerar} disabled={generating}>
-                <Download className="h-4 w-4 mr-1" /> {generating ? 'Gerando...' : 'Gerar'}
-              </Button>
-              <Button onClick={handleSave} disabled={saving} className="gap-2">
-                <Save className="h-4 w-4" />
-                {saving ? 'Salvando...' : 'Salvar'}
-              </Button>
             </div>
           )}
         </>

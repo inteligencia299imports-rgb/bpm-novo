@@ -11,6 +11,7 @@ import { format, subDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
 
 interface EstoqueItem {
   id: string;
@@ -63,20 +64,17 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
   const { data: motos = [], isLoading: loadingMotos } = useQuery({
     queryKey: ['novidades-estoque'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('estoque')
-        .select('id, marca, modelo, ano_fabricacao, ano_modelo, cor, placa, km, preco, preco_acao, data_entrada, tipo, classificacao, cilindrada, categoria, empresa, avaliacoes:avaliacao_id(tem_manual, tem_chave_reserva, manutencao_vencida, atendimentos:atendimento_id(loja_id, loja_empresas:loja_id(loja)))')
-        .eq('status', 'disponivel')
-        .gte('data_entrada', sevenDaysAgo)
-        .order('data_entrada', { ascending: false });
+      const [{ data, error }, lojaMap] = await Promise.all([
+        supabase
+          .from('estoque_motos')
+          .select(ESTOQUE_MOTO_SELECT)
+          .eq('status', 'disponivel')
+          .gte('created_at', sevenDaysAgo)
+          .order('created_at', { ascending: false }),
+        fetchLojaMap(),
+      ]);
       if (error) throw error;
-      return (data || []).map((item: any) => ({
-        ...item,
-        tem_manual: item.avaliacoes?.tem_manual ?? null,
-        tem_chave_reserva: item.avaliacoes?.tem_chave_reserva ?? null,
-        manutencao_vencida: item.avaliacoes?.manutencao_vencida ?? null,
-        loja_origem: item.avaliacoes?.atendimentos?.loja_empresas?.loja ?? null,
-      })) as EstoqueItem[];
+      return (data || []).map((item: any) => mapEstoqueMoto(item, lojaMap)) as EstoqueItem[];
     },
   });
 

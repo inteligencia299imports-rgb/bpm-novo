@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fmtInt } from '@/lib/utils';
+import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Package, CheckCircle, ShieldAlert, Ban, Wrench, Clock, DollarSign, TrendingDown, FileSpreadsheet, FileDown } from 'lucide-react';
@@ -72,25 +73,23 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const STATUSES = ['disponivel', 'servico', 'indisponivel_manual', 'bloqueio_juridico'];
     const PREP_STATUS = ['em_aberto', 'pendente', 'oficina', 'servico_externo'];
 
-    const [estoqueRes, avaliacoesRes] = await Promise.all([
-      fetchAllRange(() => {
-        let q = supabase
-          .from('estoque')
-          .select('id, empresa, tipo, loja, marca, modelo, cor, ano_fabricacao, ano_modelo, placa, data_entrada, data_venda, preco, status, avaliacoes:avaliacao_id(valor_fechamento, tipo_aquisicao)')
-          .in('status', STATUSES)
-          .lte('data_entrada', upperCutoff.toISOString())
-          .or(`data_venda.is.null,data_venda.gt.${lowerCutoff.toISOString()}`)
-          .order('data_entrada', { ascending: false });
-        if (filterTipo !== 'todos') q = q.eq('tipo', filterTipo);
-        return q;
-      }),
+    const [estoqueRes, avaliacoesRes, lojaMap] = await Promise.all([
+      fetchAllRange<any>(() => supabase
+        .from('estoque_motos')
+        .select(ESTOQUE_MOTO_SELECT)
+        .in('status', STATUSES)
+        .lte('created_at', upperCutoff.toISOString())
+        .or(`data_venda.is.null,data_venda.gt.${lowerCutoff.toISOString()}`)
+        .order('created_at', { ascending: false })),
       fetchAllRange(() => supabase
         .from('avaliacoes')
         .select('id, quanto_pede, created_at, situacao, preparacao_status')
         .in('situacao', ['adquirida', 'estoque'])),
+      fetchLojaMap(),
     ]);
 
-    const estoqueAll = (estoqueRes.data || []) as any[];
+    let estoqueAll = (estoqueRes.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)) as any[];
+    if (filterTipo !== 'todos') estoqueAll = estoqueAll.filter((m: any) => m.tipo === filterTipo);
     // Filtro de loja (cidade) — mesma lógica do RPC
     const estoqueFiltrado = estoqueAll.filter((m: any) => {
       const loja = (m.loja || '').toString();

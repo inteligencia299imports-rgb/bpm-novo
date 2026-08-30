@@ -35,7 +35,7 @@ const RetiradaDialog: React.FC<RetiradaDialogProps> = ({ open, onOpenChange, est
     try {
       // 1. Update estoque status to 'retirada'
       const { error: estoqueErr } = await supabase
-        .from('estoque')
+        .from('estoque_motos')
         .update({ status: 'retirada', observacoes: motivo.trim() })
         .eq('id', estoqueItem.id);
       if (estoqueErr) throw estoqueErr;

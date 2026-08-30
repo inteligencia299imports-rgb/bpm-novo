@@ -249,7 +249,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           ? supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
           : Promise.resolve({ data: null }),
         supabase.from('avaliacoes').select('quanto_pede, valor_fechamento, avaliador_id, crlv_url, atpv_url, procuracao_url').eq('id', item.id).maybeSingle(),
-        supabase.from('estoque').select('status, observacoes').eq('avaliacao_id', item.id).maybeSingle(),
+        supabase.from('estoque_motos').select('status, observacoes').eq('avaliacao_id', item.id).maybeSingle(),
         supabase.from('status_history').select('created_at').eq('entity_type', 'avaliacao').eq('entity_id', item.id).eq('status', 'adquirida').order('created_at', { ascending: true }).limit(1).maybeSingle(),
         supabase.from('moto_fotos').select('*').eq('avaliacao_id', item.id),
       ]);

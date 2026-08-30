@@ -78,7 +78,7 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
         updateData.observacoes = observacao.trim();
       }
 
-      const { error: updateErr } = await supabase.from('estoque').update(updateData).eq('id', estoqueItem.id);
+      const { error: updateErr } = await supabase.from('estoque_motos').update(updateData).eq('id', estoqueItem.id);
 
       if (updateErr) throw updateErr;
 

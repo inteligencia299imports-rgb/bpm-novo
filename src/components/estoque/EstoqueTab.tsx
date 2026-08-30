@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
+import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
 import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
 import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -47,9 +48,9 @@ import {
 interface EstoqueItem {
   id: string;
   tipo: string;
-  marca: string;
+  marca: string | null;
   categoria: string | null;
-  modelo: string;
+  modelo: string | null;
   cor: string | null;
   cilindrada: string | null;
   placa: string | null;
@@ -59,6 +60,10 @@ interface EstoqueItem {
   preco: number | null;
   preco_acao: number | null;
   empresa: string | null;
+  loja?: string | null;
+  loja_id?: string | null;
+  loja_origem?: string | null;
+  uf?: string | null;
   status: string;
   observacoes: string | null;
   data_entrada: string;
@@ -146,27 +151,24 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   };
 
   useEffect(() => {
-    let query = supabase.from('estoque').select('marca');
+    let query = supabase.from('estoque_motos').select('avaliacao:avaliacao_id(marca)');
     if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
-    if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
     query.then(({ data }) => {
-      const unique = [...new Set((data || []).map(d => d.marca))].sort();
-      setAllMarcas(unique);
+      const unique = [...new Set((data || []).map((d: any) => d.avaliacao?.marca).filter(Boolean))].sort();
+      setAllMarcas(unique as string[]);
     });
   }, [filterStatus, filterTipo]);
 
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('estoque').select('*, avaliacoes:avaliacao_id(tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta, tipo_aquisicao, pos_compra_status, atendimentos:atendimento_id(loja)), atendimentos:atendimento_venda_id(vendedor_id, loja)').order('data_entrada', { ascending: false });
+      let query = supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).order('created_at', { ascending: false });
       if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
-      if (filterMarca !== 'todas') query = query.eq('marca', filterMarca);
-      if (filterTipo !== 'todos') query = query.eq('tipo', filterTipo);
-      
-      const { data, error } = await query;
+
+      const [{ data, error }, lojaMap] = await Promise.all([query, fetchLojaMap()]);
       if (error) throw error;
       // Get vendedor names for items with atendimento_venda_id
-      const vendedorIds = [...new Set((data || []).map((d: any) => d.atendimentos?.vendedor_id).filter(Boolean))];
+      const vendedorIds = [...new Set((data || []).map((d: any) => d.atendimento_venda?.vendedor_id).filter(Boolean))];
       let vendedorMap: Record<string, string> = {};
       if (vendedorIds.length > 0) {
         const { data: roles } = await (supabase as any).from('user_roles').select('user_id, nome').in('user_id', vendedorIds);
@@ -174,20 +176,17 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           for (const r of roles) vendedorMap[r.user_id] = r.nome;
         }
       }
-      let mapped = (data || []).map((d: any) => ({
-        ...d,
-        tem_manual: d.avaliacoes?.tem_manual ?? null,
-        tem_chave_reserva: d.avaliacoes?.tem_chave_reserva ?? null,
-        manutencao_vencida: d.avaliacoes?.manutencao_vencida ?? null,
-        crlv_url: d.avaliacoes?.crlv_url ?? null,
-        resultado_consulta: d.avaliacoes?.resultado_consulta ?? null,
-        venda_vendedor_id: d.atendimentos?.vendedor_id ?? null,
-        vendedor_nome: d.atendimentos?.vendedor_id ? (vendedorMap[d.atendimentos.vendedor_id] || null) : null,
-        tipo_aquisicao: d.avaliacoes?.tipo_aquisicao ?? null,
-        pos_compra_status: d.avaliacoes?.pos_compra_status ?? null,
-        displayTipo: d.avaliacoes?.tipo_aquisicao || d.tipo,
-        loja_origem: d.atendimentos?.loja ?? d.avaliacoes?.atendimentos?.loja ?? null,
-      }));
+      let mapped = (data || []).map((d: any) => {
+        const m = mapEstoqueMoto(d, lojaMap);
+        return {
+          ...m,
+          vendedor_nome: m.venda_vendedor_id ? (vendedorMap[m.venda_vendedor_id] || null) : null,
+          displayTipo: m.tipo_aquisicao || m.tipo,
+        };
+      });
+      // Filtros que dependem de campos derivados (não dá pra .eq no banco)
+      if (filterMarca !== 'todas') mapped = mapped.filter((m: any) => m.marca === filterMarca);
+      if (filterTipo !== 'todos') mapped = mapped.filter((m: any) => m.tipo === filterTipo);
       // Motos de repasse ficam ocultas do catálogo de estoque
       mapped = mapped.filter((m: any) => m.tipo_aquisicao !== 'repasse');
       setItems(mapped);

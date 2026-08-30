@@ -3,7 +3,6 @@ import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTip
 import { useAuth } from '@/contexts/AuthContext';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
-import { gerarPdfContratoCompra } from '@/lib/contratoCompraPdf';
 import PosCompraProcessoDialog from '@/components/pos-compra/PosCompraProcessoDialog';
 import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProcessoDialog';
 import { podeAprovar } from '@/lib/aprovacao';
@@ -20,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, ArrowLeftRight, ShieldCheck, Handshake, Pencil, RotateCw, AlertTriangle, ClipboardList, ThumbsUp, ThumbsDown, Eye, Download } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, ArrowLeftRight, ShieldCheck, Handshake, Pencil, RotateCw, AlertTriangle, ClipboardList, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import { formatPersonName, firstLastName } from '@/lib/utils';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
@@ -120,8 +119,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [showEvalDialog, setShowEvalDialog] = useState(false);
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
   const [contratoCompraOpen, setContratoCompraOpen] = useState(false);
-  const [contratoMenuOpen, setContratoMenuOpen] = useState(false);
-  const [gerandoPdfContrato, setGerandoPdfContrato] = useState(false);
+  const [nfeCompraOpen, setNfeCompraOpen] = useState(false);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [cnhDocId, setCnhDocId] = useState<string | null>(null);
@@ -224,19 +222,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       toast.error('Erro ao salvar dados da moto');
       console.error(error);
     } else {
-      // Sincronizar campos compartilhados com estoque (se a moto estiver no estoque)
-      const estoqueUpdate = {
-        marca: updateData.marca,
-        modelo: updateData.modelo,
-        placa: updateData.placa,
-        km: updateData.km,
-        ano_fabricacao: updateData.ano_fabricacao,
-        ano_modelo: updateData.ano_modelo,
-        cor: updateData.cor,
-        categoria: updateData.categoria,
-        cilindrada: updateData.cilindrada,
-      };
-      await supabase.from('estoque').update(estoqueUpdate).eq('avaliacao_id', moto.id);
+      // estoque_motos deriva as specs da avaliação — nada a sincronizar aqui.
       // Update local state
       if (avaliacao) {
         Object.assign(avaliacao, updateData);
@@ -382,11 +368,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
 
       // Fetch estoque data if available
       if (data.id) {
-        const { data: estoqueData } = await supabase.from('estoque').select('id, preco_acao, preco, status').eq('avaliacao_id', data.id).maybeSingle();
+        const { data: estoqueData } = await supabase.from('estoque_motos').select('id, preco_acao, status').eq('avaliacao_id', data.id).maybeSingle();
         if (estoqueData) {
           setEstoqueId(estoqueData.id);
           setPrecoAcaoEdit(numberToCurrencyMask(estoqueData.preco_acao));
-          setPrecoTabelaEdit(numberToCurrencyMask(estoqueData.preco));
+          setPrecoTabelaEdit(numberToCurrencyMask((data as any).quanto_pede));
           setEstoqueVendido(estoqueData.status === 'vendido' || estoqueData.status === 'sinal');
         }
       }
@@ -480,7 +466,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       valor_fipe: parseCurrencyToNumber(valorFipe),
       menor_valor: parseCurrencyToNumber(menorValor),
       maior_valor: parseCurrencyToNumber(maiorValor),
-      quanto_pede: parseCurrencyToNumber(quantoPede),
+      // "Preço de Tabela" (editável quando a moto já está no estoque) é o próprio quanto_pede.
+      quanto_pede: (estoqueId && precoTabelaEdit.trim() !== '')
+        ? parseCurrencyToNumber(precoTabelaEdit)
+        : parseCurrencyToNumber(quantoPede),
       quanto_vende: parseCurrencyToNumber(quantoVende),
       quanto_vende_errado: parseCurrencyToNumber(quantoVendeErrado),
       avaliacao_consignacao: parseCurrencyToNumber(avalConsig),
@@ -503,17 +492,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       toast.error('Erro ao salvar avaliação');
     } else {
       // Atualizar preço ação e valor de fechamento (preco) no estoque se aplicável
-      if (estoqueId) {
-        const estoqueUpdate: any = {};
-        if (precoAcaoEdit.trim() !== '') estoqueUpdate.preco_acao = parseCurrencyToNumber(precoAcaoEdit);
-        if (precoTabelaEdit.trim() !== '') {
-          estoqueUpdate.preco = parseCurrencyToNumber(precoTabelaEdit);
-        } else if ((avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '') {
-          estoqueUpdate.preco = parseCurrencyToNumber(valorFechamentoEdit);
-        }
-        if (Object.keys(estoqueUpdate).length > 0) {
-          await supabase.from('estoque').update(estoqueUpdate).eq('id', estoqueId);
-        }
+      if (estoqueId && precoAcaoEdit.trim() !== '') {
+        await supabase.from('estoque_motos').update({ preco_acao: parseCurrencyToNumber(precoAcaoEdit) }).eq('id', estoqueId);
       }
       // Registrar no histórico
       const isFirstEvaluation = avaliacao?.situacao === 'sem_avaliar';
@@ -811,13 +791,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     return <DetailSkeleton onClose={onClose} cards={6} />;
   }
 
-  // Contrato de compra abre como página (não como pop-up)
-  if (contratoCompraOpen && avaliacao) {
+  // Contrato de compra abre como página (não como pop-up).
+  // O mesmo componente, em modo 'nfe', serve para revisar e emitir a NF-e de compra.
+  if ((contratoCompraOpen || nfeCompraOpen) && avaliacao) {
     return (
       <ContratoCompraDialog
         open
         avaliacao={avaliacao}
-        onOpenChange={() => { setContratoCompraOpen(false); refreshHistory(); }}
+        modo={nfeCompraOpen ? 'nfe' : 'contrato'}
+        onOpenChange={() => { setContratoCompraOpen(false); setNfeCompraOpen(false); refreshHistory(); loadAvaliacao(); }}
       />
     );
   }
@@ -1059,7 +1041,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                     <Button
                       size="sm"
                       variant={contratoGerado ? 'default' : 'outline'}
-                      onClick={() => (contratoGerado ? setContratoMenuOpen(true) : setContratoCompraOpen(true))}
+                      onClick={() => setContratoCompraOpen(true)}
                       className="gap-1.5"
                     >
                       <FileText className="h-4 w-4" /> Contrato
@@ -1078,7 +1060,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   <Button
                     size="sm"
                     variant={contratoGerado ? 'default' : 'outline'}
-                    onClick={() => (contratoGerado ? setContratoMenuOpen(true) : setContratoCompraOpen(true))}
+                    onClick={() => setContratoCompraOpen(true)}
                     className="gap-1.5"
                   >
                     <FileText className="h-4 w-4" /> Contrato
@@ -1419,7 +1401,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             </CardHeader>
             <CardContent>
               <StatusTimeline history={history} formatLabel={(raw) => {
-                const remap: Record<string, string> = { vendido: 'adquirida', aprovada: 'aprovada', recusada: 'recusada', contrato_compra_gerado: 'CONTRATO GERADO', nfe_compra_emitida: 'NF-e emitida' };
+                const remap: Record<string, string> = { vendido: 'adquirida', aprovada: 'aprovada', recusada: 'recusada', contrato_compra_gerado: 'CONTRATO GERADO', nfe_compra_emitida: 'NF-e emitida', 'Em Andamento': 'Pós-Compra em andamento', em_andamento: 'Pós-Compra em andamento' };
                 const mapped = remap[raw] || raw;
                 return mapped.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação');
               }} renderPopupExtra={(h) => {
@@ -1776,35 +1758,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       )}
 
       {/* Menu do contrato de compra (quando já foi gerado) */}
-      <Dialog open={contratoMenuOpen} onOpenChange={setContratoMenuOpen}>
-        <DialogContent className="max-w-xs">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" /> Contrato de Compra
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 pt-1">
-            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => { setContratoMenuOpen(false); setContratoCompraOpen(true); }}>
-              <Pencil className="h-4 w-4" /> Editar
-            </Button>
-            <Button className="w-full justify-start gap-2" disabled={gerandoPdfContrato} onClick={async () => {
-              setGerandoPdfContrato(true);
-              try { if (!(await gerarPdfContratoCompra(avaliacaoId, 'view'))) toast.error('Não foi possível gerar o contrato'); }
-              finally { setGerandoPdfContrato(false); }
-            }}>
-              {gerandoPdfContrato ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Visualizar
-            </Button>
-            <Button variant="outline" className="w-full justify-start gap-2" disabled={gerandoPdfContrato} onClick={async () => {
-              setGerandoPdfContrato(true);
-              try { if (!(await gerarPdfContratoCompra(avaliacaoId, 'download'))) toast.error('Não foi possível gerar o contrato'); }
-              finally { setGerandoPdfContrato(false); }
-            }}>
-              {gerandoPdfContrato ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Baixar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
 
       {context === 'pos_compra' && (
         <>
@@ -1813,6 +1766,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             onOpenChange={setProcessoPosCompraOpen}
             avaliacaoId={avaliacaoId}
             onStatusChanged={() => { loadAvaliacao(); }}
+            onEmitirNfe={() => { setProcessoPosCompraOpen(false); setNfeCompraOpen(true); }}
           />
         </>
       )}

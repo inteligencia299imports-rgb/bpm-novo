@@ -109,22 +109,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [showConsulta, setShowConsulta] = useState(false);
 
   // Liberar form fields
-  const [empresa, setEmpresa] = useState('');
   const [loja, setLoja] = useState('');
-  const [placa, setPlaca] = useState('');
-  const [cilindrada, setCilindrada] = useState('');
-  const [precoTabela, setPrecoTabela] = useState('');
-  const [valorFechamento, setValorFechamento] = useState('');
+  const [precoTabela, setPrecoTabela] = useState(''); // preço da ação
   const [obsMoto, setObsMoto] = useState('');
 
   const [libManual, setLibManual] = useState('');
   const [libChaveReserva, setLibChaveReserva] = useState('');
   const [libRevisaoVencida, setLibRevisaoVencida] = useState('');
-
-  const formatKm = (value: string): string => {
-    const digits = value.replace(/\D/g, '');
-    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  };
 
   useEffect(() => {
     if (!open) return;
@@ -135,18 +126,19 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     setShowLiberarForm(false);
     // Carrega loja atual do estoque (para troca de pátio na repreparação)
     if (reenviarFromEstoque?.estoqueItemId) {
-      supabase.from('estoque').select('loja').eq('id', reenviarFromEstoque.estoqueItemId).maybeSingle()
-        .then(({ data }) => setReenviarLoja((data as any)?.loja || avaliacaoData?.atendimento?.loja || ''));
+      (async () => {
+        const { data: est } = await supabase.from('estoque_motos').select('loja_id').eq('id', reenviarFromEstoque.estoqueItemId).maybeSingle();
+        let nome = '';
+        if ((est as any)?.loja_id) {
+          const { data: le } = await supabase.from('loja_empresas').select('loja').eq('id', (est as any).loja_id).maybeSingle();
+          nome = (le as any)?.loja || '';
+        }
+        setReenviarLoja(nome || avaliacaoData?.atendimento?.loja || '');
+      })();
     }
-    setEmpresa('MMATOS');
     // Pre-populate from avaliação/atendimento data
     setLoja(avaliacaoData?.atendimento?.loja || '');
-    setPlaca(avaliacaoData?.moto?.placa || '');
-    setCilindrada(avaliacaoData?.moto?.cilindrada ? formatKm(avaliacaoData.moto.cilindrada) : '');
-    const quantoPede = avaliacaoData?.quanto_pede;
-    setPrecoTabela(quantoPede != null ? formatCurrencyInput(String(Math.round(quantoPede * 100))) : '');
-    const fechamento = avaliacaoData?.valor_fechamento;
-    setValorFechamento(fechamento != null ? formatCurrencyInput(String(Math.round(fechamento * 100))) : '');
+    setPrecoTabela('');
     setObsMoto(avaliacaoData?.moto?.observacoes || '');
     const ma = avaliacaoData?.moto;
     setLibManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
@@ -411,8 +403,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   };
 
   const handleLiberar = async () => {
-    if (!empresa || !loja || !placa.trim() || !cilindrada.trim() || !precoTabela || !valorFechamento) {
-      toast.error('Preencha todos os campos obrigatórios');
+    if (!loja) {
+      toast.error('Selecione a loja');
       return;
     }
 
@@ -439,30 +431,23 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         return;
       }
 
-      const moto = avaliacao;
-      const precoValue = parseCurrencyValue(precoTabela);
-      const fechamentoValue = parseCurrencyValue(valorFechamento);
+      // Resolve loja_id (loja_empresas.id) a partir do nome da loja escolhida.
+      const { data: lojaEmp } = await supabase
+        .from('loja_empresas')
+        .select('id')
+        .eq('loja', loja)
+        .eq('sistema', 'motos')
+        .maybeSingle();
 
-      // Insert into estoque
-      const { error: estoqueError } = await supabase.from('estoque').insert({
-        tipo: isTipoConsignada(avaliacao.tipo_aquisicao) ? 'consignada' : 'propria',
-        marca: moto.marca,
-        categoria: moto.categoria || null,
-        modelo: moto.modelo,
-        cor: moto.cor || null,
-        cilindrada: cilindrada.trim(),
-        placa: placa.trim().toUpperCase(),
-        ano_fabricacao: moto.ano_fabricacao || null,
-        ano_modelo: moto.ano_modelo || null,
-        km: moto.km || null,
-        empresa,
-        loja,
-        preco: precoValue,
+      const precoAcaoValue = precoTabela ? parseCurrencyValue(precoTabela) : null;
+
+      // Estoque enxuto: specs/preço de tabela vêm da avaliação.
+      const { error: estoqueError } = await supabase.from('estoque_motos').insert({
         status: 'disponivel',
         avaliacao_id: avaliacaoId,
+        loja_id: (lojaEmp as any)?.id ?? null,
+        preco_acao: precoAcaoValue,
         observacoes: obsMoto.trim() || null,
-        data_entrada: new Date().toISOString(),
-        classificacao: avaliacao.classificacao || null,
       } as any);
 
       if (estoqueError) {
@@ -474,7 +459,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       const avaliacaoUpdate: any = {
         preparacao_status: 'estoque',
         situacao: 'estoque',
-        valor_fechamento: fechamentoValue,
       };
       if (libManual) avaliacaoUpdate.tem_manual = libManual === 'sim';
       if (libChaveReserva) avaliacaoUpdate.tem_chave_reserva = libChaveReserva === 'sim';
@@ -493,7 +477,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
       const historySaved = await insertHistory({
         statusTo: 'estoque',
-        observacoes: `MOTO LIBERADA. Empresa: ${empresa}, Loja: ${loja}, Placa: ${placa.trim().toUpperCase()}${detalhes.trim() ? `. ${detalhes.trim()}` : ''}`,
+        observacoes: `MOTO LIBERADA. Loja: ${loja}${avaliacaoData?.moto?.placa ? `, Placa: ${avaliacaoData.moto.placa}` : ''}${detalhes.trim() ? `. ${detalhes.trim()}` : ''}`,
         changedBy: user.id,
         changedByName: userName,
       });
@@ -554,9 +538,9 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
       // If bike was sent back from stock (servico), restore to disponivel and clear the reenvio observation
       if (isInEstoque) {
-        const { data: estoqueData } = await supabase.from('estoque').select('status, observacoes').eq('avaliacao_id', avaliacaoId).maybeSingle();
+        const { data: estoqueData } = await supabase.from('estoque_motos').select('status, observacoes').eq('avaliacao_id', avaliacaoId).maybeSingle();
         if (estoqueData?.status === 'servico') {
-          await supabase.from('estoque').update({
+          await supabase.from('estoque_motos').update({
             status: 'disponivel',
             observacoes: null,
           }).eq('avaliacao_id', avaliacaoId);
@@ -779,10 +763,15 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       const { user, userName } = await getUserInfo();
                       if (!user) { toast.error('Sessão expirada'); return; }
 
-                      const { error: estoqueErr } = await supabase.from('estoque').update({
+                      let novaLojaId: string | null = null;
+                      if (reenviarLoja) {
+                        const { data: le } = await supabase.from('loja_empresas').select('id').eq('loja', reenviarLoja).eq('sistema', 'motos').maybeSingle();
+                        novaLojaId = (le as any)?.id ?? null;
+                      }
+                      const { error: estoqueErr } = await supabase.from('estoque_motos').update({
                         status: 'servico',
                         observacoes: reenviarObs.trim(),
-                        loja: reenviarLoja,
+                        ...(novaLojaId ? { loja_id: novaLojaId } : {}),
                       } as any).eq('id', reenviarFromEstoque.estoqueItemId);
                       if (estoqueErr) { toast.error('Erro ao atualizar estoque'); return; }
 
@@ -943,49 +932,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 <div className="space-y-3 bg-primary/5 border border-primary/20 rounded-lg p-4">
                   <label className="text-sm font-medium">Dados para Registro no Estoque</label>
 
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">Empresa *</label>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant={empresa === 'MMATOS' ? 'default' : 'outline'}
-                        size="sm"
-                        className="flex-1 h-9"
-                        onClick={() => setEmpresa('MMATOS')}
-                      >
-                        MMATOS
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={empresa === 'FAG' ? 'default' : 'outline'}
-                        size="sm"
-                        className="flex-1 h-9"
-                        onClick={() => setEmpresa('FAG')}
-                      >
-                        FAG
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={empresa === 'FLN' ? 'default' : 'outline'}
-                        size="sm"
-                        className="flex-1 h-9"
-                        onClick={() => setEmpresa('FLN')}
-                      >
-                        FLN
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={empresa === 'POA' ? 'default' : 'outline'}
-                        size="sm"
-                        className="flex-1 h-9"
-                        onClick={() => setEmpresa('POA')}
-                      >
-                        POA
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">Loja *</label>
                       <Select value={loja} onValueChange={setLoja}>
@@ -1001,49 +948,12 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Placa *</label>
-                      <Input
-                        value={placa}
-                        onChange={e => setPlaca(e.target.value.toUpperCase())}
-                        placeholder="ABC1D23"
-                        className="h-9 uppercase"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Cilindrada *</label>
-                      <Input
-                        value={cilindrada}
-                        onChange={e => setCilindrada(formatKm(e.target.value))}
-                        placeholder="Ex: 1.200"
-                        className="h-9"
-                        inputMode="numeric"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Preço de Tabela *</label>
+                      <label className="text-xs text-muted-foreground">Preço da Ação</label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
                         <Input
                           value={precoTabela}
                           onChange={e => setPrecoTabela(formatCurrencyInput(e.target.value))}
-                          placeholder="0,00"
-                          className="h-9 pl-9"
-                          inputMode="numeric"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Valor de Fechamento *</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-                        <Input
-                          value={valorFechamento}
-                          onChange={e => setValorFechamento(formatCurrencyInput(e.target.value))}
                           placeholder="0,00"
                           className="h-9 pl-9"
                           inputMode="numeric"

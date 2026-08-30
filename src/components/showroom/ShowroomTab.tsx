@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { LOJAS, INTERESSES, SITUACOES_SHOWROOM } from '@/types/crm';
+import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto } from '@/lib/estoqueMoto';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import AtendimentoCard from './AtendimentoCard';
 import AtendimentoDetail from './AtendimentoDetail';
@@ -123,12 +124,12 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
 
       if (estoqueIds.length > 0) {
         const { data: estoqueData } = await supabase
-          .from('estoque')
-          .select('id, modelo, marca, cor, placa, preco, preco_acao, status, observacoes')
+          .from('estoque_motos')
+          .select(ESTOQUE_MOTO_SELECT)
           .in('id', [...new Set(estoqueIds)]);
         if (estoqueData) {
           const estoqueMap: Record<string, any> = {};
-          for (const e of estoqueData) estoqueMap[e.id] = e;
+          for (const e of estoqueData) estoqueMap[(e as any).id] = mapEstoqueMoto(e);
           for (const a of results as any[]) {
             for (const mi of (a.motos_interesse || [])) {
               if (mi.estoque_moto_id && estoqueMap[mi.estoque_moto_id]) {

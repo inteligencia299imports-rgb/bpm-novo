@@ -15,6 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateContratoConsignantePdf } from '@/lib/generateContratoConsignantePdf';
+import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
 
 /** Props for ContratoConsignanteDialog */
 interface Props {
@@ -133,18 +134,19 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     setLoading(true);
 
     // Find the estoque item that is consignada and linked to this atendimento_id (as atendimento_venda_id)
-    const [{ data: estoqueItems }, { data: vendaAtendimento }] = await Promise.all([
+    const [{ data: estoqueItems }, { data: vendaAtendimento }, lojaMap] = await Promise.all([
       supabase
-        .from('estoque')
-        .select('*')
+        .from('estoque_motos')
+        .select(ESTOQUE_MOTO_SELECT)
         .eq('atendimento_venda_id', atendimentoId)
-        .eq('tipo', 'consignada')
         .limit(1),
       supabase.from('atendimentos_motos').select('loja_empresas:loja_id(loja)').eq('id', atendimentoId).maybeSingle(),
+      fetchLojaMap(),
     ]);
     setLoja((vendaAtendimento as any)?.loja_empresas?.loja || null);
 
-    const estoque = estoqueItems?.[0];
+    const estoqueRaw = estoqueItems?.[0];
+    const estoque = estoqueRaw ? mapEstoqueMoto(estoqueRaw, lojaMap) : null;
     setEstoqueInfo(estoque);
 
     let avaliacao: any = null;

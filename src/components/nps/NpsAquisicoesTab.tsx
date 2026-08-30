@@ -78,7 +78,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       const estVendaMap: Record<string, string> = {};
       if (avalIds.length > 0) {
         const { data: estData } = await supabase
-          .from('estoque')
+          .from('estoque_motos')
           .select('avaliacao_id, data_venda, status, atendimento_venda_id')
           .in('avaliacao_id', avalIds);
         (estData || []).forEach((e: any) => {

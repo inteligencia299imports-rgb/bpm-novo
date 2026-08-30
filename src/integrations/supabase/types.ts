@@ -960,87 +960,45 @@ export type Database = {
         }
         Relationships: []
       }
-      estoque: {
+      estoque_motos: {
         Row: {
-          ano_fabricacao: string | null
-          ano_modelo: string | null
           atendimento_venda_id: string | null
           avaliacao_id: string | null
-          categoria: string | null
-          cilindrada: string | null
-          classificacao: string | null
-          cor: string | null
           created_at: string
-          data_entrada: string
           data_venda: string | null
-          empresa: string | null
           id: string
-          km: string | null
-          loja: string | null
-          marca: string
-          modelo: string
+          loja_id: string | null
           observacoes: string | null
-          placa: string | null
-          preco: number | null
           preco_acao: number | null
           status: string
-          tipo: string
           updated_at: string
           valor_sinal: number | null
           valor_venda: number | null
         }
         Insert: {
-          ano_fabricacao?: string | null
-          ano_modelo?: string | null
           atendimento_venda_id?: string | null
           avaliacao_id?: string | null
-          categoria?: string | null
-          cilindrada?: string | null
-          classificacao?: string | null
-          cor?: string | null
           created_at?: string
-          data_entrada?: string
           data_venda?: string | null
-          empresa?: string | null
           id?: string
-          km?: string | null
-          loja?: string | null
-          marca: string
-          modelo: string
+          loja_id?: string | null
           observacoes?: string | null
-          placa?: string | null
-          preco?: number | null
           preco_acao?: number | null
           status?: string
-          tipo?: string
           updated_at?: string
           valor_sinal?: number | null
           valor_venda?: number | null
         }
         Update: {
-          ano_fabricacao?: string | null
-          ano_modelo?: string | null
           atendimento_venda_id?: string | null
           avaliacao_id?: string | null
-          categoria?: string | null
-          cilindrada?: string | null
-          classificacao?: string | null
-          cor?: string | null
           created_at?: string
-          data_entrada?: string
           data_venda?: string | null
-          empresa?: string | null
           id?: string
-          km?: string | null
-          loja?: string | null
-          marca?: string
-          modelo?: string
+          loja_id?: string | null
           observacoes?: string | null
-          placa?: string | null
-          preco?: number | null
           preco_acao?: number | null
           status?: string
-          tipo?: string
           updated_at?: string
           valor_sinal?: number | null
           valor_venda?: number | null

@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { persistChecklistRows } from '@/lib/persistChecklistRows';
+import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
@@ -31,7 +32,6 @@ const formatCurrency = (v: number | null | undefined) =>
 const ETAPAS = [
   'CONSULTA REALIZADA',
   'DOCUMENTAÇÃO RECEBIDA',
-  'CADASTRO NBS',
   'DOCUMENTAÇÃO COM DESPACHANTE',
   'VISTORIA/CADEIA DOMINIAL',
   'NF-E',
@@ -52,9 +52,10 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   avaliacaoId: string;
   onStatusChanged?: (newStatus: string) => void;
+  onEmitirNfe?: () => void;
 }
 
-const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, onStatusChanged }) => {
+const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, onStatusChanged, onEmitirNfe }) => {
   const { userName } = useAuth();
   const [etapas, setEtapas] = useState<EtapaData[]>(
     ETAPAS.map(e => ({ etapa: e, concluida: false, data_conclusao: null, destino_transferencia: null }))
@@ -78,11 +79,16 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   const [newValor, setNewValor] = useState('');
 
   // ---- NF-e de compra ----
-  const [nfeCompra, setNfeCompra] = useState<any | null>(null);
+  const nfe = useNfeCompra(avaliacaoId, open);
+  const nfeCompra = nfe.nfe;
+  const nfeEmitida = nfe.emitida;
+  const nfePendente = nfe.pendente;
+  const nfeErro = nfe.erro;
+  const emitindoNfe = nfe.loading;
+  const consultarNfe = nfe.consultar;
+  const setNfeCompra = nfe.setNfe;
   const [aprovacaoStatus, setAprovacaoStatus] = useState<string | null>(null);
   const [contratoGerado, setContratoGerado] = useState(false);
-  const [emitindoNfe, setEmitindoNfe] = useState(false);
-  const [confirmarNfeOpen, setConfirmarNfeOpen] = useState(false);
   const [consultaRealizada, setConsultaRealizada] = useState(false);
 
   useEffect(() => {
@@ -221,85 +227,17 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
 
   const handleSaveFinanceiro = async () => {
     setSavingFin(true);
-    toast.success('Resumo financeiro salvo!');
+    toast.success('Abatimentos salvos!');
     setSavingFin(false);
     onOpenChange(false);
   };
 
   // ---- NF-e de compra ----
-  const nfeStatus: string | undefined = nfeCompra?.status;
-  const nfeEmitida = nfeStatus === 'processada';
-  const nfePendente = ['recebida', 'validando', 'processando_itens', 'gerando_contas'].includes(nfeStatus || '');
-  const nfeErro = nfeStatus === 'erro';
   const podeEmitirNfe = aprovacaoStatus === 'aprovada' && contratoGerado && consultaRealizada;
-
-  const invocarNfe = async (acao: 'emitir' | 'consultar') => {
-    const { data, error } = await supabase.functions.invoke('emitir-nfe-compra', {
-      body: { avaliacao_id: avaliacaoId, acao },
-    });
-    if (error) {
-      // A Edge Function devolve { error } no corpo em 4xx.
-      let msg = error.message || 'Falha ao emitir a NF-e';
-      try {
-        const ctx = (error as any).context;
-        const j = ctx && typeof ctx.json === 'function' ? await ctx.json() : null;
-        if (j?.error) msg = j.error;
-      } catch { /* ignore */ }
-      throw new Error(msg);
-    }
-    return data as { nfe: any | null };
-  };
-
-  const refetchNfe = async () => {
-    const { data } = await supabase
-      .from('nfe_entradas' as any)
-      .select('*')
-      .eq('avaliacao_id', avaliacaoId)
-      .order('created_at', { ascending: false })
-      .limit(1);
-    setNfeCompra((data as any[])?.[0] || null);
-  };
-
-  const emitirNfe = async () => {
-    setConfirmarNfeOpen(false);
-    setEmitindoNfe(true);
-    try {
-      const res = await invocarNfe('emitir');
-      setNfeCompra(res.nfe);
-      if (res.nfe?.status === 'processada') toast.success('NF-e autorizada!');
-      else toast.success('NF-e enviada para autorização.');
-    } catch (e: any) {
-      toast.error(e.message);
-      await refetchNfe();
-    } finally {
-      setEmitindoNfe(false);
-    }
-  };
-
-  const consultarNfe = async () => {
-    setEmitindoNfe(true);
-    try {
-      const res = await invocarNfe('consultar');
-      if (res.nfe) setNfeCompra(res.nfe);
-      if (res.nfe?.status === 'processada') toast.success('NF-e autorizada!');
-      else if (res.nfe?.status === 'erro') toast.error(res.nfe.erro_mensagem || 'Erro na emissão da NF-e');
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setEmitindoNfe(false);
-    }
-  };
-
-  // Polling enquanto a NF-e estiver em processamento e o dialog aberto.
-  useEffect(() => {
-    if (!open || !nfePendente) return;
-    const t = setInterval(() => { consultarNfe(); }, 6000);
-    return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, nfePendente]);
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     if (etapa === 'NF-E') return; // estado dirigido pela emissao da NF-e, nao manual
+    if (etapa === 'CONSULTA REALIZADA') return; // vem da consulta veicular, nao editavel aqui
     if (etapa === 'TRANSFERÊNCIA CONCLUÍDA' && checked) {
       // pre-selecionar destino atual (se houver) e abrir popup
       const cur = etapas.find(e => e.etapa === etapa)?.destino_transferencia;
@@ -394,7 +332,9 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
 
       // Determine status
       let newStatus = 'aprovada';
-      const anyConcluida = etapas.some(e => e.concluida) || nfeEmitida;
+      // CONSULTA REALIZADA vem preenchida automaticamente da consulta veicular;
+      // por si so (ou so com observacao) nao coloca o processo "em andamento".
+      const anyConcluida = etapas.some(e => e.etapa !== 'CONSULTA REALIZADA' && e.concluida) || nfeEmitida;
       const transferenciaConcluida = etapas.find(e => e.etapa === 'TRANSFERÊNCIA CONCLUÍDA')?.concluida;
       const processoPausado = etapas.find(e => e.etapa === 'PROCESSO PAUSADO')?.concluida;
       const docDespachante = etapas.find(e => e.etapa === 'DOCUMENTAÇÃO COM DESPACHANTE')?.concluida;
@@ -427,7 +367,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         const statusLabels: Record<string, string> = {
           em_aberto: 'Em Aberto',
           aprovada: 'Aprovada',
-          em_andamento: 'Em Andamento',
+          em_andamento: 'Pós-Compra em andamento',
           doc_despachante: 'Doc. com Despachante',
           pausado: 'Pausado',
           concluido: 'Concluído',
@@ -471,20 +411,20 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           </div>
         ) : (
           <>
-          <div className="grid w-full grid-cols-2 items-center rounded-md bg-muted p-1 text-muted-foreground mb-3">
+          <div className="w-max mx-auto flex items-center rounded-md bg-muted p-1 text-muted-foreground mb-3">
             <button
               type="button"
               onClick={() => setAba('processo')}
-              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none ${aba === 'processo' ? 'bg-background text-foreground shadow-sm' : 'hover:text-foreground'}`}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-5 py-1.5 text-sm font-medium transition-all focus-visible:outline-none ${aba === 'processo' ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:text-foreground'}`}
             >
               Processo
             </button>
             <button
               type="button"
               onClick={() => setAba('financeiro')}
-              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none ${aba === 'financeiro' ? 'bg-background text-foreground shadow-sm' : 'hover:text-foreground'}`}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-5 py-1.5 text-sm font-medium transition-all focus-visible:outline-none ${aba === 'financeiro' ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:text-foreground'}`}
             >
-              Financeiro
+              Abatimentos
             </button>
           </div>
 
@@ -502,14 +442,14 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                 <div className="flex items-center gap-3 py-3">
                   <Checkbox
                     checked={e.etapa === 'NF-E' ? nfeEmitida : e.concluida}
-                    disabled={e.etapa === 'NF-E'}
+                    disabled={e.etapa === 'NF-E' || e.etapa === 'CONSULTA REALIZADA'}
                     onCheckedChange={(checked) => toggleEtapa(e.etapa, !!checked)}
                   />
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-semibold uppercase ${(e.etapa === 'NF-E' ? nfeEmitida : e.concluida) ? 'text-foreground' : 'text-muted-foreground'}`}>
                       {e.etapa === 'NF-E' ? 'NF-e' : e.etapa}
                     </p>
-                    {e.etapa !== 'NF-E' && e.concluida && e.data_conclusao && (
+                    {e.etapa !== 'NF-E' && e.etapa !== 'CONSULTA REALIZADA' && e.concluida && e.data_conclusao && (
                       <p className="text-xs text-muted-foreground">
                         {format(new Date(e.data_conclusao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </p>
@@ -566,7 +506,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                           size="sm"
                           className="h-9 gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
                           disabled={!podeEmitirNfe || emitindoNfe}
-                          onClick={() => setConfirmarNfeOpen(true)}
+                          onClick={() => onEmitirNfe?.()}
                         >
                           {emitindoNfe ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Tentar novamente
                         </Button>
@@ -577,11 +517,18 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                           className="h-9 gap-2 text-sm"
                           disabled={!podeEmitirNfe || emitindoNfe}
                           title={podeEmitirNfe ? undefined : 'Disponível após aprovação, contrato gerado e consulta realizada'}
-                          onClick={() => setConfirmarNfeOpen(true)}
+                          onClick={() => onEmitirNfe?.()}
                         >
                           {emitindoNfe ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Emitir NF-e
                         </Button>
                       )}
+                    </div>
+                  ) : e.etapa === 'CONSULTA REALIZADA' ? (
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground pr-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      {e.data_conclusao
+                        ? format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                        : '—'}
                     </div>
                   ) : (
                   <div className="flex items-center gap-1">
@@ -759,23 +706,6 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         </DialogContent>
       </Dialog>
 
-      <Dialog open={confirmarNfeOpen} onOpenChange={setConfirmarNfeOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirmar emissão da NF-e de compra?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground py-2">
-            Será emitida uma NF-e de entrada pela loja referente à compra desta moto.
-            Após autorizada pela SEFAZ, ela não poderá ser editada nem removida por aqui.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmarNfeOpen(false)}>Cancelar</Button>
-            <Button onClick={emitirNfe} disabled={emitindoNfe} className="gap-1.5">
-              {emitindoNfe ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Emitir NF-e
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Dialog>
   );
 };

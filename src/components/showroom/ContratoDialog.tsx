@@ -191,7 +191,7 @@ const ContratoDialog: React.FC<Props> = ({
           .eq('id', atendimento.id)
           .maybeSingle(),
         supabase
-          .from('estoque')
+          .from('estoque_motos')
           .select('valor_sinal, valor_venda')
           .eq('atendimento_venda_id', atendimento.id)
           .maybeSingle(),
@@ -350,7 +350,7 @@ const ContratoDialog: React.FC<Props> = ({
     if (parsedSinal !== null) estoqueUpdate.valor_sinal = parsedSinal;
     if (parsedVenda !== null) estoqueUpdate.valor_venda = parsedVenda;
     if (Object.keys(estoqueUpdate).length > 0) {
-      await supabase.from('estoque').update(estoqueUpdate).eq('atendimento_venda_id', atendimento.id);
+      await supabase.from('estoque_motos').update(estoqueUpdate).eq('atendimento_venda_id', atendimento.id);
     }
     if (cpfCnpj && atendimento.cliente_id) {
       await supabase.from('clientes_fornecedores').update({ cpf_cnpj: cpfCnpj }).eq('id', atendimento.cliente_id);

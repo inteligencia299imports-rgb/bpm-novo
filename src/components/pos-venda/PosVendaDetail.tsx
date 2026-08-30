@@ -21,6 +21,7 @@ import ProcessoDialog from './ProcessoDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { formatPersonName } from '@/lib/utils';
+import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
 
 interface Props {
   item: any;
@@ -146,10 +147,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       const vendedorPromise = item.vendedor_id
         ? (supabase as any).from('user_roles').select('nome').eq('user_id', item.vendedor_id).single()
         : Promise.resolve({ data: null as any });
-      const [estoqueResult, rolesResult, vendedorResult] = await Promise.all([
-        estoqueIds.length > 0 ? supabase.from('estoque').select('*, avaliacoes(id, crlv_url)').in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
+      const [estoqueResult, rolesResult, vendedorResult, lojaMap] = await Promise.all([
+        estoqueIds.length > 0 ? supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
         avaliadorIds.length > 0 ? (supabase as any).from('user_roles').select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
         vendedorPromise,
+        fetchLojaMap(),
       ]);
 
       if (vendedorResult.data?.nome) setVendedorNome(vendedorResult.data.nome);
@@ -157,9 +159,10 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       // Process estoque
       const estoqueMap: Record<string, any> = {};
       const crlvMap: Record<string, string | null> = {};
-      (estoqueResult.data || []).forEach((est: any) => {
+      (estoqueResult.data || []).forEach((raw: any) => {
+        const est = mapEstoqueMoto(raw, lojaMap);
         estoqueMap[est.id] = est;
-        if (est.avaliacoes?.id) crlvMap[est.avaliacoes.id] = est.avaliacoes.crlv_url || null;
+        if (raw.avaliacao?.id) crlvMap[raw.avaliacao.id] = raw.avaliacao.crlv_url || null;
       });
       setEstoqueData(estoqueMap);
       setEstoqueCrlvUrls(crlvMap);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
+import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
 import { Input } from '@/components/ui/input';
 import { Search, X, Handshake, Filter, DollarSign } from 'lucide-react';
 import { INTERMEDIACAO_PARTE1_COLUMNS, INTERMEDIACAO_PARTE2_COLUMNS, INTERMEDIACAO_PARTE1_ETAPAS, INTERMEDIACAO_PARTE2_ETAPAS } from '@/types/crm';
@@ -60,8 +61,9 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     if (initialAtendimentoId) {
       supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
         if (data) {
-          const { data: est } = await supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id').eq('atendimento_venda_id', data.id).eq('tipo', 'consignada').maybeSingle();
-          setSelectedItem({ ...data, loja: (data as any).loja_empresas?.loja, _estoqueMoto: est });
+          const { data: estRow } = await supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).eq('atendimento_venda_id', data.id).maybeSingle();
+          const est = estRow ? mapEstoqueMoto(estRow, await fetchLojaMap()) : null;
+          setSelectedItem({ ...data, loja: (data as any).loja_empresas?.loja, _estoqueMoto: est && est.tipo === 'consignada' ? est : null });
         }
       });
       onInitialHandled?.();
@@ -72,7 +74,11 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const estRes = await fetchAllRange<any>(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, tipo, avaliacao_id, status, observacoes, loja').eq('tipo', 'consignada'));
+    const [estRes, lojaMap] = await Promise.all([
+      fetchAllRange<any>(() => supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).not('atendimento_venda_id', 'is', null)),
+      fetchLojaMap(),
+    ]);
+    estRes.data = (estRes.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)).filter((e: any) => e.tipo === 'consignada');
 
     const result = await fetchAllRange<any>(() => supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
     const atError = result.error;

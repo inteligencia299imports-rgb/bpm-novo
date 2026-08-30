@@ -20,7 +20,7 @@ export const reverterEstoqueDoAtendimento = async (atendimentoId: string) => {
     if (mi.estoque_moto_id) {
       promises.push(
         supabase
-          .from('estoque')
+          .from('estoque_motos')
           .update({
             status: 'disponivel',
             atendimento_venda_id: null,
@@ -63,7 +63,7 @@ export const marcarAtendimentoPerdido = async (params: {
     supabase.from('avaliacoes').update({ situacao: 'perdido' }).eq('atendimento_id', atendimentoId).then((r) => r),
     // Remove do estoque eventuais motos de troca que entraram por este atendimento.
     ...(avaliacoesData || []).map((av) =>
-      supabase.from('estoque').delete().eq('avaliacao_id', av.id).then((r) => r),
+      supabase.from('estoque_motos').delete().eq('avaliacao_id', av.id).then((r) => r),
     ),
     supabase.from('status_history').insert({
       entity_type: 'showroom',

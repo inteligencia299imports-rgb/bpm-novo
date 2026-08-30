@@ -5,6 +5,12 @@ import { montarPayloadNfeCompra, type RegraFiscal } from './payload.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
+// Contas a pagar da compra de moto seminova (chaves fixas).
+const PLANO_CONTA_ID = 'd16507df-9655-4677-8ed9-01398ce28239';
+const CENTRO_CUSTO_ID = '7fe3888a-fd17-4c31-b78b-82a0af680ff3';
+const FORMA_PAGAMENTO_ID = '63e1fff5-14d7-476c-b2da-e1ea173279a1';
+const DIAS_VENCIMENTO = 7;
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -77,6 +83,60 @@ async function registrarPosAutorizacao(
     },
     { onConflict: 'avaliacao_id,etapa' },
   );
+
+  // Compromisso financeiro (contas a pagar) da NF-e.
+  const { data: nfeRow } = await admin
+    .from('nfe_entradas')
+    .select('*')
+    .eq('avaliacao_id', avaliacaoId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (nfeRow?.id && nfeRow.empresa_id) {
+    const { data: jaComp } = await admin
+      .from('compromissos')
+      .select('id')
+      .eq('nfe_entrada_id', nfeRow.id)
+      .limit(1);
+
+    if (!jaComp || jaComp.length === 0) {
+      const venc = new Date(nfeRow.data_emissao || dataEmissao || Date.now());
+      venc.setDate(venc.getDate() + DIAS_VENCIMENTO);
+
+      const { data: comp, error: compErr } = await admin
+        .from('compromissos')
+        .insert({
+          empresa_id: nfeRow.empresa_id,
+          fornecedor_id: nfeRow.fornecedor_id,
+          natureza: 'despesa',
+          despesa_fixa: false,
+          plano_conta_id: PLANO_CONTA_ID,
+          centro_custo_id: CENTRO_CUSTO_ID,
+          observacoes: nfeRow.observacoes || null,
+          status_compromisso: 'em_aberto',
+          nfe_entrada_id: nfeRow.id,
+          numero_documento: nfeRow.numero ? `NF-${nfeRow.numero}` : null,
+          created_by: callerId,
+        })
+        .select('id')
+        .maybeSingle();
+
+      if (compErr) {
+        console.error('erro ao criar compromisso', compErr);
+      } else if (comp?.id) {
+        await admin.from('compromissos_parcelas').insert({
+          compromisso_id: comp.id,
+          numero_parcela: 1,
+          valor: Number(nfeRow.valor_total ?? 0),
+          data_vencimento: venc.toISOString().slice(0, 10),
+          tipo: 'unico',
+          forma_pagamento_id: FORMA_PAGAMENTO_ID,
+          status_pagamento: 'em_aberto',
+        });
+      }
+    }
+  }
 }
 
 Deno.serve(async (req) => {
@@ -170,7 +230,7 @@ Deno.serve(async (req) => {
 
   const { data: empresa } = await admin
     .from('empresas')
-    .select('id, cnpj, regime_tributario')
+    .select('id, cnpj, regime_tributario, uf')
     .eq('id', empresaId)
     .maybeSingle();
 
@@ -294,21 +354,65 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Valor de fechamento da compra não informado.' }, 409);
   }
 
-  // Natureza + regras fiscais
+  // Natureza + regras fiscais (tudo vem da tabela; nao ha default no codigo)
   const { data: natureza } = await admin
     .from('naturezas_operacao')
-    .select('id, descricao, naturezas_operacao_regras(imposto, cfop, situacao_tributaria, aliquota)')
+    .select(
+      'id, descricao, serie, tipo, indicador_presenca, consumidor_final, operacao_devolucao, ' +
+        'informacoes_complementares, informacoes_adicionais_fisco, ' +
+        'naturezas_operacao_regras(imposto, cfop, situacao_tributaria, aliquota, reducao_base_calculo, ' +
+        'aliquota_fcp, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem)',
+    )
     .eq('empresa_id', empresaId)
     .eq('descricao', 'Compra de moto seminova')
     .maybeSingle();
   if (!natureza) return jsonResponse({ error: 'Natureza de operação "Compra de moto seminova" não configurada.' }, 409);
 
-  const regras = (natureza.naturezas_operacao_regras || []) as Array<RegraFiscal & { imposto: string }>;
-  const regraDe = (imp: string): RegraFiscal | null => regras.find((r) => r.imposto === imp) ?? null;
+  const regras = (natureza.naturezas_operacao_regras || []) as Array<
+    RegraFiscal & { destino_ufs: string[] | null; ordem: number | null }
+  >;
+  const ufDestino = (end.uf ?? '').trim().toUpperCase();
+  // Escolhe a regra do imposto: prioridade p/ a que lista a UF de destino;
+  // senao a "curinga" (destino_ufs vazio); senao a de menor ordem.
+  const regraDe = (imp: string): RegraFiscal | null => {
+    const doImposto = regras
+      .filter((r) => r.imposto === imp)
+      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    if (doImposto.length === 0) return null;
+    return (
+      doImposto.find((r) => (r.destino_ufs ?? []).map((u) => u.toUpperCase()).includes(ufDestino)) ??
+      doImposto.find((r) => !(r.destino_ufs ?? []).length) ??
+      doImposto[0]
+    );
+  };
+
+  const regraIcms = regraDe('icms');
+  const regraPis = regraDe('pis');
+  const regraCofins = regraDe('cofins');
+  const regraIpi = regraDe('ipi');
+  const faltando: string[] = [];
+  if (!regraIcms?.cfop || !regraIcms?.situacao_tributaria) faltando.push('ICMS (CFOP/CST)');
+  if (!regraPis?.situacao_tributaria) faltando.push('PIS');
+  if (!regraCofins?.situacao_tributaria) faltando.push('COFINS');
+  if (faltando.length) {
+    return jsonResponse(
+      { error: `Regras fiscais da natureza "Compra de moto seminova" incompletas: ${faltando.join(', ')}.` },
+      409,
+    );
+  }
 
   const payload = montarPayloadNfeCompra({
-    naturezaDescricao: natureza.descricao,
-    empresa: { cnpj: empresa.cnpj, regime_tributario: empresa.regime_tributario },
+    natureza: {
+      descricao: natureza.descricao,
+      serie: natureza.serie ?? null,
+      tipo: natureza.tipo,
+      indicador_presenca: natureza.indicador_presenca ?? null,
+      consumidor_final: !!natureza.consumidor_final,
+      operacao_devolucao: !!natureza.operacao_devolucao,
+      informacoes_complementares: natureza.informacoes_complementares ?? null,
+      informacoes_adicionais_fisco: natureza.informacoes_adicionais_fisco ?? null,
+    },
+    empresa: { cnpj: empresa.cnpj, regime_tributario: empresa.regime_tributario, uf: empresa.uf },
     fornecedor: {
       nome: fornecedor.nome_razao_social,
       cpf_cnpj: fornecedor.cpf_cnpj,
@@ -334,12 +438,17 @@ Deno.serve(async (req) => {
       renavam: av.renavam,
     },
     valor,
-    regraIcms: regraDe('icms'),
-    regraPis: regraDe('pis'),
-    regraCofins: regraDe('cofins'),
+    regraIcms: regraIcms!,
+    regraPis: regraPis!,
+    regraCofins: regraCofins!,
+    regraIpi: regraIpi,
+    observacoes: typeof body.observacoes === 'string' ? body.observacoes : null,
   });
 
   const dataEmissao = new Date().toISOString();
+  const observacoesNf = typeof body.observacoes === 'string' && body.observacoes.trim()
+    ? body.observacoes.trim().toUpperCase()
+    : null;
   const r = await emitirNfe(base, token, ref, payload);
   const fStatus = r.body.status as string | undefined;
   const aceito = r.httpStatus === 200 || r.httpStatus === 201 || r.httpStatus === 202;
@@ -355,6 +464,7 @@ Deno.serve(async (req) => {
       ref_externa: ref,
       valor_total: valor,
       departamento: 'motos',
+      observacoes: observacoesNf,
       status: 'erro',
       focus_status: fStatus ?? `http_${r.httpStatus}`,
       erro_mensagem: errMsg,
@@ -376,6 +486,7 @@ Deno.serve(async (req) => {
     ref_externa: ref,
     valor_total: valor,
     departamento: 'motos',
+    observacoes: observacoesNf,
     data_emissao: dataEmissao,
     data_entrada: dataEmissao,
     focus_status: fStatus ?? 'processando_autorizacao',

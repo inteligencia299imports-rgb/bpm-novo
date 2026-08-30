@@ -60,24 +60,32 @@ const MotoCompraSection: React.FC<Props> = ({
       setLoadingEstoque(true);
 
       try {
-        const { data: estoqueDisponivel } = await supabase
-          .from('estoque')
-          .select('id, modelo, cor, placa, marca')
-          .eq('status', 'disponivel')
-          .order('marca')
-          .order('modelo');
+        const flatten = (r: any) => ({
+          id: r.id,
+          marca: r.avaliacao?.marca ?? null,
+          modelo: r.avaliacao?.modelo ?? null,
+          cor: r.avaliacao?.cor ?? null,
+          placa: r.avaliacao?.placa ?? null,
+        });
+        const estSelect = 'id, avaliacao:avaliacao_id(marca, modelo, cor, placa)';
 
-        let options = estoqueDisponivel || [];
+        const { data: estoqueDisponivel } = await supabase
+          .from('estoque_motos')
+          .select(estSelect)
+          .eq('status', 'disponivel');
+
+        let options = (estoqueDisponivel || []).map(flatten);
+        options.sort((a, b) => `${a.marca} ${a.modelo}`.localeCompare(`${b.marca} ${b.modelo}`));
 
         if (estoqueMotoId) {
           const { data: estoqueSelecionado } = await supabase
-            .from('estoque')
-            .select('id, modelo, cor, placa, marca')
+            .from('estoque_motos')
+            .select(estSelect)
             .eq('id', estoqueMotoId)
             .maybeSingle();
 
-          if (estoqueSelecionado && !options.some((item) => item.id === estoqueSelecionado.id)) {
-            options = [estoqueSelecionado, ...options];
+          if (estoqueSelecionado && !options.some((item) => item.id === (estoqueSelecionado as any).id)) {
+            options = [flatten(estoqueSelecionado), ...options];
           }
         }
 

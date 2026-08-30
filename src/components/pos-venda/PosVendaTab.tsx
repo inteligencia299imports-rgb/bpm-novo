@@ -10,6 +10,7 @@ import PosVendaDetail from './PosVendaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { fetchAllRange } from '@/lib/fetchAllRange';
+import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
 import CidadeFilter, { matchesCidade, getSiglaFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import FiltersPanel from '@/components/shared/FiltersPanel';
 
@@ -32,8 +33,9 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
       supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
         if (data) {
           // Fetch estoque moto info
-          const { data: est } = await supabase.from('estoque').select('marca, modelo, placa').eq('atendimento_venda_id', data.id).eq('tipo', 'propria').maybeSingle();
-          setSelectedItem({ ...data, loja: (data as any).loja_empresas?.loja, _estoqueMoto: est });
+          const { data: estRow } = await supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).eq('atendimento_venda_id', data.id).maybeSingle();
+          const est = estRow ? mapEstoqueMoto(estRow, await fetchLojaMap()) : null;
+          setSelectedItem({ ...data, loja: (data as any).loja_empresas?.loja, _estoqueMoto: est && est.tipo === 'propria' ? est : null });
         }
       });
       onInitialHandled?.();
@@ -45,7 +47,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
     const statuses = POS_VENDA_COLUMNS.map(c => c.value);
-    const estRes = await fetchAllRange(() => supabase.from('estoque').select('atendimento_venda_id, marca, modelo, placa, status, observacoes, tipo, loja'));
+    const [estResRaw, lojaMap] = await Promise.all([
+      fetchAllRange<any>(() => supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).not('atendimento_venda_id', 'is', null)),
+      fetchLojaMap(),
+    ]);
+    const estRes = { data: (estResRaw.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)), error: estResRaw.error };
 
     let atData: any[];
     let atError: any;
