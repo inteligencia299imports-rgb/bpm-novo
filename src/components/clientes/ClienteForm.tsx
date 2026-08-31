@@ -268,7 +268,6 @@ export function ClienteForm({
   const [ddiComercial, setDdiComercial] = useState("+55");
   const [cnpjConsultado, setCnpjConsultado] = useState("");
   const [cepConsultado, setCepConsultado] = useState("");
-  const [mostrarErros, setMostrarErros] = useState(false);
 
   const { data: ramos = [] } = useQuery({
     queryKey: ["ramos-atividade-ativos"],
@@ -320,6 +319,12 @@ export function ClienteForm({
       return data;
     },
   });
+
+  // CPF/CNPJ só é editável enquanto o cliente não tiver um cadastrado.
+  // Telefone e tipo de pessoa (quando já há CPF/CNPJ) são imutáveis na edição.
+  const cpfBloqueado = isEdit && !!onlyDigits((existing as any)?.cpf_cnpj ?? "");
+  // Data de nascimento segue a mesma regra do CPF/CNPJ: só editável enquanto vazia.
+  const nascimentoBloqueado = isEdit && !!String((existing as any)?.data_nascimento ?? "").trim();
 
   useEffect(() => {
     if (existing === undefined) return;
@@ -604,6 +609,14 @@ export function ClienteForm({
 
       let cfId = id;
       if (isEdit) {
+        // Telefone é imutável. CPF/CNPJ, tipo de pessoa e data de nascimento
+        // só podem mudar se o campo ainda não estava preenchido.
+        delete payload.telefone;
+        if (cpfBloqueado) {
+          delete payload.cpf_cnpj;
+          delete payload.tipo_pessoa;
+        }
+        if (nascimentoBloqueado) delete payload.data_nascimento;
         const { error } = await supabase.from("clientes_fornecedores").update(payload).eq("id", id!);
         if (error) throw error;
       } else {
@@ -659,22 +672,21 @@ export function ClienteForm({
       save.mutate();
       return;
     }
-    setMostrarErros(true);
     if (nextMissingTab) {
       setTab(nextMissingTab);
       toast.error(`Preencha os campos obrigatórios da aba "${TAB_LABEL[nextMissingTab]}"`);
     }
   };
 
-  // Classe de erro para campo obrigatório vazio/ inválido (após tentar avançar)
+  // Vermelho é reservado para valor DIGITADO inválido (CPF/CNPJ, e-mail, data,
+  // agência/conta...). Campo obrigatório apenas vazio NÃO fica vermelho — a
+  // obrigatoriedade é sinalizada só pelo "*" ao lado do rótulo.
   const ERR_CLS = "border-destructive ring-1 ring-destructive bg-destructive/5 focus-visible:ring-destructive";
-  const errCls = (invalido: boolean) => (mostrarErros && invalido ? ERR_CLS : "");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const errCls = (_invalido: boolean) => "";
 
   const TabTrigger = ({ value, children }: { value: TabKey; children: ReactNode }) => (
-    <TabsTrigger value={value} className={mostrarErros && tabMissing(value) ? "text-destructive data-[state=active]:text-destructive" : ""}>
-      {children}
-      {mostrarErros && tabMissing(value) && <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-destructive" />}
-    </TabsTrigger>
+    <TabsTrigger value={value}>{children}</TabsTrigger>
   );
 
   const formBody = (
@@ -699,6 +711,7 @@ export function ClienteForm({
                 onValueChange={(v) => v && set("tipo_pessoa")(v)}
                 variant="outline"
                 className="w-max"
+                disabled={cpfBloqueado}
               >
                 <ToggleGroupItem value="fisica" className="min-w-[5.5rem]">Física</ToggleGroupItem>
                 <ToggleGroupItem value="juridica" className="min-w-[5.5rem]">Jurídica</ToggleGroupItem>
@@ -710,6 +723,7 @@ export function ClienteForm({
                 <div className="relative flex-1">
                   <Input
                     inputMode="numeric"
+                    disabled={cpfBloqueado}
                     value={form.cpf_cnpj}
                     onChange={(e) => set("cpf_cnpj")(maskCpfCnpj(onlyDigits(e.target.value).slice(0, pessoaFisica ? 11 : 14)))}
                     onBlur={() => {
@@ -720,14 +734,14 @@ export function ClienteForm({
                       }
                     }}
                     placeholder={form.tipo_pessoa === "fisica" ? "000.000.000-00" : "00.000.000/0000-00"}
-                    aria-invalid={isDuplicate || (cpfCompleto && !cpfCnpjValido) || (mostrarErros && !s(form.cpf_cnpj))}
-                    className={(isDuplicate || (cpfCompleto && !cpfCnpjValido) || (mostrarErros && !s(form.cpf_cnpj))) ? `${ERR_CLS} pr-9` : ""}
+                    aria-invalid={isDuplicate || (cpfCompleto && !cpfCnpjValido)}
+                    className={(isDuplicate || (cpfCompleto && !cpfCnpjValido)) ? `${ERR_CLS} pr-9` : ""}
                   />
                   {cpfCompleto && !cpfCnpjValido && (
                     <AlertCircle className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />
                   )}
                 </div>
-                {form.tipo_pessoa === "juridica" && onlyDigits(form.cpf_cnpj).length === 14 && onlyDigits(form.cpf_cnpj) !== cnpjConsultado && (
+                {!cpfBloqueado && form.tipo_pessoa === "juridica" && onlyDigits(form.cpf_cnpj).length === 14 && onlyDigits(form.cpf_cnpj) !== cnpjConsultado && (
                   <Button
                     type="button"
                     variant="outline"
@@ -795,12 +809,11 @@ export function ClienteForm({
                     value={form.sexo || ""}
                     onValueChange={(v) => v && set("sexo")(v)}
                     variant="outline"
-                    className={`w-max ${mostrarErros && !s(form.sexo) ? "rounded-md ring-1 ring-destructive bg-destructive/5 p-0.5" : ""}`}
+                    className="w-max"
                   >
                     <ToggleGroupItem value="masculino">Masculino</ToggleGroupItem>
                     <ToggleGroupItem value="feminino">Feminino</ToggleGroupItem>
                   </ToggleGroup>
-                  {mostrarErros && !s(form.sexo) && <p className="text-xs text-destructive">Selecione o sexo</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label className="block">Data de Nascimento <span className="text-red-500">*</span></Label>
@@ -808,20 +821,20 @@ export function ClienteForm({
                     inputMode="numeric"
                     maxLength={10}
                     placeholder="dd/mm/aaaa"
+                    disabled={nascimentoBloqueado}
+                    title={nascimentoBloqueado ? "Data de nascimento já cadastrada não pode ser alterada" : undefined}
                     value={form.data_nascimento || ""}
                     onChange={(e) => set("data_nascimento")(maskDataBr(e.target.value))}
-                    aria-invalid={dataNascErro || (mostrarErros && !s(form.data_nascimento))}
-                    className={(dataNascErro || (mostrarErros && !s(form.data_nascimento))) ? ERR_CLS : ""}
+                    aria-invalid={dataNascErro}
+                    className={dataNascErro ? ERR_CLS : ""}
                   />
-                  {dataNascErro ? (
+                  {dataNascErro && (
                     <p className="text-xs text-destructive">
                       {parseDataBr(form.data_nascimento)
                         ? `Idade deve estar entre ${IDADE_MIN} e ${IDADE_MAX} anos`
                         : "Data inválida"}
                     </p>
-                  ) : mostrarErros && !s(form.data_nascimento) ? (
-                    <p className="text-xs text-destructive">Informe a data de nascimento</p>
-                  ) : null}
+                  )}
                 </div>
               </>
             )}
@@ -892,13 +905,11 @@ export function ClienteForm({
                 type="email"
                 value={form.email}
                 onChange={(e) => set("email")(e.target.value.toLowerCase())}
-                className={(form.email.trim() ? !isValidEmail(form.email) : mostrarErros) ? ERR_CLS : ""}
+                className={form.email.trim() && !isValidEmail(form.email) ? ERR_CLS : ""}
               />
-              {form.email.trim() && !isValidEmail(form.email) ? (
+              {form.email.trim() && !isValidEmail(form.email) && (
                 <p className="text-xs text-destructive mt-1">Informe um e-mail válido (ex: email@email.com.br)</p>
-              ) : mostrarErros && !form.email.trim() ? (
-                <p className="text-xs text-destructive mt-1">E-mail obrigatório</p>
-              ) : null}
+              )}
             </div>
             <Button
               type="button"
@@ -917,13 +928,11 @@ export function ClienteForm({
                 type="email"
                 value={form.email_nf}
                 onChange={(e) => set("email_nf")(e.target.value.toLowerCase())}
-                className={(form.email_nf.trim() ? !isValidEmail(form.email_nf) : mostrarErros) ? ERR_CLS : ""}
+                className={form.email_nf.trim() && !isValidEmail(form.email_nf) ? ERR_CLS : ""}
               />
-              {form.email_nf.trim() && !isValidEmail(form.email_nf) ? (
+              {form.email_nf.trim() && !isValidEmail(form.email_nf) && (
                 <p className="text-xs text-destructive mt-1">Informe um e-mail válido (ex: email@email.com.br)</p>
-              ) : mostrarErros && !form.email_nf.trim() ? (
-                <p className="text-xs text-destructive mt-1">E-mail obrigatório</p>
-              ) : null}
+              )}
             </div>
           </div>
 
@@ -931,7 +940,7 @@ export function ClienteForm({
             <div>
               <Label>Telefone para contato <span className="text-red-500">*</span></Label>
               <div className="flex gap-2">
-                <Select value={ddi} onValueChange={setDdi}>
+                <Select value={ddi} onValueChange={setDdi} disabled={isEdit}>
                   <SelectTrigger className="w-[150px]">{ddiShortLabel(ddi)}</SelectTrigger>
                   <SelectContent>
                     {DDI_OPTIONS.map((o) => (
@@ -941,6 +950,7 @@ export function ClienteForm({
                 </Select>
                 <Input
                   value={form.telefone}
+                  disabled={isEdit}
                   className={errCls(!s(form.telefone))}
                   onChange={(e) =>
                     set("telefone")(ddi === "+55" ? maskPhoneBR(e.target.value) : maskPhoneIntl(e.target.value))
@@ -994,14 +1004,12 @@ export function ClienteForm({
                 <Switch checked={form.autoriza_contato} onCheckedChange={set("autoriza_contato")} />
                 <Label>Autoriza contato <span className="text-red-500">*</span></Label>
               </div>
-              {mostrarErros && !form.autoriza_contato && <p className="text-xs text-destructive mt-1">Obrigatório</p>}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <Switch checked={form.aceite_politica_privacidade} onCheckedChange={set("aceite_politica_privacidade")} />
                 <Label>Aceite da política de privacidade <span className="text-red-500">*</span></Label>
               </div>
-              {mostrarErros && !form.aceite_politica_privacidade && <p className="text-xs text-destructive mt-1">Obrigatório</p>}
             </div>
           </div>
         </TabsContent>
@@ -1096,7 +1104,7 @@ export function ClienteForm({
                 inputMode="numeric"
                 maxLength={6}
                 value={form.agencia}
-                className={(s(form.agencia) ? !agenciaValida : mostrarErros) ? ERR_CLS : ""}
+                className={s(form.agencia) && !agenciaValida ? ERR_CLS : ""}
                 onChange={(e) => set("agencia")(onlyDigits(e.target.value).slice(0, 6))}
               />
               {s(form.agencia) && !agenciaValida && <p className="text-xs text-destructive mt-1">Agência inválida (3 a 6 dígitos)</p>}
@@ -1108,7 +1116,7 @@ export function ClienteForm({
                   inputMode="numeric"
                   maxLength={12}
                   value={form.conta}
-                  className={(s(form.conta) ? !contaValida : mostrarErros) ? ERR_CLS : ""}
+                  className={s(form.conta) && !contaValida ? ERR_CLS : ""}
                   onChange={(e) => set("conta")(onlyDigits(e.target.value).slice(0, 12))}
                 />
                 {s(form.conta) && !contaValida && <p className="text-xs text-destructive mt-1">Conta inválida (4 a 12 dígitos)</p>}
@@ -1119,7 +1127,7 @@ export function ClienteForm({
                   maxLength={1}
                   value={form.digito_conta}
                   onChange={(e) => set("digito_conta")(e.target.value.replace(/[^0-9xX]/g, "").slice(0, 1).toUpperCase())}
-                  className={`w-16 ${(s(form.digito_conta) ? !digitoValido : mostrarErros) ? ERR_CLS : ""}`}
+                  className={`w-16 ${s(form.digito_conta) && !digitoValido ? ERR_CLS : ""}`}
                 />
               </div>
             </div>

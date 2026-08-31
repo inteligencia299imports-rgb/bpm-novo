@@ -1,7 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
+// Extração de documento (OCR + leitura de campos) exige um modelo de visão forte;
+// o Haiku erra chassi/renavam/placa em fotos de CRLV. Sobrescrevível por env.
+const ANTHROPIC_MODEL = Deno.env.get('ANTHROPIC_MODEL_EXTRACAO') || 'claude-sonnet-5';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -35,6 +37,8 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 interface ExtracaoResultado {
+  eh_crlv: boolean;
+  tipo_documento: string | null;
   chassi: string | null;
   renavam: string | null;
   placa: string | null;
@@ -102,7 +106,7 @@ async function extrairViaClaude(
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: 400,
+      max_tokens: 1200,
       tools: [
         {
           name: 'registrar_dados_crlv',
@@ -110,6 +114,18 @@ async function extrairViaClaude(
           input_schema: {
             type: 'object',
             properties: {
+              leitura: {
+                type: 'string',
+                description: 'ANTES de preencher os demais campos, transcreva aqui literalmente o que você lê, rótulo por rótulo: "PLACA: ...", "CHASSI: ...", "RENAVAM: ...", "ANO FAB/ANO MOD: ...", "MARCA/MODELO/VERSÃO: ...", "Nº CRV/CÓDIGO CLA: ...". Escreva "ilegível" no que não der para ler. Isso serve para você não trocar os campos.',
+              },
+              eh_crlv: {
+                type: 'boolean',
+                description: 'true se a imagem é realmente um CRLV/CRLV-e (Certificado de Registro e Licenciamento de Veículo) brasileiro. false se é outro documento (CNH, RG, comprovante, contrato, nota fiscal, ATPV/DUT, etc.).',
+              },
+              tipo_documento: {
+                type: 'string',
+                description: 'Quando eh_crlv=false, diga em uma ou duas palavras que documento é (ex.: "CNH", "RG", "ATPV-e", "comprovante de residência"). String vazia "" quando eh_crlv=true.',
+              },
               marca_documento: { type: 'string', description: 'Marca do veículo exatamente como escrita no CRLV. String vazia "" se não estiver legível.' },
               modelo_documento: { type: 'string', description: 'Modelo/espécie do veículo exatamente como escrito no CRLV. String vazia "" se não estiver legível.' },
               confere_com_moto: {
@@ -123,7 +139,7 @@ async function extrairViaClaude(
               renavam: { type: 'string', description: 'Número do RENAVAM. String vazia "" se não estiver legível/presente — nunca invente.' },
               numero_crv: { type: 'string', description: 'Número do CRV (12 dígitos), no CRLV aparece como "Nº DO CRV" ou "NÚMERO DO CRV". String vazia "" se não estiver legível/presente — nunca invente.' },
             },
-            required: ['marca_documento', 'modelo_documento', 'confere_com_moto', 'ano_fabricacao', 'ano_modelo', 'placa', 'chassi', 'renavam', 'numero_crv'],
+            required: ['leitura', 'eh_crlv', 'tipo_documento', 'marca_documento', 'modelo_documento', 'confere_com_moto', 'ano_fabricacao', 'ano_modelo', 'placa', 'chassi', 'renavam', 'numero_crv'],
           },
         },
       ],
@@ -135,9 +151,17 @@ async function extrairViaClaude(
             contentBlock,
             {
               type: 'text',
-              text: `Este é um documento CRLV (Certificado de Registro e Licenciamento de Veículo) brasileiro de uma motocicleta. `
-                + `Extraia: marca e modelo (como escritos no documento), ano de fabricação, ano do modelo, placa, chassi, RENAVAM e número do CRV. `
-                + `Se algum campo não estiver legível ou não estiver presente, retorne string vazia "" — nunca invente um valor. `
+              text: `Você vai receber a imagem de um documento que DEVERIA ser um CRLV / CRLV-e (Certificado de Registro e Licenciamento de Veículo) brasileiro de uma motocicleta. A foto pode estar girada, com brilho ou reflexo; leia com muita atenção, ampliando mentalmente as regiões de texto pequeno.\n\n`
+                + `Primeiro decida: eh_crlv=true somente se for mesmo um CRLV. Se for outro documento (CNH, RG, ATPV-e/recibo de compra e venda, comprovante, etc.), eh_crlv=false, preencha tipo_documento e deixe os demais campos vazios.\n\n`
+                + `Extraia (quando eh_crlv=true), sempre pelos rótulos do documento:\n`
+                + `• placa — campo "PLACA" (7 caracteres).\n`
+                + `• chassi — campo "CHASSI" (17 caracteres alfanuméricos; não contém as letras I, O, Q).\n`
+                + `• renavam — campo "CÓDIGO RENAVAM" (11 dígitos).\n`
+                + `• ano_fabricacao / ano_modelo — campo "ANO FABRICAÇÃO / ANO MODELO" (dois anos de 4 dígitos, ex.: "2019/2020").\n`
+                + `• marca/modelo — campo "MARCA / MODELO / VERSÃO".\n`
+                + `• numero_crv — campo "Nº DO CRV" / "CÓDIGO DE SEGURANÇA DO CRV" (12 dígitos).\n\n`
+                + `Regra de ouro: se qualquer valor não estiver claramente legível, retorne string vazia "" — nunca chute caracteres.\n`
+                + `Preencha primeiro o campo "leitura" (transcrição rótulo a rótulo) e só depois os demais.\n\n`
                 + instrucaoConferencia,
             },
           ],
@@ -156,8 +180,11 @@ async function extrairViaClaude(
     throw new Error('Resposta da IA não retornou os dados esperados');
   }
   const input = toolUse.input as Record<string, unknown>;
+  console.log('extrair-dados-crlv leitura da IA:', input.leitura, '=> eh_crlv:', input.eh_crlv, 'tipo:', input.tipo_documento, 'placa:', input.placa, 'chassi:', input.chassi, 'renavam:', input.renavam);
 
   return {
+    eh_crlv: input.eh_crlv !== false,
+    tipo_documento: (((input.tipo_documento as string) ?? '').trim()) || null,
     chassi: soAlfaNum((input.chassi as string) ?? null),
     renavam: soDigitos((input.renavam as string) ?? null),
     placa: soAlfaNum((input.placa as string) ?? null),
@@ -230,7 +257,7 @@ Deno.serve(async (req) => {
     // resto do sistema) e ja traz marca/modelo para a conferencia do CRLV.
     supabaseAdmin
       .from('avaliacoes')
-      .select('id, marca, modelo, atendimentos_motos!inner(vendedor_id, loja_id)')
+      .select('id, marca, modelo, placa, chassi, renavam, numero_crv, ano_fabricacao, ano_modelo, atendimentos_motos!inner(vendedor_id, loja_id)')
       .eq('id', avaliacao_id)
       .maybeSingle(),
   ]);
@@ -284,6 +311,17 @@ Deno.serve(async (req) => {
     const moto: MotoEsperada = { marca: (acesso.marca || '').trim(), modelo: (acesso.modelo || '').trim() };
     const extraido = await extrairViaClaude(base64, mediaType, apiKey, moto);
 
+    // O arquivo anexado não é um CRLV (CNH, RG, ATPV-e, comprovante...) -> rejeita e faz rollback.
+    if (!extraido.eh_crlv) {
+      const tipo = extraido.tipo_documento ? ` (parece ser: ${extraido.tipo_documento})` : '';
+      return jsonResponse({
+        ...vazio,
+        extraido: false,
+        match: false,
+        motivo: `O arquivo anexado não é um CRLV${tipo}. Anexe o CRLV da moto (o documento do veículo, com placa, chassi e RENAVAM).`,
+      }, 200);
+    }
+
     // Só grava se o CRLV for (por similaridade) da mesma moto cadastrada.
     if (extraido.confere_com_moto === false) {
       return jsonResponse({
@@ -295,19 +333,64 @@ Deno.serve(async (req) => {
       }, 200);
     }
 
+    // "Match forte" = a IA confirmou o CRLV contra uma moto de referência real
+    // (marca/modelo cadastrados). É o que autoriza SOBRESCREVER um campo já
+    // preenchido. Sem referência (confere_com_moto === null) só preenche vazios.
+    const matchForte = extraido.confere_com_moto === true;
+
     const updatePayload: Record<string, string> = {};
-    if (extraido.ano_fabricacao) updatePayload.ano_fabricacao = extraido.ano_fabricacao;
-    if (extraido.ano_modelo) updatePayload.ano_modelo = extraido.ano_modelo;
-    if (extraido.placa) updatePayload.placa = extraido.placa;
-    if (extraido.chassi) updatePayload.chassi = extraido.chassi;
-    if (extraido.renavam) updatePayload.renavam = extraido.renavam;
-    if (extraido.numero_crv) updatePayload.numero_crv = extraido.numero_crv;
+    const divergencias: string[] = [];
+    // norm: função para comparar valor do documento com o já cadastrado.
+    const aplica = (
+      campo: string,
+      valorDoc: string | null,
+      valorCadRaw: unknown,
+      norm: (v: string | null) => string | null,
+      rotulo: string,
+    ) => {
+      if (!valorDoc) return;
+      const valorCad = valorCadRaw == null ? null : String(valorCadRaw);
+      if (norm(valorDoc) === norm(valorCad)) return; // igual -> nada a fazer
+      if (!norm(valorCad) || matchForte) {
+        updatePayload[campo] = valorDoc;
+      } else {
+        divergencias.push(`${rotulo} do documento (${valorDoc}) difere do cadastro`);
+      }
+    };
+    aplica('ano_fabricacao', extraido.ano_fabricacao, acesso.ano_fabricacao, soDigitos, 'ano de fabricação');
+    aplica('ano_modelo', extraido.ano_modelo, acesso.ano_modelo, soDigitos, 'ano do modelo');
+    aplica('placa', extraido.placa, acesso.placa, soAlfaNum, 'placa');
+    aplica('chassi', extraido.chassi, acesso.chassi, soAlfaNum, 'chassi');
+    aplica('renavam', extraido.renavam, acesso.renavam, soDigitos, 'RENAVAM');
+    aplica('numero_crv', extraido.numero_crv, acesso.numero_crv, soDigitos, 'nº do CRV');
+
+    console.log('extrair-dados-crlv update:', JSON.stringify(updatePayload), 'matchForte:', matchForte, 'divergencias:', divergencias);
 
     if (Object.keys(updatePayload).length > 0) {
       await supabaseAdmin.from('avaliacoes').update(updatePayload).eq('id', avaliacao_id);
     }
 
-    return jsonResponse({ ...extraido, extraido: true, match: extraido.confere_com_moto === null ? null : true }, 200);
+    return jsonResponse({
+      ...extraido,
+      extraido: true,
+      match: extraido.confere_com_moto === null ? null : true,
+      divergencias: divergencias.length ? divergencias : undefined,
+      // Campos abaixo refletem o que foi de fato gravado (não o que foi só lido),
+      // para o front aplicar apenas as mudanças efetivas.
+      ano_fabricacao: updatePayload.ano_fabricacao ?? null,
+      ano_modelo: updatePayload.ano_modelo ?? null,
+      placa: updatePayload.placa ?? null,
+      chassi: updatePayload.chassi ?? null,
+      renavam: updatePayload.renavam ?? null,
+      numero_crv: updatePayload.numero_crv ?? null,
+      // Valores lidos do documento (para telas que queiram exibir/depurar).
+      lido: {
+        marca: extraido.marca_documento, modelo: extraido.modelo_documento,
+        ano_fabricacao: extraido.ano_fabricacao, ano_modelo: extraido.ano_modelo,
+        placa: extraido.placa, chassi: extraido.chassi,
+        renavam: extraido.renavam, numero_crv: extraido.numero_crv,
+      },
+    }, 200);
   } catch (err) {
     console.error('extrair-dados-crlv error', err);
     return jsonResponse({

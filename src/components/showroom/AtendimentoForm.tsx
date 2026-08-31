@@ -13,6 +13,7 @@ import MotoVendaSection from './MotoVendaSection';
 import MotoCompraSection from './MotoCompraSection';
 import { toast } from 'sonner';
 import { cn, formatPersonName, firstLastName } from '@/lib/utils';
+import { empresaCompraDireta } from '@/lib/tipoAquisicao';
 
 // Phone mask utility
 const formatPhone = (value: string): string => {
@@ -120,6 +121,13 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     if (emp && emp !== empresaId) setEmpresaId(emp);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loja, lojaEmpresaMap]);
+
+  // Empresa não faz compra direta -> sem "vender" no interesse.
+  const permiteVender = empresaCompraDireta(empresaId);
+  useEffect(() => {
+    if (!permiteVender && interesse === 'vender') setInteresse('comprar');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permiteVender, interesse]);
 
   // Grupos (299 / Ducati) que têm ao menos uma loja da empresa selecionada.
   const gruposDisponiveis = (['299', 'Ducati'] as const).filter(g => {
@@ -237,6 +245,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [temChaveReserva, setTemChaveReserva] = useState('');
   const [manutencaoEmDia, setManutencaoEmDia] = useState('');
   const [motoAvaliacaoId, setMotoAvaliacaoId] = useState<string | null>(null);
+  const [vendaCrlvUrl, setVendaCrlvUrl] = useState<string | null>(null);
   const [enviadaAvaliacao, setEnviadaAvaliacao] = useState(false);
   const [vendedorId, setVendedorId] = useState<string>('');
   const [vendedores, setVendedores] = useState<{ id: string; nome: string }[]>([]);
@@ -319,6 +328,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             setTemChaveReserva((ma as any).tem_chave_reserva ? 'sim' : (ma as any).tem_chave_reserva === false ? 'nao' : '');
             setManutencaoEmDia((ma as any).manutencao_vencida ? 'sim' : (ma as any).manutencao_vencida === false ? 'nao' : '');
             setEnviadaAvaliacao(ma.enviada_avaliacao || false);
+            setVendaCrlvUrl((ma as any).crlv_url || null);
           }
         }
       } catch (err) {
@@ -396,6 +406,10 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Informe o nome completo do cliente (nome e sobrenome)');
       return;
     }
+    if (!permiteVender && interesse === 'vender') {
+      toast.error('Esta empresa não faz compra direta de moto. O interesse deve ser "comprar" ou "trocar".');
+      return;
+    }
     if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && (!compraModelo || !compraAno)) {
       toast.error('Preencha o modelo e ano da moto Ducati');
       return;
@@ -422,15 +436,18 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
     // Cria ou atualiza o cliente antes de gravar o atendimento
     let finalClienteId = clienteId;
-    const clientePayload = {
-      nome_razao_social: formatPersonName(nomeCliente),
-      telefone: unformatPhone(telefone),
-      sexo,
-    };
     if (finalClienteId) {
-      const { error: clienteError } = await supabase.from('clientes_fornecedores').update(clientePayload).eq('id', finalClienteId);
+      // Cliente existente: telefone é imutável — não vai no update.
+      const { error: clienteError } = await supabase.from('clientes_fornecedores')
+        .update({ nome_razao_social: formatPersonName(nomeCliente), sexo })
+        .eq('id', finalClienteId);
       if (clienteError) { toast.error('Erro ao salvar dados do cliente'); setSaving(false); return; }
     } else {
+      const clientePayload = {
+        nome_razao_social: formatPersonName(nomeCliente),
+        telefone: unformatPhone(telefone),
+        sexo,
+      };
       const { data: novoCliente, error: clienteError } = await supabase.from('clientes_fornecedores').insert(clientePayload).select('id').single();
       if (clienteError || !novoCliente) { toast.error('Erro ao criar cliente'); setSaving(false); return; }
       finalClienteId = novoCliente.id;
@@ -516,7 +533,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     // Save moto avaliacao
     if (interesse === 'vender' || interesse === 'trocar') {
       if (vendaMarca.trim() && vendaModelo.trim()) {
-        const maData = {
+        const maData: any = {
           atendimento_id: atId!,
           marca: vendaMarca.trim(), modelo: vendaModelo.trim(),
           ano_fabricacao: vendaAnoFab || null, ano_modelo: vendaAnoMod || null,
@@ -529,6 +546,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           manutencao_vencida: manutencaoEmDia === 'sim',
         };
         if (motoAvaliacaoId) {
+          // Com CRLV anexado, os dados extraídos do documento são imutáveis.
+          if (vendaCrlvUrl) {
+            delete maData.marca;
+            delete maData.modelo;
+            delete maData.ano_fabricacao;
+            delete maData.ano_modelo;
+            delete maData.placa;
+          }
           await supabase.from('avaliacoes').update(maData).eq('id', motoAvaliacaoId);
         } else {
           await supabase.from('avaliacoes').insert({ ...maData, enviada_avaliacao: false });
@@ -641,7 +666,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               <Input
                 value={telefone}
                 onChange={handlePhoneChange}
-                
+                disabled={isEditing}
+                title={isEditing ? 'Telefone do cliente não pode ser alterado' : undefined}
                 placeholder="(61) 90000-0000"
                 maxLength={15}
                 className="flex-1"
@@ -779,7 +805,11 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               <Label>Interesse *</Label>
               <Select value={interesse} onValueChange={v => setInteresse(v as Interesse)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{INTERESSES.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {INTERESSES.filter(i => permiteVender || i.value !== 'vender').map(i => (
+                    <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
           </div>
@@ -820,6 +850,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             atendimentoId={atendimentoId}
             interesse={interesse}
             isEditing={isEditing}
+            crlvBloqueado={!!vendaCrlvUrl}
           />
           {!isEditing && motoAvaliacaoId && !enviadaAvaliacao && (
             <div className="flex justify-end">

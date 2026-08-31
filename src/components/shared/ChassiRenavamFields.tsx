@@ -14,6 +14,7 @@ interface Props {
   onChassiChange: (v: string) => void;
   onRenavamChange: (v: string) => void;
   className?: string;
+  disabled?: boolean;
 }
 
 /**
@@ -28,6 +29,7 @@ const ChassiRenavamFields: React.FC<Props> = ({
   onChassiChange,
   onRenavamChange,
   className,
+  disabled,
 }) => {
   const chassiNorm = normalizeChassi(chassi);
   const renavamNorm = normalizeRenavam(renavam);
@@ -51,6 +53,7 @@ const ChassiRenavamFields: React.FC<Props> = ({
           placeholder="17 caracteres"
           maxLength={17}
           autoCapitalize="characters"
+          disabled={disabled}
           className={chassiErro ? 'border-destructive focus-visible:ring-destructive' : undefined}
         />
         <p className={`text-[11px] mt-1 ${chassiErro ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -65,6 +68,7 @@ const ChassiRenavamFields: React.FC<Props> = ({
           placeholder="11 dígitos"
           maxLength={11}
           inputMode="numeric"
+          disabled={disabled}
           className={renavamErro ? 'border-destructive focus-visible:ring-destructive' : undefined}
         />
         <p className={`text-[11px] mt-1 ${renavamErro ? 'text-destructive' : 'text-muted-foreground'}`}>

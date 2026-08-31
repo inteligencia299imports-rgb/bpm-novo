@@ -240,6 +240,32 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     return <DetailSkeleton onClose={onClose} />;
   }
 
+  // Contratos abrem como página (não como pop-up).
+  if (!isIntermParte1 && nfeVendaOpen) {
+    return (
+      <ContratoDialog
+        open
+        onOpenChange={setNfeVendaOpen}
+        modo="nfe"
+        atendimento={item}
+        motosInteresse={motosInteresse}
+        motosAvaliacao={motosAvaliacao}
+        estoqueData={estoqueData}
+        avaliacoes={avaliacoes}
+      />
+    );
+  }
+  if (isIntermParte1 && contratoConsignanteOpen) {
+    return (
+      <ContratoConsignanteDialog
+        open
+        onOpenChange={setContratoConsignanteOpen}
+        atendimentoId={item.id}
+        onSaved={refreshConsignada}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -744,27 +770,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         onNavigateToPosCompra={onNavigateToPosCompra}
       />
 
-      {!isIntermParte1 && (
-        <ContratoDialog
-          open={nfeVendaOpen}
-          onOpenChange={setNfeVendaOpen}
-          modo="nfe"
-          atendimento={item}
-          motosInteresse={motosInteresse}
-          motosAvaliacao={motosAvaliacao}
-          estoqueData={estoqueData}
-          avaliacoes={avaliacoes}
-        />
-      )}
-
-      {isIntermParte1 && (
-        <ContratoConsignanteDialog
-          open={contratoConsignanteOpen}
-          onOpenChange={setContratoConsignanteOpen}
-          atendimentoId={item.id}
-          onSaved={refreshConsignada}
-        />
-      )}
     </div>
   );
 };

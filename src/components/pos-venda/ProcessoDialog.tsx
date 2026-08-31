@@ -327,6 +327,22 @@ const ProcessoDialog: React.FC<Props> = ({
   const concluidas = etapas.filter(e => (isNfEtapa(e.etapa) ? nfEmitidaDe(e.etapa) : e.concluida)).length;
   const statusLabel = concluidas === etapaNames.length ? 'CONCLUÍDO' : 'EM ABERTO';
 
+  // Contrato do consignante abre ocupando a tela (não como pop-up dentro do processo).
+  if (showContratoConsignante && contratoConsignanteOpen) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+          <ContratoConsignanteDialog
+            open
+            onOpenChange={setContratoConsignanteOpen}
+            atendimentoId={atendimentoId}
+            onSaved={onContratoSaved}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
@@ -537,15 +553,6 @@ const ProcessoDialog: React.FC<Props> = ({
               </React.Fragment>
               );
             })}
-
-            {showContratoConsignante && (
-              <ContratoConsignanteDialog
-                open={contratoConsignanteOpen}
-                onOpenChange={setContratoConsignanteOpen}
-                atendimentoId={atendimentoId}
-                onSaved={onContratoSaved}
-              />
-            )}
 
             <Separator />
             <div className="flex justify-end pt-3">

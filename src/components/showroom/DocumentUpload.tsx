@@ -10,14 +10,20 @@ interface Props {
   label: string;
   currentUrl: string | null;
   bucketPath: string;
-  onUploaded: (url: string) => void;
+  onUploaded: (url: string) => void | Promise<unknown>;
   onRemoved?: () => void;
   className?: string;
   /** Somente leitura: permite apenas visualizar/baixar o arquivo (sem anexar nem remover). */
   readOnly?: boolean;
+  /**
+   * Ao anexar: não abre o preview do arquivo nem mostra "enviado com sucesso".
+   * Mantém o botão em "Lendo…" até `onUploaded` (leitura/validação do doc) terminar.
+   * O arquivo só fica disponível para abrir depois disso.
+   */
+  deferPreview?: boolean;
 }
 
-const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUploaded, onRemoved, className, readOnly }) => {
+const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUploaded, onRemoved, className, readOnly, deferPreview }) => {
   const [uploading, setUploading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -39,6 +45,19 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
 
     const { data: urlData } = supabase.storage.from('moto-fotos').getPublicUrl(path);
     const newUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+    if (deferPreview) {
+      // Enquanto o pai lê/valida o documento, mantém o botão em "Lendo…" e
+      // não abre o preview. O pai é dono das notificações (toast de leitura).
+      try {
+        await Promise.resolve(onUploaded(newUrl));
+      } catch {
+        /* erros de leitura são tratados pelo pai */
+      }
+      setUploading(false);
+      return;
+    }
+
     onUploaded(newUrl);
     toast.success(`${label} enviado(a) com sucesso`);
     setUploading(false);
@@ -91,7 +110,7 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
         ) : (
           <FileUp className="h-4 w-4" />
         )}
-        {currentUrl ? `${label} ✓` : label}
+        {uploading && deferPreview ? 'Lendo…' : currentUrl ? `${label} ✓` : label}
       </Button>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -47,6 +47,8 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
   const [telefone, setTelefone] = useState('');
   const [sexo, setSexo] = useState('');
   const [cpfCnpj, setCpfCnpj] = useState('');
+  // CPF/CNPJ só é editável enquanto o cliente não tiver um cadastrado.
+  const [cpfBloqueado, setCpfBloqueado] = useState(false);
   const [email, setEmail] = useState('');
   const [cep, setCep] = useState('');
   const [logradouro, setLogradouro] = useState('');
@@ -70,6 +72,7 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
       setTelefone(cliente?.telefone ? formatPhone(cliente.telefone.replace(/\D/g, '')) : '');
       setSexo(cliente?.sexo || '');
       setCpfCnpj(cliente?.cpf_cnpj ? formatCpfCnpj(cliente.cpf_cnpj) : '');
+      setCpfBloqueado(!!cliente?.cpf_cnpj);
       setEmail(cliente?.email || '');
       setEnderecoId(endereco?.id || null);
       setCep(endereco?.cep ? formatCep(endereco.cep) : '');
@@ -108,20 +111,22 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
 
   const handleSave = async () => {
     if (!clienteId) return;
-    const telDigits = telefone.replace(/\D/g, '');
-    if (!nome.trim() || telDigits.length !== 11) {
-      toast.error('Preencha nome e telefone corretamente');
+    if (!nome.trim()) {
+      toast.error('Preencha o nome');
       return;
     }
     setSaving(true);
 
+    // telefone é imutável; cpf/cnpj e tipo de pessoa só entram se ainda não havia CPF/CNPJ.
+    const cpfDigits = cpfCnpj.replace(/\D/g, '');
     const { error: clienteError } = await supabase.from('clientes_fornecedores').update({
       nome_razao_social: formatPersonName(nome),
-      telefone: telDigits,
       sexo: sexo || null,
-      cpf_cnpj: cpfCnpj.replace(/\D/g, '') || null,
       email: email.trim() || null,
-      tipo_pessoa: cpfCnpj.replace(/\D/g, '').length > 11 ? 'juridica' : 'fisica',
+      ...(cpfBloqueado ? {} : {
+        cpf_cnpj: cpfDigits || null,
+        tipo_pessoa: cpfDigits.length > 11 ? 'juridica' : 'fisica',
+      }),
     }).eq('id', clienteId);
 
     if (clienteError) {
@@ -212,12 +217,19 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
               <Input value={nome} onChange={e => setNome(formatPersonNameInput(e.target.value))} />
             </div>
             <div>
-              <Label>Telefone <span className="text-destructive">*</span></Label>
-              <Input value={telefone} onChange={e => { const d = e.target.value.replace(/\D/g, ''); setTelefone(formatPhone(d)); }} maxLength={15} />
+              <Label>Telefone</Label>
+              <Input value={telefone} disabled readOnly title="Telefone não pode ser alterado" />
             </div>
             <div>
               <Label>CPF/CNPJ</Label>
-              <Input value={cpfCnpj} onChange={e => setCpfCnpj(formatCpfCnpj(e.target.value))} placeholder="000.000.000-00" />
+              <Input
+                value={cpfCnpj}
+                onChange={e => setCpfCnpj(formatCpfCnpj(e.target.value))}
+                disabled={cpfBloqueado}
+                readOnly={cpfBloqueado}
+                title={cpfBloqueado ? 'CPF/CNPJ não pode ser alterado' : undefined}
+                placeholder="000.000.000-00"
+              />
             </div>
             <div>
               <Label>Sexo</Label>
@@ -283,6 +295,7 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
                 bucketPath={`docs/${clienteId}/cnh`}
                 onUploaded={handleCnhUploaded}
                 onRemoved={handleCnhRemoved}
+                deferPreview
               />
             </div>
 

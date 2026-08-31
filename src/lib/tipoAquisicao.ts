@@ -17,6 +17,22 @@ export const TIPOS_PROPRIA = ['propria', 'convertida', 'repasse'];
 /** All tipo_aquisicao values for NPS/listing queries */
 export const TODOS_TIPOS_AQUISICAO = ['propria', 'consignada', 'repasse'];
 
+/**
+ * Empresas que só operam venda de moto nova (ex.: Ducati/FAG): não fazem compra
+ * direta nem consignação de moto seminova.
+ */
+export const EMPRESAS_SO_MOTO_NOVA = new Set<string>([
+  '30496c3b-721f-4795-98fd-2785d3821f3b', // FAG
+]);
+
+/** Empresa pode comprar moto seminova diretamente (interesse 'vender'). */
+export const empresaCompraDireta = (empresaId?: string | null): boolean =>
+  !empresaId || !EMPRESAS_SO_MOTO_NOVA.has(empresaId);
+
+/** Empresa pode receber moto em consignação. */
+export const empresaConsignaMoto = (empresaId?: string | null): boolean =>
+  !empresaId || !EMPRESAS_SO_MOTO_NOVA.has(empresaId);
+
 /** Label for display */
 export const getTipoAquisicaoLabel = (tipo: string | null | undefined): string | null => {
   if (!tipo) return null;

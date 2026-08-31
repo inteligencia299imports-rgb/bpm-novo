@@ -22,6 +22,7 @@ import DocumentUpload from '@/components/showroom/DocumentUpload';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
 import PlacaInput from '@/components/shared/PlacaInput';
+import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import { formatPersonName } from '@/lib/utils';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
@@ -157,7 +158,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     const chassiVal = normalizeChassi(editChassi) || null;
     const renavamVal = normalizeRenavam(editRenavam) || null;
     setSavingMoto(true);
-    const { error } = await supabase.from('avaliacoes').update({
+    const motoUpdate: any = {
       marca: editMarca.trim(),
       modelo: editModelo.trim(),
       placa: placaVal,
@@ -173,54 +174,49 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       tem_manual: editTemManual,
       tem_chave_reserva: editTemChaveReserva,
       manutencao_vencida: editManutencaoVencida,
-    }).eq('id', moto.id);
+    };
+    if (crlvUrl) {
+      // CRLV anexado: dados do documento são imutáveis.
+      delete motoUpdate.marca;
+      delete motoUpdate.modelo;
+      delete motoUpdate.ano_fabricacao;
+      delete motoUpdate.ano_modelo;
+      delete motoUpdate.placa;
+      delete motoUpdate.chassi;
+      delete motoUpdate.renavam;
+    }
+    const { error } = await supabase.from('avaliacoes').update(motoUpdate).eq('id', moto.id);
     setSavingMoto(false);
     if (error) {
       toast.error('Erro ao salvar dados da moto');
       console.error(error);
     } else {
-      setMotoData({
-        ...moto,
-        marca: editMarca.trim(),
-        modelo: editModelo.trim(),
-        placa: placaVal,
-        chassi: chassiVal,
-        renavam: renavamVal,
-        km: editKm.replace(/\D/g, '') || null,
-        ano_fabricacao: editAnoFab.trim() || null,
-        ano_modelo: editAnoMod.trim() || null,
-        cor: editCor.trim() || null,
-        categoria: editCategoria.trim() || null,
-        cilindrada: editCilindrada.replace(/\D/g, '') || null,
-        observacoes: editObservacoes.trim() || null,
-        tem_manual: editTemManual,
-        tem_chave_reserva: editTemChaveReserva,
-        manutencao_vencida: editManutencaoVencida,
-      });
+      setMotoData({ ...moto, ...motoUpdate });
       toast.success('Dados da moto atualizados!');
       setEditMotoOpen(false);
     }
   };
 
-  const extrairDadosCrlv = async (url: string) => {
-    if (!moto.id) return;
+  /** Retorna false quando o CRLV NÃO é da moto (o anexo deve ser desfeito). */
+  const extrairDadosCrlv = async (url: string): Promise<boolean> => {
+    if (!moto.id) return true;
     const toastId = toast.loading('Conferindo o CRLV e extraindo os dados da moto…');
     try {
       const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
         body: { avaliacao_id: moto.id, url },
       });
       if (error || !data) {
-        toast.dismiss(toastId);
-        return;
+        toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });
+        return true;
       }
       if (data.match === false) {
-        toast.error(data.motivo || 'O documento CRLV não é da mesma moto.', { id: toastId });
-        return;
+        toast.error(data.motivo || 'O CRLV não é da mesma moto. Anexo removido.', { id: toastId });
+        return false;
       }
       if (!data.extraido) {
         console.warn('extrair-dados-crlv não extraiu:', data?.motivo || data);
-        toast.dismiss(toastId);
-        return;
+        toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });
+        return true;
       }
       const campos: Record<string, string> = {};
       if (data.ano_fabricacao) campos.ano_fabricacao = data.ano_fabricacao;
@@ -229,15 +225,17 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       if (data.chassi) campos.chassi = data.chassi;
       if (data.renavam) campos.renavam = data.renavam;
       if (data.numero_crv) campos.numero_crv = data.numero_crv;
-      if (Object.keys(campos).length === 0) {
-        toast.dismiss(toastId);
-        return;
+      if (Object.keys(campos).length > 0) {
+        setMotoData((prev: any) => ({ ...prev, ...campos }));
       }
-      setMotoData((prev: any) => ({ ...prev, ...campos }));
-      toast.success('Dados do CRLV extraídos e conferidos', { id: toastId });
+      toast.success('CRLV conferido', { id: toastId });
+      if (Array.isArray(data.divergencias) && data.divergencias.length) {
+        toast.warning(`CRLV: ${data.divergencias.join('; ')}. Ajuste manualmente se necessário.`);
+      }
+      return true;
     } catch {
-      // extracao e best-effort -- falha aqui nunca deve incomodar o usuario
-      toast.dismiss(toastId);
+      toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });
+      return true;
     }
   };
 
@@ -524,10 +522,16 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                         className="flex-1"
                         currentUrl={crlvUrl}
                         bucketPath={moto.id ? `docs/${moto.id}/crlv` : ''}
-                        onUploaded={(url) => {
+                        deferPreview
+                        onUploaded={async (url) => {
                           setCrlvUrl(url);
-                          if (moto.id) supabase.from('avaliacoes').update({ crlv_url: url }).eq('id', moto.id);
-                          extrairDadosCrlv(url);
+                          if (moto.id) await supabase.from('avaliacoes').update({ crlv_url: url }).eq('id', moto.id);
+                          const ok = await extrairDadosCrlv(url);
+                          if (!ok && moto.id) {
+                            await supabase.from('avaliacoes').update({ crlv_url: null }).eq('id', moto.id);
+                            setCrlvUrl(null);
+                            await removerCrlvDoStorage(moto.id);
+                          }
                         }}
                         onRemoved={() => {
                           setCrlvUrl(null);
@@ -683,16 +687,21 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2 pr-7" style={{ scrollbarWidth: 'thin' }}>
             <div className="space-y-3 pb-4">
+              {!!crlvUrl && (
+                <p className="text-xs text-muted-foreground">
+                  Marca, modelo, anos, placa, chassi e RENAVAM vêm do CRLV anexado e não podem ser alterados aqui.
+                </p>
+              )}
               <div>
                 <Label>Marca <span className="text-destructive">*</span></Label>
-                <Select value={editMarca} onValueChange={(v) => { setEditMarca(v); setEditModelo(''); }}>
+                <Select value={editMarca} onValueChange={(v) => { setEditMarca(v); setEditModelo(''); }} disabled={!!crlvUrl}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>{getMarcaNomes().map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Modelo <span className="text-destructive">*</span></Label>
-                <Select value={editModelo} onValueChange={setEditModelo}>
+                <Select value={editModelo} onValueChange={setEditModelo} disabled={!!crlvUrl}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>{getModelosPorMarca(editMarca).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                 </Select>
@@ -700,7 +709,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Placa</Label>
-                  <PlacaInput value={editPlaca} onChange={setEditPlaca} />
+                  <PlacaInput value={editPlaca} onChange={setEditPlaca} disabled={!!crlvUrl} />
                 </div>
                 <div>
                   <Label>KM</Label>
@@ -712,18 +721,19 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 renavam={editRenavam}
                 onChassiChange={setEditChassi}
                 onRenavamChange={setEditRenavam}
+                disabled={!!crlvUrl}
               />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Ano Fab.</Label>
-                  <Select value={editAnoFab} onValueChange={setEditAnoFab}>
+                  <Select value={editAnoFab} onValueChange={setEditAnoFab} disabled={!!crlvUrl}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Ano Mod.</Label>
-                  <Select value={editAnoMod} onValueChange={setEditAnoMod}>
+                  <Select value={editAnoMod} onValueChange={setEditAnoMod} disabled={!!crlvUrl}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                   </Select>

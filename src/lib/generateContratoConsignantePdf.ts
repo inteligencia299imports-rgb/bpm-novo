@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { formatCpfCnpjPdf, formatKmPdf, bancoClienteLinhas, type BancoClientePdf } from './contratoPdfUtils';
 
 interface ContratoConsignantePdfData {
   loja?: string | null;
@@ -7,6 +8,8 @@ interface ContratoConsignantePdfData {
   cpfCnpj: string;
   dadosBancarios: string;
   titularConta: string;
+  /** Dados bancários estruturados do cadastro (vendedor) — saem no trecho do pagamento, igual ao contrato de compra. */
+  bancoCliente?: BancoClientePdf | null;
   marcaMoto: string;
   modeloMoto: string;
   anoFabMod: string;
@@ -143,7 +146,10 @@ const getCidadeOverride = (loja?: string | null): CidadeOverride | null => {
   return CIDADE_OVERRIDES.find(o => o.match(l))?.data || null;
 };
 
-export async function generateContratoConsignantePdf(data: ContratoConsignantePdfData): Promise<void> {
+export async function generateContratoConsignantePdf(
+  data: ContratoConsignantePdfData,
+  modo: 'download' | 'view' = 'download',
+): Promise<void> {
   const override = getCidadeOverride(data.loja);
   const isDucati = (data.loja || '').toUpperCase().includes('DUCATI');
   const empresaNome = override?.empresaNome || 'MMATOS COMERCIO DE VEÍCULOS E PEÇAS LTDA';
@@ -222,7 +228,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   setNormal();
   doc.text(`Nome: ${data.nomeConsignante}`, marginLeft, y); y += lineHeight;
   doc.text(`Telefone: ${data.telefoneConsignante}`, marginLeft, y); y += lineHeight;
-  doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y); y += lineHeight + sectionGap;
+  doc.text(`CPF/CNPJ: ${formatCpfCnpjPdf(data.cpfCnpj)}`, marginLeft, y); y += lineHeight + sectionGap;
 
   // ===== OBJETO =====
   sectionHeader('OBJETO:');
@@ -231,7 +237,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   doc.text(`Modelo: ${data.modeloMoto}`, marginLeft, y); y += lineHeight;
   doc.text(`Fab/Mod: ${data.anoFabMod}`, marginLeft, y); y += lineHeight;
   doc.text(`Placa: ${data.placaMoto}`, marginLeft, y); y += lineHeight;
-  doc.text(`Km: ${data.kmMoto}`, marginLeft, y); y += lineHeight + sectionGap;
+  doc.text(`Km: ${formatKmPdf(data.kmMoto)}`, marginLeft, y); y += lineHeight + sectionGap;
 
   // ===== ABATIMENTOS =====
   sectionHeader('ABATIMENTOS');
@@ -275,6 +281,27 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
     y += lineHeight;
   }
   y += sectionGap;
+
+  // ===== DADOS BANCÁRIOS PARA REPASSE (igual contrato de compra) =====
+  {
+    const bancoLinhas = bancoClienteLinhas(data.bancoCliente);
+    checkPageBreak(lineHeight * (bancoLinhas.length + 2));
+    setBold();
+    doc.text('Dados bancários do VENDEDOR para repasse:', marginLeft, y);
+    y += lineHeight;
+    setNormal();
+    if (bancoLinhas.length === 0) {
+      doc.text('Não informados.', marginLeft, y);
+      y += lineHeight;
+    } else {
+      for (const ln of bancoLinhas) {
+        y = lineCheckPageBreak(y, lineHeight);
+        doc.text(ln, marginLeft, y);
+        y += lineHeight;
+      }
+    }
+    y += sectionGap;
+  }
 
   // ===== LEGAL TEXT =====
   checkPageBreak(lineHeight);
@@ -347,7 +374,7 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   y += lineHeight;
   setNormal();
   doc.text(data.nomeConsignante, marginLeft, y); y += lineHeight;
-  doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y);
+  doc.text(`CPF/CNPJ: ${formatCpfCnpjPdf(data.cpfCnpj)}`, marginLeft, y);
   y += lineHeight * 5;
 
   doc.line(marginLeft, y, marginLeft + 70, y);
@@ -372,7 +399,11 @@ export async function generateContratoConsignantePdf(data: ContratoConsignantePd
   doc.text(`${cidadeAssinatura}, ${data.dataContrato}`, pageWidth / 2, y, { align: 'center' });
 
   const fileName = `AUTORIZACAO_PAGAMENTO_${data.nomeConsignante.replace(/\s+/g, '_').toUpperCase()}.pdf`;
-  doc.save(fileName);
+  if (modo === 'view') {
+    window.open(URL.createObjectURL(doc.output('blob')), '_blank');
+  } else {
+    doc.save(fileName);
+  }
 }
 
 export { type ContratoConsignantePdfData };

@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { formatCpfCnpjPdf, formatKmPdf } from './contratoPdfUtils';
 
 interface ContratoCompraPdfData {
   loja?: string | null;
@@ -225,7 +226,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData, mod
   setNormal();
   doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += lineHeight;
   doc.text(`Telefone: ${data.telefone}`, marginLeft, y); y += lineHeight;
-  doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y); y += lineHeight + sectionGap;
+  doc.text(`CPF/CNPJ: ${formatCpfCnpjPdf(data.cpfCnpj)}`, marginLeft, y); y += lineHeight + sectionGap;
 
   // OBJETO
   sectionHeader('OBJETO');
@@ -234,7 +235,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData, mod
   doc.text(`Modelo: ${data.modelo}`, marginLeft, y); y += lineHeight;
   doc.text(`Fab/Mod: ${data.anoFabMod}`, marginLeft, y); y += lineHeight;
   doc.text(`Placa: ${data.placa}`, marginLeft, y); y += lineHeight;
-  doc.text(`Km: ${data.km}`, marginLeft, y); y += lineHeight;
+  doc.text(`Km: ${formatKmPdf(data.km)}`, marginLeft, y); y += lineHeight;
   doc.text(`Valor de Quitação: ${data.valorQuitacao}`, marginLeft, y); y += lineHeight;
   doc.text(`Abatimentos (Custos+Despesas): ${data.abatimentos}`, marginLeft, y); y += lineHeight;
   doc.text(`Valor de Fechamento: ${data.valorFechamento}`, marginLeft, y); y += lineHeight;
@@ -393,7 +394,7 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData, mod
 
   setNormal();
   doc.text(data.nomeCliente, marginLeft, sigY + lineHeight);
-  doc.text(data.cpfCnpj, marginLeft, sigY + lineHeight * 2);
+  doc.text(formatCpfCnpjPdf(data.cpfCnpj), marginLeft, sigY + lineHeight * 2);
 
   doc.text(empresaNome, rightX, sigY + lineHeight);
   doc.text(`CNPJ: ${cnpj}`, rightX, sigY + lineHeight * 2);

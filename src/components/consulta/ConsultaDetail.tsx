@@ -44,6 +44,9 @@ const formatKm = (km: string | null | undefined) => {
   return num.toLocaleString('pt-BR') + ' km';
 };
 
+// Consulta automática (SERPRO / RENAVE-SENATRAN) desativada por enquanto — só consulta manual.
+const SERPRO_HABILITADO = false;
+
 const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div>
     <span className="text-xs text-muted-foreground">{label}</span>
@@ -116,7 +119,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   }, [detalheTexto, detalheEditando]);
 
   const abrirConsulta = () => {
-    setConsultaModo(null);
+    setConsultaModo('manual'); // Manual já vem selecionado por padrão
     setInputPlaca(placa || '');
     setInputChassi(chassi || '');
     setInputRenavam(renavam || '');
@@ -528,24 +531,26 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant={consultaModo === 'serpro' ? 'default' : 'outline'}
-              className="gap-1.5"
-              onClick={() => setConsultaModo('serpro')}
-            >
-              <Satellite className="h-4 w-4" /> SERPRO
-            </Button>
-            <Button
-              variant={consultaModo === 'manual' ? 'default' : 'outline'}
-              className="gap-1.5"
-              onClick={() => setConsultaModo('manual')}
-            >
-              <PenLine className="h-4 w-4" /> Manual
-            </Button>
-          </div>
+          {SERPRO_HABILITADO && (
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={consultaModo === 'serpro' ? 'default' : 'outline'}
+                className="gap-1.5"
+                onClick={() => setConsultaModo('serpro')}
+              >
+                <Satellite className="h-4 w-4" /> SERPRO
+              </Button>
+              <Button
+                variant={consultaModo === 'manual' ? 'default' : 'outline'}
+                className="gap-1.5"
+                onClick={() => setConsultaModo('manual')}
+              >
+                <PenLine className="h-4 w-4" /> Manual
+              </Button>
+            </div>
+          )}
 
-          {consultaModo === 'serpro' && (
+          {SERPRO_HABILITADO && consultaModo === 'serpro' && (
             <div className="space-y-3 pt-1">
               <div className="space-y-1.5">
                 <Label>Placa <span className="text-destructive">*</span></Label>

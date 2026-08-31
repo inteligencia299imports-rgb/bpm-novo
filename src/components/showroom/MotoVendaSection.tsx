@@ -31,6 +31,8 @@ interface Props {
   atendimentoId: string | null;
   interesse: Interesse;
   isEditing?: boolean;
+  /** Com CRLV anexado: marca, modelo, anos e placa ficam travados. */
+  crlvBloqueado?: boolean;
 }
 
 const MotoVendaSection: React.FC<Props> = ({
@@ -40,7 +42,7 @@ const MotoVendaSection: React.FC<Props> = ({
   temManual, setTemManual, temChaveReserva, setTemChaveReserva,
   manutencaoEmDia, setManutencaoEmDia,
   observacoes, setObservacoes,
-  motoAvaliacaoId, atendimentoId, interesse, isEditing,
+  motoAvaliacaoId, atendimentoId, interesse, isEditing, crlvBloqueado,
 }) => {
   const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
   const marcas = getMarcaNomes();
@@ -63,17 +65,22 @@ const MotoVendaSection: React.FC<Props> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {crlvBloqueado && (
+          <p className="text-xs text-muted-foreground">
+            Marca, modelo, anos e placa vêm do CRLV anexado e não podem ser alterados.
+          </p>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <Label>Marca *</Label>
-            <Select value={marca} onValueChange={(v) => { setMarca(v); setModelo(''); }}>
+            <Select value={marca} onValueChange={(v) => { setMarca(v); setModelo(''); }} disabled={crlvBloqueado}>
               <SelectTrigger><SelectValue placeholder={loading ? "Carregando..." : "Selecione"} /></SelectTrigger>
               <SelectContent>{marcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Modelo *</Label>
-            <Select value={modelo} onValueChange={setModelo} disabled={!marca}>
+            <Select value={modelo} onValueChange={setModelo} disabled={!marca || crlvBloqueado}>
               <SelectTrigger><SelectValue placeholder={marca ? "Selecione" : "Selecione a marca primeiro"} /></SelectTrigger>
               <SelectContent>{modelos.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
             </Select>
@@ -87,14 +94,14 @@ const MotoVendaSection: React.FC<Props> = ({
           </div>
           <div className="space-y-1.5">
             <Label>Ano Fabricação *</Label>
-            <Select value={anoFab} onValueChange={setAnoFab}>
+            <Select value={anoFab} onValueChange={setAnoFab} disabled={crlvBloqueado}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Ano Modelo *</Label>
-            <Select value={anoMod} onValueChange={setAnoMod}>
+            <Select value={anoMod} onValueChange={setAnoMod} disabled={crlvBloqueado}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
             </Select>
@@ -108,7 +115,7 @@ const MotoVendaSection: React.FC<Props> = ({
           </div>
           <div className="space-y-1.5">
             <Label>Placa *</Label>
-            <PlacaInput value={placa} onChange={setPlaca} />
+            <PlacaInput value={placa} onChange={setPlaca} disabled={crlvBloqueado} />
           </div>
           <div className="space-y-1.5">
             <Label>KM *</Label>

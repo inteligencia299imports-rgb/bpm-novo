@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
+import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada, empresaConsignaMoto } from '@/lib/tipoAquisicao';
 import { useAuth } from '@/contexts/AuthContext';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
@@ -27,6 +27,7 @@ import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
 import PlacaInput from '@/components/shared/PlacaInput';
 import { processarCnhAnexada } from '@/lib/cnhAnexo';
+import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
@@ -200,15 +201,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       return;
     }
     setSavingMoto(true);
-    const updateData = {
-      marca: editMarca.trim(),
-      modelo: editModelo.trim(),
+    const updateData: any = {
       placa: normalizePlaca(editPlaca) || null,
       chassi: normalizeChassi(editChassi) || null,
       renavam: normalizeRenavam(editRenavam) || null,
       km: editKm.replace(/\D/g, '') || null,
       ano_fabricacao: editAnoFab.trim() || null,
       ano_modelo: editAnoMod.trim() || null,
+      marca: editMarca.trim(),
+      modelo: editModelo.trim(),
       cor: editCor.trim() || null,
       categoria: editCategoria.trim() || null,
       cilindrada: editCilindrada.replace(/\D/g, '') || null,
@@ -217,6 +218,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       tem_chave_reserva: editTemChaveReserva,
       manutencao_vencida: editManutencaoVencida,
     };
+    // Com CRLV anexado, os dados extraídos do documento são imutáveis.
+    if (crlvUrl) {
+      delete updateData.marca;
+      delete updateData.modelo;
+      delete updateData.ano_fabricacao;
+      delete updateData.ano_modelo;
+      delete updateData.placa;
+      delete updateData.chassi;
+      delete updateData.renavam;
+    }
     const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', moto.id);
     setSavingMoto(false);
     if (error) {
@@ -325,7 +336,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       .from('avaliacoes')
       .select(`
         *,
-        atendimentos_motos (id, loja_id, loja_empresas:loja_id(loja), vendedor_id, interesse, tipo_atendimento, origem, temperatura, created_at, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))
+        atendimentos_motos (id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, interesse, tipo_atendimento, origem, temperatura, created_at, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))
       `)
       .eq('id', avaliacaoId)
       .single();
@@ -662,6 +673,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       toast.error('Selecione o tipo de aquisição');
       return;
     }
+    if (tipoSelecionado === 'consignada' && !permiteConsignar) {
+      toast.error('Esta empresa não recebe moto em consignação.');
+      return;
+    }
     // Para tipos que não são consignada, exigir CNH, CRLV, ATPV, Procuração e consulta realizada
     if (tipoSelecionado !== 'consignada') {
       const faltando = [
@@ -728,6 +743,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     const currentTipo = avaliacao?.tipo_aquisicao;
     // consignada → convertida; any propria-like → consignada
     const newTipo = isTipoConsignada(currentTipo) ? 'convertida' : 'consignada';
+
+    if (newTipo === 'consignada' && !permiteConsignar) {
+      toast.error('Esta empresa não recebe moto em consignação.');
+      return;
+    }
 
     // Converter para própria (convertida) exige a mesma documentação de uma aquisição própria.
     if (newTipo === 'convertida') {
@@ -797,8 +817,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     return <DetailSkeleton onClose={onClose} cards={6} />;
   }
 
-  // Contrato de compra abre como página (não como pop-up).
-  // O mesmo componente, em modo 'nfe', serve para revisar e emitir a NF-e de compra.
+  // Contratos abrem como página (não como pop-up).
+  // O mesmo componente, em modo 'nfe', serve para revisar e emitir a NF-e.
   if ((contratoCompraOpen || nfeCompraOpen) && avaliacao) {
     return (
       <ContratoCompraDialog
@@ -806,6 +826,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
         avaliacao={avaliacao}
         modo={nfeCompraOpen ? 'nfe' : 'contrato'}
         onOpenChange={() => { setContratoCompraOpen(false); setNfeCompraOpen(false); refreshHistory(); loadAvaliacao(); }}
+      />
+    );
+  }
+  if ((contratoConsignacaoOpen || nfeConsignacaoOpen) && avaliacao) {
+    return (
+      <ContratoConsignacaoDialog
+        open
+        avaliacao={avaliacao}
+        modo={nfeConsignacaoOpen ? 'nfe' : 'contrato'}
+        onOpenChange={() => { setContratoConsignacaoOpen(false); setNfeConsignacaoOpen(false); refreshHistory(); loadAvaliacao(); }}
       />
     );
   }
@@ -818,6 +848,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const hasEvaluation = !!(avaliacao?.valor_fipe || avaliacao?.avaliacao_compra || avaliacao?.avaliacao_consignacao || avaliacao?.quanto_pede);
   const contratoGerado = history.some((h: any) => h.status === 'contrato_compra_gerado');
   const nfeCompraEmitida = history.some((h: any) => h.status === 'nfe_compra_emitida' || h.status === 'nfe_consignacao_emitida');
+
+  // Empresa do atendimento faz consignação? (FAG e afins só vendem moto nova)
+  const permiteConsignar = empresaConsignaMoto((avaliacao as any)?.atendimento?.empresa_id);
+
+  // Com CRLV anexado: marca, modelo, anos e placa da moto ficam travados.
+  const crlvBloqueado = !!crlvUrl;
 
   // Etapa de aprovação (só no contexto de Pós-Compra, para motos próprias)
   const apSt: string | null = avaliacao?.aprovacao_status ?? null;
@@ -869,6 +905,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     if (aceita && resultado?.extraido && at?.cliente) {
       if (resultado.nome) (at.cliente as any).nome_razao_social = resultado.nome;
       if (resultado.atualizou_cpf && resultado.cpf) (at.cliente as any).cpf_cnpj = resultado.cpf;
+      if (resultado.data_nascimento) (at.cliente as any).data_nascimento = resultado.data_nascimento;
       setAvaliacao((prev: any) => (prev ? { ...prev } : prev));
     }
   };
@@ -910,24 +947,25 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     toast.success('Consulta solicitada com sucesso!');
   };
 
-  const extrairDadosCrlv = async (avaliacaoId: string, url: string) => {
+  /** Retorna false quando o CRLV NÃO é da moto (o anexo deve ser desfeito). */
+  const extrairDadosCrlv = async (avaliacaoId: string, url: string): Promise<boolean> => {
     const toastId = toast.loading('Conferindo o CRLV e extraindo os dados da moto…');
     try {
       const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
         body: { avaliacao_id: avaliacaoId, url },
       });
       if (error || !data) {
-        toast.dismiss(toastId);
-        return;
+        toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });
+        return true;
       }
       if (data.match === false) {
-        toast.error(data.motivo || 'O documento CRLV não é da mesma moto.', { id: toastId });
-        return;
+        toast.error(data.motivo || 'O CRLV não é da mesma moto. Anexo removido.', { id: toastId });
+        return false;
       }
       if (!data.extraido) {
         console.warn('extrair-dados-crlv não extraiu:', data?.motivo || data);
-        toast.dismiss(toastId);
-        return;
+        toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });
+        return true;
       }
       const campos: Record<string, string> = {};
       if (data.ano_fabricacao) campos.ano_fabricacao = data.ano_fabricacao;
@@ -936,15 +974,17 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       if (data.chassi) campos.chassi = data.chassi;
       if (data.renavam) campos.renavam = data.renavam;
       if (data.numero_crv) campos.numero_crv = data.numero_crv;
-      if (Object.keys(campos).length === 0) {
-        toast.dismiss(toastId);
-        return;
+      if (Object.keys(campos).length > 0) {
+        setAvaliacao((prev: any) => (prev ? { ...prev, ...campos } : prev));
       }
-      setAvaliacao((prev: any) => (prev ? { ...prev, ...campos } : prev));
-      toast.success('Dados do CRLV extraídos e conferidos', { id: toastId });
+      toast.success('CRLV conferido', { id: toastId });
+      if (Array.isArray(data.divergencias) && data.divergencias.length) {
+        toast.warning(`CRLV: ${data.divergencias.join('; ')}. Ajuste manualmente se necessário.`);
+      }
+      return true;
     } catch {
-      // extracao e best-effort -- falha aqui nunca deve incomodar o usuario
-      toast.dismiss(toastId);
+      toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });
+      return true;
     }
   };
 
@@ -1132,6 +1172,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
                     readOnly={travado}
+                    deferPreview
                   />
                 </>
               )}
@@ -1237,10 +1278,18 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   readOnly={travado}
                   currentUrl={crlvUrl}
                   bucketPath={`docs/${moto?.id}/crlv`}
+                  deferPreview
                   onUploaded={async (url) => {
                     await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto?.id);
                     setCrlvUrl(url);
-                    if (moto?.id) extrairDadosCrlv(moto.id, url);
+                    if (moto?.id) {
+                      const ok = await extrairDadosCrlv(moto.id, url);
+                      if (!ok) {
+                        await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto.id);
+                        setCrlvUrl(null);
+                        await removerCrlvDoStorage(moto.id);
+                      }
+                    }
                   }}
                   onRemoved={async () => {
                     await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto?.id);
@@ -1433,7 +1482,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
 
            <div className="md:col-span-2 flex flex-col items-center gap-3">
             <div className="flex gap-2 flex-wrap justify-center">
-              {!ehProcesso && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao && !estoqueVendido && !nfeCompraEmitida && (
+              {!ehProcesso && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao && !estoqueVendido && !nfeCompraEmitida && (permiteConsignar || isTipoConsignada(avaliacao?.tipo_aquisicao)) && (
                 <Button
                   size="sm"
                   className="gap-2 text-white hover:opacity-90"
@@ -1692,6 +1741,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                       variant={tipoSelecionado === 'consignada' ? 'default' : 'outline'}
                       className={`w-full gap-2 ${tipoSelecionado === 'consignada' ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-600' : 'border-purple-500 text-purple-600 hover:bg-purple-50'}`}
                       onClick={() => setTipoSelecionado('consignada')}
+                      disabled={!permiteConsignar}
+                      title={permiteConsignar ? undefined : 'Esta empresa não recebe moto em consignação'}
                     >
                       <Handshake className="h-4 w-4" /> Consignada
                     </Button>
@@ -1755,15 +1806,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
           </div>
         </DialogContent>
       </Dialog>
-
-      {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao === 'consignada' && (
-        <ContratoConsignacaoDialog
-          open={contratoConsignacaoOpen || nfeConsignacaoOpen}
-          modo={nfeConsignacaoOpen ? 'nfe' : 'contrato'}
-          onOpenChange={() => { setContratoConsignacaoOpen(false); setNfeConsignacaoOpen(false); refreshHistory(); loadAvaliacao(); }}
-          avaliacao={avaliacao}
-        />
-      )}
 
       {/* Menu do contrato de compra (quando já foi gerado) */}
 
@@ -1909,16 +1951,21 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2 pr-7" style={{ scrollbarWidth: 'thin' }}>
             <div className="space-y-3 pb-4">
+              {crlvBloqueado && (
+                <p className="text-xs text-muted-foreground">
+                  Marca, modelo, anos, placa, chassi e RENAVAM vêm do CRLV anexado e não podem ser alterados aqui.
+                </p>
+              )}
               <div>
                 <Label>Marca <span className="text-destructive">*</span></Label>
-                <Select value={editMarca} onValueChange={(v) => { setEditMarca(v); setEditModelo(''); }}>
+                <Select value={editMarca} onValueChange={(v) => { setEditMarca(v); setEditModelo(''); }} disabled={crlvBloqueado}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>{getMarcaNomes().map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Modelo <span className="text-destructive">*</span></Label>
-                <Select value={editModelo} onValueChange={setEditModelo}>
+                <Select value={editModelo} onValueChange={setEditModelo} disabled={crlvBloqueado}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>{getModelosPorMarca(editMarca).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                 </Select>
@@ -1926,7 +1973,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Placa</Label>
-                  <PlacaInput value={editPlaca} onChange={setEditPlaca} />
+                  <PlacaInput value={editPlaca} onChange={setEditPlaca} disabled={crlvBloqueado} />
                 </div>
                 <div>
                   <Label>KM</Label>
@@ -1938,18 +1985,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 renavam={editRenavam}
                 onChassiChange={setEditChassi}
                 onRenavamChange={setEditRenavam}
+                disabled={crlvBloqueado}
               />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Ano Fab.</Label>
-                  <Select value={editAnoFab} onValueChange={setEditAnoFab}>
+                  <Select value={editAnoFab} onValueChange={setEditAnoFab} disabled={crlvBloqueado}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Ano Mod.</Label>
-                  <Select value={editAnoMod} onValueChange={setEditAnoMod}>
+                  <Select value={editAnoMod} onValueChange={setEditAnoMod} disabled={crlvBloqueado}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                   </Select>

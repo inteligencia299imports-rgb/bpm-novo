@@ -9,6 +9,8 @@ export interface CnhExtracaoResultado {
   cpf?: string | null;
   atualizou_cpf?: boolean;
   data_nascimento?: string | null;
+  atualizou_nascimento?: boolean;
+  divergencias?: string[];
 }
 
 /** Remove o arquivo da CNH do storage (todas as extensões possíveis). */
@@ -39,8 +41,8 @@ export async function processarCnhAnexada(params: {
     });
 
     if (error || !data) {
-      // Extração é best-effort: se a função falhar, mantém o anexo.
-      toast.dismiss(toastId);
+      // Extração é best-effort: se a função falhar, mantém o anexo — mas avisa que não deu pra validar.
+      toast.warning('Não foi possível validar a CNH automaticamente. Anexo mantido — confira nome e CPF do cliente manualmente.', { id: toastId });
       return { aceita: true, resultado: null };
     }
 
@@ -56,15 +58,18 @@ export async function processarCnhAnexada(params: {
     if (res.extraido) {
       const campos = ['nome'];
       if (res.atualizou_cpf) campos.push('CPF');
-      if (res.data_nascimento) campos.push('data de nascimento');
+      if (res.atualizou_nascimento || res.data_nascimento) campos.push('data de nascimento');
       const lista = campos.length === 1 ? campos[0] : `${campos.slice(0, -1).join(', ')} e ${campos[campos.length - 1]}`;
       toast.success(`CNH conferida — ${lista} do cliente ${campos.length > 1 ? 'atualizados' : 'atualizado'}`, { id: toastId });
+      if (res.divergencias?.length) {
+        toast.warning(`CNH: ${res.divergencias.join('; ')}. Ajuste manualmente se necessário.`);
+      }
     } else {
-      toast.dismiss(toastId);
+      toast.warning('Não foi possível validar a CNH automaticamente. Anexo mantido — confira nome e CPF do cliente manualmente.', { id: toastId });
     }
     return { aceita: true, resultado: res };
   } catch {
-    toast.dismiss(toastId);
+    toast.warning('Não foi possível validar a CNH automaticamente. Anexo mantido — confira nome e CPF do cliente manualmente.', { id: toastId });
     return { aceita: true, resultado: null };
   }
 }

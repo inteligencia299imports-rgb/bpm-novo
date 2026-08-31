@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import { processarCnhAnexada } from '@/lib/cnhAnexo';
+import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
 import type { Atendimento, MotoInteresse, Avaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
@@ -332,6 +333,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     if (aceita && resultado?.extraido && atendimento.cliente) {
       if (resultado.nome) (atendimento.cliente as any).nome_razao_social = resultado.nome;
       if (resultado.atualizou_cpf && resultado.cpf) (atendimento.cliente as any).cpf_cnpj = resultado.cpf;
+      if (resultado.data_nascimento) (atendimento.cliente as any).data_nascimento = resultado.data_nascimento;
       setClienteRefresh((n) => n + 1);
     }
   };
@@ -411,7 +413,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       return;
     }
     setSavingMotoEdit(true);
-    const updateData = {
+    const updateData: any = {
       marca: editMarca.trim(),
       modelo: editModelo.trim(),
       placa: normalizePlaca(editPlaca) || null,
@@ -428,6 +430,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       tem_chave_reserva: editTemChaveReserva,
       manutencao_vencida: editManutencaoVencida,
     };
+    if (editMotoId && crlvUrls[editMotoId]) {
+      // CRLV anexado: dados do documento são imutáveis.
+      delete updateData.marca;
+      delete updateData.modelo;
+      delete updateData.ano_fabricacao;
+      delete updateData.ano_modelo;
+      delete updateData.placa;
+      delete updateData.chassi;
+      delete updateData.renavam;
+    }
     const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', editMotoId);
     setSavingMotoEdit(false);
     if (error) {
@@ -439,24 +451,25 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setEditMotoId(null);
   };
 
-  const extrairDadosCrlv = async (avaliacaoId: string, url: string) => {
+  /** Retorna false quando o CRLV NÃO é da moto (o anexo deve ser desfeito). */
+  const extrairDadosCrlv = async (avaliacaoId: string, url: string): Promise<boolean> => {
     const toastId = toast.loading('Conferindo o CRLV e extraindo os dados da moto…');
     try {
       const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
         body: { avaliacao_id: avaliacaoId, url },
       });
       if (error || !data) {
-        toast.dismiss(toastId);
-        return;
+        toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });
+        return true;
       }
       if (data.match === false) {
-        toast.error(data.motivo || 'O documento CRLV não é da mesma moto.', { id: toastId });
-        return;
+        toast.error(data.motivo || 'O CRLV não é da mesma moto. Anexo removido.', { id: toastId });
+        return false;
       }
       if (!data.extraido) {
         console.warn('extrair-dados-crlv não extraiu:', data?.motivo || data);
-        toast.dismiss(toastId);
-        return;
+        toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });
+        return true;
       }
       const campos: Record<string, string> = {};
       if (data.ano_fabricacao) campos.ano_fabricacao = data.ano_fabricacao;
@@ -465,15 +478,17 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       if (data.chassi) campos.chassi = data.chassi;
       if (data.renavam) campos.renavam = data.renavam;
       if (data.numero_crv) campos.numero_crv = data.numero_crv;
-      if (Object.keys(campos).length === 0) {
-        toast.dismiss(toastId);
-        return;
+      if (Object.keys(campos).length > 0) {
+        setMotosAvaliacao(prev => prev.map(m => m.id === avaliacaoId ? { ...m, ...campos } : m));
       }
-      setMotosAvaliacao(prev => prev.map(m => m.id === avaliacaoId ? { ...m, ...campos } : m));
-      toast.success('Dados do CRLV extraídos e conferidos', { id: toastId });
+      toast.success('CRLV conferido', { id: toastId });
+      if (Array.isArray(data.divergencias) && data.divergencias.length) {
+        toast.warning(`CRLV: ${data.divergencias.join('; ')}. Ajuste manualmente se necessário.`);
+      }
+      return true;
     } catch {
-      // extracao e best-effort -- falha aqui nunca deve incomodar o usuario
-      toast.dismiss(toastId);
+      toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });
+      return true;
     }
   };
 
@@ -741,6 +756,22 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     return <DetailSkeleton onClose={onClose} />;
   }
 
+  // Contrato de venda abre como página (não como pop-up).
+  if (contratoOpen) {
+    return (
+      <ContratoDialog
+        open
+        onOpenChange={setContratoOpen}
+        atendimento={atendimento}
+        motosInteresse={motosInteresse}
+        motosAvaliacao={motosAvaliacao}
+        estoqueData={estoqueData}
+        avaliacoes={avaliacoes}
+        onSaved={() => { if (onStatusUpdated) onStatusUpdated(); }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -856,6 +887,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     bucketPath={`docs/${atendimento.cliente_id}/cnh`}
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
+                    deferPreview
                   />
                 </>
               )}
@@ -1216,10 +1248,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         className="flex-1"
                         currentUrl={crlvUrls[moto.id] || null}
                         bucketPath={`docs/${moto.id}/crlv`}
+                        deferPreview
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto.id);
                           setCrlvUrls(prev => ({ ...prev, [moto.id]: url }));
-                          extrairDadosCrlv(moto.id, url);
+                          const ok = await extrairDadosCrlv(moto.id, url);
+                          if (!ok) {
+                            await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto.id);
+                            setCrlvUrls(prev => ({ ...prev, [moto.id]: null }));
+                            await removerCrlvDoStorage(moto.id);
+                          }
                         }}
                         onRemoved={async () => {
                           await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto.id);
@@ -1579,17 +1617,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </div>
         </DialogContent>
       </Dialog>
-      {/* Dialog de Contrato */}
-      <ContratoDialog
-        open={contratoOpen}
-        onOpenChange={setContratoOpen}
-        atendimento={atendimento}
-        motosInteresse={motosInteresse}
-        motosAvaliacao={motosAvaliacao}
-        estoqueData={estoqueData}
-        avaliacoes={avaliacoes}
-        onSaved={() => { if (onStatusUpdated) onStatusUpdated(); }}
-      />
       {/* Dialog de Motivo (Pendente/Perdido) */}
       <Dialog open={!!motivoPopup} onOpenChange={(o) => !o && setMotivoPopup(null)}>
         <DialogContent className="max-w-sm">
@@ -1660,16 +1687,21 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2 pr-7" style={{ scrollbarWidth: 'thin' }}>
             <div className="space-y-3 pb-4">
+              {!!(editMotoId && crlvUrls[editMotoId]) && (
+                <p className="text-xs text-muted-foreground">
+                  Marca, modelo, anos, placa, chassi e RENAVAM vêm do CRLV anexado e não podem ser alterados aqui.
+                </p>
+              )}
               <div>
                 <Label>Marca <span className="text-destructive">*</span></Label>
-                <Select value={editMarca} onValueChange={(v) => { setEditMarca(v); setEditModelo(''); }}>
+                <Select value={editMarca} onValueChange={(v) => { setEditMarca(v); setEditModelo(''); }} disabled={!!(editMotoId && crlvUrls[editMotoId])}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>{getMarcaNomes().map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Modelo <span className="text-destructive">*</span></Label>
-                <Select value={editModelo} onValueChange={setEditModelo}>
+                <Select value={editModelo} onValueChange={setEditModelo} disabled={!!(editMotoId && crlvUrls[editMotoId])}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>{getModelosPorMarca(editMarca).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                 </Select>
@@ -1677,7 +1709,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Placa</Label>
-                  <PlacaInput value={editPlaca} onChange={setEditPlaca} />
+                  <PlacaInput value={editPlaca} onChange={setEditPlaca} disabled={!!(editMotoId && crlvUrls[editMotoId])} />
                 </div>
                 <div>
                   <Label>KM</Label>
@@ -1689,18 +1721,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 renavam={editRenavam}
                 onChassiChange={setEditChassi}
                 onRenavamChange={setEditRenavam}
+                disabled={!!(editMotoId && crlvUrls[editMotoId])}
               />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Ano Fab.</Label>
-                  <Select value={editAnoFab} onValueChange={setEditAnoFab}>
+                  <Select value={editAnoFab} onValueChange={setEditAnoFab} disabled={!!(editMotoId && crlvUrls[editMotoId])}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Ano Mod.</Label>
-                  <Select value={editAnoMod} onValueChange={setEditAnoMod}>
+                  <Select value={editAnoMod} onValueChange={setEditAnoMod} disabled={!!(editMotoId && crlvUrls[editMotoId])}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
                   </Select>

@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { formatCpfCnpjPdf, formatKmPdf, bancoClienteLinhas, type BancoClientePdf } from './contratoPdfUtils';
 
 interface ContratoConsignacaoPdfData {
   loja?: string | null;
@@ -8,6 +9,8 @@ interface ContratoConsignacaoPdfData {
   email: string;
   endereco: string;
   cep: string;
+  /** Dados bancários do consignante (vendedor) — saem no trecho DO PAGAMENTO, igual ao contrato de compra. */
+  bancoCliente?: BancoClientePdf | null;
   marca: string;
   modelo: string;
   anoFabMod: string;
@@ -192,7 +195,10 @@ const getCidadeOverride = (loja?: string | null): CidadeOverride | null => {
   return CIDADE_OVERRIDES.find(o => o.match(l))?.data || null;
 };
 
-export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPdfData): Promise<void> {
+export async function generateContratoConsignacaoPdf(
+  data: ContratoConsignacaoPdfData,
+  modo: 'download' | 'view' = 'download',
+): Promise<void> {
   const override = getCidadeOverride(data.loja);
   const isDucati = (data.loja || '').toUpperCase().includes('DUCATI');
   const empresaNome = override?.empresaNome || 'MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA';
@@ -280,7 +286,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   setNormal();
   doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += lineHeight;
   doc.text(`Telefone: ${data.telefone}`, marginLeft, y); y += lineHeight;
-  doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y); y += lineHeight;
+  doc.text(`CPF/CNPJ: ${formatCpfCnpjPdf(data.cpfCnpj)}`, marginLeft, y); y += lineHeight;
   doc.text(`E-mail: ${data.email}`, marginLeft, y); y += lineHeight;
   doc.text(`Endereço: ${data.endereco}`, marginLeft, y); y += lineHeight;
   doc.text(`CEP: ${data.cep}`, marginLeft, y); y += lineHeight + sectionGap;
@@ -300,7 +306,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   doc.text(`Modelo: ${data.modelo}`, marginLeft, y); y += lineHeight;
   doc.text(`Fab/Mod: ${data.anoFabMod}`, marginLeft, y); y += lineHeight;
   doc.text(`Placa: ${data.placa}`, marginLeft, y); y += lineHeight;
-  doc.text(`Km: ${data.km}`, marginLeft, y); y += lineHeight;
+  doc.text(`Km: ${formatKmPdf(data.km)}`, marginLeft, y); y += lineHeight;
   doc.text(`Valor de Quitação: ${data.valorQuitacao}`, marginLeft, y); y += lineHeight;
   doc.text(`Valor Negociado: ${data.valorNegociado}`, marginLeft, y); y += lineHeight + sectionGap;
 
@@ -372,6 +378,27 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, '§2º Após a concretização da venda, a CONSIGNATÁRIA se compromete a prestar o suporte necessário ao comprador para a efetivação da transferência do veículo, auxiliando-o no cumprimento dos trâmites administrativos e burocráticos junto aos órgãos competentes.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   y += sectionGap;
+
+  // Dados bancários do CONSIGNANTE para o repasse — igual ao contrato de compra.
+  {
+    const bancoLinhas = bancoClienteLinhas(data.bancoCliente);
+    checkPageBreak(lineHeight * (bancoLinhas.length + 2));
+    setBold();
+    doc.text('Dados bancários do CONSIGNANTE para repasse:', marginLeft, y);
+    y += lineHeight;
+    setNormal();
+    if (bancoLinhas.length === 0) {
+      doc.text('Não informados.', marginLeft, y);
+      y += lineHeight;
+    } else {
+      for (const ln of bancoLinhas) {
+        y = lineCheckPageBreak(y, lineHeight);
+        doc.text(ln, marginLeft, y);
+        y += lineHeight;
+      }
+    }
+    y += sectionGap;
+  }
 
   // DA COMISSÃO
   sectionHeader('DA COMISSÃO:');
@@ -624,7 +651,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   y += lineHeight;
   setNormal();
   doc.text(data.nomeCliente, marginLeft, y); y += lineHeight;
-  doc.text(data.cpfCnpj, marginLeft, y);
+  doc.text(formatCpfCnpjPdf(data.cpfCnpj), marginLeft, y);
   y += lineHeight * 4;
 
   // Testemunha
@@ -653,7 +680,7 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
   doc.text(data.nomeCliente, marginLeft, y); y += lineHeight;
-  doc.text(data.cpfCnpj, marginLeft, y);
+  doc.text(formatCpfCnpjPdf(data.cpfCnpj), marginLeft, y);
   y += lineHeight * 4;
 
   // Company signature + date
@@ -667,10 +694,14 @@ export async function generateContratoConsignacaoPdf(data: ContratoConsignacaoPd
   doc.text(`${cidadeAssinatura}, ${data.dataContrato}`, pageWidth / 2, y, { align: 'center' });
   setNormal();
 
-  // Save
+  // Save / View
   const suffix = data.comPercentual5 ? '_5PCT' : '';
   const fileName = `CONSIGNACAO${suffix}_${data.nomeCliente.replace(/\s+/g, '_').toUpperCase()}.pdf`;
-  doc.save(fileName);
+  if (modo === 'view') {
+    window.open(URL.createObjectURL(doc.output('blob')), '_blank');
+  } else {
+    doc.save(fileName);
+  }
 }
 
 export { type ContratoConsignacaoPdfData };

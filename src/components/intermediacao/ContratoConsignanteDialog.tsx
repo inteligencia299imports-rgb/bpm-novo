@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, CalendarIcon, Save, Download, Eye, Plus, Trash2, Loader2, DollarSign } from 'lucide-react';
+import { CalendarIcon, Save, Download, Eye, Plus, Trash2, Loader2, DollarSign, User, Bike, MessageSquare, ArrowLeft, Pencil, MapPin, Landmark } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -16,6 +17,8 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateContratoConsignantePdf } from '@/lib/generateContratoConsignantePdf';
 import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
+import ClienteForm from '@/components/clientes/ClienteForm';
+import { cadastroClienteCompleto } from '@/lib/clienteCadastro';
 
 /** Props for ContratoConsignanteDialog */
 interface Props {
@@ -62,6 +65,16 @@ const formatCurrency = (value: number | null) => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+const tipoContaLabel = (v: string | null | undefined) => {
+  if (v === 'corrente') return 'Corrente';
+  if (v === 'poupanca') return 'Poupança';
+  if (v === 'pagamento') return 'Pagamento';
+  return v || undefined;
+};
+
+const fmtDataNasc = (v: string | null | undefined) =>
+  v ? String(v).replace(/^(\d{4})-(\d{2})-(\d{2}).*/, '$3/$2/$1') : undefined;
+
 const CurrencyField = ({ label, value, onChange, disabled }: { label: string; value: string; onChange: (v: string) => void; disabled?: boolean }) => (
   <div>
     <label className="text-sm font-medium text-foreground">{label}</label>
@@ -70,6 +83,15 @@ const CurrencyField = ({ label, value, onChange, disabled }: { label: string; va
       <Input className="pl-10" placeholder="0,00" value={value} onChange={(e) => onChange(formatCurrencyInput(e.target.value))} inputMode="numeric" disabled={disabled} />
     </div>
   </div>
+);
+
+const InfoDisplay = ({ label, value }: { label: string; value: string | null | undefined }) => (
+  value ? (
+    <div>
+      <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
+      <p className="text-sm font-semibold">{value}</p>
+    </div>
+  ) : null
 );
 
 interface CustoOperacional {
@@ -94,6 +116,11 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
   const [cpfCnpj, setCpfCnpj] = useState('');
   const [dadosBancarios, setDadosBancarios] = useState('');
   const [titularConta, setTitularConta] = useState('');
+  // Cadastro completo do consignante (embute o ClienteForm, igual ao contrato de compra).
+  const [clienteId, setClienteId] = useState<string | null>(null);
+  const [clienteRecord, setClienteRecord] = useState<any | null>(null);
+  const [editandoCliente, setEditandoCliente] = useState(false);
+  const [clienteTocado, setClienteTocado] = useState(false);
 
   // Loja da venda (define a filial/CNPJ do contrato)
   const [loja, setLoja] = useState<string | null>(null);
@@ -123,12 +150,28 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
   const [dataContrato, setDataContrato] = useState<Date | undefined>();
   const [calOpen, setCalOpen] = useState(false);
 
+  // Baseline p/ detectar edição desde a última geração/carregamento (igual compra).
+  const [baseline, setBaseline] = useState('');
+  const consignanteSnapshot = () => JSON.stringify({
+    nomeConsignante, telefoneConsignante, cpfCnpj, dadosBancarios, titularConta,
+    valorFechamento, valorRepasse, obsContrato, obsInternas,
+    dataContrato: dataContrato ? dataContrato.toISOString().slice(0, 10) : '',
+    custos: custosOp.map((c) => `${c.tipo}|${c.responsavel}|${c.descricao}|${c.valor}`).join(';'),
+  });
+
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     loadData();
   }, [open, atendimentoId]);
+
+  // Após terminar de carregar, fixa o baseline com os valores atuais.
+  useEffect(() => {
+    if (loading) return;
+    setBaseline(consignanteSnapshot());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const loadData = async () => {
     setLoading(true);
@@ -167,10 +210,16 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       if (avalData?.atendimento_id) {
         const { data: origAtend } = await supabase
           .from('atendimentos_motos')
-          .select('cliente:clientes_fornecedores(nome_razao_social, telefone)')
+          .select('cliente_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))')
           .eq('id', avalData.atendimento_id)
           .maybeSingle();
-        consignanteAtendimento = origAtend?.cliente ? { nome_cliente: (origAtend.cliente as any).nome_razao_social, telefone: (origAtend.cliente as any).telefone } : null;
+        if ((origAtend as any)?.cliente_id) setClienteId((origAtend as any).cliente_id);
+        if (origAtend?.cliente) {
+          setClienteRecord(origAtend.cliente);
+          consignanteAtendimento = { nome_cliente: (origAtend.cliente as any).nome_razao_social, telefone: (origAtend.cliente as any).telefone };
+        } else {
+          consignanteAtendimento = null;
+        }
       }
     }
 
@@ -240,7 +289,25 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       setCustosOp([]);
     }
 
+    setEditandoCliente(false);
     setLoading(false);
+  };
+
+  const handleClienteSaved = async (savedId: string) => {
+    setClienteId(savedId);
+    setClienteTocado(true);
+    const { data } = await supabase
+      .from('clientes_fornecedores')
+      .select('*, clientes_fornecedores_enderecos(*)')
+      .eq('id', savedId)
+      .maybeSingle();
+    if (data) {
+      setClienteRecord(data);
+      if ((data as any).nome_razao_social) setNomeConsignante((data as any).nome_razao_social);
+      if ((data as any).telefone) setTelefoneConsignante(formatTelefone(String((data as any).telefone)));
+      if ((data as any).cpf_cnpj) setCpfCnpj(formatCpfCnpj((data as any).cpf_cnpj));
+    }
+    setEditandoCliente(false);
   };
 
   // Calculate abatimentos: custos oficina (all) + custos operacionais where responsavel = 'Cliente'
@@ -419,6 +486,15 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       cpfCnpj: cpfCnpj || '-',
       dadosBancarios: dadosBancarios || '-',
       titularConta: titularConta || '-',
+      bancoCliente: clienteRecord ? {
+        banco: clienteRecord.banco ?? null,
+        tipoConta: tipoContaLabel(clienteRecord.tipo_conta) ?? null,
+        agencia: clienteRecord.agencia ?? null,
+        conta: clienteRecord.conta ? `${clienteRecord.conta}${clienteRecord.digito_conta ? `-${clienteRecord.digito_conta}` : ''}` : null,
+        chavePix: clienteRecord.chave_pix ?? null,
+        favorecido: clienteRecord.favorecido ?? null,
+        cpfCnpjFavorecido: clienteRecord.cpf_cnpj_favorecido ?? null,
+      } : null,
       marcaMoto: motoInfo?.marca || estoqueInfo?.marca || '-',
       modeloMoto: motoInfo?.modelo || estoqueInfo?.modelo || '-',
       anoFabMod,
@@ -433,16 +509,21 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     };
   };
 
+  const validarConsignante = (): boolean => {
+    if (!nomeConsignante?.trim()) { toast.error('Nome do consignante é obrigatório'); return false; }
+    if (!dataContrato) { toast.error('Data do contrato é obrigatória'); return false; }
+    return true;
+  };
+
   const handleGerar = async () => {
-    if (!nomeConsignante?.trim()) { toast.error('Nome do consignante é obrigatório'); return; }
-    if (!dataContrato) { toast.error('Data do contrato é obrigatória'); return; }
+    if (!validarConsignante()) return;
 
     setGenerating(true);
     const id = await saveContrato();
     if (!id) { setGenerating(false); return; }
 
     try {
-      await generateContratoConsignantePdf(buildPdfData());
+      await generateContratoConsignantePdf(buildPdfData(), 'download');
 
       if (user) {
         await supabase.from('status_history').insert({
@@ -454,8 +535,12 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
         });
       }
       setJaGerado(true);
+      setBaseline(consignanteSnapshot());
+      setClienteTocado(false);
       onSaved?.();
       toast.success('Contrato gerado com sucesso!');
+      // Volta para a tela de detalhes.
+      onOpenChange(false);
     } catch (err) {
       console.error(err);
       toast.error('Erro ao gerar contrato');
@@ -467,10 +552,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
   const handleVisualizar = async () => {
     setGenerating(true);
     try {
-      const id = await saveContrato();
-      if (!id) { setGenerating(false); return; }
-      await generateContratoConsignantePdf(buildPdfData());
-      toast.success('PDF visualizado!');
+      await generateContratoConsignantePdf(buildPdfData(), 'view');
     } catch (err) {
       console.error(err);
       toast.error('Erro ao visualizar');
@@ -479,82 +561,208 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     }
   };
 
+  const handleBaixar = async () => {
+    setGenerating(true);
+    try {
+      await generateContratoConsignantePdf(buildPdfData(), 'download');
+      // Volta para a tela de detalhes.
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao baixar contrato');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const abatimentos = calcAbatimentos();
   const repasseNum = parseCurrencyInput(valorFechamento) - abatimentos;
 
+  // Houve edição desde a última geração/carregamento? (igual contrato de compra)
+  const editado = consignanteSnapshot() !== baseline || clienteTocado;
+  // Contrato já gerado e sem edições -> só permite baixar/visualizar.
+  const modoLeitura = jaGerado && !editado;
+
+  // Resumo do consignante (quando o cadastro está completo) — igual ao contrato de compra.
+  const cli = clienteRecord;
+  const cliEndereco = cli?.clientes_fornecedores_enderecos?.[0] || null;
+  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco);
+  const fmtTelefone = (v: string | null | undefined) => {
+    const d = (v || '').replace(/\D/g, '');
+    if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+    if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+    return v || undefined;
+  };
+
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl h-[90vh] p-0 flex flex-col">
-        <DialogHeader className="p-6 pb-0 shrink-0">
-          <DialogTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-primary" /> Pagamento ao Consignante
-          </DialogTitle>
-        </DialogHeader>
+    <div className="space-y-4 animate-fade-in pb-10" ref={listRef}>
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <DollarSign className="h-5 w-5 text-primary" /> Pagamento ao Consignante
+        </h1>
+      </div>
 
-        <div className="flex-1 min-h-0 overflow-auto" ref={listRef}>
-          {loading ? (
-            <div className="py-12 text-center text-muted-foreground px-6">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-            </div>
-          ) : (
-            <div className="space-y-6 pb-6 px-6 pt-2">
-              {/* DADOS DO CONSIGNANTE */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Dados do Consignante</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Nome</label>
-                    <Input className="mt-1" value={nomeConsignante} onChange={e => setNomeConsignante(e.target.value)} placeholder="Nome completo" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Telefone</label>
-                    <Input className="mt-1" value={telefoneConsignante} onChange={e => setTelefoneConsignante(formatTelefone(e.target.value))} maxLength={15} placeholder="(00) 00000-0000" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">CPF/CNPJ</label>
-                    <Input className="mt-1" value={cpfCnpj} onChange={e => setCpfCnpj(formatCpfCnpj(e.target.value))} maxLength={18} placeholder="000.000.000-00" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Titular da Conta</label>
-                    <Input className="mt-1" value={titularConta} onChange={e => setTitularConta(e.target.value)} placeholder="Nome do titular" />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Dados Bancários</label>
-                  <Textarea className="mt-1" rows={2} value={dadosBancarios} onChange={e => setDadosBancarios(e.target.value)} placeholder="Banco, Agência, Conta, Tipo (Corrente/Poupança), PIX..." />
-                </div>
-              </div>
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+        </div>
+      ) : (
+        <>
+          <div className="space-y-4">
+              {/* Card: Dados do Consignante */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <User className="h-4 w-4 text-primary" /> Dados do Consignante
+                    {clienteId && cadastroCompleto && !editandoCliente && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 ml-auto"
+                        onClick={() => setEditandoCliente(true)}
+                        title="Editar dados do consignante"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </CardTitle>
+                  <Separator className="mt-2" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!clienteId ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label>Nome</Label>
+                          <Input value={nomeConsignante} onChange={e => setNomeConsignante(e.target.value)} placeholder="Nome completo" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Telefone</Label>
+                          <Input value={telefoneConsignante} onChange={e => setTelefoneConsignante(formatTelefone(e.target.value))} maxLength={15} placeholder="(00) 00000-0000" />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 sm:max-w-[50%]">
+                        <Label>CPF/CNPJ</Label>
+                        <Input value={cpfCnpj} onChange={e => setCpfCnpj(formatCpfCnpj(e.target.value))} maxLength={18} placeholder="000.000.000-00" />
+                      </div>
+                    </div>
+                  ) : (cadastroCompleto && !editandoCliente) ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <InfoDisplay label="Nome" value={cli?.nome_razao_social} />
+                      <InfoDisplay label="CPF/CNPJ" value={cli?.cpf_cnpj ? formatCpfCnpj(cli.cpf_cnpj) : undefined} />
+                      <InfoDisplay label="Sexo" value={cli?.sexo} />
+                      <InfoDisplay label="Data de Nascimento" value={fmtDataNasc(cli?.data_nascimento)} />
+                      <InfoDisplay label="E-mail (NF)" value={cli?.email_nf} />
+                      <InfoDisplay label="Telefone (comercial)" value={fmtTelefone(cli?.telefone_comercial)} />
+                    </div>
+                  ) : (
+                    <ClienteForm
+                      embedded
+                      id={clienteId}
+                      onSaved={handleClienteSaved}
+                      onCancel={editandoCliente && cadastroCompleto ? () => setEditandoCliente(false) : undefined}
+                    />
+                  )}
 
-              <Separator />
-
-              {/* DADOS DA MOTO */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Moto</h3>
-                {(motoInfo || estoqueInfo) && (
-                  <div className="rounded-lg border bg-muted/30 p-3">
-                    <p className="font-semibold text-foreground">
-                      {(motoInfo?.marca || estoqueInfo?.marca)} {(motoInfo?.modelo || estoqueInfo?.modelo || '').toUpperCase()}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Placa: {(motoInfo?.placa || estoqueInfo?.placa || '-').replace(/-/g, '')}
-                    </p>
-                    <div className="mt-2 pt-2 border-t border-border/50">
-                      <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} />
+                  <Separator />
+                  <p className="text-xs font-medium text-muted-foreground">Dados para repasse ao consignante</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Titular da Conta</Label>
+                      <Input value={titularConta} onChange={e => setTitularConta(e.target.value)} placeholder="Nome do titular" />
                     </div>
                   </div>
-                )}
-                {!(motoInfo || estoqueInfo) && (
-                  <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} />
-                )}
-              </div>
+                  <div className="space-y-1.5">
+                    <Label>Dados Bancários</Label>
+                    <Textarea rows={2} value={dadosBancarios} onChange={e => setDadosBancarios(e.target.value)} placeholder="Banco, Agência, Conta, Tipo (Corrente/Poupança), PIX..." />
+                  </div>
+                </CardContent>
+              </Card>
 
-              <Separator />
+              {clienteId && cadastroCompleto && !editandoCliente && (
+                <>
+                  {/* Card: Endereço */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-primary" /> Endereço
+                      </CardTitle>
+                      <Separator className="mt-2" />
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <InfoDisplay label="CEP" value={cliEndereco?.cep} />
+                      <InfoDisplay label="Logradouro" value={cliEndereco?.logradouro} />
+                      <InfoDisplay label="Número" value={cliEndereco?.numero} />
+                      <InfoDisplay label="Complemento" value={cliEndereco?.complemento} />
+                      <InfoDisplay label="Bairro" value={cliEndereco?.bairro} />
+                      <InfoDisplay label="Cidade" value={cliEndereco?.cidade} />
+                      <InfoDisplay label="UF" value={cliEndereco?.uf} />
+                      <InfoDisplay label="País" value={cliEndereco?.pais} />
+                    </CardContent>
+                  </Card>
 
-              {/* RESUMO FINANCEIRO + CUSTOS */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Resumo Financeiro</h3>
+                  {/* Card: Dados Bancários (cadastro) */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Landmark className="h-4 w-4 text-primary" /> Dados Bancários (cadastro)
+                      </CardTitle>
+                      <Separator className="mt-2" />
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <InfoDisplay label="Banco" value={cli?.banco} />
+                      <InfoDisplay label="Tipo de Conta" value={tipoContaLabel(cli?.tipo_conta)} />
+                      <InfoDisplay label="Agência" value={cli?.agencia} />
+                      <InfoDisplay label="Conta" value={cli?.conta ? `${cli.conta}${cli?.digito_conta ? `-${cli.digito_conta}` : ''}` : undefined} />
+                      <InfoDisplay label="Chave PIX" value={cli?.chave_pix} />
+                      <InfoDisplay label="Favorecido" value={cli?.favorecido} />
+                      <InfoDisplay label="CPF/CNPJ do Favorecido" value={cli?.cpf_cnpj_favorecido ? formatCpfCnpj(cli.cpf_cnpj_favorecido) : undefined} />
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+
+              {/* Card: Moto */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Bike className="h-4 w-4 text-primary" /> Moto
+                  </CardTitle>
+                  <Separator className="mt-2" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {(motoInfo || estoqueInfo) && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <InfoDisplay label="Marca" value={motoInfo?.marca || estoqueInfo?.marca} />
+                      <InfoDisplay label="Modelo" value={(motoInfo?.modelo || estoqueInfo?.modelo || '').toUpperCase() || undefined} />
+                      <InfoDisplay label="Ano Fab/Mod" value={(() => {
+                        const f = motoInfo?.ano_fabricacao || estoqueInfo?.ano_fabricacao || '';
+                        const m = motoInfo?.ano_modelo || estoqueInfo?.ano_modelo || '';
+                        return f && m ? `${f}/${m}` : (f || m || undefined);
+                      })()} />
+                      <InfoDisplay label="Placa" value={(motoInfo?.placa || estoqueInfo?.placa) ? String(motoInfo?.placa || estoqueInfo?.placa).replace(/-/g, '') : undefined} />
+                    </div>
+                  )}
+                  <div className="max-w-xs">
+                    <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card: Resumo Financeiro */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-primary" /> Resumo Financeiro
+                  </CardTitle>
+                  <Separator className="mt-2" />
+                </CardHeader>
+                <CardContent className="space-y-3">
 
                 {/* Add custo operacional inline */}
                 <div className="grid grid-cols-[1fr_2fr_1fr_auto] gap-2 items-end">
@@ -641,63 +849,75 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                     </span>
                   </div>
                 </div>
-              </div>
+                </CardContent>
+              </Card>
 
-              <Separator />
-
-              {/* OBSERVAÇÕES */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Observações</h3>
-                <div>
-                  <label className="text-sm font-medium">Observações do Contrato</label>
-                  <Textarea className="mt-1" rows={3} value={obsContrato} onChange={e => setObsContrato(e.target.value)} placeholder="Observações do contrato..." />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Observações Internas</label>
-                  <Textarea className="mt-1" rows={3} value={obsInternas} onChange={e => setObsInternas(e.target.value)} placeholder="Observações internas..." />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Data do Contrato</label>
-                  <Popover open={calOpen} onOpenChange={setCalOpen}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !dataContrato && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={dataContrato} onSelect={setDataContrato} initialFocus className="p-3 pointer-events-auto" />
-                      <div className="border-t p-2 flex justify-end">
-                        <Button size="sm" disabled={!dataContrato} onClick={() => setCalOpen(false)}>OK</Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Bottom buttons */}
-        <div className="flex flex-col gap-2 p-4 border-t shrink-0">
-          {jaGerado && (
-            <div className="flex justify-center">
-              <Button variant="outline" className="min-w-[140px]" onClick={handleVisualizar} disabled={generating}>
-                <Eye className="h-4 w-4 mr-1" /> Visualizar
-              </Button>
-            </div>
-          )}
-          <div className="flex justify-center gap-2">
-            <Button variant="outline" className="min-w-[140px]" onClick={handleGerar} disabled={generating}>
-              <Download className="h-4 w-4 mr-1" /> {generating ? 'Gerando...' : 'Gerar'}
-            </Button>
-            <Button onClick={handleSave} disabled={saving} className="min-w-[140px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
-              <Save className="h-4 w-4 mr-1" /> {saving ? 'Salvando...' : 'Salvar'}
-            </Button>
+              {/* Card: Observações */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-primary" /> Observações
+                  </CardTitle>
+                  <Separator className="mt-2" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label>Observações do Contrato</Label>
+                    <Textarea rows={3} value={obsContrato} onChange={e => setObsContrato(e.target.value)} placeholder="Observações do contrato..." />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Observações Internas</Label>
+                    <Textarea rows={3} value={obsInternas} onChange={e => setObsInternas(e.target.value)} placeholder="Observações internas..." />
+                  </div>
+                  <div className="space-y-1.5 max-w-xs">
+                    <Label>Data do Contrato <span className="text-destructive">*</span></Label>
+                    <Popover open={calOpen} onOpenChange={setCalOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dataContrato && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={dataContrato} onSelect={setDataContrato} initialFocus className="p-3 pointer-events-auto" />
+                        <div className="border-t p-2 flex justify-end">
+                          <Button size="sm" disabled={!dataContrato} onClick={() => setCalOpen(false)}>OK</Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </CardContent>
+              </Card>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+          {/* Ações */}
+          <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
+            </Button>
+            {modoLeitura ? (
+              <>
+                <Button variant="outline" onClick={handleBaixar} disabled={generating}>
+                  <Download className="h-4 w-4 mr-1" /> Baixar
+                </Button>
+                <Button onClick={handleVisualizar} disabled={generating}>
+                  <Eye className="h-4 w-4 mr-1" /> Visualizar
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={handleSave} disabled={saving} className="gap-1">
+                  <Save className="h-4 w-4" /> {saving ? 'Salvando...' : 'Salvar'}
+                </Button>
+                <Button onClick={handleGerar} disabled={generating}>
+                  <Download className="h-4 w-4 mr-1" /> {generating ? 'Gerando...' : 'Gerar'}
+                </Button>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
   );
 };
 

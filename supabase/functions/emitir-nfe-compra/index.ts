@@ -8,7 +8,9 @@ const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 // Contas a pagar da compra de moto seminova (chaves fixas).
 const PLANO_CONTA_ID = 'd16507df-9655-4677-8ed9-01398ce28239';
 const CENTRO_CUSTO_ID = '7fe3888a-fd17-4c31-b78b-82a0af680ff3';
-const FORMA_PAGAMENTO_ID = '63e1fff5-14d7-476c-b2da-e1ea173279a1';
+// Repasse ao cliente sai por Pix; a quitação (financiamento) sai por Boleto, em parcela à parte.
+const FORMA_PAGAMENTO_ID = '63e1fff5-14d7-476c-b2da-e1ea173279a1'; // Pix
+const FORMA_PAGAMENTO_BOLETO_ID = '7d0f2125-fedf-4a27-8ab0-be21fecaf642'; // Boleto
 const DIAS_VENCIMENTO = 7;
 
 type Operacao = 'compra' | 'consignacao' | 'venda_seminova' | 'venda_0km';
@@ -194,7 +196,7 @@ async function registrarPosAutorizacao(
       // repasse = fechamento - quitação - custo do cliente (previsão da avaliação + custos de oficina do cliente).
       const { data: avFin } = await admin
         .from('avaliacoes')
-        .select('previsao_custos_cliente, valor_quitacao, valor_fechamento, atendimento_id')
+        .select('previsao_custos_cliente, valor_quitacao, valor_fechamento, atendimento_id, marca, modelo, placa')
         .eq('id', entityId)
         .maybeSingle();
       const { data: contratoFin } = avFin?.atendimento_id
@@ -226,6 +228,11 @@ async function registrarPosAutorizacao(
         0,
       );
 
+      // Observação do compromisso: MARCA MODELO - PLACA da moto.
+      const motoDesc = [avFin?.marca, avFin?.modelo].filter(Boolean).join(' ').trim();
+      const placaFmt = String(avFin?.placa ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      const obsCompromisso = [motoDesc, placaFmt].filter(Boolean).join(' - ').toUpperCase() || null;
+
       const { data: comp, error: compErr } = await admin
         .from('compromissos')
         .insert({
@@ -235,7 +242,7 @@ async function registrarPosAutorizacao(
           despesa_fixa: false,
           plano_conta_id: PLANO_CONTA_ID,
           centro_custo_id: CENTRO_CUSTO_ID,
-          observacoes: nfeRow.observacoes || null,
+          observacoes: obsCompromisso,
           status_compromisso: 'em_aberto',
           nfe_entrada_id: nfeRow.id,
           numero_documento: nfeRow.numero ? `NF-${nfeRow.numero}` : null,
@@ -247,15 +254,43 @@ async function registrarPosAutorizacao(
       if (compErr) {
         console.error('erro ao criar compromisso', compErr);
       } else if (comp?.id) {
-        await admin.from('compromissos_parcelas').insert({
-          compromisso_id: comp.id,
-          numero_parcela: 1,
-          valor: valorRepasse,
-          data_vencimento: venc.toISOString().slice(0, 10),
-          tipo: 'unico',
-          forma_pagamento_id: FORMA_PAGAMENTO_ID,
-          status_pagamento: 'em_aberto',
-        });
+        const vencStr = venc.toISOString().slice(0, 10);
+        // Quando há quitação (financiamento a quitar), ela vira uma parcela à parte,
+        // paga por BOLETO; o valor restante (repasse ao cliente) fica na parcela de Pix,
+        // como já funcionava. Sem quitação, mantém uma única parcela.
+        const parcelas = quitacao > 0
+          ? [
+              {
+                compromisso_id: comp.id,
+                numero_parcela: 1,
+                valor: quitacao,
+                data_vencimento: vencStr,
+                tipo: 'parcelado',
+                forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID,
+                status_pagamento: 'em_aberto',
+              },
+              {
+                compromisso_id: comp.id,
+                numero_parcela: 2,
+                valor: valorRepasse,
+                data_vencimento: vencStr,
+                tipo: 'parcelado',
+                forma_pagamento_id: FORMA_PAGAMENTO_ID,
+                status_pagamento: 'em_aberto',
+              },
+            ]
+          : [
+              {
+                compromisso_id: comp.id,
+                numero_parcela: 1,
+                valor: valorRepasse,
+                data_vencimento: vencStr,
+                tipo: 'unico',
+                forma_pagamento_id: FORMA_PAGAMENTO_ID,
+                status_pagamento: 'em_aberto',
+              },
+            ];
+        await admin.from('compromissos_parcelas').insert(parcelas);
       }
     }
   }
@@ -304,6 +339,8 @@ Deno.serve(async (req) => {
     : 'compra';
   const cfg = CFG[tipo];
   const ehVenda = cfg.keyBy === 'atendimento';
+  // Compra/consignação de moto seminova entram no departamento "motos_seminovas".
+  const departamento = (tipo === 'compra' || tipo === 'consignacao') ? 'motos_seminovas' : 'motos';
 
   const avaliacaoId = typeof body.avaliacao_id === 'string' ? body.avaliacao_id : '';
   const atendimentoIdBody = typeof body.atendimento_id === 'string' ? body.atendimento_id : '';
@@ -682,7 +719,7 @@ Deno.serve(async (req) => {
       ref_externa: ref,
       operacao: tipo,
       valor_total: valor,
-      departamento: 'motos',
+      departamento,
       observacoes: observacoesNf,
       status: 'erro',
       focus_status: fStatus ?? `http_${r.httpStatus}`,
@@ -705,7 +742,7 @@ Deno.serve(async (req) => {
     ref_externa: ref,
     operacao: tipo,
     valor_total: valor,
-    departamento: 'motos',
+    departamento,
     observacoes: observacoesNf,
     data_emissao: dataEmissao,
     data_entrada: dataEmissao,
@@ -739,7 +776,7 @@ Deno.serve(async (req) => {
       quantidade: 1,
       valor_unitario: valor,
       valor_total_item: valor,
-      departamento: 'motos',
+      departamento,
     });
   }
 
