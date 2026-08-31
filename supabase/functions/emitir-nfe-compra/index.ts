@@ -188,6 +188,44 @@ async function registrarPosAutorizacao(
       const venc = new Date(nfeRow.data_emissao || dataEmissao || Date.now());
       venc.setDate(venc.getDate() + DIAS_VENCIMENTO);
 
+      // O compromisso registra o REPASSE AO CLIENTE, não o valor da NF-e (que pode ser
+      // informado à parte na tela de emissão). Repasse é sempre calculado sobre o
+      // valor de FECHAMENTO do contrato:
+      // repasse = fechamento - quitação - custo do cliente (previsão da avaliação + custos de oficina do cliente).
+      const { data: avFin } = await admin
+        .from('avaliacoes')
+        .select('previsao_custos_cliente, valor_quitacao, valor_fechamento, atendimento_id')
+        .eq('id', entityId)
+        .maybeSingle();
+      const { data: contratoFin } = avFin?.atendimento_id
+        ? await admin
+            .from('contratos')
+            .select('valor_quitacao, valor_fechamento')
+            .eq('atendimento_id', avFin.atendimento_id)
+            .eq('ipva_tipo', 'COMPRA')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        : { data: null };
+      const { data: custosCli } = await admin
+        .from('custos_oficina')
+        .select('responsavel, valor_previsto, valor_executado')
+        .eq('avaliacao_id', entityId);
+
+      const custosClienteOficina = (custosCli || [])
+        .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
+        .reduce((s: number, c: any) => s + Number(c.valor_executado ?? c.valor_previsto ?? 0), 0);
+      const fechamento = Number(
+        contratoFin?.valor_fechamento ?? avFin?.valor_fechamento ?? nfeRow.valor_total ?? 0,
+      );
+      const quitacao = Number(contratoFin?.valor_quitacao ?? avFin?.valor_quitacao ?? 0);
+      const custosClientePrev = Number(avFin?.previsao_custos_cliente ?? 0);
+
+      const valorRepasse = Math.max(
+        fechamento - quitacao - custosClientePrev - custosClienteOficina,
+        0,
+      );
+
       const { data: comp, error: compErr } = await admin
         .from('compromissos')
         .insert({
@@ -212,7 +250,7 @@ async function registrarPosAutorizacao(
         await admin.from('compromissos_parcelas').insert({
           compromisso_id: comp.id,
           numero_parcela: 1,
-          valor: Number(nfeRow.valor_total ?? 0),
+          valor: valorRepasse,
           data_vencimento: venc.toISOString().slice(0, 10),
           tipo: 'unico',
           forma_pagamento_id: FORMA_PAGAMENTO_ID,
@@ -269,6 +307,7 @@ Deno.serve(async (req) => {
 
   const avaliacaoId = typeof body.avaliacao_id === 'string' ? body.avaliacao_id : '';
   const atendimentoIdBody = typeof body.atendimento_id === 'string' ? body.atendimento_id : '';
+  const empresaIdBody = typeof body.empresa_id === 'string' ? body.empresa_id : '';
   if (ehVenda && !atendimentoIdBody) return jsonResponse({ error: 'atendimento_id é obrigatório' }, 400);
   if (!ehVenda && !avaliacaoId) return jsonResponse({ error: 'avaliacao_id é obrigatório' }, 400);
 
@@ -349,8 +388,21 @@ Deno.serve(async (req) => {
     .select('empresa_id')
     .eq('id', atendimento.loja_id)
     .maybeSingle();
-  const empresaId = lojaEmpresa?.empresa_id;
-  if (!empresaId) return jsonResponse({ error: 'Loja sem empresa vinculada' }, 400);
+  const empresaVinculada = lojaEmpresa?.empresa_id;
+  if (!empresaVinculada) return jsonResponse({ error: 'Loja sem empresa vinculada' }, 400);
+
+  // Empresa emitente: se o front enviou uma escolha, ela precisa ser a empresa
+  // vinculada à loja do atendimento (loja_empresas.id = atendimento.loja_id).
+  let empresaId = empresaVinculada;
+  if (empresaIdBody) {
+    if (empresaIdBody !== empresaVinculada) {
+      return jsonResponse(
+        { error: 'Empresa selecionada não está vinculada à loja do atendimento.' },
+        400,
+      );
+    }
+    empresaId = empresaIdBody;
+  }
 
   const { data: empresa } = await admin
     .from('empresas')

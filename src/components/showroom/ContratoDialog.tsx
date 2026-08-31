@@ -238,7 +238,7 @@ const ContratoDialog: React.FC<Props> = ({
 
         // Load formas de pagamento
         const { data: formas } = await supabase
-          .from('formas_pagamento')
+          .from('formas_pagamento_contrato')
           .select('*')
           .eq('contrato_id', contrato.id)
           .order('created_at', { ascending: true });
@@ -322,7 +322,7 @@ const ContratoDialog: React.FC<Props> = ({
       newForma.valor_total = parseCurrencyInput(outroValor) || null;
     }
 
-    const { data, error } = await supabase.from('formas_pagamento').insert(newForma).select().single();
+    const { data, error } = await supabase.from('formas_pagamento_contrato').insert(newForma).select().single();
     if (error) {
       toast.error('Erro ao adicionar forma de pagamento');
       return;
@@ -342,7 +342,7 @@ const ContratoDialog: React.FC<Props> = ({
   };
 
   const handleRemovePagamento = async (id: string) => {
-    await supabase.from('formas_pagamento').delete().eq('id', id);
+    await supabase.from('formas_pagamento_contrato').delete().eq('id', id);
     setFormasPagamento(prev => prev.filter(f => f.id !== id));
     toast.success('Forma de pagamento removida');
   };

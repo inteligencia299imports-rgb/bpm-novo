@@ -2,10 +2,9 @@ import { isTipoPropria } from '@/lib/tipoAquisicao';
 
 /**
  * Único usuário autorizado a aprovar/recusar a aquisição de motos próprias.
- * Homologação: "Higor Oliveira" (master).
- * Produção: 'ba690fb5-6d47-4c5b-92a5-627c8259924f' — trocar antes do deploy de produção.
+ * Produção (gnpkkgygjfxlipqbtybg): "Alline Borges" (master, financeiro@299imports.com.br).
  */
-export const APROVADOR_USER_ID = 'c121927a-53e2-451c-b2a5-5ad673d484e2';
+export const APROVADOR_USER_ID = 'efab8eff-b62f-4506-83b3-9a66aabb8691';
 
 export const podeAprovar = (userId?: string | null): boolean => userId === APROVADOR_USER_ID;
 

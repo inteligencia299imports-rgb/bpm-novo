@@ -2,7 +2,7 @@
 -- PORT: modulo BPM (motos) -> banco de producao compartilhado gnpkkgygjfxlipqbtybg
 -- Gerado de homolog frvclkoljxovzsrnjtlt em 2026-08-31T02:48:17.596Z
 -- REVISAR antes de aplicar. Roda inteiro em UMA transacao.
--- formas_pagamento_contrato (formas de pgto do contrato): OFF -- nao portada nesta rodada
+-- formas_pagamento_contrato (formas de pgto do contrato): ON -- religada em 2026-08-31 (ver secao 7)
 -- ===================================================================
 begin;
 set local check_function_bodies = off;
@@ -129,7 +129,7 @@ BEGIN
 
   SELECT array_agg(id) INTO _contrato_ids FROM public.contratos WHERE atendimento_id = _atendimento_id;
   IF _contrato_ids IS NOT NULL THEN
-    NULL; -- formas_pagamento_contrato OFF
+    DELETE FROM public.formas_pagamento_contrato WHERE contrato_id = ANY(_contrato_ids);
   END IF;
   DELETE FROM public.contratos WHERE atendimento_id = _atendimento_id;
   DELETE FROM public.motos_interesse WHERE atendimento_id = _atendimento_id;
@@ -1378,6 +1378,7 @@ create table if not exists public.atendimentos_motos (
   intermediacao_parte2_status text not null default 'em_aberto'::text,
   cliente_id uuid not null,
   loja_id uuid not null,
+  empresa_id uuid,
   constraint atendimentos_pkey PRIMARY KEY (id),
   constraint atendimentos_interesse_check CHECK ((interesse = ANY (ARRAY['comprar'::text, 'vender'::text, 'trocar'::text]))),
   constraint atendimentos_situacao_check CHECK ((situacao = ANY (ARRAY['em_aberto'::text, 'pendente'::text, 'sinal'::text, 'perdido'::text, 'vendido'::text, 'dispensada'::text])))
@@ -1480,12 +1481,12 @@ create table if not exists public.motos_interesse (
   constraint motos_interesse_origem_check CHECK ((origem = ANY (ARRAY['estoque'::text, 'externo'::text])))
 );
 
-create table if not exists public.motos_novas (
+create table if not exists public.estoque_motos_novas (
   id uuid not null default gen_random_uuid(),
   empresa_id uuid,
   loja_id text,
-  marca text not null,
-  modelo text not null,
+  marca_id uuid not null,
+  modelo_id uuid not null,
   categoria text,
   cor text,
   cilindrada text,
@@ -1503,7 +1504,7 @@ create table if not exists public.motos_novas (
   observacoes text,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
-  constraint motos_novas_pkey PRIMARY KEY (id)
+  constraint estoque_motos_novas_pkey PRIMARY KEY (id)
 );
 
 create table if not exists public.moto_fotos (
@@ -1530,6 +1531,7 @@ create table if not exists public.contratos (
   observacoes_contrato text,
   data_sinal date,
   data_vencimento_sinal date,
+  empresa_id uuid,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
   constraint contratos_pkey PRIMARY KEY (id)
@@ -1696,8 +1698,10 @@ CREATE INDEX idx_estoque_motos_avaliacao ON public.estoque_motos USING btree (av
 CREATE INDEX idx_estoque_motos_atend_venda ON public.estoque_motos USING btree (atendimento_venda_id);
 CREATE INDEX idx_estoque_motos_status ON public.estoque_motos USING btree (status);
 CREATE INDEX idx_estoque_motos_moto_nova ON public.estoque_motos USING btree (moto_nova_id);
-CREATE UNIQUE INDEX motos_novas_origem_externa_key ON public.motos_novas USING btree (origem_externa_id) WHERE (origem_externa_id IS NOT NULL);
-CREATE INDEX idx_motos_novas_status ON public.motos_novas USING btree (status);
+CREATE UNIQUE INDEX estoque_motos_novas_origem_externa_key ON public.estoque_motos_novas USING btree (origem_externa_id) WHERE (origem_externa_id IS NOT NULL);
+CREATE INDEX idx_estoque_motos_novas_status ON public.estoque_motos_novas USING btree (status);
+CREATE INDEX idx_estoque_motos_novas_marca ON public.estoque_motos_novas USING btree (marca_id);
+CREATE INDEX idx_estoque_motos_novas_modelo ON public.estoque_motos_novas USING btree (modelo_id);
 CREATE INDEX consultas_veiculares_avaliacao_id_idx ON public.consultas_veiculares USING btree (avaliacao_id, created_at DESC);
 CREATE INDEX bpm_idx_status_history_entity ON public.status_history USING btree (entity_type, entity_id);
 
@@ -1706,16 +1710,20 @@ CREATE INDEX bpm_idx_status_history_entity ON public.status_history USING btree 
 -- ------------------------------------------------------------------
 alter table public.atendimentos_motos add constraint atendimentos_motos_cliente_id_fkey FOREIGN KEY (cliente_id) REFERENCES clientes_fornecedores(id);
 alter table public.atendimentos_motos add constraint atendimentos_motos_loja_id_fkey FOREIGN KEY (loja_id) REFERENCES loja_empresas(id);
+alter table public.atendimentos_motos add constraint atendimentos_motos_empresa_id_fkey FOREIGN KEY (empresa_id) REFERENCES empresas(id);
 alter table public.atendimentos_motos add constraint atendimentos_vendedor_id_fkey FOREIGN KEY (vendedor_id) REFERENCES auth.users(id);
 alter table public.avaliacoes add constraint avaliacoes_atendimento_id_fkey FOREIGN KEY (atendimento_id) REFERENCES atendimentos_motos(id) ON DELETE CASCADE;
 alter table public.avaliacoes add constraint avaliacoes_avaliador_id_fkey FOREIGN KEY (avaliador_id) REFERENCES auth.users(id);
 alter table public.estoque_motos add constraint estoque_atendimento_venda_id_fkey FOREIGN KEY (atendimento_venda_id) REFERENCES atendimentos_motos(id) ON DELETE SET NULL;
 alter table public.estoque_motos add constraint estoque_avaliacao_id_fkey FOREIGN KEY (avaliacao_id) REFERENCES avaliacoes(id) ON DELETE SET NULL;
-alter table public.estoque_motos add constraint estoque_motos_moto_nova_id_fkey FOREIGN KEY (moto_nova_id) REFERENCES motos_novas(id) ON DELETE SET NULL;
+alter table public.estoque_motos add constraint estoque_motos_moto_nova_id_fkey FOREIGN KEY (moto_nova_id) REFERENCES estoque_motos_novas(id) ON DELETE SET NULL;
 alter table public.motos_interesse add constraint motos_interesse_atendimento_id_fkey FOREIGN KEY (atendimento_id) REFERENCES atendimentos_motos(id) ON DELETE CASCADE;
-alter table public.motos_novas add constraint motos_novas_empresa_id_fkey FOREIGN KEY (empresa_id) REFERENCES empresas(id);
+alter table public.estoque_motos_novas add constraint estoque_motos_novas_empresa_id_fkey FOREIGN KEY (empresa_id) REFERENCES empresas(id);
+alter table public.estoque_motos_novas add constraint estoque_motos_novas_marca_id_fkey FOREIGN KEY (marca_id) REFERENCES marcas_motos(id);
+alter table public.estoque_motos_novas add constraint estoque_motos_novas_modelo_id_fkey FOREIGN KEY (modelo_id) REFERENCES modelos_motos(id);
 alter table public.moto_fotos add constraint moto_fotos_avaliacao_id_fkey FOREIGN KEY (avaliacao_id) REFERENCES avaliacoes(id);
 alter table public.contratos add constraint contratos_atendimento_id_fkey FOREIGN KEY (atendimento_id) REFERENCES atendimentos_motos(id) ON DELETE CASCADE;
+alter table public.contratos add constraint contratos_empresa_id_fkey FOREIGN KEY (empresa_id) REFERENCES empresas(id);
 alter table public.contratos_consignacao add constraint contratos_consignacao_avaliacao_id_fkey FOREIGN KEY (avaliacao_id) REFERENCES avaliacoes(id) ON DELETE CASCADE;
 alter table public.contratos_consignante add constraint contratos_consignante_atendimento_id_fkey FOREIGN KEY (atendimento_id) REFERENCES atendimentos_motos(id) ON DELETE CASCADE;
 alter table public.consignacao_processos add constraint consignacao_processos_avaliacao_id_fkey FOREIGN KEY (avaliacao_id) REFERENCES avaliacoes(id) ON DELETE CASCADE;
@@ -1732,7 +1740,7 @@ alter table public.status_history add constraint status_history_changed_by_fkey 
 CREATE TRIGGER update_atendimentos_updated_at BEFORE UPDATE ON public.atendimentos_motos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_avaliacoes_updated_at BEFORE UPDATE ON public.avaliacoes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_estoque_updated_at BEFORE UPDATE ON public.estoque_motos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER trg_motos_novas_upd BEFORE UPDATE ON public.motos_novas FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_estoque_motos_novas_upd BEFORE UPDATE ON public.estoque_motos_novas FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER update_pos_venda_processos_updated_at BEFORE UPDATE ON public.pos_venda_processos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ------------------------------------------------------------------
@@ -1795,8 +1803,8 @@ create policy "Update motos interesse" on public.motos_interesse as permissive f
   using ((EXISTS ( SELECT 1
    FROM atendimentos_motos a
   WHERE ((a.id = motos_interesse.atendimento_id) AND ((a.vendedor_id = auth.uid()) OR has_master_or_gerente_empresa(auth.uid(), a.loja_id))))));
-alter table public.motos_novas enable row level security;
-create policy "Leitura motos_novas" on public.motos_novas as permissive for select to authenticated
+alter table public.estoque_motos_novas enable row level security;
+create policy "Leitura estoque_motos_novas" on public.estoque_motos_novas as permissive for select to authenticated
   using (true);
 alter table public.moto_fotos enable row level security;
 create policy "Acesso fotos" on public.moto_fotos as permissive for select to authenticated
@@ -2028,6 +2036,39 @@ create table if not exists public.formas_pagamento_financeiro (
 drop trigger if exists trg_formas_pagamento_financeiro_upd on public.formas_pagamento_financeiro;
 create trigger trg_formas_pagamento_financeiro_upd before update on public.formas_pagamento_financeiro for each row execute function set_updated_at();
 alter table public.formas_pagamento_financeiro enable row level security;
+
+-- formas_pagamento_contrato: formas de pgto do contrato de venda BPM (religada 2026-08-31).
+-- RLS espelha as policies de "contratos" (via join contrato -> atendimento).
+create table if not exists public.formas_pagamento_contrato (
+  id uuid primary key default gen_random_uuid(),
+  contrato_id uuid not null references public.contratos(id) on delete cascade,
+  tipo text not null,
+  valor_total numeric,
+  valor_entrada numeric,
+  financeira text,
+  numero_parcelas integer,
+  valor_parcelas numeric,
+  valor_financiado numeric,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_formas_pagamento_contrato_contrato on public.formas_pagamento_contrato (contrato_id);
+alter table public.formas_pagamento_contrato enable row level security;
+drop policy if exists "Acesso formas_pagamento_contrato" on public.formas_pagamento_contrato;
+drop policy if exists "Insert formas_pagamento_contrato" on public.formas_pagamento_contrato;
+drop policy if exists "Update formas_pagamento_contrato" on public.formas_pagamento_contrato;
+drop policy if exists "Delete formas_pagamento_contrato" on public.formas_pagamento_contrato;
+create policy "Acesso formas_pagamento_contrato" on public.formas_pagamento_contrato for select to authenticated
+  using ((EXISTS ( SELECT 1 FROM (contratos c JOIN atendimentos_motos a ON ((a.id = c.atendimento_id)))
+    WHERE ((c.id = formas_pagamento_contrato.contrato_id) AND ((a.vendedor_id = auth.uid()) OR has_master_or_gerente_empresa(auth.uid(), a.loja_id))))));
+create policy "Insert formas_pagamento_contrato" on public.formas_pagamento_contrato for insert to authenticated
+  with check ((EXISTS ( SELECT 1 FROM (contratos c JOIN atendimentos_motos a ON ((a.id = c.atendimento_id)))
+    WHERE ((c.id = formas_pagamento_contrato.contrato_id) AND ((a.vendedor_id = auth.uid()) OR has_master_or_gerente_empresa(auth.uid(), a.loja_id))))));
+create policy "Update formas_pagamento_contrato" on public.formas_pagamento_contrato for update to authenticated
+  using ((EXISTS ( SELECT 1 FROM (contratos c JOIN atendimentos_motos a ON ((a.id = c.atendimento_id)))
+    WHERE ((c.id = formas_pagamento_contrato.contrato_id) AND ((a.vendedor_id = auth.uid()) OR has_master_or_gerente_empresa(auth.uid(), a.loja_id))))));
+create policy "Delete formas_pagamento_contrato" on public.formas_pagamento_contrato for delete to authenticated
+  using ((EXISTS ( SELECT 1 FROM (contratos c JOIN atendimentos_motos a ON ((a.id = c.atendimento_id)))
+    WHERE ((c.id = formas_pagamento_contrato.contrato_id) AND ((a.vendedor_id = auth.uid()) OR has_master_or_gerente_empresa(auth.uid(), a.loja_id))))));
 
 -- ------------------------------------------------------------------
 -- 8. Storage bucket moto-fotos + policies

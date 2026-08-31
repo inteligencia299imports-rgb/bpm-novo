@@ -54,6 +54,10 @@ runtime no projeto novo.
 ```
 npx supabase secrets set FOCUS_NFE_AMBIENTE=homologacao --project-ref gnpkkgygjfxlipqbtybg
 npx supabase secrets set ANTHROPIC_API_KEY=<...>        --project-ref gnpkkgygjfxlipqbtybg
+# Se a key for "identity-linked" (org, multi-workspace), tambem:
+# npx supabase secrets set ANTHROPIC_WORKSPACE_ID=<wsid> --project-ref gnpkkgygjfxlipqbtybg
+#   -> senao extrair-dados-cnh/crlv batem 400 "anthropic-workspace-id is required"
+#   -> alternativa: gerar uma API key escopada a um Workspace (nao precisa do header)
 # RENAVE_MOCK / RENAVE_* se usados pela consulta-veicular
 ```
 Tokens Focus-NFe por empresa ficam na tabela `empresas_focus_config` (não é secret) —

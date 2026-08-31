@@ -3,10 +3,30 @@
 Gerado por introspecção do homolog `frvclkoljxovzsrnjtlt` contra o alvo
 `gnpkkgygjfxlipqbtybg` (banco de produção com 7 sistemas: BPM, CRM, HCM, MINI, OFC, PONTO, SISFIN).
 
-**STATUS: aplicado em produção em 2026-08-30.**
+**STATUS: aplicado em produção em 2026-08-30. Front-end apontado para `gnpkkgygjfxlipqbtybg` em 2026-08-31.**
 - `01_schema.sql` (validado antes via `begin`+`rollback`) e `02_naturezas_seed.sql` — OK.
-- `formas_pagamento_contrato` (formas de pgto do contrato de venda): **OFF nesta rodada** —
-  tabela NÃO criada, `delete_avaliacao_cascade` teve o `DELETE` dela neutralizado. Ver `03_`.
+
+### Ajustes pós-cutover (2026-08-31)
+
+Refletidos neste `01_schema.sql` + migrations `20260905020000`..`20260905040000`:
+
+1. `motos_novas` → **`estoque_motos_novas`** (tabela + pkey + fkey + índices + trigger + policy).
+   Tabela estava vazia; DDL direto em `gnpkkgygjfxlipqbtybg`.
+2. `estoque_motos_novas.marca` / `.modelo` (text) → **`marca_id` / `modelo_id`** (uuid NOT NULL,
+   FK p/ `marcas_motos` / `modelos_motos`). O sistema externo que alimenta a tabela precisa
+   passar os IDs, não os nomes.
+3. **`formas_pagamento_contrato` RELIGADA** — tabela + 4 policies (espelho de `contratos`) criadas;
+   `delete_avaliacao_cascade` voltou a limpar a tabela (era `NULL; -- OFF`). Os 3 `.from('formas_pagamento')`
+   do `ContratoDialog.tsx` passaram a apontar para `formas_pagamento_contrato`. Ver `03_` §1.
+4. **Aprovador de compras (produção):** `APROVADOR_USER_ID` em `src/lib/aprovacao.ts` =
+   `efab8eff-b62f-4506-83b3-9a66aabb8691` (Alline Borges, master, financeiro@299imports.com.br).
+5. **`observacoes`:** código usa `created_by` (não `user_id`) — `AtendimentoObservacoes.tsx`. Ver `03_` §2.
+6. **Config front:** `supabase/config.toml`, `src/integrations/supabase/client.ts` e `.env`
+   apontando para `gnpkkgygjfxlipqbtybg` / `https://gnpkkgygjfxlipqbtybg.supabase.co`.
+7. **`contratos.empresa_id`** (FK `empresas`) — empresa emitente/compradora escolhida na tela de
+   NF-e/contrato de compra. Migration `20260905050000`.
+8. **`atendimentos_motos.empresa_id`** (FK `empresas`) — empresa do atendimento, escolhida no
+   card "Empresa" do form (filtro bidirecional com a loja). Migration `20260905060000`.
 
 ## Arquivos
 

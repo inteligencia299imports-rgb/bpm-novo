@@ -6,12 +6,13 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto } from '@/lib/clienteCadastro';
 import { Badge } from '@/components/ui/badge';
-import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, ExternalLink } from 'lucide-react';
+import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, ExternalLink, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -117,6 +118,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   const [obsInternas, setObsInternas] = useState('');
   const [obsContrato, setObsContrato] = useState('');
   const [obsNfe, setObsNfe] = useState('');
+  // Modo NF-e: valor que vai para a nota (default = valor de fechamento). O compromisso continua sendo o repasse.
+  const [nfeValor, setNfeValor] = useState('');
+
+  // Empresa emitente da NF-e (restrita às empresas vinculadas à loja do atendimento).
+  const [empresasLoja, setEmpresasLoja] = useState<any[]>([]);
+  const [empresaId, setEmpresaId] = useState<string>('');
 
   // Date
   const [dataContrato, setDataContrato] = useState<Date | undefined>();
@@ -151,7 +158,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
           .eq('entity_id', avaliacao.id)
           .eq('status', 'contrato_compra_gerado')
           .limit(1),
-        supabase.from('atendimentos_motos').select('cliente_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))').eq('id', atendimentoId).maybeSingle(),
+        supabase.from('atendimentos_motos').select('cliente_id, loja_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))').eq('id', atendimentoId).maybeSingle(),
         supabase.from('custos_oficina').select('responsavel, valor_previsto, valor_executado').eq('avaliacao_id', avaliacao.id),
       ]);
 
@@ -168,6 +175,22 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
 
       const contrato = contratosList && contratosList.length > 0 ? contratosList[0] : null;
       const atFreshCpf = (atFresh as any)?.cliente?.cpf_cnpj;
+
+      // Empresas vinculadas à loja do atendimento (loja_empresas.id = atendimento.loja_id).
+      const lojaId = (atFresh as any)?.loja_id;
+      let empresas: any[] = [];
+      if (lojaId) {
+        const { data: le } = await supabase
+          .from('loja_empresas')
+          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, endereco, uf)')
+          .eq('id', lojaId);
+        const seen = new Set<string>();
+        empresas = (le || [])
+          .map((r: any) => r.empresas)
+          .filter((e: any) => e && !seen.has(e.id) && seen.add(e.id));
+      }
+      setEmpresasLoja(empresas);
+      setEmpresaId((contrato as any)?.empresa_id || empresas[0]?.id || '');
 
       const quitacaoAval = (avaliacao as any).valor_quitacao;
 
@@ -196,6 +219,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       setCpfCnpj(vals.cpfCnpj);
       setValorQuitacao(vals.valorQuitacao);
       setValorFechamento(vals.valorFechamento);
+      // Valor da NF-e default = valor de fechamento (editável na tela de emissão).
+      setNfeValor(vals.valorFechamento);
       setObsInternas(vals.obsInternas);
       setObsContrato(vals.obsContrato);
       setDataContrato(vals.dataContrato);
@@ -204,6 +229,15 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
     };
     loadContrato();
   }, [open, avaliacao?.id]);
+
+  // Se já houve uma emissão (ex.: em erro), repõe o valor da NF que foi tentado.
+  useEffect(() => {
+    const vt = (nfe.nfe as any)?.valor_total;
+    if (ehNfe && !nfeJaEmitida && typeof vt === 'number' && vt > 0) {
+      setNfeValor(formatCurrencyInput(String(Math.round(vt * 100))));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(nfe.nfe as any)?.valor_total, ehNfe, nfeJaEmitida]);
 
   const saveContrato = async (): Promise<string | null> => {
     if (nfeJaEmitida) {
@@ -226,6 +260,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       observacoes_contrato: obsContrato || null,
       data_sinal: dataContrato ? format(dataContrato, 'yyyy-MM-dd') : null,
       ipva_tipo: 'COMPRA', // marcador para distinguir contrato de compra do de venda
+      empresa_id: empresaId || null,
     };
 
     if (contratoId) {
@@ -260,6 +295,15 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
     }
   };
 
+  // Grava a empresa emitente escolhida no contrato (tela de emissão de NF-e).
+  const handleEmpresaChange = async (v: string) => {
+    setEmpresaId(v);
+    if (contratoId) {
+      const { error } = await supabase.from('contratos').update({ empresa_id: v }).eq('id', contratoId);
+      if (error) toast.error('Erro ao salvar a empresa emitente');
+    }
+  };
+
   const validateFields = (): boolean => {
     if (!cpfCnpj?.trim()) { toast.error('CPF/CNPJ é obrigatório'); return false; }
     if (!valorFechamento?.trim() || parseCurrencyInput(valorFechamento) <= 0) { toast.error('Valor de Fechamento é obrigatório'); return false; }
@@ -285,8 +329,35 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         ? `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`
         : tel;
 
+    const empSel = empresasLoja.find((e) => e.id === empresaId) || null;
+
+    const b = clienteRecord || {};
+    const tipoConta = b.tipo_conta === 'corrente' ? 'Corrente'
+      : b.tipo_conta === 'poupanca' ? 'Poupança'
+      : b.tipo_conta === 'pagamento' ? 'Pagamento'
+      : (b.tipo_conta || null);
+    const bancoCliente = {
+      banco: b.banco || null,
+      tipoConta,
+      agencia: b.agencia || null,
+      conta: b.conta ? `${b.conta}${b.digito_conta ? `-${b.digito_conta}` : ''}` : null,
+      chavePix: b.chave_pix || null,
+      favorecido: b.favorecido || null,
+      cpfCnpjFavorecido: b.cpf_cnpj_favorecido ? formatCpfCnpj(String(b.cpf_cnpj_favorecido)) : null,
+    };
+
     return {
       loja: atendimento?.loja || null,
+      bancoCliente,
+      empresa: empSel
+        ? {
+            razaoSocial: empSel.razao_social || null,
+            nome: empSel.nome || null,
+            cnpj: empSel.cnpj || null,
+            endereco: empSel.endereco || null,
+            uf: empSel.uf || null,
+          }
+        : null,
       nomeCliente: atendimento?.cliente?.nome_razao_social || '',
       telefone: telefoneFormatado,
       cpfCnpj: cpfCnpj || '-',
@@ -297,8 +368,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       km: moto?.km || '-',
       valorQuitacao: formatCurrencyValue(valorQuitacao),
       valorFechamento: formatCurrencyValue(valorFechamento),
-      abatimentos: fmtNum(custosCliente),
-      repasseCliente: fmtNum(fechNum - custosCliente - quitNum),
+      abatimentos: fmtNum(custosCliente + Number((avaliacao as any)?.previsao_custos_cliente ?? 0)),
+      repasseCliente: fmtNum(fechNum - custosCliente - Number((avaliacao as any)?.previsao_custos_cliente ?? 0) - quitNum),
       observacoes: obsContrato || '',
       dataContrato: dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : '-',
     };
@@ -327,6 +398,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       setBaseline(snapshotFields({ cpfCnpj, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato }));
       setClienteTocado(false);
       toast.success('Contrato de compra gerado com sucesso!');
+      // Volta para a tela de detalhes do pós-compra.
+      onOpenChange(false);
     } catch (err) {
       console.error('Erro ao gerar contrato:', err);
       toast.error('Erro ao gerar o contrato');
@@ -351,6 +424,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
     setGenerating(true);
     try {
       await generateContratoCompraPdf(buildPdfData(), 'download');
+      // Volta para a tela de detalhes do pós-compra.
+      onOpenChange(false);
     } catch (err) {
       console.error('Erro ao baixar contrato:', err);
       toast.error('Erro ao baixar o contrato');
@@ -394,7 +469,10 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const fechamentoNum = valorFechamento?.trim() ? parseCurrencyInput(valorFechamento) : 0;
   const quitacaoNum = valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : 0;
-  const repasseCliente = fechamentoNum - custosCliente - quitacaoNum;
+  // Custo do cliente registrado na avaliação (previsão) + custos de oficina do cliente.
+  const previsaoCustosCliente = Number((avaliacao as any)?.previsao_custos_cliente ?? 0);
+  const custosClienteTotal = custosCliente + previsaoCustosCliente;
+  const repasseCliente = fechamentoNum - custosClienteTotal - quitacaoNum;
 
   // Houve edição desde a última geração/carregamento?
   const currentSnapshot = snapshotFields({ cpfCnpj, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato });
@@ -403,6 +481,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   const modoLeitura = (jaGerado && !editado) || nfeJaEmitida;
   // Campos do contrato/cliente somente leitura: na tela de NF-e ou após NF-e autorizada.
   const soLeitura = ehNfe || nfeJaEmitida;
+  // Empresa: editável enquanto a NF-e não foi emitida e o contrato não está travado em leitura.
+  const empresaReadonly = nfeJaEmitida || (!ehNfe && modoLeitura);
 
   // Modo NF-e
   const podeEmitirNfe = (avaliacao as any)?.aprovacao_status === 'aprovada'
@@ -426,6 +506,46 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         </div>
       ) : (
         <>
+          {/* Card: Empresa (compradora no contrato / emitente na NF-e) */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" /> {ehNfe ? 'Empresa Emitente' : 'Empresa Compradora'}
+              </CardTitle>
+              <Separator className="mt-2" />
+            </CardHeader>
+            <CardContent>
+              {empresasLoja.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma empresa vinculada à loja do atendimento.
+                </p>
+              ) : empresaReadonly ? (
+                <InfoDisplay
+                  label="Empresa"
+                  value={(() => {
+                    const e = empresasLoja.find((x) => x.id === empresaId);
+                    if (!e) return '—';
+                    return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
+                  })()}
+                />
+              ) : (
+                <div className="space-y-1.5 max-w-sm">
+                  <Label>{ehNfe ? 'Empresa da operação' : 'Empresa compradora'} <span className="text-destructive">*</span></Label>
+                  <Select value={empresaId} onValueChange={handleEmpresaChange}>
+                    <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+                    <SelectContent>
+                      {empresasLoja.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Card: Dados do Cliente */}
           <Card>
             <CardHeader className="pb-2">
@@ -549,7 +669,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
               <div>
                 <span className="block text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Abatimentos (Custos+Despesas)</span>
-                <p className="text-base font-bold text-primary">{brl(custosCliente)}</p>
+                <p className="text-base font-bold text-primary">{brl(custosClienteTotal)}</p>
               </div>
               <div>
                 <span className="block text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quitação</span>
@@ -607,16 +727,35 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             </CardHeader>
             <CardContent className="space-y-4">
               {ehNfe && !nfeJaEmitida ? (
-                <div className="space-y-1.5">
-                  <Label>Observações na NF-e</Label>
-                  <Textarea
-                    rows={3}
-                    value={obsNfe}
-                    onChange={(e) => setObsNfe(e.target.value.toUpperCase())}
-                    placeholder="INFORMAÇÕES COMPLEMENTARES QUE SAIRÃO NA NOTA..."
-                    className="uppercase"
-                  />
-                </div>
+                <>
+                  <div className="space-y-1.5 max-w-xs">
+                    <Label>Valor da NF-e <span className="text-destructive">*</span></Label>
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                      <Input
+                        className="pl-7"
+                        inputMode="numeric"
+                        value={nfeValor}
+                        onChange={(e) => setNfeValor(formatCurrencyInput(e.target.value))}
+                        placeholder="0,00"
+                        disabled={nfe.pendente}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Valor que sai na nota. O compromisso financeiro registra sempre o repasse ao cliente ({brl(repasseCliente)}).
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Observações na NF-e</Label>
+                    <Textarea
+                      rows={3}
+                      value={obsNfe}
+                      onChange={(e) => setObsNfe(e.target.value.toUpperCase())}
+                      placeholder="INFORMAÇÕES COMPLEMENTARES QUE SAIRÃO NA NOTA..."
+                      className="uppercase"
+                    />
+                  </div>
+                </>
               ) : soLeitura ? (
                 <>
                   <InfoDisplay label="Observações Internas" value={obsInternas || undefined} />
@@ -675,10 +814,18 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                   </Button>
                   {nfe.nfe?.status !== 'processada' && !nfe.pendente && (
                     <Button
-                      variant={podeEmitirNfe ? 'default' : 'outline'}
-                      onClick={() => nfe.emitir({ observacoes: obsNfe.trim() || undefined })}
-                      disabled={!podeEmitirNfe || nfe.loading}
-                      title={podeEmitirNfe ? undefined : 'Disponível após aprovação, contrato gerado e consulta realizada'}
+                      variant={podeEmitirNfe && !!empresaId && parseCurrencyInput(nfeValor) > 0 ? 'default' : 'outline'}
+                      onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined })}
+                      disabled={!podeEmitirNfe || nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0}
+                      title={
+                        !empresaId
+                          ? 'Selecione a empresa emitente'
+                          : parseCurrencyInput(nfeValor) <= 0
+                            ? 'Informe o valor da NF-e'
+                          : podeEmitirNfe
+                            ? undefined
+                            : 'Disponível após aprovação, contrato gerado e consulta realizada'
+                      }
                       className="gap-1.5"
                     >
                       {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}

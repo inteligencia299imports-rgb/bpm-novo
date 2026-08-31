@@ -108,12 +108,15 @@ async function extrairViaClaude(
     ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: fileBase64 } }
     : { type: 'image', source: { type: 'base64', media_type: mediaType, data: fileBase64 } };
 
+  const workspaceId = Deno.env.get('ANTHROPIC_WORKSPACE_ID');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
+      // Chaves de API vinculadas a identidade exigem o workspace-id no header.
+      ...(workspaceId ? { 'anthropic-workspace-id': workspaceId } : {}),
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,

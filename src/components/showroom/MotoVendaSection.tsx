@@ -11,6 +11,7 @@ import PhotoUpload from './PhotoUpload';
 import PlacaInput from '@/components/shared/PlacaInput';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Bike } from 'lucide-react';
 
 interface Props {
   marca: string; setMarca: (v: string) => void;
@@ -56,7 +57,11 @@ const MotoVendaSection: React.FC<Props> = ({
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Moto do Cliente ({interesse === 'trocar' ? 'Troca' : 'Venda'})</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Bike className="h-4 w-4 text-primary" /> Moto do Cliente ({interesse === 'trocar' ? 'Troca' : 'Venda'})
+        </CardTitle>
+      </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-1.5">

@@ -2,9 +2,27 @@ import jsPDF from 'jspdf';
 
 interface ContratoCompraPdfData {
   loja?: string | null;
+  /** Empresa compradora selecionada na tela do contrato/NF-e. */
+  empresa?: {
+    razaoSocial?: string | null;
+    nome?: string | null;
+    cnpj?: string | null;
+    endereco?: string | null;
+    uf?: string | null;
+  } | null;
   nomeCliente: string;
   telefone: string;
   cpfCnpj: string;
+  /** Dados bancários do cliente (vendedor) — saem na Cláusula Segunda. */
+  bancoCliente?: {
+    banco?: string | null;
+    tipoConta?: string | null;
+    agencia?: string | null;
+    conta?: string | null;
+    chavePix?: string | null;
+    favorecido?: string | null;
+    cpfCnpjFavorecido?: string | null;
+  } | null;
   marca: string;
   modelo: string;
   anoFabMod: string;
@@ -84,9 +102,12 @@ interface CidadeOverride {
   cidadeAssinatura: string;
 }
 
-const CIDADE_OVERRIDES: { match: (l: string) => boolean; data: CidadeOverride }[] = [
+// Dados cadastrais (razão social / sede / cidade) que não vivem na tabela `empresas`.
+// Casados pelo CNPJ da empresa selecionada; `matchLoja` fica como fallback legado.
+const CIDADE_OVERRIDES: { cnpj?: string; matchLoja?: (l: string) => boolean; data: CidadeOverride }[] = [
   {
-    match: (l) => l.includes('POA') || l.includes('299P'),
+    cnpj: '05.564.902/0002-55',
+    matchLoja: (l) => l.includes('POA') || l.includes('299P'),
     data: {
       empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
       cnpj: '05.564.902/0002-55',
@@ -95,7 +116,8 @@ const CIDADE_OVERRIDES: { match: (l: string) => boolean; data: CidadeOverride }[
     },
   },
   {
-    match: (l) => l.includes('FLN') || l.includes('299F'),
+    cnpj: '05.564.902/0001-74',
+    matchLoja: (l) => l.includes('FLN') || l.includes('299F'),
     data: {
       empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
       cnpj: '05.564.902/0001-74',
@@ -103,19 +125,35 @@ const CIDADE_OVERRIDES: { match: (l: string) => boolean; data: CidadeOverride }[
       cidadeAssinatura: 'Florianópolis',
     },
   },
+  {
+    cnpj: '21.194.795/0001-96',
+    data: {
+      empresaNome: 'MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA',
+      cnpj: '21.194.795/0001-96',
+      enderecoSede: 'Setor SCIA Quadra 15 Conjunto 3 loja, n.º 06 bairro Zona Industrial(Guará), Brasília–DF',
+      cidadeAssinatura: 'Brasília',
+    },
+  },
 ];
 
-const getCidadeOverride = (loja?: string | null): CidadeOverride | null => {
+const digitsOnly = (v?: string | null) => (v || '').replace(/\D/g, '');
+
+const getCidadeOverride = (cnpj?: string | null, loja?: string | null): CidadeOverride | null => {
+  const cd = digitsOnly(cnpj);
+  if (cd) {
+    const byCnpj = CIDADE_OVERRIDES.find(o => digitsOnly(o.cnpj) === cd);
+    if (byCnpj) return byCnpj.data;
+  }
   const l = (loja || '').toUpperCase();
-  return CIDADE_OVERRIDES.find(o => o.match(l))?.data || null;
+  return CIDADE_OVERRIDES.find(o => o.matchLoja?.(l))?.data || null;
 };
 
 export async function generateContratoCompraPdf(data: ContratoCompraPdfData, modo: 'download' | 'view' = 'download'): Promise<void> {
-  const override = getCidadeOverride(data.loja);
-  const empresaNome = override?.empresaNome || 'MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA';
-  const cnpj = override?.cnpj || '21.194.795/0001-96';
-  const enderecoSede = override?.enderecoSede || 'Setor SCIA Quadra 15 Conjunto 3 loja, n.º 06 bairro Zona Industrial(Guará), Brasília–DF';
-  const cidadeAssinatura = override?.cidadeAssinatura || 'Brasília';
+  const override = getCidadeOverride(data.empresa?.cnpj, data.loja);
+  const empresaNome = data.empresa?.razaoSocial || override?.empresaNome || data.empresa?.nome || 'MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA';
+  const cnpj = data.empresa?.cnpj || override?.cnpj || '21.194.795/0001-96';
+  const enderecoSede = data.empresa?.endereco || override?.enderecoSede || 'Setor SCIA Quadra 15 Conjunto 3 loja, n.º 06 bairro Zona Industrial(Guará), Brasília–DF';
+  const cidadeAssinatura = override?.cidadeAssinatura || data.empresa?.uf || 'Brasília';
   const logoPath = override && (data.loja || '').toUpperCase().includes('DUCATI')
     ? '/logos/ducati-logo.png'
     : '/logos/299-logo.jpg';
@@ -239,6 +277,37 @@ export async function generateContratoCompraPdf(data: ContratoCompraPdfData, mod
   setNormal();
   checkPageBreak(lineHeight);
   y = drawJustifiedText(doc, 'Descrito no campo condições comerciais, assim como qualquer detalhe complementado no campo observação citada.', marginLeft, contentWidth, y, lineHeight, lineCheckPageBreak);
+  y += sectionGap;
+
+  // Dados bancários do vendedor (cliente) para o repasse.
+  const bc = data.bancoCliente;
+  const bancoLinhas: string[] = [];
+  if (bc) {
+    if (bc.banco) bancoLinhas.push(`Banco: ${bc.banco}`);
+    const contaParts: string[] = [];
+    if (bc.tipoConta) contaParts.push(`Tipo: ${bc.tipoConta}`);
+    if (bc.agencia) contaParts.push(`Agência: ${bc.agencia}`);
+    if (bc.conta) contaParts.push(`Conta: ${bc.conta}`);
+    if (contaParts.length) bancoLinhas.push(contaParts.join('   '));
+    if (bc.chavePix) bancoLinhas.push(`Chave PIX: ${bc.chavePix}`);
+    if (bc.favorecido) bancoLinhas.push(`Favorecido: ${bc.favorecido}`);
+    if (bc.cpfCnpjFavorecido) bancoLinhas.push(`CPF/CNPJ do favorecido: ${bc.cpfCnpjFavorecido}`);
+  }
+  checkPageBreak(lineHeight * (bancoLinhas.length + 2));
+  setBold();
+  doc.text('Dados bancários do VENDEDOR para repasse:', marginLeft, y);
+  y += lineHeight;
+  setNormal();
+  if (bancoLinhas.length === 0) {
+    doc.text('Não informados.', marginLeft, y);
+    y += lineHeight;
+  } else {
+    for (const ln of bancoLinhas) {
+      y = lineCheckPageBreak(y, lineHeight);
+      doc.text(ln, marginLeft, y);
+      y += lineHeight;
+    }
+  }
   y += sectionGap;
 
   // CLÁUSULA TERCEIRA

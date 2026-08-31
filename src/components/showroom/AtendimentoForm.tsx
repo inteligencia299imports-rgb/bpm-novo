@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save, Loader2, SendHorizonal, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, SendHorizonal, CheckCircle, Briefcase, User, ClipboardList } from 'lucide-react';
 import { LOJAS, INTERESSES, TEMPERATURAS, ORIGENS, UFS, TIPOS_ATENDIMENTO, SEXOS } from '@/types/crm';
 import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
@@ -78,23 +78,82 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [lojasAtivas, setLojasAtivas] = useState<Set<string> | null>(null);
   const [lojaIdMap, setLojaIdMap] = useState<Map<string, string>>(new Map());
 
+  // Empresa <-> loja (bidirecional): loja escolhida define a empresa; empresa escolhida filtra as lojas.
+  const [empresaId, setEmpresaId] = useState('');
+  const [lojaEmpresaMap, setLojaEmpresaMap] = useState<Map<string, string>>(new Map());
+  const [empresaLojasMap, setEmpresaLojasMap] = useState<Map<string, Set<string>>>(new Map());
+  const [empresasList, setEmpresasList] = useState<{ id: string; nome: string; razao_social: string | null; cnpj: string | null }[]>([]);
+
   useEffect(() => {
     supabase
       .from('loja_empresas')
-      .select('id, loja')
+      .select('id, loja, empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj)')
       .eq('sistema', 'motos')
       .eq('ativo', true)
       .then(({ data }) => {
-        setLojasAtivas(new Set((data || []).map(r => r.loja)));
-        setLojaIdMap(new Map((data || []).map(r => [r.loja, r.id])));
+        const rows = (data || []) as any[];
+        setLojasAtivas(new Set(rows.map(r => r.loja)));
+        setLojaIdMap(new Map(rows.map(r => [r.loja, r.id])));
+        setLojaEmpresaMap(new Map(rows.filter(r => r.empresa_id).map(r => [r.loja, r.empresa_id])));
+
+        const empLojas = new Map<string, Set<string>>();
+        const empInfo = new Map<string, any>();
+        for (const r of rows) {
+          if (!r.empresa_id) continue;
+          if (!empLojas.has(r.empresa_id)) empLojas.set(r.empresa_id, new Set());
+          empLojas.get(r.empresa_id)!.add(r.loja);
+          if (r.empresas && !empInfo.has(r.empresa_id)) empInfo.set(r.empresa_id, r.empresas);
+        }
+        setEmpresaLojasMap(empLojas);
+        setEmpresasList(
+          [...empInfo.values()].sort((a, b) =>
+            (a.razao_social || a.nome).localeCompare(b.razao_social || b.nome, 'pt-BR'),
+          ),
+        );
       });
   }, []);
 
-  // Mantem a loja atual visivel mesmo se foi desativada depois (edicao)
+  // Loja escolhida -> empresa correspondente (loja_empresas.id = atendimento.loja_id -> empresa_id).
+  useEffect(() => {
+    if (!loja) return;
+    const emp = lojaEmpresaMap.get(loja);
+    if (emp && emp !== empresaId) setEmpresaId(emp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loja, lojaEmpresaMap]);
+
+  // Grupos (299 / Ducati) que têm ao menos uma loja da empresa selecionada.
+  const gruposDisponiveis = (['299', 'Ducati'] as const).filter(g => {
+    if (!empresaId) return true;
+    const lojasDaEmp = empresaLojasMap.get(empresaId);
+    return !lojasDaEmp || LOJA_GROUPS[g].some(l => lojasDaEmp.has(l));
+  });
+
+  const handleEmpresaChange = (v: string) => {
+    if (lojaGroupLocked) {
+      const lojasDaEmp = empresaLojasMap.get(v);
+      if (lojasDaEmp && originalLojaGroup && !LOJA_GROUPS[originalLojaGroup].some(l => lojasDaEmp.has(l))) {
+        toast.error('Atendimentos com Sinal ou Vendido não podem trocar entre 299 e Ducati. Marque o atendimento como perdido primeiro.');
+        return;
+      }
+    }
+    setEmpresaId(v);
+    const lojasDaEmp = empresaLojasMap.get(v);
+    if (loja && lojasDaEmp && !lojasDaEmp.has(loja)) {
+      setLoja('');
+      if (lojaGroup && !LOJA_GROUPS[lojaGroup]?.some(l => lojasDaEmp.has(l))) setLojaGroup('');
+    }
+  };
+
+  // Mantem a loja atual visivel mesmo se foi desativada depois (edicao).
+  // Se há empresa selecionada, só mostra as lojas dessa empresa.
   const unidadeOptions = (group: '299' | 'Ducati') => {
     const all = LOJA_GROUPS[group];
-    if (!lojasAtivas) return all;
-    return all.filter(l => lojasAtivas.has(l) || l === loja);
+    let opts = lojasAtivas ? all.filter(l => lojasAtivas.has(l) || l === loja) : all;
+    if (empresaId) {
+      const lojasDaEmp = empresaLojasMap.get(empresaId);
+      if (lojasDaEmp) opts = opts.filter(l => lojasDaEmp.has(l) || l === loja);
+    }
+    return opts;
   };
 
   const unidadeInnerRef = useRef<HTMLDivElement>(null);
@@ -112,6 +171,39 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, lojaPrincipal]);
+
+  // Loja/empresa default do usuário, direto de user_roles.loja_id (novo atendimento).
+  const [defaultLoja, setDefaultLoja] = useState<{ loja: string; empresa_id: string | null } | null>(null);
+  useEffect(() => {
+    if (isEditing || !user?.id) return;
+    supabase
+      .from('user_roles')
+      .select('loja_id')
+      .eq('user_id', user.id)
+      .eq('projeto_id', BPM_PROJETO_ID)
+      .eq('ativo', true)
+      .maybeSingle()
+      .then(async ({ data }) => {
+        const lid = (data as any)?.loja_id;
+        if (!lid) return;
+        const { data: le } = await supabase
+          .from('loja_empresas')
+          .select('loja, empresa_id')
+          .eq('id', lid)
+          .maybeSingle();
+        if ((le as any)?.loja) {
+          setDefaultLoja({ loja: (le as any).loja, empresa_id: (le as any).empresa_id ?? null });
+        }
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, user?.id]);
+
+  useEffect(() => {
+    if (isEditing || !defaultLoja) return;
+    setLoja(prev => prev || defaultLoja.loja);
+    if (defaultLoja.empresa_id) setEmpresaId(prev => prev || defaultLoja.empresa_id!);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, defaultLoja]);
 
   // Default de UF: apenas sugestao inicial (loja_id -> loja_empresas -> empresas.uf),
   // o usuario pode trocar livremente a qualquer momento.
@@ -185,6 +277,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setLoja(atLoja);
           setLojaOriginal(atLoja);
           setLojaIdOriginal(at.loja_id);
+          setEmpresaId((at as any).empresa_id || '');
           setVendedorId(at.vendedor_id || '');
           setClienteId(at.cliente_id);
           setNomeCliente(at.cliente?.nome_razao_social || '');
@@ -287,7 +380,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
   const handleSave = async () => {
-    if (!nomeCliente.trim() || !isPhoneValid || !loja || !sexo || !uf || !tipoAtendimento || !origem || !temperatura) {
+    if (!nomeCliente.trim() || !isPhoneValid || !empresaId || !loja || !sexo || !uf || !tipoAtendimento || !origem || !temperatura) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -360,7 +453,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
     const atData = {
       vendedor_id: vendedorId || user!.id,
-      loja_id: lojaId, cliente_id: finalClienteId as string, tipo_atendimento: tipoAtendimento,
+      loja_id: lojaId, empresa_id: empresaId, cliente_id: finalClienteId as string, tipo_atendimento: tipoAtendimento,
       origem: origem || null, temperatura: temperatura || null,
       interesse, situacao: isEditing ? situacao : 'em_aberto' as SituacaoShowroom,
     };
@@ -510,9 +603,37 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         <h1 className="text-xl font-bold">{isEditing ? 'Editar Atendimento' : 'Novo Atendimento'}</h1>
       </div>
 
+      {/* Card: Empresa */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Briefcase className="h-4 w-4 text-primary" /> Empresa
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-1.5">
+            <Label>Empresa *</Label>
+            <Select value={empresaId} onValueChange={handleEmpresaChange}>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+              <SelectContent>
+                {empresasList.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Card: Dados do Cliente */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Dados do Cliente</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <User className="h-4 w-4 text-primary" /> Dados do Cliente
+          </CardTitle>
+        </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[220px_2fr_auto_auto] gap-4">
           <div className="space-y-1.5">
             <Label>Telefone *</Label>
@@ -575,7 +696,11 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
       {/* Card: Dados do Atendimento */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Dados do Atendimento</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-primary" /> Dados do Atendimento
+          </CardTitle>
+        </CardHeader>
         <CardContent className="space-y-4">
           {isEditing && (
             <div className="space-y-1.5 max-w-xs">
@@ -594,7 +719,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             <div className="space-y-1.5 col-start-1">
               <Label>Loja *</Label>
               <div className="flex flex-wrap gap-2 [&>button]:min-w-[90px]">
-                {(['299', 'Ducati'] as const).map(g => (
+                {gruposDisponiveis.map(g => (
                   <ToggleButton
                     key={g}
                     label={g}

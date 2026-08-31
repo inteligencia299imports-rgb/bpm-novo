@@ -11,7 +11,7 @@ export const ESTOQUE_MOTO_SELECT =
   'ano_fabricacao, ano_modelo, km, quanto_pede, classificacao, tipo_aquisicao, chassi, renavam, ' +
   'tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta, ' +
   'pos_compra_status, atendimento_id, atendimento:atendimento_id(loja_id)), ' +
-  'moto_nova:moto_nova_id(id, marca, modelo, categoria, cor, cilindrada, ano_fabricacao, ' +
+  'moto_nova:moto_nova_id(id, marca:marca_id(nome), modelo:modelo_id(nome), categoria, cor, cilindrada, ano_fabricacao, ' +
   'ano_modelo, chassi, renavam, placa, ncm, valor, valor_custo), ' +
   'atendimento_venda:atendimento_venda_id(vendedor_id)';
 
@@ -51,12 +51,13 @@ export function mapEstoqueMoto(row: any, lojaMap?: Map<string, LojaInfo>) {
   const origemLojaId = av.atendimento?.loja_id ? String(av.atendimento.loja_id) : null;
   const liOrigem = origemLojaId ? lojaMap?.get(origemLojaId) : undefined;
 
-  // Specs: 0km vem de motos_novas; seminova/consignada vem da avaliacao.
+  // Specs: 0km vem de estoque_motos_novas; seminova/consignada vem da avaliacao.
+  // Em estoque_motos_novas marca/modelo sao FK (marca_id/modelo_id); o embed traz { nome }.
   const src = eh0km ? mn : av;
   return {
     ...row,
-    marca: src.marca ?? null,
-    modelo: src.modelo ?? null,
+    marca: eh0km ? (mn.marca?.nome ?? null) : (av.marca ?? null),
+    modelo: eh0km ? (mn.modelo?.nome ?? null) : (av.modelo ?? null),
     categoria: src.categoria ?? null,
     cor: src.cor ?? null,
     cilindrada: src.cilindrada ?? null,

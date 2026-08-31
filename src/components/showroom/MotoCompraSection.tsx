@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Button } from '@/components/ui/button';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Bike } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ANOS_MOTO } from '@/types/crm';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
@@ -61,17 +61,18 @@ const MotoCompraSection: React.FC<Props> = ({
 
       try {
         const flatten = (r: any) => {
-          const s = r.moto_nova ?? r.avaliacao ?? {};
+          const mn = r.moto_nova;
+          const s = mn ?? r.avaliacao ?? {};
           return {
             id: r.id,
-            marca: s.marca ?? null,
-            modelo: s.modelo ?? null,
+            marca: mn ? (mn.marca?.nome ?? null) : (s.marca ?? null),
+            modelo: mn ? (mn.modelo?.nome ?? null) : (s.modelo ?? null),
             cor: s.cor ?? null,
             placa: s.placa ?? null,
-            is0km: !!r.moto_nova,
+            is0km: !!mn,
           };
         };
-        const estSelect = 'id, avaliacao:avaliacao_id(marca, modelo, cor, placa), moto_nova:moto_nova_id(marca, modelo, cor, placa)';
+        const estSelect = 'id, avaliacao:avaliacao_id(marca, modelo, cor, placa), moto_nova:moto_nova_id(marca:marca_id(nome), modelo:modelo_id(nome), cor, placa)';
 
         const { data: estoqueDisponivel } = await supabase
           .from('estoque_motos')
@@ -139,7 +140,11 @@ const MotoCompraSection: React.FC<Props> = ({
   if (isDucati) {
     return (
       <Card className={disabled ? 'opacity-60' : ''}>
-        <CardHeader><CardTitle className="text-base">Moto de Interesse (Ducati)</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bike className="h-4 w-4 text-primary" /> Moto de Interesse (Ducati)
+          </CardTitle>
+        </CardHeader>
         <CardContent className="space-y-4">
           {disabled && (
             <p className="text-sm text-destructive font-medium">
@@ -185,7 +190,11 @@ const MotoCompraSection: React.FC<Props> = ({
 
   return (
     <Card className={disabled ? 'opacity-60' : ''}>
-      <CardHeader><CardTitle className="text-base">Moto de Interesse (Compra)</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Bike className="h-4 w-4 text-primary" /> Moto de Interesse (Compra)
+        </CardTitle>
+      </CardHeader>
       <CardContent className="space-y-4">
         {disabled && (
           <p className="text-sm text-destructive font-medium">

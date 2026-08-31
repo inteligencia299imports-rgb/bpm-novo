@@ -90,12 +90,15 @@ async function extrairViaClaude(
       + `Defina confere_com_moto=true apenas se for claramente a mesma moto; caso contrário false.`
     : `Não há marca/modelo cadastrados para comparar: defina confere_com_moto=null.`;
 
+  const workspaceId = Deno.env.get('ANTHROPIC_WORKSPACE_ID');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
+      // Chaves de API vinculadas a identidade exigem o workspace-id no header.
+      ...(workspaceId ? { 'anthropic-workspace-id': workspaceId } : {}),
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,

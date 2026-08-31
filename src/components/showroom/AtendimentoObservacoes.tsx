@@ -15,7 +15,7 @@ interface Nota {
   id: string;
   observacao: string;
   created_at: string;
-  user_id: string | null;
+  created_by: string | null;
   usuario_nome: string;
 }
 
@@ -33,17 +33,17 @@ const AtendimentoObservacoes: React.FC<Props> = ({ idOperacao }) => {
   const fetchNotas = async () => {
     const { data } = await supabase
       .from('observacoes')
-      .select('id, observacao, created_at, user_id')
+      .select('id, observacao, created_at, created_by')
       .eq('id_operacao', idOperacao)
       .order('created_at', { ascending: false });
     if (!data) return;
-    const userIds = [...new Set(data.map(n => n.user_id).filter(Boolean))] as string[];
+    const userIds = [...new Set(data.map(n => n.created_by).filter(Boolean))] as string[];
     let nomeMap: Record<string, string> = {};
     if (userIds.length > 0) {
       const { data: roles } = await supabase.from('user_roles').select('user_id, nome').in('user_id', userIds);
       nomeMap = Object.fromEntries((roles || []).map((r) => [r.user_id, r.nome]));
     }
-    setNotas(data.map(n => ({ ...n, usuario_nome: (n.user_id && nomeMap[n.user_id]) || 'Usuário' })));
+    setNotas(data.map(n => ({ ...n, usuario_nome: (n.created_by && nomeMap[n.created_by]) || 'Usuário' })));
   };
 
   useEffect(() => {
@@ -60,7 +60,7 @@ const AtendimentoObservacoes: React.FC<Props> = ({ idOperacao }) => {
     const { error } = await supabase.from('observacoes').insert({
       id_operacao: idOperacao,
       observacao: texto.trim(),
-      user_id: user?.id || null,
+      created_by: user?.id || null,
     });
     setSaving(false);
     if (error) {
@@ -115,7 +115,7 @@ const AtendimentoObservacoes: React.FC<Props> = ({ idOperacao }) => {
                           {n.usuario_nome}
                         </span>
                       </div>
-                      {(role === 'master' || n.user_id === user?.id) && (
+                      {(role === 'master' || n.created_by === user?.id) && (
                         <button
                           onClick={() => handleDelete(n.id)}
                           className="text-muted-foreground hover:text-destructive transition-colors"

@@ -43,6 +43,7 @@ export type Database = {
         Row: {
           cliente_id: string
           created_at: string
+          empresa_id: string | null
           id: string
           interesse: string
           intermediacao_parte1_status: string
@@ -62,6 +63,7 @@ export type Database = {
         Insert: {
           cliente_id: string
           created_at?: string
+          empresa_id?: string | null
           id?: string
           interesse: string
           intermediacao_parte1_status?: string
@@ -81,6 +83,7 @@ export type Database = {
         Update: {
           cliente_id?: string
           created_at?: string
+          empresa_id?: string | null
           id?: string
           interesse?: string
           intermediacao_parte1_status?: string
@@ -110,6 +113,13 @@ export type Database = {
             columns: ["loja_id"]
             isOneToOne: false
             referencedRelation: "loja_empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atendimentos_motos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]
@@ -633,6 +643,7 @@ export type Database = {
           created_at: string
           data_sinal: string | null
           data_vencimento_sinal: string | null
+          empresa_id: string | null
           id: string
           ipva_cotas: string | null
           ipva_tipo: string | null
@@ -651,6 +662,7 @@ export type Database = {
           created_at?: string
           data_sinal?: string | null
           data_vencimento_sinal?: string | null
+          empresa_id?: string | null
           id?: string
           ipva_cotas?: string | null
           ipva_tipo?: string | null
@@ -669,6 +681,7 @@ export type Database = {
           created_at?: string
           data_sinal?: string | null
           data_vencimento_sinal?: string | null
+          empresa_id?: string | null
           id?: string
           ipva_cotas?: string | null
           ipva_tipo?: string | null
@@ -687,6 +700,13 @@ export type Database = {
             columns: ["atendimento_id"]
             isOneToOne: false
             referencedRelation: "atendimentos_motos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]
@@ -960,7 +980,7 @@ export type Database = {
         }
         Relationships: []
       }
-      motos_novas: {
+      estoque_motos_novas: {
         Row: {
           ano_fabricacao: string | null
           ano_modelo: string | null
@@ -973,8 +993,8 @@ export type Database = {
           empresa_id: string | null
           id: string
           loja_id: string | null
-          marca: string
-          modelo: string
+          marca_id: string
+          modelo_id: string
           ncm: string | null
           observacoes: string | null
           origem_externa_id: string | null
@@ -997,8 +1017,8 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           loja_id?: string | null
-          marca: string
-          modelo: string
+          marca_id: string
+          modelo_id: string
           ncm?: string | null
           observacoes?: string | null
           origem_externa_id?: string | null
@@ -1021,8 +1041,8 @@ export type Database = {
           empresa_id?: string | null
           id?: string
           loja_id?: string | null
-          marca?: string
-          modelo?: string
+          marca_id?: string
+          modelo_id?: string
           ncm?: string | null
           observacoes?: string | null
           origem_externa_id?: string | null
@@ -1033,7 +1053,22 @@ export type Database = {
           valor?: number | null
           valor_custo?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "estoque_motos_novas_marca_id_fkey"
+            columns: ["marca_id"]
+            isOneToOne: false
+            referencedRelation: "marcas_motos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_motos_novas_modelo_id_fkey"
+            columns: ["modelo_id"]
+            isOneToOne: false
+            referencedRelation: "modelos_motos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       estoque_motos: {
         Row: {
@@ -1098,7 +1133,7 @@ export type Database = {
           },
         ]
       }
-      formas_pagamento: {
+      formas_pagamento_contrato: {
         Row: {
           contrato_id: string
           created_at: string
@@ -1137,7 +1172,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "formas_pagamento_contrato_id_fkey"
+            foreignKeyName: "formas_pagamento_contrato_contrato_id_fkey"
             columns: ["contrato_id"]
             isOneToOne: false
             referencedRelation: "contratos"
@@ -1342,24 +1377,27 @@ export type Database = {
       observacoes: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           id_operacao: string
           observacao: string
-          user_id: string | null
+          tipo: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           id_operacao: string
           observacao: string
-          user_id?: string | null
+          tipo?: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           id_operacao?: string
           observacao?: string
-          user_id?: string | null
+          tipo?: string
         }
         Relationships: []
       }
