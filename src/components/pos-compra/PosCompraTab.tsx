@@ -51,12 +51,16 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
     const selectStr = `*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, interesse, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`;
 
     const estResult = await fetchAllRange(() => supabase.from('estoque_motos').select('avaliacao_id, status, observacoes, created_at').not('avaliacao_id', 'is', null));
+    const nfeResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('avaliacao_id, status').not('avaliacao_id', 'is', null));
     const result = await fetchAllRange(() =>
       supabase.from('avaliacoes').select(selectStr).in('tipo_aquisicao', TIPOS_PROPRIA).order('updated_at', { ascending: false })
     );
     const error = result.error;
     const data = result.data || [];
     const estData = estResult.data;
+    const nfeEmitidaSet = new Set(
+      ((nfeResult.data as any[]) || []).filter((n: any) => n.status === 'processada' && n.avaliacao_id).map((n: any) => n.avaliacao_id),
+    );
     if (error) { toast.error('Erro ao carregar pós-compra'); } else {
       const estoqueMap: Record<string, { status: string; observacoes: string | null; data_entrada: string | null }> = {};
       (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes, data_entrada: e.created_at }; });
@@ -76,7 +80,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
         if (picked) acquDateMap[d.id] = picked;
       });
       let mapped = (data || [])
-        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null }));
+        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeEmitida: nfeEmitidaSet.has(d.id) }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       if (filterCidade !== 'todos') { mapped = mapped.filter((a: any) => matchesCidade(a.atendimento?.loja, filterCidade)); }
       setItems(mapped);
@@ -142,6 +146,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
                         statusColor={col.hex}
                         extraBadge={a.tipo_aquisicao && a.tipo_aquisicao !== 'propria' ? { label: getTipoAquisicaoLabel(a.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(a.tipo_aquisicao) } : undefined}
                         secondaryBadge={a.atendimento?.interesse === 'trocar' ? { label: 'Troca', className: 'border-primary/30 text-primary' } : undefined}
+                        nameTag={a._nfeEmitida ? { label: 'NF-e' } : undefined}
                         onClick={() => setSelectedItem(a)} />
                     ))}
                   </div>

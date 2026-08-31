@@ -4,8 +4,20 @@ import { toast } from 'sonner';
 
 export const NFE_PENDENTE = ['recebida', 'validando', 'processando_itens', 'gerando_contas'];
 
-/** Estado + acoes da NF-e de compra de uma avaliacao (emitir / consultar / polling). */
-export function useNfeCompra(avaliacaoId: string, ativo: boolean) {
+type NfeTipo = 'compra' | 'consignacao' | 'venda_seminova' | 'venda_0km';
+
+/**
+ * Estado + acoes da NF-e (emitir / consultar / polling).
+ * `by='avaliacao'` (entrada) chaveia por avaliacao_id; `by='atendimento'` (venda) por atendimento_id.
+ */
+export function useNfeCompra(
+  entityId: string,
+  ativo: boolean,
+  tipo: NfeTipo = 'compra',
+  by: 'avaliacao' | 'atendimento' = 'avaliacao',
+) {
+  const avaliacaoId = entityId;
+  const keyCol = by === 'atendimento' ? 'atendimento_id' : 'avaliacao_id';
   const [nfe, setNfe] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -17,7 +29,7 @@ export function useNfeCompra(avaliacaoId: string, ativo: boolean) {
   const invoke = useCallback(
     async (acao: 'emitir' | 'consultar', extra?: Record<string, unknown>) => {
       const { data, error } = await supabase.functions.invoke('emitir-nfe-compra', {
-        body: { avaliacao_id: avaliacaoId, acao, ...(extra || {}) },
+        body: { [keyCol]: avaliacaoId, acao, tipo, ...(extra || {}) },
       });
       if (error) {
         // A Edge Function devolve { error } no corpo em 4xx.
@@ -33,23 +45,29 @@ export function useNfeCompra(avaliacaoId: string, ativo: boolean) {
       }
       return data as { nfe: any | null };
     },
-    [avaliacaoId],
+    [avaliacaoId, tipo, keyCol],
   );
 
   const carregar = useCallback(async () => {
-    const { data } = await supabase
+    if (!avaliacaoId) { setNfe(null); return; }
+    let query = supabase
       .from('nfe_entradas' as any)
       .select('*')
-      .eq('avaliacao_id', avaliacaoId)
+      .eq(keyCol, avaliacaoId)
       .order('created_at', { ascending: false })
       .limit(1);
+    if (by === 'atendimento') query = query.like('operacao', 'venda%');
+    const { data } = await query;
     setNfe((data as any[])?.[0] || null);
-  }, [avaliacaoId]);
+  }, [avaliacaoId, keyCol, by]);
 
-  const emitir = useCallback(async (opts?: { observacoes?: string }) => {
+  const emitir = useCallback(async (opts?: { observacoes?: string; valor?: number }) => {
     setLoading(true);
     try {
-      const res = await invoke('emitir', opts?.observacoes ? { observacoes: opts.observacoes } : undefined);
+      const extra: Record<string, unknown> = {};
+      if (opts?.observacoes) extra.observacoes = opts.observacoes;
+      if (typeof opts?.valor === 'number' && opts.valor > 0) extra.valor = opts.valor;
+      const res = await invoke('emitir', Object.keys(extra).length ? extra : undefined);
       setNfe(res.nfe);
       toast.success(res.nfe?.status === 'processada' ? 'NF-e autorizada!' : 'NF-e enviada para autorização.');
     } catch (e: any) {

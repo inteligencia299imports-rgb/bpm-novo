@@ -18,6 +18,7 @@ import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProcessoDialog from './ProcessoDialog';
+import ContratoDialog from '@/components/showroom/ContratoDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { formatPersonName } from '@/lib/utils';
@@ -39,6 +40,7 @@ interface Props {
     showContratoConsignante?: boolean;
   };
   onStatusChanged?: (itemId: string, newStatus: string, field: string) => void;
+  onNavigateToPosCompra?: (avaliacaoId: string) => void;
 }
 
 const formatPhone = (value: string): string => {
@@ -71,7 +73,7 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
   ) : null
 );
 
-const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusField = 'pos_venda_status', processoProps, onStatusChanged }) => {
+const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusField = 'pos_venda_status', processoProps, onStatusChanged, onNavigateToPosCompra }) => {
   const [motosInteresse, setMotosInteresse] = useState<any[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<any[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
@@ -84,6 +86,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [loading, setLoading] = useState(true);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [processoOpen, setProcessoOpen] = useState(false);
+  const [nfeVendaOpen, setNfeVendaOpen] = useState(false);
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
   const [intermHistory, setIntermHistory] = useState<any[]>([]);
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
@@ -737,7 +740,22 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           onStatusChanged?.(item.id, newStatus, processoProps?.statusField || statusField);
         }}
         onContratoSaved={refreshConsignada}
+        onEmitirNfe={() => { setProcessoOpen(false); setNfeVendaOpen(true); }}
+        onNavigateToPosCompra={onNavigateToPosCompra}
       />
+
+      {!isIntermParte1 && (
+        <ContratoDialog
+          open={nfeVendaOpen}
+          onOpenChange={setNfeVendaOpen}
+          modo="nfe"
+          atendimento={item}
+          motosInteresse={motosInteresse}
+          motosAvaliacao={motosAvaliacao}
+          estoqueData={estoqueData}
+          avaliacoes={avaliacoes}
+        />
+      )}
 
       {isIntermParte1 && (
         <ContratoConsignanteDialog

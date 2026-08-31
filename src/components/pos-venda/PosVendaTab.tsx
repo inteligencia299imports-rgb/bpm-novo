@@ -18,9 +18,10 @@ import FiltersPanel from '@/components/shared/FiltersPanel';
 interface PosVendaTabProps {
   initialAtendimentoId?: string | null;
   onInitialHandled?: () => void;
+  onNavigateToPosCompra?: (avaliacaoId: string) => void;
 }
 
-const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProps = {}) => {
+const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCompra }: PosVendaTabProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -107,7 +108,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled }: PosVendaTabProp
     setSelectedItem((prev: any) => prev && prev.id === itemId ? { ...prev, [field]: newStatus } : prev);
   }, []);
 
-  if (selectedItem) return <PosVendaDetail item={selectedItem} onClose={() => setSelectedItem(null)} onStatusChanged={handleStatusChanged} />;
+  if (selectedItem) return <PosVendaDetail item={selectedItem} onClose={() => setSelectedItem(null)} onStatusChanged={handleStatusChanged} onNavigateToPosCompra={onNavigateToPosCompra} />;
 
   return (
     <div className="space-y-5">

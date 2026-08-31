@@ -60,14 +60,18 @@ const MotoCompraSection: React.FC<Props> = ({
       setLoadingEstoque(true);
 
       try {
-        const flatten = (r: any) => ({
-          id: r.id,
-          marca: r.avaliacao?.marca ?? null,
-          modelo: r.avaliacao?.modelo ?? null,
-          cor: r.avaliacao?.cor ?? null,
-          placa: r.avaliacao?.placa ?? null,
-        });
-        const estSelect = 'id, avaliacao:avaliacao_id(marca, modelo, cor, placa)';
+        const flatten = (r: any) => {
+          const s = r.moto_nova ?? r.avaliacao ?? {};
+          return {
+            id: r.id,
+            marca: s.marca ?? null,
+            modelo: s.modelo ?? null,
+            cor: s.cor ?? null,
+            placa: s.placa ?? null,
+            is0km: !!r.moto_nova,
+          };
+        };
+        const estSelect = 'id, avaliacao:avaliacao_id(marca, modelo, cor, placa), moto_nova:moto_nova_id(marca, modelo, cor, placa)';
 
         const { data: estoqueDisponivel } = await supabase
           .from('estoque_motos')

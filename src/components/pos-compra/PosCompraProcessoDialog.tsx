@@ -34,7 +34,7 @@ const ETAPAS = [
   'DOCUMENTAÇÃO RECEBIDA',
   'DOCUMENTAÇÃO COM DESPACHANTE',
   'VISTORIA/CADEIA DOMINIAL',
-  'NF-E',
+  'NF EMITIDA',
   'PROCESSO PAUSADO',
   'TRANSFERÊNCIA CONCLUÍDA',
 ];
@@ -63,6 +63,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
+  const [datasSalvas, setDatasSalvas] = useState<Record<string, string | null>>({});
   const [previousStatus, setPreviousStatus] = useState('aprovada');
   const [atendimentoId, setAtendimentoId] = useState<string | null>(null);
   const [destinoDialogOpen, setDestinoDialogOpen] = useState(false);
@@ -186,6 +187,10 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       });
 
       setEtapas(built);
+      // Datas ja salvas -> ficam bloqueadas p/ edicao direta (so via X ou re-check).
+      const salvas: Record<string, string | null> = {};
+      built.forEach((b: any) => { salvas[b.etapa] = b.concluida ? (b.data_conclusao ?? null) : null; });
+      setDatasSalvas(salvas);
       setAtendimentoId((avData as any)?.atendimento_id || null);
       setPreviousStatus((avData as any)?.pos_compra_status || 'aprovada');
       setLoading(false);
@@ -236,7 +241,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   const podeEmitirNfe = aprovacaoStatus === 'aprovada' && contratoGerado && consultaRealizada;
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
-    if (etapa === 'NF-E') return; // estado dirigido pela emissao da NF-e, nao manual
+    if (etapa === 'NF EMITIDA') return; // estado dirigido pela emissao da NF-e, nao manual
     if (etapa === 'CONSULTA REALIZADA') return; // vem da consulta veicular, nao editavel aqui
     if (etapa === 'TRANSFERÊNCIA CONCLUÍDA' && checked) {
       // pre-selecionar destino atual (se houver) e abrir popup
@@ -314,8 +319,8 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         avaliacao_id: avaliacaoId,
         etapa: e.etapa,
         // A etapa NF-E e dirigida pela emissao da NF-e, nao pelo estado manual.
-        concluida: e.etapa === 'NF-E' ? nfeEmitida : e.concluida,
-        data_conclusao: e.etapa === 'NF-E' ? (nfeCompra?.data_emissao ?? null) : e.data_conclusao,
+        concluida: e.etapa === 'NF EMITIDA' ? nfeEmitida : e.concluida,
+        data_conclusao: e.etapa === 'NF EMITIDA' ? (nfeCompra?.data_emissao ?? null) : e.data_conclusao,
         destino_transferencia: e.etapa === 'TRANSFERÊNCIA CONCLUÍDA' ? (e.destino_transferencia ?? null) : null,
       }));
 
@@ -393,7 +398,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
     }
   };
 
-  const concluidas = etapas.filter(e => (e.etapa === 'NF-E' ? nfeEmitida : e.concluida)).length;
+  const concluidas = etapas.filter(e => (e.etapa === 'NF EMITIDA' ? nfeEmitida : e.concluida)).length;
   const statusLabel = concluidas === ETAPAS.length ? 'CONCLUÍDO' : 'APROVADA';
 
   return (
@@ -436,40 +441,34 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
               </Badge>
             </div>
 
-            {etapas.map((e, idx) => (
+            {etapas.map((e, idx) => {
+              const isNf = e.etapa === 'NF EMITIDA';
+              const isConsulta = e.etapa === 'CONSULTA REALIZADA';
+              const marcada = isNf ? nfeEmitida : e.concluida;
+              // Etapa ja salva com data -> travada (so o X libera).
+              const dataBloqueada = !isNf && !isConsulta && !!e.data_conclusao && e.data_conclusao === datasSalvas[e.etapa];
+              return (
               <React.Fragment key={e.etapa}>
                 {idx > 0 && <Separator />}
-                <div className="flex items-center gap-3 py-3">
+                <div className="grid grid-cols-[auto_1fr_6rem_11rem_2rem] items-center gap-3 py-3">
+                  {/* col 1: check */}
                   <Checkbox
-                    checked={e.etapa === 'NF-E' ? nfeEmitida : e.concluida}
-                    disabled={e.etapa === 'NF-E' || e.etapa === 'CONSULTA REALIZADA'}
+                    checked={marcada}
+                    disabled={isNf || isConsulta || dataBloqueada}
                     onCheckedChange={(checked) => toggleEtapa(e.etapa, !!checked)}
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold uppercase ${(e.etapa === 'NF-E' ? nfeEmitida : e.concluida) ? 'text-foreground' : 'text-muted-foreground'}`}>
-                      {e.etapa === 'NF-E' ? 'NF-e' : e.etapa}
+
+                  {/* col 2: descricao */}
+                  <div className="min-w-0">
+                    <p className={`text-sm font-semibold uppercase ${marcada ? 'text-foreground' : 'text-muted-foreground'}`}>
+                      {isNf ? 'NF-e' : e.etapa}
                     </p>
-                    {e.etapa !== 'NF-E' && e.etapa !== 'CONSULTA REALIZADA' && e.concluida && e.data_conclusao && (
+                    {isNf && nfeEmitida && (nfeCompra?.numero || nfeCompra?.serie) && (
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(e.data_conclusao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        Nº {nfeCompra?.numero || '-'} / Série {nfeCompra?.serie || '-'}
                       </p>
                     )}
-                    {e.etapa === 'NF-E' && nfeEmitida && (
-                      <div className="text-xs text-muted-foreground space-y-0.5">
-                        <p>
-                          {nfeCompra?.data_emissao
-                            ? format(new Date(nfeCompra.data_emissao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                            : '-'}
-                        </p>
-                        <p>NF-e nº {nfeCompra?.numero || '-'} • série {nfeCompra?.serie || '-'}</p>
-                        {nfeCompra?.caminho_danfe && (
-                          <a href={nfeCompra.caminho_danfe} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-                            <ExternalLink className="h-3 w-3" /> DANFE
-                          </a>
-                        )}
-                      </div>
-                    )}
-                    {e.etapa === 'NF-E' && nfeErro && (
+                    {isNf && nfeErro && (
                       <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
                         <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                         {nfeCompra?.erro_mensagem || 'Falha na emissão da NF-e'}
@@ -489,9 +488,11 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                       </button>
                     )}
                   </div>
-                  {e.etapa === 'NF-E' ? (
-                    <div className="flex items-center gap-1">
-                      {nfeEmitida ? null : nfePendente ? (
+
+                  {isNf && !nfeEmitida ? (
+                    /* NF-e ainda nao emitida: ocupa as 3 colunas da direita */
+                    <div className="col-span-3 flex items-center justify-end gap-2">
+                      {nfePendente ? (
                         <>
                           <Badge variant="outline" className="gap-1.5 text-xs">
                             <Loader2 className="h-3 w-3 animate-spin" /> Emitindo NF-e…
@@ -523,61 +524,86 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                         </Button>
                       )}
                     </div>
-                  ) : e.etapa === 'CONSULTA REALIZADA' ? (
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground pr-2">
-                      <CalendarIcon className="h-4 w-4" />
-                      {e.data_conclusao
-                        ? format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR })
-                        : '—'}
-                    </div>
                   ) : (
-                  <div className="flex items-center gap-1">
-                    <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
-                          <CalendarIcon className="h-4 w-4" />
-                          {e.data_conclusao
-                            ? format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR })
-                            : 'Data/Hora'
-                          }
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar
-                          mode="single"
-                          selected={e.data_conclusao ? new Date(e.data_conclusao) : undefined}
-                          onSelect={(d) => setDate(e.etapa, d)}
-                          locale={ptBR}
-                          initialFocus
-                          className="p-3 pointer-events-auto"
-                        />
-                        <div className="flex items-center gap-2 px-3 pb-3 border-t pt-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <Input
-                            type="time"
-                            className="w-auto h-8 text-sm"
-                            value={e.data_conclusao ? format(new Date(e.data_conclusao), 'HH:mm') : format(new Date(), 'HH:mm')}
-                            onChange={(ev) => {
-                              const [h, m] = ev.target.value.split(':').map(Number);
-                              setTime(e.etapa, h, m);
-                            }}
-                          />
-                          <Button size="sm" variant="default" className="ml-auto h-8" onClick={() => setCalendarOpen(null)}>
-                            OK
+                    <>
+                      {/* col 3: DANFE (so NF-e) */}
+                      <div className="flex justify-end">
+                        {isNf && nfeEmitida && nfeCompra?.caminho_danfe && (
+                          <Button size="sm" className="h-8 gap-1.5" onClick={() => window.open(nfeCompra.caminho_danfe, '_blank', 'noopener')}>
+                            <ExternalLink className="h-4 w-4" /> DANFE
                           </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                    {e.data_conclusao && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => clearDate(e.etapa)}>
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
+                        )}
+                      </div>
+
+                      {/* col 4: data */}
+                      <div className="flex justify-end">
+                        {isNf ? (
+                          <span className="flex items-center gap-2 pr-3 text-sm text-muted-foreground whitespace-nowrap">
+                            <CalendarIcon className="h-4 w-4 shrink-0" />
+                            {nfeCompra?.data_emissao ? format(new Date(nfeCompra.data_emissao), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '—'}
+                          </span>
+                        ) : isConsulta ? (
+                          <span className="flex items-center gap-2 pr-3 text-sm text-muted-foreground whitespace-nowrap">
+                            <CalendarIcon className="h-4 w-4 shrink-0" />
+                            {e.data_conclusao ? format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '—'}
+                          </span>
+                        ) : dataBloqueada ? (
+                          <span
+                            className="flex items-center gap-2 pr-3 text-sm text-muted-foreground whitespace-nowrap"
+                            title="Etapa salva — remova (✕) para alterar"
+                          >
+                            <CalendarIcon className="h-4 w-4 shrink-0" />
+                            {format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                          </span>
+                        ) : (
+                          <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
+                                <CalendarIcon className="h-4 w-4" />
+                                {e.data_conclusao ? format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR }) : 'Data/Hora'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="end">
+                              <Calendar
+                                mode="single"
+                                selected={e.data_conclusao ? new Date(e.data_conclusao) : undefined}
+                                onSelect={(d) => setDate(e.etapa, d)}
+                                locale={ptBR}
+                                initialFocus
+                                className="p-3 pointer-events-auto"
+                              />
+                              <div className="flex items-center gap-2 px-3 pb-3 border-t pt-2">
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  type="time"
+                                  className="w-auto h-8 text-sm"
+                                  value={e.data_conclusao ? format(new Date(e.data_conclusao), 'HH:mm') : format(new Date(), 'HH:mm')}
+                                  onChange={(ev) => {
+                                    const [h, m] = ev.target.value.split(':').map(Number);
+                                    setTime(e.etapa, h, m);
+                                  }}
+                                />
+                                <Button size="sm" variant="default" className="ml-auto h-8" onClick={() => setCalendarOpen(null)}>OK</Button>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                      </div>
+
+                      {/* col 5: X */}
+                      <div className="flex justify-end">
+                        {!isNf && !isConsulta && e.data_conclusao && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => clearDate(e.etapa)}>
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               </React.Fragment>
-            ))}
+              );
+            })}
 
             <Separator />
             {atendimentoId && (

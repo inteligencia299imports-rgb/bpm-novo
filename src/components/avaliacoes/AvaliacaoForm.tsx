@@ -120,6 +120,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
   const [contratoCompraOpen, setContratoCompraOpen] = useState(false);
   const [nfeCompraOpen, setNfeCompraOpen] = useState(false);
+  const [nfeConsignacaoOpen, setNfeConsignacaoOpen] = useState(false);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [cnhDocId, setCnhDocId] = useState<string | null>(null);
@@ -600,6 +601,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     const motivo = aprovacaoPopup.motivo.trim();
     if (!motivo) { toast.error('Informe o motivo'); return; }
     if (!podeAprovar(user?.id)) { toast.error('Você não tem permissão para aprovar/recusar'); return; }
+    if (nfeCompraEmitida) { toast.error('Não é possível recusar após a emissão da NF-e.'); return; }
     setSavingAprovacao(true);
     try {
       if (aprovacaoPopup.modo === 'aprovar') {
@@ -709,6 +711,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   };
 
   const handleSaveConversao = async () => {
+    if (nfeCompraEmitida) {
+      toast.error('Não é possível converter após a emissão da NF-e.');
+      return;
+    }
     if (!tipoSelecionado) {
       toast.error('Selecione o tipo de aquisição');
       return;
@@ -811,6 +817,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
 
   const hasEvaluation = !!(avaliacao?.valor_fipe || avaliacao?.avaliacao_compra || avaliacao?.avaliacao_consignacao || avaliacao?.quanto_pede);
   const contratoGerado = history.some((h: any) => h.status === 'contrato_compra_gerado');
+  const nfeCompraEmitida = history.some((h: any) => h.status === 'nfe_compra_emitida' || h.status === 'nfe_consignacao_emitida');
 
   // Etapa de aprovação (só no contexto de Pós-Compra, para motos próprias)
   const apSt: string | null = avaliacao?.aprovacao_status ?? null;
@@ -818,8 +825,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const aguardandoAprovacao = precisaAprovacao && apSt !== 'aprovada' && apSt !== 'recusada';
   const aprovado = precisaAprovacao && apSt === 'aprovada';
   const souAprovador = podeAprovar(user?.id);
-  // Após aprovação: nada pode ser editado nem arquivo removido.
-  const travado = aprovado;
+  // Após aprovação (ou emissão da NF-e): nada pode ser editado nem arquivo removido.
+  const travado = aprovado || nfeCompraEmitida;
   // Botões de contrato / processo / financeiro liberados: consignação sempre; pós-compra só após aprovar.
   const liberadoProcesso = context === 'consignacao' || aprovado;
 
@@ -1000,7 +1007,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
             {/* Etapa de aprovação (Pós-Compra) */}
-            {precisaAprovacao && souAprovador && apSt !== 'recusada' && (
+            {precisaAprovacao && souAprovador && apSt !== 'recusada' && !nfeCompraEmitida && (
               <>
                 {aguardandoAprovacao && (
                   <Button size="sm" onClick={() => setAprovacaoPopup({ modo: 'aprovar', motivo: '' })} className="gap-1.5 bg-green-600 hover:bg-green-700 text-white">
@@ -1401,7 +1408,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             </CardHeader>
             <CardContent>
               <StatusTimeline history={history} formatLabel={(raw) => {
-                const remap: Record<string, string> = { vendido: 'adquirida', aprovada: 'aprovada', recusada: 'recusada', contrato_compra_gerado: 'CONTRATO GERADO', nfe_compra_emitida: 'NF-e emitida', 'Em Andamento': 'Pós-Compra em andamento', em_andamento: 'Pós-Compra em andamento' };
+                const remap: Record<string, string> = { vendido: 'adquirida', aprovada: 'aprovada', recusada: 'recusada', contrato_compra_gerado: 'CONTRATO GERADO', nfe_compra_emitida: 'NF-e emitida', nfe_consignacao_emitida: 'NF-e emitida', 'Em Andamento': 'Pós-Compra em andamento', em_andamento: 'Pós-Compra em andamento' };
                 const mapped = remap[raw] || raw;
                 return mapped.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação');
               }} renderPopupExtra={(h) => {
@@ -1412,7 +1419,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                         {h.status === 'consulta_realizada' ? 'Resultado da Consulta'
                           : h.status === 'aprovada' ? 'Motivo da Aprovação'
                           : h.status === 'recusada' ? 'Motivo da Recusa'
-                          : h.status === 'nfe_compra_emitida' ? 'Dados da NF-e'
+                          : (h.status === 'nfe_compra_emitida' || h.status === 'nfe_consignacao_emitida') ? 'Dados da NF-e'
                           : 'Observações'}
                       </span>
                       <p className="text-sm mt-0.5 whitespace-pre-wrap">{h.observacoes}</p>
@@ -1426,7 +1433,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
 
            <div className="md:col-span-2 flex flex-col items-center gap-3">
             <div className="flex gap-2 flex-wrap justify-center">
-              {!ehProcesso && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao && !estoqueVendido && (
+              {!ehProcesso && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao && !estoqueVendido && !nfeCompraEmitida && (
                 <Button
                   size="sm"
                   className="gap-2 text-white hover:opacity-90"
@@ -1751,8 +1758,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
 
       {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao === 'consignada' && (
         <ContratoConsignacaoDialog
-          open={contratoConsignacaoOpen}
-          onOpenChange={setContratoConsignacaoOpen}
+          open={contratoConsignacaoOpen || nfeConsignacaoOpen}
+          modo={nfeConsignacaoOpen ? 'nfe' : 'contrato'}
+          onOpenChange={() => { setContratoConsignacaoOpen(false); setNfeConsignacaoOpen(false); refreshHistory(); loadAvaliacao(); }}
           avaliacao={avaliacao}
         />
       )}
@@ -1776,6 +1784,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
           onOpenChange={setProcessoConsignacaoOpen}
           avaliacaoId={avaliacaoId}
           onStatusChanged={() => { loadAvaliacao(); }}
+          onEmitirNfe={() => { setProcessoConsignacaoOpen(false); setNfeConsignacaoOpen(true); }}
         />
       )}
 

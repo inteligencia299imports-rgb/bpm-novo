@@ -225,12 +225,7 @@ where n.descricao = 'Compra de moto seminova'
   );
 
 -- =====================================================================
--- 5. Renomeia a etapa "NF EMITIDA" -> "NF-E" no checklist de pos-compra
--- =====================================================================
-update public.pos_compra_processos set etapa = 'NF-E' where etapa = 'NF EMITIDA';
-
--- =====================================================================
--- 6. RLS
+-- 5. RLS
 -- =====================================================================
 alter table public.naturezas_operacao enable row level security;
 alter table public.naturezas_operacao_regras enable row level security;

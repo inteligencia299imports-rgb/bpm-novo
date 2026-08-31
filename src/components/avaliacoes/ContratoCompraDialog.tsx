@@ -90,7 +90,9 @@ const InfoDisplay = ({ label, value }: { label: string; value: string | null | u
 const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, modo = 'contrato' }) => {
   const { user, userName } = useAuth();
   const ehNfe = modo === 'nfe';
-  const nfe = useNfeCompra(avaliacao?.id, open && ehNfe);
+  const nfe = useNfeCompra(avaliacao?.id, open);
+  // NF-e autorizada -> contrato e cliente 100% travados (nenhum campo editável).
+  const nfeJaEmitida = nfe.emitida;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -160,7 +162,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       );
       setJaGerado(!!(histGerado && histGerado.length > 0));
       setClienteTocado(false);
-      if (ehNfe) nfe.carregar();
+      nfe.carregar();
       setClienteId((atFresh as any)?.cliente_id ?? null);
       setClienteRecord((atFresh as any)?.cliente ?? null);
 
@@ -204,6 +206,10 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   }, [open, avaliacao?.id]);
 
   const saveContrato = async (): Promise<string | null> => {
+    if (nfeJaEmitida) {
+      toast.error('Contrato bloqueado: a NF-e já foi emitida.');
+      return null;
+    }
     setSaving(true);
     const atendimentoId = atendimento?.id;
     if (!atendimentoId) {
@@ -393,8 +399,10 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   // Houve edição desde a última geração/carregamento?
   const currentSnapshot = snapshotFields({ cpfCnpj, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato });
   const editado = currentSnapshot !== baseline || clienteTocado;
-  // Contrato já gerado e sem edições -> modo leitura (voltar / baixar / visualizar).
-  const modoLeitura = jaGerado && !editado;
+  // Contrato já gerado e sem edições (ou NF-e já emitida) -> modo leitura.
+  const modoLeitura = (jaGerado && !editado) || nfeJaEmitida;
+  // Campos do contrato/cliente somente leitura: na tela de NF-e ou após NF-e autorizada.
+  const soLeitura = ehNfe || nfeJaEmitida;
 
   // Modo NF-e
   const podeEmitirNfe = (avaliacao as any)?.aprovacao_status === 'aprovada'
@@ -423,7 +431,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
-                {clienteId && cadastroCompleto && !editandoCliente && (
+                {clienteId && cadastroCompleto && !editandoCliente && !soLeitura && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -440,7 +448,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             <CardContent>
               {!clienteId ? (
                 <p className="text-sm text-muted-foreground">Nenhum cliente vinculado ao atendimento.</p>
-              ) : cadastroCompleto && !editandoCliente ? (
+              ) : (soLeitura || (cadastroCompleto && !editandoCliente)) ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <InfoDisplay label="Nome" value={cli?.nome_razao_social} />
                   <InfoDisplay label="CPF/CNPJ" value={cli?.cpf_cnpj ? formatCpfCnpj(cli.cpf_cnpj) : undefined} />
@@ -558,8 +566,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             </div>
           </div>
 
-          {/* Card: Data do Contrato (só no fluxo de contrato) */}
-          {!ehNfe && (
+          {/* Card: Data do Contrato (só no fluxo de contrato editável) */}
+          {!soLeitura && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -598,7 +606,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               <Separator className="mt-2" />
             </CardHeader>
             <CardContent className="space-y-4">
-              {ehNfe ? (
+              {ehNfe && !nfeJaEmitida ? (
                 <div className="space-y-1.5">
                   <Label>Observações na NF-e</Label>
                   <Textarea
@@ -609,6 +617,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                     className="uppercase"
                   />
                 </div>
+              ) : soLeitura ? (
+                <>
+                  <InfoDisplay label="Observações Internas" value={obsInternas || undefined} />
+                  <InfoDisplay label="Observações do Contrato" value={obsContrato || undefined} />
+                  {!obsInternas && !obsContrato && <p className="text-sm text-muted-foreground">Sem observações.</p>}
+                </>
               ) : (
                 <>
                   <div className="space-y-1.5">
@@ -625,7 +639,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
           </Card>
 
           {/* Ações — só quando todos os obrigatórios estão preenchidos */}
-          {clienteId && cadastroCompleto && !editandoCliente && (ehNfe || !!dataContrato) && (
+          {clienteId && !editandoCliente && (soLeitura || (cadastroCompleto && !!dataContrato)) && (
             <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
               {ehNfe ? (
                 <>

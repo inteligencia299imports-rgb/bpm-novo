@@ -960,6 +960,81 @@ export type Database = {
         }
         Relationships: []
       }
+      motos_novas: {
+        Row: {
+          ano_fabricacao: string | null
+          ano_modelo: string | null
+          categoria: string | null
+          chassi: string | null
+          chave_nfe_origem: string | null
+          cilindrada: string | null
+          cor: string | null
+          created_at: string
+          empresa_id: string | null
+          id: string
+          loja_id: string | null
+          marca: string
+          modelo: string
+          ncm: string | null
+          observacoes: string | null
+          origem_externa_id: string | null
+          placa: string | null
+          renavam: string | null
+          status: string
+          updated_at: string
+          valor: number | null
+          valor_custo: number | null
+        }
+        Insert: {
+          ano_fabricacao?: string | null
+          ano_modelo?: string | null
+          categoria?: string | null
+          chassi?: string | null
+          chave_nfe_origem?: string | null
+          cilindrada?: string | null
+          cor?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          loja_id?: string | null
+          marca: string
+          modelo: string
+          ncm?: string | null
+          observacoes?: string | null
+          origem_externa_id?: string | null
+          placa?: string | null
+          renavam?: string | null
+          status?: string
+          updated_at?: string
+          valor?: number | null
+          valor_custo?: number | null
+        }
+        Update: {
+          ano_fabricacao?: string | null
+          ano_modelo?: string | null
+          categoria?: string | null
+          chassi?: string | null
+          chave_nfe_origem?: string | null
+          cilindrada?: string | null
+          cor?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          loja_id?: string | null
+          marca?: string
+          modelo?: string
+          ncm?: string | null
+          observacoes?: string | null
+          origem_externa_id?: string | null
+          placa?: string | null
+          renavam?: string | null
+          status?: string
+          updated_at?: string
+          valor?: number | null
+          valor_custo?: number | null
+        }
+        Relationships: []
+      }
       estoque_motos: {
         Row: {
           atendimento_venda_id: string | null
@@ -968,6 +1043,7 @@ export type Database = {
           data_venda: string | null
           id: string
           loja_id: string | null
+          moto_nova_id: string | null
           observacoes: string | null
           preco_acao: number | null
           status: string
@@ -982,6 +1058,7 @@ export type Database = {
           data_venda?: string | null
           id?: string
           loja_id?: string | null
+          moto_nova_id?: string | null
           observacoes?: string | null
           preco_acao?: number | null
           status?: string
@@ -996,6 +1073,7 @@ export type Database = {
           data_venda?: string | null
           id?: string
           loja_id?: string | null
+          moto_nova_id?: string | null
           observacoes?: string | null
           preco_acao?: number | null
           status?: string

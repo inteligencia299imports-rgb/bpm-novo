@@ -32,6 +32,8 @@ export interface DadosMoto {
   placa: string | null;
   chassi: string | null;
   renavam: string | null;
+  /** NCM explicito (moto 0km cadastrada). Sem isto, deriva pela cilindrada. */
+  ncm?: string | null;
 }
 
 /** Espelha naturezas_operacao. */
@@ -118,7 +120,7 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     codigo_produto: (moto.placa || moto.chassi || 'MOTO').toUpperCase().replace(/\s/g, ''),
     descricao: descricaoItemMoto(moto),
     cfop: regraIcms.cfop,
-    codigo_ncm: ncmPorCilindrada(moto.cilindrada),
+    codigo_ncm: (moto.ncm && onlyDigits(moto.ncm).length === 8 ? onlyDigits(moto.ncm) : ncmPorCilindrada(moto.cilindrada)),
     unidade_comercial: 'UN',
     quantidade_comercial: 1,
     valor_unitario_comercial: valorFmt,

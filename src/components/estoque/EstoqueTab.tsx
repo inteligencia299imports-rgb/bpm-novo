@@ -480,6 +480,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                 <SelectItem value="todos">Todos os tipos</SelectItem>
                 <SelectItem value="propria">Própria</SelectItem>
                 <SelectItem value="consignada">Consignada</SelectItem>
+                <SelectItem value="0km">0KM</SelectItem>
               </SelectContent>
             </Select>
           </div>

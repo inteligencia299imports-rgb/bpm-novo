@@ -90,6 +90,7 @@ const Dashboard = () => {
           <PosVendaTab
             initialAtendimentoId={initialAtendimentoId}
             onInitialHandled={() => setInitialAtendimentoId(null)}
+            onNavigateToPosCompra={(avaliacaoId) => { clearInitials(); setInitialAvaliacaoId(avaliacaoId); setActiveTab('pos_compra'); }}
           />
         )}
         {activeTab === 'intermediacao' && (

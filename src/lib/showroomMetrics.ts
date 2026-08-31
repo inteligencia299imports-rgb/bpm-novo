@@ -30,6 +30,7 @@ interface EstoqueRow {
   id: string; atendimento_venda_id: string | null; avaliacao_id: string | null;
   tipo: string | null; marca: string | null; modelo: string | null; placa: string | null;
   preco: number | null; preco_acao: number | null; valor_venda: number | null; data_venda: string | null;
+  valor_custo?: number | null;
   updated_at: string | null; created_at: string | null;
 }
 interface AvaliacaoRow {
@@ -209,13 +210,14 @@ export function computeRowMetrics(atend: AtendimentoRow, idx: ShowroomIndexes, m
   let valorVendaReal: number;
 
   if (mode === 'venda') {
-    quantoVende = Number(avaliacao?.quanto_vende || 0);
-    valorFechamento = Number(avaliacao?.valor_fechamento || 0);
+    quantoVende = Number(avaliacao?.quanto_vende || 0) || Number(estoque?.preco || 0);
+    valorFechamento = Number(avaliacao?.valor_fechamento || 0) || Number(estoque?.valor_custo || 0);
     valorVendaReal = Number(estoque?.valor_venda ?? estoque?.preco ?? 0);
   } else {
     quantoVende = nz(avaliacao?.quanto_vende) ?? nz(estoque?.preco_acao) ?? nz(estoque?.preco) ?? nz(estoque?.valor_venda) ?? 0;
     valorFechamento = nz(avaliacao?.valor_fechamento) ?? nz(consignanteV) ?? nz(contratoV)
-      ?? (tipo === 'consignada' ? nz(avaliacao?.avaliacao_consignacao) : nz(avaliacao?.avaliacao_compra)) ?? 0;
+      ?? (tipo === 'consignada' ? nz(avaliacao?.avaliacao_consignacao) : nz(avaliacao?.avaliacao_compra))
+      ?? nz(estoque?.valor_custo) ?? 0;
     valorVendaReal = Number(estoque?.valor_venda ?? estoque?.preco_acao ?? estoque?.preco ?? 0);
   }
 

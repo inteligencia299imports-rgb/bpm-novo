@@ -6,7 +6,8 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, CalendarIcon, Save, Download, Percent, Eye } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { FileText, CalendarIcon, Save, Download, Percent, Eye, ArrowLeft, Loader2, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -14,11 +15,14 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateContratoConsignacaoPdf } from '@/lib/generateContratoConsignacaoPdf';
+import { useNfeCompra } from '@/hooks/useNfeCompra';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   avaliacao: any;
+  /** 'nfe' abre a mesma tela para revisar/emitir a NF-e de entrada em consignação. */
+  modo?: 'contrato' | 'nfe';
 }
 
 const formatCurrencyInput = (value: string): string => {
@@ -53,7 +57,7 @@ const formatCep = (value: string): string => {
   return digits;
 };
 
-const CurrencyField = ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) => (
+const CurrencyField = ({ label, value, onChange, disabled }: { label: string; value: string; onChange: (v: string) => void; disabled?: boolean }) => (
   <div>
     <label className="text-sm font-medium text-foreground">{label}</label>
     <div className="relative mt-1">
@@ -64,6 +68,7 @@ const CurrencyField = ({ label, value, onChange }: { label: string; value: strin
         value={value}
         onChange={(e) => onChange(formatCurrencyInput(e.target.value))}
         inputMode="numeric"
+        disabled={disabled}
       />
     </div>
   </div>
@@ -83,13 +88,21 @@ const formatCurrency = (value: number | null) => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao }) => {
+const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, modo = 'contrato' }) => {
   const { user, userName } = useAuth();
+  const ehNfe = modo === 'nfe';
+  const nfe = useNfeCompra(avaliacao?.id, open, 'consignacao');
+  const nfeJaEmitida = nfe.emitida;
+  const soLeitura = ehNfe || nfeJaEmitida;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [contratoId, setContratoId] = useState<string | null>(null);
   const [jaGerado, setJaGerado] = useState(false);
+  // Modo NF-e: valor editável antes de emitir + obs da nota.
+  const [valorConsigNota, setValorConsigNota] = useState('');
+  const [obsNfe, setObsNfe] = useState('');
+  const podeEmitirNfe = jaGerado && (avaliacao as any)?.consulta_realizada === true;
 
   // Client data
   const [cpfCnpj, setCpfCnpj] = useState('');
@@ -132,6 +145,10 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       ]);
 
       setJaGerado(!!(histGerado && histGerado.length > 0));
+      nfe.carregar();
+      const vcn = (avaliacao as any)?.valor_consignacao_nota ?? (avaliacao as any)?.avaliacao_consignacao;
+      setValorConsigNota(vcn != null ? formatCurrencyInput(String(Math.round(vcn * 100))) : '');
+      setObsNfe('');
 
       // Buscar dados atualizados do atendimento direto do banco para garantir dados frescos
       const atendimentoId = atendimento?.id || avaliacao?.atendimento_id;
@@ -191,6 +208,10 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   }, [open, avaliacao?.id]);
 
   const saveContrato = async (): Promise<string | null> => {
+    if (nfeJaEmitida) {
+      toast.error('Contrato bloqueado: a NF-e já foi emitida.');
+      return null;
+    }
     setSaving(true);
     const payload: any = {
       avaliacao_id: avaliacao.id,
@@ -386,7 +407,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       <DialogContent className="max-w-3xl h-[90vh] p-0 flex flex-col">
         <DialogHeader className="p-6 pb-0 shrink-0">
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" /> Contrato de Consignação
+            <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e (Consignação)' : 'Contrato de Consignação'}
           </DialogTitle>
         </DialogHeader>
 
@@ -408,6 +429,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                       value={cpfCnpj}
                       onChange={(e) => setCpfCnpj(formatCpfCnpj(e.target.value))}
                       maxLength={18}
+                      disabled={soLeitura}
                     />
                   </div>
                 </div>
@@ -420,6 +442,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                       placeholder="email@exemplo.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      disabled={soLeitura}
                     />
                   </div>
                   <div>
@@ -430,6 +453,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                       value={cep}
                       onChange={(e) => setCep(formatCep(e.target.value))}
                       maxLength={9}
+                      disabled={soLeitura}
                     />
                   </div>
                 </div>
@@ -440,6 +464,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                     placeholder="Rua, número, bairro, cidade - UF"
                     value={endereco}
                     onChange={(e) => setEndereco(e.target.value)}
+                    disabled={soLeitura}
                   />
                 </div>
               </div>
@@ -472,8 +497,8 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
-                  <CurrencyField label="Valor de Quitação" value={valorQuitacao} onChange={setValorQuitacao} />
-                  <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} />
+                  <CurrencyField label="Valor de Quitação" value={valorQuitacao} onChange={setValorQuitacao} disabled={soLeitura} />
+                  <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} disabled={soLeitura} />
                 </div>
               </div>
 
@@ -484,17 +509,17 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Observações</h3>
                 <div>
                   <label className="text-sm font-medium text-foreground">Observações Internas</label>
-                  <Textarea className="mt-1" rows={3} value={obsInternas} onChange={(e) => setObsInternas(e.target.value)} placeholder="Observações internas..." />
+                  <Textarea className="mt-1" rows={3} value={obsInternas} onChange={(e) => setObsInternas(e.target.value)} placeholder="Observações internas..." disabled={soLeitura} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-foreground">Observações do Contrato</label>
-                  <Textarea className="mt-1" rows={3} value={obsContrato} onChange={(e) => setObsContrato(e.target.value)} placeholder="Observações do contrato..." />
+                  <Textarea className="mt-1" rows={3} value={obsContrato} onChange={(e) => setObsContrato(e.target.value)} placeholder="Observações do contrato..." disabled={soLeitura} />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-foreground">Data do Contrato</label>
                   <Popover open={calOpen} onOpenChange={setCalOpen}>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !dataContrato && "text-muted-foreground")}>
+                      <Button variant="outline" disabled={soLeitura} className={cn("w-full justify-start text-left font-normal mt-1", !dataContrato && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
                       </Button>
@@ -508,34 +533,116 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                   </Popover>
                 </div>
               </div>
+
+              {ehNfe && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">NF-e de Entrada em Consignação</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <CurrencyField
+                        label="Valor da Consignação (Nota)"
+                        value={valorConsigNota}
+                        onChange={setValorConsigNota}
+                        disabled={nfeJaEmitida || nfe.pendente}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-foreground">Observações na NF-e</label>
+                      <Textarea
+                        className="mt-1 uppercase"
+                        rows={3}
+                        value={obsNfe}
+                        onChange={(e) => setObsNfe(e.target.value.toUpperCase())}
+                        placeholder="INFORMAÇÕES COMPLEMENTARES QUE SAIRÃO NA NOTA..."
+                        disabled={nfeJaEmitida || nfe.pendente}
+                      />
+                    </div>
+                    {nfeJaEmitida && (
+                      <Badge className="bg-primary/10 text-primary gap-1.5">
+                        <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
+                      </Badge>
+                    )}
+                    {nfe.erro && (
+                      <p className="text-sm text-destructive flex items-start gap-1">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                        {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
 
         {/* Bottom buttons */}
         <div className="flex flex-col gap-2 p-4 border-t shrink-0">
-          {jaGerado && (
-            <div className="flex justify-center gap-2">
-              <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar()} disabled={generating}>
-                <Eye className="h-4 w-4 mr-1" />Visualizar
-              </Button>
-              <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar(5)} disabled={generating}>
-                <Eye className="h-4 w-4 mr-1" />Visualizar (5%)
+          {ehNfe ? (
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {nfe.nfe?.status === 'processada' ? (
+                nfe.nfe?.caminho_danfe && (
+                  <Button variant="outline" className="min-w-[140px]" onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}>
+                    <ExternalLink className="h-4 w-4 mr-1" /> DANFE
+                  </Button>
+                )
+              ) : nfe.pendente ? (
+                <>
+                  <Badge variant="outline" className="gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Emitindo NF-e…</Badge>
+                  <Button variant="ghost" onClick={nfe.consultar} disabled={nfe.loading} className="gap-1.5">
+                    <RefreshCw className={`h-4 w-4 ${nfe.loading ? 'animate-spin' : ''}`} /> Atualizar
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  className="min-w-[160px]"
+                  disabled={!podeEmitirNfe || nfe.loading}
+                  title={podeEmitirNfe ? undefined : 'Disponível após o contrato do consignante e a consulta realizada'}
+                  onClick={() => nfe.emitir({ valor: parseCurrencyInput(valorConsigNota), observacoes: obsNfe.trim() || undefined })}
+                >
+                  {nfe.loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4 mr-1" /> : <FileText className="h-4 w-4 mr-1" />}
+                  {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
+                </Button>
+              )}
+              <Button variant="outline" className="min-w-[120px]" onClick={() => onOpenChange(false)}>
+                <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
             </div>
+          ) : (
+            <>
+              {jaGerado && (
+                <div className="flex justify-center gap-2">
+                  <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar()} disabled={generating}>
+                    <Eye className="h-4 w-4 mr-1" />Visualizar
+                  </Button>
+                  <Button variant="outline" className="min-w-[140px]" onClick={() => handleVisualizar(5)} disabled={generating}>
+                    <Eye className="h-4 w-4 mr-1" />Visualizar (5%)
+                  </Button>
+                </div>
+              )}
+              {!nfeJaEmitida && (
+                <div className="flex justify-center gap-2">
+                  <Button variant="outline" className="min-w-[140px]" onClick={() => handleGerar()} disabled={generating}>
+                    <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar'}
+                  </Button>
+                  <Button variant="outline" className="min-w-[140px]" onClick={() => handleGerar(5)} disabled={generating}>
+                    <Percent className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar (5%)'}
+                  </Button>
+                  <Button onClick={handleSave} disabled={saving} className="min-w-[140px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
+                    <Save className="h-4 w-4 mr-1" />
+                    {saving ? 'Salvando...' : 'Salvar'}
+                  </Button>
+                </div>
+              )}
+              {nfeJaEmitida && (
+                <div className="flex justify-center">
+                  <Button variant="outline" className="min-w-[140px]" onClick={() => onOpenChange(false)}>
+                    <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
+                  </Button>
+                </div>
+              )}
+            </>
           )}
-          <div className="flex justify-center gap-2">
-            <Button variant="outline" className="min-w-[140px]" onClick={() => handleGerar()} disabled={generating}>
-              <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar'}
-            </Button>
-            <Button variant="outline" className="min-w-[140px]" onClick={() => handleGerar(5)} disabled={generating}>
-              <Percent className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar (5%)'}
-            </Button>
-            <Button onClick={handleSave} disabled={saving} className="min-w-[140px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
-              <Save className="h-4 w-4 mr-1" />
-              {saving ? 'Salvando...' : 'Salvar'}
-            </Button>
-          </div>
         </div>
       </DialogContent>
     </Dialog>

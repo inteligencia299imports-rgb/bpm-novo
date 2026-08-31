@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, PlusCircle, Download } from 'lucide-react';
+import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, PlusCircle, Download, Loader2, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -17,6 +17,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { Atendimento, MotoInteresse, Avaliacao } from '@/types/crm';
 import { generateContratoPdf, type ContratoPdfData } from '@/lib/generateContratoPdf';
+import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
@@ -28,6 +29,8 @@ interface Props {
   estoqueData: Record<string, any>;
   avaliacoes: Record<string, any>;
   onSaved?: () => void;
+  /** 'nfe' abre a tela de revisão/emissão da NF-e de venda. */
+  modo?: 'contrato' | 'nfe';
 }
 
 const FINANCEIRAS = ['Santander', 'Bradesco', 'Safra', 'BV', 'Pan', 'Omni', 'Volkswagen', 'C6 Bank', 'Próprio (299)'];
@@ -115,14 +118,26 @@ interface FormaPagamento {
 
 const ContratoDialog: React.FC<Props> = ({
   open, onOpenChange, atendimento, motosInteresse, motosAvaliacao, estoqueData, avaliacoes, onSaved,
+  modo = 'contrato',
 }) => {
   const { userName, user } = useAuth();
+  const ehNfe = modo === 'nfe';
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [viewing, setViewing] = useState(false);
   const [contratoId, setContratoId] = useState<string | null>(null);
   const [jaGerado, setJaGerado] = useState(false);
+
+  // ---- NF-e de venda ----
+  const motoIntNfe = motosInteresse[0];
+  const estItemNfe = motoIntNfe?.origem === 'estoque' && motoIntNfe?.estoque_moto_id ? estoqueData[motoIntNfe.estoque_moto_id] : null;
+  const tipoVenda = estItemNfe?.tipo === '0km' ? 'venda_0km' : 'venda_seminova';
+  const nfe = useNfeCompra(atendimento.id, open, tipoVenda, 'atendimento');
+  const nfeJaEmitida = nfe.emitida;
+  const soLeitura = ehNfe || nfeJaEmitida;
+  const [nfeValor, setNfeValor] = useState('');
+  const [nfeObs, setNfeObs] = useState('');
 
   // Client data
   const [cpfCnpj, setCpfCnpj] = useState('');
@@ -172,6 +187,7 @@ const ContratoDialog: React.FC<Props> = ({
     if (!open) return;
     const loadContrato = async () => {
       setLoading(true);
+      nfe.carregar();
       const [{ data: contrato }, { data: histGerado }, { data: freshAtendimento }, { data: freshEstoque }] = await Promise.all([
         supabase
           .from('contratos')
@@ -262,6 +278,12 @@ const ContratoDialog: React.FC<Props> = ({
     loadContrato();
   }, [open, atendimento.id]);
 
+  // Valor default da NF-e de venda = valor de venda da moto.
+  useEffect(() => {
+    if (!open) return;
+    setNfeValor((prev) => prev || valorVenda);
+  }, [open, valorVenda]);
+
   const resetPagamentoForm = () => {
     setNovaPagamentoTipo('');
     setFinValorEntrada('');
@@ -326,6 +348,10 @@ const ContratoDialog: React.FC<Props> = ({
   };
 
   const saveContrato = async (): Promise<string | null> => {
+    if (soLeitura) {
+      if (nfeJaEmitida) toast.error('Contrato bloqueado: NF-e de venda já emitida.');
+      return contratoId;
+    }
     setSaving(true);
     const payload: any = {
       atendimento_id: atendimento.id,
@@ -524,6 +550,7 @@ const ContratoDialog: React.FC<Props> = ({
   };
 
   const handleGerar = async (variant: 'sinal' | 'venda' = 'sinal') => {
+    if (nfeJaEmitida) { toast.error('NF-e de venda já emitida — contrato bloqueado.'); return; }
     if (!validateForGeneration()) return;
 
     setGenerating(true);
@@ -586,6 +613,94 @@ const ContratoDialog: React.FC<Props> = ({
 
   const tipoLabel = (tipo: string) => TIPOS_PAGAMENTO.find(t => t.value === tipo)?.label || tipo;
 
+  const motoNfeLabel = estItemNfe
+    ? `${estItemNfe.marca ?? ''} ${estItemNfe.modelo ?? ''}`.trim()
+    : `${motoIntNfe?.marca ?? ''} ${motoIntNfe?.modelo ?? ''}`.trim();
+
+  if (ehNfe) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" /> NF-e de Venda
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <InfoDisplay label="Cliente" value={atendimento.cliente?.nome_razao_social} />
+              <InfoDisplay label="CPF/CNPJ" value={cpfCnpj || atendimento.cliente?.cpf_cnpj} />
+              <InfoDisplay label="Moto" value={motoNfeLabel || '-'} />
+              <InfoDisplay label="Tipo" value={estItemNfe?.tipo === '0km' ? '0KM' : 'Seminova'} />
+            </div>
+
+            {nfeJaEmitida ? (
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">NF-e autorizada</span>
+                  <span className="text-muted-foreground">
+                    Nº {nfe.nfe?.numero || '-'} / Série {nfe.nfe?.serie || '-'}
+                  </span>
+                </div>
+                {nfe.nfe?.data_emissao && (
+                  <p className="text-xs text-muted-foreground">
+                    Emitida em {format(new Date(nfe.nfe.data_emissao), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                  </p>
+                )}
+                {nfe.nfe?.caminho_danfe && (
+                  <Button size="sm" className="gap-1.5" onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}>
+                    <ExternalLink className="h-4 w-4" /> Abrir DANFE
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <>
+                <CurrencyField label="Valor da Nota" value={nfeValor} onChange={setNfeValor} required />
+                <div>
+                  <label className="text-sm font-medium text-foreground">Observações na NF-e</label>
+                  <Textarea
+                    className="mt-1 uppercase"
+                    rows={3}
+                    value={nfeObs}
+                    onChange={(e) => setNfeObs(e.target.value.toUpperCase())}
+                    placeholder="INFORMAÇÕES COMPLEMENTARES..."
+                  />
+                </div>
+                {nfe.erro && (
+                  <p className="text-xs text-destructive flex items-start gap-1">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Voltar</Button>
+            {!nfeJaEmitida && (
+              nfe.pendente ? (
+                <Button variant="outline" className="gap-1.5" disabled={nfe.loading} onClick={nfe.consultar}>
+                  <RefreshCw className={`h-4 w-4 ${nfe.loading ? 'animate-spin' : ''}`} /> Atualizar status
+                </Button>
+              ) : (
+                <Button
+                  className="gap-1.5"
+                  disabled={nfe.loading || parseCurrencyInput(nfeValor) <= 0}
+                  onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined })}
+                >
+                  {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                  {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
+                </Button>
+              )
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-3xl h-[90vh] p-0 flex flex-col">
@@ -594,6 +709,12 @@ const ContratoDialog: React.FC<Props> = ({
             <FileText className="h-5 w-5 text-primary" /> Emissão de Contrato
           </DialogTitle>
         </DialogHeader>
+
+        {nfeJaEmitida && (
+          <div className="mx-6 mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 flex items-center gap-1.5 shrink-0">
+            <AlertTriangle className="h-3.5 w-3.5" /> NF-e de venda emitida — contrato bloqueado para edição.
+          </div>
+        )}
 
         <div className="flex-1 min-h-0 overflow-auto">
           {loading ? (
@@ -908,16 +1029,16 @@ const ContratoDialog: React.FC<Props> = ({
               <Eye className="h-4 w-4 mr-1" />{viewing ? 'Abrindo...' : 'Visualizar'}
             </Button>
           )}
-          <Button variant="outline" onClick={() => handleGerar('sinal')} disabled={generating}>
+          <Button variant="outline" onClick={() => handleGerar('sinal')} disabled={generating || nfeJaEmitida}>
             <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar Sinal'}
           </Button>
           {canGerarVenda && (
-            <Button variant="outline" onClick={() => handleGerar('venda')} disabled={generating}>
+            <Button variant="outline" onClick={() => handleGerar('venda')} disabled={generating || nfeJaEmitida}>
               <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar Venda'}
             </Button>
           )}
-          
-          <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
+
+          <Button onClick={handleSave} disabled={saving || nfeJaEmitida} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
             <Save className="h-4 w-4 mr-1" />
             {saving ? 'Salvando...' : 'Salvar'}
           </Button>

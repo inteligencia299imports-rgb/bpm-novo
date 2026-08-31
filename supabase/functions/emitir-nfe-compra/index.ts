@@ -11,6 +11,73 @@ const CENTRO_CUSTO_ID = '7fe3888a-fd17-4c31-b78b-82a0af680ff3';
 const FORMA_PAGAMENTO_ID = '63e1fff5-14d7-476c-b2da-e1ea173279a1';
 const DIAS_VENCIMENTO = 7;
 
+type Operacao = 'compra' | 'consignacao' | 'venda_seminova' | 'venda_0km';
+
+interface OperacaoConfig {
+  refPrefix: string;
+  naturezaDescricao: string;
+  statusEntity: string;
+  statusHist: string;
+  etapaTable: string;
+  etapa: string;
+  avStatusField: string | null;
+  avStatusEmAndamento: string;
+  criaCompromisso: boolean;
+  /** 'avaliacao' (entrada) ou 'atendimento' (venda) */
+  keyBy: 'avaliacao' | 'atendimento';
+}
+
+const CFG: Record<Operacao, OperacaoConfig> = {
+  compra: {
+    refPrefix: 'compra',
+    naturezaDescricao: 'Compra de moto seminova',
+    statusEntity: 'pos_compra',
+    statusHist: 'nfe_compra_emitida',
+    etapaTable: 'pos_compra_processos',
+    etapa: 'NF EMITIDA',
+    avStatusField: 'pos_compra_status',
+    avStatusEmAndamento: 'em_andamento',
+    criaCompromisso: true,
+    keyBy: 'avaliacao',
+  },
+  consignacao: {
+    refPrefix: 'consignacao',
+    naturezaDescricao: 'Entrada em consignação',
+    statusEntity: 'consignacao',
+    statusHist: 'nfe_consignacao_emitida',
+    etapaTable: 'consignacao_processos',
+    etapa: 'NF EMITIDA',
+    avStatusField: 'consignacao_status',
+    avStatusEmAndamento: 'concluido',
+    criaCompromisso: false,
+    keyBy: 'avaliacao',
+  },
+  venda_seminova: {
+    refPrefix: 'venda',
+    naturezaDescricao: 'Venda de moto seminova',
+    statusEntity: 'pos_venda',
+    statusHist: 'nfe_venda_emitida',
+    etapaTable: 'pos_venda_processos',
+    etapa: 'NF-E DE VENDA',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'atendimento',
+  },
+  venda_0km: {
+    refPrefix: 'venda',
+    naturezaDescricao: 'Venda de moto 0km',
+    statusEntity: 'pos_venda',
+    statusHist: 'nfe_venda_emitida',
+    etapaTable: 'pos_venda_processos',
+    etapa: 'NF-E DE VENDA',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'atendimento',
+  },
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -42,8 +109,9 @@ const PENDENTES = new Set(['recebida', 'validando', 'processando_itens']);
 
 async function registrarPosAutorizacao(
   admin: any,
+  cfg: OperacaoConfig,
   params: {
-    avaliacaoId: string;
+    entityId: string; // avaliacaoId ou atendimentoId conforme cfg.keyBy
     dataEmissao: string;
     numero: string | null;
     serie: string | null;
@@ -51,44 +119,60 @@ async function registrarPosAutorizacao(
     callerName: string | null;
   },
 ) {
-  const { avaliacaoId, dataEmissao, numero, serie, callerId, callerName } = params;
+  const { entityId, dataEmissao, numero, serie, callerId, callerName } = params;
+  const porAvaliacao = cfg.keyBy === 'avaliacao';
+  const fkCol = porAvaliacao ? 'avaliacao_id' : 'atendimento_id';
 
-  // Historico de movimentacoes (visivel na timeline da avaliacao).
+  // Historico de movimentacoes.
   const { data: jaRegistrado } = await admin
     .from('status_history')
     .select('id')
-    .eq('entity_type', 'pos_compra')
-    .eq('entity_id', avaliacaoId)
-    .eq('status', 'nfe_compra_emitida')
+    .eq('entity_type', cfg.statusEntity)
+    .eq('entity_id', entityId)
+    .eq('status', cfg.statusHist)
     .limit(1);
 
   if (!jaRegistrado || jaRegistrado.length === 0) {
     await admin.from('status_history').insert({
-      entity_type: 'pos_compra',
-      entity_id: avaliacaoId,
-      status: 'nfe_compra_emitida',
+      entity_type: cfg.statusEntity,
+      entity_id: entityId,
+      status: cfg.statusHist,
       changed_by: callerId,
       changed_by_name: callerName,
       observacoes: `NF-e nº ${numero ?? '-'} série ${serie ?? '-'}`,
     });
   }
 
-  // Marca a etapa "NF-E" do checklist de pos-compra como concluida.
-  await admin.from('pos_compra_processos').upsert(
+  // Marca a etapa do checklist como concluida.
+  await admin.from(cfg.etapaTable).upsert(
     {
-      avaliacao_id: avaliacaoId,
-      etapa: 'NF-E',
+      [fkCol]: entityId,
+      etapa: cfg.etapa,
       concluida: true,
       data_conclusao: dataEmissao,
     },
-    { onConflict: 'avaliacao_id,etapa' },
+    { onConflict: `${fkCol},etapa` },
   );
+
+  // Emitir a NF avanca o status do processo (so p/ entradas keyed por avaliacao).
+  if (porAvaliacao && cfg.avStatusField) {
+    const { data: avStatus } = await admin
+      .from('avaliacoes')
+      .select(cfg.avStatusField)
+      .eq('id', entityId)
+      .maybeSingle();
+    if (['aprovada', 'em_aberto', 'contrato_assinado', 'cadastro_nbs', null, undefined].includes(avStatus?.[cfg.avStatusField] ?? null)) {
+      await admin.from('avaliacoes').update({ [cfg.avStatusField]: cfg.avStatusEmAndamento }).eq('id', entityId);
+    }
+  }
+
+  if (!cfg.criaCompromisso) return;
 
   // Compromisso financeiro (contas a pagar) da NF-e.
   const { data: nfeRow } = await admin
     .from('nfe_entradas')
     .select('*')
-    .eq('avaliacao_id', avaliacaoId)
+    .eq('avaliacao_id', entityId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -162,7 +246,7 @@ Deno.serve(async (req) => {
 
   const { data: roleData } = await admin
     .from('user_roles')
-    .select('app_role')
+    .select('app_role, nome')
     .eq('user_id', caller.id)
     .eq('projeto_id', BPM_PROJETO_ID)
     .eq('ativo', true)
@@ -176,25 +260,62 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Corpo da requisição inválido (JSON esperado)' }, 400);
   }
 
-  const avaliacaoId = typeof body.avaliacao_id === 'string' ? body.avaliacao_id : '';
   const acao = body.acao === 'consultar' ? 'consultar' : 'emitir';
-  if (!avaliacaoId) return jsonResponse({ error: 'avaliacao_id é obrigatório' }, 400);
+  const tipo: Operacao = (['compra', 'consignacao', 'venda_seminova', 'venda_0km'] as const).includes(body.tipo as any)
+    ? (body.tipo as Operacao)
+    : 'compra';
+  const cfg = CFG[tipo];
+  const ehVenda = cfg.keyBy === 'atendimento';
 
-  // ---- Carrega avaliacao + atendimento + acesso ----
-  const { data: av } = await admin
-    .from('avaliacoes')
-    .select(
-      'id, atendimento_id, aprovacao_status, consulta_realizada, valor_fechamento, ' +
-        'marca, modelo, ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam',
-    )
-    .eq('id', avaliacaoId)
-    .maybeSingle();
-  if (!av) return jsonResponse({ error: 'Avaliação não encontrada' }, 404);
+  const avaliacaoId = typeof body.avaliacao_id === 'string' ? body.avaliacao_id : '';
+  const atendimentoIdBody = typeof body.atendimento_id === 'string' ? body.atendimento_id : '';
+  if (ehVenda && !atendimentoIdBody) return jsonResponse({ error: 'atendimento_id é obrigatório' }, 400);
+  if (!ehVenda && !avaliacaoId) return jsonResponse({ error: 'avaliacao_id é obrigatório' }, 400);
+
+  // ---- Carrega contexto (avaliacao p/ entrada, estoque_motos p/ venda) + atendimento + acesso ----
+  let av: any = null;
+  let estoqueMoto: any = null;
+  let atendimentoId = '';
+
+  if (ehVenda) {
+    atendimentoId = atendimentoIdBody;
+    const { data: mi } = await admin
+      .from('motos_interesse')
+      .select('estoque_moto_id')
+      .eq('atendimento_id', atendimentoId)
+      .not('estoque_moto_id', 'is', null)
+      .limit(1)
+      .maybeSingle();
+    if (!mi?.estoque_moto_id) return jsonResponse({ error: 'Moto do estoque não vinculada ao atendimento.' }, 409);
+    const { data: em } = await admin
+      .from('estoque_motos')
+      .select(
+        '*, avaliacao:avaliacao_id(marca, modelo, ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam), ' +
+          'moto_nova:moto_nova_id(marca, modelo, ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam, ncm, valor)',
+      )
+      .eq('id', mi.estoque_moto_id)
+      .maybeSingle();
+    if (!em) return jsonResponse({ error: 'Moto do estoque não encontrada.' }, 404);
+    estoqueMoto = em;
+  } else {
+    const { data: avRow } = await admin
+      .from('avaliacoes')
+      .select(
+        'id, atendimento_id, aprovacao_status, consulta_realizada, valor_fechamento, ' +
+          'avaliacao_consignacao, valor_consignacao_nota, consignacao_status, ' +
+          'marca, modelo, ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam',
+      )
+      .eq('id', avaliacaoId)
+      .maybeSingle();
+    if (!avRow) return jsonResponse({ error: 'Avaliação não encontrada' }, 404);
+    av = avRow;
+    atendimentoId = avRow.atendimento_id;
+  }
 
   const { data: atendimento } = await admin
     .from('atendimentos_motos')
-    .select('id, cliente_id, loja_id, vendedor_id')
-    .eq('id', av.atendimento_id)
+    .select('id, cliente_id, loja_id, vendedor_id, interesse')
+    .eq('id', atendimentoId)
     .maybeSingle();
   if (!atendimento) return jsonResponse({ error: 'Atendimento não encontrado' }, 404);
 
@@ -207,17 +328,20 @@ Deno.serve(async (req) => {
     });
     temAcesso = !!ok;
   }
-  if (!temAcesso) return jsonResponse({ error: 'Forbidden: sem acesso a esta avaliação' }, 403);
+  if (!temAcesso) return jsonResponse({ error: 'Forbidden: sem acesso a este atendimento' }, 403);
 
+  const entityId = ehVenda ? atendimentoId : avaliacaoId;
+
+  // Nome exibido no historico segue o padrao do sistema: user_roles.nome.
   const callerName =
+    (roleData.nome as string | undefined) ||
     (caller.user_metadata?.full_name as string | undefined) ||
     (caller.user_metadata?.name as string | undefined) ||
-    caller.email ||
     null;
 
   const ambiente = (Deno.env.get('FOCUS_NFE_AMBIENTE') as FocusAmbiente) || 'homologacao';
   const base = focusBaseUrl(ambiente);
-  const ref = `compra-${avaliacaoId}`;
+  const ref = `${cfg.refPrefix}-${entityId}`;
 
   // ---- Empresa + token Focus ----
   const { data: lojaEmpresa } = await admin
@@ -242,17 +366,16 @@ Deno.serve(async (req) => {
 
   const token = ambiente === 'producao' ? focusCfg?.token_producao : focusCfg?.token_homologacao;
 
+  const nfeKey = ehVenda ? 'atendimento_id' : 'avaliacao_id';
+  const buscarNfe = () =>
+    admin.from('nfe_entradas').select('*').eq(nfeKey, entityId)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+
   // =====================================================================
   // acao: consultar
   // =====================================================================
   if (acao === 'consultar') {
-    const { data: nfeRow } = await admin
-      .from('nfe_entradas')
-      .select('*')
-      .eq('avaliacao_id', avaliacaoId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { data: nfeRow } = await buscarNfe();
     if (!nfeRow) return jsonResponse({ nfe: null }, 200);
     if (!token) return jsonResponse({ nfe: nfeRow }, 200);
 
@@ -280,8 +403,8 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (fStatus === 'autorizado') {
-      await registrarPosAutorizacao(admin, {
-        avaliacaoId,
+      await registrarPosAutorizacao(admin, cfg, {
+        entityId,
         dataEmissao: (updated?.data_emissao as string) || nfeRow.data_emissao || new Date().toISOString(),
         numero: (updated?.numero as string) ?? null,
         serie: (updated?.serie as string) ?? null,
@@ -297,21 +420,33 @@ Deno.serve(async (req) => {
   // =====================================================================
 
   // Guards
-  if (av.aprovacao_status !== 'aprovada') {
-    return jsonResponse({ error: 'A compra ainda não foi aprovada.' }, 409);
-  }
-  if (av.consulta_realizada !== true) {
-    return jsonResponse({ error: 'A consulta veicular ainda não foi realizada.' }, 409);
-  }
-  const { data: contratoHist } = await admin
-    .from('status_history')
-    .select('id')
-    .eq('entity_type', 'pos_compra')
-    .eq('entity_id', avaliacaoId)
-    .eq('status', 'contrato_compra_gerado')
-    .limit(1);
-  if (!contratoHist || contratoHist.length === 0) {
-    return jsonResponse({ error: 'O contrato de compra ainda não foi gerado.' }, 409);
+  if (tipo === 'compra') {
+    if (av.consulta_realizada !== true) return jsonResponse({ error: 'A consulta veicular ainda não foi realizada.' }, 409);
+    if (av.aprovacao_status !== 'aprovada') return jsonResponse({ error: 'A compra ainda não foi aprovada.' }, 409);
+    const { data: contratoHist } = await admin
+      .from('status_history').select('id')
+      .eq('entity_type', 'pos_compra').eq('entity_id', avaliacaoId).eq('status', 'contrato_compra_gerado').limit(1);
+    if (!contratoHist || contratoHist.length === 0) {
+      return jsonResponse({ error: 'O contrato de compra ainda não foi gerado.' }, 409);
+    }
+  } else if (tipo === 'consignacao') {
+    if (av.consulta_realizada !== true) return jsonResponse({ error: 'A consulta veicular ainda não foi realizada.' }, 409);
+    const { data: contratoConsig } = await admin
+      .from('contratos_consignacao').select('id').eq('avaliacao_id', avaliacaoId).limit(1);
+    if (!contratoConsig || contratoConsig.length === 0) {
+      return jsonResponse({ error: 'O contrato do consignante ainda não foi gerado.' }, 409);
+    }
+  } else {
+    // venda
+    if (!['vendido', 'sinal'].includes(estoqueMoto?.status)) {
+      return jsonResponse({ error: 'A moto ainda não foi marcada como vendida.' }, 409);
+    }
+    const { data: contratoVenda } = await admin
+      .from('contratos').select('id')
+      .eq('atendimento_id', atendimentoId).neq('ipva_tipo', 'COMPRA').limit(1);
+    if (!contratoVenda || contratoVenda.length === 0) {
+      return jsonResponse({ error: 'O contrato de venda ainda não foi gerado.' }, 409);
+    }
   }
   if (!empresa?.cnpj) {
     return jsonResponse({ error: 'A empresa da loja está sem CNPJ cadastrado.' }, 409);
@@ -320,38 +455,42 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Emissão de NF-e não habilitada para esta empresa.' }, 409);
   }
 
-  const { data: nfeExistente } = await admin
-    .from('nfe_entradas')
-    .select('id, status')
-    .eq('avaliacao_id', avaliacaoId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const { data: nfeExistente } = await buscarNfe();
   if (nfeExistente && (nfeExistente.status === 'processada' || PENDENTES.has(nfeExistente.status))) {
-    return jsonResponse({ error: 'Já existe uma NF-e emitida ou em processamento para esta compra.' }, 409);
+    return jsonResponse({ error: 'Já existe uma NF-e emitida ou em processamento para esta moto.' }, 409);
   }
 
-  // Fornecedor (PF vendedora)
+  // Destinatario da NF: entrada = PF vendedora/consignante; venda = cliente comprador.
+  // Nos dois casos e o cliente_id do atendimento.
   const { data: fornecedor } = await admin
     .from('clientes_fornecedores')
     .select('id, nome_razao_social, cpf_cnpj, tipo_pessoa, telefone, telefone_comercial, clientes_fornecedores_enderecos(*)')
     .eq('id', atendimento.cliente_id)
     .maybeSingle();
-  if (!fornecedor) return jsonResponse({ error: 'Cliente/fornecedor não encontrado' }, 409);
+  if (!fornecedor) return jsonResponse({ error: 'Cliente não encontrado' }, 409);
   const end = (fornecedor.clientes_fornecedores_enderecos || [])[0] || {};
 
-  // Contrato (valor de fechamento tem prioridade)
-  const { data: contrato } = await admin
-    .from('contratos')
-    .select('valor_fechamento')
-    .eq('atendimento_id', av.atendimento_id)
-    .eq('ipva_tipo', 'COMPRA')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const valor = Number(contrato?.valor_fechamento ?? av.valor_fechamento ?? 0);
+  // Valor da NF. body.valor (editado na tela) tem prioridade.
+  const valorBody = typeof body.valor === 'number' && body.valor > 0 ? body.valor : null;
+  let valor: number;
+  if (tipo === 'compra') {
+    const { data: contrato } = await admin
+      .from('contratos').select('valor_fechamento')
+      .eq('atendimento_id', av.atendimento_id).eq('ipva_tipo', 'COMPRA')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    valor = valorBody ?? Number(contrato?.valor_fechamento ?? av.valor_fechamento ?? 0);
+  } else if (tipo === 'consignacao') {
+    valor = valorBody ?? Number(av.valor_consignacao_nota ?? av.avaliacao_consignacao ?? 0);
+    if (valorBody != null) {
+      await admin.from('avaliacoes').update({ valor_consignacao_nota: valorBody }).eq('id', avaliacaoId);
+    }
+  } else {
+    // venda: preco de venda da moto (estoque_motos.valor_venda); 0km cai p/ tabela.
+    valor = valorBody
+      ?? Number(estoqueMoto?.valor_venda ?? estoqueMoto?.valor_sinal ?? estoqueMoto?.moto_nova?.valor ?? 0);
+  }
   if (!valor || valor <= 0) {
-    return jsonResponse({ error: 'Valor de fechamento da compra não informado.' }, 409);
+    return jsonResponse({ error: 'Valor da NF-e não informado.' }, 409);
   }
 
   // Natureza + regras fiscais (tudo vem da tabela; nao ha default no codigo)
@@ -364,9 +503,9 @@ Deno.serve(async (req) => {
         'aliquota_fcp, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem)',
     )
     .eq('empresa_id', empresaId)
-    .eq('descricao', 'Compra de moto seminova')
+    .eq('descricao', cfg.naturezaDescricao)
     .maybeSingle();
-  if (!natureza) return jsonResponse({ error: 'Natureza de operação "Compra de moto seminova" não configurada.' }, 409);
+  if (!natureza) return jsonResponse({ error: `Natureza de operação "${cfg.naturezaDescricao}" não configurada.` }, 409);
 
   const regras = (natureza.naturezas_operacao_regras || []) as Array<
     RegraFiscal & { destino_ufs: string[] | null; ordem: number | null }
@@ -396,9 +535,41 @@ Deno.serve(async (req) => {
   if (!regraCofins?.situacao_tributaria) faltando.push('COFINS');
   if (faltando.length) {
     return jsonResponse(
-      { error: `Regras fiscais da natureza "Compra de moto seminova" incompletas: ${faltando.join(', ')}.` },
+      { error: `Regras fiscais da natureza "${cfg.naturezaDescricao}" incompletas: ${faltando.join(', ')}.` },
       409,
     );
+  }
+
+  // Specs da moto: entrada vem da avaliacao; venda vem do estoque (avaliacao ou moto_nova).
+  let motoData: any;
+  if (ehVenda) {
+    const mn = estoqueMoto?.moto_nova ?? null;
+    const eh0km = !!estoqueMoto?.moto_nova_id && !!mn;
+    const mSrc = eh0km ? mn : (estoqueMoto?.avaliacao ?? {});
+    motoData = {
+      marca: mSrc.marca ?? null,
+      modelo: mSrc.modelo ?? null,
+      ano_fabricacao: mSrc.ano_fabricacao ?? null,
+      ano_modelo: mSrc.ano_modelo ?? null,
+      cilindrada: mSrc.cilindrada ?? null,
+      cor: mSrc.cor ?? null,
+      placa: mSrc.placa ?? null,
+      chassi: mSrc.chassi ?? null,
+      renavam: mSrc.renavam ?? null,
+      ncm: eh0km ? (mn.ncm ?? null) : null,
+    };
+  } else {
+    motoData = {
+      marca: av.marca,
+      modelo: av.modelo,
+      ano_fabricacao: av.ano_fabricacao,
+      ano_modelo: av.ano_modelo,
+      cilindrada: av.cilindrada,
+      cor: av.cor,
+      placa: av.placa,
+      chassi: av.chassi,
+      renavam: av.renavam,
+    };
   }
 
   const payload = montarPayloadNfeCompra({
@@ -426,17 +597,7 @@ Deno.serve(async (req) => {
       cidade: end.cidade ?? null,
       uf: end.uf ?? null,
     },
-    moto: {
-      marca: av.marca,
-      modelo: av.modelo,
-      ano_fabricacao: av.ano_fabricacao,
-      ano_modelo: av.ano_modelo,
-      cilindrada: av.cilindrada,
-      cor: av.cor,
-      placa: av.placa,
-      chassi: av.chassi,
-      renavam: av.renavam,
-    },
+    moto: motoData,
     valor,
     regraIcms: regraIcms!,
     regraPis: regraPis!,
@@ -444,6 +605,11 @@ Deno.serve(async (req) => {
     regraIpi: regraIpi,
     observacoes: typeof body.observacoes === 'string' ? body.observacoes : null,
   });
+
+  // FKs da nfe_entradas conforme a operacao.
+  const nfeFks: Record<string, unknown> = ehVenda
+    ? { avaliacao_id: null, atendimento_id: atendimentoId, estoque_moto_id: estoqueMoto?.id ?? null }
+    : { avaliacao_id: avaliacaoId };
 
   const dataEmissao = new Date().toISOString();
   const observacoesNf = typeof body.observacoes === 'string' && body.observacoes.trim()
@@ -458,10 +624,11 @@ Deno.serve(async (req) => {
     const errMsg = mensagemErroFocus(r.body);
     const linhaErro = {
       empresa_id: empresaId,
-      avaliacao_id: avaliacaoId,
+      ...nfeFks,
       fornecedor_id: atendimento.cliente_id,
       natureza_operacao_id: natureza.id,
       ref_externa: ref,
+      operacao: tipo,
       valor_total: valor,
       departamento: 'motos',
       observacoes: observacoesNf,
@@ -480,10 +647,11 @@ Deno.serve(async (req) => {
   const autorizado = fStatus === 'autorizado';
   const linha: Record<string, unknown> = {
     empresa_id: empresaId,
-    avaliacao_id: avaliacaoId,
+    ...nfeFks,
     fornecedor_id: atendimento.cliente_id,
     natureza_operacao_id: natureza.id,
     ref_externa: ref,
+    operacao: tipo,
     valor_total: valor,
     departamento: 'motos',
     observacoes: observacoesNf,
@@ -524,8 +692,8 @@ Deno.serve(async (req) => {
   }
 
   if (autorizado) {
-    await registrarPosAutorizacao(admin, {
-      avaliacaoId,
+    await registrarPosAutorizacao(admin, cfg, {
+      entityId,
       dataEmissao,
       numero: (r.body.numero as string) ?? null,
       serie: (r.body.serie as string) ?? null,
