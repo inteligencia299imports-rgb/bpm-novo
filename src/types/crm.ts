@@ -8,7 +8,7 @@ export type Negociacao = 'compra' | 'consignacao';
 export type PosVendaStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
 export type PosCompraStatus = 'aguardando_aprovacao' | 'aprovada' | 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'pausado' | 'concluido';
 export type AprovacaoStatus = 'aguardando' | 'aprovada' | 'recusada';
-export type ConsignacaoStatus = 'em_aberto' | 'contrato_assinado' | 'cadastro_nbs' | 'pausado' | 'concluido';
+export type ConsignacaoStatus = 'em_aberto' | 'contrato_assinado' | 'pausado' | 'concluido';
 export type PreparacaoStatus = 'em_aberto' | 'pendente' | 'aguardando_aceite' | 'oficina' | 'servico_externo' | 'aguardando_liberacao_estoque' | 'estoque';
 export type IntermediacaoParte1Status = 'em_aberto' | 'em_andamento' | 'autorizacao_pagamento' | 'concluido';
 export type IntermediacaoParte2Status = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
@@ -61,7 +61,6 @@ export const POS_COMPRA_COLUMNS: { value: PosCompraStatus; label: string; hex: s
 export const CONSIGNACAO_COLUMNS: { value: ConsignacaoStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'contrato_assinado', label: 'Contrato Assinado', hex: '#169d53' },
-  { value: 'cadastro_nbs', label: 'Cadastro NBS', hex: '#da6220' },
   { value: 'pausado', label: 'Pausado', hex: '#FF8C00' },
 ];
 
@@ -231,6 +230,8 @@ export interface MotoInteresse {
   ano: string | null;
   chassi: string | null;
   estoque_moto_id: string | null;
+  /** De qual estoque veio a moto selecionada (quando origem = 'estoque'). */
+  estoque_tipo: 'seminova' | '0km' | null;
 }
 
 export interface MotoFoto {

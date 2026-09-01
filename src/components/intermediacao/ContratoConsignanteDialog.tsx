@@ -75,16 +75,6 @@ const tipoContaLabel = (v: string | null | undefined) => {
 const fmtDataNasc = (v: string | null | undefined) =>
   v ? String(v).replace(/^(\d{4})-(\d{2})-(\d{2}).*/, '$3/$2/$1') : undefined;
 
-const CurrencyField = ({ label, value, onChange, disabled }: { label: string; value: string; onChange: (v: string) => void; disabled?: boolean }) => (
-  <div>
-    <label className="text-sm font-medium text-foreground">{label}</label>
-    <div className="relative mt-1">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-      <Input className="pl-10" placeholder="0,00" value={value} onChange={(e) => onChange(formatCurrencyInput(e.target.value))} inputMode="numeric" disabled={disabled} />
-    </div>
-  </div>
-);
-
 const InfoDisplay = ({ label, value }: { label: string; value: string | null | undefined }) => (
   value ? (
     <div>
@@ -242,7 +232,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       setCpfCnpj(formatCpfCnpj(contrato.cpf_cnpj || ''));
       setDadosBancarios(contrato.dados_bancarios || '');
       setTitularConta(contrato.titular_conta || '');
-      setValorFechamento(contrato.valor_fechamento ? formatCurrencyInput(String(Math.round(contrato.valor_fechamento * 100))) : '');
+      setValorFechamento((contrato.valor_fechamento ?? avaliacao?.valor_fechamento) != null ? formatCurrencyInput(String(Math.round((contrato.valor_fechamento ?? avaliacao?.valor_fechamento) * 100))) : '');
       setValorRepasse(contrato.valor_repasse ? formatCurrencyInput(String(Math.round(contrato.valor_repasse * 100))) : '');
       setObsContrato(contrato.observacoes_contrato || '');
       setObsInternas(contrato.observacoes_internas || '');
@@ -274,8 +264,8 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
         setCpfCnpj('');
       }
 
-      // Pre-fill valor_fechamento from avaliacao
-      if (avaliacao?.valor_fechamento) {
+      // Valor de Fechamento tem origem na avaliação — exibido no contrato, não editável.
+      if (avaliacao?.valor_fechamento != null) {
         setValorFechamento(formatCurrencyInput(String(Math.round(avaliacao.valor_fechamento * 100))));
       } else {
         setValorFechamento('');
@@ -749,7 +739,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                     </div>
                   )}
                   <div className="max-w-xs">
-                    <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} />
+                    <InfoDisplay label="Valor de Fechamento" value={valorFechamento ? `R$ ${valorFechamento}` : '—'} />
                   </div>
                 </CardContent>
               </Card>

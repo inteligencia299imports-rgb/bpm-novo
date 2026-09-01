@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { getPreviousPeriod } from '@/lib/reportComparison';
-import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
+import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMotoNova, fetchLojaMap } from '@/lib/estoqueMoto';
 import { getCycleForDate } from '@/lib/reportCycle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
@@ -117,9 +117,10 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const [aRes, eResRaw, avRes, coRes, copRes, ccRes, cRes, miRes, urRes, pcpRes, lojaMap] = await Promise.all([
+    const [aRes, eResRaw, eNovasRaw, avRes, coRes, copRes, ccRes, cRes, miRes, urRes, pcpRes, lojaMap] = await Promise.all([
       fetchAllRange<any>(() => supabase.from('atendimentos_motos').select('id, loja_id, loja_empresas:loja_id(loja), vendedor_id, situacao, created_at, cliente:clientes_fornecedores(nome_razao_social)')),
       fetchAllRange<any>(() => supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT)),
+      supabase.from('estoque_motos_novas').select(ESTOQUE_NOVA_SELECT),
       fetchAllRange<any>(() => supabase.from('avaliacoes').select('id, quanto_vende, valor_fechamento, avaliacao_compra, avaliacao_consignacao, updated_at, created_at')),
       fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado')),
       fetchAllRange<any>(() => supabase.from('custos_operacionais').select('contrato_consignante_id, responsavel, valor')),
@@ -131,7 +132,10 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       fetchLojaMap(),
     ]);
 
-    const eRes = { data: (eResRaw.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)) };
+    const eRes = { data: [
+      ...(eResRaw.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)),
+      ...(((eNovasRaw as any).data) || []).map((r: any) => mapEstoqueMotoNova(r, lojaMap)),
+    ] };
     setAtendimentos(((aRes.data || []) as any[]).map(a => ({ ...a, loja: a.loja_empresas?.loja || null, nome_cliente: a.cliente?.nome_razao_social || null })) as AtendimentoRow[]);
     setIndexes(buildIndexes({
       estoque: (eRes.data || []) as any,

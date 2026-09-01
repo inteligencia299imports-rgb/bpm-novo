@@ -59,6 +59,12 @@ export interface RegraFiscal {
   tipo_tributacao: string | null;
   informacoes_complementares: string | null;
   informacoes_adicionais_fisco: string | null;
+  // Reforma Tributária — preenchidos apenas na linha imposto === 'ibscbs'.
+  classificacao_tributaria?: string | null; // cClassTrib
+  cbs_aliquota?: number | null;
+  ibs_uf_aliquota?: number | null;
+  ibs_mun_aliquota?: number | null;
+  percentual_reducao?: number | null;
 }
 
 export interface MontarPayloadArgs {
@@ -71,12 +77,28 @@ export interface MontarPayloadArgs {
   regraPis: RegraFiscal;
   regraCofins: RegraFiscal;
   regraIpi: RegraFiscal | null;
+  /** Grupo IBS/CBS (Reforma Tributária). Obrigatório p/ emitente CRT 3 em homologação. */
+  regraIbsCbs: RegraFiscal | null;
   observacoes?: string | null;
 }
 
 const onlyDigits = (v: string | null | undefined) => (v ?? '').replace(/\D/g, '');
 const juntarInfos = (...partes: Array<string | null | undefined>) =>
   partes.map((p) => (p ?? '').trim()).filter(Boolean).join(' | ') || undefined;
+
+/**
+ * Data/hora atual no fuso de Brasília (UTC-3, sem horário de verão desde 2019),
+ * no formato ISO com offset explícito: 2026-08-31T23:43:50-03:00.
+ *
+ * IMPORTANTE: não usar `new Date().toISOString()` (UTC) para a data de emissão —
+ * perto da meia-noite (BRT) o UTC já virou o dia/mês, e o AAMM da chave de acesso
+ * fica divergente do mês da dhEmi, causando rejeição SEFAZ cStat 253
+ * ("Dígito Verificador da chave de acesso composta inválida").
+ */
+export function nowBrasiliaIso(d: Date = new Date()): string {
+  const brt = new Date(d.getTime() - 3 * 60 * 60 * 1000);
+  return brt.toISOString().replace(/\.\d{3}Z$/, '').replace(/Z$/, '') + '-03:00';
+}
 
 /** NCM da motocicleta pela cilindrada (posicao 8711). */
 export function ncmPorCilindrada(cc: string | number | null | undefined): string {
@@ -89,26 +111,35 @@ export function ncmPorCilindrada(cc: string | number | null | undefined): string
   return '87115000';
 }
 
+// xProd da NF-e tem limite de 120 caracteres. Monta a descrição por prioridade
+// (identificadores do veículo primeiro) e para de adicionar quando não couber.
+const XPROD_MAX = 120;
 export function descricaoItemMoto(m: DadosMoto): string {
-  const partes = [
-    'MOTOCICLETA',
-    m.marca?.toUpperCase(),
-    m.modelo?.toUpperCase(),
+  const base = ['MOTOCICLETA', m.marca?.toUpperCase(), m.modelo?.toUpperCase()]
+    .filter(Boolean).join(' ').slice(0, XPROD_MAX);
+  // ordem de prioridade para o que sobra do limite:
+  const extras = [
+    m.chassi ? `CHASSI ${m.chassi.toUpperCase()}` : null,
+    m.placa ? `PLACA ${m.placa.toUpperCase()}` : null,
+    m.renavam ? `RENAVAM ${onlyDigits(m.renavam)}` : null,
     m.ano_modelo ? `ANO ${m.ano_fabricacao ?? m.ano_modelo}/${m.ano_modelo}` : null,
     m.cor ? `COR ${m.cor.toUpperCase()}` : null,
-    m.placa ? `PLACA ${m.placa.toUpperCase()}` : null,
-    m.chassi ? `CHASSI ${m.chassi.toUpperCase()}` : null,
-    m.renavam ? `RENAVAM ${onlyDigits(m.renavam)}` : null,
-  ].filter(Boolean);
-  return partes.join(' ');
+  ].filter(Boolean) as string[];
+
+  let out = base;
+  for (const parte of extras) {
+    if (out.length + 1 + parte.length <= XPROD_MAX) out = `${out} ${parte}`;
+  }
+  return out;
 }
 
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
-  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, observacoes } = args;
+  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes } = args;
 
   const pf = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
   const docForn = onlyDigits(fornecedor.cpf_cnpj);
   const valorFmt = Number(valor.toFixed(2));
+  const r2 = (n: number) => Number(n.toFixed(2));
 
   const cstIcms = String(regraIcms.situacao_tributaria);
   // Spec SEFAZ: CSOSN (Simples) tem 3 digitos; CST (regime normal) tem 2.
@@ -150,13 +181,44 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     item.icms_valor = 0;
   }
 
+  // --- Grupo IBS/CBS (Reforma Tributária) ---------------------------------
+  // Obrigatório para emitente CRT 3 em homologação desde 01/07/2026 (cStat 1115).
+  // CST/cClassTrib e alíquotas vêm da regra 'ibscbs' da natureza (a validar com a contabilidade).
+  if (regraIbsCbs?.situacao_tributaria) {
+    const baseRtc = valorFmt;
+    const red = Number(regraIbsCbs.percentual_reducao ?? 0);
+    const fatorRed = red > 0 ? 1 - red / 100 : 1;
+    const cbsAliq = Number(regraIbsCbs.cbs_aliquota ?? 0);
+    const ibsUfAliq = Number(regraIbsCbs.ibs_uf_aliquota ?? 0);
+    const ibsMunAliq = Number(regraIbsCbs.ibs_mun_aliquota ?? 0);
+
+    item.ibs_cbs_situacao_tributaria = regraIbsCbs.situacao_tributaria;
+    if (regraIbsCbs.classificacao_tributaria) {
+      item.ibs_cbs_classificacao_tributaria = regraIbsCbs.classificacao_tributaria;
+    }
+    item.ibs_cbs_base_calculo = baseRtc;
+    if (red > 0) {
+      item.cbs_percentual_reducao_aliquota = red;
+      item.ibs_uf_percentual_reducao_aliquota = red;
+      item.ibs_mun_percentual_reducao_aliquota = red;
+    }
+    item.cbs_aliquota = cbsAliq;
+    item.cbs_valor = r2(baseRtc * (cbsAliq / 100) * fatorRed);
+    item.ibs_uf_aliquota = ibsUfAliq;
+    item.ibs_uf_valor = r2(baseRtc * (ibsUfAliq / 100) * fatorRed);
+    item.ibs_mun_aliquota = ibsMunAliq;
+    item.ibs_mun_valor = r2(baseRtc * (ibsMunAliq / 100) * fatorRed);
+  }
+
   const entrada = natureza.tipo === 'entrada';
+
+  const agora = nowBrasiliaIso();
 
   return {
     natureza_operacao: natureza.descricao,
     serie: natureza.serie ?? undefined,
-    data_emissao: new Date().toISOString(),
-    data_entrada_saida: new Date().toISOString(),
+    data_emissao: agora,
+    data_entrada_saida: agora,
     tipo_documento: entrada ? 0 : 1,
     finalidade_emissao: natureza.operacao_devolucao ? 4 : 1,
     consumidor_final: natureza.consumidor_final ? 1 : 0,

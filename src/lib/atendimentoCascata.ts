@@ -12,15 +12,16 @@ interface UserLike {
 export const reverterEstoqueDoAtendimento = async (atendimentoId: string) => {
   const { data: motosInt } = await supabase
     .from('motos_interesse')
-    .select('id, estoque_moto_id')
+    .select('id, estoque_moto_id, estoque_tipo')
     .eq('atendimento_id', atendimentoId);
 
   const promises: PromiseLike<unknown>[] = [];
   for (const mi of motosInt || []) {
     if (mi.estoque_moto_id) {
+      const tabela = (mi as any).estoque_tipo === '0km' ? 'estoque_motos_novas' : 'estoque_motos';
       promises.push(
         supabase
-          .from('estoque_motos')
+          .from(tabela)
           .update({
             status: 'disponivel',
             atendimento_venda_id: null,

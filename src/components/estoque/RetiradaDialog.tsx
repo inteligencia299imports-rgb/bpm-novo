@@ -15,6 +15,7 @@ interface RetiradaDialogProps {
     id: string;
     modelo: string;
     placa?: string | null;
+    fonte?: string;
     avaliacao_id?: string | null;
   } | null;
   onSuccess: () => void;
@@ -35,7 +36,7 @@ const RetiradaDialog: React.FC<RetiradaDialogProps> = ({ open, onOpenChange, est
     try {
       // 1. Update estoque status to 'retirada'
       const { error: estoqueErr } = await supabase
-        .from('estoque_motos')
+        .from(estoqueItem.fonte === '0km' ? 'estoque_motos_novas' : 'estoque_motos')
         .update({ status: 'retirada', observacoes: motivo.trim() })
         .eq('id', estoqueItem.id);
       if (estoqueErr) throw estoqueErr;

@@ -255,8 +255,8 @@ function ddiDropdownLabel(code: string) {
 }
 
 export function ClienteForm({
-  id, embedded, onSaved, onCancel,
-}: { id?: string; embedded?: boolean; onSaved?: (id: string) => void; onCancel?: () => void }) {
+  id, embedded, onSaved, onCancel, exigirBancarios = true,
+}: { id?: string; embedded?: boolean; onSaved?: (id: string) => void; onCancel?: () => void; exigirBancarios?: boolean }) {
   const qc = useQueryClient();
   const isEdit = !!id;
 
@@ -538,8 +538,10 @@ export function ClienteForm({
   const contaValida = contaDig.length >= 4 && contaDig.length <= 12;
   const digitoValido = /^[0-9X]$/.test(s(form.digito_conta));
   const bancarioOk =
-    !!s(form.banco) && !!s(form.tipo_conta) && agenciaValida && contaValida && digitoValido &&
-    !!s(form.favorecido) && !!s(form.cpf_cnpj_favorecido) && !!s(form.chave_pix);
+    !exigirBancarios || (
+      !!s(form.banco) && !!s(form.tipo_conta) && agenciaValida && contaValida && digitoValido &&
+      !!s(form.favorecido) && !!s(form.cpf_cnpj_favorecido) && !!s(form.chave_pix)
+    );
 
   const tabMissing = (t: TabKey): boolean => {
     if (t === "principais") return !principaisOk();
@@ -1077,7 +1079,7 @@ export function ClienteForm({
         <TabsContent value="bancario" className="space-y-4 pt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Banco <span className="text-red-500">*</span></Label>
+              <Label>Banco {exigirBancarios && <span className="text-red-500">*</span>}</Label>
               <Select value={normalizarBanco(form.banco)} onValueChange={set("banco")}>
                 <SelectTrigger className={errCls(!s(form.banco))}><SelectValue placeholder="Selecione o banco..." /></SelectTrigger>
                 <SelectContent>
@@ -1088,7 +1090,7 @@ export function ClienteForm({
               </Select>
             </div>
             <div>
-              <Label>Tipo de Conta <span className="text-red-500">*</span></Label>
+              <Label>Tipo de Conta {exigirBancarios && <span className="text-red-500">*</span>}</Label>
               <Select value={form.tipo_conta || ""} onValueChange={set("tipo_conta")}>
                 <SelectTrigger className={errCls(!s(form.tipo_conta))}><SelectValue placeholder="—" /></SelectTrigger>
                 <SelectContent>
@@ -1099,7 +1101,7 @@ export function ClienteForm({
               </Select>
             </div>
             <div>
-              <Label>Agência <span className="text-red-500">*</span></Label>
+              <Label>Agência {exigirBancarios && <span className="text-red-500">*</span>}</Label>
               <Input
                 inputMode="numeric"
                 maxLength={6}
@@ -1111,7 +1113,7 @@ export function ClienteForm({
             </div>
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <div>
-                <Label>Conta <span className="text-red-500">*</span></Label>
+                <Label>Conta {exigirBancarios && <span className="text-red-500">*</span>}</Label>
                 <Input
                   inputMode="numeric"
                   maxLength={12}
@@ -1122,7 +1124,7 @@ export function ClienteForm({
                 {s(form.conta) && !contaValida && <p className="text-xs text-destructive mt-1">Conta inválida (4 a 12 dígitos)</p>}
               </div>
               <div>
-                <Label>Dígito <span className="text-red-500">*</span></Label>
+                <Label>Dígito {exigirBancarios && <span className="text-red-500">*</span>}</Label>
                 <Input
                   maxLength={1}
                   value={form.digito_conta}
@@ -1133,7 +1135,7 @@ export function ClienteForm({
             </div>
 
             <div>
-              <Label>Favorecido <span className="text-red-500">*</span></Label>
+              <Label>Favorecido {exigirBancarios && <span className="text-red-500">*</span>}</Label>
               <div className="flex gap-2">
                 <Input
                   value={form.favorecido}
@@ -1158,7 +1160,7 @@ export function ClienteForm({
               </div>
             </div>
             <div>
-              <Label>CPF/CNPJ do Favorecido <span className="text-red-500">*</span></Label>
+              <Label>CPF/CNPJ do Favorecido {exigirBancarios && <span className="text-red-500">*</span>}</Label>
               <Input
                 inputMode="numeric"
                 value={form.cpf_cnpj_favorecido}
@@ -1168,7 +1170,7 @@ export function ClienteForm({
             </div>
 
             <div className="md:col-span-2">
-              <Label>Chave PIX <span className="text-red-500">*</span></Label>
+              <Label>Chave PIX {exigirBancarios && <span className="text-red-500">*</span>}</Label>
               <Input value={form.chave_pix} className={errCls(!s(form.chave_pix))} onChange={(e) => set("chave_pix")(e.target.value)} />
             </div>
           </div>

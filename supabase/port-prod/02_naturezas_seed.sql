@@ -137,4 +137,36 @@ where n.descricao in ('Venda de moto seminova', 'Venda de moto 0km')
 -- NOTE: para 0km com Substituicao Tributaria (CST 10/CSOSN 500, CFOP 5405/6404, CEST),
 -- ajuste manualmente as regras da natureza "Venda de moto 0km" apos rodar.
 
+-- -------------------------------------------------------------------
+-- IBS / CBS (Reforma Tributaria) -- grupo obrigatorio p/ emitente CRT 3
+-- em homologacao desde 01/07/2026 (SEFAZ rejeita com cStat 1115).
+-- NT RT 2025.002. VALORES DE PLACEHOLDER -- validar com a contabilidade.
+-- -------------------------------------------------------------------
+alter table public.naturezas_operacao_regras
+  drop constraint if exists naturezas_operacao_regras_imposto_check;
+alter table public.naturezas_operacao_regras
+  add constraint naturezas_operacao_regras_imposto_check
+  check (imposto = any (array['icms','ipi','pis','cofins','issqn','outros','retencoes','ibscbs','is']));
+
+alter table public.naturezas_operacao_regras
+  add column if not exists classificacao_tributaria text,
+  add column if not exists cbs_aliquota numeric,
+  add column if not exists ibs_uf_aliquota numeric,
+  add column if not exists ibs_mun_aliquota numeric,
+  add column if not exists percentual_reducao numeric;
+
+insert into public.naturezas_operacao_regras
+  (natureza_operacao_id, imposto, situacao_tributaria, classificacao_tributaria,
+   cbs_aliquota, ibs_uf_aliquota, ibs_mun_aliquota, percentual_reducao,
+   aliquota, ordem, produto_tipo, destino_ufs)
+select n.id, 'ibscbs', '000', '000001',
+       0.9, 0.1, 0, 0, 0, 0, 'todos', '{}'::text[]
+from public.naturezas_operacao n
+join public.empresas e on e.id = n.empresa_id
+where e.bpm = true
+  and n.descricao in ('Compra de moto seminova', 'Entrada em consignação',
+                      'Venda de moto seminova', 'Venda de moto 0km')
+  and not exists (select 1 from public.naturezas_operacao_regras r
+    where r.natureza_operacao_id = n.id and r.imposto = 'ibscbs');
+
 commit;

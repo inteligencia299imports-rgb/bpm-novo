@@ -6,9 +6,10 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { FileText, CalendarIcon, Save, Download, Percent, Eye, ArrowLeft, Loader2, RefreshCw, ExternalLink, AlertTriangle, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Wallet } from 'lucide-react';
+import { FileText, CalendarIcon, Save, Download, Percent, Eye, ArrowLeft, Loader2, RefreshCw, ExternalLink, AlertTriangle, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { toast } from 'sonner';
@@ -120,7 +121,10 @@ const snapshotFields = (v: {
 const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, modo = 'contrato' }) => {
   const { user, userName } = useAuth();
   const ehNfe = modo === 'nfe';
-  const nfe = useNfeCompra(avaliacao?.id, open, 'consignacao');
+  // Após a NF-e autorizada, volta para a tela de Consignação.
+  const nfe = useNfeCompra(avaliacao?.id, open, 'consignacao', 'avaliacao', () => {
+    if (modo === 'nfe') setTimeout(() => onOpenChange(false), 1200);
+  });
   const nfeJaEmitida = nfe.emitida;
   const soLeitura = ehNfe || nfeJaEmitida;
   const [loading, setLoading] = useState(false);
@@ -131,6 +135,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // Modo NF-e: valor editável antes de emitir + obs da nota.
   const [valorConsigNota, setValorConsigNota] = useState('');
   const [obsNfe, setObsNfe] = useState('');
+  // Empresa emitente da NF-e (restrita às empresas vinculadas à loja do atendimento).
+  const [empresasLoja, setEmpresasLoja] = useState<any[]>([]);
+  const [empresaId, setEmpresaId] = useState<string>('');
   const podeEmitirNfe = jaGerado && (avaliacao as any)?.consulta_realizada === true;
 
   // Client data
@@ -197,7 +204,13 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0),
       );
       nfe.carregar();
-      const vcn = (avaliacao as any)?.valor_consignacao_nota ?? (avaliacao as any)?.avaliacao_consignacao;
+      // Quitação e Fechamento da moto do cliente têm origem na avaliação — não são editados no contrato.
+      const quitacaoAval = (avaliacao as any)?.valor_quitacao;
+      const fechamentoAval = (avaliacao as any)?.valor_fechamento;
+      // Valor da NF default = valor de fechamento (contrato > avaliação); mantém o que já foi
+      // informado numa tentativa anterior, se houver.
+      const fechamentoNota = (contrato as any)?.valor_fechamento ?? fechamentoAval;
+      const vcn = (avaliacao as any)?.valor_consignacao_nota ?? fechamentoNota;
       setValorConsigNota(vcn != null ? formatCurrencyInput(String(Math.round(vcn * 100))) : '');
       setObsNfe('');
 
@@ -207,11 +220,27 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       if (atendimentoId) {
         const { data: at, error: atErr } = await supabase
           .from('atendimentos_motos')
-          .select('cliente_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))')
+          .select('cliente_id, loja_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))')
           .eq('id', atendimentoId)
           .maybeSingle();
         console.log('[ContratoConsignacao] atendimentoId:', atendimentoId, 'fresh:', at, 'err:', atErr);
         if ((at as any)?.cliente_id) setClienteId((at as any).cliente_id);
+
+        // Empresas vinculadas à loja do atendimento (loja_empresas.id = atendimento.loja_id).
+        const lojaId = (at as any)?.loja_id;
+        let empresas: any[] = [];
+        if (lojaId) {
+          const { data: le } = await supabase
+            .from('loja_empresas')
+            .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, endereco, uf)')
+            .eq('id', lojaId);
+          const seen = new Set<string>();
+          empresas = (le || [])
+            .map((r: any) => r.empresas)
+            .filter((e: any) => e && !seen.has(e.id) && seen.add(e.id));
+        }
+        setEmpresasLoja(empresas);
+        setEmpresaId(empresas[0]?.id || '');
         if (at?.cliente) {
           setClienteRecord(at.cliente);
           const end = (at.cliente as any).clientes_fornecedores_enderecos?.[0];
@@ -239,8 +268,8 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         setEmail(contrato.email || atendimentoFresh?.email || '');
         setEndereco(contrato.endereco || atendimentoFresh?.endereco || '');
         setCep(contrato.cep || atendimentoFresh?.cep || '');
-        setValorQuitacao(contrato.valor_quitacao ? formatCurrencyInput(String(Math.round(contrato.valor_quitacao * 100))) : '');
-        setValorFechamento(contrato.valor_fechamento ? formatCurrencyInput(String(Math.round(contrato.valor_fechamento * 100))) : '');
+        setValorQuitacao((contrato.valor_quitacao ?? quitacaoAval) != null ? formatCurrencyInput(String(Math.round((contrato.valor_quitacao ?? quitacaoAval) * 100))) : '');
+        setValorFechamento((contrato.valor_fechamento ?? fechamentoAval) != null ? formatCurrencyInput(String(Math.round((contrato.valor_fechamento ?? fechamentoAval) * 100))) : '');
         setObsInternas(contrato.observacoes_internas || '');
         setObsContrato(contrato.observacoes_contrato || '');
         setDataContrato(contrato.data_contrato ? new Date(contrato.data_contrato + 'T12:00:00') : undefined);
@@ -251,9 +280,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         setEmail(atendimentoFresh?.email || '');
         setEndereco(atendimentoFresh?.endereco || '');
         setCep(atendimentoFresh?.cep || '');
-        // Valor de Quitação SEMPRE vazio (preenchido manualmente pelo usuário)
-        setValorQuitacao('');
-        setValorFechamento(avaliacao.valor_fechamento ? formatCurrencyInput(String(Math.round(avaliacao.valor_fechamento * 100))) : '');
+        // Quitação e Fechamento vêm da avaliação (origem) — não são editados no contrato.
+        setValorQuitacao(quitacaoAval != null ? formatCurrencyInput(String(Math.round(quitacaoAval * 100))) : '');
+        setValorFechamento(fechamentoAval != null ? formatCurrencyInput(String(Math.round(fechamentoAval * 100))) : '');
         setObsInternas('');
         setObsContrato('');
         setDataContrato(undefined);
@@ -504,7 +533,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-xl font-bold flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e (Consignação)' : 'Contrato de Consignação'}
+          <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Consignação' : 'Contrato de Consignação'}
         </h1>
       </div>
 
@@ -515,6 +544,48 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       ) : (
         <>
           <div className="space-y-4">
+              {/* Card: Empresa Emitente (só na emissão de NF-e) */}
+              {ehNfe && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-primary" /> Empresa Emitente
+                    </CardTitle>
+                    <Separator className="mt-2" />
+                  </CardHeader>
+                  <CardContent>
+                    {empresasLoja.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Nenhuma empresa vinculada à loja do atendimento.
+                      </p>
+                    ) : nfeJaEmitida ? (
+                      <InfoDisplay
+                        label="Empresa"
+                        value={(() => {
+                          const e = empresasLoja.find((x) => x.id === empresaId);
+                          if (!e) return '—';
+                          return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
+                        })()}
+                      />
+                    ) : (
+                      <div className="space-y-1.5 max-w-sm">
+                        <Label>Empresa da operação <span className="text-destructive">*</span></Label>
+                        <Select value={empresaId} onValueChange={setEmpresaId}>
+                          <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+                          <SelectContent>
+                            {empresasLoja.map((e) => (
+                              <SelectItem key={e.id} value={e.id}>
+                                {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Card: Dados do Cliente */}
               <Card>
                 <CardHeader className="pb-2">
@@ -655,24 +726,6 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                 </div>
               </div>
 
-              {/* Card: Negociação */}
-              {!soLeitura && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Wallet className="h-4 w-4 text-primary" /> Negociação
-                  </CardTitle>
-                  <Separator className="mt-2" />
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <CurrencyField label="Valor de Quitação" value={valorQuitacao} onChange={setValorQuitacao} />
-                    <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} />
-                  </div>
-                </CardContent>
-              </Card>
-              )}
-
               {/* Card: Datas */}
               {!soLeitura && (
               <Card>
@@ -713,7 +766,32 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                   <Separator className="mt-2" />
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {soLeitura ? (
+                  {ehNfe && !nfeJaEmitida ? (
+                    <>
+                      <div className="max-w-xs">
+                        <CurrencyField
+                          label="Valor da NF-e"
+                          value={valorConsigNota}
+                          onChange={setValorConsigNota}
+                          disabled={nfe.pendente}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Valor que sai na nota de entrada em consignação.
+                        </p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Observações na NF-e</Label>
+                        <Textarea
+                          className="uppercase"
+                          rows={3}
+                          value={obsNfe}
+                          onChange={(e) => setObsNfe(e.target.value.toUpperCase())}
+                          placeholder="INFORMAÇÕES COMPLEMENTARES QUE SAIRÃO NA NOTA..."
+                          disabled={nfe.pendente}
+                        />
+                      </div>
+                    </>
+                  ) : soLeitura ? (
                     <>
                       <InfoDisplay label="Observações Internas" value={obsInternas || undefined} />
                       <InfoDisplay label="Observações do Contrato" value={obsContrato || undefined} />
@@ -733,75 +811,53 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                   )}
                 </CardContent>
               </Card>
-
-              {ehNfe && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-primary" /> NF-e de Entrada em Consignação
-                    </CardTitle>
-                    <Separator className="mt-2" />
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="max-w-xs">
-                      <CurrencyField
-                        label="Valor da Consignação (Nota)"
-                        value={valorConsigNota}
-                        onChange={setValorConsigNota}
-                        disabled={nfeJaEmitida || nfe.pendente}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Observações na NF-e</Label>
-                      <Textarea
-                        className="uppercase"
-                        rows={3}
-                        value={obsNfe}
-                        onChange={(e) => setObsNfe(e.target.value.toUpperCase())}
-                        placeholder="INFORMAÇÕES COMPLEMENTARES QUE SAIRÃO NA NOTA..."
-                        disabled={nfeJaEmitida || nfe.pendente}
-                      />
-                    </div>
-                    {nfeJaEmitida && (
-                      <Badge className="bg-primary/10 text-primary gap-1.5">
-                        <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
-                      </Badge>
-                    )}
-                    {nfe.erro && (
-                      <p className="text-sm text-destructive flex items-start gap-1">
-                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                        {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
           </div>
 
           {/* Ações */}
           <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
+            {ehNfe && nfe.nfe?.status === 'processada' && (
+              <div className="flex flex-wrap items-center gap-3 mr-auto text-sm">
+                <Badge className="bg-primary/10 text-primary gap-1.5">
+                  <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
+                </Badge>
+                {nfe.nfe?.caminho_danfe && (
+                  <Button variant="outline" size="sm" onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}>
+                    <ExternalLink className="h-4 w-4 mr-1" /> DANFE
+                  </Button>
+                )}
+              </div>
+            )}
+            {ehNfe && nfe.pendente && (
+              <div className="flex items-center gap-3 mr-auto">
+                <Badge variant="outline" className="gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Emitindo NF-e…</Badge>
+                <Button variant="ghost" onClick={nfe.consultar} disabled={nfe.loading} className="gap-1.5">
+                  <RefreshCw className={`h-4 w-4 ${nfe.loading ? 'animate-spin' : ''}`} /> Atualizar
+                </Button>
+              </div>
+            )}
+            {ehNfe && nfe.erro && !nfe.pendente && (
+              <p className="mr-auto text-sm text-destructive flex items-start gap-1 max-w-md">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
+              </p>
+            )}
+
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
             </Button>
+
             {ehNfe ? (
-              nfe.nfe?.status === 'processada' ? (
-                nfe.nfe?.caminho_danfe && (
-                  <Button variant="outline" onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}>
-                    <ExternalLink className="h-4 w-4 mr-1" /> DANFE
-                  </Button>
-                )
-              ) : nfe.pendente ? (
-                <>
-                  <Badge variant="outline" className="gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Emitindo NF-e…</Badge>
-                  <Button variant="ghost" onClick={nfe.consultar} disabled={nfe.loading} className="gap-1.5">
-                    <RefreshCw className={`h-4 w-4 ${nfe.loading ? 'animate-spin' : ''}`} /> Atualizar
-                  </Button>
-                </>
-              ) : (
+              nfe.nfe?.status !== 'processada' && !nfe.pendente && (
                 <Button
-                  disabled={!podeEmitirNfe || nfe.loading}
-                  title={podeEmitirNfe ? undefined : 'Disponível após o contrato do consignante e a consulta realizada'}
-                  onClick={() => nfe.emitir({ valor: parseCurrencyInput(valorConsigNota), observacoes: obsNfe.trim() || undefined })}
+                  disabled={!podeEmitirNfe || nfe.loading || !empresaId}
+                  title={
+                    !empresaId
+                      ? 'Nenhuma empresa vinculada à loja do atendimento'
+                      : podeEmitirNfe
+                        ? undefined
+                        : 'Disponível após o contrato do consignante e a consulta realizada'
+                  }
+                  onClick={() => nfe.emitir({ valor: parseCurrencyInput(valorConsigNota), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined })}
                 >
                   {nfe.loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4 mr-1" /> : <FileText className="h-4 w-4 mr-1" />}
                   {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}

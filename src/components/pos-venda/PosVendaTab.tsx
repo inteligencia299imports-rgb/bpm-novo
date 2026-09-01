@@ -10,7 +10,7 @@ import PosVendaDetail from './PosVendaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { fetchAllRange } from '@/lib/fetchAllRange';
-import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
+import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMotoNova, fetchLojaMap } from '@/lib/estoqueMoto';
 import CidadeFilter, { matchesCidade, getSiglaFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import FiltersPanel from '@/components/shared/FiltersPanel';
 
@@ -33,10 +33,14 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     if (initialAtendimentoId) {
       supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
         if (data) {
-          // Fetch estoque moto info
-          const { data: estRow } = await supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).eq('atendimento_venda_id', data.id).maybeSingle();
-          const est = estRow ? mapEstoqueMoto(estRow, await fetchLojaMap()) : null;
-          setSelectedItem({ ...data, loja: (data as any).loja_empresas?.loja, _estoqueMoto: est && est.tipo === 'propria' ? est : null });
+          // Fetch estoque moto info (seminova ou 0km)
+          const lojaMap = await fetchLojaMap();
+          const [{ data: estRow }, { data: estNovaRow }] = await Promise.all([
+            supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).eq('atendimento_venda_id', data.id).maybeSingle(),
+            supabase.from('estoque_motos_novas').select(ESTOQUE_NOVA_SELECT).eq('atendimento_venda_id', data.id).maybeSingle(),
+          ]);
+          const est = estRow ? mapEstoqueMoto(estRow, lojaMap) : (estNovaRow ? mapEstoqueMotoNova(estNovaRow, lojaMap) : null);
+          setSelectedItem({ ...data, loja: (data as any).loja_empresas?.loja, _estoqueMoto: est && (est.tipo === 'propria' || est.tipo === '0km') ? est : null });
         }
       });
       onInitialHandled?.();
@@ -48,11 +52,18 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
     const statuses = POS_VENDA_COLUMNS.map(c => c.value);
-    const [estResRaw, lojaMap] = await Promise.all([
+    const [estResRaw, estNovasRaw, lojaMap] = await Promise.all([
       fetchAllRange<any>(() => supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).not('atendimento_venda_id', 'is', null)),
+      supabase.from('estoque_motos_novas').select(ESTOQUE_NOVA_SELECT).not('atendimento_venda_id', 'is', null),
       fetchLojaMap(),
     ]);
-    const estRes = { data: (estResRaw.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)), error: estResRaw.error };
+    const estRes = {
+      data: [
+        ...(estResRaw.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)),
+        ...(((estNovasRaw as any).data) || []).map((r: any) => mapEstoqueMotoNova(r, lojaMap)),
+      ],
+      error: estResRaw.error,
+    };
 
     let atData: any[];
     let atError: any;
@@ -72,7 +83,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     const estoquePropria: Record<string, any> = {};
     const estoqueConsignada = new Set<string>();
     (estRes.data || []).forEach((e: any) => {
-      if (e.tipo === 'propria' && e.atendimento_venda_id) estoquePropria[e.atendimento_venda_id] = e;
+      if ((e.tipo === 'propria' || e.tipo === '0km') && e.atendimento_venda_id) estoquePropria[e.atendimento_venda_id] = e;
       if (e.tipo === 'consignada' && e.atendimento_venda_id) estoqueConsignada.add(e.atendimento_venda_id);
     });
 

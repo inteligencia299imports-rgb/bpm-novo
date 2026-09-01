@@ -10,14 +10,16 @@ import { Check, ChevronsUpDown, Bike } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ANOS_MOTO } from '@/types/crm';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
-import { supabase } from '@/lib/supabase';
+import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 
 interface EstoqueOption {
   id: string;
+  tipo: EstoqueFonte;
   modelo: string;
   cor: string | null;
   placa: string | null;
   marca: string;
+  is0km: boolean;
 }
 
 interface Props {
@@ -31,6 +33,8 @@ interface Props {
   setAno: (v: string) => void;
   estoqueMotoId: string;
   setEstoqueMotoId: (v: string) => void;
+  estoqueTipo?: string;
+  setEstoqueTipo?: (v: string) => void;
   loja?: string;
   chassi?: string;
   setChassi?: (v: string) => void;
@@ -39,7 +43,7 @@ interface Props {
 
 const MotoCompraSection: React.FC<Props> = ({
   origemMoto, setOrigemMoto, marca, setMarca, modelo, setModelo, ano, setAno,
-  estoqueMotoId, setEstoqueMotoId, loja, chassi = '', setChassi, disabled,
+  estoqueMotoId, setEstoqueMotoId, setEstoqueTipo, loja, chassi = '', setChassi, disabled,
 }) => {
   const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
   const marcas = getMarcaNomes();
@@ -60,39 +64,31 @@ const MotoCompraSection: React.FC<Props> = ({
       setLoadingEstoque(true);
 
       try {
-        const flatten = (r: any) => {
-          const mn = r.moto_nova;
-          const s = mn ?? r.avaliacao ?? {};
-          return {
-            id: r.id,
-            marca: mn ? (mn.marca?.nome ?? null) : (s.marca ?? null),
-            modelo: mn ? (mn.modelo?.nome ?? null) : (s.modelo ?? null),
-            cor: s.cor ?? null,
-            placa: s.placa ?? null,
-            is0km: !!mn,
-          };
-        };
-        const estSelect = 'id, avaliacao:avaliacao_id(marca, modelo, cor, placa), moto_nova:moto_nova_id(marca:marca_id(nome), modelo:modelo_id(nome), cor, placa)';
+        const flatten = (m: any): EstoqueOption => ({
+          id: m.id,
+          tipo: m.fonte,
+          marca: m.marca ?? null,
+          modelo: m.modelo ?? null,
+          cor: m.cor ?? null,
+          placa: m.placa ?? null,
+          is0km: m.fonte === '0km',
+        });
 
-        const { data: estoqueDisponivel } = await supabase
-          .from('estoque_motos')
-          .select(estSelect)
-          .eq('status', 'disponivel');
+        const disponiveis = await fetchEstoqueUnificado({ status: 'disponivel' });
+        let options = disponiveis.map(flatten);
 
-        let options = (estoqueDisponivel || []).map(flatten);
-        options.sort((a, b) => `${a.marca} ${a.modelo}`.localeCompare(`${b.marca} ${b.modelo}`));
-
-        if (estoqueMotoId) {
-          const { data: estoqueSelecionado } = await supabase
-            .from('estoque_motos')
-            .select(estSelect)
-            .eq('id', estoqueMotoId)
-            .maybeSingle();
-
-          if (estoqueSelecionado && !options.some((item) => item.id === (estoqueSelecionado as any).id)) {
-            options = [flatten(estoqueSelecionado), ...options];
-          }
+        // Mantem a moto ja selecionada mesmo que nao esteja mais "disponivel".
+        if (estoqueMotoId && !options.some((item) => item.id === estoqueMotoId)) {
+          const [sel] = await fetchEstoqueUnificado({
+            ids: [
+              { id: estoqueMotoId, tipo: 'seminova' },
+              { id: estoqueMotoId, tipo: '0km' },
+            ],
+          });
+          if (sel) options = [flatten(sel), ...options];
         }
+
+        options.sort((a, b) => `${a.marca} ${a.modelo}`.localeCompare(`${b.marca} ${b.modelo}`));
 
         if (isMounted) {
           setEstoque(options);
@@ -206,6 +202,7 @@ const MotoCompraSection: React.FC<Props> = ({
           <Select value={origemMoto} onValueChange={(v) => {
             setOrigemMoto(v);
             setEstoqueMotoId('');
+            setEstoqueTipo?.('');
             setMarca('');
             setModelo('');
             setAno('');
@@ -247,11 +244,13 @@ const MotoCompraSection: React.FC<Props> = ({
                           value={formatEstoqueLabel(item)}
                           onSelect={() => {
                             setEstoqueMotoId(item.id);
+                            setEstoqueTipo?.(item.tipo);
                             setComboOpen(false);
                           }}
                         >
                           <Check className={cn("mr-2 h-4 w-4", estoqueMotoId === item.id ? "opacity-100" : "opacity-0")} />
                           {formatEstoqueLabel(item)}
+                          {item.is0km && <span className="ml-2 text-[10px] font-semibold text-primary">0KM</span>}
                         </CommandItem>
                       ))}
                     </CommandGroup>

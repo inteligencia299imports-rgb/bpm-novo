@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
-import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
+import { fetchEstoqueUnificado } from '@/lib/estoqueMoto';
 import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
 import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -151,10 +151,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   };
 
   useEffect(() => {
-    let query = supabase.from('estoque_motos').select('avaliacao:avaliacao_id(marca)');
-    if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
-    query.then(({ data }) => {
-      const unique = [...new Set((data || []).map((d: any) => d.avaliacao?.marca).filter(Boolean))].sort();
+    fetchEstoqueUnificado(filterStatus !== 'todos' ? { status: filterStatus } : {}).then((lista) => {
+      const unique = [...new Set(lista.map((d: any) => d.marca).filter(Boolean))].sort();
       setAllMarcas(unique as string[]);
     });
   }, [filterStatus, filterTipo]);
@@ -162,28 +160,22 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const fetchEstoque = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).order('created_at', { ascending: false });
-      if (filterStatus !== 'todos') query = query.eq('status', filterStatus);
-
-      const [{ data, error }, lojaMap] = await Promise.all([query, fetchLojaMap()]);
-      if (error) throw error;
+      const lista = await fetchEstoqueUnificado(filterStatus !== 'todos' ? { status: filterStatus } : {});
       // Get vendedor names for items with atendimento_venda_id
-      const vendedorIds = [...new Set((data || []).map((d: any) => d.atendimento_venda?.vendedor_id).filter(Boolean))];
-      let vendedorMap: Record<string, string> = {};
+      const vendedorIds = [...new Set(lista.map((d: any) => d.venda_vendedor_id).filter(Boolean))];
+      const vendedorMap: Record<string, string> = {};
       if (vendedorIds.length > 0) {
         const { data: roles } = await (supabase as any).from('user_roles').select('user_id, nome').in('user_id', vendedorIds);
         if (roles) {
           for (const r of roles) vendedorMap[r.user_id] = r.nome;
         }
       }
-      let mapped = (data || []).map((d: any) => {
-        const m = mapEstoqueMoto(d, lojaMap);
-        return {
-          ...m,
-          vendedor_nome: m.venda_vendedor_id ? (vendedorMap[m.venda_vendedor_id] || null) : null,
-          displayTipo: m.tipo_aquisicao || m.tipo,
-        };
-      });
+      const data = lista;
+      let mapped = lista.map((m: any) => ({
+        ...m,
+        vendedor_nome: m.venda_vendedor_id ? (vendedorMap[m.venda_vendedor_id] || null) : null,
+        displayTipo: m.tipo_aquisicao || m.tipo,
+      }));
       // Filtros que dependem de campos derivados (não dá pra .eq no banco)
       if (filterMarca !== 'todas') mapped = mapped.filter((m: any) => m.marca === filterMarca);
       if (filterTipo !== 'todos') mapped = mapped.filter((m: any) => m.tipo === filterTipo);

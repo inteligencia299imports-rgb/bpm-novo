@@ -19,10 +19,11 @@ import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProcessoDialog from './ProcessoDialog';
 import ContratoDialog from '@/components/showroom/ContratoDialog';
+import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { formatPersonName } from '@/lib/utils';
-import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
+import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 
 interface Props {
   item: any;
@@ -87,6 +88,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [processoOpen, setProcessoOpen] = useState(false);
   const [nfeVendaOpen, setNfeVendaOpen] = useState(false);
+  const [trocaNfeAval, setTrocaNfeAval] = useState<any | null>(null);
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
   const [intermHistory, setIntermHistory] = useState<any[]>([]);
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
@@ -107,6 +109,19 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         if (fotosData) setFotosConsignada(fotosData);
       }
     }
+  };
+
+  // Troca: emite a NF-e de entrada da moto do cliente pela mesma tela do Pós-Compra.
+  const abrirNfeTroca = async (avaliacaoId: string) => {
+    const { data } = await supabase
+      .from('avaliacoes')
+      .select('*, atendimentos_motos!inner(id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, cliente_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)))')
+      .eq('id', avaliacaoId)
+      .maybeSingle();
+    if (!data) return;
+    const am = (data as any).atendimentos_motos;
+    setProcessoOpen(false);
+    setTrocaNfeAval({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja } });
   };
 
   const moto = item.avaliacoes?.[0];
@@ -143,18 +158,19 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       setMotosAvaliacao(motosAv);
 
       // Prepare IDs for parallel step 2
-      const estoqueIds = motosInt.filter((m: any) => m.origem === 'estoque' && m.estoque_moto_id).map((m: any) => m.estoque_moto_id!);
+      const estoqueRefs = motosInt
+        .filter((m: any) => m.origem === 'estoque' && m.estoque_moto_id)
+        .map((m: any) => ({ id: m.estoque_moto_id as string, tipo: (m.estoque_tipo === '0km' ? '0km' : 'seminova') as EstoqueFonte }));
       const avaliadorIds = [...new Set((resAval.data || []).map((av: any) => av.avaliador_id).filter(Boolean))];
 
       // Step 2: Estoque + Avaliador names in parallel
       const vendedorPromise = item.vendedor_id
         ? (supabase as any).from('user_roles').select('nome').eq('user_id', item.vendedor_id).single()
         : Promise.resolve({ data: null as any });
-      const [estoqueResult, rolesResult, vendedorResult, lojaMap] = await Promise.all([
-        estoqueIds.length > 0 ? supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).in('id', estoqueIds) : Promise.resolve({ data: [] as any[] }),
+      const [estoqueList, rolesResult, vendedorResult] = await Promise.all([
+        estoqueRefs.length > 0 ? fetchEstoqueUnificado({ ids: estoqueRefs }) : Promise.resolve([] as any[]),
         avaliadorIds.length > 0 ? (supabase as any).from('user_roles').select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
         vendedorPromise,
-        fetchLojaMap(),
       ]);
 
       if (vendedorResult.data?.nome) setVendedorNome(vendedorResult.data.nome);
@@ -162,10 +178,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       // Process estoque
       const estoqueMap: Record<string, any> = {};
       const crlvMap: Record<string, string | null> = {};
-      (estoqueResult.data || []).forEach((raw: any) => {
-        const est = mapEstoqueMoto(raw, lojaMap);
+      (estoqueList || []).forEach((est: any) => {
         estoqueMap[est.id] = est;
-        if (raw.avaliacao?.id) crlvMap[raw.avaliacao.id] = raw.avaliacao.crlv_url || null;
+        if (est.avaliacao?.id) crlvMap[est.avaliacao.id] = est.avaliacao.crlv_url || null;
       });
       setEstoqueData(estoqueMap);
       setEstoqueCrlvUrls(crlvMap);
@@ -252,6 +267,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         motosAvaliacao={motosAvaliacao}
         estoqueData={estoqueData}
         avaliacoes={avaliacoes}
+      />
+    );
+  }
+  if (!isIntermParte1 && trocaNfeAval) {
+    return (
+      <ContratoCompraDialog
+        open
+        onOpenChange={(o) => { if (!o) setTrocaNfeAval(null); }}
+        avaliacao={trocaNfeAval}
+        modo="nfe"
       />
     );
   }
@@ -767,6 +792,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         }}
         onContratoSaved={refreshConsignada}
         onEmitirNfe={() => { setProcessoOpen(false); setNfeVendaOpen(true); }}
+        onEmitirNfeTroca={abrirNfeTroca}
         onNavigateToPosCompra={onNavigateToPosCompra}
       />
 

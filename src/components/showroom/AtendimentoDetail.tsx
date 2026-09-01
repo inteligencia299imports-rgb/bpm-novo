@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import { processarCnhAnexada } from '@/lib/cnhAnexo';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
-import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
+import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import type { Atendimento, MotoInteresse, Avaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import { Label } from '@/components/ui/label';
@@ -192,12 +192,14 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
       // Now fetch secondary data in parallel without blocking the UI
       const motoIds = motosAv.map(m => m.id);
-      const estoqueIds = motosInt.filter(m => m.origem === 'estoque' && m.estoque_moto_id).map(m => m.estoque_moto_id!);
+      const estoqueRefs = motosInt
+        .filter(m => m.origem === 'estoque' && m.estoque_moto_id)
+        .map(m => ({ id: m.estoque_moto_id!, tipo: ((m as any).estoque_tipo === '0km' ? '0km' : 'seminova') as EstoqueFonte }));
 
       // Fetch all secondary data in parallel
-      const estoquePromise = estoqueIds.length > 0
-        ? supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).in('id', estoqueIds).then(r => r)
-        : Promise.resolve({ data: null as any[] | null });
+      const estoquePromise = estoqueRefs.length > 0
+        ? fetchEstoqueUnificado({ ids: estoqueRefs }).then(data => ({ data }))
+        : Promise.resolve({ data: [] as any[] });
 
       const avaliadorIds = resAval.data
         ? [...new Set(resAval.data.map((av: any) => av.avaliador_id).filter(Boolean))]
@@ -229,9 +231,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       // Update estoque
       if (estoqueRes.data) {
         const estoqueMap: Record<string, any> = {};
-        const lojaMap = await fetchLojaMap();
         for (const item of estoqueRes.data) {
-          estoqueMap[(item as any).id] = mapEstoqueMoto(item, lojaMap);
+          estoqueMap[(item as any).id] = item;
         }
         setEstoqueData(estoqueMap);
       }
@@ -536,7 +537,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         // Reverter moto de interesse no estoque para disponível
         for (const mi of motosInteresse) {
           if (mi.estoque_moto_id) {
-            promises.push(supabase.from('estoque_motos').update({
+            const tabela = (mi as any).estoque_tipo === '0km' ? 'estoque_motos_novas' : 'estoque_motos';
+            promises.push(supabase.from(tabela).update({
               status: 'disponivel',
               atendimento_venda_id: null,
               data_venda: null,
@@ -639,9 +641,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           if (newStatus === 'vendido') {
             estoqueUpdate.data_venda = new Date().toISOString();
           }
-          console.log('[Estoque Update] moto_id:', mi.estoque_moto_id, 'update:', estoqueUpdate);
+          const tabela = (mi as any).estoque_tipo === '0km' ? 'estoque_motos_novas' : 'estoque_motos';
+          console.log('[Estoque Update]', tabela, 'moto_id:', mi.estoque_moto_id, 'update:', estoqueUpdate);
           estoquePromises.push(
-            supabase.from('estoque_motos').update(estoqueUpdate).eq('id', mi.estoque_moto_id)
+            supabase.from(tabela).update(estoqueUpdate).eq('id', mi.estoque_moto_id)
               .then(r => {
                 if (r.error) {
                   console.error('[Estoque Update ERROR]', r.error);
@@ -1400,8 +1403,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         }
                         const toInput = (v: number | null | undefined) => v ? formatCurrencyInput(Math.round(v * 100).toString()) : '';
                         // Fetch latest values from DB to avoid stale data after contract save
+                        const _miEst = motosInteresse.find(m => m.origem === 'estoque' && m.estoque_moto_id);
+                        const _estTabela = (_miEst as any)?.estoque_tipo === '0km' ? 'estoque_motos_novas' : 'estoque_motos';
                         const [{ data: freshEstoque }, { data: freshContrato }] = await Promise.all([
-                          supabase.from('estoque_motos').select('valor_sinal, valor_venda').eq('atendimento_venda_id', atendimento.id).maybeSingle(),
+                          supabase.from(_estTabela).select('valor_sinal, valor_venda').eq('atendimento_venda_id', atendimento.id).maybeSingle(),
                           supabase.from('contratos').select('valor_fechamento').eq('atendimento_id', atendimento.id).maybeSingle(),
                         ]);
                         const freshSinal = freshEstoque?.valor_sinal ?? atendimento.valor_sinal;

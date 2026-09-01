@@ -20,7 +20,6 @@ import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes
 const ETAPAS = [
   'CONTRATO ASSINADO',
   'CONSULTA REALIZADA',
-  'CADASTRO NBS',
   'NF EMITIDA',
   'PROCESSO PAUSADO',
 ];
@@ -200,15 +199,12 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       const anyConcluida = etapas.some(e => e.concluida) || nfeEmitida;
       const nfEmitida = nfeEmitida;
       const processoPausado = etapas.find(e => e.etapa === 'PROCESSO PAUSADO')?.concluida;
-      const cadastroNbs = etapas.find(e => e.etapa === 'CADASTRO NBS')?.concluida;
       const contratoAssinado = etapas.find(e => e.etapa === 'CONTRATO ASSINADO')?.concluida;
 
       if (nfEmitida) {
         newStatus = 'concluido';
       } else if (processoPausado) {
         newStatus = 'pausado';
-      } else if (cadastroNbs) {
-        newStatus = 'cadastro_nbs';
       } else if (contratoAssinado) {
         newStatus = 'contrato_assinado';
       } else if (anyConcluida) {
@@ -231,7 +227,6 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         const statusLabels: Record<string, string> = {
           em_aberto: 'Em Aberto',
           contrato_assinado: 'Contrato Assinado',
-          cadastro_nbs: 'Cadastro NBS',
           pausado: 'Pausado',
           concluido: 'Concluído',
         };

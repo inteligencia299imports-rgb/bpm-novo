@@ -1451,7 +1451,7 @@ create table if not exists public.avaliacoes (
 
 create table if not exists public.estoque_motos (
   id uuid not null default gen_random_uuid(),
-  avaliacao_id uuid,
+  avaliacao_id uuid not null,   -- estoque_motos = seminovas (0km fica em estoque_motos_novas)
   atendimento_venda_id uuid,
   preco_acao numeric,
   status text not null default 'disponivel'::text,
@@ -1462,9 +1462,7 @@ create table if not exists public.estoque_motos (
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
   loja_id text,
-  moto_nova_id uuid,
-  constraint estoque_pkey PRIMARY KEY (id),
-  constraint estoque_motos_fonte_chk CHECK (((((avaliacao_id IS NOT NULL))::integer + ((moto_nova_id IS NOT NULL))::integer) = 1))
+  constraint estoque_pkey PRIMARY KEY (id)
 );
 
 create table if not exists public.motos_interesse (
@@ -1475,6 +1473,7 @@ create table if not exists public.motos_interesse (
   modelo text,
   ano text,
   estoque_moto_id text,
+  estoque_tipo text,   -- 'seminova' | '0km' (qual estoque)
   created_at timestamp with time zone not null default now(),
   chassi text,
   constraint motos_interesse_pkey PRIMARY KEY (id),
@@ -1502,6 +1501,12 @@ create table if not exists public.estoque_motos_novas (
   origem_externa_id text,
   status text not null default 'disponivel'::text,
   observacoes text,
+  -- rastreio de venda (espelho de estoque_motos)
+  atendimento_venda_id uuid,
+  valor_venda numeric,
+  valor_sinal numeric,
+  data_venda timestamp with time zone,
+  preco_acao numeric,
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now(),
   constraint estoque_motos_novas_pkey PRIMARY KEY (id)
@@ -1697,9 +1702,9 @@ create table if not exists public.notifications (
 CREATE INDEX idx_estoque_motos_avaliacao ON public.estoque_motos USING btree (avaliacao_id);
 CREATE INDEX idx_estoque_motos_atend_venda ON public.estoque_motos USING btree (atendimento_venda_id);
 CREATE INDEX idx_estoque_motos_status ON public.estoque_motos USING btree (status);
-CREATE INDEX idx_estoque_motos_moto_nova ON public.estoque_motos USING btree (moto_nova_id);
 CREATE UNIQUE INDEX estoque_motos_novas_origem_externa_key ON public.estoque_motos_novas USING btree (origem_externa_id) WHERE (origem_externa_id IS NOT NULL);
 CREATE INDEX idx_estoque_motos_novas_status ON public.estoque_motos_novas USING btree (status);
+CREATE INDEX idx_estoque_motos_novas_atv ON public.estoque_motos_novas USING btree (atendimento_venda_id);
 CREATE INDEX idx_estoque_motos_novas_marca ON public.estoque_motos_novas USING btree (marca_id);
 CREATE INDEX idx_estoque_motos_novas_modelo ON public.estoque_motos_novas USING btree (modelo_id);
 CREATE INDEX consultas_veiculares_avaliacao_id_idx ON public.consultas_veiculares USING btree (avaliacao_id, created_at DESC);
@@ -1715,9 +1720,9 @@ alter table public.atendimentos_motos add constraint atendimentos_vendedor_id_fk
 alter table public.avaliacoes add constraint avaliacoes_atendimento_id_fkey FOREIGN KEY (atendimento_id) REFERENCES atendimentos_motos(id) ON DELETE CASCADE;
 alter table public.avaliacoes add constraint avaliacoes_avaliador_id_fkey FOREIGN KEY (avaliador_id) REFERENCES auth.users(id);
 alter table public.estoque_motos add constraint estoque_atendimento_venda_id_fkey FOREIGN KEY (atendimento_venda_id) REFERENCES atendimentos_motos(id) ON DELETE SET NULL;
-alter table public.estoque_motos add constraint estoque_avaliacao_id_fkey FOREIGN KEY (avaliacao_id) REFERENCES avaliacoes(id) ON DELETE SET NULL;
-alter table public.estoque_motos add constraint estoque_motos_moto_nova_id_fkey FOREIGN KEY (moto_nova_id) REFERENCES estoque_motos_novas(id) ON DELETE SET NULL;
+alter table public.estoque_motos add constraint estoque_avaliacao_id_fkey FOREIGN KEY (avaliacao_id) REFERENCES avaliacoes(id) ON DELETE CASCADE;
 alter table public.motos_interesse add constraint motos_interesse_atendimento_id_fkey FOREIGN KEY (atendimento_id) REFERENCES atendimentos_motos(id) ON DELETE CASCADE;
+alter table public.estoque_motos_novas add constraint estoque_motos_novas_atv_fkey FOREIGN KEY (atendimento_venda_id) REFERENCES atendimentos_motos(id) ON DELETE SET NULL;
 alter table public.estoque_motos_novas add constraint estoque_motos_novas_empresa_id_fkey FOREIGN KEY (empresa_id) REFERENCES empresas(id);
 alter table public.estoque_motos_novas add constraint estoque_motos_novas_marca_id_fkey FOREIGN KEY (marca_id) REFERENCES marcas_motos(id);
 alter table public.estoque_motos_novas add constraint estoque_motos_novas_modelo_id_fkey FOREIGN KEY (modelo_id) REFERENCES modelos_motos(id);
@@ -2019,6 +2024,7 @@ alter table public.nfe_entradas add column if not exists observacoes text;
 alter table public.nfe_entradas add column if not exists operacao text default 'compra'::text;
 alter table public.nfe_entradas add column if not exists atendimento_id uuid;
 alter table public.nfe_entradas add column if not exists estoque_moto_id uuid;
+alter table public.nfe_entradas add column if not exists estoque_moto_nova_id uuid;
 create unique index if not exists nfe_entradas_ref_externa_key on public.nfe_entradas (ref_externa);
 create index if not exists idx_nfe_entradas_avaliacao_bpm on public.nfe_entradas (avaliacao_id);
 create index if not exists idx_nfe_entradas_atendimento_bpm on public.nfe_entradas (atendimento_id);
@@ -2042,7 +2048,8 @@ alter table public.formas_pagamento_financeiro enable row level security;
 create table if not exists public.formas_pagamento_contrato (
   id uuid primary key default gen_random_uuid(),
   contrato_id uuid not null references public.contratos(id) on delete cascade,
-  tipo text not null,
+  forma_pagamento_id uuid references public.formas_pagamento(id),
+  tipo text,   -- nome da forma (denormalizado)
   valor_total numeric,
   valor_entrada numeric,
   financeira text,

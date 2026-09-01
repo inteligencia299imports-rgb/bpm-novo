@@ -228,6 +228,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [compraModelo, setCompraModelo] = useState('');
   const [compraAno, setCompraAno] = useState('');
   const [estoqueMotoId, setEstoqueMotoId] = useState('');
+  const [estoqueTipo, setEstoqueTipo] = useState('');
   const [chassi, setChassi] = useState('');
 
   // venda
@@ -307,6 +308,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             setCompraModelo(mi.modelo || '');
             setCompraAno(mi.ano || '');
             setEstoqueMotoId(mi.estoque_moto_id || '');
+            setEstoqueTipo((mi as any).estoque_tipo || '');
             setChassi((mi as any).chassi || '');
           }
         }
@@ -504,6 +506,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             modelo: compraModelo || null,
             ano: compraAno || null,
             estoque_moto_id: null,
+            estoque_tipo: null,
             chassi: chassi.toUpperCase().replace(/\s/g, '') || null,
           }
         : {
@@ -513,6 +516,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             modelo: origemMoto === 'externo' ? compraModelo || null : null,
             ano: origemMoto === 'externo' ? compraAno || null : null,
             estoque_moto_id: origemMoto === 'estoque' ? estoqueMotoId || null : null,
+            estoque_tipo: origemMoto === 'estoque' ? (estoqueTipo || 'seminova') : null,
             chassi: null,
           };
       if (isEditing) {
@@ -824,6 +828,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           modelo={compraModelo} setModelo={setCompraModelo}
           ano={compraAno} setAno={setCompraAno}
           estoqueMotoId={estoqueMotoId} setEstoqueMotoId={setEstoqueMotoId}
+          estoqueTipo={estoqueTipo} setEstoqueTipo={setEstoqueTipo}
           loja={loja}
           chassi={chassi} setChassi={setChassi}
           disabled={isEditing && (situacao === 'sinal' || situacao === 'vendido')}

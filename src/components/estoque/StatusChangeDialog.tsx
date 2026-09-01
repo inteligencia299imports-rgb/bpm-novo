@@ -12,7 +12,7 @@ import { AlertTriangle, ShieldAlert, CheckCircle, Loader2, CircleCheck, LogOut }
 interface StatusChangeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  estoqueItem: { id: string; modelo: string; placa?: string | null; status: string; tipo?: string; avaliacao_id?: string | null } | null;
+  estoqueItem: { id: string; modelo: string; placa?: string | null; status: string; tipo?: string; fonte?: string; avaliacao_id?: string | null } | null;
   onSuccess: () => void;
 }
 
@@ -78,7 +78,9 @@ const StatusChangeDialog: React.FC<StatusChangeDialogProps> = ({ open, onOpenCha
         updateData.observacoes = observacao.trim();
       }
 
-      const { error: updateErr } = await supabase.from('estoque_motos').update(updateData).eq('id', estoqueItem.id);
+      const { error: updateErr } = await supabase
+        .from(estoqueItem.fonte === '0km' ? 'estoque_motos_novas' : 'estoque_motos')
+        .update(updateData).eq('id', estoqueItem.id);
 
       if (updateErr) throw updateErr;
 

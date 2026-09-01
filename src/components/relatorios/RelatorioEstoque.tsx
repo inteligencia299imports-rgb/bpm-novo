@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fmtInt } from '@/lib/utils';
-import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
+import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMotoNova, fetchLojaMap } from '@/lib/estoqueMoto';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Package, CheckCircle, ShieldAlert, Ban, Wrench, Clock, DollarSign, TrendingDown, FileSpreadsheet, FileDown } from 'lucide-react';
@@ -73,7 +73,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const STATUSES = ['disponivel', 'servico', 'indisponivel_manual', 'bloqueio_juridico'];
     const PREP_STATUS = ['em_aberto', 'pendente', 'oficina', 'servico_externo'];
 
-    const [estoqueRes, avaliacoesRes, lojaMap] = await Promise.all([
+    const [estoqueRes, estoqueNovasRes, avaliacoesRes, lojaMap] = await Promise.all([
       fetchAllRange<any>(() => supabase
         .from('estoque_motos')
         .select(ESTOQUE_MOTO_SELECT)
@@ -81,6 +81,12 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         .lte('created_at', upperCutoff.toISOString())
         .or(`data_venda.is.null,data_venda.gt.${lowerCutoff.toISOString()}`)
         .order('created_at', { ascending: false })),
+      supabase
+        .from('estoque_motos_novas')
+        .select(ESTOQUE_NOVA_SELECT)
+        .in('status', STATUSES)
+        .lte('created_at', upperCutoff.toISOString())
+        .or(`data_venda.is.null,data_venda.gt.${lowerCutoff.toISOString()}`),
       fetchAllRange(() => supabase
         .from('avaliacoes')
         .select('id, quanto_pede, created_at, situacao, preparacao_status')
@@ -88,7 +94,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       fetchLojaMap(),
     ]);
 
-    let estoqueAll = (estoqueRes.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)) as any[];
+    let estoqueAll = [
+      ...(estoqueRes.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)),
+      ...(((estoqueNovasRes as any).data) || []).map((r: any) => mapEstoqueMotoNova(r, lojaMap)),
+    ] as any[];
     if (filterTipo !== 'todos') estoqueAll = estoqueAll.filter((m: any) => m.tipo === filterTipo);
     // Filtro de loja (cidade) — mesma lógica do RPC
     const estoqueFiltrado = estoqueAll.filter((m: any) => {

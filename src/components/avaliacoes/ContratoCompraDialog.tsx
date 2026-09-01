@@ -91,7 +91,10 @@ const InfoDisplay = ({ label, value }: { label: string; value: string | null | u
 const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, modo = 'contrato' }) => {
   const { user, userName } = useAuth();
   const ehNfe = modo === 'nfe';
-  const nfe = useNfeCompra(avaliacao?.id, open);
+  // Após a NF-e autorizada, volta para a tela de Pós-Compra.
+  const nfe = useNfeCompra(avaliacao?.id, open, 'compra', 'avaliacao', () => {
+    if (modo === 'nfe') setTimeout(() => onOpenChange(false), 1200);
+  });
   // NF-e autorizada -> contrato e cliente 100% travados (nenhum campo editável).
   const nfeJaEmitida = nfe.emitida;
   const [loading, setLoading] = useState(false);
@@ -200,7 +203,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         vals = {
           cpfCnpj: contrato.cpf_cnpj || atFreshCpf || '',
           valorQuitacao: (contrato.valor_quitacao ?? quitacaoAval) != null ? formatCurrencyInput(String(Math.round((contrato.valor_quitacao ?? quitacaoAval) * 100))) : '',
-          valorFechamento: contrato.valor_fechamento ? formatCurrencyInput(String(Math.round(contrato.valor_fechamento * 100))) : '',
+          valorFechamento: (contrato.valor_fechamento ?? avaliacao.valor_fechamento) != null ? formatCurrencyInput(String(Math.round((contrato.valor_fechamento ?? avaliacao.valor_fechamento) * 100))) : '',
           obsInternas: contrato.observacoes_internas || '',
           obsContrato: contrato.observacoes_contrato || '',
           dataContrato: contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined,
@@ -210,7 +213,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         vals = {
           cpfCnpj: atFreshCpf || '',
           valorQuitacao: quitacaoAval != null ? formatCurrencyInput(String(Math.round(quitacaoAval * 100))) : '',
-          valorFechamento: avaliacao.valor_fechamento ? formatCurrencyInput(String(Math.round(avaliacao.valor_fechamento * 100))) : '',
+          valorFechamento: avaliacao.valor_fechamento != null ? formatCurrencyInput(String(Math.round(avaliacao.valor_fechamento * 100))) : '',
           obsInternas: '',
           obsContrato: '',
           dataContrato: undefined,
@@ -306,6 +309,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
 
   const validateFields = (): boolean => {
     if (!cpfCnpj?.trim()) { toast.error('CPF/CNPJ é obrigatório'); return false; }
+    // Quitação é obrigatória — o usuário precisa informar, ainda que seja 0.
+    if (!valorQuitacao?.trim()) { toast.error('Valor de Quitação é obrigatório (informe 0 se não houver)'); return false; }
     if (!valorFechamento?.trim() || parseCurrencyInput(valorFechamento) <= 0) { toast.error('Valor de Fechamento é obrigatório'); return false; }
     if (!dataContrato) { toast.error('Data do Contrato é obrigatória'); return false; }
     if (dataContrato > new Date()) { toast.error('A Data do Contrato não pode ser maior que hoje'); return false; }
@@ -546,6 +551,48 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             </CardContent>
           </Card>
 
+          {/* Card: NF-e de Compra (valor + observações da nota) */}
+          {ehNfe && !nfeJaEmitida && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" /> NF-e de Compra
+                </CardTitle>
+                <Separator className="mt-2" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5 max-w-xs">
+                  <Label>Valor da NF-e <span className="text-destructive">*</span></Label>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                    <Input
+                      className="pl-7"
+                      inputMode="numeric"
+                      value={nfeValor}
+                      onChange={(e) => setNfeValor(formatCurrencyInput(e.target.value))}
+                      placeholder="0,00"
+                      disabled={nfe.pendente}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Valor que sai na nota. O compromisso financeiro registra sempre o repasse ao cliente ({brl(repasseCliente)}).
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Observações na NF-e</Label>
+                  <Textarea
+                    rows={3}
+                    value={obsNfe}
+                    onChange={(e) => setObsNfe(e.target.value.toUpperCase())}
+                    placeholder="INFORMAÇÕES COMPLEMENTARES QUE SAIRÃO NA NOTA..."
+                    className="uppercase"
+                    disabled={nfe.pendente}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Card: Dados do Cliente */}
           <Card>
             <CardHeader className="pb-2">
@@ -717,7 +764,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
           </Card>
           )}
 
-          {/* Card: Observações */}
+          {/* Card: Observações (do contrato) — escondido na tela de emissão de NF-e */}
+          {!ehNfe && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -726,37 +774,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               <Separator className="mt-2" />
             </CardHeader>
             <CardContent className="space-y-4">
-              {ehNfe && !nfeJaEmitida ? (
-                <>
-                  <div className="space-y-1.5 max-w-xs">
-                    <Label>Valor da NF-e <span className="text-destructive">*</span></Label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-                      <Input
-                        className="pl-7"
-                        inputMode="numeric"
-                        value={nfeValor}
-                        onChange={(e) => setNfeValor(formatCurrencyInput(e.target.value))}
-                        placeholder="0,00"
-                        disabled={nfe.pendente}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Valor que sai na nota. O compromisso financeiro registra sempre o repasse ao cliente ({brl(repasseCliente)}).
-                    </p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Observações na NF-e</Label>
-                    <Textarea
-                      rows={3}
-                      value={obsNfe}
-                      onChange={(e) => setObsNfe(e.target.value.toUpperCase())}
-                      placeholder="INFORMAÇÕES COMPLEMENTARES QUE SAIRÃO NA NOTA..."
-                      className="uppercase"
-                    />
-                  </div>
-                </>
-              ) : soLeitura ? (
+              {soLeitura ? (
                 <>
                   <InfoDisplay label="Observações Internas" value={obsInternas || undefined} />
                   <InfoDisplay label="Observações do Contrato" value={obsContrato || undefined} />
@@ -776,6 +794,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* Ações — só quando todos os obrigatórios estão preenchidos */}
           {clienteId && !editandoCliente && (soLeitura || (cadastroCompleto && !!dataContrato)) && (
@@ -814,14 +833,16 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                   </Button>
                   {nfe.nfe?.status !== 'processada' && !nfe.pendente && (
                     <Button
-                      variant={podeEmitirNfe && !!empresaId && parseCurrencyInput(nfeValor) > 0 ? 'default' : 'outline'}
+                      variant={podeEmitirNfe && !!empresaId && parseCurrencyInput(nfeValor) > 0 && !!valorQuitacao?.trim() ? 'default' : 'outline'}
                       onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined })}
-                      disabled={!podeEmitirNfe || nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0}
+                      disabled={!podeEmitirNfe || nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || !valorQuitacao?.trim()}
                       title={
                         !empresaId
                           ? 'Selecione a empresa emitente'
                           : parseCurrencyInput(nfeValor) <= 0
                             ? 'Informe o valor da NF-e'
+                          : !valorQuitacao?.trim()
+                            ? 'Valor de Quitação é obrigatório no contrato (informe 0 se não houver)'
                           : podeEmitirNfe
                             ? undefined
                             : 'Disponível após aprovação, contrato gerado e consulta realizada'

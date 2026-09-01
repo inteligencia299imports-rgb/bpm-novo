@@ -14,7 +14,7 @@ import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/component
 import FiltersPanel from '@/components/shared/FiltersPanel';
 
 import { isLojaDucati } from '@/lib/lojaUtils';
-import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
+import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMotoNova, fetchLojaMap } from '@/lib/estoqueMoto';
 import NpsDateFilter from './NpsDateFilter';
 
 interface NpsVendasTabProps {
@@ -84,12 +84,14 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
       let mapped = (data || []).map((a: any) => ({ ...a, loja: a.loja_empresas?.loja }));
       const atIds = mapped.map((a: any) => a.id);
       if (atIds.length > 0) {
-        const [{ data: estData }, lojaMap] = await Promise.all([
+        const [{ data: estData }, { data: estNovasData }, lojaMap] = await Promise.all([
           supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).in('atendimento_venda_id', atIds),
+          supabase.from('estoque_motos_novas').select(ESTOQUE_NOVA_SELECT).in('atendimento_venda_id', atIds),
           fetchLojaMap(),
         ]);
         const estMap: Record<string, any> = {};
         (estData || []).forEach((e: any) => { const m = mapEstoqueMoto(e, lojaMap); if (m.atendimento_venda_id) estMap[m.atendimento_venda_id] = m; });
+        (estNovasData || []).forEach((e: any) => { const m = mapEstoqueMotoNova(e, lojaMap); if (m.atendimento_venda_id) estMap[m.atendimento_venda_id] = m; });
         mapped = mapped.map((a: any) => {
           const est = estMap[a.id];
           if (est && a.motos_interesse) {

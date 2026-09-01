@@ -1138,9 +1138,10 @@ export type Database = {
           contrato_id: string
           created_at: string
           financeira: string | null
+          forma_pagamento_id: string | null
           id: string
           numero_parcelas: number | null
-          tipo: string
+          tipo: string | null
           valor_entrada: number | null
           valor_financiado: number | null
           valor_parcelas: number | null
@@ -1150,9 +1151,10 @@ export type Database = {
           contrato_id: string
           created_at?: string
           financeira?: string | null
+          forma_pagamento_id?: string | null
           id?: string
           numero_parcelas?: number | null
-          tipo: string
+          tipo?: string | null
           valor_entrada?: number | null
           valor_financiado?: number | null
           valor_parcelas?: number | null
@@ -1162,9 +1164,10 @@ export type Database = {
           contrato_id?: string
           created_at?: string
           financeira?: string | null
+          forma_pagamento_id?: string | null
           id?: string
           numero_parcelas?: number | null
-          tipo?: string
+          tipo?: string | null
           valor_entrada?: number | null
           valor_financiado?: number | null
           valor_parcelas?: number | null
@@ -1176,6 +1179,13 @@ export type Database = {
             columns: ["contrato_id"]
             isOneToOne: false
             referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formas_pagamento_contrato_forma_pagamento_id_fkey"
+            columns: ["forma_pagamento_id"]
+            isOneToOne: false
+            referencedRelation: "formas_pagamento"
             referencedColumns: ["id"]
           },
         ]

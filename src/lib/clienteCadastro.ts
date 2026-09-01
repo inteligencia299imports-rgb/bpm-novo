@@ -45,7 +45,9 @@ export interface EnderecoCadastro {
 export function cadastroClienteCompleto(
   cliente: ClienteCadastro | null | undefined,
   endereco: EnderecoCadastro | null | undefined,
+  opts?: { exigirBancarios?: boolean },
 ): boolean {
+  const exigirBancarios = opts?.exigirBancarios ?? true;
   if (!cliente) return false;
   const pf = cliente.tipo_pessoa === "fisica";
 
@@ -68,12 +70,14 @@ export function cadastroClienteCompleto(
   if (!e) return false;
   if (![e.cep, e.logradouro, e.numero, e.bairro, e.cidade, e.uf].every(preenchido)) return false;
 
-  if (![cliente.banco, cliente.tipo_conta, cliente.chave_pix, cliente.favorecido, cliente.cpf_cnpj_favorecido].every(preenchido)) return false;
-  const agDig = soDigitos(cliente.agencia);
-  const ccDig = soDigitos(cliente.conta);
-  if (agDig.length < 3 || agDig.length > 6) return false;
-  if (ccDig.length < 4 || ccDig.length > 12) return false;
-  if (!/^[0-9X]$/i.test(String(cliente.digito_conta ?? "").trim())) return false;
+  if (exigirBancarios) {
+    if (![cliente.banco, cliente.tipo_conta, cliente.chave_pix, cliente.favorecido, cliente.cpf_cnpj_favorecido].every(preenchido)) return false;
+    const agDig = soDigitos(cliente.agencia);
+    const ccDig = soDigitos(cliente.conta);
+    if (agDig.length < 3 || agDig.length > 6) return false;
+    if (ccDig.length < 4 || ccDig.length > 12) return false;
+    if (!/^[0-9X]$/i.test(String(cliente.digito_conta ?? "").trim())) return false;
+  }
 
   return true;
 }

@@ -52,6 +52,12 @@ export async function consultarNfe(
 
 /** Mensagem de erro legivel a partir de uma resposta de erro da Focus. */
 export function mensagemErroFocus(body: Record<string, unknown>): string {
+  // Rejeicao da SEFAZ (status 'erro_autorizacao'): traz o cStat + motivo.
+  const msgSefaz = body.mensagem_sefaz;
+  if (typeof msgSefaz === 'string' && msgSefaz) {
+    const cStat = body.status_sefaz;
+    return (cStat ? `[${cStat}] ` : '') + msgSefaz;
+  }
   if (typeof body.mensagem === 'string' && body.mensagem) return body.mensagem;
   const erros = body.erros;
   if (Array.isArray(erros) && erros.length) {

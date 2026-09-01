@@ -5,12 +5,17 @@ import { montarPayloadNfeCompra, type RegraFiscal } from './payload.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
-// Contas a pagar da compra de moto seminova (chaves fixas).
-const PLANO_CONTA_ID = 'd16507df-9655-4677-8ed9-01398ce28239';
-const CENTRO_CUSTO_ID = '7fe3888a-fd17-4c31-b78b-82a0af680ff3';
-// Repasse ao cliente sai por Pix; a quitação (financiamento) sai por Boleto, em parcela à parte.
+// Planos de conta / centros de custo do compromisso financeiro (chaves fixas — validar com a contabilidade).
+const PLANO_COMPRA_USADA = 'd16507df-9655-4677-8ed9-01398ce28239'; // Compra de Motos Usadas (custo)
+const PLANO_VENDA_USADA = 'c4f76d4e-bfd9-4ade-987e-4a0798603416';  // Venda de Motos Usadas (receita)
+const PLANO_VENDA_NOVA = 'c155d12c-4f49-4592-be1c-63f515ff97d3';   // Venda de Motos Novas (receita)
+const CC_MOTOS_USADAS = '7fe3888a-fd17-4c31-b78b-82a0af680ff3';    // CC.102 Venda de motos usadas
+const CC_MOTOS_NOVAS = '30f457e2-d6b9-48c3-aca7-e45bbf0200df';     // CC.101 Venda de motos novas
+
+// Formas de pagamento fixas (tabela formas_pagamento) — repasse ao cliente / financiamento.
 const FORMA_PAGAMENTO_ID = '63e1fff5-14d7-476c-b2da-e1ea173279a1'; // Pix
 const FORMA_PAGAMENTO_BOLETO_ID = '7d0f2125-fedf-4a27-8ab0-be21fecaf642'; // Boleto
+
 const DIAS_VENCIMENTO = 7;
 
 type Operacao = 'compra' | 'consignacao' | 'venda_seminova' | 'venda_0km';
@@ -25,6 +30,10 @@ interface OperacaoConfig {
   avStatusField: string | null;
   avStatusEmAndamento: string;
   criaCompromisso: boolean;
+  /** 'pagar' (compra/troca) ou 'receber' (venda). Só relevante se criaCompromisso. */
+  compromissoTipo?: 'pagar' | 'receber';
+  planoContaId?: string;
+  centroCustoId?: string;
   /** 'avaliacao' (entrada) ou 'atendimento' (venda) */
   keyBy: 'avaliacao' | 'atendimento';
 }
@@ -40,6 +49,9 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     avStatusField: 'pos_compra_status',
     avStatusEmAndamento: 'em_andamento',
     criaCompromisso: true,
+    compromissoTipo: 'pagar',
+    planoContaId: PLANO_COMPRA_USADA,
+    centroCustoId: CC_MOTOS_USADAS,
     keyBy: 'avaliacao',
   },
   consignacao: {
@@ -63,7 +75,10 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     etapa: 'NF-E DE VENDA',
     avStatusField: null,
     avStatusEmAndamento: '',
-    criaCompromisso: false,
+    criaCompromisso: true,
+    compromissoTipo: 'receber',
+    planoContaId: PLANO_VENDA_USADA,
+    centroCustoId: CC_MOTOS_USADAS,
     keyBy: 'atendimento',
   },
   venda_0km: {
@@ -75,7 +90,10 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     etapa: 'NF-E DE VENDA',
     avStatusField: null,
     avStatusEmAndamento: '',
-    criaCompromisso: false,
+    criaCompromisso: true,
+    compromissoTipo: 'receber',
+    planoContaId: PLANO_VENDA_NOVA,
+    centroCustoId: CC_MOTOS_NOVAS,
     keyBy: 'atendimento',
   },
 };
@@ -168,131 +186,192 @@ async function registrarPosAutorizacao(
     }
   }
 
-  if (!cfg.criaCompromisso) return;
+  if (!cfg.criaCompromisso || !cfg.planoContaId || !cfg.centroCustoId) return;
 
-  // Compromisso financeiro (contas a pagar) da NF-e.
+  // Compromisso financeiro (contas a pagar/receber) da NF-e.
   const { data: nfeRow } = await admin
     .from('nfe_entradas')
     .select('*')
-    .eq('avaliacao_id', entityId)
+    .eq(fkCol, entityId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (nfeRow?.id && nfeRow.empresa_id) {
-    const { data: jaComp } = await admin
-      .from('compromissos')
-      .select('id')
-      .eq('nfe_entrada_id', nfeRow.id)
-      .limit(1);
+  // Guard duro: só gera compromisso DEPOIS da NF-e autorizada. Vale para toda operação.
+  if (!nfeRow?.id || nfeRow.status !== 'processada' || !nfeRow.empresa_id) return;
 
-    if (!jaComp || jaComp.length === 0) {
-      const venc = new Date(nfeRow.data_emissao || dataEmissao || Date.now());
-      venc.setDate(venc.getDate() + DIAS_VENCIMENTO);
+  const venc = new Date(nfeRow.data_emissao || dataEmissao || Date.now());
+  venc.setDate(venc.getDate() + DIAS_VENCIMENTO);
+  const vencStr = venc.toISOString().slice(0, 10);
 
-      // O compromisso registra o REPASSE AO CLIENTE, não o valor da NF-e (que pode ser
-      // informado à parte na tela de emissão). Repasse é sempre calculado sobre o
-      // valor de FECHAMENTO do contrato:
-      // repasse = fechamento - quitação - custo do cliente (previsão da avaliação + custos de oficina do cliente).
-      const { data: avFin } = await admin
-        .from('avaliacoes')
-        .select('previsao_custos_cliente, valor_quitacao, valor_fechamento, atendimento_id, marca, modelo, placa')
-        .eq('id', entityId)
-        .maybeSingle();
-      const { data: contratoFin } = avFin?.atendimento_id
-        ? await admin
-            .from('contratos')
-            .select('valor_quitacao, valor_fechamento')
-            .eq('atendimento_id', avFin.atendimento_id)
-            .eq('ipva_tipo', 'COMPRA')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-        : { data: null };
-      const { data: custosCli } = await admin
-        .from('custos_oficina')
-        .select('responsavel, valor_previsto, valor_executado')
-        .eq('avaliacao_id', entityId);
+  type ParcelaDesejada = { numero_parcela: number; valor: number; tipo: string; forma_pagamento_id: string };
+  const compromissoNatureza = cfg.compromissoTipo === 'receber' ? 'receita' : 'despesa';
+  let parcelasDesejadas: ParcelaDesejada[] = [];
+  let obsCompromisso: string | null = null;
 
-      const custosClienteOficina = (custosCli || [])
-        .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
-        .reduce((s: number, c: any) => s + Number(c.valor_executado ?? c.valor_previsto ?? 0), 0);
-      const fechamento = Number(
-        contratoFin?.valor_fechamento ?? avFin?.valor_fechamento ?? nfeRow.valor_total ?? 0,
-      );
-      const quitacao = Number(contratoFin?.valor_quitacao ?? avFin?.valor_quitacao ?? 0);
-      const custosClientePrev = Number(avFin?.previsao_custos_cliente ?? 0);
+  const obsMoto = (marca?: string | null, modelo?: string | null, placa?: string | null) => {
+    const desc = [marca, modelo].filter(Boolean).join(' ').trim();
+    const placaFmt = String(placa ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    return [desc, placaFmt].filter(Boolean).join(' - ').toUpperCase() || null;
+  };
 
-      const valorRepasse = Math.max(
-        fechamento - quitacao - custosClientePrev - custosClienteOficina,
-        0,
-      );
+  if (cfg.compromissoTipo === 'receber') {
+    // ---- Venda: contas a RECEBER, parcelas a partir das formas de pagamento do contrato ----
+    // O contrato de venda é o do atendimento que NÃO é o marcador de compra (ipva_tipo != 'COMPRA',
+    // incluindo null — lojas Ducati não usam IPVA).
+    const { data: contratosAt } = await admin
+      .from('contratos')
+      .select('id, ipva_tipo')
+      .eq('atendimento_id', entityId)
+      .order('created_at', { ascending: false });
+    const contratoVenda = ((contratosAt || []) as any[]).find((c) => c.ipva_tipo !== 'COMPRA') ?? null;
 
-      // Observação do compromisso: MARCA MODELO - PLACA da moto.
-      const motoDesc = [avFin?.marca, avFin?.modelo].filter(Boolean).join(' ').trim();
-      const placaFmt = String(avFin?.placa ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-      const obsCompromisso = [motoDesc, placaFmt].filter(Boolean).join(' - ').toUpperCase() || null;
+    const { data: formas } = contratoVenda?.id
+      ? await admin
+          .from('formas_pagamento_contrato')
+          .select('tipo, forma_pagamento_id, valor_total, valor_entrada, valor_financiado')
+          .eq('contrato_id', contratoVenda.id)
+          .order('created_at', { ascending: true })
+      : { data: [] };
 
-      const { data: comp, error: compErr } = await admin
-        .from('compromissos')
-        .insert({
-          empresa_id: nfeRow.empresa_id,
-          fornecedor_id: nfeRow.fornecedor_id,
-          natureza: 'despesa',
-          despesa_fixa: false,
-          plano_conta_id: PLANO_CONTA_ID,
-          centro_custo_id: CENTRO_CUSTO_ID,
-          observacoes: obsCompromisso,
-          status_compromisso: 'em_aberto',
-          nfe_entrada_id: nfeRow.id,
-          numero_documento: nfeRow.numero ? `NF-${nfeRow.numero}` : null,
-          created_by: callerId,
-        })
-        .select('id')
-        .maybeSingle();
+    const ehFinanciamentoContrato = (t?: string | null) =>
+      String(t ?? '').toLowerCase().includes('financiamento');
 
-      if (compErr) {
-        console.error('erro ao criar compromisso', compErr);
-      } else if (comp?.id) {
-        const vencStr = venc.toISOString().slice(0, 10);
-        // Quando há quitação (financiamento a quitar), ela vira uma parcela à parte,
-        // paga por BOLETO; o valor restante (repasse ao cliente) fica na parcela de Pix,
-        // como já funcionava. Sem quitação, mantém uma única parcela.
-        const parcelas = quitacao > 0
-          ? [
-              {
-                compromisso_id: comp.id,
-                numero_parcela: 1,
-                valor: quitacao,
-                data_vencimento: vencStr,
-                tipo: 'parcelado',
-                forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID,
-                status_pagamento: 'em_aberto',
-              },
-              {
-                compromisso_id: comp.id,
-                numero_parcela: 2,
-                valor: valorRepasse,
-                data_vencimento: vencStr,
-                tipo: 'parcelado',
-                forma_pagamento_id: FORMA_PAGAMENTO_ID,
-                status_pagamento: 'em_aberto',
-              },
-            ]
-          : [
-              {
-                compromisso_id: comp.id,
-                numero_parcela: 1,
-                valor: valorRepasse,
-                data_vencimento: vencStr,
-                tipo: 'unico',
-                forma_pagamento_id: FORMA_PAGAMENTO_ID,
-                status_pagamento: 'em_aberto',
-              },
-            ];
-        await admin.from('compromissos_parcelas').insert(parcelas);
+    let n = 0;
+    for (const f of (formas || []) as any[]) {
+      if (ehFinanciamentoContrato(f.tipo)) {
+        const entrada = Number(f.valor_entrada ?? 0);
+        const financiado = Number(f.valor_financiado ?? 0);
+        if (entrada > 0) parcelasDesejadas.push({ numero_parcela: ++n, valor: entrada, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_ID });
+        if (financiado > 0) parcelasDesejadas.push({ numero_parcela: ++n, valor: financiado, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID });
+      } else {
+        const total = Number(f.valor_total ?? 0);
+        if (total > 0) {
+          parcelasDesejadas.push({
+            numero_parcela: ++n,
+            valor: total,
+            tipo: 'unico',
+            forma_pagamento_id: f.forma_pagamento_id ?? FORMA_PAGAMENTO_ID,
+          });
+        }
       }
     }
+    // Sem formas de pagamento: 1 parcela pelo valor da nota.
+    if (parcelasDesejadas.length === 0) {
+      parcelasDesejadas = [{ numero_parcela: 1, valor: Number(nfeRow.valor_total ?? 0), tipo: 'unico', forma_pagamento_id: FORMA_PAGAMENTO_ID }];
+    }
+
+    const [{ data: emVenda }, { data: emNova }] = await Promise.all([
+      admin.from('estoque_motos')
+        .select('avaliacao:avaliacao_id(marca, modelo, placa)')
+        .eq('atendimento_venda_id', entityId).maybeSingle(),
+      admin.from('estoque_motos_novas')
+        .select('placa, marca:marca_id(nome), modelo:modelo_id(nome)')
+        .eq('atendimento_venda_id', entityId).maybeSingle(),
+    ]);
+    const m = (emVenda as any)?.avaliacao
+      ?? ((emNova as any) ? { marca: (emNova as any).marca?.nome, modelo: (emNova as any).modelo?.nome, placa: (emNova as any).placa } : {});
+    obsCompromisso = obsMoto(m.marca, m.modelo, m.placa);
+  } else {
+    // ---- Compra / troca: contas a PAGAR. O compromisso registra o REPASSE AO CLIENTE,
+    // calculado sobre o FECHAMENTO do contrato:
+    // repasse = fechamento - quitação - custo do cliente (previsão da avaliação + custos de oficina do cliente).
+    const { data: avFin } = await admin
+      .from('avaliacoes')
+      .select('previsao_custos_cliente, valor_quitacao, valor_fechamento, atendimento_id, marca, modelo, placa')
+      .eq('id', entityId)
+      .maybeSingle();
+    const { data: contratoFin } = avFin?.atendimento_id
+      ? await admin
+          .from('contratos')
+          .select('valor_quitacao, valor_fechamento')
+          .eq('atendimento_id', avFin.atendimento_id)
+          .eq('ipva_tipo', 'COMPRA')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null };
+    const { data: custosCli } = await admin
+      .from('custos_oficina')
+      .select('responsavel, valor_previsto, valor_executado')
+      .eq('avaliacao_id', entityId);
+
+    const custosClienteOficina = (custosCli || [])
+      .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
+      .reduce((s: number, c: any) => s + Number(c.valor_executado ?? c.valor_previsto ?? 0), 0);
+    const fechamento = Number(contratoFin?.valor_fechamento ?? avFin?.valor_fechamento ?? nfeRow.valor_total ?? 0);
+    const quitacao = Number(contratoFin?.valor_quitacao ?? avFin?.valor_quitacao ?? 0);
+    const custosClientePrev = Number(avFin?.previsao_custos_cliente ?? 0);
+    const valorRepasse = Math.max(fechamento - quitacao - custosClientePrev - custosClienteOficina, 0);
+
+    // Com quitação (financiamento a quitar): parcela à parte por BOLETO; o repasse fica no Pix.
+    parcelasDesejadas = quitacao > 0
+      ? [
+          { numero_parcela: 1, valor: quitacao, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID },
+          { numero_parcela: 2, valor: valorRepasse, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_ID },
+        ]
+      : [
+          { numero_parcela: 1, valor: valorRepasse, tipo: 'unico', forma_pagamento_id: FORMA_PAGAMENTO_ID },
+        ];
+    obsCompromisso = obsMoto(avFin?.marca, avFin?.modelo, avFin?.placa);
+  }
+
+  // Compromisso: reaproveita se já existe (idempotente por nfe_entrada_id).
+  const { data: compExistente } = await admin
+    .from('compromissos')
+    .select('id')
+    .eq('nfe_entrada_id', nfeRow.id)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  let compId: string | null = compExistente?.id ?? null;
+  if (!compId) {
+    const { data: comp, error: compErr } = await admin
+      .from('compromissos')
+      .insert({
+        empresa_id: nfeRow.empresa_id,
+        fornecedor_id: nfeRow.fornecedor_id,
+        natureza: compromissoNatureza,
+        despesa_fixa: false,
+        plano_conta_id: cfg.planoContaId,
+        centro_custo_id: cfg.centroCustoId,
+        observacoes: obsCompromisso,
+        status_compromisso: 'em_aberto',
+        nfe_entrada_id: nfeRow.id,
+        numero_documento: nfeRow.numero ? `NF-${nfeRow.numero}` : null,
+        created_by: callerId,
+      })
+      .select('id')
+      .maybeSingle();
+    if (compErr || !comp?.id) {
+      console.error('erro ao criar compromisso', compErr);
+      return;
+    }
+    compId = comp.id;
+  }
+
+  // Parcelas: insere apenas as que ainda não existem (por numero_parcela). Nunca duplica.
+  const { data: parcelasExistentes } = await admin
+    .from('compromissos_parcelas')
+    .select('numero_parcela')
+    .eq('compromisso_id', compId);
+  const jaTem = new Set((parcelasExistentes || []).map((p: any) => p.numero_parcela));
+
+  const parcelasAInserir = parcelasDesejadas
+    .filter((p) => !jaTem.has(p.numero_parcela))
+    .map((p) => ({
+      compromisso_id: compId,
+      numero_parcela: p.numero_parcela,
+      valor: p.valor,
+      data_vencimento: vencStr,
+      tipo: p.tipo,
+      forma_pagamento_id: p.forma_pagamento_id,
+      status_pagamento: 'em_aberto',
+    }));
+
+  if (parcelasAInserir.length > 0) {
+    await admin.from('compromissos_parcelas').insert(parcelasAInserir);
   }
 }
 
@@ -353,26 +432,48 @@ Deno.serve(async (req) => {
   let estoqueMoto: any = null;
   let atendimentoId = '';
 
+  let ehVenda0km = false;
   if (ehVenda) {
     atendimentoId = atendimentoIdBody;
     const { data: mi } = await admin
       .from('motos_interesse')
-      .select('estoque_moto_id')
+      .select('estoque_moto_id, estoque_tipo')
       .eq('atendimento_id', atendimentoId)
       .not('estoque_moto_id', 'is', null)
       .limit(1)
       .maybeSingle();
     if (!mi?.estoque_moto_id) return jsonResponse({ error: 'Moto do estoque não vinculada ao atendimento.' }, 409);
-    const { data: em } = await admin
-      .from('estoque_motos')
-      .select(
-        '*, avaliacao:avaliacao_id(marca, modelo, ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam), ' +
-          'moto_nova:moto_nova_id(marca, modelo, ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam, ncm, valor)',
-      )
-      .eq('id', mi.estoque_moto_id)
-      .maybeSingle();
-    if (!em) return jsonResponse({ error: 'Moto do estoque não encontrada.' }, 404);
-    estoqueMoto = em;
+    ehVenda0km = mi.estoque_tipo === '0km';
+    if (ehVenda0km) {
+      const { data: en } = await admin
+        .from('estoque_motos_novas')
+        .select('*, marca:marca_id(nome), modelo:modelo_id(nome)')
+        .eq('id', mi.estoque_moto_id)
+        .maybeSingle();
+      if (!en) return jsonResponse({ error: 'Moto 0km do estoque não encontrada.' }, 404);
+      // Normaliza para o mesmo shape que estoque_motos (avaliacao/moto_nova).
+      estoqueMoto = {
+        ...en,
+        status: en.status,
+        moto_nova_id: en.id,
+        moto_nova: {
+          marca: en.marca?.nome ?? null, modelo: en.modelo?.nome ?? null,
+          ano_fabricacao: en.ano_fabricacao, ano_modelo: en.ano_modelo,
+          cilindrada: en.cilindrada, cor: en.cor, placa: en.placa,
+          chassi: en.chassi, renavam: en.renavam, ncm: en.ncm, valor: en.valor,
+        },
+      };
+    } else {
+      const { data: em } = await admin
+        .from('estoque_motos')
+        .select(
+          '*, avaliacao:avaliacao_id(marca, modelo, ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam)',
+        )
+        .eq('id', mi.estoque_moto_id)
+        .maybeSingle();
+      if (!em) return jsonResponse({ error: 'Moto do estoque não encontrada.' }, 404);
+      estoqueMoto = em;
+    }
   } else {
     const { data: avRow } = await admin
       .from('avaliacoes')
@@ -589,7 +690,8 @@ Deno.serve(async (req) => {
       'id, descricao, serie, tipo, indicador_presenca, consumidor_final, operacao_devolucao, ' +
         'informacoes_complementares, informacoes_adicionais_fisco, ' +
         'naturezas_operacao_regras(imposto, cfop, situacao_tributaria, aliquota, reducao_base_calculo, ' +
-        'aliquota_fcp, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem)',
+        'aliquota_fcp, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem, ' +
+        'classificacao_tributaria, cbs_aliquota, ibs_uf_aliquota, ibs_mun_aliquota, percentual_reducao)',
     )
     .eq('empresa_id', empresaId)
     .eq('descricao', cfg.naturezaDescricao)
@@ -618,10 +720,15 @@ Deno.serve(async (req) => {
   const regraPis = regraDe('pis');
   const regraCofins = regraDe('cofins');
   const regraIpi = regraDe('ipi');
+  const regraIbsCbs = regraDe('ibscbs');
   const faltando: string[] = [];
   if (!regraIcms?.cfop || !regraIcms?.situacao_tributaria) faltando.push('ICMS (CFOP/CST)');
   if (!regraPis?.situacao_tributaria) faltando.push('PIS');
   if (!regraCofins?.situacao_tributaria) faltando.push('COFINS');
+  // Reforma Tributária: emitente CRT 3 precisa do grupo IBS/CBS (SEFAZ rejeita com cStat 1115).
+  if (!regraIbsCbs?.situacao_tributaria || !regraIbsCbs?.classificacao_tributaria) {
+    faltando.push('IBS/CBS (CST/cClassTrib — Reforma Tributária)');
+  }
   if (faltando.length) {
     return jsonResponse(
       { error: `Regras fiscais da natureza "${cfg.naturezaDescricao}" incompletas: ${faltando.join(', ')}.` },
@@ -692,12 +799,18 @@ Deno.serve(async (req) => {
     regraPis: regraPis!,
     regraCofins: regraCofins!,
     regraIpi: regraIpi,
+    regraIbsCbs: regraIbsCbs,
     observacoes: typeof body.observacoes === 'string' ? body.observacoes : null,
   });
 
   // FKs da nfe_entradas conforme a operacao.
   const nfeFks: Record<string, unknown> = ehVenda
-    ? { avaliacao_id: null, atendimento_id: atendimentoId, estoque_moto_id: estoqueMoto?.id ?? null }
+    ? {
+        avaliacao_id: null,
+        atendimento_id: atendimentoId,
+        estoque_moto_id: ehVenda0km ? null : (estoqueMoto?.id ?? null),
+        estoque_moto_nova_id: ehVenda0km ? (estoqueMoto?.id ?? null) : null,
+      }
     : { avaliacao_id: avaliacaoId };
 
   const dataEmissao = new Date().toISOString();

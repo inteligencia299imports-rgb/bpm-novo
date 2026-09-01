@@ -15,11 +15,15 @@ export function useNfeCompra(
   ativo: boolean,
   tipo: NfeTipo = 'compra',
   by: 'avaliacao' | 'atendimento' = 'avaliacao',
+  /** Chamado quando uma emissão/consulta resulta em NF-e autorizada (transição para 'processada'). */
+  onAutorizada?: () => void,
 ) {
   const avaliacaoId = entityId;
   const keyCol = by === 'atendimento' ? 'atendimento_id' : 'avaliacao_id';
   const [nfe, setNfe] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
+  const onAutorizadaRef = useRef(onAutorizada);
+  onAutorizadaRef.current = onAutorizada;
 
   const status: string | undefined = nfe?.status;
   const emitida = status === 'processada';
@@ -71,6 +75,7 @@ export function useNfeCompra(
       const res = await invoke('emitir', Object.keys(extra).length ? extra : undefined);
       setNfe(res.nfe);
       toast.success(res.nfe?.status === 'processada' ? 'NF-e autorizada!' : 'NF-e enviada para autorização.');
+      if (res.nfe?.status === 'processada') onAutorizadaRef.current?.();
     } catch (e: any) {
       toast.error(e.message);
       await carregar();
@@ -84,7 +89,7 @@ export function useNfeCompra(
     try {
       const res = await invoke('consultar');
       if (res.nfe) setNfe(res.nfe);
-      if (res.nfe?.status === 'processada') toast.success('NF-e autorizada!');
+      if (res.nfe?.status === 'processada') { toast.success('NF-e autorizada!'); onAutorizadaRef.current?.(); }
       else if (res.nfe?.status === 'erro') toast.error(res.nfe.erro_mensagem || 'Erro na emissão da NF-e');
     } catch (e: any) {
       toast.error(e.message);

@@ -55,6 +55,8 @@ interface Props {
   onContratoSaved?: () => void;
   /** Abre a tela de revisão da NF-e de venda (etapa NF-E DE VENDA). */
   onEmitirNfe?: () => void;
+  /** Abre a tela de emissão da NF-e de entrada da moto de troca (etapa NF-E DE ENTRADA (TROCA)). */
+  onEmitirNfeTroca?: (avaliacaoId: string) => void;
   /** Navega para o Pós-Compra da avaliação da moto de troca. */
   onNavigateToPosCompra?: (avaliacaoId: string) => void;
 }
@@ -68,6 +70,7 @@ const ProcessoDialog: React.FC<Props> = ({
   showContratoConsignante,
   onContratoSaved,
   onEmitirNfe,
+  onEmitirNfeTroca,
   onNavigateToPosCompra,
 }) => {
   const isPosVenda = !customEtapas;
@@ -86,7 +89,7 @@ const ProcessoDialog: React.FC<Props> = ({
   const [contratoVendaGerado, setContratoVendaGerado] = useState(false);
   const [trocaAvaliacaoId, setTrocaAvaliacaoId] = useState<string>('');
 
-  const eh0km = !!estoqueMoto?.moto_nova_id;
+  const eh0km = estoqueMoto?.fonte === '0km';
   const tipoVenda = eh0km ? 'venda_0km' : 'venda_seminova';
 
   const nfeVenda = useNfeCompra(isPosVenda ? atendimentoId : '', open && isPosVenda, tipoVenda, 'atendimento');
@@ -121,7 +124,7 @@ const ProcessoDialog: React.FC<Props> = ({
       if (isPosVenda) {
         const [{ data: at }, { data: mi }, { data: contratos }] = await Promise.all([
           supabase.from('atendimentos_motos').select('interesse').eq('id', atendimentoId).maybeSingle(),
-          supabase.from('motos_interesse').select('estoque_moto_id').eq('atendimento_id', atendimentoId)
+          supabase.from('motos_interesse').select('estoque_moto_id, estoque_tipo').eq('atendimento_id', atendimentoId)
             .not('estoque_moto_id', 'is', null).limit(1).maybeSingle(),
           supabase.from('contratos').select('id, ipva_tipo').eq('atendimento_id', atendimentoId),
         ]);
@@ -129,12 +132,13 @@ const ProcessoDialog: React.FC<Props> = ({
         contratoVenda = ((contratos as any[]) || []).some(c => (c.ipva_tipo ?? '') !== 'COMPRA');
 
         if ((mi as any)?.estoque_moto_id) {
+          const eh0km = (mi as any).estoque_tipo === '0km';
           const { data: em } = await supabase
-            .from('estoque_motos')
-            .select('id, status, moto_nova_id')
+            .from(eh0km ? 'estoque_motos_novas' : 'estoque_motos')
+            .select('id, status')
             .eq('id', (mi as any).estoque_moto_id)
             .maybeSingle();
-          estMoto = em ?? null;
+          estMoto = em ? { ...em, fonte: eh0km ? '0km' : 'seminova' } : null;
         }
 
         if (inter === 'trocar') {
@@ -403,6 +407,12 @@ const ProcessoDialog: React.FC<Props> = ({
                         {nfeVenda.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
                       </p>
                     )}
+                    {isNfTroca && nfeTroca.erro && (
+                      <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                        {nfeTroca.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
+                      </p>
+                    )}
                   </div>
 
                   {isNfVenda && !nfeVenda.emitida ? (
@@ -438,11 +448,30 @@ const ProcessoDialog: React.FC<Props> = ({
                     </div>
                   ) : isNfTroca && !nfeTroca.emitida ? (
                     <div className="col-span-2 flex items-center justify-end gap-2">
-                      <span className="text-xs text-muted-foreground">Emitida no Pós-Compra</span>
+                      {nfeTroca.pendente ? (
+                        <>
+                          <Badge variant="outline" className="gap-1.5 text-xs">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Emitindo NF-e…
+                          </Badge>
+                          <Button variant="ghost" size="sm" className="h-9 gap-1.5" disabled={nfeTroca.loading} onClick={nfeTroca.consultar}>
+                            <RefreshCw className={`h-4 w-4 ${nfeTroca.loading ? 'animate-spin' : ''}`} /> Atualizar
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          variant={nfeTroca.erro ? 'outline' : 'default'} size="sm"
+                          className={`h-9 gap-2 text-sm ${nfeTroca.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : ''}`}
+                          disabled={!trocaAvaliacaoId || nfeTroca.loading}
+                          onClick={() => trocaAvaliacaoId && onEmitirNfeTroca?.(trocaAvaliacaoId)}
+                        >
+                          {nfeTroca.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                          {nfeTroca.erro ? 'Tentar novamente' : 'Emitir NF-e'}
+                        </Button>
+                      )}
                       {onNavigateToPosCompra && trocaAvaliacaoId && (
-                        <Button variant="outline" size="sm" className="h-9 gap-1.5"
+                        <Button variant="ghost" size="sm" className="h-9 gap-1.5"
                           onClick={() => onNavigateToPosCompra(trocaAvaliacaoId)}>
-                          <ArrowUpRight className="h-4 w-4" /> Abrir Pós-Compra
+                          <ArrowUpRight className="h-4 w-4" /> Pós-Compra
                         </Button>
                       )}
                     </div>

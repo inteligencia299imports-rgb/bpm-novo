@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { LOJAS, INTERESSES, SITUACOES_SHOWROOM } from '@/types/crm';
-import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto } from '@/lib/estoqueMoto';
+import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import AtendimentoCard from './AtendimentoCard';
 import AtendimentoDetail from './AtendimentoDetail';
@@ -116,25 +116,20 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       let results = ((data as any[]) || []).map((a) => ({ ...a, loja: a.loja_empresas?.loja })) as unknown as Atendimento[];
 
       // Fetch estoque data for motos_interesse with estoque origin
-      const estoqueIds = results.flatMap((a: any) =>
+      const estoqueRefs = results.flatMap((a: any) =>
         (a.motos_interesse || [])
           .filter((m: any) => m.origem === 'estoque' && m.estoque_moto_id)
-          .map((m: any) => m.estoque_moto_id)
-      ).filter(Boolean);
+          .map((m: any) => ({ id: m.estoque_moto_id as string, tipo: (m.estoque_tipo === '0km' ? '0km' : 'seminova') as EstoqueFonte }))
+      );
 
-      if (estoqueIds.length > 0) {
-        const { data: estoqueData } = await supabase
-          .from('estoque_motos')
-          .select(ESTOQUE_MOTO_SELECT)
-          .in('id', [...new Set(estoqueIds)]);
-        if (estoqueData) {
-          const estoqueMap: Record<string, any> = {};
-          for (const e of estoqueData) estoqueMap[(e as any).id] = mapEstoqueMoto(e);
-          for (const a of results as any[]) {
-            for (const mi of (a.motos_interesse || [])) {
-              if (mi.estoque_moto_id && estoqueMap[mi.estoque_moto_id]) {
-                mi._estoque = estoqueMap[mi.estoque_moto_id];
-              }
+      if (estoqueRefs.length > 0) {
+        const estoqueList = await fetchEstoqueUnificado({ ids: estoqueRefs });
+        const estoqueMap: Record<string, any> = {};
+        for (const e of estoqueList) estoqueMap[(e as any).id] = e;
+        for (const a of results as any[]) {
+          for (const mi of (a.motos_interesse || [])) {
+            if (mi.estoque_moto_id && estoqueMap[mi.estoque_moto_id]) {
+              mi._estoque = estoqueMap[mi.estoque_moto_id];
             }
           }
         }

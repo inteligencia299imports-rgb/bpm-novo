@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, PlusCircle, Download, Loader2, RefreshCw, ExternalLink, AlertTriangle, User, Bike, MessageSquare, Wallet, ArrowLeft, Pencil, MapPin, Landmark } from 'lucide-react';
+import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, PlusCircle, Download, Loader2, RefreshCw, ExternalLink, AlertTriangle, User, Bike, MessageSquare, Wallet, ArrowLeft, Pencil, MapPin, Landmark, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -36,14 +36,10 @@ interface Props {
 }
 
 const FINANCEIRAS = ['Santander', 'Bradesco', 'Safra', 'BV', 'Pan', 'Omni', 'Volkswagen', 'C6 Bank', 'Próprio (299)'];
-const TIPOS_PAGAMENTO = [
-  { value: 'financiamento', label: 'Financiamento' },
-  { value: 'consorcio', label: 'Consórcio' },
-  { value: 'ted_doc_pix', label: 'Ted/Doc/Pix' },
-  { value: 'cartao_credito', label: 'Cartão de Crédito' },
-  { value: 'dinheiro', label: 'Dinheiro' },
-  { value: 'outros', label: 'Outros' },
-];
+
+/** Forma cujo nome é "Financiamento" ganha o bloco de campos extras (entrada/financeira/parcelas). */
+const ehFinanciamento = (nome: string | null | undefined) =>
+  String(nome ?? '').trim().toLowerCase() === 'financiamento';
 
 const formatCurrency = (value: number | null) => {
   if (value === null || value === undefined) return '-';
@@ -119,6 +115,8 @@ const InfoDisplay = ({ label, value }: { label: string; value: string | null | u
 
 interface FormaPagamento {
   id?: string;
+  forma_pagamento_id: string | null;
+  /** nome da forma (denormalizado) */
   tipo: string;
   valor_total: number | null;
   valor_entrada: number | null;
@@ -144,12 +142,21 @@ const ContratoDialog: React.FC<Props> = ({
   // ---- NF-e de venda ----
   const motoIntNfe = motosInteresse[0];
   const estItemNfe = motoIntNfe?.origem === 'estoque' && motoIntNfe?.estoque_moto_id ? estoqueData[motoIntNfe.estoque_moto_id] : null;
-  const tipoVenda = estItemNfe?.tipo === '0km' ? 'venda_0km' : 'venda_seminova';
-  const nfe = useNfeCompra(atendimento.id, open, tipoVenda, 'atendimento');
+  const eh0kmVenda = motoIntNfe?.estoque_tipo === '0km' || estItemNfe?.tipo === '0km';
+  const estoqueTabela = eh0kmVenda ? 'estoque_motos_novas' : 'estoque_motos';
+  const tipoVenda = eh0kmVenda ? 'venda_0km' : 'venda_seminova';
+  // Após a NF-e de venda autorizada, volta para a tela de Pós-Venda.
+  const nfe = useNfeCompra(atendimento.id, open, tipoVenda, 'atendimento', () => {
+    if (ehNfe) setTimeout(() => onOpenChange(false), 1200);
+  });
   const nfeJaEmitida = nfe.emitida;
   const soLeitura = ehNfe || nfeJaEmitida;
   const [nfeValor, setNfeValor] = useState('');
   const [nfeObs, setNfeObs] = useState('');
+
+  // Empresa emitente / vendedora (restrita à empresa vinculada à loja do atendimento).
+  const [empresasLoja, setEmpresasLoja] = useState<any[]>([]);
+  const [empresaId, setEmpresaId] = useState<string>('');
 
   // Client data
   const [cpfCnpj, setCpfCnpj] = useState('');
@@ -187,7 +194,10 @@ const ContratoDialog: React.FC<Props> = ({
 
   // Formas de pagamento
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
+  const [formasPagOpcoes, setFormasPagOpcoes] = useState<{ id: string; nome: string }[]>([]);
+  // id da forma_pagamento selecionada para adicionar
   const [novaPagamentoTipo, setNovaPagamentoTipo] = useState('');
+  const novaFormaNome = formasPagOpcoes.find(f => f.id === novaPagamentoTipo)?.nome ?? '';
   // Financiamento fields
   const [finValorEntrada, setFinValorEntrada] = useState('');
   const [finFinanceira, setFinFinanceira] = useState('');
@@ -208,7 +218,7 @@ const ContratoDialog: React.FC<Props> = ({
     const loadContrato = async () => {
       setLoading(true);
       nfe.carregar();
-      const [{ data: contrato }, { data: histGerado }, { data: freshAtendimento }, { data: freshEstoque }] = await Promise.all([
+      const [{ data: contrato }, { data: histGerado }, { data: freshAtendimento }, { data: freshEstoque }, { data: formasOpts }] = await Promise.all([
         supabase
           .from('contratos')
           .select('*')
@@ -223,20 +233,49 @@ const ContratoDialog: React.FC<Props> = ({
           .limit(1),
         supabase
           .from('atendimentos_motos')
-          .select('cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))')
+          .select('loja_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))')
           .eq('id', atendimento.id)
           .maybeSingle(),
         supabase
-          .from('estoque_motos')
+          .from(estoqueTabela)
           .select('valor_sinal, valor_venda')
           .eq('atendimento_venda_id', atendimento.id)
           .maybeSingle(),
+        supabase
+          .from('formas_pagamento')
+          .select('id, nome')
+          .eq('bpm', true)
+          .eq('ativo', true)
+          .order('ordem'),
       ]);
+
+      setFormasPagOpcoes((formasOpts as any[]) || []);
 
       setJaGerado(!!(histGerado && histGerado.length > 0));
 
+      // Empresa vinculada à loja do atendimento (emitente da NF-e / vendedora no contrato).
+      const lojaId = (freshAtendimento as any)?.loja_id ?? (atendimento as any).loja_id;
+      let empresas: any[] = [];
+      if (lojaId) {
+        const { data: le } = await supabase
+          .from('loja_empresas')
+          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, uf)')
+          .eq('id', lojaId);
+        const seen = new Set<string>();
+        empresas = (le || [])
+          .map((r: any) => r.empresas)
+          .filter((e: any) => e && !seen.has(e.id) && seen.add(e.id));
+      }
+      setEmpresasLoja(empresas);
+      setEmpresaId((contrato as any)?.empresa_id || empresas[0]?.id || '');
+
       const atSinal = freshEstoque?.valor_sinal ?? (atendimento as any).valor_sinal;
       const atVenda = freshEstoque?.valor_venda ?? (atendimento as any).valor_venda;
+      // Quitação e Fechamento da moto do cliente vêm da avaliação (origem) — não são editados no contrato.
+      const avTroca = motosAvaliacao[0] ? avaliacoes[motosAvaliacao[0].id] : null;
+      const avQuitacao = avTroca?.valor_quitacao;
+      const avFechamento = avTroca?.valor_fechamento;
+      const fmtCur = (v: number) => formatCurrencyInput(String(Math.round(v * 100)));
       const atCpf = (freshAtendimento as any)?.cliente?.cpf_cnpj ?? atendimento.cliente?.cpf_cnpj;
       setClienteCpfOriginal(atCpf ? String(atCpf) : '');
       if ((freshAtendimento as any)?.cliente) setClienteRecord((freshAtendimento as any).cliente);
@@ -250,8 +289,8 @@ const ContratoDialog: React.FC<Props> = ({
         setIpvaValor(contrato.ipva_valor ? formatCurrencyInput(String(Math.round(contrato.ipva_valor * 100))) : '');
         setTransferenciaTipo(contrato.transferencia_tipo || '');
         setTransferenciaValor(contrato.transferencia_valor ? formatCurrencyInput(String(Math.round(contrato.transferencia_valor * 100))) : '');
-        setValorQuitacao(contrato.valor_quitacao ? formatCurrencyInput(String(Math.round(contrato.valor_quitacao * 100))) : '');
-        setValorFechamento(contrato.valor_fechamento ? formatCurrencyInput(String(Math.round(contrato.valor_fechamento * 100))) : '');
+        setValorQuitacao(contrato.valor_quitacao != null ? fmtCur(contrato.valor_quitacao) : (avQuitacao != null ? fmtCur(avQuitacao) : ''));
+        setValorFechamento(contrato.valor_fechamento != null ? fmtCur(contrato.valor_fechamento) : (avFechamento != null ? fmtCur(avFechamento) : ''));
         setObsInternas(contrato.observacoes_internas || '');
         setObsContrato(contrato.observacoes_contrato || '');
         setDataSinal(contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined);
@@ -268,7 +307,8 @@ const ContratoDialog: React.FC<Props> = ({
         if (formas) {
           setFormasPagamento(formas.map((f: any) => ({
             id: f.id,
-            tipo: f.tipo,
+            forma_pagamento_id: f.forma_pagamento_id ?? null,
+            tipo: f.tipo || '',
             valor_total: f.valor_total,
             valor_entrada: f.valor_entrada,
             financeira: f.financeira,
@@ -286,8 +326,8 @@ const ContratoDialog: React.FC<Props> = ({
         setIpvaValor('');
         setTransferenciaTipo('');
         setTransferenciaValor('');
-        setValorQuitacao('');
-        setValorFechamento('');
+        setValorQuitacao(avQuitacao != null ? fmtCur(avQuitacao) : '');
+        setValorFechamento(avFechamento != null ? fmtCur(avFechamento) : '');
         setObsInternas('');
         setObsContrato('');
         setDataSinal(undefined);
@@ -332,10 +372,11 @@ const ContratoDialog: React.FC<Props> = ({
 
     const newForma: any = {
       contrato_id: cId,
-      tipo: novaPagamentoTipo,
+      forma_pagamento_id: novaPagamentoTipo,
+      tipo: novaFormaNome,
     };
 
-    if (novaPagamentoTipo === 'financiamento') {
+    if (ehFinanciamento(novaFormaNome)) {
       newForma.valor_entrada = parseCurrencyInput(finValorEntrada) || null;
       newForma.financeira = finFinanceira || null;
       newForma.numero_parcelas = finParcelas ? parseInt(finParcelas) : null;
@@ -352,7 +393,8 @@ const ContratoDialog: React.FC<Props> = ({
     }
     setFormasPagamento(prev => [...prev, {
       id: data.id,
-      tipo: data.tipo,
+      forma_pagamento_id: data.forma_pagamento_id ?? null,
+      tipo: data.tipo || '',
       valor_total: data.valor_total,
       valor_entrada: data.valor_entrada,
       financeira: data.financeira,
@@ -379,12 +421,13 @@ const ContratoDialog: React.FC<Props> = ({
     const payload: any = {
       atendimento_id: atendimento.id,
       cpf_cnpj: cpfCnpj || null,
+      empresa_id: empresaId || null,
       ipva_tipo: ipvaTipo || null,
       ipva_cotas: ipvaTipo === 'ambos' && ipvaCotas ? ipvaCotas : null,
       ipva_valor: ipvaTipo === 'loja' ? parseCurrencyInput(ipvaValor) || null : null,
       transferencia_tipo: transferenciaTipo || null,
       transferencia_valor: transferenciaTipo === 'cliente' ? parseCurrencyInput(transferenciaValor) || null : null,
-      valor_quitacao: parseCurrencyInput(valorQuitacao) || null,
+      valor_quitacao: valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : null,
       valor_fechamento: parseCurrencyInput(valorFechamento) || null,
       observacoes_internas: obsInternas || null,
       observacoes_contrato: obsContrato || null,
@@ -399,7 +442,7 @@ const ContratoDialog: React.FC<Props> = ({
     if (parsedSinal !== null) estoqueUpdate.valor_sinal = parsedSinal;
     if (parsedVenda !== null) estoqueUpdate.valor_venda = parsedVenda;
     if (Object.keys(estoqueUpdate).length > 0) {
-      await supabase.from('estoque_motos').update(estoqueUpdate).eq('atendimento_venda_id', atendimento.id);
+      await supabase.from(estoqueTabela).update(estoqueUpdate).eq('atendimento_venda_id', atendimento.id);
     }
     // CPF/CNPJ do cliente é imutável: só grava se o cliente ainda não tinha um.
     if (cpfCnpj && atendimento.cliente_id && !cpfBloqueado) {
@@ -490,7 +533,9 @@ const ContratoDialog: React.FC<Props> = ({
   // Resumo do cliente (quando o cadastro está completo) — igual ao contrato de compra.
   const cli = clienteRecord;
   const cliEndereco = cli?.clientes_fornecedores_enderecos?.[0] || null;
-  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco);
+  // Dados bancários do cliente só são obrigatórios quando há troca (a loja paga o repasse da moto do cliente).
+  const exigirBancarios = hasTroca;
+  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco, { exigirBancarios });
   const fmtTelefone = (v: string | null | undefined) => {
     const d = (v || '').replace(/\D/g, '');
     if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
@@ -540,10 +585,10 @@ const ContratoDialog: React.FC<Props> = ({
       dataVencimento: dataVencimento ? format(dataVencimento, "dd/MM/yyyy", { locale: ptBR }) : '',
       formasPagamento: formasPagamento.map(f => {
         const fmt = (v: number | null | undefined) => v ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ 0,00';
-        if (f.tipo === 'financiamento') {
+        if (ehFinanciamento(f.tipo)) {
           return {
             tipo: 'financiamento',
-            descricao: 'Financiamento',
+            descricao: f.tipo || 'Financiamento',
             valor: fmt(f.valor_financiado),
             financeira: f.financeira || '',
             valorEntrada: fmt(f.valor_entrada),
@@ -578,6 +623,7 @@ const ContratoDialog: React.FC<Props> = ({
 
   const validateForGeneration = (): boolean => {
     const errors: string[] = [];
+    if (!empresaId) errors.push('Empresa vendedora');
     if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
     if (!valorSinal) errors.push('Valor do Sinal');
     if (!valorVenda) errors.push('Valor da Venda');
@@ -591,7 +637,8 @@ const ContratoDialog: React.FC<Props> = ({
     if (!isDucati && !ipvaTipo) errors.push('IPVA');
     if (!isDucati && ipvaTipo === 'ambos' && !ipvaCotas) errors.push('Número de Cotas do IPVA');
     if (!isDucati && ipvaTipo === 'loja' && !ipvaValor) errors.push('Valor do IPVA');
-    if (hasTroca && !valorQuitacao && !valorFechamento) errors.push('Valor de Quitação ou Fechamento da moto do cliente');
+    // Quitação da moto do cliente é obrigatória quando há troca — vem da avaliação (informar 0 se não houver).
+    if (hasTroca && !valorQuitacao?.trim()) errors.push('Valor de Quitação da moto do cliente (defina na avaliação — 0 se não houver)');
     if (!obsContrato && !obsContrato.trim()) errors.push('Observações do Contrato');
 
     if (errors.length > 0) {
@@ -663,7 +710,7 @@ const ContratoDialog: React.FC<Props> = ({
   const lojaLower = (atendimento.loja || '').toLowerCase();
   const canGerarVenda = ['ducati bsb', 'ducati fln', 'ducati poa', '299i', '299s', '299f', '299p', 'aventura'].includes(lojaLower) && atendimento.situacao === 'vendido';
 
-  const tipoLabel = (tipo: string) => TIPOS_PAGAMENTO.find(t => t.value === tipo)?.label || tipo;
+  const tipoLabel = (tipo: string) => tipo || '—';
 
   const motoNfeLabel = estItemNfe
     ? `${estItemNfe.marca ?? ''} ${estItemNfe.modelo ?? ''}`.trim()
@@ -684,6 +731,44 @@ const ContratoDialog: React.FC<Props> = ({
         </div>
 
           <div className="space-y-4">
+            {/* Card: Empresa Emitente */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" /> Empresa Emitente
+                </CardTitle>
+                <Separator className="mt-2" />
+              </CardHeader>
+              <CardContent>
+                {empresasLoja.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhuma empresa vinculada à loja do atendimento.</p>
+                ) : nfeJaEmitida ? (
+                  <InfoDisplay
+                    label="Empresa"
+                    value={(() => {
+                      const e = empresasLoja.find((x) => x.id === empresaId);
+                      if (!e) return '—';
+                      return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
+                    })()}
+                  />
+                ) : (
+                  <div className="space-y-1.5 max-w-sm">
+                    <Label>Empresa da operação <span className="text-destructive">*</span></Label>
+                    <Select value={empresaId} onValueChange={setEmpresaId}>
+                      <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+                      <SelectContent>
+                        {empresasLoja.map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Card: Cliente e Moto */}
             <Card>
               <CardHeader className="pb-2">
@@ -710,24 +795,7 @@ const ContratoDialog: React.FC<Props> = ({
               </CardHeader>
               <CardContent className="space-y-4">
                 {nfeJaEmitida ? (
-                  <div className="rounded-lg border bg-muted/30 p-3 space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">NF-e autorizada</span>
-                      <span className="text-muted-foreground">
-                        Nº {nfe.nfe?.numero || '-'} / Série {nfe.nfe?.serie || '-'}
-                      </span>
-                    </div>
-                    {nfe.nfe?.data_emissao && (
-                      <p className="text-xs text-muted-foreground">
-                        Emitida em {format(new Date(nfe.nfe.data_emissao), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                      </p>
-                    )}
-                    {nfe.nfe?.caminho_danfe && (
-                      <Button size="sm" className="gap-1.5" onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}>
-                        <ExternalLink className="h-4 w-4" /> Abrir DANFE
-                      </Button>
-                    )}
-                  </div>
+                  <p className="text-sm text-muted-foreground">NF-e autorizada — veja os dados na barra de ações abaixo.</p>
                 ) : (
                   <>
                     <div className="max-w-xs">
@@ -743,12 +811,6 @@ const ContratoDialog: React.FC<Props> = ({
                         placeholder="INFORMAÇÕES COMPLEMENTARES..."
                       />
                     </div>
-                    {nfe.erro && (
-                      <p className="text-xs text-destructive flex items-start gap-1">
-                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                        {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
-                      </p>
-                    )}
                   </>
                 )}
               </CardContent>
@@ -756,24 +818,52 @@ const ContratoDialog: React.FC<Props> = ({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+            {nfe.nfe?.status === 'processada' && (
+              <div className="flex flex-wrap items-center gap-3 mr-auto text-sm">
+                <Badge className="bg-primary/10 text-primary gap-1.5">
+                  <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
+                </Badge>
+                {nfe.nfe?.caminho_danfe && (
+                  <Button variant="outline" size="sm" onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}>
+                    <ExternalLink className="h-4 w-4 mr-1" /> DANFE
+                  </Button>
+                )}
+              </div>
+            )}
+            {nfe.pendente && (
+              <div className="flex items-center gap-3 mr-auto">
+                <Badge variant="outline" className="gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Emitindo NF-e…</Badge>
+                <Button variant="ghost" onClick={nfe.consultar} disabled={nfe.loading} className="gap-1.5">
+                  <RefreshCw className={`h-4 w-4 ${nfe.loading ? 'animate-spin' : ''}`} /> Atualizar
+                </Button>
+              </div>
+            )}
+            {nfe.erro && !nfe.pendente && (
+              <p className="mr-auto text-sm text-destructive flex items-start gap-1 max-w-md">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
+              </p>
+            )}
+
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
             </Button>
-            {!nfeJaEmitida && (
-              nfe.pendente ? (
-                <Button variant="outline" className="gap-1.5" disabled={nfe.loading} onClick={nfe.consultar}>
-                  <RefreshCw className={`h-4 w-4 ${nfe.loading ? 'animate-spin' : ''}`} /> Atualizar status
-                </Button>
-              ) : (
-                <Button
-                  className="gap-1.5"
-                  disabled={nfe.loading || parseCurrencyInput(nfeValor) <= 0}
-                  onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined })}
-                >
-                  {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                  {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
-                </Button>
-              )
+            {!nfeJaEmitida && !nfe.pendente && (
+              <Button
+                className="gap-1.5"
+                disabled={nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim())}
+                title={
+                  !empresaId
+                    ? 'Nenhuma empresa vinculada à loja do atendimento'
+                    : hasTroca && !valorQuitacao?.trim()
+                      ? 'Valor de Quitação da moto do cliente é obrigatório — defina na avaliação (0 se não houver)'
+                      : undefined
+                }
+                onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined, empresa_id: empresaId || undefined })}
+              >
+                {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
+              </Button>
             )}
           </div>
       </div>
@@ -804,6 +894,44 @@ const ContratoDialog: React.FC<Props> = ({
       ) : (
         <>
           <div className="space-y-4">
+              {/* Card: Empresa Vendedora */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" /> Empresa Vendedora
+                  </CardTitle>
+                  <Separator className="mt-2" />
+                </CardHeader>
+                <CardContent>
+                  {empresasLoja.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhuma empresa vinculada à loja do atendimento.</p>
+                  ) : soLeitura ? (
+                    <InfoDisplay
+                      label="Empresa"
+                      value={(() => {
+                        const e = empresasLoja.find((x) => x.id === empresaId);
+                        if (!e) return '—';
+                        return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
+                      })()}
+                    />
+                  ) : (
+                    <div className="space-y-1.5 max-w-sm">
+                      <Label>Empresa vendedora <span className="text-destructive">*</span></Label>
+                      <Select value={empresaId} onValueChange={setEmpresaId}>
+                        <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+                        <SelectContent>
+                          {empresasLoja.map((e) => (
+                            <SelectItem key={e.id} value={e.id}>
+                              {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Card: Dados do Cliente */}
               <Card>
                 <CardHeader className="pb-2">
@@ -839,6 +967,7 @@ const ContratoDialog: React.FC<Props> = ({
                     <ClienteForm
                       embedded
                       id={clienteId}
+                      exigirBancarios={exigirBancarios}
                       onSaved={handleClienteSaved}
                       onCancel={editandoCliente && cadastroCompleto ? () => setEditandoCliente(false) : undefined}
                     />
@@ -868,7 +997,8 @@ const ContratoDialog: React.FC<Props> = ({
                     </CardContent>
                   </Card>
 
-                  {/* Card: Dados Bancários */}
+                  {/* Card: Dados Bancários (só quando há troca — a loja paga o cliente) */}
+                  {exigirBancarios && (
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2">
@@ -886,6 +1016,7 @@ const ContratoDialog: React.FC<Props> = ({
                       <InfoDisplay label="CPF/CNPJ do Favorecido" value={cli?.cpf_cnpj_favorecido ? formatCpfCnpj(cli.cpf_cnpj_favorecido) : undefined} />
                     </CardContent>
                   </Card>
+                  )}
                 </>
               )}
 
@@ -1023,9 +1154,9 @@ const ContratoDialog: React.FC<Props> = ({
                         )}
                       </>
                     )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <CurrencyField label="Valor de Quitação" value={valorQuitacao} onChange={setValorQuitacao} />
-                      <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <InfoDisplay label="Valor de Quitação" value={valorQuitacao ? `R$ ${valorQuitacao}` : '—'} />
+                      <InfoDisplay label="Valor de Fechamento" value={valorFechamento ? `R$ ${valorFechamento}` : '—'} />
                     </div>
                   </CardContent>
                 </Card>
@@ -1051,7 +1182,7 @@ const ContratoDialog: React.FC<Props> = ({
                             <span className="text-xs font-semibold">{tipoLabel(fp.tipo)}</span>
                             {fp.financeira && <span className="text-xs text-muted-foreground">{fp.financeira}</span>}
                           </div>
-                          {fp.tipo === 'financiamento' ? (
+                          {ehFinanciamento(fp.tipo) ? (
                             <div className="text-xs text-muted-foreground space-x-3">
                               {fp.valor_entrada != null && <span>Entrada: {formatCurrency(fp.valor_entrada)}</span>}
                               {fp.numero_parcelas != null && fp.valor_parcelas != null && (
@@ -1078,20 +1209,23 @@ const ContratoDialog: React.FC<Props> = ({
                     <span className="text-sm font-medium">Adicionar Forma de Pagamento</span>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    {TIPOS_PAGAMENTO.map(tp => (
+                    {formasPagOpcoes.length === 0 && (
+                      <p className="text-xs text-muted-foreground">Nenhuma forma de pagamento habilitada para o BPM.</p>
+                    )}
+                    {formasPagOpcoes.map(fp => (
                       <Button
-                        key={tp.value}
+                        key={fp.id}
                         size="sm"
-                        variant={novaPagamentoTipo === tp.value ? 'default' : 'outline'}
-                        onClick={() => { setNovaPagamentoTipo(tp.value); setOutroValor(''); setFinValorEntrada(''); setFinFinanceira(''); setFinParcelas(''); setFinValorParcelas(''); setFinValorFinanciado(''); }}
+                        variant={novaPagamentoTipo === fp.id ? 'default' : 'outline'}
+                        onClick={() => { setNovaPagamentoTipo(fp.id); setOutroValor(''); setFinValorEntrada(''); setFinFinanceira(''); setFinParcelas(''); setFinValorParcelas(''); setFinValorFinanciado(''); }}
                         className="text-xs"
                       >
-                        {tp.label}
+                        {fp.nome}
                       </Button>
                     ))}
                   </div>
 
-                  {novaPagamentoTipo === 'financiamento' && (
+                  {ehFinanciamento(novaFormaNome) && (
                     <div className="space-y-3">
                       <CurrencyField label="Valor de Entrada" value={finValorEntrada} onChange={setFinValorEntrada} />
                       <div>
@@ -1114,7 +1248,7 @@ const ContratoDialog: React.FC<Props> = ({
                     </div>
                   )}
 
-                  {novaPagamentoTipo && novaPagamentoTipo !== 'financiamento' && (
+                  {novaPagamentoTipo && !ehFinanciamento(novaFormaNome) && (
                     <CurrencyField label="Valor Total" value={outroValor} onChange={setOutroValor} />
                   )}
 
