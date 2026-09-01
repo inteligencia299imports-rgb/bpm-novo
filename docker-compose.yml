@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: bpm-app
+    container_name: hbpm-app
     restart: unless-stopped
     ports:
       - "3080:80"
