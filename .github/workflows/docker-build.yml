@@ -24,7 +24,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: tec299/hbpm:latest
+          tags: tec299/bpm:latest
           build-args: |
             VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID }}
             VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
