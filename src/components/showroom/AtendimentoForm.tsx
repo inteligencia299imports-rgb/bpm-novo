@@ -228,7 +228,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [compraModelo, setCompraModelo] = useState('');
   const [compraAno, setCompraAno] = useState('');
   const [estoqueMotoId, setEstoqueMotoId] = useState('');
-  const [chassi, setChassi] = useState('');
 
   // venda
   const [vendaMarca, setVendaMarca] = useState('');
@@ -307,7 +306,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             setCompraModelo(mi.modelo || '');
             setCompraAno(mi.ano || '');
             setEstoqueMotoId(mi.estoque_moto_id || '');
-            setChassi((mi as any).chassi || '');
           }
         }
         if (at?.interesse === 'vender' || at?.interesse === 'trocar') {
@@ -410,16 +408,12 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Esta empresa não faz compra direta de moto. O interesse deve ser "comprar" ou "trocar".');
       return;
     }
-    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && (!compraModelo || !compraAno)) {
-      toast.error('Preencha o modelo e ano da moto Ducati');
-      return;
-    }
-    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && chassi.replace(/\s/g, '').length > 0 && (chassi.replace(/\s/g, '').length < 6 || chassi.replace(/\s/g, '').length > 17)) {
-      toast.error('O chassi deve ter entre 6 e 17 caracteres');
-      return;
-    }
-    if (!isDucati && (interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'externo' && (!compraMarca || !compraModelo || !compraAno)) {
+    if ((interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'externo' && (!compraMarca || !compraModelo || !compraAno)) {
       toast.error('Preencha todos os campos da Moto de Interesse');
+      return;
+    }
+    if ((interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'estoque' && !estoqueMotoId) {
+      toast.error('Selecione a moto do estoque');
       return;
     }
     if ((interesse === 'vender' || interesse === 'trocar') && (!vendaMarca || !vendaModelo || !vendaAnoFab || !vendaAnoMod || !vendaCategoria || !vendaCor || !vendaPlaca.trim() || !vendaKm.trim() || !vendaCilindrada.trim())) {
@@ -496,25 +490,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     }
 
     if (interesse === 'comprar' || interesse === 'trocar') {
-      const miData = isDucati
-        ? {
-            atendimento_id: atId!,
-            origem: 'estoque' as const,
-            marca: 'DUCATI',
-            modelo: compraModelo || null,
-            ano: compraAno || null,
-            estoque_moto_id: null,
-            chassi: chassi.toUpperCase().replace(/\s/g, '') || null,
-          }
-        : {
-            atendimento_id: atId!,
-            origem: origemMoto,
-            marca: origemMoto === 'externo' ? compraMarca || null : null,
-            modelo: origemMoto === 'externo' ? compraModelo || null : null,
-            ano: origemMoto === 'externo' ? compraAno || null : null,
-            estoque_moto_id: origemMoto === 'estoque' ? estoqueMotoId || null : null,
-            chassi: null,
-          };
+      const miData = {
+        atendimento_id: atId!,
+        origem: origemMoto,
+        marca: origemMoto === 'externo' ? compraMarca || null : null,
+        modelo: origemMoto === 'externo' ? compraModelo || null : null,
+        ano: origemMoto === 'externo' ? compraAno || null : null,
+        estoque_moto_id: origemMoto === 'estoque' ? estoqueMotoId || null : null,
+        chassi: null,
+      };
       if (isEditing) {
         const { data: existing } = await supabase.from('motos_interesse').select('id').eq('atendimento_id', atId!).maybeSingle();
         if (existing) {
@@ -735,7 +719,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 <SelectTrigger><SelectValue placeholder="Selecione o vendedor" /></SelectTrigger>
                 <SelectContent>
                   {vendedores.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
+                    <SelectItem key={v.id} value={v.id}>{firstLastName(v.nome)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -825,7 +809,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           ano={compraAno} setAno={setCompraAno}
           estoqueMotoId={estoqueMotoId} setEstoqueMotoId={setEstoqueMotoId}
           loja={loja}
-          chassi={chassi} setChassi={setChassi}
           disabled={isEditing && (situacao === 'sinal' || situacao === 'vendido')}
         />
       )}

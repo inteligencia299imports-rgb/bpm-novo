@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -18,6 +17,7 @@ interface EstoqueOption {
   cor: string | null;
   placa: string | null;
   marca: string;
+  is0km: boolean;
 }
 
 interface Props {
@@ -32,27 +32,24 @@ interface Props {
   estoqueMotoId: string;
   setEstoqueMotoId: (v: string) => void;
   loja?: string;
-  chassi?: string;
-  setChassi?: (v: string) => void;
   disabled?: boolean;
 }
 
 const MotoCompraSection: React.FC<Props> = ({
   origemMoto, setOrigemMoto, marca, setMarca, modelo, setModelo, ano, setAno,
-  estoqueMotoId, setEstoqueMotoId, loja, chassi = '', setChassi, disabled,
+  estoqueMotoId, setEstoqueMotoId, loja, disabled,
 }) => {
   const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
   const marcas = getMarcaNomes();
   const modelos = marca ? getModelosPorMarca(marca) : [];
 
   const isDucati = (loja || '').toLowerCase().startsWith('ducati');
-  const ducatiModelos = getModelosPorMarca('DUCATI');
 
   const [estoque, setEstoque] = useState<EstoqueOption[]>([]);
   const [loadingEstoque, setLoadingEstoque] = useState(false);
 
   useEffect(() => {
-    if (isDucati || origemMoto !== 'estoque') return;
+    if (origemMoto !== 'estoque') return;
 
     let isMounted = true;
 
@@ -109,7 +106,7 @@ const MotoCompraSection: React.FC<Props> = ({
     return () => {
       isMounted = false;
     };
-  }, [origemMoto, isDucati, estoqueMotoId]);
+  }, [origemMoto, estoqueMotoId]);
 
   const formatEstoqueLabel = (item?: EstoqueOption | null) => {
     if (!item) return 'Moto não encontrada';
@@ -120,73 +117,17 @@ const MotoCompraSection: React.FC<Props> = ({
     return parts.join(' - ').toUpperCase();
   };
 
-  const sortedEstoque = useMemo(() =>
-    [...estoque].sort((a, b) => formatEstoqueLabel(a).localeCompare(formatEstoqueLabel(b))),
-    [estoque]
-  );
-
   const [comboOpen, setComboOpen] = useState(false);
-  const selectedItem = estoque.find(e => e.id === estoqueMotoId);
+  const visibleEstoque = isDucati ? estoque.filter(e => e.is0km) : estoque;
+  const selectedItem = visibleEstoque.find(e => e.id === estoqueMotoId);
   const selectedLabel = estoqueMotoId
     ? (selectedItem ? formatEstoqueLabel(selectedItem) : 'Moto selecionada (indisponível)')
     : null;
 
-  const handleChassiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 17).toUpperCase();
-    setChassi?.(val);
-  };
-
-  // Ducati-specific layout
-  if (isDucati) {
-    return (
-      <Card className={disabled ? 'opacity-60' : ''}>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Bike className="h-4 w-4 text-primary" /> Moto de Interesse (Ducati)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {disabled && (
-            <p className="text-sm text-destructive font-medium">
-              ⚠ Moto de interesse bloqueada. Para alterar, marque o atendimento como "Perdido" primeiro.
-            </p>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-1.5">
-              <Label>Modelo *</Label>
-              <Select value={modelo} onValueChange={setModelo} disabled={disabled}>
-                <SelectTrigger><SelectValue placeholder={loading ? "Carregando..." : "Selecione"} /></SelectTrigger>
-                <SelectContent>
-                  {ducatiModelos.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Ano Modelo *</Label>
-              <Select value={ano} onValueChange={setAno} disabled={disabled}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Chassi</Label>
-              <Input
-                value={chassi}
-                onChange={handleChassiChange}
-                placeholder="Ex: 9BWZZZ377VT004251"
-                maxLength={17}
-                minLength={6}
-                disabled={disabled}
-              />
-              {chassi && (chassi.length < 6 || chassi.length > 17) && (
-                <p className="text-xs text-destructive">Chassi deve ter entre 6 e 17 caracteres</p>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const sortedVisibleEstoque = useMemo(() =>
+    [...visibleEstoque].sort((a, b) => formatEstoqueLabel(a).localeCompare(formatEstoqueLabel(b))),
+    [visibleEstoque]
+  );
 
   return (
     <Card className={disabled ? 'opacity-60' : ''}>
@@ -241,7 +182,7 @@ const MotoCompraSection: React.FC<Props> = ({
                   <CommandList>
                     <CommandEmpty>Nenhuma moto encontrada.</CommandEmpty>
                     <CommandGroup>
-                      {sortedEstoque.map(item => (
+                      {sortedVisibleEstoque.map(item => (
                         <CommandItem
                           key={item.id}
                           value={formatEstoqueLabel(item)}
