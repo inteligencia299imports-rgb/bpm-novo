@@ -12,6 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
+import { firstLastName } from '@/lib/utils';
 
 interface EstoqueItem {
   id: string;
@@ -259,7 +260,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
                       {/* Vendedor */}
                       <div className="flex items-center gap-1.5 text-xs font-medium text-primary min-w-0">
                         <User className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate min-w-0">{cli.vendedor_nome}</span>
+                        <span className="truncate min-w-0">{firstLastName(cli.vendedor_nome)}</span>
                       </div>
 
                       {/* Phone + Date */}

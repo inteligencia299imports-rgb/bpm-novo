@@ -4,6 +4,7 @@ import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, Fil
 import logoImg from '@/assets/logo-crm.png';
 import NotificationBell from './NotificationBell';
 import { Button } from '@/components/ui/button';
+import { firstLastName } from '@/lib/utils';
 
 const ROLE_LABELS: Record<string, string> = {
   vendedor: 'Vendedor',
@@ -89,7 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate text-sidebar-foreground">{userName}</p>
+                <p className="text-sm font-medium truncate text-sidebar-foreground">{firstLastName(userName)}</p>
                 <p className="text-xs text-sidebar-foreground/60">{ROLE_LABELS[role || '']}</p>
               </div>
             )}

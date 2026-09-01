@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import type { ConsultaVeiculoResultado } from '@/types/consultaVeicular';
+import { firstLastName } from '@/lib/utils';
 
 export interface ConsultaManualResultado {
   tipo: 'manual';
@@ -121,7 +122,7 @@ const ConsultasVeicularesList: React.FC<Props> = ({ avaliacaoId, refreshKey, onO
                       </span>
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <User className="h-3 w-3" />
-                        {row.usuario_nome}
+                        {firstLastName(row.usuario_nome)}
                       </span>
                       <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
                         {manual ? 'Manual' : 'SERPRO'}

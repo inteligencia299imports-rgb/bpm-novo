@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut, User } from 'lucide-react';
 import logoImg from '@/assets/logo-crm.png';
+import { firstLastName } from '@/lib/utils';
 
 const ROLE_LABELS: Record<string, string> = {
   vendedor: 'Vendedor',
@@ -50,7 +51,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange }) => {
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-2 text-sm">
             <User className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">{userName}</span>
+            <span className="font-medium">{firstLastName(userName)}</span>
             <span className="text-muted-foreground">({ROLE_LABELS[role || '']})</span>
           </div>
         </div>

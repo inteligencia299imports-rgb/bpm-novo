@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { User, Clock } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { firstLastName } from '@/lib/utils';
 
 interface TimelineEntry {
   id: string;
@@ -88,7 +89,7 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
                   {h.changed_by_name && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      {h.changed_by_name}
+                      {firstLastName(h.changed_by_name)}
                     </span>
                   )}
                 </div>
@@ -120,7 +121,7 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground">Responsável</span>
-                  <p className="text-sm font-medium">{selected.changed_by_name || '-'}</p>
+                  <p className="text-sm font-medium">{firstLastName(selected.changed_by_name) || '-'}</p>
                 </div>
               </div>
               {renderPopupExtra && (

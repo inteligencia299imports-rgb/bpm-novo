@@ -21,7 +21,7 @@ import ProcessoDialog from './ProcessoDialog';
 import ContratoDialog from '@/components/showroom/ContratoDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
-import { formatPersonName } from '@/lib/utils';
+import { cn, formatPersonName, firstLastName } from '@/lib/utils';
 import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
 
 interface Props {
@@ -64,11 +64,11 @@ const formatCurrency = (value: number | null | undefined) => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
+const InfoItem = ({ label, value, valueClassName }: { label: string; value: React.ReactNode; valueClassName?: string }) => (
   value ? (
     <div className="flex flex-col gap-0.5">
       <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
-      <span className="text-sm font-semibold">{value || '-'}</span>
+      <span className={cn('text-sm font-semibold', valueClassName)}>{value || '-'}</span>
     </div>
   ) : null
 );
@@ -350,7 +350,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 {vendedorNome && (
                   <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
                     <IdCard className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-semibold text-primary">{vendedorNome}</span>
+                    <span className="text-sm font-semibold text-primary">{firstLastName(vendedorNome)}</span>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
@@ -377,7 +377,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 {avaliadorNome && (
                   <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
                     <IdCard className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
+                    <span className="text-sm font-semibold text-primary">{firstLastName(avaliadorNome)}</span>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
@@ -391,7 +391,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   {motoConsignada.km && <InfoItem label="KM" value={formatKm(motoConsignada.km)} />}
                   {motoConsignada.observacoes && (
                     <div className="col-span-2">
-                      <InfoItem label="Observações" value={motoConsignada.observacoes} />
+                      <InfoItem label="Observações" value={motoConsignada.observacoes} valueClassName="font-normal" />
                     </div>
                   )}
                 </div>
@@ -489,7 +489,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 {avaliadorNome && (
                   <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
                     <IdCard className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
+                    <span className="text-sm font-semibold text-primary">{firstLastName(avaliadorNome)}</span>
                   </div>
                 )}
                 {motosInteresse.map((mi: any, idx: number) => {
@@ -649,7 +649,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                         </>
                       ) : (
                         <div className="grid grid-cols-2 gap-4">
-                          {!item.loja?.toLowerCase().startsWith('ducati') && <InfoItem label="Origem" value="Externo" />}
+                          {!item.loja?.toLowerCase().startsWith('ducati') && (
+                            <InfoItem label="Origem" value={mi.origem === 'estoque' ? 'Estoque (moto não vinculada)' : 'Externo'} />
+                          )}
                           <InfoItem label="Marca" value={mi.marca} />
                           <InfoItem label="Modelo" value={mi.modelo} />
                           <InfoItem label="Ano" value={mi.ano} />
@@ -722,7 +724,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               {viewAvaliacaoData.avaliador_nome && (
                 <div>
                   <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Avaliador</span>
-                  <p className="text-sm font-medium">{viewAvaliacaoData.avaliador_nome}</p>
+                  <p className="text-sm font-medium">{firstLastName(viewAvaliacaoData.avaliador_nome)}</p>
                 </div>
               )}
             </div>

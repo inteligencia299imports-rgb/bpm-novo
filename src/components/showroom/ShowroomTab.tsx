@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Plus, Search, Filter, CalendarIcon, X, Bike } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, firstLastName } from '@/lib/utils';
 import { LOJAS, INTERESSES, SITUACOES_SHOWROOM } from '@/types/crm';
 import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto } from '@/lib/estoqueMoto';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
@@ -314,7 +314,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
               <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Vendedor" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os vendedores</SelectItem>
-                {vendedores.map(v => <SelectItem key={v.user_id} value={v.user_id}>{v.nome}</SelectItem>)}
+                {vendedores.map(v => <SelectItem key={v.user_id} value={v.user_id}>{firstLastName(v.nome)}</SelectItem>)}
               </SelectContent>
             </Select>
             <Popover>

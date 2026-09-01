@@ -21,7 +21,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, ArrowLeftRight, ShieldCheck, Handshake, Pencil, RotateCw, AlertTriangle, ClipboardList, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
-import { formatPersonName, firstLastName } from '@/lib/utils';
+import { cn, formatPersonName, firstLastName } from '@/lib/utils';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
@@ -992,7 +992,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     value ? (
       <div className="flex flex-col gap-0.5">
         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
-        <span className={`text-sm font-semibold ${valueClassName || ''}`}>{value}</span>
+        <span className={cn('text-sm font-semibold', valueClassName)}>{value}</span>
       </div>
     ) : null
   );
@@ -1189,7 +1189,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
-                <InfoItem label="Vendedor" value={vendedorNome} valueClassName="text-primary" />
+                <InfoItem label="Vendedor" value={firstLastName(vendedorNome)} valueClassName="text-primary" />
                 <InfoItem label="Loja" value={at?.loja} />
                 <InfoItem label="Tipo" value={at?.tipo_atendimento} />
                 <InfoItem label="Interesse" value={at?.interesse ? getInteresseLabel(at.interesse) : null} />
@@ -1231,7 +1231,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 {moto?.renavam && <InfoItem label="RENAVAM" value={moto.renavam} />}
                 {moto?.observacoes && (
                   <div className="col-span-2">
-                    <InfoItem label="Observações" value={moto.observacoes} />
+                    <InfoItem label="Observações" value={moto.observacoes} valueClassName="font-normal" />
                   </div>
                 )}
               </div>
@@ -1347,7 +1347,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
               {hasEvaluation ? (
                 <div className="space-y-3">
                   <div className="space-y-3">
-                    <InfoItem label="Avaliador" value={avaliadorNome} valueClassName="text-primary" />
+                    <InfoItem label="Avaliador" value={firstLastName(avaliadorNome)} valueClassName="text-primary" />
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       <InfoItem label="Valor FIPE" value={formatCurrency(avaliacao?.valor_fipe)} />
                       <InfoItem label="Menor Valor" value={formatCurrency(avaliacao?.menor_valor)} />
@@ -1555,7 +1555,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <SelectTrigger><SelectValue placeholder="Selecione o avaliador" /></SelectTrigger>
                 <SelectContent>
                   {avaliadores.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
+                    <SelectItem key={a.id} value={a.id}>{firstLastName(a.nome)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

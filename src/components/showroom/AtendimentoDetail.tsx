@@ -27,7 +27,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
-import { formatPersonName } from '@/lib/utils';
+import { formatPersonName, firstLastName } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PhotoUpload from './PhotoUpload';
 import DocumentUpload from './DocumentUpload';
@@ -290,7 +290,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     value ? (
       <div className="flex flex-col gap-0.5">
         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
-        <span className={`text-sm font-semibold ${valueClassName || ''}`}>{value}</span>
+        <span className={cn('text-sm font-semibold', valueClassName)}>{value}</span>
       </div>
     ) : null
   );
@@ -904,7 +904,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
-                <InfoItem label="Vendedor" value={vendedorNome} valueClassName="text-primary" />
+                <InfoItem label="Vendedor" value={firstLastName(vendedorNome)} valueClassName="text-primary" />
                 <InfoItem label="Loja" value={atendimento.loja} />
                 <InfoItem label="Tipo de Atendimento" value={atendimento.tipo_atendimento} />
                 <InfoItem label="Interesse" value={int?.label} />
@@ -1081,7 +1081,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       </>
                     ) : (
                     <div className="grid grid-cols-2 gap-4">
-                      {!atendimento.loja?.toLowerCase().startsWith('ducati') && <InfoItem label="Origem" value="Externo" />}
+                      {!atendimento.loja?.toLowerCase().startsWith('ducati') && (
+                        <InfoItem label="Origem" value={moto.origem === 'estoque' ? 'Estoque (moto não vinculada)' : 'Externo'} />
+                      )}
                       <InfoItem label="Marca" value={moto.marca} />
                       <InfoItem label="Modelo" value={moto.modelo} />
                       <InfoItem label="Ano" value={moto.ano} />
@@ -1141,7 +1143,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         {(moto as any).renavam && <InfoItem label="RENAVAM" value={(moto as any).renavam} />}
                         {moto.observacoes && (
                           <div className="col-span-2">
-                            <InfoItem label="Observações" value={moto.observacoes} />
+                            <InfoItem label="Observações" value={moto.observacoes} valueClassName="font-normal" />
                           </div>
                         )}
                       </div>
@@ -1470,7 +1472,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             </DialogTitle>
             {viewAvaliacaoData?.avaliador_nome && (
               <p className="text-sm text-muted-foreground">
-                Avaliado por <span className="font-medium text-foreground">{viewAvaliacaoData.avaliador_nome}</span>
+                Avaliado por <span className="font-medium text-foreground">{firstLastName(viewAvaliacaoData.avaliador_nome)}</span>
               </p>
             )}
           </DialogHeader>

@@ -24,7 +24,7 @@ import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
 import PlacaInput from '@/components/shared/PlacaInput';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
-import { formatPersonName } from '@/lib/utils';
+import { formatPersonName, firstLastName } from '@/lib/utils';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
@@ -461,7 +461,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                 {avaliadorNome && (
                   <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
                     <IdCard className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
+                    <span className="text-sm font-semibold text-primary">{firstLastName(avaliadorNome)}</span>
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">

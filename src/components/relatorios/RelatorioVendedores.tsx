@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { abbreviateName, fmtInt } from '@/lib/utils';
+import { firstLastName, fmtInt } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -77,7 +77,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     setMyIndicadores(atual);
     setMyIndicadoresPrev(anterior);
     const equipeData = (equipeRes.data || []) as any[];
-    setChartByVendedor(equipeData.map((v: any) => ({ ...v, nome: abbreviateName(v.nome || 'Desconhecido') })));
+    setChartByVendedor(equipeData.map((v: any) => ({ ...v, nome: firstLastName(v.nome || 'Desconhecido') })));
     setChartByMonth((mensalRes.data || []) as any[]);
     setLoading(false);
   }, [user, dateFrom, dateTo, filterLoja]);

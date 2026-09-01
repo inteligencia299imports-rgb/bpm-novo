@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
-import { abbreviateName, fmtInt, cn } from '@/lib/utils';
+import { firstLastName, fmtInt, cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, ArrowDownToLine, Repeat, Package, FileSpreadsheet, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -297,7 +297,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     }
     return Array.from(map.values()).map((v) => ({
       ...v,
-      nome: abbreviateName(v.nomeCompleto),
+      nome: firstLastName(v.nomeCompleto),
       total: v.aqTrocar + v.aqVender,
     }));
   }, [rows, nomeById, filterLoja, dateFrom, dateTo]);
@@ -359,7 +359,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       'Cliente','Avaliador','Loja','Tipo','Modelo','Placa','Data Aquisição',
       'V. Fechamento','Trade-in','Previsão Custo','Custos Realizados','Δ Custo','Quanto Vende','Margem Prev.','Margem %',
     ], ...motosAdquiridas.map(m => [
-      m.cliente, abbreviateName(m.avaliador), lojaLabel(m.loja), tipoDisplayLabel(m.tipo), m.modelo, m.placa,
+      m.cliente, firstLastName(m.avaliador), lojaLabel(m.loja), tipoDisplayLabel(m.tipo), m.modelo, m.placa,
       m.dataAquisicao ? format(new Date(m.dataAquisicao), 'dd/MM/yyyy') : '-',
       m.valorFechamento, m.bonus, m.previsaoCusto, m.custosRealizados,
       m.previsaoCusto > 0 ? (m.custosRealizados - m.previsaoCusto) / m.previsaoCusto : null,
@@ -402,7 +402,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           ? `${fmtBRL(m.margemPrevista)} (${(m.margemPrevista / m.quantoVende * 100).toFixed(1).replace('.', ',')}%)`
           : fmtBRL(m.margemPrevista);
         return [
-          m.cliente, abbreviateName(m.avaliador), lojaLabel(m.loja), tipoDisplayLabel(m.tipo), m.modelo, m.placa,
+          m.cliente, firstLastName(m.avaliador), lojaLabel(m.loja), tipoDisplayLabel(m.tipo), m.modelo, m.placa,
           m.dataAquisicao ? format(new Date(m.dataAquisicao), 'dd/MM/yy') : '-',
           fmtBRL(m.valorFechamento), fmtBRL(m.bonus), fmtBRL(m.previsaoCusto),
           custoStr, fmtBRL(m.quantoVende), margemStr,
@@ -585,7 +585,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                 ) : motosAdquiridas.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell className="text-xs">{m.cliente}</TableCell>
-                    <TableCell className="text-xs">{abbreviateName(m.avaliador)}</TableCell>
+                    <TableCell className="text-xs">{firstLastName(m.avaliador)}</TableCell>
                     <TableCell className="text-xs font-medium">{lojaLabel(m.loja)}</TableCell>
                     <TableCell><Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(m.tipo)}`}>{tipoDisplayLabel(m.tipo)}</Badge></TableCell>
                     <TableCell className="text-xs">{m.modelo}</TableCell>

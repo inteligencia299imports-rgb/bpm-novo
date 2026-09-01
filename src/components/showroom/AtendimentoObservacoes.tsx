@@ -10,6 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { firstLastName } from '@/lib/utils';
 
 interface Nota {
   id: string;
@@ -112,7 +113,7 @@ const AtendimentoObservacoes: React.FC<Props> = ({ idOperacao }) => {
                         </span>
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <User className="h-3 w-3" />
-                          {n.usuario_nome}
+                          {firstLastName(n.usuario_nome)}
                         </span>
                       </div>
                       {(role === 'master' || n.created_by === user?.id) && (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
-import { abbreviateName, fmtInt } from '@/lib/utils';
+import { abbreviateName, fmtInt, firstLastName } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, ShoppingCart, CreditCard, TrendingUp, DollarSign, Target, BarChart3, PieChart, FileSpreadsheet, FileDown } from 'lucide-react';
@@ -585,7 +585,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                     ) : motosVendidas.map((m: any, i: number) => (
                       <TableRow key={i}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
-                        <TableCell className="text-xs">{m.vendedor}</TableCell>
+                        <TableCell className="text-xs">{firstLastName(m.vendedor)}</TableCell>
                         <TableCell className="text-xs font-medium">{lojaLabel(m.loja)}</TableCell>
                         <TableCell><Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(m.tipo)}`}>{tipoLabel(m.tipo)}</Badge></TableCell>
                         <TableCell className="text-xs">{m.modelo}</TableCell>
@@ -631,7 +631,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                     ) : motosSinal.map((m: any, i: number) => (
                       <TableRow key={i}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
-                        <TableCell className="text-xs">{m.vendedor}</TableCell>
+                        <TableCell className="text-xs">{firstLastName(m.vendedor)}</TableCell>
                         <TableCell className="text-xs font-medium">{lojaLabel(m.loja)}</TableCell>
                         <TableCell><Badge variant="outline" className={`text-[10px] ${getTipoAquisicaoBadgeClass(m.tipo)}`}>{tipoLabel(m.tipo)}</Badge></TableCell>
                         <TableCell className="text-xs">{m.modelo}</TableCell>

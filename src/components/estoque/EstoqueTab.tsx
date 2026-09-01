@@ -18,6 +18,7 @@ import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoque
 import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
 import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import { firstLastName } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Popover,
@@ -634,7 +635,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             {item.vendedor_nome && (
                               <span className="flex items-center gap-1">
                                 <User className="h-3 w-3" />
-                                {item.vendedor_nome}
+                                {firstLastName(item.vendedor_nome)}
                               </span>
                             )}
                           </div>
