@@ -93,7 +93,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   const ehNfe = modo === 'nfe';
   const nfe = useNfeCompra(avaliacao?.id, open);
   // NF-e autorizada -> contrato e cliente 100% travados (nenhum campo editável).
-  const nfeJaEmitida = nfe.emitida;
+  // "Emitida" pra efeito de travar tela/compromisso e' so a NF real (producao) --
+  // o teste em homologacao nao tem valor fiscal.
+  const nfeJaEmitida = nfe.emitidaProducao;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -782,10 +784,10 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
               {ehNfe ? (
                 <>
-                  {nfe.nfe?.status === 'processada' ? (
+                  {nfe.emitidaProducao ? (
                     <div className="flex flex-wrap items-center gap-3 mr-auto text-sm">
                       <Badge className="bg-primary/10 text-primary gap-1.5">
-                        <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe.numero || '-'} • série {nfe.nfe.serie || '-'}
+                        <FileText className="h-3.5 w-3.5" /> NF-e de produção nº {nfe.nfe.numero || '-'} • série {nfe.nfe.serie || '-'}
                       </Badge>
                       {nfe.nfe.caminho_danfe && (
                         <a href={nfe.nfe.caminho_danfe} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
@@ -807,30 +809,46 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                       <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                       {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
                     </p>
+                  ) : nfe.homologada ? (
+                    <p className="mr-auto text-sm text-success flex items-center gap-1.5">
+                      <FileText className="h-4 w-4 shrink-0" /> Testada em homologação — pronta para emitir em produção.
+                    </p>
                   ) : null}
 
                   <Button variant="outline" onClick={() => onOpenChange(false)}>
                     <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
                   </Button>
-                  {nfe.nfe?.status !== 'processada' && !nfe.pendente && (
-                    <Button
-                      variant={podeEmitirNfe && !!empresaId && parseCurrencyInput(nfeValor) > 0 ? 'default' : 'outline'}
-                      onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined })}
-                      disabled={!podeEmitirNfe || nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0}
-                      title={
-                        !empresaId
-                          ? 'Selecione a empresa emitente'
-                          : parseCurrencyInput(nfeValor) <= 0
-                            ? 'Informe o valor da NF-e'
-                          : podeEmitirNfe
-                            ? undefined
-                            : 'Disponível após aprovação, contrato gerado e consulta realizada'
-                      }
-                      className="gap-1.5"
-                    >
-                      {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                      {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
-                    </Button>
+                  {!nfe.emitidaProducao && !nfe.pendente && (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => nfe.emitir('homologacao', { valor: parseCurrencyInput(nfeValor), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined })}
+                        disabled={!podeEmitirNfe || nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0}
+                        title={
+                          !empresaId
+                            ? 'Selecione a empresa emitente'
+                            : parseCurrencyInput(nfeValor) <= 0
+                              ? 'Informe o valor da NF-e'
+                            : podeEmitirNfe
+                              ? undefined
+                              : 'Disponível após aprovação, contrato gerado e consulta realizada'
+                        }
+                        className="gap-1.5"
+                      >
+                        {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro && !nfe.homologada ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                        {nfe.erro && !nfe.homologada ? 'Tentar novamente' : 'Testar em Homologação'}
+                      </Button>
+                      <Button
+                        variant={nfe.homologada ? 'default' : 'outline'}
+                        onClick={() => nfe.emitir('producao', { valor: parseCurrencyInput(nfeValor), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined })}
+                        disabled={!podeEmitirNfe || nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || !nfe.homologada}
+                        title={!nfe.homologada ? 'Teste em homologação primeiro' : undefined}
+                        className="gap-1.5"
+                      >
+                        {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro && nfe.homologada ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                        {nfe.erro && nfe.homologada ? 'Tentar novamente' : 'Emitir NF Real'}
+                      </Button>
+                    </>
                   )}
                 </>
               ) : modoLeitura ? (

@@ -54,9 +54,10 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
   // ---- NF-e de entrada em consignação ----
   const nfe = useNfeCompra(avaliacaoId, open, 'consignacao');
-  const nfeEmitida = nfe.emitida;
+  const nfeEmitida = nfe.emitidaProducao;
   const nfePendente = nfe.pendente;
   const nfeErro = nfe.erro;
+  const nfeHomologada = nfe.homologada;
   const emitindoNfe = nfe.loading;
   const [consultaRealizada, setConsultaRealizada] = useState(false);
   const [contratoAssinado, setContratoAssinado] = useState(false);
@@ -308,6 +309,9 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                         {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
                       </p>
                     )}
+                    {isNf && !nfeErro && nfeHomologada && !nfeEmitida && (
+                      <p className="text-xs text-success mt-0.5">Testada em homologação — falta emitir em produção.</p>
+                    )}
                   </div>
                   {isNf && !nfeEmitida ? (
                     <div className="col-span-2 flex items-center justify-end gap-2">
@@ -336,7 +340,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                           title={podeEmitirNfe ? undefined : 'Disponível após contrato do consignante e consulta realizada'}
                           onClick={() => onEmitirNfe?.()}
                         >
-                          <FileText className="h-4 w-4" /> Emitir NF-e
+                          <FileText className="h-4 w-4" /> {nfeHomologada ? 'Emitir NF Real' : 'Emitir NF-e'}
                         </Button>
                       )}
                     </div>

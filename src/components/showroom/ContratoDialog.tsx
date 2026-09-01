@@ -146,7 +146,9 @@ const ContratoDialog: React.FC<Props> = ({
   const estItemNfe = motoIntNfe?.origem === 'estoque' && motoIntNfe?.estoque_moto_id ? estoqueData[motoIntNfe.estoque_moto_id] : null;
   const tipoVenda = estItemNfe?.tipo === '0km' ? 'venda_0km' : 'venda_seminova';
   const nfe = useNfeCompra(atendimento.id, open, tipoVenda, 'atendimento');
-  const nfeJaEmitida = nfe.emitida;
+  // "Emitida" pra efeito de travar contrato/sinal/venda so conta a NF real (producao) --
+  // o teste em homologacao nao tem valor fiscal e nao deve travar nada.
+  const nfeJaEmitida = nfe.emitidaProducao;
   const soLeitura = ehNfe || nfeJaEmitida;
   const [nfeValor, setNfeValor] = useState('');
   const [nfeObs, setNfeObs] = useState('');
@@ -712,7 +714,7 @@ const ContratoDialog: React.FC<Props> = ({
                 {nfeJaEmitida ? (
                   <div className="rounded-lg border bg-muted/30 p-3 space-y-2 text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold">NF-e autorizada</span>
+                      <span className="font-semibold">NF-e de produção autorizada</span>
                       <span className="text-muted-foreground">
                         Nº {nfe.nfe?.numero || '-'} / Série {nfe.nfe?.serie || '-'}
                       </span>
@@ -730,6 +732,12 @@ const ContratoDialog: React.FC<Props> = ({
                   </div>
                 ) : (
                   <>
+                    {nfe.homologada && (
+                      <div className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-success flex items-center gap-2">
+                        <FileText className="h-4 w-4 shrink-0" />
+                        Testada em homologação com sucesso — pronta para emitir em produção.
+                      </div>
+                    )}
                     <div className="max-w-xs">
                       <CurrencyField label="Valor da Nota" value={nfeValor} onChange={setNfeValor} required />
                     </div>
@@ -765,14 +773,26 @@ const ContratoDialog: React.FC<Props> = ({
                   <RefreshCw className={`h-4 w-4 ${nfe.loading ? 'animate-spin' : ''}`} /> Atualizar status
                 </Button>
               ) : (
-                <Button
-                  className="gap-1.5"
-                  disabled={nfe.loading || parseCurrencyInput(nfeValor) <= 0}
-                  onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined })}
-                >
-                  {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                  {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    className="gap-1.5"
+                    disabled={nfe.loading || parseCurrencyInput(nfeValor) <= 0}
+                    onClick={() => nfe.emitir('homologacao', { valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined })}
+                  >
+                    {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                    {nfe.erro && !nfe.homologada ? 'Tentar novamente (homologação)' : 'Testar em Homologação'}
+                  </Button>
+                  <Button
+                    className="gap-1.5"
+                    disabled={nfe.loading || !nfe.homologada || parseCurrencyInput(nfeValor) <= 0}
+                    title={!nfe.homologada ? 'Teste em homologação primeiro' : undefined}
+                    onClick={() => nfe.emitir('producao', { valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined })}
+                  >
+                    {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                    {nfe.erro && nfe.homologada ? 'Tentar novamente (produção)' : 'Emitir NF Real'}
+                  </Button>
+                </>
               )
             )}
           </div>

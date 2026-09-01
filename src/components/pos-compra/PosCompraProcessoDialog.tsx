@@ -82,9 +82,10 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   // ---- NF-e de compra ----
   const nfe = useNfeCompra(avaliacaoId, open);
   const nfeCompra = nfe.nfe;
-  const nfeEmitida = nfe.emitida;
+  const nfeEmitida = nfe.emitidaProducao;
   const nfePendente = nfe.pendente;
   const nfeErro = nfe.erro;
+  const nfeHomologada = nfe.homologada;
   const emitindoNfe = nfe.loading;
   const consultarNfe = nfe.consultar;
   const setNfeCompra = nfe.setNfe;
@@ -474,6 +475,9 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                         {nfeCompra?.erro_mensagem || 'Falha na emissão da NF-e'}
                       </p>
                     )}
+                    {isNf && !nfeErro && nfeHomologada && !nfeEmitida && (
+                      <p className="text-xs text-success mt-0.5">Testada em homologação — falta emitir em produção.</p>
+                    )}
                     {e.etapa === 'TRANSFERÊNCIA CONCLUÍDA' && e.concluida && e.destino_transferencia && (
                       <button
                         type="button"
@@ -520,7 +524,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                           title={podeEmitirNfe ? undefined : 'Disponível após aprovação, contrato gerado e consulta realizada'}
                           onClick={() => onEmitirNfe?.()}
                         >
-                          {emitindoNfe ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Emitir NF-e
+                          {emitindoNfe ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} {nfeHomologada ? 'Emitir NF Real' : 'Emitir NF-e'}
                         </Button>
                       )}
                     </div>

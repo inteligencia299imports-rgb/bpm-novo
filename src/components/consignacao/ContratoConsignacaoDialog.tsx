@@ -121,7 +121,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const { user, userName } = useAuth();
   const ehNfe = modo === 'nfe';
   const nfe = useNfeCompra(avaliacao?.id, open, 'consignacao');
-  const nfeJaEmitida = nfe.emitida;
+  // "Emitida" pra efeito de travar tela e' so a NF real (producao) --
+  // o teste em homologacao nao tem valor fiscal.
+  const nfeJaEmitida = nfe.emitidaProducao;
   const soLeitura = ehNfe || nfeJaEmitida;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -764,8 +766,13 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                     </div>
                     {nfeJaEmitida && (
                       <Badge className="bg-primary/10 text-primary gap-1.5">
-                        <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
+                        <FileText className="h-3.5 w-3.5" /> NF-e de produção nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
                       </Badge>
+                    )}
+                    {!nfeJaEmitida && nfe.homologada && !nfe.erro && (
+                      <p className="text-sm text-success flex items-center gap-1.5">
+                        <FileText className="h-4 w-4 shrink-0" /> Testada em homologação — pronta para emitir em produção.
+                      </p>
                     )}
                     {nfe.erro && (
                       <p className="text-sm text-destructive flex items-start gap-1">
@@ -784,7 +791,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
               <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
             </Button>
             {ehNfe ? (
-              nfe.nfe?.status === 'processada' ? (
+              nfe.emitidaProducao ? (
                 nfe.nfe?.caminho_danfe && (
                   <Button variant="outline" onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}>
                     <ExternalLink className="h-4 w-4 mr-1" /> DANFE
@@ -798,14 +805,26 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                   </Button>
                 </>
               ) : (
-                <Button
-                  disabled={!podeEmitirNfe || nfe.loading}
-                  title={podeEmitirNfe ? undefined : 'Disponível após o contrato do consignante e a consulta realizada'}
-                  onClick={() => nfe.emitir({ valor: parseCurrencyInput(valorConsigNota), observacoes: obsNfe.trim() || undefined })}
-                >
-                  {nfe.loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4 mr-1" /> : <FileText className="h-4 w-4 mr-1" />}
-                  {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    disabled={!podeEmitirNfe || nfe.loading}
+                    title={podeEmitirNfe ? undefined : 'Disponível após o contrato do consignante e a consulta realizada'}
+                    onClick={() => nfe.emitir('homologacao', { valor: parseCurrencyInput(valorConsigNota), observacoes: obsNfe.trim() || undefined })}
+                  >
+                    {nfe.loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : nfe.erro && !nfe.homologada ? <RefreshCw className="h-4 w-4 mr-1" /> : <FileText className="h-4 w-4 mr-1" />}
+                    {nfe.erro && !nfe.homologada ? 'Tentar novamente' : 'Testar em Homologação'}
+                  </Button>
+                  <Button
+                    variant={nfe.homologada ? 'default' : 'outline'}
+                    disabled={!podeEmitirNfe || nfe.loading || !nfe.homologada}
+                    title={!nfe.homologada ? 'Teste em homologação primeiro' : undefined}
+                    onClick={() => nfe.emitir('producao', { valor: parseCurrencyInput(valorConsigNota), observacoes: obsNfe.trim() || undefined })}
+                  >
+                    {nfe.loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : nfe.erro && nfe.homologada ? <RefreshCw className="h-4 w-4 mr-1" /> : <FileText className="h-4 w-4 mr-1" />}
+                    {nfe.erro && nfe.homologada ? 'Tentar novamente' : 'Emitir NF Real'}
+                  </Button>
+                </>
               )
             ) : modoLeitura ? (
               <>

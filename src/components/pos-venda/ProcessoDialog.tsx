@@ -194,7 +194,7 @@ const ProcessoDialog: React.FC<Props> = ({
   }, [open, trocaAvaliacaoId]);
 
   const nfEmitidaDe = (etapa: string) =>
-    etapa === NF_VENDA ? nfeVenda.emitida : etapa === NF_TROCA ? nfeTroca.emitida : false;
+    etapa === NF_VENDA ? nfeVenda.emitidaProducao : etapa === NF_TROCA ? nfeTroca.emitidaProducao : false;
   const isNfEtapa = (etapa: string) => etapa === NF_VENDA || etapa === NF_TROCA;
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
@@ -372,7 +372,7 @@ const ProcessoDialog: React.FC<Props> = ({
               const isNfTroca = e.etapa === NF_TROCA;
               const isNf = isNfVenda || isNfTroca;
               const nfeObj = isNfVenda ? nfeVenda : isNfTroca ? nfeTroca : null;
-              const nfMarcada = isNf ? !!nfeObj?.emitida : false;
+              const nfMarcada = isNf ? !!nfeObj?.emitidaProducao : false;
               const dataBloqueada = !isNf && !!e.data_conclusao && e.data_conclusao === datasSalvas[e.etapa];
               const dateFmt = isDateOnly ? 'dd/MM/yyyy' : 'dd/MM/yyyy HH:mm';
               return (
@@ -392,7 +392,7 @@ const ProcessoDialog: React.FC<Props> = ({
                     <p className={`text-sm font-semibold uppercase ${(isNf ? nfMarcada : e.concluida) || (isPrevisaoPagamento && e.data_conclusao) ? 'text-foreground' : 'text-muted-foreground'}`}>
                       {e.etapa}
                     </p>
-                    {isNf && nfeObj?.emitida && (nfeObj.nfe?.numero || nfeObj.nfe?.serie) && (
+                    {isNf && nfeObj?.emitidaProducao && (nfeObj.nfe?.numero || nfeObj.nfe?.serie) && (
                       <p className="text-xs text-muted-foreground">
                         Nº {nfeObj.nfe?.numero || '-'} / Série {nfeObj.nfe?.serie || '-'}
                       </p>
@@ -403,9 +403,12 @@ const ProcessoDialog: React.FC<Props> = ({
                         {nfeVenda.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
                       </p>
                     )}
+                    {isNfVenda && !nfeVenda.erro && nfeVenda.homologada && !nfeVenda.emitidaProducao && (
+                      <p className="text-xs text-success mt-0.5">Testada em homologação — falta emitir em produção.</p>
+                    )}
                   </div>
 
-                  {isNfVenda && !nfeVenda.emitida ? (
+                  {isNfVenda && !nfeVenda.emitidaProducao ? (
                     <div className="col-span-2 flex items-center justify-end gap-2">
                       {nfeVenda.pendente ? (
                         <>
@@ -432,11 +435,11 @@ const ProcessoDialog: React.FC<Props> = ({
                           title={podeEmitirNfeVenda ? undefined : 'Disponível após a venda e o contrato gerado'}
                           onClick={() => onEmitirNfe?.()}
                         >
-                          <FileText className="h-4 w-4" /> Emitir NF-e
+                          <FileText className="h-4 w-4" /> {nfeVenda.homologada ? 'Emitir NF Real' : 'Emitir NF-e'}
                         </Button>
                       )}
                     </div>
-                  ) : isNfTroca && !nfeTroca.emitida ? (
+                  ) : isNfTroca && !nfeTroca.emitidaProducao ? (
                     <div className="col-span-2 flex items-center justify-end gap-2">
                       <span className="text-xs text-muted-foreground">Emitida no Pós-Compra</span>
                       {onNavigateToPosCompra && trocaAvaliacaoId && (

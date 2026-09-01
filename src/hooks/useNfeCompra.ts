@@ -25,6 +25,8 @@ export function useNfeCompra(
   const emitida = status === 'processada';
   const pendente = NFE_PENDENTE.includes(status || '');
   const erro = status === 'erro';
+  const homologada = !!nfe?.homologado_em;
+  const emitidaProducao = emitida && nfe?.ambiente === 'producao';
 
   const invoke = useCallback(
     async (acao: 'emitir' | 'consultar', extra?: Record<string, unknown>) => {
@@ -61,16 +63,24 @@ export function useNfeCompra(
     setNfe((data as any[])?.[0] || null);
   }, [avaliacaoId, keyCol, by]);
 
-  const emitir = useCallback(async (opts?: { observacoes?: string; valor?: number; empresa_id?: string }) => {
+  const emitir = useCallback(async (
+    ambiente: 'homologacao' | 'producao',
+    opts?: { observacoes?: string; valor?: number; empresa_id?: string },
+  ) => {
     setLoading(true);
     try {
-      const extra: Record<string, unknown> = {};
+      const extra: Record<string, unknown> = { ambiente };
       if (opts?.observacoes) extra.observacoes = opts.observacoes;
       if (typeof opts?.valor === 'number' && opts.valor > 0) extra.valor = opts.valor;
       if (opts?.empresa_id) extra.empresa_id = opts.empresa_id;
-      const res = await invoke('emitir', Object.keys(extra).length ? extra : undefined);
+      const res = await invoke('emitir', extra);
       setNfe(res.nfe);
-      toast.success(res.nfe?.status === 'processada' ? 'NF-e autorizada!' : 'NF-e enviada para autorização.');
+      const emitiuProducao = ambiente === 'producao';
+      if (res.nfe?.status === 'processada') {
+        toast.success(emitiuProducao ? 'NF-e de produção autorizada!' : 'NF-e testada em homologação com sucesso!');
+      } else {
+        toast.success(emitiuProducao ? 'NF-e de produção enviada para autorização.' : 'NF-e de teste enviada para autorização.');
+      }
     } catch (e: any) {
       toast.error(e.message);
       await carregar();
@@ -104,5 +114,5 @@ export function useNfeCompra(
     return () => clearInterval(t);
   }, [ativo, pendente]);
 
-  return { nfe, setNfe, loading, emitida, pendente, erro, carregar, emitir, consultar };
+  return { nfe, setNfe, loading, emitida, pendente, erro, homologada, emitidaProducao, carregar, emitir, consultar };
 }

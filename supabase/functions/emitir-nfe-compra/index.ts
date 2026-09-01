@@ -114,6 +114,7 @@ async function registrarPosAutorizacao(
   cfg: OperacaoConfig,
   params: {
     entityId: string; // avaliacaoId ou atendimentoId conforme cfg.keyBy
+    ambiente: FocusAmbiente;
     dataEmissao: string;
     numero: string | null;
     serie: string | null;
@@ -121,7 +122,7 @@ async function registrarPosAutorizacao(
     callerName: string | null;
   },
 ) {
-  const { entityId, dataEmissao, numero, serie, callerId, callerName } = params;
+  const { entityId, ambiente, dataEmissao, numero, serie, callerId, callerName } = params;
   const porAvaliacao = cfg.keyBy === 'avaliacao';
   const fkCol = porAvaliacao ? 'avaliacao_id' : 'atendimento_id';
 
@@ -292,6 +293,14 @@ async function registrarPosAutorizacao(
             ];
         await admin.from('compromissos_parcelas').insert(parcelas);
       }
+    } else if (ambiente === 'producao') {
+      // A NF de produção assume o compromisso já criado no teste em homologação
+      // (mesmo nfe_entrada_id, mesma linha) — só atualiza a referência ao número
+      // real da NF, sem criar um segundo compromisso/parcelas.
+      await admin
+        .from('compromissos')
+        .update({ numero_documento: nfeRow.numero ? `NF-${nfeRow.numero}` : null })
+        .eq('id', jaComp[0].id);
     }
   }
 }
@@ -415,18 +424,52 @@ Deno.serve(async (req) => {
     (caller.user_metadata?.name as string | undefined) ||
     null;
 
-  const ambiente = (Deno.env.get('FOCUS_NFE_AMBIENTE') as FocusAmbiente) || 'homologacao';
-  const base = focusBaseUrl(ambiente);
   const ref = `${cfg.refPrefix}-${entityId}`;
+  const nfeKey = ehVenda ? 'atendimento_id' : 'avaliacao_id';
+  const { data: nfeExistente } = await admin
+    .from('nfe_entradas').select('*').eq(nfeKey, entityId)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+  // Ambiente Focus: em "consultar", segue o ambiente em que a NF já existente foi
+  // emitida (nunca é escolhido pelo front); em "emitir", vem obrigatoriamente do
+  // front, que decide qual botão foi clicado ("Testar em Homologação" ou "Emitir
+  // NF Real"). Produção só é permitida depois de um sucesso em homologação para
+  // esta MESMA operação (nfe_entradas.homologado_em já preenchido).
+  let ambiente: FocusAmbiente;
+  if (acao === 'consultar') {
+    ambiente = (nfeExistente?.ambiente as FocusAmbiente) || 'homologacao';
+  } else {
+    const ambienteBody = body.ambiente as string | undefined;
+    if (ambienteBody !== 'homologacao' && ambienteBody !== 'producao') {
+      return jsonResponse({ error: 'Parâmetro "ambiente" inválido (esperado "homologacao" ou "producao").' }, 400);
+    }
+    ambiente = ambienteBody;
+    if (ambiente === 'producao' && !nfeExistente?.homologado_em) {
+      return jsonResponse({ error: 'É necessário emitir com sucesso em homologação antes de emitir em produção.' }, 409);
+    }
+    if (nfeExistente) {
+      if (nfeExistente.ambiente === ambiente && (nfeExistente.status === 'processada' || PENDENTES.has(nfeExistente.status))) {
+        return jsonResponse(
+          { error: `Já existe uma NF-e ${ambiente === 'producao' ? 'de produção' : 'de homologação'} emitida ou em processamento para esta operação.` },
+          409,
+        );
+      }
+      if (ambiente === 'homologacao' && nfeExistente.ambiente === 'producao' && nfeExistente.status === 'processada') {
+        return jsonResponse({ error: 'Esta operação já teve NF-e emitida em produção; não é possível reemitir em homologação.' }, 409);
+      }
+    }
+  }
+  const base = focusBaseUrl(ambiente);
 
   // ---- Empresa + token Focus ----
   const { data: lojaEmpresa } = await admin
     .from('loja_empresas')
-    .select('empresa_id')
+    .select('empresa_id, loja')
     .eq('id', atendimento.loja_id)
     .maybeSingle();
   const empresaVinculada = lojaEmpresa?.empresa_id;
   if (!empresaVinculada) return jsonResponse({ error: 'Loja sem empresa vinculada' }, 400);
+  const isDucati = (lojaEmpresa?.loja || '').toLowerCase().startsWith('ducati');
 
   // Empresa emitente: se o front enviou uma escolha, ela precisa ser a empresa
   // vinculada à loja do atendimento (loja_empresas.id = atendimento.loja_id).
@@ -455,16 +498,11 @@ Deno.serve(async (req) => {
 
   const token = ambiente === 'producao' ? focusCfg?.token_producao : focusCfg?.token_homologacao;
 
-  const nfeKey = ehVenda ? 'atendimento_id' : 'avaliacao_id';
-  const buscarNfe = () =>
-    admin.from('nfe_entradas').select('*').eq(nfeKey, entityId)
-      .order('created_at', { ascending: false }).limit(1).maybeSingle();
-
   // =====================================================================
   // acao: consultar
   // =====================================================================
   if (acao === 'consultar') {
-    const { data: nfeRow } = await buscarNfe();
+    const nfeRow = nfeExistente;
     if (!nfeRow) return jsonResponse({ nfe: null }, 200);
     if (!token) return jsonResponse({ nfe: nfeRow }, 200);
 
@@ -480,6 +518,9 @@ Deno.serve(async (req) => {
       patch.caminho_danfe = r.body.caminho_danfe ? `${base}${r.body.caminho_danfe}` : nfeRow.caminho_danfe;
       patch.xml_raw = r.body.caminho_xml_nota_fiscal ? `${base}${r.body.caminho_xml_nota_fiscal}` : nfeRow.xml_raw;
       if (!nfeRow.data_emissao) patch.data_emissao = new Date().toISOString();
+      if (ambiente === 'homologacao' && !nfeRow.homologado_em) {
+        patch.homologado_em = patch.data_emissao ?? nfeRow.data_emissao ?? new Date().toISOString();
+      }
     } else if (novoStatus === 'erro') {
       patch.erro_mensagem = mensagemErroFocus(r.body);
     }
@@ -494,6 +535,7 @@ Deno.serve(async (req) => {
     if (fStatus === 'autorizado') {
       await registrarPosAutorizacao(admin, cfg, {
         entityId,
+        ambiente,
         dataEmissao: (updated?.data_emissao as string) || nfeRow.data_emissao || new Date().toISOString(),
         numero: (updated?.numero as string) ?? null,
         serie: (updated?.serie as string) ?? null,
@@ -530,6 +572,9 @@ Deno.serve(async (req) => {
     if (!['vendido', 'sinal'].includes(estoqueMoto?.status)) {
       return jsonResponse({ error: 'A moto ainda não foi marcada como vendida.' }, 409);
     }
+    if (isDucati && !estoqueMoto?.moto_nova_id) {
+      return jsonResponse({ error: 'Loja Ducati: o atendimento precisa estar vinculado a uma moto 0km do estoque para emitir NF-e.' }, 409);
+    }
     const { data: contratoVenda } = await admin
       .from('contratos').select('id')
       .eq('atendimento_id', atendimentoId).neq('ipva_tipo', 'COMPRA').limit(1);
@@ -542,11 +587,6 @@ Deno.serve(async (req) => {
   }
   if (!focusCfg?.habilitado || !token) {
     return jsonResponse({ error: 'Emissão de NF-e não habilitada para esta empresa.' }, 409);
-  }
-
-  const { data: nfeExistente } = await buscarNfe();
-  if (nfeExistente && (nfeExistente.status === 'processada' || PENDENTES.has(nfeExistente.status))) {
-    return jsonResponse({ error: 'Já existe uma NF-e emitida ou em processamento para esta moto.' }, 409);
   }
 
   // Destinatario da NF: entrada = PF vendedora/consignante; venda = cliente comprador.
@@ -724,6 +764,8 @@ Deno.serve(async (req) => {
       status: 'erro',
       focus_status: fStatus ?? `http_${r.httpStatus}`,
       erro_mensagem: errMsg,
+      ambiente,
+      homologado_em: nfeExistente?.homologado_em ?? null,
     };
     if (nfeExistente) {
       await admin.from('nfe_entradas').update(linhaErro).eq('id', nfeExistente.id);
@@ -754,6 +796,10 @@ Deno.serve(async (req) => {
     chave_nfe: (r.body.chave_nfe as string) ?? null,
     caminho_danfe: r.body.caminho_danfe ? `${base}${r.body.caminho_danfe}` : null,
     xml_raw: r.body.caminho_xml_nota_fiscal ? `${base}${r.body.caminho_xml_nota_fiscal}` : null,
+    ambiente,
+    homologado_em: ambiente === 'homologacao' && autorizado
+      ? (nfeExistente?.homologado_em ?? dataEmissao)
+      : (nfeExistente?.homologado_em ?? null),
   };
 
   let nfeRow;
@@ -783,6 +829,7 @@ Deno.serve(async (req) => {
   if (autorizado) {
     await registrarPosAutorizacao(admin, cfg, {
       entityId,
+      ambiente,
       dataEmissao,
       numero: (r.body.numero as string) ?? null,
       serie: (r.body.serie as string) ?? null,
