@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
+import { flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Wrench, CheckCircle, Clock, Package, FileSpreadsheet, FileDown, Target } from 'lucide-react';
@@ -116,10 +117,10 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     // Fetch avaliacoes that reached preparation flow (situacao adquirida or estoque)
     const avalRes = await fetchAllRange<any>(() => supabase
       .from('avaliacoes')
-      .select('id, marca, modelo, placa, atendimento_id, tipo_aquisicao, situacao, preparacao_status, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
+      .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, atendimento_id, tipo_aquisicao, situacao, preparacao_status, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
       .in('situacao', ['adquirida', 'estoque', 'perdido'])
     );
-    const avals = (avalRes.data || []);
+    const avals = flattenMarcaModeloList(avalRes.data);
 
     const avalIds = avals.map((a: any) => a.id);
     const atendimentoIds = avals.map((a: any) => a.atendimento_id).filter(Boolean);

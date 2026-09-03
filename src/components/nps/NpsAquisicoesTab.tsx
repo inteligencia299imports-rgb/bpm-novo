@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { TODOS_TIPOS_AQUISICAO, isTipoPropria } from '@/lib/tipoAquisicao';
 import { supabase } from '@/lib/supabase';
+import { MARCA_MODELO_SELECT, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { Input } from '@/components/ui/input';
 import { Search, X, Send, Eye, Copy, Filter } from 'lucide-react';
 import { SITUACOES_NPS } from '@/types/crm';
@@ -36,7 +37,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
     const { data, error } = await supabase
       .from('avaliacoes')
       .select(`
-        *,
+        *, ${MARCA_MODELO_SELECT},
         atendimentos_motos!inner (id, loja_id, loja_empresas:loja_id(loja), interesse, situacao, temperatura, created_at, updated_at, nps_status, tipo_atendimento, vendedor_id, origem, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, clientes_fornecedores_enderecos(uf)))
       `)
       .in('tipo_aquisicao', TODOS_TIPOS_AQUISICAO)
@@ -46,7 +47,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
       toast.error('Erro ao carregar NPS Aquisições');
       console.error(error);
     } else {
-      let mapped = (data || [])
+      let mapped = flattenMarcaModeloList(data)
         .filter((a: any) => a.atendimentos_motos?.interesse === 'vender')
         // Motos próprias só entram no NPS depois de aprovadas no Pós-Compra.
         .filter((a: any) => !(isTipoPropria(a.tipo_aquisicao) && (a.aprovacao_status === 'aguardando' || a.aprovacao_status === 'recusada')))

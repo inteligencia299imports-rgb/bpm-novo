@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 import { fetchEstoqueUnificado } from '@/lib/estoqueMoto';
+import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
 import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -239,12 +240,13 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const handleOpenReenviar = async (item: EstoqueItem) => {
     setReenviarLoading(true);
     try {
-      const { data: avaliacao } = await supabase
+      const { data: avaliacaoRaw } = await supabase
         .from('avaliacoes')
-        .select('*, atendimento:atendimento_id(loja, cliente:clientes_fornecedores(nome_razao_social))')
+        .select(`*, ${MARCA_MODELO_SELECT}, atendimento:atendimento_id(loja, cliente:clientes_fornecedores(nome_razao_social))`)
         .eq('id', item.avaliacao_id!)
         .single();
-      if (avaliacao) {
+      if (avaliacaoRaw) {
+        const avaliacao = flattenMarcaModelo(avaliacaoRaw as any);
         setReenviarAvaliacaoData({
           ...avaliacao,
           moto: avaliacao,

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
+import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { Input } from '@/components/ui/input';
 import { Search, X, Handshake, Filter, DollarSign } from 'lucide-react';
 import { INTERMEDIACAO_PARTE1_COLUMNS, INTERMEDIACAO_PARTE2_COLUMNS, INTERMEDIACAO_PARTE1_ETAPAS, INTERMEDIACAO_PARTE2_ETAPAS } from '@/types/crm';
@@ -59,7 +60,8 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
 
   useEffect(() => {
     if (initialAtendimentoId) {
-      supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
+      supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`).eq('id', initialAtendimentoId).single().then(async ({ data: raw }) => {
+        const data = flattenMarcaModelo(raw as any);
         if (data) {
           const { data: estRow } = await supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).eq('atendimento_venda_id', data.id).maybeSingle();
           const est = estRow ? mapEstoqueMoto(estRow, await fetchLojaMap()) : null;
@@ -80,7 +82,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     ]);
     estRes.data = (estRes.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)).filter((e: any) => e.tipo === 'consignada');
 
-    const result = await fetchAllRange<any>(() => supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
+    const result = await fetchAllRange<any>(() => supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`).eq('situacao', 'vendido').order('updated_at', { ascending: false }));
     const atError = result.error;
     const atData = result.data || [];
     if (atError) { toast.error('Erro ao carregar intermediação'); setLoading(false); return; }
@@ -88,7 +90,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     const estoqueMap: Record<string, any> = {};
     (estRes.data || []).forEach((e: any) => { estoqueMap[e.atendimento_venda_id] = e; });
 
-    let filtered = atData.filter(a => estoqueMap[a.id]).map(a => ({ ...a, loja: a.loja_empresas?.loja, _estoqueMoto: estoqueMap[a.id] }));
+    let filtered = atData.filter(a => estoqueMap[a.id]).map(a => ({ ...flattenMarcaModelo(a), loja: a.loja_empresas?.loja, _estoqueMoto: estoqueMap[a.id] }));
 
     // Fetch owners in parallel: avaliacoes → atendimentos
     const avaliacaoIds = Object.values(estoqueMap).map((e: any) => e.avaliacao_id).filter(Boolean);

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { generateContratoCompraPdf } from '@/lib/generateContratoCompraPdf';
+import { flattenMarcaModelo } from '@/lib/marcaModelo';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const brlOrDash = (n: number | null | undefined) => (n ? brl(n) : '-');
@@ -30,17 +31,18 @@ const fmtData = (iso: string | null | undefined) => {
  * Usado para Visualizar / Baixar um contrato já gerado.
  */
 export async function gerarPdfContratoCompra(avaliacaoId: string, modo: 'download' | 'view'): Promise<boolean> {
-  const { data: aval } = await supabase
+  const { data: avalRaw } = await supabase
     .from('avaliacoes')
     .select(`
-      id, marca, modelo, ano_fabricacao, ano_modelo, placa, km,
+      id, marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, placa, km,
       valor_fechamento, valor_quitacao, atendimento_id,
       atendimentos_motos ( id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj) )
     `)
     .eq('id', avaliacaoId)
     .maybeSingle();
 
-  if (!aval) return false;
+  if (!avalRaw) return false;
+  const aval = flattenMarcaModelo(avalRaw as any);
   const am = (aval as any).atendimentos_motos;
   const cliente = am?.cliente;
 

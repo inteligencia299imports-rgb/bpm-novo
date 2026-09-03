@@ -14,8 +14,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Bike } from 'lucide-react';
 
 interface Props {
-  marca: string; setMarca: (v: string) => void;
-  modelo: string; setModelo: (v: string) => void;
+  marcaId: string; setMarcaId: (v: string) => void;
+  modeloId: string; setModeloId: (v: string) => void;
   anoFab: string; setAnoFab: (v: string) => void;
   anoMod: string; setAnoMod: (v: string) => void;
   categoria: string; setCategoria: (v: string) => void;
@@ -36,7 +36,7 @@ interface Props {
 }
 
 const MotoVendaSection: React.FC<Props> = ({
-  marca, setMarca, modelo, setModelo, anoFab, setAnoFab,
+  marcaId, setMarcaId, modeloId, setModeloId, anoFab, setAnoFab,
   anoMod, setAnoMod, categoria, setCategoria, cor, setCor,
   placa, setPlaca, km, setKm, cilindrada, setCilindrada,
   temManual, setTemManual, temChaveReserva, setTemChaveReserva,
@@ -44,9 +44,8 @@ const MotoVendaSection: React.FC<Props> = ({
   observacoes, setObservacoes,
   motoAvaliacaoId, atendimentoId, interesse, isEditing, crlvBloqueado,
 }) => {
-  const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
-  const marcas = getMarcaNomes();
-  const modelos = marca ? getModelosPorMarca(marca) : [];
+  const { marcas, getModelosByMarcaId, loading } = useMarcasModelos();
+  const modelos = getModelosByMarcaId(marcaId);
 
   const formatKm = (value: string): string => {
     const digits = value.replace(/\D/g, '');
@@ -73,16 +72,16 @@ const MotoVendaSection: React.FC<Props> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <Label>Marca *</Label>
-            <Select value={marca} onValueChange={(v) => { setMarca(v); setModelo(''); }} disabled={crlvBloqueado}>
+            <Select value={marcaId} onValueChange={(v) => { setMarcaId(v); setModeloId(''); }} disabled={crlvBloqueado}>
               <SelectTrigger><SelectValue placeholder={loading ? "Carregando..." : "Selecione"} /></SelectTrigger>
-              <SelectContent>{marcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+              <SelectContent>{marcas.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
             <Label>Modelo *</Label>
-            <Select value={modelo} onValueChange={setModelo} disabled={!marca || crlvBloqueado}>
-              <SelectTrigger><SelectValue placeholder={marca ? "Selecione" : "Selecione a marca primeiro"} /></SelectTrigger>
-              <SelectContent>{modelos.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+            <Select value={modeloId} onValueChange={setModeloId} disabled={!marcaId || crlvBloqueado}>
+              <SelectTrigger><SelectValue placeholder={marcaId ? "Selecione" : "Selecione a marca primeiro"} /></SelectTrigger>
+              <SelectContent>{modelos.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">

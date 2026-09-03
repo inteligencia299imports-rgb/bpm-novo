@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
+import { MARCA_MODELO_SELECT, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { Input } from '@/components/ui/input';
 import { Search, X, FileSearch } from 'lucide-react';
 import ProcessCard from '@/components/shared/ProcessCard';
@@ -22,7 +23,7 @@ const ConsultaTab = () => {
     const { data, error } = await fetchAllRange(() =>
       supabase
         .from('avaliacoes')
-        .select('*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))')
+        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`)
         .eq('consulta_solicitada', true)
         .order('created_at', { ascending: false })
     );
@@ -31,7 +32,7 @@ const ConsultaTab = () => {
       toast.error('Erro ao carregar consultas');
       console.error(error);
     } else {
-      let results = (data || [])
+      let results = flattenMarcaModeloList(data)
         .map((d: any) => ({
           ...d,
           atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja },

@@ -24,6 +24,7 @@ import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsig
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { formatPersonName } from '@/lib/utils';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
+import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
 
 interface Props {
   item: any;
@@ -97,11 +98,12 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const refreshConsignada = async () => {
     const consignadaEstoque = Object.values(estoqueData).find((e: any) => e.tipo === 'consignada');
     if (consignadaEstoque?.avaliacao_id) {
-      const { data: avalData } = await supabase
+      const { data: avalRaw } = await supabase
         .from('avaliacoes')
-        .select('*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))')
+        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))`)
         .eq('id', consignadaEstoque.avaliacao_id)
         .single();
+      const avalData = avalRaw ? flattenMarcaModelo(avalRaw as any) : avalRaw;
       if (avalData) {
         setAvaliacaoConsignada(avalData);
         setMotoConsignada(avalData);
@@ -113,12 +115,13 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
   // Troca: emite a NF-e de entrada da moto do cliente pela mesma tela do Pós-Compra.
   const abrirNfeTroca = async (avaliacaoId: string) => {
-    const { data } = await supabase
+    const { data: raw } = await supabase
       .from('avaliacoes')
-      .select('*, atendimentos_motos!inner(id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, cliente_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)))')
+      .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, cliente_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)))`)
       .eq('id', avaliacaoId)
       .maybeSingle();
-    if (!data) return;
+    if (!raw) return;
+    const data = flattenMarcaModelo(raw as any);
     const am = (data as any).atendimentos_motos;
     setProcessoOpen(false);
     setTrocaNfeAval({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja } });
@@ -148,13 +151,13 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
       // Step 1: All initial queries in parallel
       const [resInt, resAval] = await Promise.all([
-        supabase.from('motos_interesse').select('*').eq('atendimento_id', item.id),
-        supabase.from('avaliacoes').select('*').eq('atendimento_id', item.id),
+        supabase.from('motos_interesse').select(`*, ${MARCA_MODELO_SELECT}`).eq('atendimento_id', item.id),
+        supabase.from('avaliacoes').select(`*, ${MARCA_MODELO_SELECT}`).eq('atendimento_id', item.id),
       ]);
 
-      const motosInt = resInt.data || [];
+      const motosInt = flattenMarcaModeloList(resInt.data);
       setMotosInteresse(motosInt);
-      const motosAv = resAval.data || [];
+      const motosAv = flattenMarcaModeloList(resAval.data);
       setMotosAvaliacao(motosAv);
 
       // Prepare IDs for parallel step 2

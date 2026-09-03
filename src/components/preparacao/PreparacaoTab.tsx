@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
+import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -37,8 +38,9 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
   useEffect(() => {
     if (initialAvaliacaoId) {
       supabase.from('avaliacoes')
-        .select(`*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`)
-        .eq('id', initialAvaliacaoId).single().then(({ data }) => {
+        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`)
+        .eq('id', initialAvaliacaoId).single().then(({ data: raw }) => {
+          const data = raw ? flattenMarcaModelo(raw as any) : raw;
           if (data) {
             const am = (data as any).atendimentos_motos;
             setSelectedItem({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja }, moto: data });
@@ -50,14 +52,14 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const selectStr = `*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`;
+    const selectStr = `*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`;
 
     const estResult = await fetchAllRange(() => supabase.from('estoque_motos').select('avaliacao_id, status, observacoes, created_at').not('avaliacao_id', 'is', null));
     const result = await fetchAllRange(() =>
       supabase.from('avaliacoes').select(selectStr).in('situacao', ['adquirida', 'estoque']).order('updated_at', { ascending: false })
     );
     const err1 = result.error;
-    const allData = result.data || [];
+    const allData = flattenMarcaModeloList(result.data);
     if (err1) { toast.error('Erro ao carregar preparação'); } else {
       const estData = estResult.data;
       const estoqueMap: Record<string, { status: string; observacoes: string | null; data_entrada: string | null }> = {};

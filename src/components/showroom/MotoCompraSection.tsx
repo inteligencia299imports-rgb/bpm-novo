@@ -25,10 +25,10 @@ interface EstoqueOption {
 interface Props {
   origemMoto: string;
   setOrigemMoto: (v: string) => void;
-  marca: string;
-  setMarca: (v: string) => void;
-  modelo: string;
-  setModelo: (v: string) => void;
+  marcaId: string;
+  setMarcaId: (v: string) => void;
+  modeloId: string;
+  setModeloId: (v: string) => void;
   ano: string;
   setAno: (v: string) => void;
   estoqueMotoId: string;
@@ -42,15 +42,15 @@ interface Props {
 }
 
 const MotoCompraSection: React.FC<Props> = ({
-  origemMoto, setOrigemMoto, marca, setMarca, modelo, setModelo, ano, setAno,
+  origemMoto, setOrigemMoto, marcaId, setMarcaId, modeloId, setModeloId, ano, setAno,
   estoqueMotoId, setEstoqueMotoId, setEstoqueTipo, loja, chassi = '', setChassi, disabled,
 }) => {
-  const { getMarcaNomes, getModelosPorMarca, loading } = useMarcasModelos();
-  const marcas = getMarcaNomes();
-  const modelos = marca ? getModelosPorMarca(marca) : [];
+  const { marcas, getModelosByMarcaId, marcaIdByNome, loading } = useMarcasModelos();
+  const modelos = getModelosByMarcaId(marcaId);
 
   const isDucati = (loja || '').toLowerCase().startsWith('ducati');
-  const ducatiModelos = getModelosPorMarca('DUCATI');
+  const ducatiMarcaId = marcaIdByNome('DUCATI');
+  const ducatiModelos = getModelosByMarcaId(ducatiMarcaId);
 
   const [estoque, setEstoque] = useState<EstoqueOption[]>([]);
   const [loadingEstoque, setLoadingEstoque] = useState(false);
@@ -150,10 +150,14 @@ const MotoCompraSection: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label>Modelo *</Label>
-              <Select value={modelo} onValueChange={setModelo} disabled={disabled}>
+              <Select
+                value={modeloId}
+                onValueChange={(v) => { if (ducatiMarcaId) setMarcaId(ducatiMarcaId); setModeloId(v); }}
+                disabled={disabled}
+              >
                 <SelectTrigger><SelectValue placeholder={loading ? "Carregando..." : "Selecione"} /></SelectTrigger>
                 <SelectContent>
-                  {ducatiModelos.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  {ducatiModelos.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -203,8 +207,8 @@ const MotoCompraSection: React.FC<Props> = ({
             setOrigemMoto(v);
             setEstoqueMotoId('');
             setEstoqueTipo?.('');
-            setMarca('');
-            setModelo('');
+            setMarcaId('');
+            setModeloId('');
             setAno('');
           }} disabled={disabled}>
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -263,16 +267,16 @@ const MotoCompraSection: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label>Marca *</Label>
-              <Select value={marca} onValueChange={(v) => { setMarca(v); setModelo(''); }} disabled={disabled}>
+              <Select value={marcaId} onValueChange={(v) => { setMarcaId(v); setModeloId(''); }} disabled={disabled}>
                 <SelectTrigger><SelectValue placeholder={loading ? "Carregando..." : "Selecione"} /></SelectTrigger>
-                <SelectContent>{marcas.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                <SelectContent>{marcas.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Modelo *</Label>
-              <Select value={modelo} onValueChange={setModelo} disabled={disabled || !marca}>
-                <SelectTrigger><SelectValue placeholder={marca ? "Selecione" : "Selecione a marca primeiro"} /></SelectTrigger>
-                <SelectContent>{modelos.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+              <Select value={modeloId} onValueChange={setModeloId} disabled={disabled || !marcaId}>
+                <SelectTrigger><SelectValue placeholder={marcaId ? "Selecione" : "Selecione a marca primeiro"} /></SelectTrigger>
+                <SelectContent>{modelos.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">

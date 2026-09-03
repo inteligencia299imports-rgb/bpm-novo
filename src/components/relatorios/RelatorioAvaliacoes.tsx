@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
+import { flattenMarcaModelo } from '@/lib/marcaModelo';
 import { abbreviateName, fmtInt, cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, ArrowDownToLine, Repeat, Package, FileSpreadsheet, FileDown } from 'lucide-react';
@@ -180,7 +181,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const [avalRes, histRes, rolesRes, coRes] = await Promise.all([
       fetchAllRange<any>(() => supabase
         .from('avaliacoes')
-        .select('id, marca, modelo, placa, avaliador_id, tipo_aquisicao, situacao, quanto_vende, valor_fechamento, trade_in, created_at, updated_at, atendimentos_motos!inner(interesse, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
+        .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, avaliador_id, tipo_aquisicao, situacao, quanto_vende, valor_fechamento, trade_in, created_at, updated_at, atendimentos_motos!inner(interesse, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
         .neq('situacao', 'sem_avaliar')
         .in('atendimentos.interesse', ['trocar', 'vender'])
       ),
@@ -193,7 +194,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado')),
     ]);
 
-    const avals = ((avalRes.data || []) as any[]);
+    const avals = ((avalRes.data || []) as any[]).map((a) => flattenMarcaModelo(a));
     const avalIdSet = new Set<string>(avals.map((a) => a.id));
 
     // menor created_at por avaliação

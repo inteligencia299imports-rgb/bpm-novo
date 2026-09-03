@@ -18,6 +18,11 @@ const FORMA_PAGAMENTO_BOLETO_ID = '7d0f2125-fedf-4a27-8ab0-be21fecaf642'; // Bol
 
 const DIAS_VENCIMENTO = 7;
 
+/** marca/modelo agora vem do catalogo via embed `marca:marca_id(nome)`.
+ * Aceita tambem string crua (janela em que a coluna-ponte ainda existe). */
+const nomeCat = (v: any): string | null =>
+  (v && typeof v === 'object' ? (v.nome ?? null) : (v ?? null));
+
 type Operacao = 'compra' | 'consignacao' | 'venda_seminova' | 'venda_0km';
 
 interface OperacaoConfig {
@@ -263,24 +268,29 @@ async function registrarPosAutorizacao(
 
     const [{ data: emVenda }, { data: emNova }] = await Promise.all([
       admin.from('estoque_motos')
-        .select('avaliacao:avaliacao_id(marca, modelo, placa)')
+        .select('avaliacao:avaliacao_id(marca:marca_id(nome), modelo:modelo_id(nome), placa)')
         .eq('atendimento_venda_id', entityId).maybeSingle(),
       admin.from('estoque_motos_novas')
         .select('placa, marca:marca_id(nome), modelo:modelo_id(nome)')
         .eq('atendimento_venda_id', entityId).maybeSingle(),
     ]);
-    const m = (emVenda as any)?.avaliacao
-      ?? ((emNova as any) ? { marca: (emNova as any).marca?.nome, modelo: (emNova as any).modelo?.nome, placa: (emNova as any).placa } : {});
+    const av = (emVenda as any)?.avaliacao;
+    const m = av
+      ? { marca: nomeCat(av.marca), modelo: nomeCat(av.modelo), placa: av.placa }
+      : ((emNova as any) ? { marca: nomeCat((emNova as any).marca), modelo: nomeCat((emNova as any).modelo), placa: (emNova as any).placa } : {});
     obsCompromisso = obsMoto(m.marca, m.modelo, m.placa);
   } else {
     // ---- Compra / troca: contas a PAGAR. O compromisso registra o REPASSE AO CLIENTE,
     // calculado sobre o FECHAMENTO do contrato:
     // repasse = fechamento - quitação - custo do cliente (previsão da avaliação + custos de oficina do cliente).
-    const { data: avFin } = await admin
+    const { data: avFinRaw } = await admin
       .from('avaliacoes')
-      .select('previsao_custos_cliente, valor_quitacao, valor_fechamento, atendimento_id, marca, modelo, placa')
+      .select('previsao_custos_cliente, valor_quitacao, valor_fechamento, atendimento_id, marca:marca_id(nome), modelo:modelo_id(nome), placa')
       .eq('id', entityId)
       .maybeSingle();
+    const avFin = avFinRaw
+      ? { ...avFinRaw, marca: nomeCat((avFinRaw as any).marca), modelo: nomeCat((avFinRaw as any).modelo) }
+      : avFinRaw;
     const { data: contratoFin } = avFin?.atendimento_id
       ? await admin
           .from('contratos')
@@ -457,7 +467,7 @@ Deno.serve(async (req) => {
         status: en.status,
         moto_nova_id: en.id,
         moto_nova: {
-          marca: en.marca?.nome ?? null, modelo: en.modelo?.nome ?? null,
+          marca: nomeCat(en.marca), modelo: nomeCat(en.modelo),
           ano_fabricacao: en.ano_fabricacao, ano_modelo: en.ano_modelo,
           cilindrada: en.cilindrada, cor: en.cor, placa: en.placa,
           chassi: en.chassi, renavam: en.renavam, ncm: en.ncm, valor: en.valor,
@@ -467,11 +477,15 @@ Deno.serve(async (req) => {
       const { data: em } = await admin
         .from('estoque_motos')
         .select(
-          '*, avaliacao:avaliacao_id(marca, modelo, ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam)',
+          '*, avaliacao:avaliacao_id(marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam)',
         )
         .eq('id', mi.estoque_moto_id)
         .maybeSingle();
       if (!em) return jsonResponse({ error: 'Moto do estoque não encontrada.' }, 404);
+      if ((em as any).avaliacao) {
+        (em as any).avaliacao.marca = nomeCat((em as any).avaliacao.marca);
+        (em as any).avaliacao.modelo = nomeCat((em as any).avaliacao.modelo);
+      }
       estoqueMoto = em;
     }
   } else {
@@ -480,12 +494,12 @@ Deno.serve(async (req) => {
       .select(
         'id, atendimento_id, aprovacao_status, consulta_realizada, valor_fechamento, ' +
           'avaliacao_consignacao, valor_consignacao_nota, consignacao_status, ' +
-          'marca, modelo, ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam',
+          'marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam',
       )
       .eq('id', avaliacaoId)
       .maybeSingle();
     if (!avRow) return jsonResponse({ error: 'Avaliação não encontrada' }, 404);
-    av = avRow;
+    av = { ...avRow, marca: nomeCat((avRow as any).marca), modelo: nomeCat((avRow as any).modelo) };
     atendimentoId = avRow.atendimento_id;
   }
 

@@ -225,6 +225,9 @@ export interface MotoInteresse {
   id: string;
   atendimento_id: string;
   origem: 'estoque' | 'externo';
+  marca_id: string | null;
+  modelo_id: string | null;
+  /** Nome do catálogo, preenchido no fetch por flattenMarcaModelo (não é coluna). */
   marca: string | null;
   modelo: string | null;
   ano: string | null;
@@ -245,6 +248,9 @@ export interface Avaliacao {
   id: string;
   atendimento_id: string;
   // dados da moto (fundidos de motos_avaliacao)
+  marca_id: string;
+  modelo_id: string;
+  /** Nome do catálogo, preenchido no fetch por flattenMarcaModelo (não é coluna). */
   marca: string;
   modelo: string;
   ano_fabricacao: string | null;

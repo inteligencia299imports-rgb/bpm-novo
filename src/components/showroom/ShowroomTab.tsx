@@ -13,6 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { LOJAS, INTERESSES, SITUACOES_SHOWROOM } from '@/types/crm';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
+import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import AtendimentoCard from './AtendimentoCard';
 import AtendimentoDetail from './AtendimentoDetail';
@@ -64,7 +65,8 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   // Open detail from external navigation (e.g. NPS, Estoque)
   useEffect(() => {
     if (initialAtendimentoId) {
-      supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*), avaliacoes(*)').eq('id', initialAtendimentoId).single().then(({ data }) => {
+      supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`).eq('id', initialAtendimentoId).single().then(({ data: raw }) => {
+        const data = flattenMarcaModelo(raw as any);
         if (data) {
           setSelectedAtendimento({ ...data, loja: (data as any).loja_empresas?.loja } as unknown as Atendimento);
           setDetailOpen(true);
@@ -82,7 +84,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     const statuses = KANBAN_COLUMNS.map(c => c.value);
 
     const buildQuery = (status?: string) => {
-      let q = supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*), avaliacoes(*)');
+      let q = supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`);
       if (status) q = q.eq('situacao', status);
       if (filterInteresse !== 'todos') q = q.eq('interesse', filterInteresse);
       q = q.order('created_at', { ascending: false });
@@ -113,7 +115,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       toast.error('Erro ao carregar atendimentos');
       console.error(error);
     } else {
-      let results = ((data as any[]) || []).map((a) => ({ ...a, loja: a.loja_empresas?.loja })) as unknown as Atendimento[];
+      let results = ((data as any[]) || []).map((a) => ({ ...flattenMarcaModelo(a), loja: a.loja_empresas?.loja })) as unknown as Atendimento[];
 
       // Fetch estoque data for motos_interesse with estoque origin
       const estoqueRefs = results.flatMap((a: any) =>

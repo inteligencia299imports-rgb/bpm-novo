@@ -22,6 +22,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, ArrowLeftRight, ShieldCheck, Handshake, Pencil, RotateCw, AlertTriangle, ClipboardList, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import { formatPersonName, firstLastName } from '@/lib/utils';
+import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
@@ -144,8 +145,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
 
   // Moto edit state
   const [editMotoOpen, setEditMotoOpen] = useState(false);
-  const [editMarca, setEditMarca] = useState('');
-  const [editModelo, setEditModelo] = useState('');
+  const [editMarcaId, setEditMarcaId] = useState('');
+  const [editModeloId, setEditModeloId] = useState('');
   const [editPlaca, setEditPlaca] = useState('');
   const [editChassi, setEditChassi] = useState('');
   const [editRenavam, setEditRenavam] = useState('');
@@ -161,12 +162,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
   const [savingMoto, setSavingMoto] = useState(false);
 
-  const { getMarcaNomes, getModelosPorMarca } = useMarcasModelos();
+  const { marcas: marcasCatalogo, getModelosByMarcaId } = useMarcasModelos();
 
   const openEditMoto = () => {
     if (!moto) return;
-    setEditMarca(moto.marca || '');
-    setEditModelo(moto.modelo || '');
+    setEditMarcaId((moto as any).marca_id || '');
+    setEditModeloId((moto as any).modelo_id || '');
     setEditPlaca(moto.placa || '');
     setEditChassi(moto.chassi || '');
     setEditRenavam(moto.renavam || '');
@@ -184,7 +185,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   };
 
   const handleSaveMoto = async () => {
-    if (!editMarca.trim() || !editModelo.trim()) {
+    if (!editMarcaId || !editModeloId) {
       toast.error('Marca e Modelo são obrigatórios');
       return;
     }
@@ -208,8 +209,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       km: editKm.replace(/\D/g, '') || null,
       ano_fabricacao: editAnoFab.trim() || null,
       ano_modelo: editAnoMod.trim() || null,
-      marca: editMarca.trim(),
-      modelo: editModelo.trim(),
+      marca_id: editMarcaId,
+      modelo_id: editModeloId,
       cor: editCor.trim() || null,
       categoria: editCategoria.trim() || null,
       cilindrada: editCilindrada.replace(/\D/g, '') || null,
@@ -220,8 +221,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     };
     // Com CRLV anexado, os dados extraídos do documento são imutáveis.
     if (crlvUrl) {
-      delete updateData.marca;
-      delete updateData.modelo;
+      delete updateData.marca_id;
+      delete updateData.modelo_id;
       delete updateData.ano_fabricacao;
       delete updateData.ano_modelo;
       delete updateData.placa;
@@ -332,14 +333,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [estoqueVendido, setEstoqueVendido] = useState(false);
 
   const loadAvaliacao = async () => {
-    const { data } = await supabase
+    const { data: raw } = await supabase
       .from('avaliacoes')
       .select(`
-        *,
+        *, ${MARCA_MODELO_SELECT},
         atendimentos_motos (id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, interesse, tipo_atendimento, origem, temperatura, created_at, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))
       `)
       .eq('id', avaliacaoId)
       .single();
+    const data = raw ? flattenMarcaModelo(raw as any) : raw;
 
     if (data) {
       const am = data.atendimentos_motos as any;
@@ -1958,16 +1960,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
               )}
               <div>
                 <Label>Marca <span className="text-destructive">*</span></Label>
-                <Select value={editMarca} onValueChange={(v) => { setEditMarca(v); setEditModelo(''); }} disabled={crlvBloqueado}>
+                <Select value={editMarcaId} onValueChange={(v) => { setEditMarcaId(v); setEditModeloId(''); }} disabled={crlvBloqueado}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{getMarcaNomes().map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                  <SelectContent>{marcasCatalogo.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Modelo <span className="text-destructive">*</span></Label>
-                <Select value={editModelo} onValueChange={setEditModelo} disabled={crlvBloqueado}>
+                <Select value={editModeloId} onValueChange={setEditModeloId} disabled={crlvBloqueado || !editMarcaId}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{getModelosPorMarca(editMarca).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                  <SelectContent>{getModelosByMarcaId(editMarcaId).map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-3">

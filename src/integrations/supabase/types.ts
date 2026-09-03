@@ -152,9 +152,9 @@ export type Database = {
           km: string | null
           maior_valor: number | null
           manutencao_vencida: boolean | null
-          marca: string
+          marca_id: string
           menor_valor: number | null
-          modelo: string
+          modelo_id: string
           negociacao: string | null
           numero_crv: string | null
           nps_enviado_at: string | null
@@ -211,9 +211,9 @@ export type Database = {
           km?: string | null
           maior_valor?: number | null
           manutencao_vencida?: boolean | null
-          marca: string
+          marca_id: string
           menor_valor?: number | null
-          modelo: string
+          modelo_id: string
           negociacao?: string | null
           numero_crv?: string | null
           nps_enviado_at?: string | null
@@ -270,9 +270,9 @@ export type Database = {
           km?: string | null
           maior_valor?: number | null
           manutencao_vencida?: boolean | null
-          marca?: string
+          marca_id?: string
           menor_valor?: number | null
-          modelo?: string
+          modelo_id?: string
           negociacao?: string | null
           nps_enviado_at?: string | null
           nps_respondido_at?: string | null
@@ -307,6 +307,20 @@ export type Database = {
             columns: ["atendimento_id"]
             isOneToOne: false
             referencedRelation: "atendimentos_motos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_marca_id_fkey"
+            columns: ["marca_id"]
+            isOneToOne: false
+            referencedRelation: "marcas_motos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_modelo_id_fkey"
+            columns: ["modelo_id"]
+            isOneToOne: false
+            referencedRelation: "modelos_motos"
             referencedColumns: ["id"]
           },
         ]
@@ -1315,8 +1329,8 @@ export type Database = {
           created_at: string
           estoque_moto_id: string | null
           id: string
-          marca: string | null
-          modelo: string | null
+          marca_id: string | null
+          modelo_id: string | null
           origem: string
         }
         Insert: {
@@ -1326,8 +1340,8 @@ export type Database = {
           created_at?: string
           estoque_moto_id?: string | null
           id?: string
-          marca?: string | null
-          modelo?: string | null
+          marca_id?: string | null
+          modelo_id?: string | null
           origem: string
         }
         Update: {
@@ -1337,8 +1351,8 @@ export type Database = {
           created_at?: string
           estoque_moto_id?: string | null
           id?: string
-          marca?: string | null
-          modelo?: string | null
+          marca_id?: string | null
+          modelo_id?: string | null
           origem?: string
         }
         Relationships: [
@@ -1347,6 +1361,20 @@ export type Database = {
             columns: ["atendimento_id"]
             isOneToOne: false
             referencedRelation: "atendimentos_motos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "motos_interesse_marca_id_fkey"
+            columns: ["marca_id"]
+            isOneToOne: false
+            referencedRelation: "marcas_motos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "motos_interesse_modelo_id_fkey"
+            columns: ["modelo_id"]
+            isOneToOne: false
+            referencedRelation: "modelos_motos"
             referencedColumns: ["id"]
           },
         ]
@@ -1832,25 +1860,7 @@ export type Database = {
         Args: { _loja?: string; _tipo?: string }
         Returns: Json
       }
-      relatorio_showroom_sinais: {
-        Args: {
-          _date_from?: string
-          _date_to?: string
-          _loja?: string
-          _tipo?: string
-        }
-        Returns: Json
-      }
       relatorio_showroom_vendedores: {
-        Args: {
-          _date_from?: string
-          _date_to?: string
-          _loja?: string
-          _tipo?: string
-        }
-        Returns: Json
-      }
-      relatorio_showroom_vendidas: {
         Args: {
           _date_from?: string
           _date_to?: string

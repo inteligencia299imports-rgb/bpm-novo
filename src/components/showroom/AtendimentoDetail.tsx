@@ -16,6 +16,7 @@ import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, vali
 import { processarCnhAnexada } from '@/lib/cnhAnexo';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
+import { MARCA_MODELO_SELECT, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import type { Atendimento, MotoInteresse, Avaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import { Label } from '@/components/ui/label';
@@ -121,8 +122,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
   // Edicao de dados da moto avaliada
   const [editMotoId, setEditMotoId] = useState<string | null>(null);
-  const [editMarca, setEditMarca] = useState('');
-  const [editModelo, setEditModelo] = useState('');
+  const [editMarcaId, setEditMarcaId] = useState('');
+  const [editModeloId, setEditModeloId] = useState('');
   const [editPlaca, setEditPlaca] = useState('');
   const [editChassi, setEditChassi] = useState('');
   const [editRenavam, setEditRenavam] = useState('');
@@ -137,7 +138,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [editTemChaveReserva, setEditTemChaveReserva] = useState(false);
   const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
   const [savingMotoEdit, setSavingMotoEdit] = useState(false);
-  const { getMarcaNomes, getModelosPorMarca } = useMarcasModelos();
+  const { marcas: marcasCatalogo, getModelosByMarcaId } = useMarcasModelos();
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
@@ -161,17 +162,17 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         .order('created_at', { ascending: true });
 
       const [resInt, resAval, showroomRes] = await Promise.all([
-        supabase.from('motos_interesse').select('*').eq('atendimento_id', atendimento.id),
-        supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimento.id),
+        supabase.from('motos_interesse').select(`*, ${MARCA_MODELO_SELECT}`).eq('atendimento_id', atendimento.id),
+        supabase.from('avaliacoes').select(`*, ${MARCA_MODELO_SELECT}`).eq('atendimento_id', atendimento.id),
         showroomHistoryPromise,
       ]);
 
-      const motosInt = (resInt.data as unknown as MotoInteresse[]) || [];
+      const motosInt = flattenMarcaModeloList(resInt.data) as unknown as MotoInteresse[];
       setMotosInteresse(motosInt);
 
       // motos_avaliacao foi fundida em avaliacoes: cada linha ja tem os
       // dados da moto e do processo juntos, com o mesmo id.
-      const motosAv = (resAval.data as unknown as Avaliacao[]) || [];
+      const motosAv = flattenMarcaModeloList(resAval.data) as unknown as Avaliacao[];
       setMotosAvaliacao(motosAv);
       
       // Init document URLs from fetched data
@@ -379,8 +380,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
   const openEditMoto = (moto: Avaliacao) => {
     setEditMotoId(moto.id);
-    setEditMarca(moto.marca || '');
-    setEditModelo(moto.modelo || '');
+    setEditMarcaId((moto as any).marca_id || '');
+    setEditModeloId((moto as any).modelo_id || '');
     setEditPlaca(moto.placa || '');
     setEditChassi(moto.chassi || '');
     setEditRenavam(moto.renavam || '');
@@ -397,7 +398,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   };
 
   const handleSaveMotoEdit = async () => {
-    if (!editMotoId || !editMarca.trim() || !editModelo.trim()) {
+    if (!editMotoId || !editMarcaId || !editModeloId) {
       toast.error('Marca e Modelo são obrigatórios');
       return;
     }
@@ -415,8 +416,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     }
     setSavingMotoEdit(true);
     const updateData: any = {
-      marca: editMarca.trim(),
-      modelo: editModelo.trim(),
+      marca_id: editMarcaId,
+      modelo_id: editModeloId,
       placa: normalizePlaca(editPlaca) || null,
       chassi: normalizeChassi(editChassi) || null,
       renavam: normalizeRenavam(editRenavam) || null,
@@ -433,8 +434,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     };
     if (editMotoId && crlvUrls[editMotoId]) {
       // CRLV anexado: dados do documento são imutáveis.
-      delete updateData.marca;
-      delete updateData.modelo;
+      delete updateData.marca_id;
+      delete updateData.modelo_id;
       delete updateData.ano_fabricacao;
       delete updateData.ano_modelo;
       delete updateData.placa;
@@ -447,7 +448,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       toast.error('Erro ao salvar dados da moto');
       return;
     }
-    setMotosAvaliacao(prev => prev.map(m => m.id === editMotoId ? { ...m, ...updateData } : m));
+    const marcaNome = marcasCatalogo.find(x => x.id === editMarcaId)?.nome ?? '';
+    const modeloNome = getModelosByMarcaId(editMarcaId).find(x => x.id === editModeloId)?.nome ?? '';
+    setMotosAvaliacao(prev => prev.map(m => m.id === editMotoId ? { ...m, ...updateData, marca_id: editMarcaId, modelo_id: editModeloId, marca: marcaNome, modelo: modeloNome } : m));
     toast.success('Dados da moto atualizados!');
     setEditMotoId(null);
   };
@@ -1699,16 +1702,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               )}
               <div>
                 <Label>Marca <span className="text-destructive">*</span></Label>
-                <Select value={editMarca} onValueChange={(v) => { setEditMarca(v); setEditModelo(''); }} disabled={!!(editMotoId && crlvUrls[editMotoId])}>
+                <Select value={editMarcaId} onValueChange={(v) => { setEditMarcaId(v); setEditModeloId(''); }} disabled={!!(editMotoId && crlvUrls[editMotoId])}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{getMarcaNomes().map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                  <SelectContent>{marcasCatalogo.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Modelo <span className="text-destructive">*</span></Label>
-                <Select value={editModelo} onValueChange={setEditModelo} disabled={!!(editMotoId && crlvUrls[editMotoId])}>
+                <Select value={editModeloId} onValueChange={setEditModeloId} disabled={!!(editMotoId && crlvUrls[editMotoId]) || !editMarcaId}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{getModelosPorMarca(editMarca).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                  <SelectContent>{getModelosByMarcaId(editMarcaId).map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-3">

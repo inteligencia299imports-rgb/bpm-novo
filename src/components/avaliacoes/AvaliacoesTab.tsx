@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import FiltersPanel from '@/components/shared/FiltersPanel';
+import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 
 
 // "Adquirida" sai do board: motos adquiridas passam a viver em Pós-Compra / Consignação.
@@ -44,7 +45,7 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
     const statuses = KANBAN_COLUMNS.map(c => c.value);
-    const selectStr = `*, atendimentos_motos!inner (id, loja_id, loja_empresas:loja_id(loja), vendedor_id, interesse, temperatura, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`;
+    const selectStr = `*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner (id, loja_id, loja_empresas:loja_id(loja), vendedor_id, interesse, temperatura, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`;
 
     let data: any[];
     let error: any;
@@ -70,11 +71,14 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
       const estoqueMap: Record<string, { status: string; observacoes: string | null }> = {};
       (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes }; });
 
-      let mapped = (data || []).map((d: any) => ({
-        ...d,
-        atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja },
-        _estoqueInfo: estoqueMap[d.id] || null,
-      }));
+      let mapped = (data || []).map((raw: any) => {
+        const d = flattenMarcaModelo(raw);
+        return {
+          ...d,
+          atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja },
+          _estoqueInfo: estoqueMap[d.id] || null,
+        };
+      });
       if (search.trim()) {
         const s = search.trim().toLowerCase();
         mapped = mapped.filter((a: any) => {

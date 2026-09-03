@@ -93,12 +93,22 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
         ? modeloWords.slice(0, 2).join(' ')
         : modeloWords[0];
 
+      // marca/modelo agora sao FK: resolve os modelo_id do catalogo que casam
+      // com a marca + modelo parcial e filtra motos_interesse por eles.
+      const { data: modelosCat } = await supabase
+        .from('modelos_motos')
+        .select('id, nome, marcas_motos:marca_id!inner(nome)')
+        .ilike('marcas_motos.nome', selectedMoto.marca)
+        .ilike('nome', `%${baseModelo}%`);
+      const modeloIds = (modelosCat || []).map((m: any) => m.id);
+      if (modeloIds.length === 0) return [];
+
       // Find atendimentos with motos_interesse matching marca + modelo parcial
       const { data, error } = await supabase
         .from('motos_interesse')
         .select(`
           atendimento_id,
-          modelo,
+          modelo:modelo_id(nome),
           atendimentos:atendimentos_motos!motos_interesse_atendimento_id_fkey (
             vendedor_id,
             created_at,
@@ -110,8 +120,7 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
             cliente:clientes_fornecedores(nome_razao_social, telefone)
           )
         `)
-        .ilike('marca', selectedMoto.marca)
-        .ilike('modelo', `%${baseModelo}%`);
+        .in('modelo_id', modeloIds);
 
       if (error) throw error;
 

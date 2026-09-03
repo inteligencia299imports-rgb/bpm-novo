@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { getPreviousPeriod } from '@/lib/reportComparison';
 import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMotoNova, fetchLojaMap } from '@/lib/estoqueMoto';
+import { flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { getCycleForDate } from '@/lib/reportCycle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
@@ -126,7 +127,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       fetchAllRange<any>(() => supabase.from('custos_operacionais').select('contrato_consignante_id, responsavel, valor')),
       fetchAllRange<any>(() => supabase.from('contratos_consignante').select('id, atendimento_id, valor_fechamento')),
       fetchAllRange<any>(() => supabase.from('contratos').select('atendimento_id, valor_fechamento')),
-      fetchAllRange<any>(() => supabase.from('motos_interesse').select('atendimento_id, marca, modelo, estoque_moto_id, created_at')),
+      fetchAllRange<any>(() => supabase.from('motos_interesse').select('atendimento_id, marca:marca_id(nome), modelo:modelo_id(nome), estoque_moto_id, created_at')),
       (supabase as any).from('user_roles').select('user_id, nome'),
       fetchAllRange<any>(() => (supabase as any).from('pos_compra_processos').select('avaliacao_id, etapa, concluida, destino_transferencia')),
       fetchLojaMap(),
@@ -144,7 +145,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       custosOperacionais: (copRes.data || []) as any,
       contratos: (cRes.data || []) as any,
       consignantes: (ccRes.data || []) as any,
-      interesses: (miRes.data || []) as any,
+      interesses: flattenMarcaModeloList(miRes.data) as any,
       userRoles: (urRes.data || []) as any,
       posCompraProcessos: (pcpRes.data || []) as any,
     }));

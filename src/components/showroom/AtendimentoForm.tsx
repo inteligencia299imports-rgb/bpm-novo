@@ -11,6 +11,7 @@ import { LOJAS, INTERESSES, TEMPERATURAS, ORIGENS, UFS, TIPOS_ATENDIMENTO, SEXOS
 import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
 import MotoCompraSection from './MotoCompraSection';
+import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { toast } from 'sonner';
 import { cn, formatPersonName, firstLastName } from '@/lib/utils';
 import { empresaCompraDireta } from '@/lib/tipoAquisicao';
@@ -222,18 +223,20 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, ufPrincipal]);
 
+  const { marcaIdByNome } = useMarcasModelos();
+
   // compra
   const [origemMoto, setOrigemMoto] = useState('estoque');
-  const [compraMarca, setCompraMarca] = useState('');
-  const [compraModelo, setCompraModelo] = useState('');
+  const [compraMarcaId, setCompraMarcaId] = useState('');
+  const [compraModeloId, setCompraModeloId] = useState('');
   const [compraAno, setCompraAno] = useState('');
   const [estoqueMotoId, setEstoqueMotoId] = useState('');
   const [estoqueTipo, setEstoqueTipo] = useState('');
   const [chassi, setChassi] = useState('');
 
   // venda
-  const [vendaMarca, setVendaMarca] = useState('');
-  const [vendaModelo, setVendaModelo] = useState('');
+  const [vendaMarcaId, setVendaMarcaId] = useState('');
+  const [vendaModeloId, setVendaModeloId] = useState('');
   const [vendaAnoFab, setVendaAnoFab] = useState('');
   const [vendaAnoMod, setVendaAnoMod] = useState('');
   const [vendaCategoria, setVendaCategoria] = useState('');
@@ -304,8 +307,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           const { data: mi } = await supabase.from('motos_interesse').select('*').eq('atendimento_id', atendimentoId).maybeSingle();
           if (mi) {
             setOrigemMoto(mi.origem);
-            setCompraMarca(mi.marca || '');
-            setCompraModelo(mi.modelo || '');
+            setCompraMarcaId((mi as any).marca_id || '');
+            setCompraModeloId((mi as any).modelo_id || '');
             setCompraAno(mi.ano || '');
             setEstoqueMotoId(mi.estoque_moto_id || '');
             setEstoqueTipo((mi as any).estoque_tipo || '');
@@ -316,8 +319,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           const { data: ma } = await supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimentoId).maybeSingle();
           if (ma) {
             setMotoAvaliacaoId(ma.id);
-            setVendaMarca(ma.marca);
-            setVendaModelo(ma.modelo);
+            setVendaMarcaId((ma as any).marca_id || '');
+            setVendaModeloId((ma as any).modelo_id || '');
             setVendaAnoFab(ma.ano_fabricacao || '');
             setVendaAnoMod(ma.ano_modelo || '');
             setVendaCategoria(ma.categoria || '');
@@ -412,7 +415,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Esta empresa não faz compra direta de moto. O interesse deve ser "comprar" ou "trocar".');
       return;
     }
-    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && (!compraModelo || !compraAno)) {
+    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && (!compraModeloId || !compraAno)) {
       toast.error('Preencha o modelo e ano da moto Ducati');
       return;
     }
@@ -420,11 +423,11 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('O chassi deve ter entre 6 e 17 caracteres');
       return;
     }
-    if (!isDucati && (interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'externo' && (!compraMarca || !compraModelo || !compraAno)) {
+    if (!isDucati && (interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'externo' && (!compraMarcaId || !compraModeloId || !compraAno)) {
       toast.error('Preencha todos os campos da Moto de Interesse');
       return;
     }
-    if ((interesse === 'vender' || interesse === 'trocar') && (!vendaMarca || !vendaModelo || !vendaAnoFab || !vendaAnoMod || !vendaCategoria || !vendaCor || !vendaPlaca.trim() || !vendaKm.trim() || !vendaCilindrada.trim())) {
+    if ((interesse === 'vender' || interesse === 'trocar') && (!vendaMarcaId || !vendaModeloId || !vendaAnoFab || !vendaAnoMod || !vendaCategoria || !vendaCor || !vendaPlaca.trim() || !vendaKm.trim() || !vendaCilindrada.trim())) {
       toast.error('Preencha todos os campos da Moto do Cliente');
       return;
     }
@@ -502,8 +505,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         ? {
             atendimento_id: atId!,
             origem: 'estoque' as const,
-            marca: 'DUCATI',
-            modelo: compraModelo || null,
+            marca_id: compraMarcaId || marcaIdByNome('DUCATI'),
+            modelo_id: compraModeloId || null,
             ano: compraAno || null,
             estoque_moto_id: null,
             estoque_tipo: null,
@@ -512,8 +515,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         : {
             atendimento_id: atId!,
             origem: origemMoto,
-            marca: origemMoto === 'externo' ? compraMarca || null : null,
-            modelo: origemMoto === 'externo' ? compraModelo || null : null,
+            marca_id: origemMoto === 'externo' ? compraMarcaId || null : null,
+            modelo_id: origemMoto === 'externo' ? compraModeloId || null : null,
             ano: origemMoto === 'externo' ? compraAno || null : null,
             estoque_moto_id: origemMoto === 'estoque' ? estoqueMotoId || null : null,
             estoque_tipo: origemMoto === 'estoque' ? (estoqueTipo || 'seminova') : null,
@@ -536,10 +539,10 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
     // Save moto avaliacao
     if (interesse === 'vender' || interesse === 'trocar') {
-      if (vendaMarca.trim() && vendaModelo.trim()) {
+      if (vendaMarcaId && vendaModeloId) {
         const maData: any = {
           atendimento_id: atId!,
-          marca: vendaMarca.trim(), modelo: vendaModelo.trim(),
+          marca_id: vendaMarcaId, modelo_id: vendaModeloId,
           ano_fabricacao: vendaAnoFab || null, ano_modelo: vendaAnoMod || null,
           categoria: vendaCategoria || null, cor: vendaCor || null,
           placa: vendaPlaca || null, km: vendaKm || null,
@@ -552,8 +555,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         if (motoAvaliacaoId) {
           // Com CRLV anexado, os dados extraídos do documento são imutáveis.
           if (vendaCrlvUrl) {
-            delete maData.marca;
-            delete maData.modelo;
+            delete maData.marca_id;
+            delete maData.modelo_id;
             delete maData.ano_fabricacao;
             delete maData.ano_modelo;
             delete maData.placa;
@@ -824,8 +827,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       {(interesse === 'comprar' || interesse === 'trocar') && (
         <MotoCompraSection
           origemMoto={origemMoto} setOrigemMoto={setOrigemMoto}
-          marca={compraMarca} setMarca={setCompraMarca}
-          modelo={compraModelo} setModelo={setCompraModelo}
+          marcaId={compraMarcaId} setMarcaId={setCompraMarcaId}
+          modeloId={compraModeloId} setModeloId={setCompraModeloId}
           ano={compraAno} setAno={setCompraAno}
           estoqueMotoId={estoqueMotoId} setEstoqueMotoId={setEstoqueMotoId}
           estoqueTipo={estoqueTipo} setEstoqueTipo={setEstoqueTipo}
@@ -838,8 +841,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       {(interesse === 'vender' || interesse === 'trocar') && (
         <>
           <MotoVendaSection
-            marca={vendaMarca} setMarca={setVendaMarca}
-            modelo={vendaModelo} setModelo={setVendaModelo}
+            marcaId={vendaMarcaId} setMarcaId={setVendaMarcaId}
+            modeloId={vendaModeloId} setModeloId={setVendaModeloId}
             anoFab={vendaAnoFab} setAnoFab={setVendaAnoFab}
             anoMod={vendaAnoMod} setAnoMod={setVendaAnoMod}
             categoria={vendaCategoria} setCategoria={setVendaCategoria}

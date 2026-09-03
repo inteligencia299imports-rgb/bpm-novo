@@ -1,12 +1,13 @@
 import { supabase } from '@/lib/supabase';
 import { isTipoConsignada } from '@/lib/tipoAquisicao';
+import { nomeMarcaModelo } from '@/lib/marcaModelo';
 
 /**
  * Select canonico de estoque_motos (SEMINOVAS). marca/modelo/placa/preco de tabela/
  * tipo/classificacao vem da avaliacao vinculada — a tabela so guarda o que e proprio dela.
  */
 export const ESTOQUE_MOTO_SELECT =
-  '*, avaliacao:avaliacao_id(id, marca, modelo, categoria, cor, cilindrada, placa, ' +
+  '*, avaliacao:avaliacao_id(id, marca:marca_id(nome), modelo:modelo_id(nome), categoria, cor, cilindrada, placa, ' +
   'ano_fabricacao, ano_modelo, km, quanto_pede, classificacao, tipo_aquisicao, chassi, renavam, ' +
   'tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta, ' +
   'pos_compra_status, atendimento_id, atendimento:atendimento_id(loja_id)), ' +
@@ -56,8 +57,8 @@ export function mapEstoqueMoto(row: any, lojaMap?: Map<string, LojaInfo>) {
   return {
     ...row,
     fonte: 'seminova' as EstoqueFonte,
-    marca: av.marca ?? null,
-    modelo: av.modelo ?? null,
+    marca: nomeMarcaModelo(av.marca) || null,
+    modelo: nomeMarcaModelo(av.modelo) || null,
     categoria: av.categoria ?? null,
     cor: av.cor ?? null,
     cilindrada: av.cilindrada ?? null,

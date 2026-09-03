@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateContratoConsignantePdf } from '@/lib/generateContratoConsignantePdf';
 import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
+import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto } from '@/lib/clienteCadastro';
 
@@ -189,11 +190,11 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
 
     if (estoque?.avaliacao_id) {
       const [{ data: avalData }, { data: custosData }] = await Promise.all([
-        supabase.from('avaliacoes').select('*').eq('id', estoque.avaliacao_id).maybeSingle(),
+        supabase.from('avaliacoes').select(`*, ${MARCA_MODELO_SELECT}`).eq('id', estoque.avaliacao_id).maybeSingle(),
         supabase.from('custos_oficina').select('*').eq('avaliacao_id', estoque.avaliacao_id),
       ]);
-      avaliacao = avalData;
-      moto = avalData;
+      avaliacao = avalData ? flattenMarcaModelo(avalData as any) : avalData;
+      moto = avaliacao;
       oficinaCosts = custosData || [];
 
       // Fetch the original consignante's atendimento (the person who left the moto)

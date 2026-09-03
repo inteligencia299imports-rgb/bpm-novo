@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMotoNova, fetchLojaMap } from '@/lib/estoqueMoto';
+import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import CidadeFilter, { matchesCidade, getSiglaFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import FiltersPanel from '@/components/shared/FiltersPanel';
 
@@ -31,7 +32,8 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
 
   useEffect(() => {
     if (initialAtendimentoId) {
-      supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('id', initialAtendimentoId).single().then(async ({ data }) => {
+      supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`).eq('id', initialAtendimentoId).single().then(async ({ data: raw }) => {
+        const data = flattenMarcaModelo(raw as any);
         if (data) {
           // Fetch estoque moto info (seminova ou 0km)
           const lojaMap = await fetchLojaMap();
@@ -68,16 +70,16 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     let atData: any[];
     let atError: any;
     if (isSearching) {
-      const result = await fetchAllRange(() => supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('situacao', 'vendido').order('updated_at', { ascending: false }));
+      const result = await fetchAllRange(() => supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`).eq('situacao', 'vendido').order('updated_at', { ascending: false }));
       atError = result.error;
       atData = result.data || [];
     } else {
-      const statusResults = await Promise.all(statuses.map(s => supabase.from('atendimentos_motos').select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)').eq('situacao', 'vendido').eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
+      const statusResults = await Promise.all(statuses.map(s => supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`).eq('situacao', 'vendido').eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
       atError = statusResults.find(r => r.error)?.error;
       atData = statusResults.flatMap(r => r.data || []);
     }
     if (atError) { toast.error('Erro ao carregar pós-venda'); setLoading(false); return; }
-    atData = atData.map((a: any) => ({ ...a, loja: a.loja_empresas?.loja }));
+    atData = atData.map((a: any) => ({ ...flattenMarcaModelo(a), loja: a.loja_empresas?.loja }));
 
     // Build estoque map: própria entries by atendimento_venda_id
     const estoquePropria: Record<string, any> = {};

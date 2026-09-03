@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
+import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, X, FileText, Filter } from 'lucide-react';
@@ -31,10 +32,11 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
   useEffect(() => {
     if (initialAvaliacaoId) {
       supabase.from('avaliacoes')
-        .select(`*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`)
-        .eq('id', initialAvaliacaoId).single().then(({ data }) => {
-          if (data) {
-            const am = (data as any).atendimentos_motos;
+        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`)
+        .eq('id', initialAvaliacaoId).single().then(({ data: raw }) => {
+          if (raw) {
+            const data = flattenMarcaModelo(raw as any);
+            const am = data.atendimentos_motos;
             setSelectedItem({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja }, moto: data });
           }
         });
@@ -44,7 +46,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const selectStr = `*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`;
+    const selectStr = `*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`;
 
     const estResult = await fetchAllRange(() => supabase.from('estoque_motos').select('avaliacao_id, status, observacoes, created_at').not('avaliacao_id', 'is', null));
     const nfeResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('avaliacao_id, status').not('avaliacao_id', 'is', null));
@@ -52,7 +54,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
       supabase.from('avaliacoes').select(selectStr).eq('tipo_aquisicao', 'consignada').order('updated_at', { ascending: false })
     );
     const error = result.error;
-    const data = result.data || [];
+    const data = flattenMarcaModeloList(result.data);
     const estData = estResult.data;
     const nfeEmitidaSet = new Set(
       ((nfeResult.data as any[]) || []).filter((n: any) => n.status === 'processada' && n.avaliacao_id).map((n: any) => n.avaliacao_id),

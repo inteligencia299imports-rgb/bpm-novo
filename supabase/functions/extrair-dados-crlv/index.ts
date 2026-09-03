@@ -257,7 +257,7 @@ Deno.serve(async (req) => {
     // resto do sistema) e ja traz marca/modelo para a conferencia do CRLV.
     supabaseAdmin
       .from('avaliacoes')
-      .select('id, marca, modelo, placa, chassi, renavam, numero_crv, ano_fabricacao, ano_modelo, atendimentos_motos!inner(vendedor_id, loja_id)')
+      .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, chassi, renavam, numero_crv, ano_fabricacao, ano_modelo, atendimentos_motos!inner(vendedor_id, loja_id)')
       .eq('id', avaliacao_id)
       .maybeSingle(),
   ]);
@@ -268,6 +268,13 @@ Deno.serve(async (req) => {
   }
 
   const acesso = acessoRes.data as any;
+  if (acesso) {
+    // marca/modelo agora sao FK -> achata o embed {nome} para string.
+    // Aceita string crua tambem (janela da coluna-ponte temporaria).
+    const _nome = (v: any) => (v && typeof v === 'object' ? (v.nome ?? '') : (v ?? ''));
+    acesso.marca = _nome(acesso.marca);
+    acesso.modelo = _nome(acesso.modelo);
+  }
   if (!acesso) {
     return jsonResponse({ error: 'Avaliação não encontrada' }, 404);
   }

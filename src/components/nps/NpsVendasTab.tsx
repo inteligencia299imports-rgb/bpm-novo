@@ -15,6 +15,7 @@ import FiltersPanel from '@/components/shared/FiltersPanel';
 
 import { isLojaDucati } from '@/lib/lojaUtils';
 import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMotoNova, fetchLojaMap } from '@/lib/estoqueMoto';
+import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import NpsDateFilter from './NpsDateFilter';
 
 interface NpsVendasTabProps {
@@ -42,7 +43,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
     const buildQuery = (status?: SituacaoNps) => {
       let q = supabase
         .from('atendimentos_motos')
-        .select('*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*), avaliacoes(*)')
+        .select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`)
         .eq('situacao', 'vendido')
         .in('interesse', ['comprar', 'trocar']);
 
@@ -81,7 +82,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
       console.error(error);
     } else {
       // Enrich motos_interesse with estoque data
-      let mapped = (data || []).map((a: any) => ({ ...a, loja: a.loja_empresas?.loja }));
+      let mapped = (data || []).map((a: any) => ({ ...flattenMarcaModelo(a), loja: a.loja_empresas?.loja }));
       const atIds = mapped.map((a: any) => a.id);
       if (atIds.length > 0) {
         const [{ data: estData }, { data: estNovasData }, lojaMap] = await Promise.all([
