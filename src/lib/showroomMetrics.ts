@@ -2,6 +2,7 @@
  * Cálculos client-side do Relatório de Showroom.
  * Espelha o que era feito nas RPCs `relatorio_showroom_*`.
  */
+import { firstLastName } from '@/lib/utils';
 
 export type LojaFilterValue = string; // 'todos' | '299' | 'Ducati' | sub-loja
 export type TipoFilterValue = string; // 'todos' | 'propria' | 'consignada' | 'repasse' | 'ducati' | 'convertida'
@@ -157,7 +158,7 @@ export function buildIndexes(params: {
   }
 
   const nomeByUser = new Map<string, string>();
-  for (const u of params.userRoles) nomeByUser.set(u.user_id, u.nome || 'Desconhecido');
+  for (const u of params.userRoles) nomeByUser.set(u.user_id, firstLastName(u.nome) || 'Desconhecido');
 
   const destinoTransferenciaByAvaliacao = new Map<string, string | null>();
   for (const p of (params.posCompraProcessos || [])) {

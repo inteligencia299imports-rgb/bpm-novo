@@ -396,14 +396,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       const vendedorId = (data.atendimentos_motos as any)?.vendedor_id;
       if (vendedorId) {
         const { data: vendedorData } = await (supabase as any).from('user_roles').select('nome').eq('user_id', vendedorId).eq('projeto_id', BPM_PROJETO_ID).maybeSingle();
-        if (vendedorData?.nome) setVendedorNome(vendedorData.nome);
+        if (vendedorData?.nome) setVendedorNome(firstLastName(vendedorData.nome));
       }
 
       // Fetch avaliador name
       setAvaliadorId(data.avaliador_id || '');
       if (data.avaliador_id) {
         const { data: avaliadorData } = await (supabase as any).from('user_roles').select('nome').eq('user_id', data.avaliador_id).eq('projeto_id', BPM_PROJETO_ID).maybeSingle();
-        if (avaliadorData?.nome) setAvaliadorNome(avaliadorData.nome);
+        if (avaliadorData?.nome) setAvaliadorNome(firstLastName(avaliadorData.nome));
       }
 
       const { data: fotosData } = await supabase.from('moto_fotos').select('*').eq('avaliacao_id', data.id);

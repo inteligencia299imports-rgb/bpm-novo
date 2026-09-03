@@ -2,8 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { AppRole } from '@/types/crm';
-
-const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
+import { firstLastName } from '@/lib/utils';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 
 interface AuthContextType {
   user: User | null;
@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (data) {
       setRole(data.app_role as AppRole);
-      setUserName(data.nome || '');
+      setUserName(firstLastName(data.nome));
       setLimiteDescontoPercentual(data.limite_desconto_percentual ?? 8);
 
       if (data.loja_id) {

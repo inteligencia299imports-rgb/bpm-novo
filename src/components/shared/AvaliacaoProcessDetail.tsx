@@ -25,7 +25,7 @@ import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
 import PlacaInput from '@/components/shared/PlacaInput';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
-import { formatPersonName } from '@/lib/utils';
+import { formatPersonName, firstLastName } from '@/lib/utils';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
@@ -266,7 +266,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
 
       if (avRes.data?.avaliador_id) {
         const { data: roleData } = await (supabase as any).from('user_roles').select('nome').eq('user_id', avRes.data.avaliador_id).eq('projeto_id', BPM_PROJETO_ID).maybeSingle();
-        if (roleData?.nome) setAvaliadorNome(roleData.nome);
+        if (roleData?.nome) setAvaliadorNome(firstLastName(roleData.nome));
       }
 
       // Fetch pending release steps for preparacao

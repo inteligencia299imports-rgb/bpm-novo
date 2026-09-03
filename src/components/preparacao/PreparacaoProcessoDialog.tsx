@@ -14,6 +14,7 @@ import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, A
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { supabase } from '@/lib/supabase';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
+import { firstLastName } from '@/lib/utils';
 import { toast } from 'sonner';
 import { PREPARACAO_COLUMNS, LOJAS } from '@/types/crm';
 
@@ -268,7 +269,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         .eq('user_id', user.id)
         .eq('projeto_id', BPM_PROJETO_ID)
         .maybeSingle();
-      if (roleData?.nome) userName = roleData.nome;
+      if (roleData?.nome) userName = firstLastName(roleData.nome);
     }
     return { user, userName };
   };

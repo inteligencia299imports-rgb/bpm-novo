@@ -29,7 +29,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
-import { formatPersonName } from '@/lib/utils';
+import { formatPersonName, firstLastName } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PhotoUpload from './PhotoUpload';
 import DocumentUpload from './DocumentUpload';
@@ -228,7 +228,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         estoquePromise, avaliadorPromise, consultaPromise, avaliacaoHistPromise, fotosCountPromise, vendedorPromise,
       ]);
 
-      if (vendedorRes.data?.nome) setVendedorNome(vendedorRes.data.nome);
+      if (vendedorRes.data?.nome) setVendedorNome(firstLastName(vendedorRes.data.nome));
 
       // Update estoque
       if (estoqueRes.data) {
@@ -254,7 +254,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         let avaliadorNames: Record<string, string> = {};
         if (rolesRes.data) {
           for (const r of rolesRes.data) {
-            avaliadorNames[r.user_id] = r.nome;
+            avaliadorNames[r.user_id] = firstLastName(r.nome);
           }
         }
         for (const av of resAval.data) {

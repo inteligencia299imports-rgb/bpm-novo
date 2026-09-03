@@ -22,7 +22,7 @@ import ContratoDialog from '@/components/showroom/ContratoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
-import { formatPersonName } from '@/lib/utils';
+import { formatPersonName, firstLastName } from '@/lib/utils';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
@@ -177,7 +177,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         vendedorPromise,
       ]);
 
-      if (vendedorResult.data?.nome) setVendedorNome(vendedorResult.data.nome);
+      if (vendedorResult.data?.nome) setVendedorNome(firstLastName(vendedorResult.data.nome));
 
       // Process estoque
       const estoqueMap: Record<string, any> = {};
@@ -191,7 +191,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
       // Process avaliacoes with avaliador names
       const avaliadorNames: Record<string, string> = {};
-      (rolesResult.data || []).forEach((r: any) => { avaliadorNames[r.user_id] = r.nome; });
+      (rolesResult.data || []).forEach((r: any) => { avaliadorNames[r.user_id] = firstLastName(r.nome); });
       const avalMap: Record<string, any> = {};
       (resAval.data || []).forEach((av: any) => {
         avalMap[av.id] = { ...av, avaliador_nome: avaliadorNames[av.avaliador_id] || null };
@@ -229,7 +229,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             // Fetch avaliador name
             if (avalData.avaliador_id) {
               const { data: avaliadorRole } = await (supabase as any).from('user_roles').select('nome').eq('user_id', avalData.avaliador_id).eq('projeto_id', BPM_PROJETO_ID).maybeSingle();
-              if (avaliadorRole?.nome) setAvaliadorNome(avaliadorRole.nome);
+              if (avaliadorRole?.nome) setAvaliadorNome(firstLastName(avaliadorRole.nome));
             }
           }
         }

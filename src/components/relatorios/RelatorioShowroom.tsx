@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
-import { abbreviateName, fmtInt } from '@/lib/utils';
+import { firstLastName, fmtInt } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, ShoppingCart, CreditCard, TrendingUp, DollarSign, Target, BarChart3, PieChart, FileSpreadsheet, FileDown } from 'lucide-react';
@@ -221,7 +221,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     }
     return Array.from(map.values())
       .filter(v => v.atendimentos > 0 || v.vendas > 0 || v.sinais > 0)
-      .map(v => ({ ...v, nome: abbreviateName(v.nomeCompleto), conversao: v.atendimentos > 0 ? v.vendas / v.atendimentos : 0 }));
+      .map(v => ({ ...v, nome: firstLastName(v.nomeCompleto), conversao: v.atendimentos > 0 ? v.vendas / v.atendimentos : 0 }));
   }, [atendimentos, indexes, filterLoja, filterTipo, dateFrom, dateTo]);
 
   const motosVendidas = useMemo(() => {

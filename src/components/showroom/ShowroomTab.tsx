@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Plus, Search, Filter, CalendarIcon, X, Bike } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, firstLastName } from '@/lib/utils';
 import { LOJAS, INTERESSES, SITUACOES_SHOWROOM } from '@/types/crm';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
@@ -59,7 +59,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
 
   useEffect(() => {
     (supabase as any).from('user_roles').select('user_id, nome').eq('projeto_id', BPM_PROJETO_ID).order('nome').then(({ data }) => {
-      if (data) setVendedores(data);
+      if (data) setVendedores((data as any[]).map((v) => ({ ...v, nome: firstLastName(v.nome) })));
     });
   }, []);
 

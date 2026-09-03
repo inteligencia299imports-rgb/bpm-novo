@@ -17,6 +17,7 @@ import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcesso
 import { fetchEstoqueUnificado } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
+import { firstLastName } from '@/lib/utils';
 import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
 import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -169,7 +170,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       if (vendedorIds.length > 0) {
         const { data: roles } = await (supabase as any).from('user_roles').select('user_id, nome').in('user_id', vendedorIds).eq('projeto_id', BPM_PROJETO_ID);
         if (roles) {
-          for (const r of roles) vendedorMap[r.user_id] = r.nome;
+          for (const r of roles) vendedorMap[r.user_id] = firstLastName(r.nome);
         }
       }
       const data = lista;

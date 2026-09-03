@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
+import { firstLastName } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -42,7 +43,7 @@ const AtendimentoObservacoes: React.FC<Props> = ({ idOperacao }) => {
     let nomeMap: Record<string, string> = {};
     if (userIds.length > 0) {
       const { data: roles } = await supabase.from('user_roles').select('user_id, nome').in('user_id', userIds).eq('projeto_id', BPM_PROJETO_ID);
-      nomeMap = Object.fromEntries((roles || []).map((r) => [r.user_id, r.nome]));
+      nomeMap = Object.fromEntries((roles || []).map((r) => [r.user_id, firstLastName(r.nome)]));
     }
     setNotas(data.map(n => ({ ...n, usuario_nome: (n.created_by && nomeMap[n.created_by]) || 'Usuário' })));
   };
