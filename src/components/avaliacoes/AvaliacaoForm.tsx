@@ -23,6 +23,7 @@ import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, Message
 import { ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import { formatPersonName, firstLastName } from '@/lib/utils';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
@@ -394,14 +395,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       // Fetch vendedor name
       const vendedorId = (data.atendimentos_motos as any)?.vendedor_id;
       if (vendedorId) {
-        const { data: vendedorData } = await (supabase as any).from('user_roles').select('nome').eq('user_id', vendedorId).single();
+        const { data: vendedorData } = await (supabase as any).from('user_roles').select('nome').eq('user_id', vendedorId).eq('projeto_id', BPM_PROJETO_ID).maybeSingle();
         if (vendedorData?.nome) setVendedorNome(vendedorData.nome);
       }
 
       // Fetch avaliador name
       setAvaliadorId(data.avaliador_id || '');
       if (data.avaliador_id) {
-        const { data: avaliadorData } = await supabase.from('user_roles').select('nome').eq('user_id', data.avaliador_id).single();
+        const { data: avaliadorData } = await (supabase as any).from('user_roles').select('nome').eq('user_id', data.avaliador_id).eq('projeto_id', BPM_PROJETO_ID).maybeSingle();
         if (avaliadorData?.nome) setAvaliadorNome(avaliadorData.nome);
       }
 

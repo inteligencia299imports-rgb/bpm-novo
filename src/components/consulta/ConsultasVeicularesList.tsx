@@ -5,6 +5,7 @@ import { Search, User, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 import type { ConsultaVeiculoResultado } from '@/types/consultaVeicular';
 
 export interface ConsultaManualResultado {
@@ -73,7 +74,7 @@ const ConsultasVeicularesList: React.FC<Props> = ({ avaliacaoId, refreshKey, onO
       const ids = [...new Set(lista.map((r) => r.usuario_id).filter(Boolean))] as string[];
       let nomes: Record<string, string> = {};
       if (ids.length > 0) {
-        const { data: roles } = await supabase.from('user_roles').select('user_id, nome').in('user_id', ids);
+        const { data: roles } = await supabase.from('user_roles').select('user_id, nome').in('user_id', ids).eq('projeto_id', BPM_PROJETO_ID);
         nomes = Object.fromEntries((roles || []).map((r) => [r.user_id, r.nome]));
       }
       if (cancel) return;

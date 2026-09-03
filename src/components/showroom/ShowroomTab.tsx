@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { LOJAS, INTERESSES, SITUACOES_SHOWROOM } from '@/types/crm';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import AtendimentoCard from './AtendimentoCard';
 import AtendimentoDetail from './AtendimentoDetail';
@@ -57,7 +58,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   };
 
   useEffect(() => {
-    (supabase as any).from('user_roles').select('user_id, nome').order('nome').then(({ data }) => {
+    (supabase as any).from('user_roles').select('user_id, nome').eq('projeto_id', BPM_PROJETO_ID).order('nome').then(({ data }) => {
       if (data) setVendedores(data);
     });
   }, []);

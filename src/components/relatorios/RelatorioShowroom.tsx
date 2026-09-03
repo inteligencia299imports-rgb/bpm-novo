@@ -17,6 +17,7 @@ import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { getPreviousPeriod } from '@/lib/reportComparison';
 import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMotoNova, fetchLojaMap } from '@/lib/estoqueMoto';
 import { flattenMarcaModeloList } from '@/lib/marcaModelo';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { getCycleForDate } from '@/lib/reportCycle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
@@ -128,7 +129,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       fetchAllRange<any>(() => supabase.from('contratos_consignante').select('id, atendimento_id, valor_fechamento')),
       fetchAllRange<any>(() => supabase.from('contratos').select('atendimento_id, valor_fechamento')),
       fetchAllRange<any>(() => supabase.from('motos_interesse').select('atendimento_id, marca:marca_id(nome), modelo:modelo_id(nome), estoque_moto_id, created_at')),
-      (supabase as any).from('user_roles').select('user_id, nome'),
+      (supabase as any).from('user_roles').select('user_id, nome').eq('projeto_id', BPM_PROJETO_ID),
       fetchAllRange<any>(() => (supabase as any).from('pos_compra_processos').select('avaliacao_id, etapa, concluida, destino_transferencia')),
       fetchLojaMap(),
     ]);

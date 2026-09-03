@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check, ArrowLeft, Search } from 'lucide-react';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { supabase } from '@/lib/supabase';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { toast } from 'sonner';
 import { PREPARACAO_COLUMNS, LOJAS } from '@/types/crm';
 
@@ -265,6 +266,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         .from('user_roles')
         .select('nome')
         .eq('user_id', user.id)
+        .eq('projeto_id', BPM_PROJETO_ID)
         .maybeSingle();
       if (roleData?.nome) userName = roleData.nome;
     }

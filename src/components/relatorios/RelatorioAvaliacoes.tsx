@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { flattenMarcaModelo } from '@/lib/marcaModelo';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { abbreviateName, fmtInt, cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClipboardCheck, CheckCircle, ArrowDownUp, ArrowRightLeft, XCircle, ArrowDownToLine, Repeat, Package, FileSpreadsheet, FileDown } from 'lucide-react';
@@ -190,7 +191,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         .select('entity_id, created_at')
         .eq('status', 'adquirida')
       ),
-      (supabase as any).from('user_roles').select('user_id, nome'),
+      (supabase as any).from('user_roles').select('user_id, nome').eq('projeto_id', BPM_PROJETO_ID),
       fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado')),
     ]);
 

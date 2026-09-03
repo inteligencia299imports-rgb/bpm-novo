@@ -25,6 +25,7 @@ import StatusTimeline from '@/components/shared/StatusTimeline';
 import { formatPersonName } from '@/lib/utils';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 
 interface Props {
   item: any;
@@ -168,11 +169,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
       // Step 2: Estoque + Avaliador names in parallel
       const vendedorPromise = item.vendedor_id
-        ? (supabase as any).from('user_roles').select('nome').eq('user_id', item.vendedor_id).single()
+        ? (supabase as any).from('user_roles').select('nome').eq('user_id', item.vendedor_id).eq('projeto_id', BPM_PROJETO_ID).maybeSingle()
         : Promise.resolve({ data: null as any });
       const [estoqueList, rolesResult, vendedorResult] = await Promise.all([
         estoqueRefs.length > 0 ? fetchEstoqueUnificado({ ids: estoqueRefs }) : Promise.resolve([] as any[]),
-        avaliadorIds.length > 0 ? (supabase as any).from('user_roles').select('user_id, nome').in('user_id', avaliadorIds) : Promise.resolve({ data: [] as any[] }),
+        avaliadorIds.length > 0 ? (supabase as any).from('user_roles').select('user_id, nome').in('user_id', avaliadorIds).eq('projeto_id', BPM_PROJETO_ID) : Promise.resolve({ data: [] as any[] }),
         vendedorPromise,
       ]);
 
@@ -227,7 +228,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             }
             // Fetch avaliador name
             if (avalData.avaliador_id) {
-              const { data: avaliadorRole } = await (supabase as any).from('user_roles').select('nome').eq('user_id', avalData.avaliador_id).single();
+              const { data: avaliadorRole } = await (supabase as any).from('user_roles').select('nome').eq('user_id', avalData.avaliador_id).eq('projeto_id', BPM_PROJETO_ID).maybeSingle();
               if (avaliadorRole?.nome) setAvaliadorNome(avaliadorRole.nome);
             }
           }

@@ -17,6 +17,7 @@ import { processarCnhAnexada } from '@/lib/cnhAnexo';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModeloList } from '@/lib/marcaModelo';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 import type { Atendimento, MotoInteresse, Avaliacao, SituacaoShowroom } from '@/types/crm';
 import { SITUACOES_SHOWROOM, INTERESSES, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import { Label } from '@/components/ui/label';
@@ -206,11 +207,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         ? [...new Set(resAval.data.map((av: any) => av.avaliador_id).filter(Boolean))]
         : [];
       const vendedorPromise = atendimento.vendedor_id
-        ? (supabase as any).from('user_roles').select('nome').eq('user_id', atendimento.vendedor_id).single().then(r => r)
+        ? (supabase as any).from('user_roles').select('nome').eq('user_id', atendimento.vendedor_id).eq('projeto_id', BPM_PROJETO_ID).maybeSingle().then(r => r)
         : Promise.resolve({ data: null as any });
       const allRoleIds = [...new Set([...avaliadorIds, atendimento.vendedor_id].filter(Boolean))];
       const avaliadorPromise = avaliadorIds.length > 0
-        ? (supabase as any).from('user_roles').select('user_id, nome').in('user_id', avaliadorIds).then(r => r)
+        ? (supabase as any).from('user_roles').select('user_id, nome').in('user_id', avaliadorIds).eq('projeto_id', BPM_PROJETO_ID).then(r => r)
         : Promise.resolve({ data: null as any[] | null });
 
       const consultaPromise = motoIds.length > 0

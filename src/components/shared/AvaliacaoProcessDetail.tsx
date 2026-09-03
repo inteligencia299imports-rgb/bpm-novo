@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -264,7 +265,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       setDataAquisicao(histRes.data?.created_at || null);
 
       if (avRes.data?.avaliador_id) {
-        const { data: roleData } = await (supabase as any).from('user_roles').select('nome').eq('user_id', avRes.data.avaliador_id).single();
+        const { data: roleData } = await (supabase as any).from('user_roles').select('nome').eq('user_id', avRes.data.avaliador_id).eq('projeto_id', BPM_PROJETO_ID).maybeSingle();
         if (roleData?.nome) setAvaliadorNome(roleData.nome);
       }
 

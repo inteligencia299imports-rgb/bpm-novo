@@ -12,6 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoqueMoto';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 
 interface EstoqueItem {
   id: string;
@@ -162,7 +163,8 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
         const { data: roles } = await (supabase as any)
           .from('user_roles')
           .select('user_id, nome')
-          .in('user_id', vendedorIds);
+          .in('user_id', vendedorIds)
+          .eq('projeto_id', BPM_PROJETO_ID);
         if (roles) {
           vendedorMap = Object.fromEntries(roles.map(r => [r.user_id, r.nome]));
         }
