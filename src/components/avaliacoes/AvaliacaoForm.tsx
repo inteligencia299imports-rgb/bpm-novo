@@ -1090,7 +1090,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   {context === 'pos_compra' && (
                     <Button
                       size="sm"
-                      variant={contratoGerado ? 'default' : 'outline'}
+                      variant="default"
                       onClick={() => setContratoCompraOpen(true)}
                       className="gap-1.5"
                     >
