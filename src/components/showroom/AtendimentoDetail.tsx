@@ -625,7 +625,23 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       toast.error('Informe o valor da venda');
       return;
     }
-    
+    if (valorPopup.modo === 'sinal' || valorPopup.modo === 'vendido') {
+      let temCnh = !!cnhUrl;
+      if (!temCnh) {
+        const { data: cnhDoc } = await supabase
+          .from('clientes_fornecedores_documentos')
+          .select('id')
+          .eq('cliente_fornecedor_id', atendimento.cliente_id)
+          .eq('tipo_documento', 'cnh')
+          .maybeSingle();
+        temCnh = !!cnhDoc;
+      }
+      if (!temCnh) {
+        toast.error('Anexe a CNH do cliente antes de registrar o sinal ou a venda.');
+        return;
+      }
+    }
+
     setSavingValor(true);
     const updateData: any = {};
     const newStatus = valorPopup.modo;
@@ -1379,6 +1395,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     style={{ borderColor: btn.color, color: btn.color }}
                     onClick={async () => {
                       if (btn.value === 'sinal' || btn.value === 'vendido') {
+                        // CNH do cliente é obrigatória para registrar sinal ou venda de moto
+                        if (!cnhUrl) {
+                          toast.error('Anexe a CNH do cliente antes de registrar o sinal ou a venda.');
+                          return;
+                        }
                         // Sinal requires all motos avaliadas when it's a trade
                         if (btn.value === 'sinal' && atendimento.interesse === 'trocar') {
                           const allMotosAvaliadas = motosAvaliacao.length > 0 && motosAvaliacao.every(m => isAvaliada(m.id));
@@ -1389,19 +1410,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         }
                         if (btn.value === 'vendido' && atendimento.interesse === 'trocar') {
                           const faltando: string[] = [];
-                         if (!cnhUrl) faltando.push('CNH do cliente');
-                          
+
                           const allCrlvs = motosAvaliacao.length > 0 && motosAvaliacao.every(m => crlvUrls[m.id]);
                           if (!allCrlvs) faltando.push('CRLV da moto');
-                          
+
                           const allMotosAvaliadas = motosAvaliacao.length > 0 && motosAvaliacao.every(m => isAvaliada(m.id));
                           if (!allMotosAvaliadas) faltando.push('Avaliação da moto ter sido feita');
-                          
+
                           const allConsultas = motosAvaliacao.length > 0 && motosAvaliacao.every(m => (m as any).consulta_realizada);
                           if (!allConsultas) faltando.push('Consulta documentacional realizada');
-                          
+
                           if (faltando.length > 0) {
-                            toast.error('Para finalizar como Vendido, certifique-se de que a CNH do cliente e o CRLV da moto foram enviados, e que a avaliação e a consulta de documentação já foram concluídas.');
+                            toast.error('Para finalizar como Vendido, certifique-se de que o CRLV da moto foi enviado e de que a avaliação e a consulta de documentação já foram concluídas.');
                             return;
                           }
                         }
