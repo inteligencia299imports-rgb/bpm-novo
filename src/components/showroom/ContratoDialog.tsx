@@ -35,11 +35,25 @@ interface Props {
   modo?: 'contrato' | 'nfe';
 }
 
-const FINANCEIRAS = ['Santander', 'Bradesco', 'Safra', 'BV', 'Pan', 'Omni', 'Volkswagen', 'C6 Bank', 'Próprio (299)'];
-
-/** Forma cujo nome é "Financiamento" ganha o bloco de campos extras (entrada/financeira/parcelas). */
+/** Forma cujo nome é "Financiamento" ganha o bloco de campos extras (entrada/parcelas). */
 const ehFinanciamento = (nome: string | null | undefined) =>
   String(nome ?? '').trim().toLowerCase() === 'financiamento';
+
+/** Forma cujo nome é "Consórcio". */
+const ehConsorcio = (nome: string | null | undefined) =>
+  ['consórcio', 'consorcio'].includes(String(nome ?? '').trim().toLowerCase());
+
+/** Formas que se vinculam a uma instituição (banco / administradora) e têm observação editável. */
+const ehFinInstituicao = (nome: string | null | undefined) =>
+  ehFinanciamento(nome) || ehConsorcio(nome);
+
+interface InstituicaoOpt {
+  /** id da linha em formas_pagamento_instituicoes */
+  id: string;
+  cliente_fornecedor_id: string;
+  nome: string;
+  observacoes_contrato: string | null;
+}
 
 const formatCurrency = (value: number | null) => {
   if (value === null || value === undefined) return '-';
@@ -124,6 +138,10 @@ interface FormaPagamento {
   numero_parcelas: number | null;
   valor_parcelas: number | null;
   valor_financiado: number | null;
+  /** instituição (banco / administradora) escolhida — só para Financiamento / Consórcio */
+  cliente_fornecedor_id: string | null;
+  /** observação da forma, editável, com default vindo de formas_pagamento_instituicoes.observacoes_contrato */
+  observacoes: string | null;
 }
 
 const ContratoDialog: React.FC<Props> = ({
@@ -195,12 +213,16 @@ const ContratoDialog: React.FC<Props> = ({
   // Formas de pagamento
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
   const [formasPagOpcoes, setFormasPagOpcoes] = useState<{ id: string; nome: string }[]>([]);
+  // instituições (banco / administradora) vinculadas a cada forma_pagamento_id
+  const [instituicoesByForma, setInstituicoesByForma] = useState<Record<string, InstituicaoOpt[]>>({});
   // id da forma_pagamento selecionada para adicionar
   const [novaPagamentoTipo, setNovaPagamentoTipo] = useState('');
   const novaFormaNome = formasPagOpcoes.find(f => f.id === novaPagamentoTipo)?.nome ?? '';
+  // instituição + observação da forma sendo adicionada (Financiamento / Consórcio)
+  const [novaInstituicaoId, setNovaInstituicaoId] = useState('');
+  const [novaObservacoes, setNovaObservacoes] = useState('');
   // Financiamento fields
   const [finValorEntrada, setFinValorEntrada] = useState('');
-  const [finFinanceira, setFinFinanceira] = useState('');
   const [finParcelas, setFinParcelas] = useState('');
   const [finValorParcelas, setFinValorParcelas] = useState('');
   const [finValorFinanciado, setFinValorFinanciado] = useState('');
@@ -218,7 +240,7 @@ const ContratoDialog: React.FC<Props> = ({
     const loadContrato = async () => {
       setLoading(true);
       nfe.carregar();
-      const [{ data: contrato }, { data: histGerado }, { data: freshAtendimento }, { data: freshEstoque }, { data: formasOpts }] = await Promise.all([
+      const [{ data: contrato }, { data: histGerado }, { data: freshAtendimento }, { data: freshEstoque }, { data: formasOpts }, { data: instOpts }] = await Promise.all([
         supabase
           .from('contratos')
           .select('*')
@@ -247,9 +269,34 @@ const ContratoDialog: React.FC<Props> = ({
           .eq('bpm', true)
           .eq('ativo', true)
           .order('ordem'),
+        supabase
+          .from('formas_pagamento_instituicoes')
+          .select('id, forma_pagamento_id, cliente_fornecedor_id, observacoes_contrato, instituicao:cliente_fornecedor_id(nome_razao_social, nome_fantasia)')
+          .eq('ativo', true),
       ]);
 
       setFormasPagOpcoes((formasOpts as any[]) || []);
+
+      type InstRow = {
+        id: string;
+        forma_pagamento_id: string;
+        cliente_fornecedor_id: string;
+        observacoes_contrato: string | null;
+        instituicao: { nome_razao_social: string | null; nome_fantasia: string | null } | null;
+      };
+      const byForma: Record<string, InstituicaoOpt[]> = {};
+      for (const r of ((instOpts ?? []) as InstRow[])) {
+        (byForma[r.forma_pagamento_id] ??= []).push({
+          id: r.id,
+          cliente_fornecedor_id: r.cliente_fornecedor_id,
+          nome: r.instituicao?.nome_fantasia || r.instituicao?.nome_razao_social || 'Instituição',
+          observacoes_contrato: r.observacoes_contrato ?? null,
+        });
+      }
+      for (const k of Object.keys(byForma)) {
+        byForma[k].sort((a, b) => a.nome.localeCompare(b.nome));
+      }
+      setInstituicoesByForma(byForma);
 
       setJaGerado(!!(histGerado && histGerado.length > 0));
 
@@ -315,6 +362,8 @@ const ContratoDialog: React.FC<Props> = ({
             numero_parcelas: f.numero_parcelas,
             valor_parcelas: f.valor_parcelas,
             valor_financiado: f.valor_financiado,
+            cliente_fornecedor_id: f.cliente_fornecedor_id ?? null,
+            observacoes: f.observacoes ?? '',
           })));
         }
       } else {
@@ -349,8 +398,9 @@ const ContratoDialog: React.FC<Props> = ({
 
   const resetPagamentoForm = () => {
     setNovaPagamentoTipo('');
+    setNovaInstituicaoId('');
+    setNovaObservacoes('');
     setFinValorEntrada('');
-    setFinFinanceira('');
     setFinParcelas('');
     setFinValorParcelas('');
     setFinValorFinanciado('');
@@ -370,6 +420,15 @@ const ContratoDialog: React.FC<Props> = ({
       if (!cId) return;
     }
 
+    const ehInst = ehFinInstituicao(novaFormaNome);
+    const instSel = ehInst
+      ? (instituicoesByForma[novaPagamentoTipo] || []).find(i => i.id === novaInstituicaoId)
+      : undefined;
+    if (ehInst && !instSel) {
+      toast.error('Selecione o banco / administradora');
+      return;
+    }
+
     const newForma: any = {
       contrato_id: cId,
       forma_pagamento_id: novaPagamentoTipo,
@@ -378,12 +437,17 @@ const ContratoDialog: React.FC<Props> = ({
 
     if (ehFinanciamento(novaFormaNome)) {
       newForma.valor_entrada = parseCurrencyInput(finValorEntrada) || null;
-      newForma.financeira = finFinanceira || null;
       newForma.numero_parcelas = finParcelas ? parseInt(finParcelas) : null;
       newForma.valor_parcelas = parseCurrencyInput(finValorParcelas) || null;
       newForma.valor_financiado = parseCurrencyInput(finValorFinanciado) || null;
     } else {
       newForma.valor_total = parseCurrencyInput(outroValor) || null;
+    }
+
+    if (ehInst && instSel) {
+      newForma.cliente_fornecedor_id = instSel.cliente_fornecedor_id;
+      newForma.financeira = instSel.nome; // denormalizado p/ PDF e lista
+      newForma.observacoes = novaObservacoes.trim() || null;
     }
 
     const { data, error } = await supabase.from('formas_pagamento_contrato').insert(newForma).select().single();
@@ -401,6 +465,8 @@ const ContratoDialog: React.FC<Props> = ({
       numero_parcelas: data.numero_parcelas,
       valor_parcelas: data.valor_parcelas,
       valor_financiado: data.valor_financiado,
+      cliente_fornecedor_id: data.cliente_fornecedor_id ?? null,
+      observacoes: data.observacoes ?? '',
     }]);
     resetPagamentoForm();
     toast.success('Forma de pagamento adicionada');
@@ -1193,6 +1259,9 @@ const ContratoDialog: React.FC<Props> = ({
                           ) : (
                             fp.valor_total != null && <p className="text-xs text-muted-foreground">Valor: {formatCurrency(fp.valor_total)}</p>
                           )}
+                          {fp.observacoes && (
+                            <p className="text-xs text-muted-foreground italic whitespace-pre-wrap">{fp.observacoes}</p>
+                          )}
                         </div>
                         <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => fp.id && handleRemovePagamento(fp.id)}>
                           <Trash2 className="h-3.5 w-3.5" />
@@ -1217,7 +1286,7 @@ const ContratoDialog: React.FC<Props> = ({
                         key={fp.id}
                         size="sm"
                         variant={novaPagamentoTipo === fp.id ? 'default' : 'outline'}
-                        onClick={() => { setNovaPagamentoTipo(fp.id); setOutroValor(''); setFinValorEntrada(''); setFinFinanceira(''); setFinParcelas(''); setFinValorParcelas(''); setFinValorFinanciado(''); }}
+                        onClick={() => { setNovaPagamentoTipo(fp.id); setNovaInstituicaoId(''); setNovaObservacoes(''); setOutroValor(''); setFinValorEntrada(''); setFinParcelas(''); setFinValorParcelas(''); setFinValorFinanciado(''); }}
                         className="text-xs"
                       >
                         {fp.nome}
@@ -1225,18 +1294,35 @@ const ContratoDialog: React.FC<Props> = ({
                     ))}
                   </div>
 
+                  {ehFinInstituicao(novaFormaNome) && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-foreground">Banco / Administradora</label>
+                      <Select
+                        value={novaInstituicaoId}
+                        onValueChange={(v) => {
+                          setNovaInstituicaoId(v);
+                          const sel = (instituicoesByForma[novaPagamentoTipo] || []).find(i => i.id === v);
+                          setNovaObservacoes(sel?.observacoes_contrato ?? '');
+                        }}
+                      >
+                        <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {(instituicoesByForma[novaPagamentoTipo] || []).map(i => (
+                            <SelectItem key={i.id} value={i.id}>{i.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {(instituicoesByForma[novaPagamentoTipo] || []).length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Nenhum banco / administradora vinculado a esta forma de pagamento.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {ehFinanciamento(novaFormaNome) && (
                     <div className="space-y-3">
                       <CurrencyField label="Valor de Entrada" value={finValorEntrada} onChange={setFinValorEntrada} />
-                      <div>
-                        <label className="text-sm font-medium text-foreground">Financeira</label>
-                        <Select value={finFinanceira} onValueChange={setFinFinanceira}>
-                          <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                          <SelectContent>
-                            {FINANCEIRAS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
                       <div className="grid grid-cols-3 gap-3">
                         <div>
                           <label className="text-sm font-medium text-foreground">Nº Parcelas</label>
@@ -1250,6 +1336,18 @@ const ContratoDialog: React.FC<Props> = ({
 
                   {novaPagamentoTipo && !ehFinanciamento(novaFormaNome) && (
                     <CurrencyField label="Valor Total" value={outroValor} onChange={setOutroValor} />
+                  )}
+
+                  {ehFinInstituicao(novaFormaNome) && (
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-foreground">Observações</label>
+                      <Textarea
+                        rows={3}
+                        value={novaObservacoes}
+                        onChange={(e) => setNovaObservacoes(e.target.value)}
+                        placeholder="Observações desta forma de pagamento..."
+                      />
+                    </div>
                   )}
 
                   {novaPagamentoTipo && (
