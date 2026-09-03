@@ -1512,8 +1512,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <Button
                   key={btn.value}
                   size="sm"
-                  className="gap-2 text-white hover:opacity-90 min-w-[150px] justify-center"
-                  style={{ backgroundColor: btn.color }}
+                  variant="outline"
+                  className="gap-2 min-w-[150px] justify-center bg-transparent hover:bg-transparent hover:opacity-70"
+                  style={{ borderColor: btn.color, color: btn.color }}
                   onClick={() => {
                     if (btn.value === 'adquirida') {
                       setIsConvertendo(false);
