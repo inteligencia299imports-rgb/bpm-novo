@@ -900,6 +900,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     if (aceita && resultado?.extraido && at?.cliente) {
       if (resultado.nome) (at.cliente as any).nome_razao_social = resultado.nome;
       if (resultado.atualizou_cpf && resultado.cpf) (at.cliente as any).cpf_cnpj = resultado.cpf;
+      if (resultado.atualizou_rg && resultado.rg) (at.cliente as any).rg = resultado.rg;
       if (resultado.data_nascimento) (at.cliente as any).data_nascimento = resultado.data_nascimento;
       setAvaliacao((prev: any) => (prev ? { ...prev } : prev));
     }

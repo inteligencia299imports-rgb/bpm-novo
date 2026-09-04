@@ -97,6 +97,7 @@ interface ExtracaoCnh {
   tipo_documento: string | null;
   nome: string | null;
   cpf: string | null;
+  rg: string | null;
   data_nascimento: string | null;
   confere_com_cliente: boolean;
 }
@@ -134,7 +135,7 @@ async function extrairViaClaude(
             properties: {
               leitura: {
                 type: 'string',
-                description: 'ANTES de preencher os demais campos, transcreva aqui literalmente o que você consegue ler, rótulo por rótulo: "NOME: ...", "CPF: ...", "DATA NASCIMENTO: ...", "Nº REGISTRO: ...", "VALIDADE: ...", "1ª HABILITAÇÃO: ...", "DATA EMISSÃO: ...". Escreva "ilegível" no que não der para ler. Isso serve para você não trocar os campos.',
+                description: 'ANTES de preencher os demais campos, transcreva aqui literalmente o que você consegue ler, rótulo por rótulo: "NOME: ...", "CPF: ...", "DOC. IDENTIDADE: ...", "DATA NASCIMENTO: ...", "Nº REGISTRO: ...", "VALIDADE: ...", "1ª HABILITAÇÃO: ...", "DATA EMISSÃO: ...". Escreva "ilegível" no que não der para ler. Isso serve para você não trocar os campos.',
               },
               eh_cnh: {
                 type: 'boolean',
@@ -146,13 +147,14 @@ async function extrairViaClaude(
               },
               nome: { type: 'string', description: 'Nome completo do titular, do campo rotulado "NOME" (NÃO use "NOME SOCIAL" nem "FILIAÇÃO"). String vazia "" se não estiver legível.' },
               cpf: { type: 'string', description: 'Somente os 11 dígitos do campo rotulado "CPF". NUNCA use o "Nº REGISTRO"/"REGISTRO" da CNH (também tem 11 dígitos, mas é outro número). String vazia "" se o campo CPF não estiver legível — nunca invente dígitos.' },
+              rg: { type: 'string', description: 'Número do "DOC. IDENTIDADE" (RG) do titular, junto com o órgão emissor/UF se estiverem legíveis (ex.: "MG-12.345.678 SSP/MG"). Nem toda CNH tem esse campo preenchido. String vazia "" se não estiver presente ou legível — nunca invente.' },
               data_nascimento: { type: 'string', description: 'Data do campo "DATA NASCIMENTO" (ou "DATA, LOCAL DE NASCIMENTO"), no formato AAAA-MM-DD. NUNCA use "VALIDADE", "1ª HABILITAÇÃO" ou "DATA EMISSÃO". String vazia "" se não estiver legível — nunca invente.' },
               confere_com_cliente: {
                 type: 'boolean',
                 description: `true se o nome do titular da CNH corresponde por proximidade ao cliente cadastrado "${nomeCliente}" (tolere abreviações, ordem, acentos e nomes do meio faltando); false se claramente é outra pessoa.`,
               },
             },
-            required: ['leitura', 'eh_cnh', 'tipo_documento', 'nome', 'cpf', 'data_nascimento', 'confere_com_cliente'],
+            required: ['leitura', 'eh_cnh', 'tipo_documento', 'nome', 'cpf', 'rg', 'data_nascimento', 'confere_com_cliente'],
           },
         },
       ],
@@ -169,6 +171,7 @@ async function extrairViaClaude(
                 + `Campos a extrair (quando eh_cnh=true):\n`
                 + `• nome — campo "NOME" do titular.\n`
                 + `• cpf — os 11 dígitos ao lado do rótulo "CPF". CUIDADO: a CNH tem também um "Nº REGISTRO" (ou "REGISTRO") com 11 dígitos, que NÃO é o CPF. Só preencha o CPF se conseguir ler o campo rotulado "CPF".\n`
+                + `• rg — campo "DOC. IDENTIDADE", com órgão emissor/UF se estiver legível. Nem toda CNH traz esse campo preenchido — nesse caso deixe vazio.\n`
                 + `• data_nascimento — campo "DATA NASCIMENTO", formato AAAA-MM-DD. Não confunda com "VALIDADE", "1ª HABILITAÇÃO" nem "DATA EMISSÃO".\n\n`
                 + `Regra de ouro: se qualquer valor não estiver claramente legível, retorne string vazia "" — nunca chute dígitos ou datas.\n`
                 + `Preencha primeiro o campo "leitura" (transcrição rótulo a rótulo) e só depois os demais.\n\n`
@@ -188,13 +191,14 @@ async function extrairViaClaude(
   const toolUse = data.content?.find((b: any) => b.type === 'tool_use');
   if (!toolUse) throw new Error('Resposta da IA não retornou os dados esperados');
   const input = toolUse.input as Record<string, unknown>;
-  console.log('extrair-dados-cnh leitura da IA:', input.leitura, '=> eh_cnh:', input.eh_cnh, 'tipo:', input.tipo_documento, 'nome:', input.nome, 'cpf:', input.cpf, 'nasc:', input.data_nascimento);
+  console.log('extrair-dados-cnh leitura da IA:', input.leitura, '=> eh_cnh:', input.eh_cnh, 'tipo:', input.tipo_documento, 'nome:', input.nome, 'cpf:', input.cpf, 'rg:', input.rg, 'nasc:', input.data_nascimento);
 
   return {
     eh_cnh: input.eh_cnh !== false,
     tipo_documento: ((input.tipo_documento as string) || '').trim() || null,
     nome: ((input.nome as string) || '').trim() || null,
     cpf: soDigitos((input.cpf as string) ?? '') || null,
+    rg: ((input.rg as string) || '').trim() || null,
     data_nascimento: normDataNasc((input.data_nascimento as string) ?? ''),
     confere_com_cliente: input.confere_com_cliente === true,
   };
@@ -250,16 +254,16 @@ Deno.serve(async (req) => {
       .maybeSingle(),
     supabaseAdmin
       .from('clientes_fornecedores')
-      .select('id, nome_razao_social, cpf_cnpj, data_nascimento')
+      .select('id, nome_razao_social, cpf_cnpj, rg, data_nascimento')
       .eq('id', cliente_id)
       .maybeSingle(),
   ]);
 
   if (!roleRes.data) return jsonResponse({ error: 'Forbidden: usuário sem acesso a este sistema' }, 403);
-  const cliente = clienteRes.data as { nome_razao_social: string | null; cpf_cnpj: string | null; data_nascimento: string | null } | null;
+  const cliente = clienteRes.data as { nome_razao_social: string | null; cpf_cnpj: string | null; rg: string | null; data_nascimento: string | null } | null;
   if (!cliente) return jsonResponse({ error: 'Cliente não encontrado' }, 404);
 
-  const vazio = { nome: null, cpf: null, data_nascimento: null };
+  const vazio = { nome: null, cpf: null, rg: null, data_nascimento: null };
 
   if (!apiKey) {
     return jsonResponse({ ...vazio, extraido: false, motivo: 'ANTHROPIC_API_KEY não configurada' }, 200);
@@ -306,10 +310,11 @@ Deno.serve(async (req) => {
     }
 
     const cpfCadastrado = soDigitos(cliente.cpf_cnpj);
+    const rgCadastrado = (cliente.rg || '').trim() || null;
     const nascCadastrado = (cliente.data_nascimento || '').slice(0, 10) || null;
 
     // "Match forte" = a IA confirmou E a similaridade de nome é alta. É o que
-    // autoriza SOBRESCREVER um campo já preenchido (CPF / data de nascimento).
+    // autoriza SOBRESCREVER um campo já preenchido (CPF / RG / data de nascimento).
     // Preencher um campo vazio exige apenas o match normal já validado acima.
     const matchForte = !!nomeCliente && extraido.confere_com_cliente && sim >= 0.6;
 
@@ -325,6 +330,16 @@ Deno.serve(async (req) => {
         atualizouCpf = true;
       } else {
         divergencias.push(`CPF do documento (${extraido.cpf}) difere do cadastro`);
+      }
+    }
+
+    let atualizouRg = false;
+    if (extraido.rg && extraido.rg !== rgCadastrado) {
+      if (!rgCadastrado || matchForte) {
+        updatePayload.rg = extraido.rg;
+        atualizouRg = true;
+      } else {
+        divergencias.push(`RG do documento (${extraido.rg}) difere do cadastro`);
       }
     }
 
@@ -350,6 +365,8 @@ Deno.serve(async (req) => {
       nome: updatePayload.nome_razao_social ?? null,
       cpf: atualizouCpf ? extraido.cpf : null,
       atualizou_cpf: atualizouCpf,
+      rg: atualizouRg ? extraido.rg : null,
+      atualizou_rg: atualizouRg,
       data_nascimento: updatePayload.data_nascimento ?? null,
       atualizou_nascimento: atualizouNascimento,
       divergencias: divergencias.length ? divergencias : undefined,

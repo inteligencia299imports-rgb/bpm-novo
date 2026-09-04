@@ -8,6 +8,8 @@ export interface CnhExtracaoResultado {
   nome?: string | null;
   cpf?: string | null;
   atualizou_cpf?: boolean;
+  rg?: string | null;
+  atualizou_rg?: boolean;
   data_nascimento?: string | null;
   atualizou_nascimento?: boolean;
   divergencias?: string[];
@@ -84,6 +86,7 @@ export async function processarCnhAnexada(params: {
     if (res.extraido) {
       const campos = ['nome'];
       if (res.atualizou_cpf) campos.push('CPF');
+      if (res.atualizou_rg) campos.push('RG');
       if (res.atualizou_nascimento || res.data_nascimento) campos.push('data de nascimento');
       const lista = campos.length === 1 ? campos[0] : `${campos.slice(0, -1).join(', ')} e ${campos[campos.length - 1]}`;
       toast.success(`CNH conferida — ${lista} do cliente ${campos.length > 1 ? 'atualizados' : 'atualizado'}`, { id: toastId });

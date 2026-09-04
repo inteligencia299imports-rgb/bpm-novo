@@ -21,7 +21,7 @@ interface ProcessCardProps {
   secondaryBadge?: { label: string; className?: string };
   readyIndicator?: 'ready' | 'not_ready' | null;
   dateLabel?: string;
-  nameTag?: { label: string };
+  nameTag?: { label: string; className?: string };
   onClick?: () => void;
 }
 
@@ -46,7 +46,7 @@ const ProcessCard: React.FC<ProcessCardProps> = ({
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">{clientName}</h3>
           {nameTag && (
-            <Badge className="text-[10px] shrink-0 whitespace-nowrap bg-primary text-primary-foreground hover:bg-primary">
+            <Badge className={`text-[10px] shrink-0 whitespace-nowrap text-white ${nameTag.className || 'bg-primary hover:bg-primary'}`}>
               {nameTag.label}
             </Badge>
           )}

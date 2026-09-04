@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -339,12 +339,13 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                   <>
                   <div className="flex justify-end">
                     {isNf ? (
+                      // Abre a mesma tela de emissão (lá tem o botão de Baixar DANFE já
+                      // autorizada, e a opção de emitir em Produção depois da homologação) —
+                      // não o DANFE direto aqui.
                       <span className="flex items-center gap-2 pr-3 text-sm text-muted-foreground whitespace-nowrap">
-                        {nfe.nfe?.caminho_danfe && (
-                          <Button size="sm" className="h-7 gap-1" onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}>
-                            <ExternalLink className="h-3.5 w-3.5" /> DANFE
-                          </Button>
-                        )}
+                        <Button size="sm" className="h-7 gap-1" onClick={() => onEmitirNfe?.()}>
+                          <FileText className="h-3.5 w-3.5" /> NF
+                        </Button>
                         <CalendarIcon className="h-4 w-4 shrink-0" />
                         {nfe.nfe?.data_emissao ? format(new Date(nfe.nfe.data_emissao), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '—'}
                       </span>

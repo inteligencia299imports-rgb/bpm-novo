@@ -20,6 +20,8 @@ export interface DadosFornecedor {
   bairro: string | null;
   cidade: string | null;
   uf: string | null;
+  /** RG (pessoa física), texto livre — só entra nas informações complementares em venda. */
+  rg?: string | null;
 }
 
 export interface DadosMoto {
@@ -59,6 +61,17 @@ export interface RegraFiscal {
   tipo_tributacao: string | null;
   informacoes_complementares: string | null;
   informacoes_adicionais_fisco: string | null;
+  /** Texto de ide/natOp específico deste CFOP (regra de ICMS). Vazio -> cai no
+   * texto fixo da natureza (natureza.descricao) — ver montarPayloadNfeCompra. */
+  natureza_operacao_descricao?: string | null;
+  /** ide/indPres desta regra (ICMS ou IPI). Vazio -> cai na regra seguinte na
+   * cadeia de fallback, e por fim em natureza.indicador_presenca. */
+  indicador_presenca?: number | null;
+  // Grupo "ICMS Efetivo" (pICMSEfet/vBCEfet/pRedBCEfet/vICMSEfet) — obrigatório pela
+  // SEFAZ (rejeição 906) quando CST 60 ou CSOSN 500 + consumidor final. Preenchidos
+  // só na regra de ICMS quando aplicável.
+  aliquota_icms_efetiva?: number | null;
+  reducao_base_calculo_efetiva?: number | null;
   // Reforma Tributária — preenchidos apenas na linha imposto === 'ibscbs'.
   classificacao_tributaria?: string | null; // cClassTrib
   cbs_aliquota?: number | null;
@@ -80,6 +93,10 @@ export interface MontarPayloadArgs {
   /** Grupo IBS/CBS (Reforma Tributária). Obrigatório p/ emitente CRT 3 em homologação. */
   regraIbsCbs: RegraFiscal | null;
   observacoes?: string | null;
+  /** Nome do vendedor do atendimento (venda) — entra nas informações complementares. */
+  vendedorNome?: string | null;
+  /** Formas de pagamento do contrato, já formatadas ("PIX R$ 100,00 * CONSÓRCIO R$ 200,00"). */
+  formasPagamentoTexto?: string | null;
 }
 
 const onlyDigits = (v: string | null | undefined) => (v ?? '').replace(/\D/g, '');
@@ -134,7 +151,7 @@ export function descricaoItemMoto(m: DadosMoto): string {
 }
 
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
-  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes } = args;
+  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto } = args;
 
   const pf = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
   const docForn = onlyDigits(fornecedor.cpf_cnpj);
@@ -172,13 +189,41 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   }
 
   item.icms_situacao_tributaria = cstIcms;
-  if (!isCsosn) {
+  // CST 60 (ICMS ja retido antes por substituicao tributaria) NAO tem grupo de
+  // calculo normal no XSD da NF-e (o tipo TICMS60 nao declara modBC/pICMS/vBC/
+  // vICMS — só orig/CST + o grupo ICMS-ST-retido opcional + o grupo "ICMS
+  // Efetivo" abaixo). Mandar esses campos aqui insere elementos que o XSD nao
+  // espera dentro de <ICMS60>, o que quebra a validacao da sequencia mais
+  // adiante — foi a causa real do erro "vBCEfet not expected, expected
+  // vBCSTRet/vBCFCPSTRet/pRedBCEfet" (nao era o pRedBCEfet em si).
+  const semCalculoIcmsNormal = cstIcms === '60';
+  if (!isCsosn && !semCalculoIcmsNormal) {
     item.icms_modalidade_base_calculo = modalidadeBc;
     item.icms_aliquota = Number(regraIcms.aliquota ?? 0);
     if (regraIcms.reducao_base_calculo != null) item.icms_reducao_base_calculo = Number(regraIcms.reducao_base_calculo);
     if (regraIcms.aliquota_fcp != null) item.fcp_aliquota = Number(regraIcms.aliquota_fcp);
     item.icms_base_calculo = 0;
     item.icms_valor = 0;
+  }
+
+  // --- Grupo "ICMS Efetivo" (CST 60 / CSOSN 500) --------------------------
+  // Obrigatório pela SEFAZ (rejeição 906) quando a operação é para consumidor
+  // final (natureza.consumidor_final) e o ICMS já foi retido antes por
+  // substituição tributária — é a alíquota interna "cheia" do produto/UF,
+  // nocional, caso não houvesse ST (não é o `icms_aliquota` do bloco de cima,
+  // que sequer é enviado nesse CST). Vem da regra de ICMS
+  // (aliquota_icms_efetiva) — sem valor cadastrado, não envia o grupo (evita
+  // mandar zero por engano). `icms_reducao_base_calculo_efetiva` vai sempre
+  // (0 quando não há redução) — é opcional pra SEFAZ mas mantém a mesma forma
+  // do XML de referência que autorizou de verdade em produção.
+  if ((cstIcms === '60' || cstIcms === '500') && natureza.consumidor_final && regraIcms.aliquota_icms_efetiva != null) {
+    const redEfet = Number(regraIcms.reducao_base_calculo_efetiva ?? 0);
+    const baseEfet = redEfet > 0 ? r2(valorFmt * (1 - redEfet / 100)) : valorFmt;
+    const aliqEfet = Number(regraIcms.aliquota_icms_efetiva);
+    item.icms_reducao_base_calculo_efetiva = redEfet;
+    item.icms_base_calculo_efetiva = baseEfet;
+    item.icms_aliquota_efetiva = aliqEfet;
+    item.icms_valor_efetivo = r2(baseEfet * (aliqEfet / 100));
   }
 
   // --- Grupo IBS/CBS (Reforma Tributária) ---------------------------------
@@ -214,20 +259,39 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
 
   const agora = nowBrasiliaIso();
 
+  const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  // Venda: valor do IBS/CBS, vendedor, RG e formas de pagamento também entram nas
+  // informações complementares — não são default de código, são dados da própria
+  // venda (calculados acima ou vindos do atendimento/contrato).
+  const valorIbsCbs = regraIbsCbs?.situacao_tributaria
+    ? `VALOR DO IBS ${fmtBRL(Number(item.ibs_uf_valor ?? 0) + Number(item.ibs_mun_valor ?? 0))} * VALOR DA CBS ${fmtBRL(Number(item.cbs_valor ?? 0))}`
+    : null;
+
   return {
-    natureza_operacao: natureza.descricao,
+    // ide/natOp: prioriza o texto específico do CFOP escolhido (regra de ICMS) —
+    // uma mesma natureza pode ter CFOPs com semântica fiscal diferente (ex.: venda
+    // comum x sujeita a ST). Cai no texto fixo da natureza se a regra não tiver.
+    natureza_operacao: regraIcms.natureza_operacao_descricao?.trim() || natureza.descricao,
     serie: natureza.serie ?? undefined,
     data_emissao: agora,
     data_entrada_saida: agora,
     tipo_documento: entrada ? 0 : 1,
     finalidade_emissao: natureza.operacao_devolucao ? 4 : 1,
     consumidor_final: natureza.consumidor_final ? 1 : 0,
-    presenca_comprador: natureza.indicador_presenca ?? undefined,
+    // ide/indPres: mesma cadeia de fallback do CST/natOp — regra de ICMS escolhida,
+    // senão a de IPI escolhida, senão o cabeçalho da natureza (ver ORIENTACAO_CONFIG_NATUREZAS.md
+    // do SisFin §4.2). O CFOP/regra em si já é filtrado por tipo de atendimento
+    // (presencial/online/ambos) antes de chegar aqui — ver index.ts regraDe().
+    presenca_comprador: regraIcms.indicador_presenca ?? regraIpi?.indicador_presenca ?? natureza.indicador_presenca ?? undefined,
     modalidade_frete: 9,
     informacoes_adicionais_contribuinte: juntarInfos(
       natureza.informacoes_complementares,
       regraIcms.informacoes_complementares,
       observacoes ? observacoes.toUpperCase() : null,
+      valorIbsCbs,
+      formasPagamentoTexto ? `FORMA DE PAGAMENTO: ${formasPagamentoTexto.toUpperCase()}` : null,
+      vendedorNome ? `VENDEDOR: ${vendedorNome.toUpperCase()}` : null,
+      fornecedor.rg ? `RG.: ${fornecedor.rg.toUpperCase()}` : null,
     ),
     informacoes_adicionais_fisco: juntarInfos(
       natureza.informacoes_adicionais_fisco,

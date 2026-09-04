@@ -49,6 +49,7 @@ const emptyForm = {
   tipo_cadastro: "ambos",
   tipo_pessoa: "fisica",
   cpf_cnpj: "",
+  rg: "",
   nome_razao_social: "",
   nome_fantasia: "",
   data_nascimento: "",
@@ -766,6 +767,16 @@ export function ClienteForm({
                 <p className="text-xs text-destructive mt-1">Este {form.tipo_pessoa === "fisica" ? "CPF" : "CNPJ"} já possui cadastro.</p>
               )}
             </div>
+            {pessoaFisica && (
+              <div>
+                <Label>RG</Label>
+                <Input
+                  value={form.rg}
+                  onChange={(e) => set("rg")(e.target.value)}
+                  placeholder="Nº e órgão emissor, ex.: MG-12.345.678 SSP/MG"
+                />
+              </div>
+            )}
             <div>
               <Label>{form.tipo_pessoa === "fisica" ? <>Nome completo <span className="text-red-500">*</span></> : <>Razão social <span className="text-red-500">*</span></>}</Label>
               <Input

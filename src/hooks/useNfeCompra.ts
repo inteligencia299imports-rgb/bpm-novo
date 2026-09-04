@@ -65,13 +65,14 @@ export function useNfeCompra(
     setNfe((data as any[])?.[0] || null);
   }, [avaliacaoId, keyCol, by]);
 
-  const emitir = useCallback(async (opts?: { observacoes?: string; valor?: number; empresa_id?: string }) => {
+  const emitir = useCallback(async (opts?: { observacoes?: string; valor?: number; empresa_id?: string; ambiente?: 'homologacao' | 'producao' }) => {
     setLoading(true);
     try {
       const extra: Record<string, unknown> = {};
       if (opts?.observacoes) extra.observacoes = opts.observacoes;
       if (typeof opts?.valor === 'number' && opts.valor > 0) extra.valor = opts.valor;
       if (opts?.empresa_id) extra.empresa_id = opts.empresa_id;
+      if (opts?.ambiente) extra.ambiente = opts.ambiente;
       const res = await invoke('emitir', Object.keys(extra).length ? extra : undefined);
       setNfe(res.nfe);
       toast.success(res.nfe?.status === 'processada' ? 'NF-e autorizada!' : 'NF-e enviada para autorização.');

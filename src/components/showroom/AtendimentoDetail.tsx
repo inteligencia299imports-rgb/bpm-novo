@@ -328,6 +328,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     if (aceita && resultado?.extraido && atendimento.cliente) {
       if (resultado.nome) (atendimento.cliente as any).nome_razao_social = resultado.nome;
       if (resultado.atualizou_cpf && resultado.cpf) (atendimento.cliente as any).cpf_cnpj = resultado.cpf;
+      if (resultado.atualizou_rg && resultado.rg) (atendimento.cliente as any).rg = resultado.rg;
       if (resultado.data_nascimento) (atendimento.cliente as any).data_nascimento = resultado.data_nascimento;
       setClienteRefresh((n) => n + 1);
     }

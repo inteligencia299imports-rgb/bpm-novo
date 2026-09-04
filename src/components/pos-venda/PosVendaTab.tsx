@@ -54,11 +54,21 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
     const statuses = POS_VENDA_COLUMNS.map(c => c.value);
-    const [estResRaw, estNovasRaw, lojaMap] = await Promise.all([
+    const [estResRaw, estNovasRaw, lojaMap, nfeResult] = await Promise.all([
       fetchAllRange<any>(() => supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).not('atendimento_venda_id', 'is', null)),
       supabase.from('estoque_motos_novas').select(ESTOQUE_NOVA_SELECT).not('atendimento_venda_id', 'is', null),
       fetchLojaMap(),
+      fetchAllRange<any>(() => supabase.from('nfe_entradas' as any).select('atendimento_id, status, ambiente, operacao').not('atendimento_id', 'is', null).like('operacao', 'venda%')),
     ]);
+    // Ambiente da NF-e autorizada por atendimento — produção tem prioridade sobre homologação
+    // quando as duas existirem (reemissão em produção após teste em homologação).
+    const nfeAmbientePorAtendimento: Record<string, 'homologacao' | 'producao'> = {};
+    ((nfeResult.data as any[]) || []).forEach((n: any) => {
+      if (n.status !== 'processada' || !n.atendimento_id) return;
+      if (n.ambiente === 'producao' || !nfeAmbientePorAtendimento[n.atendimento_id]) {
+        nfeAmbientePorAtendimento[n.atendimento_id] = n.ambiente === 'producao' ? 'producao' : 'homologacao';
+      }
+    });
     const estRes = {
       data: [
         ...(estResRaw.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)),
@@ -95,10 +105,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       .filter(a => estoquePropria[a.id] || (!estoquePropria[a.id] && !estoqueConsignada.has(a.id)))
       .map(a => {
         const est = estoquePropria[a.id];
-        if (est) return { ...a, _estoqueMoto: est };
+        const _nfeAmbiente = nfeAmbientePorAtendimento[a.id] || null;
+        if (est) return { ...a, _estoqueMoto: est, _nfeAmbiente };
         // Fallback: use first moto_interesse info
         const mi = a.motos_interesse?.[0];
-        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null };
+        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeAmbiente };
       });
 
     if (search.trim()) {
@@ -165,6 +176,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
                          <ProcessCard key={a.id} clientName={a.cliente?.nome_razao_social} phone={a.cliente?.telefone}
                            motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
                            loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex}
+                           nameTag={a._nfeAmbiente ? { label: 'NF-e', className: a._nfeAmbiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary' } : undefined}
                            onClick={() => setSelectedItem(a)} />
                       );
                     })}
