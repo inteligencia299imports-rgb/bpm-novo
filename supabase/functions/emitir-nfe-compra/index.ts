@@ -23,6 +23,18 @@ const DIAS_VENCIMENTO = 7;
 const nomeCat = (v: any): string | null =>
   (v && typeof v === 'object' ? (v.nome ?? null) : (v ?? null));
 
+/** atendimentos_motos.tipo_atendimento ('Presencial' | 'Online') normalizado pro
+ * mesmo vocabulário de naturezas_operacao_regras.tipo_atendimento ('presencial' |
+ * 'online' | 'ambos') — usado como critério extra de match do CFOP/regra (ver
+ * regraDe() abaixo). indPres não é mais calculado aqui: sai da própria regra
+ * escolhida (regraIcms/regraIpi.indicador_presenca), igual CST/CFOP/natOp —
+ * ver ORIENTACAO_CONFIG_NATUREZAS.md do SisFin §4.2/4.3. */
+const tipoAtendPorAtendimento = (tipo: string | null | undefined): 'presencial' | 'online' | null => {
+  if (tipo === 'Presencial') return 'presencial';
+  if (tipo === 'Online') return 'online';
+  return null;
+};
+
 type Operacao = 'compra' | 'consignacao' | 'venda_seminova' | 'venda_0km';
 
 interface OperacaoConfig {
@@ -530,8 +542,17 @@ Deno.serve(async (req) => {
     (caller.user_metadata?.name as string | undefined) ||
     null;
 
-  const ambiente = (Deno.env.get('FOCUS_NFE_AMBIENTE') as FocusAmbiente) || 'homologacao';
+  // Ambiente da EMISSÃO: escolha explícita do front (botão NF-e Homologação/Produção)
+  // tem prioridade; sem escolha, cai na env var do servidor (fallback histórico).
+  // "consultar" ignora isto — usa o ambiente já gravado na própria linha (nfeRow),
+  // porque uma mesma entidade pode ter linhas de homologação E de produção.
+  const ambienteDefault = (Deno.env.get('FOCUS_NFE_AMBIENTE') as FocusAmbiente) || 'homologacao';
+  const ambiente: FocusAmbiente = body.ambiente === 'producao' ? 'producao' : body.ambiente === 'homologacao' ? 'homologacao' : ambienteDefault;
   const base = focusBaseUrl(ambiente);
+  // Ref fixo por entidade — normalmente 1 NF-e por atendimento/avaliação. Cada emissão
+  // sobre uma linha já autorizada (reemissão em homologação, ou a 1ª emissão em
+  // produção depois de homologação) gera um ref novo pra não colidir na Focus — ver
+  // "acao: emitir" mais abaixo. "consultar" usa o ref_externa gravado na própria linha.
   const ref = `${cfg.refPrefix}-${entityId}`;
 
   // ---- Empresa + token Focus ----
@@ -581,9 +602,15 @@ Deno.serve(async (req) => {
   if (acao === 'consultar') {
     const { data: nfeRow } = await buscarNfe();
     if (!nfeRow) return jsonResponse({ nfe: null }, 200);
-    if (!token) return jsonResponse({ nfe: nfeRow }, 200);
+    // Usa o ambiente gravado na própria linha, não o "ambiente" da emissão que
+    // acabou de chegar na request — a entidade pode ter linhas de homologação
+    // e de produção, e cada uma só existe no Focus do ambiente em que foi emitida.
+    const rowAmbiente = ((nfeRow.ambiente as FocusAmbiente) || ambienteDefault);
+    const rowBase = focusBaseUrl(rowAmbiente);
+    const rowToken = rowAmbiente === 'producao' ? focusCfg?.token_producao : focusCfg?.token_homologacao;
+    if (!rowToken) return jsonResponse({ nfe: nfeRow }, 200);
 
-    const r = await consultarNfe(base, token, ref);
+    const r = await consultarNfe(rowBase, rowToken, (nfeRow.ref_externa as string) || ref);
     const fStatus = r.body.status as string | undefined;
     const novoStatus = mapStatus(fStatus);
     const patch: Record<string, unknown> = { focus_status: fStatus ?? null, status: novoStatus };
@@ -592,8 +619,8 @@ Deno.serve(async (req) => {
       patch.numero = (r.body.numero as string) ?? nfeRow.numero;
       patch.serie = (r.body.serie as string) ?? nfeRow.serie;
       patch.chave_nfe = (r.body.chave_nfe as string) ?? nfeRow.chave_nfe;
-      patch.caminho_danfe = r.body.caminho_danfe ? `${base}${r.body.caminho_danfe}` : nfeRow.caminho_danfe;
-      patch.xml_raw = r.body.caminho_xml_nota_fiscal ? `${base}${r.body.caminho_xml_nota_fiscal}` : nfeRow.xml_raw;
+      patch.caminho_danfe = r.body.caminho_danfe ? `${rowBase}${r.body.caminho_danfe}` : nfeRow.caminho_danfe;
+      patch.xml_raw = r.body.caminho_xml_nota_fiscal ? `${rowBase}${r.body.caminho_xml_nota_fiscal}` : nfeRow.xml_raw;
       if (!nfeRow.data_emissao) patch.data_emissao = new Date().toISOString();
     } else if (novoStatus === 'erro') {
       patch.erro_mensagem = mensagemErroFocus(r.body);
@@ -624,6 +651,7 @@ Deno.serve(async (req) => {
   // =====================================================================
 
   // Guards
+  let contratoVendaId: string | null = null;
   if (tipo === 'compra') {
     if (av.consulta_realizada !== true) return jsonResponse({ error: 'A consulta veicular ainda não foi realizada.' }, 409);
     if (av.aprovacao_status !== 'aprovada') return jsonResponse({ error: 'A compra ainda não foi aprovada.' }, 409);
@@ -651,6 +679,7 @@ Deno.serve(async (req) => {
     if (!contratoVenda || contratoVenda.length === 0) {
       return jsonResponse({ error: 'O contrato de venda ainda não foi gerado.' }, 409);
     }
+    contratoVendaId = contratoVenda[0].id;
   }
   if (!empresa?.cnpj) {
     return jsonResponse({ error: 'A empresa da loja está sem CNPJ cadastrado.' }, 409);
@@ -660,19 +689,79 @@ Deno.serve(async (req) => {
   }
 
   const { data: nfeExistente } = await buscarNfe();
-  if (nfeExistente && (nfeExistente.status === 'processada' || PENDENTES.has(nfeExistente.status))) {
-    return jsonResponse({ error: 'Já existe uma NF-e emitida ou em processamento para esta moto.' }, 409);
+  if (nfeExistente && PENDENTES.has(nfeExistente.status)) {
+    return jsonResponse({ error: 'Já existe uma NF-e em processamento para esta moto.' }, 409);
   }
+
+  if (ambiente === 'producao') {
+    // Produção nunca reemite (é definitiva; corrigir exige carta de correção ou
+    // cancelamento) e só libera depois de pelo menos uma homologação autorizada
+    // pra essa mesma operação — nunca emite direto em produção sem testar antes.
+    const { data: producaoAutorizada } = await admin
+      .from('nfe_entradas').select('id').eq(nfeKey, entityId)
+      .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
+    if (producaoAutorizada) {
+      return jsonResponse({ error: 'Já existe uma NF-e emitida em produção para esta moto.' }, 409);
+    }
+    const { data: homologAutorizada } = await admin
+      .from('nfe_entradas').select('id').eq(nfeKey, entityId)
+      .eq('ambiente', 'homologacao').eq('status', 'processada').limit(1).maybeSingle();
+    if (!homologAutorizada) {
+      return jsonResponse({ error: 'Emita em homologação antes de emitir em produção.' }, 409);
+    }
+  } else if (nfeExistente && nfeExistente.status === 'processada' && nfeExistente.ambiente === 'producao') {
+    // Depois de produção autorizada, não reemite mais nem em homologação.
+    return jsonResponse({ error: 'Já existe uma NF-e emitida em produção para esta moto — contrato bloqueado.' }, 409);
+  }
+
+  // Emitir sobre uma linha já autorizada (reemissão em homologação, ou a 1ª emissão
+  // em produção depois de homologação) gera uma linha nova — nunca sobrescreve a
+  // autorizada anterior, que fica registrada no histórico.
+  const precisaLinhaNova = !!nfeExistente && nfeExistente.status === 'processada';
+  // Reenvio sobre uma linha em 'erro' (ex.: "Tentar novamente") tem que reusar o
+  // MESMO ref que essa linha já tinha — nao recair no `ref` base. O `ref` base so
+  // e livre na 1a emissao (sem nfeExistente); se ja existe uma linha de erro, o
+  // `ref` base pode ja ter sido consumido por uma emissao processada mais antiga
+  // (ex.: a 1a reemissao em homologacao usa o `ref` base, reemissoes seguintes
+  // geram sufixo) — cair nele de novo faz a Focus devolver a NOTA AUTORIZADA
+  // ANTIGA daquele ref (idempotencia por ref), cuja `chave_nfe` ja esta gravada
+  // noutra linha, e o INSERT/UPDATE falha com "duplicate key ... chave_nfe_key".
+  const refEmissao = precisaLinhaNova
+    ? `${ref}-${Date.now()}`
+    : ((nfeExistente?.ref_externa as string | undefined) || ref);
 
   // Destinatario da NF: entrada = PF vendedora/consignante; venda = cliente comprador.
   // Nos dois casos e o cliente_id do atendimento.
   const { data: fornecedor } = await admin
     .from('clientes_fornecedores')
-    .select('id, nome_razao_social, cpf_cnpj, tipo_pessoa, telefone, telefone_comercial, clientes_fornecedores_enderecos(*)')
+    .select('id, nome_razao_social, cpf_cnpj, tipo_pessoa, telefone, telefone_comercial, rg, clientes_fornecedores_enderecos(*)')
     .eq('id', atendimento.cliente_id)
     .maybeSingle();
   if (!fornecedor) return jsonResponse({ error: 'Cliente não encontrado' }, 409);
   const end = (fornecedor.clientes_fornecedores_enderecos || [])[0] || {};
+
+  // Venda: nome do vendedor + formas de pagamento do contrato, pra compor as
+  // informações complementares da NF-e (ver montarPayloadNfeCompra).
+  let vendedorNome: string | null = null;
+  let formasPagamentoTexto: string | null = null;
+  if (ehVenda) {
+    const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const [{ data: vendedorRole }, { data: formasPagamento }] = await Promise.all([
+      atendimento.vendedor_id
+        ? admin.from('user_roles').select('nome').eq('user_id', atendimento.vendedor_id).eq('projeto_id', BPM_PROJETO_ID).maybeSingle()
+        : Promise.resolve({ data: null }),
+      contratoVendaId
+        ? admin.from('formas_pagamento_contrato').select('tipo, valor_total, valor_financiado').eq('contrato_id', contratoVendaId).order('created_at', { ascending: true })
+        : Promise.resolve({ data: null }),
+    ]);
+    vendedorNome = (vendedorRole as any)?.nome ?? null;
+    formasPagamentoTexto = ((formasPagamento as any[]) || [])
+      .map((fp) => {
+        const v = fp.valor_total ?? fp.valor_financiado;
+        return v != null ? `${fp.tipo} ${fmtBRL(Number(v))}` : fp.tipo;
+      })
+      .join(' * ') || null;
+  }
 
   // Valor da NF. body.valor (editado na tela) tem prioridade.
   const valorBody = typeof body.valor === 'number' && body.valor > 0 ? body.valor : null;
@@ -705,16 +794,27 @@ Deno.serve(async (req) => {
         'informacoes_complementares, informacoes_adicionais_fisco, ' +
         'naturezas_operacao_regras(imposto, cfop, situacao_tributaria, aliquota, reducao_base_calculo, ' +
         'aliquota_fcp, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem, ' +
-        'classificacao_tributaria, cbs_aliquota, ibs_uf_aliquota, ibs_mun_aliquota, percentual_reducao)',
+        'natureza_operacao_descricao, indicador_presenca, tipo_atendimento, ' +
+        'classificacao_tributaria, cbs_aliquota, ibs_uf_aliquota, ibs_mun_aliquota, percentual_reducao, ' +
+        'aliquota_icms_efetiva, reducao_base_calculo_efetiva)',
     )
     .eq('empresa_id', empresaId)
     .eq('descricao', cfg.naturezaDescricao)
+    .eq('ativo', true)
     .maybeSingle();
-  if (!natureza) return jsonResponse({ error: `Natureza de operação "${cfg.naturezaDescricao}" não configurada.` }, 409);
+  if (!natureza) return jsonResponse({ error: `Natureza de operação "${cfg.naturezaDescricao}" não configurada ou inativa.` }, 409);
 
-  const regras = (natureza.naturezas_operacao_regras || []) as Array<
-    RegraFiscal & { destino_ufs: string[] | null; ordem: number | null }
+  const regrasTodas = (natureza.naturezas_operacao_regras || []) as Array<
+    RegraFiscal & { destino_ufs: string[] | null; ordem: number | null; tipo_atendimento: string | null }
   >;
+  // Venda: tipo_atendimento do atendimento ('presencial'/'online') é mais um
+  // critério de match do CFOP — regra com tipo_atendimento='ambos' (default) casa
+  // com qualquer atendimento; 'presencial'/'online' só casa com o correspondente.
+  // Compra/consignação não filtra (tipoAtendNorm fica null, sem restrição).
+  const tipoAtendNorm = ehVenda ? tipoAtendPorAtendimento((atendimento as any).tipo_atendimento) : null;
+  const regras = tipoAtendNorm
+    ? regrasTodas.filter((r) => !r.tipo_atendimento || r.tipo_atendimento === 'ambos' || r.tipo_atendimento === tipoAtendNorm)
+    : regrasTodas;
   const ufDestino = (end.uf ?? '').trim().toUpperCase();
   // Escolhe a regra do imposto: prioridade p/ a que lista a UF de destino;
   // senao a "curinga" (destino_ufs vazio); senao a de menor ordem.
@@ -787,6 +887,9 @@ Deno.serve(async (req) => {
       descricao: natureza.descricao,
       serie: natureza.serie ?? null,
       tipo: natureza.tipo,
+      // Fallback de cabeçalho — a resolução efetiva (regra de ICMS > regra de IPI >
+      // este valor) acontece em montarPayloadNfeCompra, usando o tipo_atendimento
+      // já aplicado na escolha da própria regra (ver regraDe() acima).
       indicador_presenca: natureza.indicador_presenca ?? null,
       consumidor_final: !!natureza.consumidor_final,
       operacao_devolucao: !!natureza.operacao_devolucao,
@@ -806,6 +909,7 @@ Deno.serve(async (req) => {
       bairro: end.bairro ?? null,
       cidade: end.cidade ?? null,
       uf: end.uf ?? null,
+      rg: fornecedor.rg ?? null,
     },
     moto: motoData,
     valor,
@@ -815,6 +919,8 @@ Deno.serve(async (req) => {
     regraIpi: regraIpi,
     regraIbsCbs: regraIbsCbs,
     observacoes: typeof body.observacoes === 'string' ? body.observacoes : null,
+    vendedorNome,
+    formasPagamentoTexto,
   });
 
   // FKs da nfe_entradas conforme a operacao.
@@ -831,19 +937,45 @@ Deno.serve(async (req) => {
   const observacoesNf = typeof body.observacoes === 'string' && body.observacoes.trim()
     ? body.observacoes.trim().toUpperCase()
     : null;
-  const r = await emitirNfe(base, token, ref, payload);
-  const fStatus = r.body.status as string | undefined;
-  const aceito = r.httpStatus === 200 || r.httpStatus === 201 || r.httpStatus === 202;
+  const r = await emitirNfe(base, token, refEmissao, payload);
+  let focusBody = r.body;
+  let fStatus = focusBody.status as string | undefined;
+  let aceito = r.httpStatus === 200 || r.httpStatus === 201 || r.httpStatus === 202;
+  const atualizaExistente = !!nfeExistente && !precisaLinhaNova;
+
+  // A Focus e idempotente por `ref`: reemitir sobre um ref que ja tem nota
+  // autorizada nao reprocessa, devolve um erro generico ("A nota fiscal ja foi
+  // autorizada") em vez do status da nota. Isso acontece quando uma tentativa
+  // anterior demorou/expirou do lado do client mas terminou de autorizar na
+  // Focus/SEFAZ — a nota EXISTE de verdade. Tratar como falha aqui prende o
+  // usuario num loop de "Tentar novamente" que nunca funciona (o ref sempre vai
+  // bater no mesmo "ja autorizada"); em vez disso, consulta o ref pra recuperar
+  // os dados reais (numero/serie/chave/DANFE) e segue como se tivesse autorizado.
+  if (!aceito && fStatus !== 'processando_autorizacao' && fStatus !== 'autorizado' && !focusBody.mensagem_sefaz) {
+    // mensagemErroFocus cobre as 3 formas que a Focus usa pra devolver texto de
+    // erro (body.mensagem, body.erros[], body.raw) — testar contra ela, nao só
+    // contra body.mensagem, pra nao deixar passar essa mesma mensagem vindo por
+    // um formato diferente.
+    if (/autorizad/i.test(mensagemErroFocus(focusBody))) {
+      const consulta = await consultarNfe(base, token, refEmissao);
+      if (consulta.body.status) {
+        focusBody = consulta.body;
+        fStatus = focusBody.status as string | undefined;
+        aceito = true;
+      }
+    }
+  }
 
   if (!aceito && fStatus !== 'processando_autorizacao' && fStatus !== 'autorizado') {
     // Persiste o erro para a tela mostrar "Tentar novamente".
-    const errMsg = mensagemErroFocus(r.body);
+    const errMsg = mensagemErroFocus(focusBody);
     const linhaErro = {
       empresa_id: empresaId,
       ...nfeFks,
       fornecedor_id: atendimento.cliente_id,
       natureza_operacao_id: natureza.id,
-      ref_externa: ref,
+      ref_externa: refEmissao,
+      ambiente,
       operacao: tipo,
       valor_total: valor,
       departamento,
@@ -852,7 +984,7 @@ Deno.serve(async (req) => {
       focus_status: fStatus ?? `http_${r.httpStatus}`,
       erro_mensagem: errMsg,
     };
-    if (nfeExistente) {
+    if (atualizaExistente) {
       await admin.from('nfe_entradas').update(linhaErro).eq('id', nfeExistente.id);
     } else {
       await admin.from('nfe_entradas').insert(linhaErro);
@@ -866,7 +998,8 @@ Deno.serve(async (req) => {
     ...nfeFks,
     fornecedor_id: atendimento.cliente_id,
     natureza_operacao_id: natureza.id,
-    ref_externa: ref,
+    ref_externa: refEmissao,
+    ambiente,
     operacao: tipo,
     valor_total: valor,
     departamento,
@@ -876,19 +1009,21 @@ Deno.serve(async (req) => {
     focus_status: fStatus ?? 'processando_autorizacao',
     status: autorizado ? 'processada' : 'processando_itens',
     erro_mensagem: null,
-    numero: (r.body.numero as string) ?? null,
-    serie: (r.body.serie as string) ?? null,
-    chave_nfe: (r.body.chave_nfe as string) ?? null,
-    caminho_danfe: r.body.caminho_danfe ? `${base}${r.body.caminho_danfe}` : null,
-    xml_raw: r.body.caminho_xml_nota_fiscal ? `${base}${r.body.caminho_xml_nota_fiscal}` : null,
+    numero: (focusBody.numero as string) ?? null,
+    serie: (focusBody.serie as string) ?? null,
+    chave_nfe: (focusBody.chave_nfe as string) ?? null,
+    caminho_danfe: focusBody.caminho_danfe ? `${base}${focusBody.caminho_danfe}` : null,
+    xml_raw: focusBody.caminho_xml_nota_fiscal ? `${base}${focusBody.caminho_xml_nota_fiscal}` : null,
   };
 
   let nfeRow;
-  if (nfeExistente) {
-    const { data } = await admin.from('nfe_entradas').update(linha).eq('id', nfeExistente.id).select('*').maybeSingle();
+  if (atualizaExistente) {
+    const { data, error } = await admin.from('nfe_entradas').update(linha).eq('id', nfeExistente.id).select('*').maybeSingle();
+    if (error) return jsonResponse({ error: `Falha ao gravar a NF-e (nota autorizada na Focus mas não persistida): ${error.message}` }, 500);
     nfeRow = data;
   } else {
-    const { data } = await admin.from('nfe_entradas').insert(linha).select('*').maybeSingle();
+    const { data, error } = await admin.from('nfe_entradas').insert(linha).select('*').maybeSingle();
+    if (error) return jsonResponse({ error: `Falha ao gravar a NF-e (nota autorizada na Focus mas não persistida): ${error.message}` }, 500);
     nfeRow = data;
   }
 
@@ -911,8 +1046,8 @@ Deno.serve(async (req) => {
     await registrarPosAutorizacao(admin, cfg, {
       entityId,
       dataEmissao,
-      numero: (r.body.numero as string) ?? null,
-      serie: (r.body.serie as string) ?? null,
+      numero: (focusBody.numero as string) ?? null,
+      serie: (focusBody.serie as string) ?? null,
       callerId: caller.id,
       callerName,
     });

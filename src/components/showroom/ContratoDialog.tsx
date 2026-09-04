@@ -184,7 +184,14 @@ const ContratoDialog: React.FC<Props> = ({
     if (ehNfe) setTimeout(() => onOpenChange(false), 1200);
   });
   const nfeJaEmitida = nfe.emitida;
-  const soLeitura = ehNfe || nfeJaEmitida;
+  // Contrato só trava depois de NF-e emitida em PRODUÇÃO — homologação é teste,
+  // não deve bloquear edição/geração do contrato. O ambiente é fixo no servidor
+  // (env var), então o da última emissão já indica o de qualquer emissão nova.
+  const nfeEmProducao = nfeJaEmitida && nfe.nfe?.ambiente === 'producao';
+  const soLeitura = ehNfe || nfeEmProducao;
+  // Homologação permite reemitir mesmo com uma NF-e já autorizada (sempre com os
+  // dados atuais do sistema) — em produção uma NF-e autorizada é definitiva, não reemite.
+  const podeReemitirHomolog = nfeJaEmitida && nfe.nfe?.ambiente === 'homologacao';
   const [nfeValor, setNfeValor] = useState('');
   const [nfeObs, setNfeObs] = useState('');
 
@@ -532,7 +539,7 @@ const ContratoDialog: React.FC<Props> = ({
 
   const saveContrato = async (): Promise<string | null> => {
     if (soLeitura) {
-      if (nfeJaEmitida) toast.error('Contrato bloqueado: NF-e de venda já emitida.');
+      if (nfeEmProducao) toast.error('Contrato bloqueado: NF-e de venda já emitida em produção.');
       return contratoId;
     }
     setSaving(true);
@@ -780,7 +787,7 @@ const ContratoDialog: React.FC<Props> = ({
   };
 
   const handleGerar = async (variant: 'sinal' | 'venda' = 'sinal') => {
-    if (nfeJaEmitida) { toast.error('NF-e de venda já emitida — contrato bloqueado.'); return; }
+    if (nfeEmProducao) { toast.error('NF-e de venda já emitida em produção — contrato bloqueado.'); return; }
     if (!validateForGeneration()) return;
 
     setGenerating(true);
@@ -856,9 +863,9 @@ const ContratoDialog: React.FC<Props> = ({
         </h1>
       </div>
 
-      {nfeJaEmitida && (
+      {nfeEmProducao && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 flex items-center gap-1.5">
-          <AlertTriangle className="h-3.5 w-3.5" /> NF-e de venda emitida — contrato bloqueado para edição.
+          <AlertTriangle className="h-3.5 w-3.5" /> NF-e de venda emitida em produção — contrato bloqueado para edição.
         </div>
       )}
 
@@ -1400,7 +1407,7 @@ const ContratoDialog: React.FC<Props> = ({
                     <Separator className="mt-2" />
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {nfeJaEmitida ? (
+                    {nfeJaEmitida && !podeReemitirHomolog ? (
                       <p className="text-sm text-muted-foreground">NF-e autorizada — veja os dados na barra de ações abaixo.</p>
                     ) : (
                       <>
@@ -1427,12 +1434,21 @@ const ContratoDialog: React.FC<Props> = ({
             <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
               {nfe.nfe?.status === 'processada' && (
                 <div className="flex flex-wrap items-center gap-3 mr-auto text-sm">
-                  <Badge className="bg-primary/10 text-primary gap-1.5">
-                    <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
-                  </Badge>
+                  {nfe.nfe.ambiente === 'producao' && (
+                    <Badge className="bg-primary/10 text-primary gap-1.5">
+                      <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
+                    </Badge>
+                  )}
                   {nfe.nfe?.caminho_danfe && (
-                    <Button variant="outline" size="sm" onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}>
-                      <ExternalLink className="h-4 w-4 mr-1" /> DANFE
+                    <Button
+                      size="sm"
+                      className={cn(
+                        'gap-1.5 text-white',
+                        nfe.nfe.ambiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary/90',
+                      )}
+                      onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}
+                    >
+                      <ExternalLink className="h-4 w-4" /> Baixar DANFE
                     </Button>
                   )}
                 </div>
@@ -1455,23 +1471,39 @@ const ContratoDialog: React.FC<Props> = ({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
-              {!nfeJaEmitida && !nfe.pendente && (
-                <Button
-                  className="gap-1.5"
-                  disabled={nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim())}
-                  title={
-                    !empresaId
-                      ? 'Nenhuma empresa vinculada à loja do atendimento'
-                      : hasTroca && !valorQuitacao?.trim()
-                        ? 'Valor de Quitação da moto do cliente é obrigatório — defina na avaliação (0 se não houver)'
-                        : undefined
-                  }
-                  onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined, empresa_id: empresaId || undefined })}
-                >
-                  {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                  {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
-                </Button>
-              )}
+              {(() => {
+                const disabled = nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim());
+                const title = !empresaId
+                  ? 'Nenhuma empresa vinculada à loja do atendimento'
+                  : hasTroca && !valorQuitacao?.trim()
+                    ? 'Valor de Quitação da moto do cliente é obrigatório — defina na avaliação (0 se não houver)'
+                    : undefined;
+                return (
+                  <>
+                    {(!nfeJaEmitida || podeReemitirHomolog) && !nfe.pendente && (
+                      <Button
+                        className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
+                        disabled={disabled}
+                        title={title}
+                        onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined, empresa_id: empresaId || undefined, ambiente: 'homologacao' })}
+                      >
+                        {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                        {nfe.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
+                      </Button>
+                    )}
+                    {podeReemitirHomolog && !nfe.pendente && (
+                      <Button
+                        className="gap-1.5"
+                        disabled={disabled}
+                        title={title}
+                        onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined, empresa_id: empresaId || undefined, ambiente: 'producao' })}
+                      >
+                        <FileText className="h-4 w-4" /> NF-e (Produção)
+                      </Button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
@@ -1483,15 +1515,15 @@ const ContratoDialog: React.FC<Props> = ({
                   <Eye className="h-4 w-4 mr-1" />{viewing ? 'Abrindo...' : 'Visualizar'}
                 </Button>
               )}
-              <Button variant="outline" onClick={() => handleGerar('sinal')} disabled={generating || nfeJaEmitida}>
+              <Button variant="outline" onClick={() => handleGerar('sinal')} disabled={generating || nfeEmProducao}>
                 <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Contrato Sinal'}
               </Button>
               {canGerarVenda && (
-                <Button variant="outline" onClick={() => handleGerar('venda')} disabled={generating || nfeJaEmitida}>
+                <Button variant="outline" onClick={() => handleGerar('venda')} disabled={generating || nfeEmProducao}>
                   <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Contrato Venda'}
                 </Button>
               )}
-              <Button onClick={handleSave} disabled={saving || nfeJaEmitida} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
+              <Button onClick={handleSave} disabled={saving || nfeEmProducao} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
                 <Save className="h-4 w-4 mr-1" />
                 {saving ? 'Salvando...' : 'Salvar'}
               </Button>

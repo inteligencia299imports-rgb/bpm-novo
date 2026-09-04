@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, Building2, User, Plus, Trash2, FileText, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, Building2, User, Plus, Trash2, FileText, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
@@ -526,11 +526,13 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                     </div>
                   ) : (
                     <>
-                      {/* col 3: DANFE (so NF-e) */}
+                      {/* col 3: NF-e (so NF-e) — abre a mesma tela de emissão (lá tem o botão de
+                          Baixar DANFE já autorizada, e a opção de emitir em Produção depois da
+                          homologação) — não o DANFE direto aqui. */}
                       <div className="flex justify-end">
-                        {isNf && nfeEmitida && nfeCompra?.caminho_danfe && (
-                          <Button size="sm" className="h-8 gap-1.5" onClick={() => window.open(nfeCompra.caminho_danfe, '_blank', 'noopener')}>
-                            <ExternalLink className="h-4 w-4" /> DANFE
+                        {isNf && nfeEmitida && (
+                          <Button size="sm" className="h-8 gap-1.5" onClick={() => onEmitirNfe?.()}>
+                            <FileText className="h-4 w-4" /> NF
                           </Button>
                         )}
                       </div>

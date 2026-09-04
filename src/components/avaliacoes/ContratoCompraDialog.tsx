@@ -97,6 +97,10 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   });
   // NF-e autorizada -> contrato e cliente 100% travados (nenhum campo editável).
   const nfeJaEmitida = nfe.emitida;
+  // Contrato só trava depois de NF-e emitida em PRODUÇÃO — homologação é teste,
+  // não deve bloquear edição/geração do contrato (mesma regra do fluxo de venda).
+  const nfeEmProducao = nfeJaEmitida && nfe.nfe?.ambiente === 'producao';
+  const podeReemitirHomolog = nfeJaEmitida && nfe.nfe?.ambiente === 'homologacao';
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -236,15 +240,15 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   // Se já houve uma emissão (ex.: em erro), repõe o valor da NF que foi tentado.
   useEffect(() => {
     const vt = (nfe.nfe as any)?.valor_total;
-    if (ehNfe && !nfeJaEmitida && typeof vt === 'number' && vt > 0) {
+    if (ehNfe && (!nfeJaEmitida || podeReemitirHomolog) && typeof vt === 'number' && vt > 0) {
       setNfeValor(formatCurrencyInput(String(Math.round(vt * 100))));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [(nfe.nfe as any)?.valor_total, ehNfe, nfeJaEmitida]);
+  }, [(nfe.nfe as any)?.valor_total, ehNfe, nfeJaEmitida, podeReemitirHomolog]);
 
   const saveContrato = async (): Promise<string | null> => {
-    if (nfeJaEmitida) {
-      toast.error('Contrato bloqueado: a NF-e já foi emitida.');
+    if (nfeEmProducao) {
+      toast.error('Contrato bloqueado: NF-e de compra já emitida em produção.');
       return null;
     }
     setSaving(true);
@@ -482,12 +486,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   // Houve edição desde a última geração/carregamento?
   const currentSnapshot = snapshotFields({ cpfCnpj, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato });
   const editado = currentSnapshot !== baseline || clienteTocado;
-  // Contrato já gerado e sem edições (ou NF-e já emitida) -> modo leitura.
-  const modoLeitura = (jaGerado && !editado) || nfeJaEmitida;
-  // Campos do contrato/cliente somente leitura: na tela de NF-e ou após NF-e autorizada.
-  const soLeitura = ehNfe || nfeJaEmitida;
-  // Empresa: editável enquanto a NF-e não foi emitida e o contrato não está travado em leitura.
-  const empresaReadonly = nfeJaEmitida || (!ehNfe && modoLeitura);
+  // Contrato já gerado e sem edições (ou NF-e já emitida em produção) -> modo leitura.
+  const modoLeitura = (jaGerado && !editado) || nfeEmProducao;
+  // Campos do contrato/cliente somente leitura: na tela de NF-e ou após NF-e em produção.
+  const soLeitura = ehNfe || nfeEmProducao;
+  // Empresa: editável enquanto a NF-e de produção não foi emitida e o contrato não está travado em leitura.
+  const empresaReadonly = nfeEmProducao || (!ehNfe && modoLeitura);
 
   // Modo NF-e
   const podeEmitirNfe = (avaliacao as any)?.aprovacao_status === 'aprovada'
@@ -552,7 +556,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
           </Card>
 
           {/* Card: NF-e de Compra (valor + observações da nota) */}
-          {ehNfe && !nfeJaEmitida && (
+          {ehNfe && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -561,34 +565,40 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                 <Separator className="mt-2" />
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-1.5 max-w-xs">
-                  <Label>Valor da NF-e <span className="text-destructive">*</span></Label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-                    <Input
-                      className="pl-7"
-                      inputMode="numeric"
-                      value={nfeValor}
-                      onChange={(e) => setNfeValor(formatCurrencyInput(e.target.value))}
-                      placeholder="0,00"
-                      disabled={nfe.pendente}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Valor que sai na nota. O compromisso financeiro registra sempre o repasse ao cliente ({brl(repasseCliente)}).
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Observações na NF-e</Label>
-                  <Textarea
-                    rows={3}
-                    value={obsNfe}
-                    onChange={(e) => setObsNfe(e.target.value.toUpperCase())}
-                    placeholder="INFORMAÇÕES COMPLEMENTARES QUE SAIRÃO NA NOTA..."
-                    className="uppercase"
-                    disabled={nfe.pendente}
-                  />
-                </div>
+                {nfeJaEmitida && !podeReemitirHomolog ? (
+                  <p className="text-sm text-muted-foreground">NF-e autorizada — veja os dados na barra de ações abaixo.</p>
+                ) : (
+                  <>
+                    <div className="space-y-1.5 max-w-xs">
+                      <Label>Valor da NF-e <span className="text-destructive">*</span></Label>
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                        <Input
+                          className="pl-7"
+                          inputMode="numeric"
+                          value={nfeValor}
+                          onChange={(e) => setNfeValor(formatCurrencyInput(e.target.value))}
+                          placeholder="0,00"
+                          disabled={nfe.pendente}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Valor que sai na nota. O compromisso financeiro registra sempre o repasse ao cliente ({brl(repasseCliente)}).
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Observações na NF-e</Label>
+                      <Textarea
+                        rows={3}
+                        value={obsNfe}
+                        onChange={(e) => setObsNfe(e.target.value.toUpperCase())}
+                        placeholder="INFORMAÇÕES COMPLEMENTARES QUE SAIRÃO NA NOTA..."
+                        className="uppercase"
+                        disabled={nfe.pendente}
+                      />
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
@@ -803,11 +813,21 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                 <>
                   {nfe.nfe?.status === 'processada' ? (
                     <div className="flex flex-wrap items-center gap-3 mr-auto text-sm">
-                      <Badge className="bg-primary/10 text-primary gap-1.5">
-                        <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe.numero || '-'} • série {nfe.nfe.serie || '-'}
-                      </Badge>
+                      {nfe.nfe.ambiente === 'producao' && (
+                        <Badge className="bg-primary/10 text-primary gap-1.5">
+                          <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe.numero || '-'} • série {nfe.nfe.serie || '-'}
+                        </Badge>
+                      )}
                       {nfe.nfe.caminho_danfe && (
-                        <a href={nfe.nfe.caminho_danfe} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                        <a
+                          href={nfe.nfe.caminho_danfe}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={cn(
+                            'inline-flex items-center gap-1 hover:underline',
+                            nfe.nfe.ambiente === 'homologacao' ? 'text-orange-500' : 'text-primary',
+                          )}
+                        >
                           <ExternalLink className="h-3.5 w-3.5" /> DANFE
                         </a>
                       )}
@@ -831,28 +851,43 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                   <Button variant="outline" onClick={() => onOpenChange(false)}>
                     <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
                   </Button>
-                  {nfe.nfe?.status !== 'processada' && !nfe.pendente && (
-                    <Button
-                      variant={podeEmitirNfe && !!empresaId && parseCurrencyInput(nfeValor) > 0 && !!valorQuitacao?.trim() ? 'default' : 'outline'}
-                      onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined })}
-                      disabled={!podeEmitirNfe || nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || !valorQuitacao?.trim()}
-                      title={
-                        !empresaId
-                          ? 'Selecione a empresa emitente'
-                          : parseCurrencyInput(nfeValor) <= 0
-                            ? 'Informe o valor da NF-e'
-                          : !valorQuitacao?.trim()
-                            ? 'Valor de Quitação é obrigatório no contrato (informe 0 se não houver)'
+                  {(() => {
+                    const disabled = !podeEmitirNfe || nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || !valorQuitacao?.trim();
+                    const title = !empresaId
+                      ? 'Selecione a empresa emitente'
+                      : parseCurrencyInput(nfeValor) <= 0
+                        ? 'Informe o valor da NF-e'
+                        : !valorQuitacao?.trim()
+                          ? 'Valor de Quitação é obrigatório no contrato (informe 0 se não houver)'
                           : podeEmitirNfe
                             ? undefined
-                            : 'Disponível após aprovação, contrato gerado e consulta realizada'
-                      }
-                      className="gap-1.5"
-                    >
-                      {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                      {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
-                    </Button>
-                  )}
+                            : 'Disponível após aprovação, contrato gerado e consulta realizada';
+                    return (
+                      <>
+                        {(!nfeJaEmitida || podeReemitirHomolog) && !nfe.pendente && (
+                          <Button
+                            className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
+                            disabled={disabled}
+                            title={title}
+                            onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined, ambiente: 'homologacao' })}
+                          >
+                            {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                            {nfe.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
+                          </Button>
+                        )}
+                        {podeReemitirHomolog && !nfe.pendente && (
+                          <Button
+                            className="gap-1.5"
+                            disabled={disabled}
+                            title={title}
+                            onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined, ambiente: 'producao' })}
+                          >
+                            <FileText className="h-4 w-4" /> NF-e (Produção)
+                          </Button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               ) : modoLeitura ? (
                 <>

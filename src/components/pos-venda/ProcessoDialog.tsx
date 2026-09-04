@@ -16,6 +16,7 @@ import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { TIPOS_PROPRIA } from '@/lib/tipoAquisicao';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const NF_VENDA = 'NF-E DE VENDA';
 const NF_TROCA = 'NF-E DE ENTRADA (TROCA)';
@@ -479,10 +480,25 @@ const ProcessoDialog: React.FC<Props> = ({
                     <>
                       <div className="flex justify-end">
                         <span className="flex items-center gap-2 pr-3 text-sm text-muted-foreground whitespace-nowrap">
-                          {nfeObj?.nfe?.caminho_danfe && (
-                            <Button size="sm" className="h-7 gap-1" onClick={() => window.open(nfeObj.nfe.caminho_danfe, '_blank', 'noopener')}>
-                              <ExternalLink className="h-3.5 w-3.5" /> DANFE
+                          {isNfVenda ? (
+                            // Venda: abre a mesma página de emissão da NF-e (lá dentro tem o
+                            // botão de Baixar DANFE, já autorizada) — não o DANFE direto aqui.
+                            <Button size="sm" className="h-7 gap-1" onClick={() => onEmitirNfe?.()}>
+                              <FileText className="h-3.5 w-3.5" /> NF
                             </Button>
+                          ) : (
+                            nfeObj?.nfe?.caminho_danfe && (
+                              <Button
+                                size="sm"
+                                className={cn(
+                                  'h-7 gap-1 text-white',
+                                  nfeObj.nfe.ambiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary/90',
+                                )}
+                                onClick={() => window.open(nfeObj.nfe.caminho_danfe, '_blank', 'noopener')}
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" /> DANFE
+                              </Button>
+                            )
                           )}
                           <CalendarIcon className="h-4 w-4 shrink-0" />
                           {nfeObj?.nfe?.data_emissao ? format(new Date(nfeObj.nfe.data_emissao), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : '—'}

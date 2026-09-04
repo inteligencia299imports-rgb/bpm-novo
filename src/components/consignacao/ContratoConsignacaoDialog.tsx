@@ -126,7 +126,11 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     if (modo === 'nfe') setTimeout(() => onOpenChange(false), 1200);
   });
   const nfeJaEmitida = nfe.emitida;
-  const soLeitura = ehNfe || nfeJaEmitida;
+  // Contrato só trava depois de NF-e emitida em PRODUÇÃO — homologação é teste,
+  // não deve bloquear edição/geração do contrato (mesma regra do fluxo de venda).
+  const nfeEmProducao = nfeJaEmitida && nfe.nfe?.ambiente === 'producao';
+  const podeReemitirHomolog = nfeJaEmitida && nfe.nfe?.ambiente === 'homologacao';
+  const soLeitura = ehNfe || nfeEmProducao;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -300,8 +304,8 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   }, [loading]);
 
   const saveContrato = async (): Promise<string | null> => {
-    if (nfeJaEmitida) {
-      toast.error('Contrato bloqueado: a NF-e já foi emitida.');
+    if (nfeEmProducao) {
+      toast.error('Contrato bloqueado: NF-e de consignação já emitida em produção.');
       return null;
     }
     setSaving(true);
@@ -405,8 +409,8 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // Houve edição desde a última geração/carregamento? (igual contrato de compra)
   const currentSnapshot = snapshotFields({ cpfCnpj, email, endereco, cep, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato });
   const editado = currentSnapshot !== baseline || clienteTocado;
-  // Contrato já gerado e sem edições (ou NF-e já emitida) -> só permite baixar/visualizar.
-  const modoLeitura = (jaGerado && !editado) || nfeJaEmitida;
+  // Contrato já gerado e sem edições (ou NF-e já emitida em produção) -> só permite baixar/visualizar.
+  const modoLeitura = (jaGerado && !editado) || nfeEmProducao;
 
   const validateFields = (): boolean => {
     if (!cpfCnpj?.trim()) { toast.error('CPF/CNPJ é obrigatório'); return false; }
@@ -558,7 +562,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                       <p className="text-sm text-muted-foreground">
                         Nenhuma empresa vinculada à loja do atendimento.
                       </p>
-                    ) : nfeJaEmitida ? (
+                    ) : nfeEmProducao ? (
                       <InfoDisplay
                         label="Empresa"
                         value={(() => {
@@ -766,7 +770,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                   <Separator className="mt-2" />
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {ehNfe && !nfeJaEmitida ? (
+                  {ehNfe && nfeJaEmitida && !podeReemitirHomolog ? (
+                    <p className="text-sm text-muted-foreground">NF-e autorizada — veja os dados na barra de ações abaixo.</p>
+                  ) : ehNfe && (!nfeJaEmitida || podeReemitirHomolog) ? (
                     <>
                       <div className="max-w-xs">
                         <CurrencyField
@@ -817,12 +823,21 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
             {ehNfe && nfe.nfe?.status === 'processada' && (
               <div className="flex flex-wrap items-center gap-3 mr-auto text-sm">
-                <Badge className="bg-primary/10 text-primary gap-1.5">
-                  <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
-                </Badge>
+                {nfe.nfe.ambiente === 'producao' && (
+                  <Badge className="bg-primary/10 text-primary gap-1.5">
+                    <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
+                  </Badge>
+                )}
                 {nfe.nfe?.caminho_danfe && (
-                  <Button variant="outline" size="sm" onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}>
-                    <ExternalLink className="h-4 w-4 mr-1" /> DANFE
+                  <Button
+                    size="sm"
+                    className={cn(
+                      'gap-1.5 text-white',
+                      nfe.nfe.ambiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary/90',
+                    )}
+                    onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-1" /> Baixar DANFE
                   </Button>
                 )}
               </div>
@@ -847,22 +862,39 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
             </Button>
 
             {ehNfe ? (
-              nfe.nfe?.status !== 'processada' && !nfe.pendente && (
-                <Button
-                  disabled={!podeEmitirNfe || nfe.loading || !empresaId}
-                  title={
-                    !empresaId
-                      ? 'Nenhuma empresa vinculada à loja do atendimento'
-                      : podeEmitirNfe
-                        ? undefined
-                        : 'Disponível após o contrato do consignante e a consulta realizada'
-                  }
-                  onClick={() => nfe.emitir({ valor: parseCurrencyInput(valorConsigNota), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined })}
-                >
-                  {nfe.loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4 mr-1" /> : <FileText className="h-4 w-4 mr-1" />}
-                  {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
-                </Button>
-              )
+              (() => {
+                const disabled = !podeEmitirNfe || nfe.loading || !empresaId;
+                const title = !empresaId
+                  ? 'Nenhuma empresa vinculada à loja do atendimento'
+                  : podeEmitirNfe
+                    ? undefined
+                    : 'Disponível após o contrato do consignante e a consulta realizada';
+                return (
+                  <>
+                    {(!nfeJaEmitida || podeReemitirHomolog) && !nfe.pendente && (
+                      <Button
+                        className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
+                        disabled={disabled}
+                        title={title}
+                        onClick={() => nfe.emitir({ valor: parseCurrencyInput(valorConsigNota), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined, ambiente: 'homologacao' })}
+                      >
+                        {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                        {nfe.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
+                      </Button>
+                    )}
+                    {podeReemitirHomolog && !nfe.pendente && (
+                      <Button
+                        className="gap-1.5"
+                        disabled={disabled}
+                        title={title}
+                        onClick={() => nfe.emitir({ valor: parseCurrencyInput(valorConsigNota), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined, ambiente: 'producao' })}
+                      >
+                        <FileText className="h-4 w-4" /> NF-e (Produção)
+                      </Button>
+                    )}
+                  </>
+                );
+              })()
             ) : modoLeitura ? (
               <>
                 <Button variant="outline" onClick={() => handleBaixar()} disabled={generating}>
