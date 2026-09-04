@@ -18,6 +18,7 @@ interface EstoqueOption {
   modelo: string;
   cor: string | null;
   placa: string | null;
+  chassi: string | null;
   marca: string;
   is0km: boolean;
 }
@@ -71,6 +72,7 @@ const MotoCompraSection: React.FC<Props> = ({
           modelo: m.modelo ?? null,
           cor: m.cor ?? null,
           placa: m.placa ?? null,
+          chassi: m.chassi ?? null,
           is0km: m.fonte === '0km',
         });
 
@@ -110,9 +112,17 @@ const MotoCompraSection: React.FC<Props> = ({
   const formatEstoqueLabel = (item?: EstoqueOption | null) => {
     if (!item) return 'Moto não encontrada';
 
-    const parts = [item.modelo];
+    const parts = [item.modelo || 'Sem modelo cadastrado'];
     if (item.cor) parts.push(item.cor);
-    if (item.placa) parts.push(item.placa.replace(/-/g, ''));
+    // Motos 0km costumam nao ter placa ainda; sem um identificador distinto,
+    // varias unidades do mesmo modelo/cor ficam indistinguiveis na lista.
+    if (item.placa) {
+      parts.push(item.placa.replace(/-/g, ''));
+    } else if (item.chassi) {
+      parts.push(`Chassi ${item.chassi.slice(-6)}`);
+    } else {
+      parts.push(`Nº ${item.id.slice(0, 6)}`);
+    }
     return parts.join(' - ').toUpperCase();
   };
 
@@ -245,7 +255,8 @@ const MotoCompraSection: React.FC<Props> = ({
                       {sortedEstoque.map(item => (
                         <CommandItem
                           key={item.id}
-                          value={formatEstoqueLabel(item)}
+                          value={item.id}
+                          keywords={[formatEstoqueLabel(item)]}
                           onSelect={() => {
                             setEstoqueMotoId(item.id);
                             setEstoqueTipo?.(item.tipo);
