@@ -483,6 +483,7 @@ Deno.serve(async (req) => {
           ano_fabricacao: en.ano_fabricacao, ano_modelo: en.ano_modelo,
           cilindrada: en.cilindrada, cor: en.cor, placa: en.placa,
           chassi: en.chassi, renavam: en.renavam, ncm: en.ncm, valor: en.valor,
+          numero_nf_entrada: en.numero_nf_entrada ?? null,
         },
       };
     } else {
@@ -673,13 +674,17 @@ Deno.serve(async (req) => {
     if (!['vendido', 'sinal'].includes(estoqueMoto?.status)) {
       return jsonResponse({ error: 'A moto ainda não foi marcada como vendida.' }, 409);
     }
-    const { data: contratoVenda } = await admin
-      .from('contratos').select('id')
-      .eq('atendimento_id', atendimentoId).neq('ipva_tipo', 'COMPRA').limit(1);
-    if (!contratoVenda || contratoVenda.length === 0) {
+    // ipva_tipo != 'COMPRA' tem que incluir NULL (lojas Ducati não usam IPVA) —
+    // .neq() do PostgREST exclui NULL silenciosamente, por isso filtra em JS
+    // (mesmo padrão já usado pra achar o contrato de venda em registrarPosAutorizacao acima).
+    const { data: contratosVenda } = await admin
+      .from('contratos').select('id, ipva_tipo')
+      .eq('atendimento_id', atendimentoId);
+    const contratoVenda = ((contratosVenda || []) as any[]).find((c) => c.ipva_tipo !== 'COMPRA') ?? null;
+    if (!contratoVenda) {
       return jsonResponse({ error: 'O contrato de venda ainda não foi gerado.' }, 409);
     }
-    contratoVendaId = contratoVenda[0].id;
+    contratoVendaId = contratoVenda.id;
   }
   if (!empresa?.cnpj) {
     return jsonResponse({ error: 'A empresa da loja está sem CNPJ cadastrado.' }, 409);
@@ -867,6 +872,9 @@ Deno.serve(async (req) => {
       chassi: mSrc.chassi ?? null,
       renavam: mSrc.renavam ?? null,
       ncm: eh0km ? (mn.ncm ?? null) : null,
+      // Nº da NF de entrada (fornecedor/fábrica) — só existe pra moto 0km,
+      // cadastrado direto no estoque_motos_novas (numero_nf_entrada).
+      numero_nf_entrada: eh0km ? (mn.numero_nf_entrada ?? null) : null,
     };
   } else {
     motoData = {

@@ -36,6 +36,8 @@ export interface DadosMoto {
   renavam: string | null;
   /** NCM explicito (moto 0km cadastrada). Sem isto, deriva pela cilindrada. */
   ncm?: string | null;
+  /** Nº da NF de entrada (fornecedor/fábrica) — só moto 0km, cadastrado no estoque. */
+  numero_nf_entrada?: string | null;
 }
 
 /** Espelha naturezas_operacao. */
@@ -128,26 +130,33 @@ export function ncmPorCilindrada(cc: string | number | null | undefined): string
   return '87115000';
 }
 
-// xProd da NF-e tem limite de 120 caracteres. Monta a descrição por prioridade
-// (identificadores do veículo primeiro) e para de adicionar quando não couber.
+// xProd da NF-e tem limite de 120 caracteres. Curta de propósito (só marca/
+// modelo) — os detalhes do veículo vão em informacoesAdicionaisItemMoto()
+// (infAdProd), que a DANFE já imprime logo abaixo da descrição do produto.
 const XPROD_MAX = 120;
 export function descricaoItemMoto(m: DadosMoto): string {
   const base = ['MOTOCICLETA', m.marca?.toUpperCase(), m.modelo?.toUpperCase()]
-    .filter(Boolean).join(' ').slice(0, XPROD_MAX);
-  // ordem de prioridade para o que sobra do limite:
-  const extras = [
-    m.chassi ? `CHASSI ${m.chassi.toUpperCase()}` : null,
-    m.placa ? `PLACA ${m.placa.toUpperCase()}` : null,
-    m.renavam ? `RENAVAM ${onlyDigits(m.renavam)}` : null,
-    m.ano_modelo ? `ANO ${m.ano_fabricacao ?? m.ano_modelo}/${m.ano_modelo}` : null,
-    m.cor ? `COR ${m.cor.toUpperCase()}` : null,
-  ].filter(Boolean) as string[];
+    .filter(Boolean).join(' ');
+  return base.slice(0, XPROD_MAX) || 'MOTOCICLETA';
+}
 
-  let out = base;
-  for (const parte of extras) {
-    if (out.length + 1 + parte.length <= XPROD_MAX) out = `${out} ${parte}`;
-  }
-  return out;
+/** infAdProd — informações adicionais do item. O campo não suporta quebra de
+ * linha (nem \n nem "|" viram quebra visual na DANFE gerada pela Focus — ficam
+ * como texto literal) — os dados saem em uma linha só, separados por espaço.
+ * Combustível é sempre GASOLINA (não há moto elétrica no catálogo hoje). */
+export function informacoesAdicionaisItemMoto(m: DadosMoto): string {
+  const linhas: Array<string | null> = [
+    [m.marca?.toUpperCase(), m.modelo?.toUpperCase()].filter(Boolean).join(' ') || null,
+    m.cilindrada ? `CILINDRADA: ${m.cilindrada} CC` : null,
+    (m.ano_fabricacao || m.ano_modelo) ? `FAB./MOD.: ${m.ano_fabricacao ?? m.ano_modelo} / ${m.ano_modelo ?? m.ano_fabricacao}` : null,
+    m.chassi ? `CHASSI: ${m.chassi.toUpperCase()}` : null,
+    m.placa ? `PLACA: ${m.placa.toUpperCase()}` : null,
+    m.renavam ? `RENAVAM: ${onlyDigits(m.renavam)}` : null,
+    m.cor ? `COR: ${m.cor.toUpperCase()}` : null,
+    'COMB.: GASOLINA',
+    m.numero_nf_entrada ? `NF ENTRADA: ${Number(m.numero_nf_entrada) || m.numero_nf_entrada}` : null,
+  ];
+  return linhas.filter(Boolean).join(' ');
 }
 
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
@@ -167,6 +176,7 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     numero_item: 1,
     codigo_produto: (moto.placa || moto.chassi || 'MOTO').toUpperCase().replace(/\s/g, ''),
     descricao: descricaoItemMoto(moto),
+    informacoes_adicionais_item: informacoesAdicionaisItemMoto(moto),
     cfop: regraIcms.cfop,
     codigo_ncm: (moto.ncm && onlyDigits(moto.ncm).length === 8 ? onlyDigits(moto.ncm) : ncmPorCilindrada(moto.cilindrada)),
     unidade_comercial: 'UN',
