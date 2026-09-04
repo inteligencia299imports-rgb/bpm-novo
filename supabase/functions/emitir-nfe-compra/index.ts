@@ -23,6 +23,15 @@ const DIAS_VENCIMENTO = 7;
 const nomeCat = (v: any): string | null =>
   (v && typeof v === 'object' ? (v.nome ?? null) : (v ?? null));
 
+/** ide/indPres a partir de atendimentos_motos.tipo_atendimento ('Presencial' | 'Online').
+ * 1 = operação presencial; 2 = não presencial, internet. null = tipo não mapeado — usa o
+ * default configurado na natureza de operação (naturezas_operacao.indicador_presenca). */
+const indPresPorTipoAtendimento = (tipo: string | null | undefined): number | null => {
+  if (tipo === 'Presencial') return 1;
+  if (tipo === 'Online') return 2;
+  return null;
+};
+
 type Operacao = 'compra' | 'consignacao' | 'venda_seminova' | 'venda_0km';
 
 interface OperacaoConfig {
@@ -505,7 +514,7 @@ Deno.serve(async (req) => {
 
   const { data: atendimento } = await admin
     .from('atendimentos_motos')
-    .select('id, cliente_id, loja_id, vendedor_id, interesse')
+    .select('id, cliente_id, loja_id, vendedor_id, interesse, tipo_atendimento')
     .eq('id', atendimentoId)
     .maybeSingle();
   if (!atendimento) return jsonResponse({ error: 'Atendimento não encontrado' }, 404);
@@ -787,7 +796,11 @@ Deno.serve(async (req) => {
       descricao: natureza.descricao,
       serie: natureza.serie ?? null,
       tipo: natureza.tipo,
-      indicador_presenca: natureza.indicador_presenca ?? null,
+      // Venda: presencial/online vem do tipo de atendimento, não do default fixo da
+      // natureza — a mesma natureza "VENDA" pode servir pra venda feita na loja ou
+      // pela internet. Compra/consignação seguem o default configurado na natureza.
+      indicador_presenca: (ehVenda ? indPresPorTipoAtendimento((atendimento as any).tipo_atendimento) : null)
+        ?? natureza.indicador_presenca ?? null,
       consumidor_final: !!natureza.consumidor_final,
       operacao_devolucao: !!natureza.operacao_devolucao,
       informacoes_complementares: natureza.informacoes_complementares ?? null,
