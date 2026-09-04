@@ -13,7 +13,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
-import { processarCnhAnexada } from '@/lib/cnhAnexo';
+import { processarCnhAnexada, upsertCnhDoc } from '@/lib/cnhAnexo';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModeloList } from '@/lib/marcaModelo';
@@ -307,16 +307,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const handleCnhUploaded = async (url: string) => {
     if (!atendimento.cliente_id) return;
     const prevUrl = cnhUrl;
-    let docId = cnhDocId;
-    if (docId) {
-      await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: url }).eq('id', docId);
-    } else {
-      const { data } = await supabase.from('clientes_fornecedores_documentos')
-        .insert({ cliente_fornecedor_id: atendimento.cliente_id, tipo_documento: 'cnh', arquivo_url: url })
-        .select('id').single();
-      docId = data?.id || null;
-      setCnhDocId(docId);
-    }
+    const docId = await upsertCnhDoc(atendimento.cliente_id, url);
+    setCnhDocId(docId);
     setCnhUrl(url);
 
     const { aceita, resultado } = await processarCnhAnexada({
@@ -1041,60 +1033,49 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           manutencaoVencida={estItem.manutencao_vencida}
                         />
                         {/* Prices section */}
-                        <div className="pt-2 border-t border-border space-y-2">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-muted-foreground">Preço</p>
-                              <p className="font-semibold text-foreground">{formatCurrency(estItem.preco)}</p>
-                            </div>
-                            {estItem.preco_acao != null && (
-                              <div className="text-right">
-                                <p className="text-xs text-muted-foreground">Preço Ação</p>
-                                <p className="font-semibold text-success">{formatCurrency(estItem.preco_acao)}</p>
-                              </div>
-                            )}
+                        <div className="pt-2 border-t border-border grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-4">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Preço</p>
+                            <p className="font-semibold text-foreground">{formatCurrency(estItem.preco)}</p>
                           </div>
-                          {(atendimento as any).valor_sinal != null && (
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Valor do Sinal</p>
-                                <p className="font-semibold text-amber-600">{formatCurrency((atendimento as any).valor_sinal)}</p>
-                              </div>
+                          {!!estItem.preco_acao && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Preço Ação</p>
+                              <p className="font-semibold text-success">{formatCurrency(estItem.preco_acao)}</p>
                             </div>
                           )}
-                          {(atendimento as any).valor_venda != null && (
-                            <>
-                              <Separator />
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Valor de Venda</p>
-                                  <p className="font-semibold text-primary">{formatCurrency((atendimento as any).valor_venda)}</p>
-                                </div>
-                                {estItem.preco_acao != null && (
-                                  <div className="text-right">
-                                    <p className="text-xs text-muted-foreground">Diferença (Venda - Ação)</p>
-                                    {(() => {
-                                      const diff = ((atendimento as any).valor_venda || 0) - (estItem.preco_acao || 0);
-                                      return (
-                                        <p className={`font-semibold ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                          {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
-                                        </p>
-                                      );
-                                    })()}
-                                  </div>
-                                )}
-                              </div>
-                            </>
+                          {estItem.valor_sinal != null && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Valor do Sinal</p>
+                              <p className="font-semibold text-amber-600">{formatCurrency(estItem.valor_sinal)}</p>
+                            </div>
+                          )}
+                          {estItem.valor_venda != null && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Valor de Venda</p>
+                              <p className="font-semibold text-primary">{formatCurrency(estItem.valor_venda)}</p>
+                            </div>
+                          )}
+                          {estItem.valor_venda != null && !!estItem.preco_acao && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Diferença (Venda - Ação)</p>
+                              {(() => {
+                                const diff = (estItem.valor_venda || 0) - (estItem.preco_acao || 0);
+                                return (
+                                  <p className={`font-semibold ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                    {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
+                                  </p>
+                                );
+                              })()}
+                            </div>
                           )}
                           {entregaDataConclusao && (
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Data de Entrega</p>
-                                <p className="font-semibold text-foreground flex items-center gap-1.5">
-                                  <Truck className="h-3.5 w-3.5" />
-                                  {format(new Date(entregaDataConclusao), "dd/MM/yyyy")}
-                                </p>
-                              </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Data de Entrega</p>
+                              <p className="font-semibold text-foreground flex items-center gap-1.5">
+                                <Truck className="h-3.5 w-3.5" />
+                                {format(new Date(entregaDataConclusao), "dd/MM/yyyy")}
+                              </p>
                             </div>
                           )}
                         </div>

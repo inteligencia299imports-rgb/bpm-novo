@@ -94,7 +94,7 @@ const formatCpfCnpj = (value: string): string => {
   );
 };
 
-const CurrencyField = ({ label, value, onChange, required }: { label: string; value: string; onChange: (v: string) => void; required?: boolean }) => (
+const CurrencyField = ({ label, value, onChange, required, disabled }: { label: string; value: string; onChange: (v: string) => void; required?: boolean; disabled?: boolean }) => (
   <div>
     <label className="text-sm font-medium text-foreground">{label}{required && <span className="text-destructive ml-0.5">*</span>}</label>
     <div className="relative mt-1">
@@ -105,6 +105,7 @@ const CurrencyField = ({ label, value, onChange, required }: { label: string; va
         value={value}
         onChange={(e) => onChange(formatCurrencyInput(e.target.value))}
         inputMode="numeric"
+        disabled={disabled}
       />
     </div>
   </div>
@@ -118,11 +119,11 @@ const formatPhone = (phone: string | null | undefined) => {
   return phone;
 };
 
-const InfoDisplay = ({ label, value }: { label: string; value: string | null | undefined }) => (
+const InfoDisplay = ({ label, value, valueClassName }: { label: string; value: string | null | undefined; valueClassName?: string }) => (
   value ? (
     <div>
       <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
-      <p className="text-sm font-semibold">{value}</p>
+      <p className={cn('text-sm font-semibold', valueClassName)}>{value}</p>
     </div>
   ) : null
 );
@@ -143,6 +144,21 @@ interface FormaPagamento {
   /** observação da forma, editável, com default vindo de formas_pagamento_instituicoes.observacoes_contrato */
   observacoes: string | null;
 }
+
+/** Converte uma linha de formas_pagamento_contrato (insert/update/select) para o formato usado no estado. */
+const mapFormaRow = (data: any): FormaPagamento => ({
+  id: data.id,
+  forma_pagamento_id: data.forma_pagamento_id ?? null,
+  tipo: data.tipo || '',
+  valor_total: data.valor_total,
+  valor_entrada: data.valor_entrada,
+  financeira: data.financeira,
+  numero_parcelas: data.numero_parcelas,
+  valor_parcelas: data.valor_parcelas,
+  valor_financiado: data.valor_financiado,
+  cliente_fornecedor_id: data.cliente_fornecedor_id ?? null,
+  observacoes: data.observacoes ?? '',
+});
 
 const ContratoDialog: React.FC<Props> = ({
   open, onOpenChange, atendimento, motosInteresse, motosAvaliacao, estoqueData, avaliacoes, onSaved,
@@ -215,6 +231,8 @@ const ContratoDialog: React.FC<Props> = ({
   const [formasPagOpcoes, setFormasPagOpcoes] = useState<{ id: string; nome: string }[]>([]);
   // instituições (banco / administradora) vinculadas a cada forma_pagamento_id
   const [instituicoesByForma, setInstituicoesByForma] = useState<Record<string, InstituicaoOpt[]>>({});
+  // id do registro de formas_pagamento_contrato em edição (null = formulário está em modo "adicionar")
+  const [editingId, setEditingId] = useState<string | null>(null);
   // id da forma_pagamento selecionada para adicionar
   const [novaPagamentoTipo, setNovaPagamentoTipo] = useState('');
   const novaFormaNome = formasPagOpcoes.find(f => f.id === novaPagamentoTipo)?.nome ?? '';
@@ -239,6 +257,7 @@ const ContratoDialog: React.FC<Props> = ({
     if (!open) return;
     const loadContrato = async () => {
       setLoading(true);
+      setEditingId(null);
       nfe.carregar();
       const [{ data: contrato }, { data: histGerado }, { data: freshAtendimento }, { data: freshEstoque }, { data: formasOpts }, { data: instOpts }] = await Promise.all([
         supabase
@@ -352,19 +371,7 @@ const ContratoDialog: React.FC<Props> = ({
           .eq('contrato_id', contrato.id)
           .order('created_at', { ascending: true });
         if (formas) {
-          setFormasPagamento(formas.map((f: any) => ({
-            id: f.id,
-            forma_pagamento_id: f.forma_pagamento_id ?? null,
-            tipo: f.tipo || '',
-            valor_total: f.valor_total,
-            valor_entrada: f.valor_entrada,
-            financeira: f.financeira,
-            numero_parcelas: f.numero_parcelas,
-            valor_parcelas: f.valor_parcelas,
-            valor_financiado: f.valor_financiado,
-            cliente_fornecedor_id: f.cliente_fornecedor_id ?? null,
-            observacoes: f.observacoes ?? '',
-          })));
+          setFormasPagamento(formas.map(mapFormaRow));
         }
       } else {
         // Reset
@@ -396,6 +403,18 @@ const ContratoDialog: React.FC<Props> = ({
     setNfeValor((prev) => prev || valorVenda);
   }, [open, valorVenda]);
 
+  // Observações da NF-e: copia automaticamente as observações das formas de pagamento
+  // vinculadas a instituição (Financiamento / Consórcio) — só preenche se ainda estiver
+  // vazio, pra não sobrescrever edição manual do usuário.
+  useEffect(() => {
+    if (!open || !ehNfe || nfeObs) return;
+    const dasFormas = formasPagamento
+      .filter(fp => ehFinInstituicao(fp.tipo) && fp.observacoes?.trim())
+      .map(fp => fp.observacoes!.trim())
+      .join(' ');
+    if (dasFormas) setNfeObs(dasFormas.toUpperCase());
+  }, [open, ehNfe, formasPagamento, nfeObs]);
+
   const resetPagamentoForm = () => {
     setNovaPagamentoTipo('');
     setNovaInstituicaoId('');
@@ -407,17 +426,32 @@ const ContratoDialog: React.FC<Props> = ({
     setOutroValor('');
   };
 
+  /** Preenche o formulário com os dados de uma forma já lançada, para edição. */
+  const handleEditPagamento = (fp: FormaPagamento) => {
+    setEditingId(fp.id || null);
+    setNovaPagamentoTipo(fp.forma_pagamento_id || '');
+    // novaInstituicaoId guarda o id da linha em formas_pagamento_instituicoes, não o cliente_fornecedor_id.
+    const instMatch = fp.cliente_fornecedor_id
+      ? (instituicoesByForma[fp.forma_pagamento_id || ''] || []).find(i => i.cliente_fornecedor_id === fp.cliente_fornecedor_id)
+      : undefined;
+    setNovaInstituicaoId(instMatch?.id || '');
+    setNovaObservacoes(fp.observacoes || '');
+    setFinValorEntrada(fp.valor_entrada != null ? formatCurrencyInput(String(Math.round(fp.valor_entrada * 100))) : '');
+    setFinParcelas(fp.numero_parcelas != null ? String(fp.numero_parcelas) : '');
+    setFinValorParcelas(fp.valor_parcelas != null ? formatCurrencyInput(String(Math.round(fp.valor_parcelas * 100))) : '');
+    setFinValorFinanciado(fp.valor_financiado != null ? formatCurrencyInput(String(Math.round(fp.valor_financiado * 100))) : '');
+    setOutroValor(fp.valor_total != null ? formatCurrencyInput(String(Math.round(fp.valor_total * 100))) : '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    resetPagamentoForm();
+  };
+
   const handleAddPagamento = async () => {
     if (!novaPagamentoTipo) {
       toast.error('Selecione uma forma de pagamento');
       return;
-    }
-
-    // Ensure contrato exists first
-    let cId = contratoId;
-    if (!cId) {
-      cId = await saveContrato();
-      if (!cId) return;
     }
 
     const ehInst = ehFinInstituicao(novaFormaNome);
@@ -429,45 +463,62 @@ const ContratoDialog: React.FC<Props> = ({
       return;
     }
 
-    const newForma: any = {
-      contrato_id: cId,
+    // Campos zerados por padrão para não deixar resíduo de outra forma ao editar (ex.: trocar Financiamento -> Pix).
+    const formaData: any = {
       forma_pagamento_id: novaPagamentoTipo,
       tipo: novaFormaNome,
+      valor_total: null,
+      valor_entrada: null,
+      numero_parcelas: null,
+      valor_parcelas: null,
+      valor_financiado: null,
+      cliente_fornecedor_id: null,
+      financeira: null,
+      observacoes: null,
     };
 
     if (ehFinanciamento(novaFormaNome)) {
-      newForma.valor_entrada = parseCurrencyInput(finValorEntrada) || null;
-      newForma.numero_parcelas = finParcelas ? parseInt(finParcelas) : null;
-      newForma.valor_parcelas = parseCurrencyInput(finValorParcelas) || null;
-      newForma.valor_financiado = parseCurrencyInput(finValorFinanciado) || null;
+      formaData.valor_entrada = parseCurrencyInput(finValorEntrada) || null;
+      formaData.numero_parcelas = finParcelas ? parseInt(finParcelas) : null;
+      formaData.valor_parcelas = parseCurrencyInput(finValorParcelas) || null;
+      formaData.valor_financiado = parseCurrencyInput(finValorFinanciado) || null;
     } else {
-      newForma.valor_total = parseCurrencyInput(outroValor) || null;
+      formaData.valor_total = parseCurrencyInput(outroValor) || null;
     }
 
     if (ehInst && instSel) {
-      newForma.cliente_fornecedor_id = instSel.cliente_fornecedor_id;
-      newForma.financeira = instSel.nome; // denormalizado p/ PDF e lista
-      newForma.observacoes = novaObservacoes.trim() || null;
+      formaData.cliente_fornecedor_id = instSel.cliente_fornecedor_id;
+      formaData.financeira = instSel.nome; // denormalizado p/ PDF e lista
+    }
+    // Observação é livre pra qualquer forma de pagamento, não só as vinculadas a instituição.
+    formaData.observacoes = novaObservacoes.trim() || null;
+
+    if (editingId) {
+      const { data, error } = await supabase.from('formas_pagamento_contrato').update(formaData).eq('id', editingId).select().single();
+      if (error) {
+        toast.error('Erro ao salvar forma de pagamento');
+        return;
+      }
+      setFormasPagamento(prev => prev.map(f => f.id === editingId ? mapFormaRow(data) : f));
+      setEditingId(null);
+      resetPagamentoForm();
+      toast.success('Forma de pagamento atualizada');
+      return;
     }
 
-    const { data, error } = await supabase.from('formas_pagamento_contrato').insert(newForma).select().single();
+    // Ensure contrato exists first
+    let cId = contratoId;
+    if (!cId) {
+      cId = await saveContrato();
+      if (!cId) return;
+    }
+
+    const { data, error } = await supabase.from('formas_pagamento_contrato').insert({ ...formaData, contrato_id: cId }).select().single();
     if (error) {
       toast.error('Erro ao adicionar forma de pagamento');
       return;
     }
-    setFormasPagamento(prev => [...prev, {
-      id: data.id,
-      forma_pagamento_id: data.forma_pagamento_id ?? null,
-      tipo: data.tipo || '',
-      valor_total: data.valor_total,
-      valor_entrada: data.valor_entrada,
-      financeira: data.financeira,
-      numero_parcelas: data.numero_parcelas,
-      valor_parcelas: data.valor_parcelas,
-      valor_financiado: data.valor_financiado,
-      cliente_fornecedor_id: data.cliente_fornecedor_id ?? null,
-      observacoes: data.observacoes ?? '',
-    }]);
+    setFormasPagamento(prev => [...prev, mapFormaRow(data)]);
     resetPagamentoForm();
     toast.success('Forma de pagamento adicionada');
   };
@@ -475,6 +526,7 @@ const ContratoDialog: React.FC<Props> = ({
   const handleRemovePagamento = async (id: string) => {
     await supabase.from('formas_pagamento_contrato').delete().eq('id', id);
     setFormasPagamento(prev => prev.filter(f => f.id !== id));
+    if (editingId === id) handleCancelEdit();
     toast.success('Forma de pagamento removida');
   };
 
@@ -508,7 +560,14 @@ const ContratoDialog: React.FC<Props> = ({
     if (parsedSinal !== null) estoqueUpdate.valor_sinal = parsedSinal;
     if (parsedVenda !== null) estoqueUpdate.valor_venda = parsedVenda;
     if (Object.keys(estoqueUpdate).length > 0) {
-      await supabase.from(estoqueTabela).update(estoqueUpdate).eq('atendimento_venda_id', atendimento.id);
+      if (motoIntNfe?.origem === 'estoque' && motoIntNfe?.estoque_moto_id) {
+        // Filtra pelo id da moto (não por atendimento_venda_id): o contrato pode ser o
+        // primeiro passo a gravar um valor, antes desse vínculo existir no estoque.
+        estoqueUpdate.atendimento_venda_id = atendimento.id;
+        await supabase.from(estoqueTabela).update(estoqueUpdate).eq('id', motoIntNfe.estoque_moto_id);
+      } else {
+        await supabase.from(estoqueTabela).update(estoqueUpdate).eq('atendimento_venda_id', atendimento.id);
+      }
     }
     // CPF/CNPJ do cliente é imutável: só grava se o cliente ainda não tinha um.
     if (cpfCnpj && atendimento.cliente_id && !cpfBloqueado) {
@@ -569,7 +628,9 @@ const ContratoDialog: React.FC<Props> = ({
   };
 
   const handleOpenChange = async (next: boolean) => {
-    if (!next && !loading && !saving && !generating && !viewing && hasAnyData()) {
+    // Na tela de NF-e só valor/observação da nota são editáveis (ver handleEmitirNfe) —
+    // não há o que autosalvar no contrato aqui.
+    if (!next && !loading && !saving && !generating && !viewing && !ehNfe && hasAnyData()) {
       const id = await saveContrato();
       if (id) {
         toast.success('Alterações salvas');
@@ -623,7 +684,8 @@ const ContratoDialog: React.FC<Props> = ({
     const produtoModelo = estItem?.modelo || motoInt?.modelo || '';
     const produtoAnoFab = estItem?.ano_fabricacao || '';
     const produtoAnoMod = estItem?.ano_modelo || motoInt?.ano || '';
-    const produtoPlaca = (estItem?.placa || '')?.replace(/-/g, '') || motoInt?.chassi || 'N/A';
+    // Moto 0km normalmente ainda não tem placa — usa o chassi do estoque (estoque_motos_novas) nesse caso.
+    const produtoPlaca = (estItem?.placa || '')?.replace(/-/g, '') || estItem?.chassi || motoInt?.chassi || 'N/A';
     const produtoCor = (estItem?.cor || '').toUpperCase();
 
     const pdfData: ContratoPdfData = {
@@ -661,12 +723,15 @@ const ContratoDialog: React.FC<Props> = ({
             numeroParcelas: f.numero_parcelas || 0,
             valorParcelas: fmt(f.valor_parcelas),
             valorFinanciado: fmt(f.valor_financiado),
+            observacoes: f.observacoes || '',
           };
         }
         return {
           tipo: f.tipo,
           descricao: tipoLabel(f.tipo),
           valor: fmt(f.valor_total),
+          financeira: f.financeira || '',
+          observacoes: f.observacoes || '',
         };
       }),
     };
@@ -778,163 +843,7 @@ const ContratoDialog: React.FC<Props> = ({
 
   const tipoLabel = (tipo: string) => tipo || '—';
 
-  const motoNfeLabel = estItemNfe
-    ? `${estItemNfe.marca ?? ''} ${estItemNfe.modelo ?? ''}`.trim()
-    : `${motoIntNfe?.marca ?? ''} ${motoIntNfe?.modelo ?? ''}`.trim();
-
   if (!open) return null;
-
-  if (ehNfe) {
-    return (
-      <div className="space-y-4 animate-fade-in pb-10">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" /> Emissão de NF-e de Venda
-          </h1>
-        </div>
-
-          <div className="space-y-4">
-            {/* Card: Empresa Emitente */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" /> Empresa Emitente
-                </CardTitle>
-                <Separator className="mt-2" />
-              </CardHeader>
-              <CardContent>
-                {empresasLoja.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nenhuma empresa vinculada à loja do atendimento.</p>
-                ) : nfeJaEmitida ? (
-                  <InfoDisplay
-                    label="Empresa"
-                    value={(() => {
-                      const e = empresasLoja.find((x) => x.id === empresaId);
-                      if (!e) return '—';
-                      return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
-                    })()}
-                  />
-                ) : (
-                  <div className="space-y-1.5 max-w-sm">
-                    <Label>Empresa da operação <span className="text-destructive">*</span></Label>
-                    <Select value={empresaId} onValueChange={setEmpresaId}>
-                      <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
-                      <SelectContent>
-                        {empresasLoja.map((e) => (
-                          <SelectItem key={e.id} value={e.id}>
-                            {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Card: Cliente e Moto */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <User className="h-4 w-4 text-primary" /> Cliente e Moto
-                </CardTitle>
-                <Separator className="mt-2" />
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <InfoDisplay label="Cliente" value={atendimento.cliente?.nome_razao_social} />
-                <InfoDisplay label="CPF/CNPJ" value={(cpfCnpj || atendimento.cliente?.cpf_cnpj) ? formatCpfCnpj(cpfCnpj || atendimento.cliente?.cpf_cnpj || '') : undefined} />
-                <InfoDisplay label="Moto" value={motoNfeLabel || '-'} />
-                <InfoDisplay label="Tipo" value={estItemNfe?.tipo === '0km' ? '0KM' : 'Seminova'} />
-              </CardContent>
-            </Card>
-
-            {/* Card: NF-e de Venda */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" /> NF-e de Venda
-                </CardTitle>
-                <Separator className="mt-2" />
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {nfeJaEmitida ? (
-                  <p className="text-sm text-muted-foreground">NF-e autorizada — veja os dados na barra de ações abaixo.</p>
-                ) : (
-                  <>
-                    <div className="max-w-xs">
-                      <CurrencyField label="Valor da Nota" value={nfeValor} onChange={setNfeValor} required />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Observações na NF-e</Label>
-                      <Textarea
-                        className="uppercase"
-                        rows={3}
-                        value={nfeObs}
-                        onChange={(e) => setNfeObs(e.target.value.toUpperCase())}
-                        placeholder="INFORMAÇÕES COMPLEMENTARES..."
-                      />
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-            {nfe.nfe?.status === 'processada' && (
-              <div className="flex flex-wrap items-center gap-3 mr-auto text-sm">
-                <Badge className="bg-primary/10 text-primary gap-1.5">
-                  <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
-                </Badge>
-                {nfe.nfe?.caminho_danfe && (
-                  <Button variant="outline" size="sm" onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}>
-                    <ExternalLink className="h-4 w-4 mr-1" /> DANFE
-                  </Button>
-                )}
-              </div>
-            )}
-            {nfe.pendente && (
-              <div className="flex items-center gap-3 mr-auto">
-                <Badge variant="outline" className="gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Emitindo NF-e…</Badge>
-                <Button variant="ghost" onClick={nfe.consultar} disabled={nfe.loading} className="gap-1.5">
-                  <RefreshCw className={`h-4 w-4 ${nfe.loading ? 'animate-spin' : ''}`} /> Atualizar
-                </Button>
-              </div>
-            )}
-            {nfe.erro && !nfe.pendente && (
-              <p className="mr-auto text-sm text-destructive flex items-start gap-1 max-w-md">
-                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
-              </p>
-            )}
-
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
-            </Button>
-            {!nfeJaEmitida && !nfe.pendente && (
-              <Button
-                className="gap-1.5"
-                disabled={nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim())}
-                title={
-                  !empresaId
-                    ? 'Nenhuma empresa vinculada à loja do atendimento'
-                    : hasTroca && !valorQuitacao?.trim()
-                      ? 'Valor de Quitação da moto do cliente é obrigatório — defina na avaliação (0 se não houver)'
-                      : undefined
-                }
-                onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined, empresa_id: empresaId || undefined })}
-              >
-                {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
-              </Button>
-            )}
-          </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4 animate-fade-in pb-10">
@@ -943,7 +852,7 @@ const ContratoDialog: React.FC<Props> = ({
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-xl font-bold flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" /> Emissão de Contrato
+          <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Venda' : 'Emissão de Contrato'}
         </h1>
       </div>
 
@@ -1096,15 +1005,22 @@ const ContratoDialog: React.FC<Props> = ({
                 </CardHeader>
                 <CardContent className="space-y-4">
                 {estItem ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <InfoDisplay label="Marca" value={estItem.marca} />
-                    <InfoDisplay label="Modelo" value={estItem.modelo ? String(estItem.modelo).toUpperCase() : undefined} />
-                    <InfoDisplay label="Ano" value={[estItem.ano_fabricacao, estItem.ano_modelo].filter(Boolean).join('/') || undefined} />
-                    <InfoDisplay label="Cor" value={estItem.cor ? String(estItem.cor).toUpperCase() : undefined} />
-                    <InfoDisplay label="Placa" value={estItem.placa ? estItem.placa.replace(/-/g, '') : undefined} />
-                    <InfoDisplay label="Preço" value={formatCurrency(estItem.preco)} />
-                    <InfoDisplay label="Preço Ação" value={formatCurrency(estItem.preco_acao)} />
-                  </div>
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <InfoDisplay label="Marca" value={estItem.marca} />
+                      <InfoDisplay label="Modelo" value={estItem.modelo ? String(estItem.modelo).toUpperCase() : undefined} />
+                      <InfoDisplay label="Ano" value={[estItem.ano_fabricacao, estItem.ano_modelo].filter(Boolean).join('/') || undefined} />
+                      <InfoDisplay label="Cor" value={estItem.cor ? String(estItem.cor).toUpperCase() : undefined} />
+                      <InfoDisplay label="Placa" value={estItem.placa ? estItem.placa.replace(/-/g, '') : undefined} />
+                      {!estItem.placa && estItem.chassi && <InfoDisplay label="Chassi" value={estItem.chassi} />}
+                    </div>
+                    <div className="pt-2 border-t border-border grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-4">
+                      <InfoDisplay label="Preço" value={formatCurrency(estItem.preco)} />
+                      {!!estItem.preco_acao && <InfoDisplay label="Preço Ação" value={formatCurrency(estItem.preco_acao)} />}
+                      {estItem.valor_sinal != null && <InfoDisplay label="Valor do Sinal" value={formatCurrency(estItem.valor_sinal)} />}
+                      {estItem.valor_venda != null && <InfoDisplay label="Valor de Venda" value={formatCurrency(estItem.valor_venda)} valueClassName="text-primary" />}
+                    </div>
+                  </>
                 ) : motoInt ? (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <InfoDisplay label="Marca" value={motoInt.marca} />
@@ -1116,69 +1032,85 @@ const ContratoDialog: React.FC<Props> = ({
                   <p className="text-sm text-muted-foreground">Nenhuma moto de interesse</p>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <CurrencyField label="Valor do Sinal" value={valorSinal} onChange={setValorSinal} required />
-                  <CurrencyField label="Valor da Venda" value={valorVenda} onChange={setValorVenda} required />
-                </div>
-
-                {/* IPVA - hidden for Ducati */}
-                {!atendimento.loja?.toLowerCase().startsWith('ducati') && (
-                <div>
-                  <label className="text-sm font-medium text-foreground">IPVA<span className="text-destructive ml-0.5">*</span></label>
-                  <div className="flex gap-2 mt-1 flex-wrap">
-                    {['loja', 'cliente', 'ambos'].map(opt => (
-                      <Button
-                        key={opt}
-                        size="sm"
-                        variant={ipvaTipo === opt ? 'default' : 'outline'}
-                        onClick={() => setIpvaTipo(opt)}
-                        className="capitalize"
-                      >
-                        {opt === 'ambos' ? 'Ambos' : opt === 'cliente' ? 'Cliente' : 'Loja'}
-                      </Button>
-                    ))}
+                {soLeitura ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {!atendimento.loja?.toLowerCase().startsWith('ducati') && (
+                      <>
+                        <InfoDisplay label="IPVA" value={ipvaTipo === 'ambos' ? 'Ambos' : ipvaTipo === 'cliente' ? 'Cliente' : ipvaTipo === 'loja' ? 'Loja' : undefined} />
+                        {ipvaTipo === 'ambos' && <InfoDisplay label="Cotas do IPVA" value={ipvaCotas} />}
+                        {ipvaTipo === 'loja' && <InfoDisplay label="Valor do IPVA" value={ipvaValor ? `R$ ${ipvaValor}` : undefined} />}
+                      </>
+                    )}
+                    <InfoDisplay label="Transferência" value={transferenciaTipo === 'cliente' ? 'Cliente' : transferenciaTipo === 'loja' ? 'Loja' : transferenciaTipo === 'outra_uf' ? 'Outra UF' : undefined} />
+                    {transferenciaTipo === 'cliente' && <InfoDisplay label="Valor da Transferência" value={transferenciaValor ? `R$ ${transferenciaValor}` : undefined} />}
                   </div>
-                  {ipvaTipo === 'ambos' && (
-                    <div className="mt-2">
-                      <label className="text-sm text-muted-foreground">Cotas<span className="text-destructive ml-0.5">*</span></label>
-                      <Input
-                        className="mt-1"
-                        type="text"
-                        value={ipvaCotas}
-                        onChange={(e) => setIpvaCotas(e.target.value)}
-                        placeholder="Ex: 1 à 5"
-                      />
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <CurrencyField label="Valor do Sinal" value={valorSinal} onChange={setValorSinal} required />
+                      <CurrencyField label="Valor da Venda" value={valorVenda} onChange={setValorVenda} required />
                     </div>
-                  )}
-                  {ipvaTipo === 'loja' && (
-                    <div className="mt-2">
-                      <CurrencyField label="Valor do IPVA" value={ipvaValor} onChange={setIpvaValor} required />
+
+                    {/* IPVA - hidden for Ducati */}
+                    {!atendimento.loja?.toLowerCase().startsWith('ducati') && (
+                    <div>
+                      <label className="text-sm font-medium text-foreground">IPVA<span className="text-destructive ml-0.5">*</span></label>
+                      <div className="flex gap-2 mt-1 flex-wrap">
+                        {['loja', 'cliente', 'ambos'].map(opt => (
+                          <Button
+                            key={opt}
+                            size="sm"
+                            variant={ipvaTipo === opt ? 'default' : 'outline'}
+                            onClick={() => setIpvaTipo(opt)}
+                            className="capitalize"
+                          >
+                            {opt === 'ambos' ? 'Ambos' : opt === 'cliente' ? 'Cliente' : 'Loja'}
+                          </Button>
+                        ))}
+                      </div>
+                      {ipvaTipo === 'ambos' && (
+                        <div className="mt-2">
+                          <label className="text-sm text-muted-foreground">Cotas<span className="text-destructive ml-0.5">*</span></label>
+                          <Input
+                            className="mt-1"
+                            type="text"
+                            value={ipvaCotas}
+                            onChange={(e) => setIpvaCotas(e.target.value)}
+                            placeholder="Ex: 1 à 5"
+                          />
+                        </div>
+                      )}
+                      {ipvaTipo === 'loja' && (
+                        <div className="mt-2">
+                          <CurrencyField label="Valor do IPVA" value={ipvaValor} onChange={setIpvaValor} required />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                    )}
+
+                    {/* Transferência */}
+                    <div>
+                      <label className="text-sm font-medium text-foreground">Transferência<span className="text-destructive ml-0.5">*</span></label>
+                      <div className="flex gap-2 mt-1 flex-wrap">
+                        {['loja', 'cliente', 'outra_uf'].map(opt => (
+                          <Button
+                            key={opt}
+                            size="sm"
+                            variant={transferenciaTipo === opt ? 'default' : 'outline'}
+                            onClick={() => setTransferenciaTipo(opt)}
+                          >
+                            {opt === 'cliente' ? 'Cliente' : opt === 'loja' ? 'Loja' : 'Outra UF'}
+                          </Button>
+                        ))}
+                      </div>
+                      {transferenciaTipo === 'cliente' && (
+                        <div className="mt-2">
+                          <CurrencyField label="Valor da Transferência" value={transferenciaValor} onChange={setTransferenciaValor} required />
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
-
-                {/* Transferência */}
-                <div>
-                  <label className="text-sm font-medium text-foreground">Transferência<span className="text-destructive ml-0.5">*</span></label>
-                  <div className="flex gap-2 mt-1 flex-wrap">
-                    {['loja', 'cliente', 'outra_uf'].map(opt => (
-                      <Button
-                        key={opt}
-                        size="sm"
-                        variant={transferenciaTipo === opt ? 'default' : 'outline'}
-                        onClick={() => setTransferenciaTipo(opt)}
-                      >
-                        {opt === 'cliente' ? 'Cliente' : opt === 'loja' ? 'Loja' : 'Outra UF'}
-                      </Button>
-                    ))}
-                  </div>
-                  {transferenciaTipo === 'cliente' && (
-                    <div className="mt-2">
-                      <CurrencyField label="Valor da Transferência" value={transferenciaValor} onChange={setTransferenciaValor} required />
-                    </div>
-                  )}
-                </div>
                 </CardContent>
               </Card>
 
@@ -1238,44 +1170,12 @@ const ContratoDialog: React.FC<Props> = ({
                 </CardHeader>
                 <CardContent className="space-y-4">
 
-                {/* Lista de formas já adicionadas */}
-                {formasPagamento.length > 0 && (
-                  <div className="space-y-2">
-                    {formasPagamento.map((fp) => (
-                      <div key={fp.id} className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2">
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold">{tipoLabel(fp.tipo)}</span>
-                            {fp.financeira && <span className="text-xs text-muted-foreground">{fp.financeira}</span>}
-                          </div>
-                          {ehFinanciamento(fp.tipo) ? (
-                            <div className="text-xs text-muted-foreground space-x-3">
-                              {fp.valor_entrada != null && <span>Entrada: {formatCurrency(fp.valor_entrada)}</span>}
-                              {fp.numero_parcelas != null && fp.valor_parcelas != null && (
-                                <span>{fp.numero_parcelas}x de {formatCurrency(fp.valor_parcelas)}</span>
-                              )}
-                              {fp.valor_financiado != null && <span>Financiado: {formatCurrency(fp.valor_financiado)}</span>}
-                            </div>
-                          ) : (
-                            fp.valor_total != null && <p className="text-xs text-muted-foreground">Valor: {formatCurrency(fp.valor_total)}</p>
-                          )}
-                          {fp.observacoes && (
-                            <p className="text-xs text-muted-foreground italic whitespace-pre-wrap">{fp.observacoes}</p>
-                          )}
-                        </div>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => fp.id && handleRemovePagamento(fp.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Adicionar nova forma */}
-                <div className="rounded-lg border p-3 space-y-3">
+                {/* Adicionar / editar forma */}
+                {!soLeitura && (
+                <div className={cn('rounded-lg border p-3 space-y-3', editingId && 'border-primary')}>
                   <div className="flex items-center gap-2">
-                    <Plus className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Adicionar Forma de Pagamento</span>
+                    {editingId ? <Pencil className="h-4 w-4 text-primary" /> : <Plus className="h-4 w-4 text-muted-foreground" />}
+                    <span className="text-sm font-medium">{editingId ? 'Editar Forma de Pagamento' : 'Adicionar Forma de Pagamento'}</span>
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     {formasPagOpcoes.length === 0 && (
@@ -1338,7 +1238,7 @@ const ContratoDialog: React.FC<Props> = ({
                     <CurrencyField label="Valor Total" value={outroValor} onChange={setOutroValor} />
                   )}
 
-                  {ehFinInstituicao(novaFormaNome) && (
+                  {novaPagamentoTipo && (
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-foreground">Observações</label>
                       <Textarea
@@ -1351,12 +1251,60 @@ const ContratoDialog: React.FC<Props> = ({
                   )}
 
                   {novaPagamentoTipo && (
-                    <Button size="sm" onClick={handleAddPagamento} className="w-full">
-                      <PlusCircle className="h-4 w-4 mr-1" />
-                      Adicionar
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={handleAddPagamento} className="flex-1">
+                        {editingId ? <Save className="h-4 w-4 mr-1" /> : <PlusCircle className="h-4 w-4 mr-1" />}
+                        {editingId ? 'Salvar Alterações' : 'Adicionar'}
+                      </Button>
+                      {editingId && (
+                        <Button size="sm" variant="outline" onClick={handleCancelEdit}>
+                          Cancelar
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
+                )}
+
+                {/* Lista de formas já adicionadas */}
+                {formasPagamento.length > 0 && (
+                  <div className="space-y-2">
+                    {formasPagamento.map((fp) => (
+                      <div key={fp.id} className={cn('flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2', editingId === fp.id && 'border-primary')}>
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold">{tipoLabel(fp.tipo)}</span>
+                            {fp.financeira && <span className="text-xs text-muted-foreground">{fp.financeira}</span>}
+                          </div>
+                          {ehFinanciamento(fp.tipo) ? (
+                            <div className="text-xs text-muted-foreground space-x-3">
+                              {fp.valor_entrada != null && <span>Entrada: {formatCurrency(fp.valor_entrada)}</span>}
+                              {fp.numero_parcelas != null && fp.valor_parcelas != null && (
+                                <span>{fp.numero_parcelas}x de {formatCurrency(fp.valor_parcelas)}</span>
+                              )}
+                              {fp.valor_financiado != null && <span>Financiado: {formatCurrency(fp.valor_financiado)}</span>}
+                            </div>
+                          ) : (
+                            fp.valor_total != null && <p className="text-xs text-muted-foreground">Valor: {formatCurrency(fp.valor_total)}</p>
+                          )}
+                          {fp.observacoes && (
+                            <p className="text-xs text-muted-foreground italic whitespace-pre-wrap">{fp.observacoes}</p>
+                          )}
+                        </div>
+                        {!soLeitura && (
+                          <div className="flex items-center gap-1">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEditPagamento(fp)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => fp.id && handleRemovePagamento(fp.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 </CardContent>
               </Card>
 
@@ -1369,6 +1317,30 @@ const ContratoDialog: React.FC<Props> = ({
                   <Separator className="mt-2" />
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {soLeitura ? (
+                    <div className="space-y-4">
+                      {obsInternas && (
+                        <div>
+                          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações Internas</span>
+                          <p className="text-sm whitespace-pre-wrap">{obsInternas}</p>
+                        </div>
+                      )}
+                      {obsContrato && (
+                        <div>
+                          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações do Contrato</span>
+                          <p className="text-sm whitespace-pre-wrap">{obsContrato}</p>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-3 gap-4">
+                        <InfoDisplay label="Data do Sinal" value={dataSinal ? format(dataSinal, "dd/MM/yyyy", { locale: ptBR }) : undefined} />
+                        <InfoDisplay label="Data Vencimento do Sinal" value={dataVencimento ? format(dataVencimento, "dd/MM/yyyy", { locale: ptBR }) : undefined} />
+                        {estItem?.status === 'vendido' && estItem?.data_venda && (
+                          <InfoDisplay label="Data da Venda" value={format(new Date(estItem.data_venda), 'dd/MM/yyyy', { locale: ptBR })} />
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
                   <div className="space-y-1.5">
                     <Label>Observações Internas</Label>
                     <Textarea rows={3} value={obsInternas} onChange={(e) => setObsInternas(e.target.value)} placeholder="Observações internas..." />
@@ -1413,33 +1385,118 @@ const ContratoDialog: React.FC<Props> = ({
                       </Popover>
                     </div>
                   </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
+
+              {/* Card: NF-e de Venda — só na tela de emissão de NF-e; só a observação segue editável, valor é informativo (vem do Valor da Venda). */}
+              {ehNfe && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-primary" /> NF-e de Venda
+                    </CardTitle>
+                    <Separator className="mt-2" />
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {nfeJaEmitida ? (
+                      <p className="text-sm text-muted-foreground">NF-e autorizada — veja os dados na barra de ações abaixo.</p>
+                    ) : (
+                      <>
+                        <InfoDisplay label="Valor da Nota" value={nfeValor ? `R$ ${nfeValor}` : undefined} valueClassName="text-primary" />
+                        <div className="space-y-1.5">
+                          <Label>Observações na NF-e</Label>
+                          <Textarea
+                            className="uppercase"
+                            rows={3}
+                            value={nfeObs}
+                            onChange={(e) => setNfeObs(e.target.value.toUpperCase())}
+                            placeholder="INFORMAÇÕES COMPLEMENTARES..."
+                          />
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
           </div>
 
           {/* Ações */}
-          <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
-            <Button variant="outline" onClick={() => handleOpenChange(false)}>
-              <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
-            </Button>
-            {jaGerado && contratoId && (
-              <Button variant="outline" onClick={handleVisualizar} disabled={viewing}>
-                <Eye className="h-4 w-4 mr-1" />{viewing ? 'Abrindo...' : 'Visualizar'}
+          {ehNfe ? (
+            <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+              {nfe.nfe?.status === 'processada' && (
+                <div className="flex flex-wrap items-center gap-3 mr-auto text-sm">
+                  <Badge className="bg-primary/10 text-primary gap-1.5">
+                    <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
+                  </Badge>
+                  {nfe.nfe?.caminho_danfe && (
+                    <Button variant="outline" size="sm" onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}>
+                      <ExternalLink className="h-4 w-4 mr-1" /> DANFE
+                    </Button>
+                  )}
+                </div>
+              )}
+              {nfe.pendente && (
+                <div className="flex items-center gap-3 mr-auto">
+                  <Badge variant="outline" className="gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Emitindo NF-e…</Badge>
+                  <Button variant="ghost" onClick={nfe.consultar} disabled={nfe.loading} className="gap-1.5">
+                    <RefreshCw className={`h-4 w-4 ${nfe.loading ? 'animate-spin' : ''}`} /> Atualizar
+                  </Button>
+                </div>
+              )}
+              {nfe.erro && !nfe.pendente && (
+                <p className="mr-auto text-sm text-destructive flex items-start gap-1 max-w-md">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
+                </p>
+              )}
+
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
-            )}
-            <Button variant="outline" onClick={() => handleGerar('sinal')} disabled={generating || nfeJaEmitida}>
-              <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar Sinal'}
-            </Button>
-            {canGerarVenda && (
-              <Button variant="outline" onClick={() => handleGerar('venda')} disabled={generating || nfeJaEmitida}>
-                <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar Venda'}
+              {!nfeJaEmitida && !nfe.pendente && (
+                <Button
+                  className="gap-1.5"
+                  disabled={nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim())}
+                  title={
+                    !empresaId
+                      ? 'Nenhuma empresa vinculada à loja do atendimento'
+                      : hasTroca && !valorQuitacao?.trim()
+                        ? 'Valor de Quitação da moto do cliente é obrigatório — defina na avaliação (0 se não houver)'
+                        : undefined
+                  }
+                  onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined, empresa_id: empresaId || undefined })}
+                >
+                  {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                  {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
+              <Button variant="outline" onClick={() => handleOpenChange(false)}>
+                <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
-            )}
-            <Button onClick={handleSave} disabled={saving || nfeJaEmitida} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
-              <Save className="h-4 w-4 mr-1" />
-              {saving ? 'Salvando...' : 'Salvar'}
-            </Button>
-          </div>
+              {jaGerado && contratoId && (
+                <Button variant="outline" onClick={handleVisualizar} disabled={viewing}>
+                  <Eye className="h-4 w-4 mr-1" />{viewing ? 'Abrindo...' : 'Visualizar'}
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => handleGerar('sinal')} disabled={generating || nfeJaEmitida}>
+                <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Contrato Sinal'}
+              </Button>
+              {canGerarVenda && (
+                <Button variant="outline" onClick={() => handleGerar('venda')} disabled={generating || nfeJaEmitida}>
+                  <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Contrato Venda'}
+                </Button>
+              )}
+              <Button onClick={handleSave} disabled={saving || nfeJaEmitida} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
+                <Save className="h-4 w-4 mr-1" />
+                {saving ? 'Salvando...' : 'Salvar'}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>

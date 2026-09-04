@@ -20,6 +20,32 @@ export async function removerCnhDoStorage(bucketPath: string): Promise<void> {
 }
 
 /**
+ * Grava a linha de CNH em clientes_fornecedores_documentos por upsert (chave
+ * cliente_fornecedor_id + tipo_documento), em vez de decidir insert-ou-update
+ * a partir de um docId guardado localmente na tela — várias telas anexam CNH
+ * (AtendimentoDetail, AvaliacaoForm, ClienteEditDialog...) e cada uma tem seu
+ * próprio estado; se uma tela não sabe do doc criado por outra, um insert
+ * "às cegas" duplica a linha e quebra a leitura seguinte (.maybeSingle() com
+ * mais de uma linha). O upsert é sempre seguro, não importa quem criou antes.
+ * Retorna o id da linha, ou null se a gravação falhar.
+ */
+export async function upsertCnhDoc(clienteId: string, url: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('clientes_fornecedores_documentos')
+    .upsert(
+      { cliente_fornecedor_id: clienteId, tipo_documento: 'cnh', arquivo_url: url },
+      { onConflict: 'cliente_fornecedor_id,tipo_documento' },
+    )
+    .select('id')
+    .single();
+  if (error) {
+    console.error('upsertCnhDoc error', error);
+    return null;
+  }
+  return data?.id || null;
+}
+
+/**
  * Processa uma CNH recém-anexada: chama a extração via IA, confere se o nome
  * bate com o cliente e — se bater — atualiza nome (e CPF, quando o cliente
  * não tem CPF cadastrado). Se NÃO bater, faz rollback do anexo e avisa.
