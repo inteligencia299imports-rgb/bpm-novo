@@ -654,9 +654,13 @@ Deno.serve(async (req) => {
     if (!['vendido', 'sinal'].includes(estoqueMoto?.status)) {
       return jsonResponse({ error: 'A moto ainda não foi marcada como vendida.' }, 409);
     }
+    // .neq('ipva_tipo', 'COMPRA') vira `<> 'COMPRA'` no Postgres — com NULL (ex.: lojas
+    // Ducati, que escondem o campo IPVA) a comparação dá NULL e a linha some do
+    // resultado. Contrato de venda tem ipva_tipo NULL ou != COMPRA; só o de compra é
+    // marcado com 'COMPRA'. Usa .or() pra incluir NULL explicitamente.
     const { data: contratoVenda } = await admin
       .from('contratos').select('id')
-      .eq('atendimento_id', atendimentoId).neq('ipva_tipo', 'COMPRA').limit(1);
+      .eq('atendimento_id', atendimentoId).or('ipva_tipo.is.null,ipva_tipo.neq.COMPRA').limit(1);
     if (!contratoVenda || contratoVenda.length === 0) {
       return jsonResponse({ error: 'O contrato de venda ainda não foi gerado.' }, 409);
     }
