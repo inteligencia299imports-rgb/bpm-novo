@@ -721,8 +721,12 @@ Deno.serve(async (req) => {
 
   // Emitir sobre uma linha já autorizada (reemissão em homologação, ou a 1ª emissão
   // em produção depois de homologação) gera uma linha nova — nunca sobrescreve a
-  // autorizada anterior, que fica registrada no histórico.
-  const precisaLinhaNova = !!nfeExistente && nfeExistente.status === 'processada';
+  // autorizada anterior, que fica registrada no histórico. Também gera linha nova
+  // se a última linha é de um AMBIENTE DIFERENTE do desta emissão (ex.: última foi
+  // erro em produção, esta é homologação, ou vice-versa) — nunca reusar/sobrescrever
+  // uma linha de erro de outro ambiente, senão perde o histórico daquele erro e mistura
+  // ambiente errado na mesma linha.
+  const precisaLinhaNova = !!nfeExistente && (nfeExistente.status === 'processada' || nfeExistente.ambiente !== ambiente);
   // Reenvio sobre uma linha em 'erro' (ex.: "Tentar novamente") tem que reusar o
   // MESMO ref que essa linha já tinha — nao recair no `ref` base. O `ref` base so
   // e livre na 1a emissao (sem nfeExistente); se ja existe uma linha de erro, o
