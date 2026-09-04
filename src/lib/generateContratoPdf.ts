@@ -55,6 +55,7 @@ interface ContratoPdfData {
     numeroParcelas?: number;
     valorParcelas?: string;
     valorFinanciado?: string;
+    observacoes?: string;
   }[];
   
   // Observações
@@ -474,6 +475,19 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
       checkPageBreak(6);
       setNormal();
       doc.text(`${forma.descricao}: ${forma.valor}`, marginLeft, y); y += lineHeight;
+      if (forma.financeira) {
+        checkPageBreak(lineHeight);
+        doc.text(`Banco/Administradora: ${forma.financeira}`, marginLeft + 5, y); y += lineHeight;
+      }
+    }
+    if (forma.observacoes) {
+      checkPageBreak(lineHeight);
+      const obsForma = doc.splitTextToSize(`Observações: ${forma.observacoes}`, contentWidth - 5);
+      for (const ln of obsForma) {
+        y = lineCheckPageBreak(y, lineHeight);
+        doc.text(ln, marginLeft + 5, y);
+        y += lineHeight;
+      }
     }
     y += sectionGap; // one line gap between each payment method
   }

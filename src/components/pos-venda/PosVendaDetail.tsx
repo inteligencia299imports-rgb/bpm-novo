@@ -3,7 +3,7 @@ import { getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard, FileText, Camera } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard, FileText, Camera, Truck, CalendarIcon, CheckCircle2, Loader2 } from 'lucide-react';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import type { MotoFoto } from '@/types/crm';
 import { format } from 'date-fns';
@@ -13,6 +13,10 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { POS_VENDA_COLUMNS, INTERESSES } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { toast } from 'sonner';
 
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
@@ -22,8 +26,9 @@ import ContratoDialog from '@/components/showroom/ContratoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
-import { formatPersonName, firstLastName } from '@/lib/utils';
+import { formatPersonName, firstLastName, cn } from '@/lib/utils';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
+import { processarCnhAnexada, upsertCnhDoc } from '@/lib/cnhAnexo';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
 
@@ -89,6 +94,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [loading, setLoading] = useState(true);
   const [viewAvaliacaoData, setViewAvaliacaoData] = useState<any>(null);
   const [processoOpen, setProcessoOpen] = useState(false);
+  const [contratoOpen, setContratoOpen] = useState(false);
+  const [entregaOpen, setEntregaOpen] = useState(false);
+  const [entregaDate, setEntregaDate] = useState('');
+  const [savingEntrega, setSavingEntrega] = useState(false);
+  const [entregaDataConclusao, setEntregaDataConclusao] = useState<string | null>(null);
   const [nfeVendaOpen, setNfeVendaOpen] = useState(false);
   const [trocaNfeAval, setTrocaNfeAval] = useState<any | null>(null);
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
@@ -130,6 +140,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
   const moto = item.avaliacoes?.[0];
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
+  const [cnhDocId, setCnhDocId] = useState<string | null>(null);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto?.crlv_url || null);
   const [estoqueCrlvUrls, setEstoqueCrlvUrls] = useState<Record<string, string | null>>({});
   const cols = statusColumns || POS_VENDA_COLUMNS;
@@ -141,13 +152,95 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const displayPhone = displayClient.cliente?.telefone || '';
   const whatsappUrl = displayPhone ? `https://wa.me/55${displayPhone.replace(/\D/g, '')}` : '';
 
+  const handleCnhUploaded = async (url: string) => {
+    const clienteId = (item as any).cliente_id;
+    if (!clienteId) return;
+    const prevUrl = cnhUrl;
+    const docId = await upsertCnhDoc(clienteId, url);
+    setCnhDocId(docId);
+    setCnhUrl(url);
+
+    await processarCnhAnexada({
+      clienteId,
+      url,
+      bucketPath: `docs/${clienteId}/cnh`,
+      rollback: async () => {
+        if (docId && !prevUrl) {
+          await supabase.from('clientes_fornecedores_documentos').delete().eq('id', docId);
+          setCnhDocId(null);
+        } else if (docId && prevUrl) {
+          await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: prevUrl }).eq('id', docId);
+        }
+        setCnhUrl(prevUrl);
+      },
+    });
+  };
+
+  const handleCnhRemoved = async () => {
+    if (cnhDocId) {
+      await supabase.from('clientes_fornecedores_documentos').delete().eq('id', cnhDocId);
+      setCnhDocId(null);
+    }
+    setCnhUrl(null);
+  };
+
+  const openEntrega = async () => {
+    const { data: row } = await supabase
+      .from('pos_venda_processos')
+      .select('data_conclusao')
+      .eq('atendimento_id', item.id)
+      .eq('etapa', 'ENTREGA DA MOTO')
+      .maybeSingle();
+    if (row?.data_conclusao) {
+      setEntregaDate(new Date(row.data_conclusao).toISOString().slice(0, 10));
+    } else {
+      setEntregaDate('');
+    }
+    setEntregaOpen(true);
+  };
+
+  const handleSaveEntrega = async () => {
+    if (!entregaDate) {
+      toast.error('Informe a data de entrega');
+      return;
+    }
+    setSavingEntrega(true);
+    const dataConclusao = `${entregaDate}T12:00:00`;
+
+    const { data: existing } = await supabase
+      .from('pos_venda_processos')
+      .select('id')
+      .eq('atendimento_id', item.id)
+      .eq('etapa', 'ENTREGA DA MOTO')
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('pos_venda_processos').update({
+        concluida: true,
+        data_conclusao: dataConclusao,
+      }).eq('id', existing.id);
+    } else {
+      await supabase.from('pos_venda_processos').insert({
+        atendimento_id: item.id,
+        etapa: 'ENTREGA DA MOTO',
+        concluida: true,
+        data_conclusao: dataConclusao,
+      });
+    }
+
+    setSavingEntrega(false);
+    setEntregaDataConclusao(dataConclusao);
+    toast.success('Data de entrega salva!');
+    setEntregaOpen(false);
+  };
+
   useEffect(() => {
     const fetchRelated = async () => {
       setLoading(true);
 
       if (!processoProps?.showContratoConsignante && (item as any).cliente_id) {
-        supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', (item as any).cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
-          .then(({ data }) => setCnhUrl(data?.arquivo_url || null));
+        supabase.from('clientes_fornecedores_documentos').select('id, arquivo_url').eq('cliente_fornecedor_id', (item as any).cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
+          .then(({ data }) => { setCnhUrl(data?.arquivo_url || null); setCnhDocId(data?.id || null); });
       }
 
       // Step 1: All initial queries in parallel
@@ -235,6 +328,18 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         }
       }
 
+      // Fetch entrega data
+      if (!processoProps?.showContratoConsignante) {
+        const { data: entregaRow } = await supabase
+          .from('pos_venda_processos')
+          .select('data_conclusao')
+          .eq('atendimento_id', item.id)
+          .eq('etapa', 'ENTREGA DA MOTO')
+          .eq('concluida', true)
+          .maybeSingle();
+        setEntregaDataConclusao(entregaRow?.data_conclusao || null);
+      }
+
       // Fetch intermediação history (sale date + contract generation)
       if (processoProps?.showContratoConsignante) {
         const { data: histData } = await supabase
@@ -260,6 +365,19 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   }
 
   // Contratos abrem como página (não como pop-up).
+  if (!isIntermParte1 && contratoOpen) {
+    return (
+      <ContratoDialog
+        open
+        onOpenChange={setContratoOpen}
+        atendimento={item}
+        motosInteresse={motosInteresse}
+        motosAvaliacao={motosAvaliacao}
+        estoqueData={estoqueData}
+        avaliacoes={avaliacoes}
+      />
+    );
+  }
   if (!isIntermParte1 && nfeVendaOpen) {
     return (
       <ContratoDialog
@@ -318,6 +436,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 <DollarSign className="h-4 w-4" /> Pagamento
               </Button>
             )}
+            {!isIntermParte1 && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => setContratoOpen(true)} className="gap-1.5">
+                  <FileText className="h-4 w-4" /> Contrato
+                </Button>
+                <Button size="sm" variant="outline" onClick={openEntrega} className="gap-1.5">
+                  <Truck className="h-4 w-4" /> Entrega
+                </Button>
+              </>
+            )}
             <Button size="sm" onClick={() => setProcessoOpen(true)} className="gap-1.5">
               <ClipboardList className="h-4 w-4" /> Processo
             </Button>
@@ -356,12 +484,20 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 {displayClient.cliente?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj(displayClient.cliente.cpf_cnpj)} />}
                 {displayClient.cliente?.email && <InfoItem label="E-mail" value={displayClient.cliente.email} />}
                 {displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.cep && <InfoItem label="CEP" value={formatCep(displayClient.cliente.clientes_fornecedores_enderecos[0].cep)} />}
-                {displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.logradouro && <InfoItem label="Endereço" value={displayClient.cliente.clientes_fornecedores_enderecos[0].logradouro} />}
+                {displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.logradouro && <InfoItem label="Endereço" value={formatPersonName(displayClient.cliente.clientes_fornecedores_enderecos[0].logradouro)} />}
               </div>
-              {cnhUrl && (
+              {!isIntermParte1 && (item as any).cliente_id && (
                 <>
                   <Separator className="my-2" />
-                  <span className="text-xs text-green-600 font-medium">CNH anexada</span>
+                  <DocumentUpload
+                    label="CNH"
+                    className="w-1/4"
+                    currentUrl={cnhUrl}
+                    bucketPath={`docs/${(item as any).cliente_id}/cnh`}
+                    onUploaded={handleCnhUploaded}
+                    onRemoved={handleCnhRemoved}
+                    deferPreview
+                  />
                 </>
               )}
             </CardContent>
@@ -376,13 +512,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {vendedorNome && (
-                  <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
-                    <IdCard className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-semibold text-primary">{vendedorNome}</span>
-                  </div>
-                )}
                 <div className="grid grid-cols-2 gap-4">
+                  <InfoItem label="Vendedor" value={vendedorNome} />
                   <InfoItem label="Loja" value={item.loja} />
                   <InfoItem label="Tipo de Atendimento" value={item.tipo_atendimento} />
                   <InfoItem label="Interesse" value={int?.label} />
@@ -607,50 +738,50 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                               {estItem.observacoes}
                             </div>
                           )}
-                          <div className="pt-2 border-t border-border space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Preço</p>
-                                <p className="font-semibold text-foreground">{formatCurrency(estItem.preco)}</p>
-                              </div>
-                              {estItem.preco_acao != null && (
-                                <div className="text-right">
-                                  <p className="text-xs text-muted-foreground">Preço Ação</p>
-                                  <p className="font-semibold text-success">{formatCurrency(estItem.preco_acao)}</p>
-                                </div>
-                              )}
+                          <div className="pt-2 border-t border-border grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-4">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Preço</p>
+                              <p className="font-semibold text-foreground">{formatCurrency(estItem.preco)}</p>
                             </div>
+                            {!!estItem.preco_acao && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Preço Ação</p>
+                                <p className="font-semibold text-success">{formatCurrency(estItem.preco_acao)}</p>
+                              </div>
+                            )}
                             {estItem.valor_sinal != null && (
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Valor do Sinal</p>
-                                  <p className="font-semibold text-amber-600">{formatCurrency(estItem.valor_sinal)}</p>
-                                </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Valor do Sinal</p>
+                                <p className="font-semibold text-amber-600">{formatCurrency(estItem.valor_sinal)}</p>
                               </div>
                             )}
                             {estItem.valor_venda != null && (
-                              <>
-                                <Separator />
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Valor de Venda</p>
-                                    <p className="font-semibold text-primary">{formatCurrency(estItem.valor_venda)}</p>
-                                  </div>
-                                  {estItem.preco_acao != null && (
-                                    <div className="text-right">
-                                      <p className="text-xs text-muted-foreground">Diferença (Venda - Ação)</p>
-                                      {(() => {
-                                        const diff = (estItem.valor_venda || 0) - (estItem.preco_acao || 0);
-                                        return (
-                                          <p className={`font-semibold ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                            {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
-                                          </p>
-                                        );
-                                      })()}
-                                    </div>
-                                  )}
-                                </div>
-                              </>
+                              <div>
+                                <p className="text-xs text-muted-foreground">Valor de Venda</p>
+                                <p className="font-semibold text-primary">{formatCurrency(estItem.valor_venda)}</p>
+                              </div>
+                            )}
+                            {estItem.valor_venda != null && !!estItem.preco_acao && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Diferença (Venda - Ação)</p>
+                                {(() => {
+                                  const diff = (estItem.valor_venda || 0) - (estItem.preco_acao || 0);
+                                  return (
+                                    <p className={`font-semibold ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                      {diff >= 0 ? '+' : ''}{formatCurrency(diff)}
+                                    </p>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                            {entregaDataConclusao && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Data de Entrega</p>
+                                <p className="font-semibold text-foreground flex items-center gap-1.5">
+                                  <Truck className="h-3.5 w-3.5" />
+                                  {format(new Date(entregaDataConclusao), "dd/MM/yyyy")}
+                                </p>
+                              </div>
                             )}
                           </div>
                           {estItem.observacoes && (
@@ -782,6 +913,57 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           )}
           <div className="flex justify-end pt-2">
             <Button size="sm" variant="outline" onClick={() => setShowPhotosDialogConsignada(false)}>Fechar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Data de Entrega */}
+      <Dialog open={entregaOpen} onOpenChange={setEntregaOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5" /> Data de Entrega
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Data *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full rounded-full h-10 px-4 justify-start text-left font-normal',
+                      !entregaDate && 'text-muted-foreground'
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {entregaDate
+                      ? format(new Date(`${entregaDate}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR })
+                      : 'Selecionar data'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={entregaDate ? new Date(`${entregaDate}T12:00:00`) : undefined}
+                    onSelect={(d) => {
+                      if (!d) { setEntregaDate(''); return; }
+                      const y = d.getFullYear();
+                      const m = String(d.getMonth() + 1).padStart(2, '0');
+                      const day = String(d.getDate()).padStart(2, '0');
+                      setEntregaDate(`${y}-${m}-${day}`);
+                    }}
+                    locale={ptBR}
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <Button onClick={handleSaveEntrega} disabled={savingEntrega} className="w-full gap-2">
+              {savingEntrega ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Salvar
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

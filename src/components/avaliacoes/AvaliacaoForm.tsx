@@ -28,7 +28,7 @@ import DocumentUpload from '@/components/showroom/DocumentUpload';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
 import PlacaInput from '@/components/shared/PlacaInput';
-import { processarCnhAnexada } from '@/lib/cnhAnexo';
+import { processarCnhAnexada, upsertCnhDoc } from '@/lib/cnhAnexo';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
@@ -879,16 +879,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const handleCnhUploaded = async (url: string) => {
     if (!at?.cliente_id) return;
     const prevUrl = cnhUrl;
-    let docId = cnhDocId;
-    if (docId) {
-      await supabase.from('clientes_fornecedores_documentos').update({ arquivo_url: url }).eq('id', docId);
-    } else {
-      const { data } = await supabase.from('clientes_fornecedores_documentos')
-        .insert({ cliente_fornecedor_id: at.cliente_id, tipo_documento: 'cnh', arquivo_url: url })
-        .select('id').single();
-      docId = data?.id || null;
-      setCnhDocId(docId);
-    }
+    const docId = await upsertCnhDoc(at.cliente_id, url);
+    setCnhDocId(docId);
     setCnhUrl(url);
 
     const { aceita, resultado } = await processarCnhAnexada({
