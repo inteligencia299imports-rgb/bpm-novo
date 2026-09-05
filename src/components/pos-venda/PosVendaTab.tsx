@@ -63,10 +63,15 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     // Ambiente da NF-e autorizada por atendimento — produção tem prioridade sobre homologação
     // quando as duas existirem (reemissão em produção após teste em homologação).
     const nfeAmbientePorAtendimento: Record<string, 'homologacao' | 'producao'> = {};
+    const nfeCanceladaAtendimento = new Set<string>();
     ((nfeResult.data as any[]) || []).forEach((n: any) => {
-      if (n.status !== 'processada' || !n.atendimento_id) return;
-      if (n.ambiente === 'producao' || !nfeAmbientePorAtendimento[n.atendimento_id]) {
-        nfeAmbientePorAtendimento[n.atendimento_id] = n.ambiente === 'producao' ? 'producao' : 'homologacao';
+      if (!n.atendimento_id) return;
+      if (n.status === 'processada') {
+        if (n.ambiente === 'producao' || !nfeAmbientePorAtendimento[n.atendimento_id]) {
+          nfeAmbientePorAtendimento[n.atendimento_id] = n.ambiente === 'producao' ? 'producao' : 'homologacao';
+        }
+      } else if (n.status === 'cancelada') {
+        nfeCanceladaAtendimento.add(n.atendimento_id);
       }
     });
     const estRes = {
@@ -106,10 +111,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       .map(a => {
         const est = estoquePropria[a.id];
         const _nfeAmbiente = nfeAmbientePorAtendimento[a.id] || null;
-        if (est) return { ...a, _estoqueMoto: est, _nfeAmbiente };
+        const _nfeCancelada = !_nfeAmbiente && nfeCanceladaAtendimento.has(a.id);
+        if (est) return { ...a, _estoqueMoto: est, _nfeAmbiente, _nfeCancelada };
         // Fallback: use first moto_interesse info
         const mi = a.motos_interesse?.[0];
-        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeAmbiente };
+        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeAmbiente, _nfeCancelada };
       });
 
     if (search.trim()) {
@@ -176,7 +182,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
                          <ProcessCard key={a.id} clientName={a.cliente?.nome_razao_social} phone={a.cliente?.telefone}
                            motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
                            loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex}
-                           nameTag={a._nfeAmbiente ? { label: 'NF-e', className: a._nfeAmbiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary' } : undefined}
+                           nameTag={a._nfeCancelada
+                             ? { label: 'NF-e cancelada', className: 'bg-red-600 hover:bg-red-600' }
+                             : a._nfeAmbiente
+                               ? { label: 'NF-e', className: a._nfeAmbiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary' }
+                               : undefined}
                            onClick={() => setSelectedItem(a)} />
                       );
                     })}
