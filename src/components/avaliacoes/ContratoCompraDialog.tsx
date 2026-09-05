@@ -12,6 +12,7 @@ import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
 import PendenciaTag from '@/components/shared/PendenciaTag';
+import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
 import { Badge } from '@/components/ui/badge';
 import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, ExternalLink, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -875,6 +876,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                       {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
                     </p>
                   ) : null}
+
+                  {(nfe.emitida || nfe.cancelada) && <CancelarNfeDialog nfe={nfe} />}
 
                   <Button variant="outline" onClick={() => onOpenChange(false)}>
                     <ArrowLeft className="h-4 w-4 mr-1" /> Voltar

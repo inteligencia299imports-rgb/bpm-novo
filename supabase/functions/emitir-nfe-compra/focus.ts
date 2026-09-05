@@ -50,6 +50,28 @@ export async function consultarNfe(
   return { httpStatus: res.status, body };
 }
 
+/**
+ * Cancela uma NF-e autorizada. Focus: DELETE /v2/nfe/{ref} com a justificativa
+ * (15–255 caracteres — exigência da SEFAZ) no corpo. Sucesso -> status
+ * 'cancelado' + caminho do XML de cancelamento.
+ */
+export async function cancelarNfe(
+  base: string,
+  token: string,
+  ref: string,
+  justificativa: string,
+): Promise<FocusResposta> {
+  const res = await fetch(`${base}/v2/nfe/${encodeURIComponent(ref)}`, {
+    method: 'DELETE',
+    headers: { Authorization: authHeader(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ justificativa }),
+  });
+  const text = await res.text();
+  let body: Record<string, unknown> = {};
+  try { body = text ? JSON.parse(text) : {}; } catch { body = { raw: text }; }
+  return { httpStatus: res.status, body };
+}
+
 /** Mensagem de erro legivel a partir de uma resposta de erro da Focus. */
 export function mensagemErroFocus(body: Record<string, unknown>): string {
   // Rejeicao da SEFAZ (status 'erro_autorizacao'): traz o cStat + motivo.

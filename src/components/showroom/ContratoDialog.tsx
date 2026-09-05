@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
 import PendenciaTag from '@/components/shared/PendenciaTag';
+import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
 
 interface Props {
   open: boolean;
@@ -1481,6 +1482,8 @@ const ContratoDialog: React.FC<Props> = ({
                   {nfe.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
                 </p>
               )}
+
+              {(nfe.emitida || nfe.cancelada) && <CancelarNfeDialog nfe={nfe} />}
 
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
