@@ -57,6 +57,7 @@ interface EstoqueItem {
   cor: string | null;
   cilindrada: string | null;
   placa: string | null;
+  chassi?: string | null;
   ano_fabricacao: string | null;
   ano_modelo: string | null;
   km: string | null;
@@ -224,7 +225,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     if (filterCidade !== 'todos' && !CIDADE_LOJAS[filterCidade].includes(item.loja_origem)) return false;
     if (!search) return true;
     const s = search.toLowerCase();
-    return [item.marca, item.modelo, item.placa, item.cor, item.cilindrada, item.empresa, item.observacoes]
+    return [item.marca, item.modelo, item.placa, item.chassi, item.cor, item.cilindrada, item.empresa, item.observacoes]
       .some(v => v?.toLowerCase().includes(s));
   });
 
@@ -539,7 +540,14 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                           </div>
 
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                            {item.placa && (
+                            {item.tipo === '0km' ? (
+                              item.chassi && (
+                                <>
+                                  <span className="text-muted-foreground">Chassi</span>
+                                  <span className="font-medium text-foreground">{item.chassi}</span>
+                                </>
+                              )
+                            ) : item.placa && (
                               <>
                                 <span className="text-muted-foreground">Placa</span>
                                 <span className="font-medium text-foreground">{item.placa.replace(/-/g, '')}</span>
@@ -563,7 +571,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                                 <span className="text-foreground">{item.classificacao}</span>
                               </>
                             )}
-                            {item.km && (
+                            {item.tipo !== '0km' && item.km && (
                               <>
                                 <span className="text-muted-foreground">Km</span>
                                 <span className="text-foreground">{Number(item.km).toLocaleString('pt-BR')}</span>

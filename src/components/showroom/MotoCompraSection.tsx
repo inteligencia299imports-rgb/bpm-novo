@@ -57,7 +57,7 @@ const MotoCompraSection: React.FC<Props> = ({
   const [loadingEstoque, setLoadingEstoque] = useState(false);
 
   useEffect(() => {
-    if (isDucati || origemMoto !== 'estoque') return;
+    if (origemMoto !== 'estoque') return;
 
     let isMounted = true;
 
@@ -77,15 +77,13 @@ const MotoCompraSection: React.FC<Props> = ({
         });
 
         const disponiveis = await fetchEstoqueUnificado({ status: 'disponivel' });
-        let options = disponiveis.map(flatten);
+        // Loja Ducati só oferece estoque de 0km; loja 299 só seminovas.
+        let options = disponiveis.map(flatten).filter((o) => (isDucati ? o.is0km : !o.is0km));
 
         // Mantem a moto ja selecionada mesmo que nao esteja mais "disponivel".
         if (estoqueMotoId && !options.some((item) => item.id === estoqueMotoId)) {
           const [sel] = await fetchEstoqueUnificado({
-            ids: [
-              { id: estoqueMotoId, tipo: 'seminova' },
-              { id: estoqueMotoId, tipo: '0km' },
-            ],
+            ids: [{ id: estoqueMotoId, tipo: isDucati ? '0km' : 'seminova' }],
           });
           if (sel) options = [flatten(sel), ...options];
         }
@@ -114,9 +112,12 @@ const MotoCompraSection: React.FC<Props> = ({
 
     const parts = [item.modelo || 'Sem modelo cadastrado'];
     if (item.cor) parts.push(item.cor);
-    // Motos 0km costumam nao ter placa ainda; sem um identificador distinto,
-    // varias unidades do mesmo modelo/cor ficam indistinguiveis na lista.
-    if (item.placa) {
+    // Ducati (só 0km): MODELO - COR - CHASSI (chassi completo).
+    if (isDucati) {
+      if (item.chassi) parts.push(item.chassi);
+    } else if (item.placa) {
+      // Motos 0km costumam nao ter placa ainda; sem um identificador distinto,
+      // varias unidades do mesmo modelo/cor ficam indistinguiveis na lista.
       parts.push(item.placa.replace(/-/g, ''));
     } else if (item.chassi) {
       parts.push(`Chassi ${item.chassi.slice(-6)}`);
@@ -142,6 +143,77 @@ const MotoCompraSection: React.FC<Props> = ({
     setChassi?.(val);
   };
 
+  // Seletor "Origem da Moto" (Estoque / Externo) — compartilhado entre o layout
+  // padrão e o da Ducati.
+  const origemSelect = (
+    <div className="space-y-1.5">
+      <Label>Origem da Moto</Label>
+      <Select value={origemMoto} onValueChange={(v) => {
+        setOrigemMoto(v);
+        setEstoqueMotoId('');
+        setEstoqueTipo?.('');
+        setMarcaId('');
+        setModeloId('');
+        setAno('');
+        setChassi?.('');
+      }} disabled={disabled}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="estoque">Estoque</SelectItem>
+          <SelectItem value="externo">Externo</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
+  // Combobox de seleção da moto do estoque — compartilhado. Na Ducati a lista já
+  // vem só com 0km e o label sai como MODELO - COR - CHASSI (ver formatEstoqueLabel).
+  const estoquePicker = (
+    <div className="space-y-1.5">
+      <Label>Moto do Estoque *</Label>
+      <Popover open={disabled ? false : comboOpen} onOpenChange={disabled ? undefined : setComboOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={comboOpen}
+            className="w-full justify-between font-normal"
+            disabled={disabled}
+          >
+            {loadingEstoque ? "Carregando..." : selectedLabel || "Buscar moto..."}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+          <Command>
+            <CommandInput placeholder={isDucati ? "Buscar por modelo, cor ou chassi..." : "Buscar por modelo, cor ou placa..."} />
+            <CommandList>
+              <CommandEmpty>Nenhuma moto encontrada.</CommandEmpty>
+              <CommandGroup>
+                {sortedEstoque.map(item => (
+                  <CommandItem
+                    key={item.id}
+                    value={item.id}
+                    keywords={[formatEstoqueLabel(item)]}
+                    onSelect={() => {
+                      setEstoqueMotoId(item.id);
+                      setEstoqueTipo?.(item.tipo);
+                      setComboOpen(false);
+                    }}
+                  >
+                    <Check className={cn("mr-2 h-4 w-4", estoqueMotoId === item.id ? "opacity-100" : "opacity-0")} />
+                    {formatEstoqueLabel(item)}
+                    {item.is0km && <span className="ml-2 text-[10px] font-semibold text-primary">0KM</span>}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+
   // Ducati-specific layout
   if (isDucati) {
     return (
@@ -157,42 +229,45 @@ const MotoCompraSection: React.FC<Props> = ({
               ⚠ Moto de interesse bloqueada. Para alterar, marque o atendimento como "Perdido" primeiro.
             </p>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-1.5">
-              <Label>Modelo *</Label>
-              <Select
-                value={modeloId}
-                onValueChange={(v) => { if (ducatiMarcaId) setMarcaId(ducatiMarcaId); setModeloId(v); }}
-                disabled={disabled}
-              >
-                <SelectTrigger><SelectValue placeholder={loading ? "Carregando..." : "Selecione"} /></SelectTrigger>
-                <SelectContent>
-                  {ducatiModelos.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
+          {origemSelect}
+          {origemMoto === 'estoque' ? estoquePicker : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label>Modelo *</Label>
+                <Select
+                  value={modeloId}
+                  onValueChange={(v) => { if (ducatiMarcaId) setMarcaId(ducatiMarcaId); setModeloId(v); }}
+                  disabled={disabled}
+                >
+                  <SelectTrigger><SelectValue placeholder={loading ? "Carregando..." : "Selecione"} /></SelectTrigger>
+                  <SelectContent>
+                    {ducatiModelos.map(m => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Ano Modelo *</Label>
+                <Select value={ano} onValueChange={setAno} disabled={disabled}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Chassi</Label>
+                <Input
+                  value={chassi}
+                  onChange={handleChassiChange}
+                  placeholder="Ex: 9BWZZZ377VT004251"
+                  maxLength={17}
+                  minLength={6}
+                  disabled={disabled}
+                />
+                {chassi && (chassi.length < 6 || chassi.length > 17) && (
+                  <p className="text-xs text-destructive">Chassi deve ter entre 6 e 17 caracteres</p>
+                )}
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Ano Modelo *</Label>
-              <Select value={ano} onValueChange={setAno} disabled={disabled}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{ANOS_MOTO.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Chassi</Label>
-              <Input
-                value={chassi}
-                onChange={handleChassiChange}
-                placeholder="Ex: 9BWZZZ377VT004251"
-                maxLength={17}
-                minLength={6}
-                disabled={disabled}
-              />
-              {chassi && (chassi.length < 6 || chassi.length > 17) && (
-                <p className="text-xs text-destructive">Chassi deve ter entre 6 e 17 caracteres</p>
-              )}
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     );
@@ -211,70 +286,8 @@ const MotoCompraSection: React.FC<Props> = ({
             ⚠ Moto de interesse bloqueada. Para alterar, marque o atendimento como "Perdido" primeiro.
           </p>
         )}
-        <div className="space-y-1.5">
-          <Label>Origem da Moto</Label>
-          <Select value={origemMoto} onValueChange={(v) => {
-            setOrigemMoto(v);
-            setEstoqueMotoId('');
-            setEstoqueTipo?.('');
-            setMarcaId('');
-            setModeloId('');
-            setAno('');
-          }} disabled={disabled}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="estoque">Estoque</SelectItem>
-              <SelectItem value="externo">Externo</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        {origemMoto === 'estoque' ? (
-          <div className="space-y-1.5">
-            <Label>Moto do Estoque *</Label>
-            <Popover open={disabled ? false : comboOpen} onOpenChange={disabled ? undefined : setComboOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={comboOpen}
-                  className="w-full justify-between font-normal"
-                  disabled={disabled}
-                >
-                  {loadingEstoque
-                    ? "Carregando..."
-                    : selectedLabel || "Buscar moto..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Buscar por modelo, cor ou placa..." />
-                  <CommandList>
-                    <CommandEmpty>Nenhuma moto encontrada.</CommandEmpty>
-                    <CommandGroup>
-                      {sortedEstoque.map(item => (
-                        <CommandItem
-                          key={item.id}
-                          value={item.id}
-                          keywords={[formatEstoqueLabel(item)]}
-                          onSelect={() => {
-                            setEstoqueMotoId(item.id);
-                            setEstoqueTipo?.(item.tipo);
-                            setComboOpen(false);
-                          }}
-                        >
-                          <Check className={cn("mr-2 h-4 w-4", estoqueMotoId === item.id ? "opacity-100" : "opacity-0")} />
-                          {formatEstoqueLabel(item)}
-                          {item.is0km && <span className="ml-2 text-[10px] font-semibold text-primary">0KM</span>}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-        ) : (
+        {origemSelect}
+        {origemMoto === 'estoque' ? estoquePicker : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label>Marca *</Label>
