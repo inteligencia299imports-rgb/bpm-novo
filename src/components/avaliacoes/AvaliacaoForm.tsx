@@ -21,7 +21,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, ArrowLeftRight, ShieldCheck, Handshake, Pencil, RotateCw, AlertTriangle, ClipboardList, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
-import { formatPersonName, firstLastName } from '@/lib/utils';
+import { formatPersonName, firstLastName, formatDataNascimento } from '@/lib/utils';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
@@ -338,7 +338,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       .from('avaliacoes')
       .select(`
         *, ${MARCA_MODELO_SELECT},
-        atendimentos_motos (id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, interesse, tipo_atendimento, origem, temperatura, created_at, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))
+        atendimentos_motos (id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, interesse, tipo_atendimento, origem, temperatura, created_at, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))
       `)
       .eq('id', avaliacaoId)
       .single();
@@ -1149,6 +1149,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   </div>
                 </div>
                 <InfoItem label="Sexo" value={at?.cliente?.sexo} />
+                <InfoItem label="Data de Nascimento" value={formatDataNascimento((at?.cliente as any)?.data_nascimento)} />
                 <InfoItem label="UF" value={(at?.cliente as any)?.clientes_fornecedores_enderecos?.[0]?.uf} />
                 {(at?.cliente as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj((at.cliente as any).cpf_cnpj)} />}
                 {(at?.cliente as any)?.email && <InfoItem label="E-mail" value={(at.cliente as any).email} />}

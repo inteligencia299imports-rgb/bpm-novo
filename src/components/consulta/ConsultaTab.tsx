@@ -23,7 +23,7 @@ const ConsultaTab = () => {
     const { data, error } = await fetchAllRange(() =>
       supabase
         .from('avaliacoes')
-        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`)
+        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`)
         .eq('consulta_solicitada', true)
         .order('created_at', { ascending: false })
     );

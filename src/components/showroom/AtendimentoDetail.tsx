@@ -29,7 +29,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
-import { formatPersonName, firstLastName } from '@/lib/utils';
+import { formatPersonName, firstLastName, formatDataNascimento } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PhotoUpload from './PhotoUpload';
 import DocumentUpload from './DocumentUpload';
@@ -887,6 +887,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                   </div>
                 </div>
                 <InfoItem label="Sexo" value={atendimento.cliente?.sexo} />
+                <InfoItem label="Data de Nascimento" value={formatDataNascimento((atendimento.cliente as any)?.data_nascimento)} />
                 <InfoItem label="UF" value={atendimento.cliente?.clientes_fornecedores_enderecos?.[0]?.uf} />
                 <InfoItem label="CPF/CNPJ" value={atendimento.cliente?.cpf_cnpj ? formatCpfCnpj(atendimento.cliente.cpf_cnpj) : undefined} />
                 <InfoItem label="E-mail" value={atendimento.cliente?.email} />
