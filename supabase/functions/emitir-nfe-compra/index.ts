@@ -634,7 +634,10 @@ Deno.serve(async (req) => {
       .select('*')
       .maybeSingle();
 
-    if (fStatus === 'autorizado') {
+    // Só a NF-e de PRODUÇÃO autorizada gera efeito no sistema (compromissos,
+    // avanço de status/etapa, histórico, NPS). Homologação é só teste: persiste
+    // a linha (pra baixar a DANFE e liberar o botão de produção) e para por aí.
+    if (fStatus === 'autorizado' && rowAmbiente === 'producao') {
       await registrarPosAutorizacao(admin, cfg, {
         entityId,
         dataEmissao: (updated?.data_emissao as string) || nfeRow.data_emissao || new Date().toISOString(),
@@ -1065,7 +1068,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (autorizado) {
+  // Só produção autorizada tem efeito no sistema (compromissos, status/etapa,
+  // histórico, NPS). Homologação persiste a linha e não dispara mais nada.
+  if (autorizado && ambiente === 'producao') {
     await registrarPosAutorizacao(admin, cfg, {
       entityId,
       dataEmissao,
