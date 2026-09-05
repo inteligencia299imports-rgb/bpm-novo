@@ -667,8 +667,13 @@ const ContratoDialog: React.FC<Props> = ({
   // Resumo do cliente (quando o cadastro está completo) — igual ao contrato de compra.
   const cli = clienteRecord;
   const cliEndereco = cli?.clientes_fornecedores_enderecos?.[0] || null;
-  // Dados bancários do cliente só são obrigatórios quando há troca (a loja paga o repasse da moto do cliente).
-  const exigirBancarios = hasTroca;
+  // Dados bancários do cliente só são obrigatórios quando há troca E a loja fica
+  // devendo pro cliente — ou seja, o valor de fechamento da moto que entra é
+  // maior que o valor da moto vendida (aí a loja paga a diferença nessa conta).
+  // Se a moto da troca vale menos que a vendida, o cliente é que paga a
+  // diferença: não precisa dos dados bancários.
+  const exigirBancarios = hasTroca
+    && parseCurrencyInput(valorFechamento) > parseCurrencyInput(valorVenda);
   const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco, { exigirBancarios });
   const fmtTelefone = (v: string | null | undefined) => {
     const d = (v || '').replace(/\D/g, '');
