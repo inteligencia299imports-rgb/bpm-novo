@@ -680,13 +680,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       toast.error('Esta empresa não recebe moto em consignação.');
       return;
     }
-    // Para tipos que não são consignada, exigir CNH, CRLV, ATPV, Procuração e consulta realizada
+    // Para tipos que não são consignada, exigir CNH, CRLV e consulta realizada
+    // (ATPV e Procuração são opcionais — anexo disponível, não bloqueia a aquisição).
     if (tipoSelecionado !== 'consignada') {
       const faltando = [
         !cnhUrl && 'CNH',
         !crlvUrl && 'CRLV',
-        !atpvUrl && 'ATPV',
-        !procuracaoUrl && 'Procuração',
       ].filter(Boolean);
       if (faltando.length > 0) {
         toast.error(`Anexe ${faltando.join(', ')} antes de adquirir como ${getTipoAquisicaoLabel(tipoSelecionado) || tipoSelecionado}`);
@@ -752,13 +751,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       return;
     }
 
-    // Converter para própria (convertida) exige a mesma documentação de uma aquisição própria.
+    // Converter para própria (convertida) exige a mesma documentação de uma aquisição própria
+    // (CNH + CRLV + consulta; ATPV e Procuração são opcionais).
     if (newTipo === 'convertida') {
       const faltando = [
         !cnhUrl && 'CNH',
         !crlvUrl && 'CRLV',
-        !atpvUrl && 'ATPV',
-        !procuracaoUrl && 'Procuração',
       ].filter(Boolean);
       if (faltando.length > 0) {
         toast.error(`Anexe ${faltando.join(', ')} antes de converter para própria`);
