@@ -82,6 +82,75 @@ export function cadastroClienteCompleto(
   return true;
 }
 
+export interface PendenciasCadastro {
+  /** campos do card "Dados do Cliente" que faltam / estão inválidos */
+  cliente: string[];
+  /** campos do card "Endereço" que faltam */
+  endereco: string[];
+  /** campos do card "Dados Bancários" que faltam (só quando exigirBancarios) */
+  bancario: string[];
+}
+
+/**
+ * Mesmas regras de `cadastroClienteCompleto`, mas devolve **quais** campos
+ * faltam, agrupados por card — para exibir as pendências na tela de emissão de NF.
+ * `bancario` só é avaliado quando `exigirBancarios` (default true).
+ */
+export function pendenciasCadastroCliente(
+  cliente: ClienteCadastro | null | undefined,
+  endereco: EnderecoCadastro | null | undefined,
+  opts?: { exigirBancarios?: boolean },
+): PendenciasCadastro {
+  const exigirBancarios = opts?.exigirBancarios ?? true;
+  const out: PendenciasCadastro = { cliente: [], endereco: [], bancario: [] };
+
+  const pf = (cliente?.tipo_pessoa ?? "fisica") === "fisica";
+
+  const cpf = soDigitos(cliente?.cpf_cnpj);
+  if (cpf.length !== 11 && cpf.length !== 14) out.cliente.push("CPF/CNPJ");
+  if (!preenchido(cliente?.nome_razao_social)) out.cliente.push("Nome");
+  if (pf) {
+    if (!preenchido(cliente?.sexo)) out.cliente.push("Sexo");
+    if (!preenchido(cliente?.data_nascimento)) out.cliente.push("Data de nascimento");
+  } else if (!preenchido(cliente?.ramo)) {
+    out.cliente.push("Ramo");
+  }
+  if (!emailOk(cliente?.email)) out.cliente.push("E-mail");
+  if (!emailOk(cliente?.email_nf)) out.cliente.push("E-mail para NF");
+  if (!preenchido(cliente?.telefone)) out.cliente.push("Telefone");
+  if (!preenchido(cliente?.telefone_comercial)) out.cliente.push("Telefone comercial");
+  if (cliente?.aceite_politica_privacidade !== true) out.cliente.push("Aceite da política de privacidade");
+  if (cliente?.autoriza_contato !== true) out.cliente.push("Autorização de contato");
+
+  const e = endereco;
+  if (!preenchido(e?.cep)) out.endereco.push("CEP");
+  if (!preenchido(e?.logradouro)) out.endereco.push("Logradouro");
+  if (!preenchido(e?.numero)) out.endereco.push("Número");
+  if (!preenchido(e?.bairro)) out.endereco.push("Bairro");
+  if (!preenchido(e?.cidade)) out.endereco.push("Cidade");
+  if (!preenchido(e?.uf)) out.endereco.push("UF");
+
+  if (exigirBancarios) {
+    if (!preenchido(cliente?.banco)) out.bancario.push("Banco");
+    if (!preenchido(cliente?.tipo_conta)) out.bancario.push("Tipo de conta");
+    if (!preenchido(cliente?.chave_pix)) out.bancario.push("Chave PIX");
+    if (!preenchido(cliente?.favorecido)) out.bancario.push("Favorecido");
+    if (!preenchido(cliente?.cpf_cnpj_favorecido)) out.bancario.push("CPF/CNPJ do favorecido");
+    const agDig = soDigitos(cliente?.agencia);
+    if (agDig.length < 3 || agDig.length > 6) out.bancario.push("Agência");
+    const ccDig = soDigitos(cliente?.conta);
+    if (ccDig.length < 4 || ccDig.length > 12) out.bancario.push("Conta");
+    if (!/^[0-9X]$/i.test(String(cliente?.digito_conta ?? "").trim())) out.bancario.push("Dígito da conta");
+  }
+
+  return out;
+}
+
+/** `true` se não há nenhuma pendência em nenhum dos cards. */
+export function semPendencias(p: PendenciasCadastro): boolean {
+  return p.cliente.length === 0 && p.endereco.length === 0 && p.bancario.length === 0;
+}
+
 /** "NOME - 00.000.000/0000-00" para o modo compacto. */
 export function rotuloClienteCompacto(cliente: ClienteCadastro | null | undefined): string {
   if (!cliente) return "";

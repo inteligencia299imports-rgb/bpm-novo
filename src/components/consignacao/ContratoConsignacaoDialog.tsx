@@ -20,7 +20,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { generateContratoConsignacaoPdf } from '@/lib/generateContratoConsignacaoPdf';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import ClienteForm from '@/components/clientes/ClienteForm';
-import { cadastroClienteCompleto } from '@/lib/clienteCadastro';
+import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
+import PendenciaTag from '@/components/shared/PendenciaTag';
 
 interface Props {
   open: boolean;
@@ -397,6 +398,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const cli = clienteRecord;
   const cliEndereco = cli?.clientes_fornecedores_enderecos?.[0] || null;
   const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco);
+  // Consignação: a loja repassa o valor ao consignante -> dados bancários sempre exigidos.
+  const pendenciasNf = pendenciasCadastroCliente(cli, cliEndereco, { exigirBancarios: true });
+  const nfSemPendencias = semPendencias(pendenciasNf);
 
   // KPIs de valores — mesma lógica do contrato de compra.
   const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -593,8 +597,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
               {/* Card: Dados do Cliente */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                     <User className="h-4 w-4 text-primary" /> Dados do Cliente
+                    {ehNfe && <PendenciaTag itens={pendenciasNf.cliente} className="ml-auto" />}
                     {clienteId && cadastroCompleto && !editandoCliente && !soLeitura && (
                       <Button
                         variant="ghost"
@@ -632,13 +637,14 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                 </CardContent>
               </Card>
 
-              {clienteId && cadastroCompleto && !editandoCliente && (
+              {clienteId && !editandoCliente && (cadastroCompleto || ehNfe) && (
                 <>
-                  {/* Card: Endereço */}
+                  {/* Card: Endereço — na emissão de NF-e fica sempre visível */}
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
+                      <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                         <MapPin className="h-4 w-4 text-primary" /> Endereço
+                        {ehNfe && <PendenciaTag itens={pendenciasNf.endereco} className="ml-auto" />}
                       </CardTitle>
                       <Separator className="mt-2" />
                     </CardHeader>
@@ -657,8 +663,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                   {/* Card: Dados Bancários */}
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
+                      <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                         <Landmark className="h-4 w-4 text-primary" /> Dados Bancários
+                        {ehNfe && <PendenciaTag itens={pendenciasNf.bancario} className="ml-auto" />}
                       </CardTitle>
                       <Separator className="mt-2" />
                     </CardHeader>
@@ -863,12 +870,14 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
             {ehNfe ? (
               (() => {
-                const disabled = !podeEmitirNfe || nfe.loading || !empresaId;
+                const disabled = !podeEmitirNfe || nfe.loading || !empresaId || !nfSemPendencias;
                 const title = !empresaId
                   ? 'Nenhuma empresa vinculada à loja do atendimento'
-                  : podeEmitirNfe
-                    ? undefined
-                    : 'Disponível após o contrato do consignante e a consulta realizada';
+                  : !nfSemPendencias
+                    ? 'Cadastro do cliente incompleto — resolva as pendências marcadas nos cards acima'
+                    : podeEmitirNfe
+                      ? undefined
+                      : 'Disponível após o contrato do consignante e a consulta realizada';
                 return (
                   <>
                     {(!nfeJaEmitida || podeReemitirHomolog) && !nfe.pendente && (
