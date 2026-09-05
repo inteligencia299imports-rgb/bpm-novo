@@ -63,10 +63,15 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
     // Ambiente da NF-e autorizada por avaliação — produção tem prioridade sobre homologação
     // quando as duas existirem (reemissão em produção após teste em homologação).
     const nfeAmbientePorAvaliacao: Record<string, 'homologacao' | 'producao'> = {};
+    const nfeCanceladaAvaliacao = new Set<string>();
     ((nfeResult.data as any[]) || []).forEach((n: any) => {
-      if (n.status !== 'processada' || !n.avaliacao_id) return;
-      if (n.ambiente === 'producao' || !nfeAmbientePorAvaliacao[n.avaliacao_id]) {
-        nfeAmbientePorAvaliacao[n.avaliacao_id] = n.ambiente === 'producao' ? 'producao' : 'homologacao';
+      if (!n.avaliacao_id) return;
+      if (n.status === 'processada') {
+        if (n.ambiente === 'producao' || !nfeAmbientePorAvaliacao[n.avaliacao_id]) {
+          nfeAmbientePorAvaliacao[n.avaliacao_id] = n.ambiente === 'producao' ? 'producao' : 'homologacao';
+        }
+      } else if (n.status === 'cancelada') {
+        nfeCanceladaAvaliacao.add(n.avaliacao_id);
       }
     });
     if (error) { toast.error('Erro ao carregar pós-compra'); } else {
@@ -88,7 +93,7 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
         if (picked) acquDateMap[d.id] = picked;
       });
       let mapped = (data || [])
-        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeAmbiente: nfeAmbientePorAvaliacao[d.id] || null }));
+        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeAmbiente: nfeAmbientePorAvaliacao[d.id] || null, _nfeCancelada: !nfeAmbientePorAvaliacao[d.id] && nfeCanceladaAvaliacao.has(d.id) }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       if (filterCidade !== 'todos') { mapped = mapped.filter((a: any) => matchesCidade(a.atendimento?.loja, filterCidade)); }
       setItems(mapped);
@@ -154,7 +159,11 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
                         statusColor={col.hex}
                         extraBadge={a.tipo_aquisicao && a.tipo_aquisicao !== 'propria' ? { label: getTipoAquisicaoLabel(a.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(a.tipo_aquisicao) } : undefined}
                         secondaryBadge={a.atendimento?.interesse === 'trocar' ? { label: 'Troca', className: 'border-primary/30 text-primary' } : undefined}
-                        nameTag={a._nfeAmbiente ? { label: 'NF-e', className: a._nfeAmbiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary' } : undefined}
+                        nameTag={a._nfeCancelada
+                          ? { label: 'NF-e cancelada', className: 'bg-red-600 hover:bg-red-600' }
+                          : a._nfeAmbiente
+                            ? { label: 'NF-e', className: a._nfeAmbiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary' }
+                            : undefined}
                         onClick={() => setSelectedItem(a)} />
                     ))}
                   </div>

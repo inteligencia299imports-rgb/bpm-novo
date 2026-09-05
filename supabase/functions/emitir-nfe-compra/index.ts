@@ -674,12 +674,25 @@ Deno.serve(async (req) => {
     if (!rowToken) return jsonResponse({ error: 'Empresa sem token da Focus para este ambiente.' }, 409);
 
     const refCancel = (nfeRow.ref_externa as string) || ref;
-    const c = await cancelarNfe(rowBase, rowToken, refCancel, justificativa);
-    const cStatus = c.body.status as string | undefined;
-    const okHttp = c.httpStatus === 200 || c.httpStatus === 201;
-    const cancelado = cStatus === 'cancelado' || (okHttp && !c.body.erros && !c.body.mensagem);
+    let c = await cancelarNfe(rowBase, rowToken, refCancel, justificativa);
+    console.log('cancelar: DELETE', rowAmbiente, refCancel, '->', c.httpStatus, JSON.stringify(c.body).slice(0, 800));
+    let cStatus = c.body.status as string | undefined;
+
+    // Cancelamento pode ser assíncrono na Focus ('processando_cancelamento') —
+    // consulta até virar 'cancelado' (ou dar erro).
+    for (let i = 0; i < 6 && cStatus === 'processando_cancelamento'; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      c = await consultarNfe(rowBase, rowToken, refCancel);
+      cStatus = c.body.status as string | undefined;
+      console.log('cancelar: consulta', i, '->', cStatus);
+    }
+
+    const okHttp = c.httpStatus === 200 || c.httpStatus === 201 || c.httpStatus === 204;
+    const cancelado = cStatus === 'cancelado' || (okHttp && !cStatus && !c.body.erros && !c.body.mensagem && !c.body.mensagem_sefaz);
     if (!cancelado) {
-      return jsonResponse({ error: mensagemErroFocus(c.body) }, 422);
+      const msg = mensagemErroFocus(c.body) || `A Focus respondeu status "${cStatus ?? '(vazio)'}" (HTTP ${c.httpStatus}).`;
+      console.error('cancelar: falhou —', msg);
+      return jsonResponse({ error: msg }, 422);
     }
 
     const agora = new Date().toISOString();
@@ -697,6 +710,7 @@ Deno.serve(async (req) => {
       .select('*')
       .maybeSingle();
     if (updErr) return jsonResponse({ error: `NF-e cancelada na SEFAZ, mas falhou ao gravar: ${updErr.message}` }, 500);
+    console.log('cancelar: gravado', nfeRow.id, '->', updated?.status);
 
     // Reabre a etapa do checklist (a NF-e não vale mais) e registra no histórico.
     // O compromisso financeiro NÃO é revertido aqui — pode já ter havido baixa;
