@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { consultarNfe, emitirNfe, focusBaseUrl, mensagemErroFocus, type FocusAmbiente } from './focus.ts';
+import { cancelarNfe, consultarNfe, emitirNfe, focusBaseUrl, mensagemErroFocus, type FocusAmbiente } from './focus.ts';
 import { montarPayloadNfeCompra, type RegraFiscal } from './payload.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
@@ -434,7 +434,8 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Corpo da requisição inválido (JSON esperado)' }, 400);
   }
 
-  const acao = body.acao === 'consultar' ? 'consultar' : 'emitir';
+  const acao: 'consultar' | 'cancelar' | 'emitir' =
+    body.acao === 'consultar' ? 'consultar' : body.acao === 'cancelar' ? 'cancelar' : 'emitir';
   const tipo: Operacao = (['compra', 'consignacao', 'venda_seminova', 'venda_0km'] as const).includes(body.tipo as any)
     ? (body.tipo as Operacao)
     : 'compra';
@@ -651,6 +652,73 @@ Deno.serve(async (req) => {
   }
 
   // =====================================================================
+  // acao: cancelar
+  // =====================================================================
+  if (acao === 'cancelar') {
+    const justificativa = String(body.justificativa ?? '').trim();
+    // Regra da SEFAZ: 15 a 255 caracteres.
+    if (justificativa.length < 15 || justificativa.length > 255) {
+      return jsonResponse({ error: 'A justificativa do cancelamento deve ter de 15 a 255 caracteres.' }, 400);
+    }
+
+    const { data: nfeRow } = await buscarNfe();
+    if (!nfeRow) return jsonResponse({ error: 'Nenhuma NF-e encontrada para esta operação.' }, 404);
+    if (nfeRow.status === 'cancelada') return jsonResponse({ nfe: nfeRow }, 200);
+    if (nfeRow.status !== 'processada') {
+      return jsonResponse({ error: 'Só é possível cancelar uma NF-e autorizada.' }, 409);
+    }
+
+    const rowAmbiente = ((nfeRow.ambiente as FocusAmbiente) || ambienteDefault);
+    const rowBase = focusBaseUrl(rowAmbiente);
+    const rowToken = rowAmbiente === 'producao' ? focusCfg?.token_producao : focusCfg?.token_homologacao;
+    if (!rowToken) return jsonResponse({ error: 'Empresa sem token da Focus para este ambiente.' }, 409);
+
+    const refCancel = (nfeRow.ref_externa as string) || ref;
+    const c = await cancelarNfe(rowBase, rowToken, refCancel, justificativa);
+    const cStatus = c.body.status as string | undefined;
+    const okHttp = c.httpStatus === 200 || c.httpStatus === 201;
+    const cancelado = cStatus === 'cancelado' || (okHttp && !c.body.erros && !c.body.mensagem);
+    if (!cancelado) {
+      return jsonResponse({ error: mensagemErroFocus(c.body) }, 422);
+    }
+
+    const agora = new Date().toISOString();
+    const { data: updated, error: updErr } = await admin
+      .from('nfe_entradas')
+      .update({
+        status: 'cancelada',
+        focus_status: cStatus ?? 'cancelado',
+        cancelamento_justificativa: justificativa,
+        cancelada_em: agora,
+        erro_mensagem: null,
+        xml_raw: c.body.caminho_xml_cancelamento ? `${rowBase}${c.body.caminho_xml_cancelamento}` : nfeRow.xml_raw,
+      })
+      .eq('id', nfeRow.id)
+      .select('*')
+      .maybeSingle();
+    if (updErr) return jsonResponse({ error: `NF-e cancelada na SEFAZ, mas falhou ao gravar: ${updErr.message}` }, 500);
+
+    // Reabre a etapa do checklist (a NF-e não vale mais) e registra no histórico.
+    // O compromisso financeiro NÃO é revertido aqui — pode já ter havido baixa;
+    // o acerto é manual no financeiro.
+    const porAvaliacao = cfg.keyBy === 'avaliacao';
+    const fkCol = porAvaliacao ? 'avaliacao_id' : 'atendimento_id';
+    await admin.from(cfg.etapaTable)
+      .update({ concluida: false, data_conclusao: null })
+      .eq(fkCol, entityId).eq('etapa', cfg.etapa);
+    await admin.from('status_history').insert({
+      entity_type: cfg.statusEntity,
+      entity_id: entityId,
+      status: `${cfg.statusHist}_cancelada`,
+      changed_by: caller.id,
+      changed_by_name: callerName,
+      observacoes: `NF-e nº ${nfeRow.numero ?? '-'} cancelada — ${justificativa}`,
+    });
+
+    return jsonResponse({ nfe: updated ?? nfeRow, aviso: 'Compromisso financeiro não foi revertido automaticamente.' }, 200);
+  }
+
+  // =====================================================================
   // acao: emitir
   // =====================================================================
 
@@ -729,7 +797,7 @@ Deno.serve(async (req) => {
   // erro em produção, esta é homologação, ou vice-versa) — nunca reusar/sobrescrever
   // uma linha de erro de outro ambiente, senão perde o histórico daquele erro e mistura
   // ambiente errado na mesma linha.
-  const precisaLinhaNova = !!nfeExistente && (nfeExistente.status === 'processada' || nfeExistente.ambiente !== ambiente);
+  const precisaLinhaNova = !!nfeExistente && (nfeExistente.status === 'processada' || nfeExistente.status === 'cancelada' || nfeExistente.ambiente !== ambiente);
   // Reenvio sobre uma linha em 'erro' (ex.: "Tentar novamente") tem que reusar o
   // MESMO ref que essa linha já tinha — nao recair no `ref` base. O `ref` base so
   // e livre na 1a emissao (sem nfeExistente); se ja existe uma linha de erro, o

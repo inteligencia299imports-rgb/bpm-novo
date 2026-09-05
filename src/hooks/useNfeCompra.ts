@@ -29,9 +29,10 @@ export function useNfeCompra(
   const emitida = status === 'processada';
   const pendente = NFE_PENDENTE.includes(status || '');
   const erro = status === 'erro';
+  const cancelada = status === 'cancelada';
 
   const invoke = useCallback(
-    async (acao: 'emitir' | 'consultar', extra?: Record<string, unknown>) => {
+    async (acao: 'emitir' | 'consultar' | 'cancelar', extra?: Record<string, unknown>) => {
       const { data, error } = await supabase.functions.invoke('emitir-nfe-compra', {
         body: { [keyCol]: avaliacaoId, acao, tipo, ...(extra || {}) },
       });
@@ -47,7 +48,7 @@ export function useNfeCompra(
         }
         throw new Error(msg);
       }
-      return data as { nfe: any | null };
+      return data as { nfe: any | null; aviso?: string };
     },
     [avaliacaoId, tipo, keyCol],
   );
@@ -85,6 +86,23 @@ export function useNfeCompra(
     }
   }, [invoke, carregar]);
 
+  const cancelar = useCallback(async (justificativa: string) => {
+    setLoading(true);
+    try {
+      const res = await invoke('cancelar', { justificativa });
+      if (res.nfe) setNfe(res.nfe);
+      toast.success('NF-e cancelada na SEFAZ.');
+      if (res.aviso) toast.warning(res.aviso);
+      return true;
+    } catch (e: any) {
+      toast.error(e.message);
+      await carregar();
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [invoke, carregar]);
+
   const consultar = useCallback(async () => {
     setLoading(true);
     try {
@@ -110,5 +128,5 @@ export function useNfeCompra(
     return () => clearInterval(t);
   }, [ativo, pendente]);
 
-  return { nfe, setNfe, loading, emitida, pendente, erro, carregar, emitir, consultar };
+  return { nfe, setNfe, loading, emitida, pendente, erro, cancelada, carregar, emitir, consultar, cancelar };
 }
