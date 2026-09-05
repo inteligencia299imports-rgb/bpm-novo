@@ -22,7 +22,7 @@ import StatusTimeline from '@/components/shared/StatusTimeline';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { formatPersonName } from '@/lib/utils';
+import { formatPersonName, formatDataNascimento } from '@/lib/utils';
 
 interface ConsultaDetailProps {
   moto: any;
@@ -401,6 +401,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                   </div>
                 )}
                 <InfoItem label="Loja" value={atendimento?.loja} />
+                {formatDataNascimento((atendimento?.cliente as any)?.data_nascimento) && <InfoItem label="Data de Nascimento" value={formatDataNascimento((atendimento?.cliente as any)?.data_nascimento)} />}
                 {atendimento?.cliente?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj(atendimento.cliente.cpf_cnpj)} />}
                 {atendimento?.cliente?.email && <InfoItem label="E-mail" value={atendimento.cliente.email} />}
                 {atendimento?.cliente?.clientes_fornecedores_enderecos?.[0]?.cep && <InfoItem label="CEP" value={formatCep(atendimento.cliente.clientes_fornecedores_enderecos[0].cep)} />}

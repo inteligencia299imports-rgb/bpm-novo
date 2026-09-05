@@ -26,7 +26,7 @@ import ContratoDialog from '@/components/showroom/ContratoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
-import { formatPersonName, firstLastName, cn } from '@/lib/utils';
+import { formatPersonName, firstLastName, cn, formatDataNascimento } from '@/lib/utils';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { processarCnhAnexada, upsertCnhDoc } from '@/lib/cnhAnexo';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
@@ -111,7 +111,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     if (consignadaEstoque?.avaliacao_id) {
       const { data: avalRaw } = await supabase
         .from('avaliacoes')
-        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))`)
+        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))`)
         .eq('id', consignadaEstoque.avaliacao_id)
         .single();
       const avalData = avalRaw ? flattenMarcaModelo(avalRaw as any) : avalRaw;
@@ -303,7 +303,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         if (consignadaEstoque?.avaliacao_id) {
           const { data: avalData } = await supabase
             .from('avaliacoes')
-            .select('*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))')
+            .select('*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))')
             .eq('id', consignadaEstoque.avaliacao_id)
             .single();
           if (avalData) {
@@ -479,6 +479,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   </div>
                 </div>
                 {!isIntermParte1 && <InfoItem label="Sexo" value={displayClient.cliente?.sexo} />}
+                {!isIntermParte1 && <InfoItem label="Data de Nascimento" value={formatDataNascimento((displayClient.cliente as any)?.data_nascimento)} />}
                 {!isIntermParte1 && <InfoItem label="UF" value={displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.uf} />}
                 {isIntermParte1 && proprietario?.loja && <InfoItem label="Loja" value={proprietario.loja} />}
                 {displayClient.cliente?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj(displayClient.cliente.cpf_cnpj)} />}
@@ -646,12 +647,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {avaliadorNome && (
-                  <div className="mb-3 flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
-                    <IdCard className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
-                  </div>
-                )}
                 {motosInteresse.map((mi: any, idx: number) => {
                   const isEstoque = mi.origem === 'estoque' && mi.estoque_moto_id;
                   const estItem = isEstoque ? estoqueData[mi.estoque_moto_id!] : null;

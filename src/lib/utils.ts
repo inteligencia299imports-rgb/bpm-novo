@@ -76,3 +76,12 @@ export function formatModelo(modelo: string | null | undefined): string {
 export function fmtInt(n: number | null | undefined): string {
   return (n ?? 0).toLocaleString('pt-BR');
 }
+
+/** Data de nascimento (ISO "YYYY-MM-DD..." no banco) → "DD/MM/AAAA". Vazio → undefined. */
+export function formatDataNascimento(v: string | null | undefined): string | undefined {
+  if (!v) return undefined;
+  const s = String(v);
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  return s || undefined;
+}
