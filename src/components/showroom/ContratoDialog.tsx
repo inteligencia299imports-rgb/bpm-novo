@@ -1018,8 +1018,10 @@ const ContratoDialog: React.FC<Props> = ({
                       <InfoDisplay label="Modelo" value={estItem.modelo ? String(estItem.modelo).toUpperCase() : undefined} />
                       <InfoDisplay label="Ano" value={[estItem.ano_fabricacao, estItem.ano_modelo].filter(Boolean).join('/') || undefined} />
                       <InfoDisplay label="Cor" value={estItem.cor ? String(estItem.cor).toUpperCase() : undefined} />
-                      <InfoDisplay label="Placa" value={estItem.placa ? estItem.placa.replace(/-/g, '') : undefined} />
-                      {!estItem.placa && estItem.chassi && <InfoDisplay label="Chassi" value={estItem.chassi} />}
+                      {estItem.fonte === '0km'
+                        ? <InfoDisplay label="Chassi" value={estItem.chassi || undefined} />
+                        : <InfoDisplay label="Placa" value={estItem.placa ? estItem.placa.replace(/-/g, '') : undefined} />}
+                      {estItem.fonte !== '0km' && !estItem.placa && estItem.chassi && <InfoDisplay label="Chassi" value={estItem.chassi} />}
                     </div>
                     <div className="pt-2 border-t border-border grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-4">
                       <InfoDisplay label="Preço" value={formatCurrency(estItem.preco)} />

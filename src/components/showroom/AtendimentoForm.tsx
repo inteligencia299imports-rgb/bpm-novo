@@ -306,7 +306,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         if (at?.interesse === 'comprar' || at?.interesse === 'trocar') {
           const { data: mi } = await supabase.from('motos_interesse').select('*').eq('atendimento_id', atendimentoId).maybeSingle();
           if (mi) {
-            setOrigemMoto(mi.origem);
+            // Registros Ducati antigos foram salvos com origem='estoque' fixo mas
+            // sem estoque_moto_id (entrada manual). Sem id real de estoque = 'externo'.
+            setOrigemMoto(mi.origem === 'estoque' && !mi.estoque_moto_id ? 'externo' : (mi.origem || 'estoque'));
             setCompraMarcaId((mi as any).marca_id || '');
             setCompraModeloId((mi as any).modelo_id || '');
             setCompraAno(mi.ano || '');
@@ -415,11 +417,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Esta empresa não faz compra direta de moto. O interesse deve ser "comprar" ou "trocar".');
       return;
     }
-    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && (!compraModeloId || !compraAno)) {
+    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'estoque' && !estoqueMotoId) {
+      toast.error('Selecione a moto do estoque 0km');
+      return;
+    }
+    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'externo' && (!compraModeloId || !compraAno)) {
       toast.error('Preencha o modelo e ano da moto Ducati');
       return;
     }
-    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && chassi.replace(/\s/g, '').length > 0 && (chassi.replace(/\s/g, '').length < 6 || chassi.replace(/\s/g, '').length > 17)) {
+    if (isDucati && (interesse === 'comprar' || interesse === 'trocar') && origemMoto === 'externo' && chassi.replace(/\s/g, '').length > 0 && (chassi.replace(/\s/g, '').length < 6 || chassi.replace(/\s/g, '').length > 17)) {
       toast.error('O chassi deve ter entre 6 e 17 caracteres');
       return;
     }
@@ -502,16 +508,27 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
     if (interesse === 'comprar' || interesse === 'trocar') {
       const miData = isDucati
-        ? {
-            atendimento_id: atId!,
-            origem: 'estoque' as const,
-            marca_id: compraMarcaId || marcaIdByNome('DUCATI'),
-            modelo_id: compraModeloId || null,
-            ano: compraAno || null,
-            estoque_moto_id: null,
-            estoque_tipo: null,
-            chassi: chassi.toUpperCase().replace(/\s/g, '') || null,
-          }
+        ? (origemMoto === 'estoque'
+            ? {
+                atendimento_id: atId!,
+                origem: 'estoque' as const,
+                marca_id: null,
+                modelo_id: null,
+                ano: null,
+                estoque_moto_id: estoqueMotoId || null,
+                estoque_tipo: '0km' as const,
+                chassi: null,
+              }
+            : {
+                atendimento_id: atId!,
+                origem: 'externo' as const,
+                marca_id: compraMarcaId || marcaIdByNome('DUCATI'),
+                modelo_id: compraModeloId || null,
+                ano: compraAno || null,
+                estoque_moto_id: null,
+                estoque_tipo: null,
+                chassi: chassi.toUpperCase().replace(/\s/g, '') || null,
+              })
         : {
             atendimento_id: atId!,
             origem: origemMoto,

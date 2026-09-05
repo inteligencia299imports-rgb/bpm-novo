@@ -694,7 +694,14 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                             </div>
                           ) : (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                            {estItem.placa && (
+                            {estItem.fonte === '0km' ? (
+                              estItem.chassi && (
+                                <>
+                                  <span className="text-muted-foreground">Chassi</span>
+                                  <span className="font-medium text-foreground">{estItem.chassi}</span>
+                                </>
+                              )
+                            ) : estItem.placa && (
                               <>
                                 <span className="text-muted-foreground">Placa</span>
                                 <span className="font-medium text-foreground">{estItem.placa.replace(/-/g, '')}</span>
@@ -712,7 +719,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                                 <span className="text-foreground">{estItem.categoria}</span>
                               </>
                             )}
-                            {estItem.km && (
+                            {estItem.fonte !== '0km' && estItem.km && (
                               <>
                                 <span className="text-muted-foreground">KM</span>
                                 <span className="text-foreground">{estItem.km}</span>
