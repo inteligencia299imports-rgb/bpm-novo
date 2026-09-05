@@ -15,7 +15,7 @@ import { Ban, Loader2 } from 'lucide-react';
 interface NfeLike {
   nfe: { status?: string | null; numero?: string | null; cancelamento_justificativa?: string | null } | null;
   loading: boolean;
-  cancelar: (justificativa: string) => Promise<boolean>;
+  cancelar: (justificativa: string) => Promise<string | null>;
 }
 
 const MIN = 15;
@@ -24,6 +24,7 @@ const MAX = 255;
 const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe, className }) => {
   const [open, setOpen] = useState(false);
   const [texto, setTexto] = useState('');
+  const [erro, setErro] = useState<string | null>(null);
   const status = nfe.nfe?.status;
 
   if (status === 'cancelada') {
@@ -44,8 +45,10 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
   const valido = len >= MIN && len <= MAX;
 
   const confirmar = async () => {
-    const ok = await nfe.cancelar(texto.trim());
-    if (ok) { setOpen(false); setTexto(''); }
+    setErro(null);
+    const err = await nfe.cancelar(texto.trim());
+    if (err) setErro(err);
+    else { setOpen(false); setTexto(''); }
   };
 
   return (
@@ -59,7 +62,7 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
         <Ban className="h-4 w-4" /> Cancelar NF-e
       </Button>
 
-      <Dialog open={open} onOpenChange={(v) => { if (!v) setTexto(''); setOpen(v); }}>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) { setTexto(''); setErro(null); } setOpen(v); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Cancelar NF-e {nfe.nfe?.numero ? `nº ${nfe.nfe.numero}` : ''}</DialogTitle>
@@ -80,6 +83,11 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
             <p className={`text-[11px] ${valido ? 'text-muted-foreground' : 'text-destructive'}`}>
               {len}/{MAX} {len < MIN ? `— faltam ${MIN - len} caractere(s)` : ''}
             </p>
+            {erro && (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive whitespace-pre-wrap">
+                {erro}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setOpen(false); setTexto(''); }} disabled={nfe.loading}>

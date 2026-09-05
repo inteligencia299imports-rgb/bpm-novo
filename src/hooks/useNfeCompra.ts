@@ -86,18 +86,20 @@ export function useNfeCompra(
     }
   }, [invoke, carregar]);
 
-  const cancelar = useCallback(async (justificativa: string) => {
+  /** Retorna `null` em sucesso, ou a mensagem de erro (também mostrada em toast). */
+  const cancelar = useCallback(async (justificativa: string): Promise<string | null> => {
     setLoading(true);
     try {
       const res = await invoke('cancelar', { justificativa });
       if (res.nfe) setNfe(res.nfe);
       toast.success('NF-e cancelada na SEFAZ.');
       if (res.aviso) toast.warning(res.aviso);
-      return true;
+      return null;
     } catch (e: any) {
-      toast.error(e.message);
+      const msg = e?.message || 'Falha ao cancelar a NF-e';
+      toast.error(msg);
       await carregar();
-      return false;
+      return msg;
     } finally {
       setLoading(false);
     }
