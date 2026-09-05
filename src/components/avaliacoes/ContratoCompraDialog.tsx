@@ -115,6 +115,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   const [cpfCnpj, setCpfCnpj] = useState('');
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [clienteRecord, setClienteRecord] = useState<any | null>(null);
+  // Valores do contrato de VENDA do mesmo atendimento (quando é troca) — usado
+  // pra decidir se a loja fica devendo pro cliente (aí exige dados bancários).
+  const [vendaValorInfo, setVendaValorInfo] = useState<{ valor_venda: number | null; valor_fechamento: number | null } | null>(null);
   const [custosCliente, setCustosCliente] = useState(0);
   const [editandoCliente, setEditandoCliente] = useState(false);
 
@@ -153,12 +156,11 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       // Buscar contratos vinculados ao atendimento (pode haver de venda também),
       // pegamos o que tem observação 'CONTRATO_COMPRA' nas observacoes_internas marker,
       // ou criamos um novo. Para diferenciar do contrato de venda, usamos um marcador na coluna ipva_tipo='COMPRA'.
-      const [{ data: contratosList }, { data: histGerado }, { data: atFresh }, { data: custosData }] = await Promise.all([
+      const [{ data: contratosList }, { data: histGerado }, { data: atFresh }, { data: custosData }, { data: estNova }, { data: estSemi }] = await Promise.all([
         supabase
           .from('contratos')
           .select('*')
-          .eq('atendimento_id', atendimentoId)
-          .eq('ipva_tipo', 'COMPRA'),
+          .eq('atendimento_id', atendimentoId),
         supabase
           .from('status_history')
           .select('id')
@@ -168,6 +170,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
           .limit(1),
         supabase.from('atendimentos_motos').select('cliente_id, loja_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))').eq('id', atendimentoId).maybeSingle(),
         supabase.from('custos_oficina').select('responsavel, valor_previsto, valor_executado').eq('avaliacao_id', avaliacao.id),
+        supabase.from('estoque_motos_novas').select('valor_venda').eq('atendimento_venda_id', atendimentoId).maybeSingle(),
+        supabase.from('estoque_motos').select('valor_venda').eq('atendimento_venda_id', atendimentoId).maybeSingle(),
       ]);
 
       setCustosCliente(
@@ -181,7 +185,17 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       setClienteId((atFresh as any)?.cliente_id ?? null);
       setClienteRecord((atFresh as any)?.cliente ?? null);
 
-      const contrato = contratosList && contratosList.length > 0 ? contratosList[0] : null;
+      const contratosAll = (contratosList || []) as any[];
+      const contrato = contratosAll.find((c) => (c.ipva_tipo ?? '') === 'COMPRA') ?? null;
+      const contratoVenda = contratosAll.find((c) => (c.ipva_tipo ?? '') !== 'COMPRA') ?? null;
+      // Valor da moto vendida (só existe se houve venda no atendimento = é troca).
+      // valor_venda mora no estoque, não no contrato; o fechamento da troca vem do
+      // contrato de venda ou da própria avaliação.
+      const valorVendaMoto = Number((estNova as any)?.valor_venda ?? (estSemi as any)?.valor_venda ?? 0);
+      const valorFechamentoTroca = Number(contratoVenda?.valor_fechamento ?? (avaliacao as any).valor_fechamento ?? 0);
+      setVendaValorInfo(
+        valorVendaMoto > 0 ? { valor_venda: valorVendaMoto, valor_fechamento: valorFechamentoTroca } : null,
+      );
       const atFreshCpf = (atFresh as any)?.cliente?.cpf_cnpj;
 
       // Empresas vinculadas à loja do atendimento (loja_empresas.id = atendimento.loja_id).
@@ -465,9 +479,14 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   // Resumo do cliente (quando o cadastro está completo)
   const cli = clienteRecord;
   const cliEndereco = cli?.clientes_fornecedores_enderecos?.[0] || null;
-  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco);
-  // Compra: a loja sempre paga o vendedor -> dados bancários sempre exigidos.
-  const pendenciasNf = pendenciasCadastroCliente(cli, cliEndereco, { exigirBancarios: true });
+  // Compra pura (sem contrato de venda no atendimento): a loja paga o vendedor
+  // -> dados bancários obrigatórios. Troca (há contrato de venda): só obrigatórios
+  // se a loja fica devendo pro cliente, ou seja, o valor de fechamento da moto
+  // que entra é maior que o valor da moto vendida.
+  const exigirBancarios = !vendaValorInfo
+    || Number(vendaValorInfo.valor_fechamento ?? 0) > Number(vendaValorInfo.valor_venda ?? 0);
+  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco, { exigirBancarios });
+  const pendenciasNf = pendenciasCadastroCliente(cli, cliEndereco, { exigirBancarios });
   const nfSemPendencias = semPendencias(pendenciasNf);
   const fmtTelefone = (v: string | null | undefined) => {
     const d = (v || '').replace(/\D/g, '');
@@ -673,7 +692,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                 </CardContent>
               </Card>
 
-              {/* Card: Dados Bancários */}
+              {/* Card: Dados Bancários — só quando a loja paga o cliente/vendedor */}
+              {exigirBancarios && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
@@ -692,6 +712,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                   <InfoDisplay label="CPF/CNPJ do Favorecido" value={cli?.cpf_cnpj_favorecido ? formatCpfCnpj(cli.cpf_cnpj_favorecido) : undefined} />
                 </CardContent>
               </Card>
+              )}
             </>
           )}
 
