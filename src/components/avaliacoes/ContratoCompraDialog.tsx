@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import ClienteForm from '@/components/clientes/ClienteForm';
-import { cadastroClienteCompleto } from '@/lib/clienteCadastro';
+import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
+import PendenciaTag from '@/components/shared/PendenciaTag';
 import { Badge } from '@/components/ui/badge';
 import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, ExternalLink, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -465,6 +466,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   const cli = clienteRecord;
   const cliEndereco = cli?.clientes_fornecedores_enderecos?.[0] || null;
   const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco);
+  // Compra: a loja sempre paga o vendedor -> dados bancários sempre exigidos.
+  const pendenciasNf = pendenciasCadastroCliente(cli, cliEndereco, { exigirBancarios: true });
+  const nfSemPendencias = semPendencias(pendenciasNf);
   const fmtTelefone = (v: string | null | undefined) => {
     const d = (v || '').replace(/\D/g, '');
     if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
@@ -606,8 +610,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
           {/* Card: Dados do Cliente */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
+              <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
+                {ehNfe && <PendenciaTag itens={pendenciasNf.cliente} className="ml-auto" />}
                 {clienteId && cadastroCompleto && !editandoCliente && !soLeitura && (
                   <Button
                     variant="ghost"
@@ -645,13 +650,14 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             </CardContent>
           </Card>
 
-          {clienteId && cadastroCompleto && !editandoCliente && (
+          {clienteId && !editandoCliente && (cadastroCompleto || ehNfe) && (
             <>
-              {/* Card: Endereço */}
+              {/* Card: Endereço — na emissão de NF-e fica sempre visível */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                     <MapPin className="h-4 w-4 text-primary" /> Endereço
+                    {ehNfe && <PendenciaTag itens={pendenciasNf.endereco} className="ml-auto" />}
                   </CardTitle>
                   <Separator className="mt-2" />
                 </CardHeader>
@@ -670,8 +676,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               {/* Card: Dados Bancários */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                     <Landmark className="h-4 w-4 text-primary" /> Dados Bancários
+                    {ehNfe && <PendenciaTag itens={pendenciasNf.bancario} className="ml-auto" />}
                   </CardTitle>
                   <Separator className="mt-2" />
                 </CardHeader>
@@ -852,16 +859,18 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                     <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
                   </Button>
                   {(() => {
-                    const disabled = !podeEmitirNfe || nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || !valorQuitacao?.trim();
+                    const disabled = !podeEmitirNfe || nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || !valorQuitacao?.trim() || !nfSemPendencias;
                     const title = !empresaId
                       ? 'Selecione a empresa emitente'
                       : parseCurrencyInput(nfeValor) <= 0
                         ? 'Informe o valor da NF-e'
                         : !valorQuitacao?.trim()
                           ? 'Valor de Quitação é obrigatório no contrato (informe 0 se não houver)'
-                          : podeEmitirNfe
-                            ? undefined
-                            : 'Disponível após aprovação, contrato gerado e consulta realizada';
+                          : !nfSemPendencias
+                            ? 'Cadastro do cliente incompleto — resolva as pendências marcadas nos cards acima'
+                            : podeEmitirNfe
+                              ? undefined
+                              : 'Disponível após aprovação, contrato gerado e consulta realizada';
                     return (
                       <>
                         {(!nfeJaEmitida || podeReemitirHomolog) && !nfe.pendente && (

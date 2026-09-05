@@ -20,7 +20,8 @@ import { generateContratoPdf, type ContratoPdfData } from '@/lib/generateContrat
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { useAuth } from '@/contexts/AuthContext';
 import ClienteForm from '@/components/clientes/ClienteForm';
-import { cadastroClienteCompleto } from '@/lib/clienteCadastro';
+import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
+import PendenciaTag from '@/components/shared/PendenciaTag';
 
 interface Props {
   open: boolean;
@@ -675,6 +676,9 @@ const ContratoDialog: React.FC<Props> = ({
   const exigirBancarios = hasTroca
     && parseCurrencyInput(valorFechamento) > parseCurrencyInput(valorVenda);
   const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco, { exigirBancarios });
+  // Pendências de cadastro para emissão de NF-e, por card. Só usadas quando ehNfe.
+  const pendenciasNf = pendenciasCadastroCliente(cli, cliEndereco, { exigirBancarios });
+  const nfSemPendencias = semPendencias(pendenciasNf);
   const fmtTelefone = (v: string | null | undefined) => {
     const d = (v || '').replace(/\D/g, '');
     if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
@@ -922,8 +926,9 @@ const ContratoDialog: React.FC<Props> = ({
               {/* Card: Dados do Cliente */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
+                  <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                     <User className="h-4 w-4 text-primary" /> Dados do Cliente
+                    {ehNfe && <PendenciaTag itens={pendenciasNf.cliente} className="ml-auto" />}
                     {clienteId && cadastroCompleto && !editandoCliente && !soLeitura && (
                       <Button
                         variant="ghost"
@@ -962,13 +967,14 @@ const ContratoDialog: React.FC<Props> = ({
                 </CardContent>
               </Card>
 
-              {clienteId && cadastroCompleto && !editandoCliente && (
+              {clienteId && !editandoCliente && (cadastroCompleto || ehNfe) && (
                 <>
-                  {/* Card: Endereço */}
+                  {/* Card: Endereço — na emissão de NF-e fica sempre visível */}
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
+                      <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                         <MapPin className="h-4 w-4 text-primary" /> Endereço
+                        {ehNfe && <PendenciaTag itens={pendenciasNf.endereco} className="ml-auto" />}
                       </CardTitle>
                       <Separator className="mt-2" />
                     </CardHeader>
@@ -984,12 +990,13 @@ const ContratoDialog: React.FC<Props> = ({
                     </CardContent>
                   </Card>
 
-                  {/* Card: Dados Bancários (só quando há troca — a loja paga o cliente) */}
+                  {/* Card: Dados Bancários — troca em que a loja paga o cliente */}
                   {exigirBancarios && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
+                      <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                         <Landmark className="h-4 w-4 text-primary" /> Dados Bancários
+                        {ehNfe && <PendenciaTag itens={pendenciasNf.bancario} className="ml-auto" />}
                       </CardTitle>
                       <Separator className="mt-2" />
                     </CardHeader>
@@ -1479,12 +1486,14 @@ const ContratoDialog: React.FC<Props> = ({
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
               {(() => {
-                const disabled = nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim());
+                const disabled = nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim()) || !nfSemPendencias;
                 const title = !empresaId
                   ? 'Nenhuma empresa vinculada à loja do atendimento'
                   : hasTroca && !valorQuitacao?.trim()
                     ? 'Valor de Quitação da moto do cliente é obrigatório — defina na avaliação (0 se não houver)'
-                    : undefined;
+                    : !nfSemPendencias
+                      ? 'Cadastro do cliente incompleto — resolva as pendências marcadas nos cards acima'
+                      : undefined;
                 return (
                   <>
                     {(!nfeJaEmitida || podeReemitirHomolog) && !nfe.pendente && (
