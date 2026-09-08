@@ -986,14 +986,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           </div>
                         )}
                         {atendimento.loja?.toLowerCase().startsWith('ducati') ? (
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                            {(moto.chassi || estItem.chassi) && (
-                              <>
-                                <span className="text-muted-foreground">Chassi</span>
-                                <span className="font-medium text-foreground">{moto.chassi || estItem.chassi}</span>
-                              </>
-                            )}
-                          </div>
+                          (moto.chassi || estItem.chassi) && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="text-muted-foreground">Chassi</span>
+                              <span className="font-medium text-foreground">{moto.chassi || estItem.chassi}</span>
+                            </div>
+                          )
                         ) : (
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                           {estItem.fonte === '0km' ? (
