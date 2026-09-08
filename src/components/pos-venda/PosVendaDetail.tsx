@@ -680,10 +680,10 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                           </div>
                           {item.loja?.toLowerCase().startsWith('ducati') ? (
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                              {mi.chassi && (
+                              {(mi.chassi || estItem.chassi) && (
                                 <>
                                   <span className="text-muted-foreground">Chassi</span>
-                                  <span className="font-medium text-foreground">{mi.chassi}</span>
+                                  <span className="font-medium text-foreground">{mi.chassi || estItem.chassi}</span>
                                 </>
                               )}
                             </div>
