@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { SEXOS, UFS } from '@/types/crm';
 import { formatPersonName, formatPersonNameInput } from '@/lib/utils';
-import { processarCnhAnexada, upsertCnhDoc } from '@/lib/cnhAnexo';
+import { processarCnhAnexada, upsertCnhDoc, docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket } from '@/lib/cnhAnexo';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 
 interface Props {
@@ -66,8 +66,10 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
       const [{ data: cliente }, { data: endereco }, { data: docs }] = await Promise.all([
         supabase.from('clientes_fornecedores').select('*').eq('id', clienteId).maybeSingle(),
         supabase.from('clientes_fornecedores_enderecos').select('*').eq('cliente_fornecedor_id', clienteId).eq('tipo', 'fiscal').maybeSingle(),
-        supabase.from('clientes_fornecedores_documentos').select('*').eq('cliente_fornecedor_id', clienteId).eq('tipo_documento', 'cnh').maybeSingle(),
+        supabase.from('clientes_fornecedores_documentos').select('*').eq('cliente_fornecedor_id', clienteId).in('tipo_documento', ['cnh', 'cartao_cnpj']),
       ]);
+      const pjCliente = (cliente?.cpf_cnpj || '').replace(/\D/g, '').length > 11 || cliente?.tipo_pessoa === 'juridica';
+      const docIdent = ((docs as any[]) || []).find((d) => d.tipo_documento === (pjCliente ? 'cartao_cnpj' : 'cnh')) || null;
       setNome(cliente ? formatPersonName(cliente.nome_razao_social || '') : '');
       setTelefone(cliente?.telefone ? formatPhone(cliente.telefone.replace(/\D/g, '')) : '');
       setSexo(cliente?.sexo || '');
@@ -82,8 +84,8 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
       setBairro(endereco?.bairro || '');
       setCidade(endereco?.cidade || '');
       setUf(endereco?.uf || '');
-      setCnhDocId(docs?.id || null);
-      setCnhUrl(docs?.arquivo_url || null);
+      setCnhDocId(docIdent?.id || null);
+      setCnhUrl(docIdent?.arquivo_url || null);
       setLoading(false);
     };
     load();
@@ -159,17 +161,20 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
     onSaved?.();
   };
 
+  const pj = cpfCnpj.replace(/\D/g, '').length > 11;
+
   const handleCnhUploaded = async (url: string) => {
     if (!clienteId) return;
     const prevUrl = cnhUrl;
-    const docId = await upsertCnhDoc(clienteId, url);
+    const docId = await upsertCnhDoc(clienteId, url, docIdentificacaoTipo(pj));
     setCnhDocId(docId);
     setCnhUrl(url);
 
     const { aceita, resultado } = await processarCnhAnexada({
       clienteId,
       url,
-      bucketPath: `docs/${clienteId}/cnh`,
+      ehPessoaJuridica: pj,
+      bucketPath: `docs/${clienteId}/${docIdentificacaoBucket(pj)}`,
       rollback: async () => {
         if (docId && !prevUrl) {
           await supabase.from('clientes_fornecedores_documentos').delete().eq('id', docId);
@@ -282,9 +287,9 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
               <Separator />
               <p className="text-xs font-medium text-muted-foreground pt-3 pb-2">Documentos</p>
               <DocumentUpload
-                label="CNH"
+                label={docIdentificacaoLabel(pj)}
                 currentUrl={cnhUrl}
-                bucketPath={`docs/${clienteId}/cnh`}
+                bucketPath={`docs/${clienteId}/${docIdentificacaoBucket(pj)}`}
                 onUploaded={handleCnhUploaded}
                 onRemoved={handleCnhRemoved}
                 deferPreview

@@ -13,7 +13,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
-import { processarCnhAnexada, upsertCnhDoc } from '@/lib/cnhAnexo';
+import { processarCnhAnexada, upsertCnhDoc, docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket } from '@/lib/cnhAnexo';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModeloList } from '@/lib/marcaModelo';
@@ -143,6 +143,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
 
   const sit = SITUACOES_SHOWROOM.find(s => s.value === atendimento.situacao);
   const int = INTERESSES.find(i => i.value === atendimento.interesse);
+  // Pessoa jurídica: no lugar da CNH, exige o Cartão CNPJ.
+  const clientePj = ((atendimento.cliente?.cpf_cnpj || '').replace(/\D/g, '').length > 11)
+    || (atendimento.cliente as any)?.tipo_pessoa === 'juridica';
+  const docIdentLabel = docIdentificacaoLabel(clientePj);
   // Troca: enquanto a aquisição da moto do cliente não for aprovada no Pós-Compra,
   // contrato e entrega do lado da venda ficam bloqueados.
   const aguardandoAprovacaoAquisicao = Object.values(avaliacoes).some((av: any) => av?.aprovacao_status === 'aguardando');
@@ -151,7 +155,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     const fetchRelated = async () => {
       setLoading(true);
 
-      supabase.from('clientes_fornecedores_documentos').select('id, arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
+      supabase.from('clientes_fornecedores_documentos').select('id, arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', docIdentificacaoTipo(clientePj)).maybeSingle()
         .then(({ data }) => { setCnhUrl(data?.arquivo_url || null); setCnhDocId(data?.id || null); });
 
       // Fetch showroom history immediately (no dependency on motoIds)
@@ -307,14 +311,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const handleCnhUploaded = async (url: string) => {
     if (!atendimento.cliente_id) return;
     const prevUrl = cnhUrl;
-    const docId = await upsertCnhDoc(atendimento.cliente_id, url);
+    const docId = await upsertCnhDoc(atendimento.cliente_id, url, docIdentificacaoTipo(clientePj));
     setCnhDocId(docId);
     setCnhUrl(url);
 
     const { aceita, resultado } = await processarCnhAnexada({
       clienteId: atendimento.cliente_id,
       url,
-      bucketPath: `docs/${atendimento.cliente_id}/cnh`,
+      ehPessoaJuridica: clientePj,
+      bucketPath: `docs/${atendimento.cliente_id}/${docIdentificacaoBucket(clientePj)}`,
       rollback: async () => {
         if (docId && !prevUrl) {
           await supabase.from('clientes_fornecedores_documentos').delete().eq('id', docId);
@@ -625,12 +630,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           .from('clientes_fornecedores_documentos')
           .select('id')
           .eq('cliente_fornecedor_id', atendimento.cliente_id)
-          .eq('tipo_documento', 'cnh')
+          .eq('tipo_documento', docIdentificacaoTipo(clientePj))
           .maybeSingle();
         temCnh = !!cnhDoc;
       }
       if (!temCnh) {
-        toast.error('Anexe a CNH do cliente antes de registrar o sinal ou a venda.');
+        toast.error(`Anexe ${clientePj ? 'o Cartão CNPJ' : 'a CNH'} do cliente antes de registrar o sinal ou a venda.`);
         return;
       }
     }
@@ -898,10 +903,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <>
                   <Separator className="mt-auto" />
                   <DocumentUpload
-                    label="CNH"
+                    label={docIdentLabel}
                     className="w-1/4"
                     currentUrl={cnhUrl}
-                    bucketPath={`docs/${atendimento.cliente_id}/cnh`}
+                    bucketPath={`docs/${atendimento.cliente_id}/${docIdentificacaoBucket(clientePj)}`}
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
                     deferPreview
@@ -1385,9 +1390,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     style={{ borderColor: btn.color, color: btn.color }}
                     onClick={async () => {
                       if (btn.value === 'sinal' || btn.value === 'vendido') {
-                        // CNH do cliente é obrigatória para registrar sinal ou venda de moto
+                        // CNH (ou Cartão CNPJ p/ PJ) do cliente é obrigatória p/ registrar sinal ou venda
                         if (!cnhUrl) {
-                          toast.error('Anexe a CNH do cliente antes de registrar o sinal ou a venda.');
+                          toast.error(`Anexe ${clientePj ? 'o Cartão CNPJ' : 'a CNH'} do cliente antes de registrar o sinal ou a venda.`);
                           return;
                         }
                         // Sinal requires all motos avaliadas when it's a trade
