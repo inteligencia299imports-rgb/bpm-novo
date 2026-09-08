@@ -536,6 +536,18 @@ Deno.serve(async (req) => {
           cilindrada: en.cilindrada, cor: en.cor, placa: en.placa,
           chassi: en.chassi, renavam: en.renavam, ncm: en.ncm, valor: en.valor,
           numero_nf_entrada: en.numero_nf_entrada ?? null,
+          // Specs do grupo estruturado veicProd (veículo novo).
+          potencia_motor: en.potencia_motor ?? null,
+          peso_liquido: en.peso_liquido ?? null,
+          peso_bruto: en.peso_bruto ?? null,
+          numero_motor: en.numero_motor ?? null,
+          codigo_cor_fabricante: en.codigo_cor_fabricante ?? null,
+          codigo_cor_denatran: en.codigo_cor_denatran ?? null,
+          codigo_marca_modelo_denatran: en.codigo_marca_modelo_denatran ?? null,
+          // ICMS-ST retido anteriormente (grupo <ICMS60> — transcrito da NF de entrada).
+          icms_st_bc_retido: en.icms_st_bc_retido ?? null,
+          icms_st_valor_substituto: en.icms_st_valor_substituto ?? null,
+          icms_st_valor_retido: en.icms_st_valor_retido ?? null,
         },
       };
     } else {
@@ -1030,8 +1042,8 @@ Deno.serve(async (req) => {
       // cadastrado direto no estoque_motos_novas (numero_nf_entrada).
       numero_nf_entrada: eh0km ? (mn.numero_nf_entrada ?? null) : null,
       // Grupo estruturado veicProd (veículo novo) — só 0km. Specs de potência/
-      // peso/nº do motor/códigos DENATRAN ainda não têm cadastro (pendencias
-      // §2.8); mapeadas aqui já para ativar sozinho quando existirem.
+      // peso/nº do motor/códigos DENATRAN cadastradas por unidade no estoque 0km
+      // (na maioria vindas da NF de entrada da fábrica).
       zero_km: eh0km,
       potencia_motor: eh0km ? ((mn as any).potencia_motor ?? null) : null,
       peso_liquido: eh0km ? ((mn as any).peso_liquido ?? null) : null,
@@ -1040,6 +1052,11 @@ Deno.serve(async (req) => {
       codigo_cor_fabricante: eh0km ? ((mn as any).codigo_cor_fabricante ?? null) : null,
       codigo_cor_denatran: eh0km ? ((mn as any).codigo_cor_denatran ?? null) : null,
       codigo_marca_modelo_denatran: eh0km ? ((mn as any).codigo_marca_modelo_denatran ?? null) : null,
+      // ICMS-ST retido anteriormente (grupo <ICMS60>) — transcrito da NF de
+      // entrada; sem isso o payload calcula um valor aproximado sobre a venda.
+      icms_st_bc_retido: eh0km ? ((mn as any).icms_st_bc_retido ?? null) : null,
+      icms_st_valor_substituto: eh0km ? ((mn as any).icms_st_valor_substituto ?? null) : null,
+      icms_st_valor_retido: eh0km ? ((mn as any).icms_st_valor_retido ?? null) : null,
     };
   } else {
     motoData = {

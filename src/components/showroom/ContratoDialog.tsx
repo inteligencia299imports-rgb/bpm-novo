@@ -198,6 +198,11 @@ const ContratoDialog: React.FC<Props> = ({
   const podeReemitirHomolog = nfeJaEmitida && nfe.nfe?.ambiente === 'homologacao';
   const [nfeValor, setNfeValor] = useState('');
   const [nfeObs, setNfeObs] = useState('');
+  // ICMS-ST retido anteriormente (grupo <ICMS60> da NF de venda 0km) — transcrito
+  // da NF de entrada da moto. Editável aqui e salvo em estoque_motos_novas.
+  const [stBcRetido, setStBcRetido] = useState('');
+  const [stValorSubstituto, setStValorSubstituto] = useState('');
+  const [stValorRetido, setStValorRetido] = useState('');
 
   // Empresa emitente / vendedora (restrita à empresa vinculada à loja do atendimento).
   const [empresasLoja, setEmpresasLoja] = useState<any[]>([]);
@@ -314,6 +319,21 @@ const ContratoDialog: React.FC<Props> = ({
 
       setFormasPagOpcoes((formasOpts as any[]) || []);
       setAgregadoOpcoes(((agregadosOpts as any[]) || []).map((a) => ({ id: a.id, descricao: a.descricao, valor: Number(a.valor) || 0, empresa_id: a.empresa_id })));
+
+      // ICMS-ST retido anteriormente — só moto 0km; prefill de estoque_motos_novas.
+      if (eh0kmVenda && motoIntNfe?.estoque_moto_id) {
+        const { data: stRow } = await supabase
+          .from('estoque_motos_novas')
+          .select('icms_st_bc_retido, icms_st_valor_substituto, icms_st_valor_retido')
+          .eq('id', motoIntNfe.estoque_moto_id)
+          .maybeSingle();
+        const fc = (v: any) => (v != null ? formatCurrencyInput(String(Math.round(Number(v) * 100))) : '');
+        setStBcRetido(fc((stRow as any)?.icms_st_bc_retido));
+        setStValorSubstituto(fc((stRow as any)?.icms_st_valor_substituto));
+        setStValorRetido(fc((stRow as any)?.icms_st_valor_retido));
+      } else {
+        setStBcRetido(''); setStValorSubstituto(''); setStValorRetido('');
+      }
 
       type InstRow = {
         id: string;
@@ -441,6 +461,31 @@ const ContratoDialog: React.FC<Props> = ({
       .join(' ');
     if (dasFormas) setNfeObs(dasFormas.toUpperCase());
   }, [open, ehNfe, formasPagamento, nfeObs]);
+
+  // Emite a NF-e de venda; antes, para moto 0km, grava em estoque_motos_novas os
+  // valores de ICMS-ST retido anteriormente (a Edge Function lê do banco).
+  const handleEmitirNf = async (ambiente: 'homologacao' | 'producao') => {
+    if (eh0kmVenda && motoIntNfe?.estoque_moto_id) {
+      const n = (s: string) => {
+        const v = parseCurrencyInput(s);
+        return v > 0 ? v : null;
+      };
+      await supabase
+        .from('estoque_motos_novas')
+        .update({
+          icms_st_bc_retido: n(stBcRetido),
+          icms_st_valor_substituto: n(stValorSubstituto),
+          icms_st_valor_retido: n(stValorRetido),
+        })
+        .eq('id', motoIntNfe.estoque_moto_id);
+    }
+    await nfe.emitir({
+      valor: parseCurrencyInput(nfeValor),
+      observacoes: nfeObs || undefined,
+      empresa_id: empresaId || undefined,
+      ambiente,
+    });
+  };
 
   const resetPagamentoForm = () => {
     setNovaPagamentoTipo('');
@@ -1496,6 +1541,43 @@ const ContratoDialog: React.FC<Props> = ({
                             placeholder="INFORMAÇÕES COMPLEMENTARES..."
                           />
                         </div>
+                        {eh0kmVenda && (
+                          <div className="space-y-2 rounded-md border border-dashed p-3">
+                            <p className="text-xs font-medium text-muted-foreground">
+                              ICMS-ST retido anteriormente (grupo &lt;ICMS60&gt;) — transcreva da NF-e de entrada da moto.
+                              Em branco, o sistema calcula um valor aproximado sobre o valor da venda.
+                            </p>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                              <div className="space-y-1.5">
+                                <Label className="text-xs">BC ST retida (vBCSTRet)</Label>
+                                <Input
+                                  inputMode="numeric"
+                                  value={stBcRetido}
+                                  onChange={(e) => setStBcRetido(formatCurrencyInput(e.target.value))}
+                                  placeholder="0,00"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs">ICMS do substituto (vICMSSubstituto)</Label>
+                                <Input
+                                  inputMode="numeric"
+                                  value={stValorSubstituto}
+                                  onChange={(e) => setStValorSubstituto(formatCurrencyInput(e.target.value))}
+                                  placeholder="0,00"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-xs">ICMS-ST retido (vICMSSTRet)</Label>
+                                <Input
+                                  inputMode="numeric"
+                                  value={stValorRetido}
+                                  onChange={(e) => setStValorRetido(formatCurrencyInput(e.target.value))}
+                                  placeholder="0,00"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
                   </CardContent>
@@ -1549,7 +1631,7 @@ const ContratoDialog: React.FC<Props> = ({
                         className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
                         disabled={disabled}
                         title={title}
-                        onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined, empresa_id: empresaId || undefined, ambiente: 'homologacao' })}
+                        onClick={() => handleEmitirNf('homologacao')}
                       >
                         {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                         {nfe.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
@@ -1560,7 +1642,7 @@ const ContratoDialog: React.FC<Props> = ({
                         className="gap-1.5"
                         disabled={disabled}
                         title={title}
-                        onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: nfeObs || undefined, empresa_id: empresaId || undefined, ambiente: 'producao' })}
+                        onClick={() => handleEmitirNf('producao')}
                       >
                         <FileText className="h-4 w-4" /> NF-e (Produção)
                       </Button>

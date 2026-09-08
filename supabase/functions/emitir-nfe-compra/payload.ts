@@ -56,6 +56,15 @@ export interface DadosMoto {
   codigo_cor_denatran?: string | null;
   /** cMod — código Marca/Modelo da tabela DENATRAN. */
   codigo_marca_modelo_denatran?: string | null;
+  // --- ICMS-ST retido anteriormente (grupo <ICMS60> da NF de venda 0km) ---
+  // Transcritos da NF-e de ENTRADA da moto; sem eles o payload calcula um valor
+  // aproximado sobre o preço de venda. ---
+  /** vBCSTRet — base da ST retida anteriormente. */
+  icms_st_bc_retido?: string | number | null;
+  /** vICMSSubstituto — ICMS próprio do substituto na operação anterior. */
+  icms_st_valor_substituto?: string | number | null;
+  /** vICMSSTRet — valor do ICMS-ST retido anteriormente. */
+  icms_st_valor_retido?: string | number | null;
 }
 
 /** Espelha naturezas_operacao. */
@@ -319,21 +328,25 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   }
 
   // --- Grupo "ICMS-ST retido anteriormente" (CST 60) ---------------------
-  // No XSD (TICMS60) vem ANTES do grupo "ICMS Efetivo". A NF-e de referência
-  // (Ducati SC autorizada) traz vBCSTRet/pST/vICMSSubstituto/vICMSSTRet com os
-  // valores reais da retenção lá na NOTA DE ENTRADA da fábrica — dados que hoje
-  // não capturamos (só o nº da NF de entrada). Enviamos o grupo com a alíquota
-  // suportada pelo consumidor final (pST, da regra de ICMS) e a ST calculada
-  // sobre o valor da venda; vICMSSubstituto (ICMS próprio do substituto na
-  // origem) fica 0 por não termos a origem. Sem pST cadastrado, não envia o
-  // grupo (a nota de referência da FAG foi autorizada sem ele). Ver
-  // docs-fiscal-299/pendencias.md §2.8.
+  // No XSD (TICMS60) vem ANTES do grupo "ICMS Efetivo". Os valores reais
+  // (vBCSTRet/vICMSSubstituto/vICMSSTRet) são TRANSCRITOS da NOTA DE ENTRADA da
+  // moto (nota da fábrica/importador que reteve a ST) — não se calculam a partir
+  // do preço de venda. Quando o estoque 0km traz esses valores (moto.icms_st_*),
+  // enviamos fiel à NF de entrada; senão, cai no aproximado: BC = valor da
+  // venda, vICMSSubstituto = 0, vICMSSTRet = BC × pST. pST (alíquota suportada
+  // pelo consumidor final) sempre vem da regra de ICMS. Sem pST cadastrado, não
+  // envia o grupo. Ver docs-fiscal-299/pendencias.md.
   if (cstIcms === '60' && regraIcms.aliquota_suportada_consumidor_final != null) {
     const pST = Number(regraIcms.aliquota_suportada_consumidor_final);
-    item.icms_base_calculo_st_retido = valorFmt;
+    const num = (v: unknown) => (v == null || v === '' ? null : Number(v));
+    const bcRet = num(moto.icms_st_bc_retido);
+    const vSubst = num(moto.icms_st_valor_substituto);
+    const vRet = num(moto.icms_st_valor_retido);
+    const fiel = bcRet != null && vSubst != null && vRet != null;
+    item.icms_base_calculo_st_retido = fiel ? r2(bcRet!) : valorFmt;
     item.icms_aliquota_suportada_consumidor_final = pST;
-    item.icms_valor_substituto = 0;
-    item.icms_valor_st_retido = r2(valorFmt * (pST / 100));
+    item.icms_valor_substituto = fiel ? r2(vSubst!) : 0;
+    item.icms_valor_st_retido = fiel ? r2(vRet!) : r2(valorFmt * (pST / 100));
   }
 
   // --- Grupo "ICMS Efetivo" (CST 60 / CSOSN 500) --------------------------
