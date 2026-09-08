@@ -1160,6 +1160,19 @@ Deno.serve(async (req) => {
     );
   }
 
+  // Venda 0km com CST 60 em PRODUÇÃO: exige os valores de ICMS-ST retido
+  // anteriormente (transcritos da NF de entrada da moto). Sem eles a NF sairia
+  // com valor aproximado sobre a venda — não fiel.
+  if (ehVenda && ehVenda0km && ambiente === 'producao' && String(regraIcms?.situacao_tributaria) === '60') {
+    const mn = estoqueMoto?.moto_nova ?? {};
+    const n = (v: unknown) => Number(v ?? 0);
+    if (n(mn.icms_st_bc_retido) <= 0 || n(mn.icms_st_valor_substituto) <= 0 || n(mn.icms_st_valor_retido) <= 0) {
+      return jsonResponse({
+        error: 'Preencha os valores de ICMS-ST retido anteriormente (BC ST retida, ICMS do substituto, ICMS-ST retido), da NF-e de entrada da moto, antes de emitir em produção.',
+      }, 409);
+    }
+  }
+
   // Specs da moto: entrada vem da avaliacao; venda vem do estoque (avaliacao ou moto_nova).
   let motoData: any;
   if (ehVenda) {

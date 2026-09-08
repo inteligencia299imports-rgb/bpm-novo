@@ -1593,6 +1593,12 @@ const ContratoDialog: React.FC<Props> = ({
               </Button>
               {(() => {
                 const disabled = nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim()) || !nfSemPendencias;
+                // Moto 0km: produção exige os valores de ICMS-ST retido (da NF de entrada).
+                const stRetidoOk = !eh0kmVenda || (
+                  parseCurrencyInput(stBcRetido) > 0 &&
+                  parseCurrencyInput(stValorSubstituto) > 0 &&
+                  parseCurrencyInput(stValorRetido) > 0
+                );
                 const title = !empresaId
                   ? 'Nenhuma empresa vinculada à loja do atendimento'
                   : hasTroca && !valorQuitacao?.trim()
@@ -1616,10 +1622,12 @@ const ContratoDialog: React.FC<Props> = ({
                     {podeReemitirHomolog && !nfe.pendente && (
                       <Button
                         className="gap-1.5"
-                        disabled={disabled || (hasTroca && !trocaCompraProdOk)}
-                        title={hasTroca && !trocaCompraProdOk
-                          ? 'Emita a NF-e de compra da moto da troca em produção antes'
-                          : title}
+                        disabled={disabled || (hasTroca && !trocaCompraProdOk) || !stRetidoOk}
+                        title={!stRetidoOk
+                          ? 'Preencha os valores de ICMS-ST retido (da NF de entrada da moto) antes de emitir em produção'
+                          : hasTroca && !trocaCompraProdOk
+                            ? 'Emita a NF-e de compra da moto da troca em produção antes'
+                            : title}
                         onClick={() => handleEmitirNf('producao')}
                       >
                         <FileText className="h-4 w-4" /> NF-e (Produção)
