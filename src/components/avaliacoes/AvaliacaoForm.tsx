@@ -28,7 +28,7 @@ import DocumentUpload from '@/components/showroom/DocumentUpload';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
 import PlacaInput from '@/components/shared/PlacaInput';
-import { processarCnhAnexada, upsertCnhDoc } from '@/lib/cnhAnexo';
+import { processarCnhAnexada, upsertCnhDoc, docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket } from '@/lib/cnhAnexo';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
@@ -127,6 +127,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
   const [cnhDocId, setCnhDocId] = useState<string | null>(null);
+  const [clientePj, setClientePj] = useState(false);
+  // Pessoa jurídica: no lugar da CNH, exige o Cartão CNPJ.
+  const docIdentLabel = docIdentificacaoLabel(clientePj);
   const [crlvUrl, setCrlvUrl] = useState<string | null>(null);
   const [atpvUrl, setAtpvUrl] = useState<string | null>(null);
   const [procuracaoUrl, setProcuracaoUrl] = useState<string | null>(null);
@@ -338,7 +341,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       .from('avaliacoes')
       .select(`
         *, ${MARCA_MODELO_SELECT},
-        atendimentos_motos (id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, interesse, tipo_atendimento, origem, temperatura, created_at, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))
+        atendimentos_motos (id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, interesse, tipo_atendimento, origem, temperatura, created_at, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, data_nascimento, cpf_cnpj, tipo_pessoa, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))
       `)
       .eq('id', avaliacaoId)
       .single();
@@ -348,8 +351,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       const am = data.atendimentos_motos as any;
       setAvaliacao({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja } });
       const clienteId = (data.atendimentos_motos as any)?.cliente_id;
+      const pj = (((data.atendimentos_motos as any)?.cliente?.cpf_cnpj || '').replace(/\D/g, '').length > 11)
+        || (data.atendimentos_motos as any)?.cliente?.tipo_pessoa === 'juridica';
+      setClientePj(pj);
       if (clienteId) {
-        const { data: cnhDoc } = await supabase.from('clientes_fornecedores_documentos').select('id, arquivo_url').eq('cliente_fornecedor_id', clienteId).eq('tipo_documento', 'cnh').maybeSingle();
+        const { data: cnhDoc } = await supabase.from('clientes_fornecedores_documentos').select('id, arquivo_url').eq('cliente_fornecedor_id', clienteId).eq('tipo_documento', pj ? 'cartao_cnpj' : 'cnh').maybeSingle();
         setCnhUrl(cnhDoc?.arquivo_url || null);
         setCnhDocId(cnhDoc?.id || null);
       } else {
@@ -684,7 +690,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     // (ATPV e Procuração são opcionais — anexo disponível, não bloqueia a aquisição).
     if (tipoSelecionado !== 'consignada') {
       const faltando = [
-        !cnhUrl && 'CNH',
+        !cnhUrl && docIdentLabel,
         !crlvUrl && 'CRLV',
       ].filter(Boolean);
       if (faltando.length > 0) {
@@ -755,7 +761,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     // (CNH + CRLV + consulta; ATPV e Procuração são opcionais).
     if (newTipo === 'convertida') {
       const faltando = [
-        !cnhUrl && 'CNH',
+        !cnhUrl && docIdentLabel,
         !crlvUrl && 'CRLV',
       ].filter(Boolean);
       if (faltando.length > 0) {
@@ -877,14 +883,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const handleCnhUploaded = async (url: string) => {
     if (!at?.cliente_id) return;
     const prevUrl = cnhUrl;
-    const docId = await upsertCnhDoc(at.cliente_id, url);
+    const docId = await upsertCnhDoc(at.cliente_id, url, docIdentificacaoTipo(clientePj));
     setCnhDocId(docId);
     setCnhUrl(url);
 
     const { aceita, resultado } = await processarCnhAnexada({
       clienteId: at.cliente_id,
       url,
-      bucketPath: `docs/${at.cliente_id}/cnh`,
+      ehPessoaJuridica: clientePj,
+      bucketPath: `docs/${at.cliente_id}/${docIdentificacaoBucket(clientePj)}`,
       rollback: async () => {
         if (docId && !prevUrl) {
           await supabase.from('clientes_fornecedores_documentos').delete().eq('id', docId);
@@ -1160,10 +1167,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <>
                   <Separator className="mt-auto" />
                   <DocumentUpload
-                    label="CNH"
+                    label={docIdentLabel}
                     className="w-1/4"
                     currentUrl={cnhUrl}
-                    bucketPath={`docs/${at.cliente_id}/cnh`}
+                    bucketPath={`docs/${at.cliente_id}/${docIdentificacaoBucket(clientePj)}`}
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
                     readOnly={travado}

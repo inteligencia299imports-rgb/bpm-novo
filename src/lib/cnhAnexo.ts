@@ -31,11 +31,24 @@ export async function removerCnhDoStorage(bucketPath: string): Promise<void> {
  * mais de uma linha). O upsert é sempre seguro, não importa quem criou antes.
  * Retorna o id da linha, ou null se a gravação falhar.
  */
-export async function upsertCnhDoc(clienteId: string, url: string): Promise<string | null> {
+export type TipoDocIdentificacao = 'cnh' | 'cartao_cnpj';
+
+/** Rótulo do documento de identificação conforme o tipo de pessoa do cliente. */
+export const docIdentificacaoLabel = (pj: boolean) => (pj ? 'Cartão CNPJ' : 'CNH');
+/** `tipo_documento` em clientes_fornecedores_documentos conforme o tipo de pessoa. */
+export const docIdentificacaoTipo = (pj: boolean): TipoDocIdentificacao => (pj ? 'cartao_cnpj' : 'cnh');
+/** Sufixo do bucket path (docs/<clienteId>/<sufixo>). */
+export const docIdentificacaoBucket = (pj: boolean) => (pj ? 'cartao-cnpj' : 'cnh');
+
+export async function upsertCnhDoc(
+  clienteId: string,
+  url: string,
+  tipoDoc: TipoDocIdentificacao = 'cnh',
+): Promise<string | null> {
   const { data, error } = await supabase
     .from('clientes_fornecedores_documentos')
     .upsert(
-      { cliente_fornecedor_id: clienteId, tipo_documento: 'cnh', arquivo_url: url },
+      { cliente_fornecedor_id: clienteId, tipo_documento: tipoDoc, arquivo_url: url },
       { onConflict: 'cliente_fornecedor_id,tipo_documento' },
     )
     .select('id')
@@ -58,19 +71,22 @@ export async function processarCnhAnexada(params: {
   clienteId: string;
   url: string;
   bucketPath: string;
+  /** Cliente pessoa jurídica -> valida Cartão CNPJ (só confere, não atualiza campos). */
+  ehPessoaJuridica?: boolean;
   /** desfaz o anexo no app (limpar estado + apagar o doc row) */
   rollback: () => Promise<void>;
 }): Promise<{ aceita: boolean; resultado: CnhExtracaoResultado | null }> {
   const { clienteId, url, bucketPath, rollback } = params;
-  const toastId = toast.loading('Conferindo a CNH…');
+  const pj = !!params.ehPessoaJuridica;
+  const nomeDoc = pj ? 'Cartão CNPJ' : 'CNH';
+  const toastId = toast.loading(`Conferindo o ${nomeDoc}…`);
   try {
     const { data, error } = await supabase.functions.invoke('extrair-dados-cnh', {
-      body: { cliente_id: clienteId, url },
+      body: { cliente_id: clienteId, url, doc_tipo: pj ? 'cartao_cnpj' : 'cnh' },
     });
 
     if (error || !data) {
-      // Extração é best-effort: se a função falhar, mantém o anexo — mas avisa que não deu pra validar.
-      toast.warning('Não foi possível validar a CNH automaticamente. Anexo mantido — confira nome e CPF do cliente manualmente.', { id: toastId });
+      toast.warning(`Não foi possível validar o ${nomeDoc} automaticamente. Anexo mantido — confira o cadastro do cliente manualmente.`, { id: toastId });
       return { aceita: true, resultado: null };
     }
 
@@ -79,8 +95,14 @@ export async function processarCnhAnexada(params: {
     if (res.match === false) {
       await removerCnhDoStorage(bucketPath);
       await rollback();
-      toast.error(res.motivo || 'A CNH anexada não parece ser do cliente. Anexo removido.', { id: toastId });
+      toast.error(res.motivo || `O ${nomeDoc} anexado não parece ser do cliente. Anexo removido.`, { id: toastId });
       return { aceita: false, resultado: res };
+    }
+
+    if (pj) {
+      if (res.extraido) toast.success('Cartão CNPJ conferido — confere com o cadastro da empresa.', { id: toastId });
+      else toast.warning('Não foi possível validar o Cartão CNPJ automaticamente. Anexo mantido — confira o CNPJ do cliente manualmente.', { id: toastId });
+      return { aceita: true, resultado: res };
     }
 
     if (res.extraido) {

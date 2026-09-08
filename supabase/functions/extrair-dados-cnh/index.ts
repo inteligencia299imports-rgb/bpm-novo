@@ -204,6 +204,97 @@ async function extrairViaClaude(
   };
 }
 
+interface ValidacaoCartaoCnpj {
+  eh_cartao_cnpj: boolean;
+  tipo_documento: string | null;
+  cnpj: string | null;
+  razao_social: string | null;
+  confere_com_cliente: boolean;
+}
+
+/**
+ * Valida o "Cartão CNPJ" (Comprovante de Inscrição e de Situação Cadastral da
+ * RFB) de um cliente pessoa jurídica: só confere se o documento é mesmo um
+ * cartão CNPJ e se o CNPJ/razão social batem com o cadastro. NÃO extrai nem
+ * atualiza nada no banco.
+ */
+async function validarCartaoCnpjViaClaude(
+  fileBase64: string,
+  mediaType: string,
+  apiKey: string,
+  razaoSocial: string,
+  cnpjCadastrado: string,
+): Promise<ValidacaoCartaoCnpj> {
+  const isPdf = mediaType === 'application/pdf';
+  const contentBlock = isPdf
+    ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: fileBase64 } }
+    : { type: 'image', source: { type: 'base64', media_type: mediaType, data: fileBase64 } };
+
+  const workspaceId = Deno.env.get('ANTHROPIC_WORKSPACE_ID');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      ...(workspaceId ? { 'anthropic-workspace-id': workspaceId } : {}),
+    },
+    body: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 1024,
+      tools: [
+        {
+          name: 'registrar_validacao_cartao_cnpj',
+          description: 'Registra se o documento é um Cartão CNPJ e se pertence à empresa cadastrada.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              leitura: { type: 'string', description: 'Transcreva rótulo a rótulo o que consegue ler: "NÚMERO DE INSCRIÇÃO: ...", "NOME EMPRESARIAL: ...", "DATA DE ABERTURA: ...", "SITUAÇÃO CADASTRAL: ...". "ilegível" no que não der pra ler.' },
+              eh_cartao_cnpj: { type: 'boolean', description: 'true se é o "Comprovante de Inscrição e de Situação Cadastral" (Cartão CNPJ) da Receita Federal. false se é outro documento (contrato social, nota fiscal, RG, CNH, comprovante de endereço, etc.).' },
+              tipo_documento: { type: 'string', description: 'Quando eh_cartao_cnpj=false, diga em 1-2 palavras que documento é. String vazia "" quando eh_cartao_cnpj=true.' },
+              cnpj: { type: 'string', description: 'Somente os 14 dígitos do "NÚMERO DE INSCRIÇÃO". String vazia "" se não estiver legível — nunca invente.' },
+              razao_social: { type: 'string', description: 'Texto do "NOME EMPRESARIAL". String vazia "" se não estiver legível.' },
+              confere_com_cliente: { type: 'boolean', description: `true se o CNPJ e/ou o nome empresarial correspondem à empresa cadastrada — CNPJ "${cnpjCadastrado}", nome "${razaoSocial}". false se claramente é outra empresa.` },
+            },
+            required: ['leitura', 'eh_cartao_cnpj', 'tipo_documento', 'cnpj', 'razao_social', 'confere_com_cliente'],
+          },
+        },
+      ],
+      tool_choice: { type: 'tool', name: 'registrar_validacao_cartao_cnpj' },
+      messages: [
+        {
+          role: 'user',
+          content: [
+            contentBlock,
+            {
+              type: 'text',
+              text: `A imagem/PDF DEVERIA ser um "Comprovante de Inscrição e de Situação Cadastral" (Cartão CNPJ) emitido pela Receita Federal.\n\n`
+                + `Decida eh_cartao_cnpj: true só se for mesmo esse comprovante. Se for outro documento (contrato social, nota fiscal, RG, CNH, comprovante de endereço...), eh_cartao_cnpj=false e preencha tipo_documento.\n\n`
+                + `Quando eh_cartao_cnpj=true, leia o "NÚMERO DE INSCRIÇÃO" (14 dígitos) e o "NOME EMPRESARIAL". Se não der pra ler com clareza, retorne "" — nunca chute dígitos.\n\n`
+                + `Empresa cadastrada no sistema: CNPJ "${cnpjCadastrado}", nome empresarial "${razaoSocial}". Defina confere_com_cliente=true apenas se o documento for claramente dessa empresa (CNPJ igual, ou nome empresarial claramente o mesmo).`,
+            },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!res.ok) throw new Error(`Anthropic API respondeu ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  const toolUse = data.content?.find((b: any) => b.type === 'tool_use');
+  if (!toolUse) throw new Error('Resposta da IA não retornou os dados esperados');
+  const input = toolUse.input as Record<string, unknown>;
+  console.log('validar-cartao-cnpj leitura:', input.leitura, '=> eh_cartao_cnpj:', input.eh_cartao_cnpj, 'cnpj:', input.cnpj, 'razao:', input.razao_social);
+
+  return {
+    eh_cartao_cnpj: input.eh_cartao_cnpj !== false,
+    tipo_documento: ((input.tipo_documento as string) || '').trim() || null,
+    cnpj: soDigitos((input.cnpj as string) ?? '') || null,
+    razao_social: ((input.razao_social as string) || '').trim() || null,
+    confere_com_cliente: input.confere_com_cliente === true,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -254,14 +345,19 @@ Deno.serve(async (req) => {
       .maybeSingle(),
     supabaseAdmin
       .from('clientes_fornecedores')
-      .select('id, nome_razao_social, cpf_cnpj, rg, data_nascimento')
+      .select('id, nome_razao_social, cpf_cnpj, rg, data_nascimento, tipo_pessoa')
       .eq('id', cliente_id)
       .maybeSingle(),
   ]);
 
   if (!roleRes.data) return jsonResponse({ error: 'Forbidden: usuário sem acesso a este sistema' }, 403);
-  const cliente = clienteRes.data as { nome_razao_social: string | null; cpf_cnpj: string | null; rg: string | null; data_nascimento: string | null } | null;
+  const cliente = clienteRes.data as { nome_razao_social: string | null; cpf_cnpj: string | null; rg: string | null; data_nascimento: string | null; tipo_pessoa: string | null } | null;
   if (!cliente) return jsonResponse({ error: 'Cliente não encontrado' }, 404);
+
+  // Pessoa jurídica: valida o Cartão CNPJ (não extrai/atualiza nada).
+  const ehPj = cliente.tipo_pessoa === 'juridica'
+    || soDigitos(cliente.cpf_cnpj).length === 14
+    || body.doc_tipo === 'cartao_cnpj';
 
   const vazio = { nome: null, cpf: null, rg: null, data_nascimento: null };
 
@@ -279,6 +375,35 @@ Deno.serve(async (req) => {
     }
     const base64 = arrayBufferToBase64(buffer);
     const nomeCliente = (cliente.nome_razao_social || '').trim();
+
+    // ---- Pessoa jurídica: valida o Cartão CNPJ, sem atualizar nada ----
+    if (ehPj) {
+      const cnpjCadastrado = soDigitos(cliente.cpf_cnpj);
+      const v = await validarCartaoCnpjViaClaude(base64, mediaType, apiKey, nomeCliente || '(sem nome cadastrado)', cnpjCadastrado || '(sem CNPJ cadastrado)');
+
+      if (!v.eh_cartao_cnpj) {
+        const tipo = v.tipo_documento ? ` (parece ser: ${v.tipo_documento})` : '';
+        return jsonResponse({
+          ...vazio, extraido: false, match: false,
+          motivo: `O arquivo anexado não é um Cartão CNPJ${tipo}. Anexe o Comprovante de Inscrição e de Situação Cadastral (Cartão CNPJ) da empresa.`,
+        }, 200);
+      }
+
+      const cnpjBate = !!v.cnpj && v.cnpj.length === 14 && !!cnpjCadastrado && v.cnpj === cnpjCadastrado;
+      const confere = cnpjCadastrado
+        ? (cnpjBate || (v.confere_com_cliente && (!v.cnpj || v.cnpj === cnpjCadastrado)))
+        : true;
+
+      if (!confere) {
+        return jsonResponse({
+          ...vazio, extraido: false, match: false,
+          motivo: `O Cartão CNPJ anexado não é da empresa: o cadastro é CNPJ ${cnpjCadastrado || '?'}${nomeCliente ? ` (${nomeCliente})` : ''} e o documento indica ${v.cnpj || '?'}${v.razao_social ? ` (${v.razao_social})` : ''}.`,
+        }, 200);
+      }
+
+      return jsonResponse({ ...vazio, extraido: true, match: true }, 200);
+    }
+
     const extraido = await extrairViaClaude(base64, mediaType, apiKey, nomeCliente || '(sem nome cadastrado)');
 
     // O arquivo anexado não é uma CNH (CRLV, RG, comprovante...) -> rejeita e faz rollback.
