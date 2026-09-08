@@ -148,8 +148,10 @@ function mapStatus(focusStatus: string | undefined): string {
 /**
  * Aplica no sistema o cancelamento de uma NF-e (feito pelo nosso botão OU
  * direto na SEFAZ/Focus e detectado numa consulta): grava a linha como
- * `cancelada`, reabre a etapa do processo e registra no histórico. NÃO reverte
- * compromisso financeiro (pode já ter havido baixa) — acerto manual.
+ * `cancelada`, reabre a etapa do processo, cancela os compromissos financeiros
+ * gerados por essa NF (status -> `cancelada`; parcelas ainda não pagas ->
+ * `cancelado`) e registra no histórico. Parcelas já pagas NÃO são mexidas
+ * (houve baixa real) — devolve a contagem para avisar o usuário.
  */
 async function aplicarCancelamento(
   admin: any,
@@ -157,7 +159,7 @@ async function aplicarCancelamento(
   entityId: string,
   nfeRow: any,
   opts: { justificativa?: string | null; xmlCancelamento?: string | null; callerId: string; callerName: string | null },
-) {
+): Promise<{ updated: any; error: any; parcelasPagas?: number }> {
   const patch: Record<string, unknown> = {
     status: 'cancelada',
     focus_status: 'cancelado',
@@ -176,6 +178,27 @@ async function aplicarCancelamento(
     .update({ concluida: false, data_conclusao: null })
     .eq(fkCol, entityId).eq('etapa', cfg.etapa);
 
+  // Cancela os compromissos financeiros dessa NF. Parcelas já pagas ficam como
+  // estão (baixa real — acerto/estorno manual); as demais viram 'cancelado'.
+  let parcelasPagas = 0;
+  const { data: compsNf } = await admin
+    .from('compromissos').select('id').eq('nfe_entrada_id', nfeRow.id).is('deleted_at', null);
+  const compIds = ((compsNf as any[]) || []).map((c) => c.id);
+  if (compIds.length > 0) {
+    await admin.from('compromissos')
+      .update({ status_compromisso: 'cancelada' })
+      .in('id', compIds);
+    await admin.from('compromissos_parcelas')
+      .update({ status_pagamento: 'cancelado', data_pagamento: null, forma_pagamento_id: null, valor_juros: 0, valor_desconto: 0 })
+      .in('compromisso_id', compIds)
+      .neq('status_pagamento', 'pago');
+    const { count } = await admin.from('compromissos_parcelas')
+      .select('id', { count: 'exact', head: true })
+      .in('compromisso_id', compIds)
+      .eq('status_pagamento', 'pago');
+    parcelasPagas = count ?? 0;
+  }
+
   const { data: jaReg } = await admin
     .from('status_history').select('id')
     .eq('entity_type', cfg.statusEntity).eq('entity_id', entityId)
@@ -190,7 +213,7 @@ async function aplicarCancelamento(
       observacoes: `NF-e nº ${nfeRow.numero ?? '-'} cancelada${opts.justificativa ? ` — ${opts.justificativa}` : ' (evento registrado na SEFAZ)'}`,
     });
   }
-  return { updated, error: null };
+  return { updated, error: null, parcelasPagas };
 }
 
 const PENDENTES = new Set(['recebida', 'validando', 'processando_itens']);
@@ -684,14 +707,17 @@ Deno.serve(async (req) => {
       const xmlCanc = r.body.caminho_xml_cancelamento
         ? `${rowBase}${r.body.caminho_xml_cancelamento}`
         : (r.body.caminho_xml_nota_fiscal ? `${rowBase}${r.body.caminho_xml_nota_fiscal}` : null);
-      const { updated, error } = await aplicarCancelamento(admin, cfg, entityId, nfeRow, {
+      const { updated, error, parcelasPagas } = await aplicarCancelamento(admin, cfg, entityId, nfeRow, {
         justificativa: (r.body.justificativa as string) || null,
         xmlCancelamento: xmlCanc,
         callerId: caller.id,
         callerName,
       });
       if (error) return jsonResponse({ error: `Falha ao sincronizar o cancelamento: ${error.message}` }, 500);
-      return jsonResponse({ nfe: updated ?? nfeRow }, 200);
+      return jsonResponse({
+        nfe: updated ?? nfeRow,
+        ...(parcelasPagas ? { aviso: `${parcelasPagas} parcela(s) já paga(s) do compromisso não foram estornadas — acerto manual.` } : {}),
+      }, 200);
     }
 
     const novoStatus = mapStatus(fStatus);
@@ -785,16 +811,21 @@ Deno.serve(async (req) => {
     const xmlCanc = c.body.caminho_xml_cancelamento
       ? `${rowBase}${c.body.caminho_xml_cancelamento}`
       : nfeRow.xml_raw;
-    const { updated, error: updErr } = await aplicarCancelamento(admin, cfg, entityId, nfeRow, {
+    const { updated, error: updErr, parcelasPagas } = await aplicarCancelamento(admin, cfg, entityId, nfeRow, {
       justificativa,
       xmlCancelamento: xmlCanc,
       callerId: caller.id,
       callerName,
     });
     if (updErr) return jsonResponse({ error: `NF-e cancelada na SEFAZ, mas falhou ao gravar: ${updErr.message}` }, 500);
-    console.log('cancelar: gravado', nfeRow.id, '->', updated?.status);
+    console.log('cancelar: gravado', nfeRow.id, '->', updated?.status, 'parcelasPagas:', parcelasPagas);
 
-    return jsonResponse({ nfe: updated ?? nfeRow, aviso: 'Compromisso financeiro não foi revertido automaticamente.' }, 200);
+    return jsonResponse({
+      nfe: updated ?? nfeRow,
+      ...(parcelasPagas
+        ? { aviso: `Compromisso cancelado. ${parcelasPagas} parcela(s) já paga(s) não foram estornadas — acerto manual.` }
+        : {}),
+    }, 200);
   }
 
   // =====================================================================
