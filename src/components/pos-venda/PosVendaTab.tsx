@@ -58,22 +58,20 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       fetchAllRange<any>(() => supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).not('atendimento_venda_id', 'is', null)),
       supabase.from('estoque_motos_novas').select(ESTOQUE_NOVA_SELECT).not('atendimento_venda_id', 'is', null),
       fetchLojaMap(),
-      fetchAllRange<any>(() => supabase.from('nfe_entradas' as any).select('atendimento_id, status, ambiente, operacao').not('atendimento_id', 'is', null).like('operacao', 'venda%')),
+      fetchAllRange<any>(() => supabase.from('nfe_entradas' as any).select('atendimento_id, status, ambiente, operacao, created_at').not('atendimento_id', 'is', null).like('operacao', 'venda%')),
     ]);
-    // Ambiente da NF-e autorizada por atendimento — produção tem prioridade sobre homologação
-    // quando as duas existirem (reemissão em produção após teste em homologação).
-    const nfeAmbientePorAtendimento: Record<string, 'homologacao' | 'producao'> = {};
-    const nfeCanceladaAtendimento = new Set<string>();
-    ((nfeResult.data as any[]) || []).forEach((n: any) => {
-      if (!n.atendimento_id) return;
-      if (n.status === 'processada') {
-        if (n.ambiente === 'producao' || !nfeAmbientePorAtendimento[n.atendimento_id]) {
-          nfeAmbientePorAtendimento[n.atendimento_id] = n.ambiente === 'producao' ? 'producao' : 'homologacao';
-        }
-      } else if (n.status === 'cancelada') {
-        nfeCanceladaAtendimento.add(n.atendimento_id);
-      }
-    });
+    // Estado efetivo da NF-e por atendimento: vence a linha processada/cancelada
+    // MAIS RECENTE (ignora erro/pendente). Cancelada -> tag vermelha no card.
+    const nfePorAtendimento: Record<string, { cancelada: boolean; ambiente: 'homologacao' | 'producao' }> = {};
+    ((nfeResult.data as any[]) || [])
+      .filter((n: any) => n.atendimento_id && (n.status === 'processada' || n.status === 'cancelada'))
+      .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .forEach((n: any) => {
+        nfePorAtendimento[n.atendimento_id] = {
+          cancelada: n.status === 'cancelada',
+          ambiente: n.ambiente === 'producao' ? 'producao' : 'homologacao',
+        };
+      });
     const estRes = {
       data: [
         ...(estResRaw.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)),
@@ -110,8 +108,9 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       .filter(a => estoquePropria[a.id] || (!estoquePropria[a.id] && !estoqueConsignada.has(a.id)))
       .map(a => {
         const est = estoquePropria[a.id];
-        const _nfeAmbiente = nfeAmbientePorAtendimento[a.id] || null;
-        const _nfeCancelada = !_nfeAmbiente && nfeCanceladaAtendimento.has(a.id);
+        const _nfe = nfePorAtendimento[a.id] || null;
+        const _nfeCancelada = !!_nfe?.cancelada;
+        const _nfeAmbiente = _nfe && !_nfe.cancelada ? _nfe.ambiente : null;
         if (est) return { ...a, _estoqueMoto: est, _nfeAmbiente, _nfeCancelada };
         // Fallback: use first moto_interesse info
         const mi = a.motos_interesse?.[0];
