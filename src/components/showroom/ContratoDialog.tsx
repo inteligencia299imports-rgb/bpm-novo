@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, PlusCircle, Download, Loader2, RefreshCw, ExternalLink, AlertTriangle, User, Bike, MessageSquare, Wallet, ArrowLeft, Pencil, MapPin, Landmark, Building2 } from 'lucide-react';
+import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, PlusCircle, Download, Loader2, RefreshCw, ExternalLink, AlertTriangle, User, Bike, MessageSquare, Wallet, ArrowLeft, Pencil, MapPin, Landmark, Building2, Package } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -24,6 +24,7 @@ import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } fro
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
 import NfeCabecalhoAcoes from '@/components/shared/NfeCabecalhoAcoes';
+import AgregadosContrato, { type Agregado, type AgregadoLinha } from '@/components/showroom/AgregadosContrato';
 
 interface Props {
   open: boolean;
@@ -167,7 +168,7 @@ const ContratoDialog: React.FC<Props> = ({
   open, onOpenChange, atendimento, motosInteresse, motosAvaliacao, estoqueData, avaliacoes, onSaved,
   modo = 'contrato',
 }) => {
-  const { userName, user } = useAuth();
+  const { userName, user, role } = useAuth();
   const ehNfe = modo === 'nfe';
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -239,6 +240,8 @@ const ContratoDialog: React.FC<Props> = ({
   // Formas de pagamento
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
   const [formasPagOpcoes, setFormasPagOpcoes] = useState<{ id: string; nome: string }[]>([]);
+  const [agregados, setAgregados] = useState<AgregadoLinha[]>([]);
+  const [agregadoOpcoes, setAgregadoOpcoes] = useState<Agregado[]>([]);
   // instituições (banco / administradora) vinculadas a cada forma_pagamento_id
   const [instituicoesByForma, setInstituicoesByForma] = useState<Record<string, InstituicaoOpt[]>>({});
   // id do registro de formas_pagamento_contrato em edição (null = formulário está em modo "adicionar")
@@ -269,7 +272,7 @@ const ContratoDialog: React.FC<Props> = ({
       setLoading(true);
       setEditingId(null);
       nfe.carregar();
-      const [{ data: contrato }, { data: histGerado }, { data: freshAtendimento }, { data: freshEstoque }, { data: formasOpts }, { data: instOpts }] = await Promise.all([
+      const [{ data: contrato }, { data: histGerado }, { data: freshAtendimento }, { data: freshEstoque }, { data: formasOpts }, { data: instOpts }, { data: agregadosOpts }] = await Promise.all([
         supabase
           .from('contratos')
           .select('*')
@@ -302,9 +305,15 @@ const ContratoDialog: React.FC<Props> = ({
           .from('formas_pagamento_instituicoes')
           .select('id, forma_pagamento_id, cliente_fornecedor_id, observacoes_contrato, instituicao:cliente_fornecedor_id(nome_razao_social, nome_fantasia)')
           .eq('ativo', true),
+        supabase
+          .from('agregados_motos')
+          .select('id, descricao, valor')
+          .eq('ativo', true)
+          .order('descricao'),
       ]);
 
       setFormasPagOpcoes((formasOpts as any[]) || []);
+      setAgregadoOpcoes(((agregadosOpts as any[]) || []).map((a) => ({ id: a.id, descricao: a.descricao, valor: Number(a.valor) || 0 })));
 
       type InstRow = {
         id: string;
@@ -383,6 +392,13 @@ const ContratoDialog: React.FC<Props> = ({
         if (formas) {
           setFormasPagamento(formas.map(mapFormaRow));
         }
+
+        const { data: ags } = await supabase
+          .from('contratos_agregados')
+          .select('agregado_id, descricao, valor')
+          .eq('contrato_id', contrato.id)
+          .order('created_at', { ascending: true });
+        setAgregados(((ags as any[]) || []).map((a) => ({ agregado_id: a.agregado_id, descricao: a.descricao, valor: Number(a.valor) || 0 })));
       } else {
         // Reset
         setContratoId(null);
@@ -399,6 +415,7 @@ const ContratoDialog: React.FC<Props> = ({
         setDataSinal(undefined);
         setDataVencimento(undefined);
         setFormasPagamento([]);
+        setAgregados([]);
         setValorSinal(atSinal ? formatCurrencyInput(String(Math.round(atSinal * 100))) : '');
         setValorVenda(atVenda ? formatCurrencyInput(String(Math.round(atVenda * 100))) : '');
       }
@@ -584,6 +601,16 @@ const ContratoDialog: React.FC<Props> = ({
       await supabase.from('clientes_fornecedores').update({ cpf_cnpj: cpfCnpj }).eq('id', atendimento.cliente_id);
     }
 
+    // Agregados: substitui a lista inteira do contrato (delete + insert).
+    const syncAgregados = async (cId: string) => {
+      await supabase.from('contratos_agregados').delete().eq('contrato_id', cId);
+      if (agregados.length > 0) {
+        await supabase.from('contratos_agregados').insert(
+          agregados.map((a) => ({ contrato_id: cId, agregado_id: a.agregado_id, descricao: a.descricao, valor: Number(a.valor) || 0 })),
+        );
+      }
+    };
+
     if (contratoId) {
       const { error } = await supabase.from('contratos').update(payload).eq('id', contratoId);
       if (error) {
@@ -599,6 +626,7 @@ const ContratoDialog: React.FC<Props> = ({
           await Promise.all(avs.map(av => supabase.from('avaliacoes').update({ valor_fechamento: parsedFechamento }).eq('id', av.id)));
         }
       }
+      await syncAgregados(contratoId);
       setSaving(false);
       return contratoId;
     } else {
@@ -609,6 +637,7 @@ const ContratoDialog: React.FC<Props> = ({
         return null;
       }
       setContratoId(data.id);
+      await syncAgregados(data.id);
       setSaving(false);
       return data.id;
     }
@@ -633,7 +662,8 @@ const ContratoDialog: React.FC<Props> = ({
       obsInternas || obsContrato ||
       dataSinal || dataVencimento ||
       valorSinal || valorVenda ||
-      formasPagamento.length > 0
+      formasPagamento.length > 0 ||
+      agregados.length > 0
     );
   };
 
@@ -1137,6 +1167,28 @@ const ContratoDialog: React.FC<Props> = ({
                 )}
                 </CardContent>
               </Card>
+
+              {/* Card: Agregados — serviços cobrados à parte do cliente */}
+              {(!soLeitura || agregados.length > 0) && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Package className="h-4 w-4 text-primary" /> Agregados
+                    </CardTitle>
+                    <Separator className="mt-2" />
+                  </CardHeader>
+                  <CardContent>
+                    <AgregadosContrato
+                      value={agregados}
+                      onChange={setAgregados}
+                      catalogo={agregadoOpcoes}
+                      onCatalogoChange={setAgregadoOpcoes}
+                      soLeitura={soLeitura}
+                      podeCadastrar={role === 'master' || role === 'gerente'}
+                    />
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Card: Moto do Cliente (troca) */}
               {hasTroca && (
