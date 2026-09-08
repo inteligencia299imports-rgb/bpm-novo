@@ -11,7 +11,7 @@ import { Plus, Search, Filter, CalendarIcon, X, Bike } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn, firstLastName } from '@/lib/utils';
-import { LOJAS, INTERESSES, SITUACOES_SHOWROOM } from '@/types/crm';
+import { LOJAS, INTERESSES, SITUACOES_SHOWROOM, TEMPERATURAS } from '@/types/crm';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
@@ -41,6 +41,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   const [search, setSearch] = useState('');
   
   const [filterInteresse, setFilterInteresse] = useState('todos');
+  const [filterTemperatura, setFilterTemperatura] = useState('todos');
   const [filterVendedor, setFilterVendedor] = useState('todos');
   const [vendedores, setVendedores] = useState<{ user_id: string; nome: string }[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -88,6 +89,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       let q = supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`);
       if (status) q = q.eq('situacao', status);
       if (filterInteresse !== 'todos') q = q.eq('interesse', filterInteresse);
+      if (filterTemperatura !== 'todos') q = q.eq('temperatura', filterTemperatura);
       q = q.order('created_at', { ascending: false });
       if (!isSearching && status) q = q.limit(PER_STATUS_LIMIT);
       // Vendedores sempre veem apenas seus próprios atendimentos
@@ -185,7 +187,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       setAtendimentos(results);
     }
     setLoading(false);
-  }, [filterInteresse, filterVendedor, search, dateFrom, dateTo, filterCidade]);
+  }, [filterInteresse, filterTemperatura, filterVendedor, search, dateFrom, dateTo, filterCidade]);
 
   useEffect(() => { fetchAtendimentos(); }, [fetchAtendimentos]);
 
@@ -308,6 +310,14 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
               </SelectContent>
             </Select>
 
+            <Select value={filterTemperatura} onValueChange={setFilterTemperatura}>
+              <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Temperatura" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas as temperaturas</SelectItem>
+                {TEMPERATURAS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
             <Select value={filterVendedor} onValueChange={setFilterVendedor}>
               <SelectTrigger className="bg-card border-border"><SelectValue placeholder="Vendedor" /></SelectTrigger>
               <SelectContent>
@@ -361,12 +371,12 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
               </PopoverContent>
             </Popover>
             </div>
-            {(filterInteresse !== 'todos' || filterVendedor !== 'todos' || dateFrom || dateTo || filterCidade !== 'todos') && (
+            {(filterInteresse !== 'todos' || filterTemperatura !== 'todos' || filterVendedor !== 'todos' || dateFrom || dateTo || filterCidade !== 'todos') && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="text-muted-foreground"
-                onClick={() => { setFilterInteresse('todos'); setFilterVendedor('todos'); setDateFrom(undefined); setDateTo(undefined); setFilterCidade('todos'); }}
+                onClick={() => { setFilterInteresse('todos'); setFilterTemperatura('todos'); setFilterVendedor('todos'); setDateFrom(undefined); setDateTo(undefined); setFilterCidade('todos'); }}
               >
                 <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
               </Button>
