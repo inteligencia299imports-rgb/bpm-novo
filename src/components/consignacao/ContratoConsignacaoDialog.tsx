@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { FileText, CalendarIcon, Save, Download, Percent, Eye, ArrowLeft, Loader2, RefreshCw, ExternalLink, AlertTriangle, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Building2 } from 'lucide-react';
+import { FileText, CalendarIcon, Save, Download, Percent, Eye, ArrowLeft, Loader2, RefreshCw, AlertTriangle, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { toast } from 'sonner';
@@ -831,25 +831,11 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
           {/* Ações */}
           <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
-            {ehNfe && nfe.nfe?.status === 'processada' && (
+            {ehNfe && nfe.nfe?.status === 'processada' && nfe.nfe.ambiente === 'producao' && (
               <div className="flex flex-wrap items-center gap-3 mr-auto text-sm">
-                {nfe.nfe.ambiente === 'producao' && (
-                  <Badge className="bg-primary/10 text-primary gap-1.5">
-                    <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
-                  </Badge>
-                )}
-                {nfe.nfe?.caminho_danfe && (
-                  <Button
-                    size="sm"
-                    className={cn(
-                      'gap-1.5 text-white',
-                      nfe.nfe.ambiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary/90',
-                    )}
-                    onClick={() => window.open(nfe.nfe.caminho_danfe, '_blank', 'noopener')}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-1" /> Baixar DANFE
-                  </Button>
-                )}
+                <Badge className="bg-primary/10 text-primary gap-1.5">
+                  <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
+                </Badge>
               </div>
             )}
             {ehNfe && nfe.pendente && (
@@ -867,7 +853,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
               </p>
             )}
 
-            {ehNfe && (nfe.emitida || nfe.cancelada) && <CancelarNfeDialog nfe={nfe} />}
+            {ehNfe && (nfe.emitida || nfe.cancelada) && nfe.nfe?.ambiente === 'producao' && <CancelarNfeDialog nfe={nfe} />}
 
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
