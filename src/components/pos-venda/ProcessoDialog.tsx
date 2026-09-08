@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, ExternalLink, AlertTriangle, ArrowUpRight } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import { format } from 'date-fns';
@@ -24,7 +24,6 @@ const NF_TROCA = 'NF-E DE ENTRADA (TROCA)';
 const DEFAULT_ETAPAS = [
   'CHECK-LIST',
   'VISTORIA',
-  'ENTREGA DA MOTO',
   'COMUNICADO DE VENDA',
   'DOC. FORMALIZADO',
   'DOCUMENTAÇÃO COM DESPACHANTE',
@@ -103,9 +102,12 @@ const ProcessoDialog: React.FC<Props> = ({
     if (customEtapas) return customEtapas;
     const names = [...DEFAULT_ETAPAS];
     if (estoqueMoto) {
-      const i = names.indexOf('ENTREGA DA MOTO');
-      names.splice(i + 1, 0, NF_VENDA);
-      if (interesse === 'trocar' && trocaAvaliacaoId) names.splice(i + 2, 0, NF_TROCA);
+      // NF-e depois da VISTORIA. Quando há troca, a NF-e de entrada (troca) vem
+      // ANTES da NF-e de venda.
+      const anchor = names.indexOf('VISTORIA');
+      const pos = anchor >= 0 ? anchor + 1 : names.length;
+      names.splice(pos, 0, NF_VENDA);
+      if (interesse === 'trocar' && trocaAvaliacaoId) names.splice(pos, 0, NF_TROCA);
     }
     return names;
   }, [customEtapas, estoqueMoto, interesse, trocaAvaliacaoId]);
@@ -155,9 +157,10 @@ const ProcessoDialog: React.FC<Props> = ({
         }
 
         if (estMoto) {
-          const i = names.indexOf('ENTREGA DA MOTO');
-          names.splice(i + 1, 0, NF_VENDA);
-          if (inter === 'trocar' && trocaAvId) names.splice(i + 2, 0, NF_TROCA);
+          const anchor = names.indexOf('VISTORIA');
+          const pos = anchor >= 0 ? anchor + 1 : names.length;
+          names.splice(pos, 0, NF_VENDA);
+          if (inter === 'trocar' && trocaAvId) names.splice(pos, 0, NF_TROCA);
         }
       }
 
@@ -383,7 +386,7 @@ const ProcessoDialog: React.FC<Props> = ({
               return (
               <React.Fragment key={e.etapa}>
                 {idx > 0 && <Separator />}
-                <div className="grid grid-cols-[auto_1fr_11rem_2rem] items-center gap-3 py-3">
+                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 py-3">
                   {isPrevisaoPagamento ? (
                     <div className="w-4" />
                   ) : (
@@ -416,184 +419,168 @@ const ProcessoDialog: React.FC<Props> = ({
                     )}
                   </div>
 
+                  <div className="flex items-center justify-end gap-2">
                   {isNfVenda && !nfeVenda.emitida ? (
-                    <div className="col-span-2 flex items-center justify-end gap-2">
-                      {nfeVenda.pendente ? (
-                        <>
-                          <Badge variant="outline" className="gap-1.5 text-xs">
-                            <Loader2 className="h-3 w-3 animate-spin" /> Emitindo NF-e…
-                          </Badge>
-                          <Button variant="ghost" size="sm" className="h-9 gap-1.5" disabled={nfeVenda.loading} onClick={nfeVenda.consultar}>
-                            <RefreshCw className={`h-4 w-4 ${nfeVenda.loading ? 'animate-spin' : ''}`} /> Atualizar
-                          </Button>
-                        </>
-                      ) : nfeVenda.erro ? (
-                        <Button
-                          variant="outline" size="sm"
-                          className="h-9 gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          disabled={!podeEmitirNfeVenda || nfeVenda.loading}
-                          onClick={() => onEmitirNfe?.()}
-                        >
-                          <RefreshCw className="h-4 w-4" /> Tentar novamente
+                    nfeVenda.pendente ? (
+                      <>
+                        <Badge variant="outline" className="gap-1.5 text-xs">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Emitindo NF-e…
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="h-9 gap-1.5" disabled={nfeVenda.loading} onClick={nfeVenda.consultar}>
+                          <RefreshCw className={`h-4 w-4 ${nfeVenda.loading ? 'animate-spin' : ''}`} /> Atualizar
                         </Button>
-                      ) : (
-                        <Button
-                          variant={podeEmitirNfeVenda ? 'default' : 'outline'} size="sm" className="h-9 gap-2 text-sm"
-                          disabled={!podeEmitirNfeVenda || nfeVenda.loading}
-                          title={podeEmitirNfeVenda ? undefined : 'Disponível após a venda e o contrato gerado'}
-                          onClick={() => onEmitirNfe?.()}
-                        >
-                          <FileText className="h-4 w-4" /> Emitir NF-e
-                        </Button>
-                      )}
-                    </div>
-                  ) : isNfTroca && !nfeTroca.emitida ? (
-                    <div className="col-span-2 flex items-center justify-end gap-2">
-                      {nfeTroca.pendente ? (
-                        <>
-                          <Badge variant="outline" className="gap-1.5 text-xs">
-                            <Loader2 className="h-3 w-3 animate-spin" /> Emitindo NF-e…
-                          </Badge>
-                          <Button variant="ghost" size="sm" className="h-9 gap-1.5" disabled={nfeTroca.loading} onClick={nfeTroca.consultar}>
-                            <RefreshCw className={`h-4 w-4 ${nfeTroca.loading ? 'animate-spin' : ''}`} /> Atualizar
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          variant={nfeTroca.erro ? 'outline' : 'default'} size="sm"
-                          className={`h-9 gap-2 text-sm ${nfeTroca.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : ''}`}
-                          disabled={!trocaAvaliacaoId || nfeTroca.loading}
-                          onClick={() => trocaAvaliacaoId && onEmitirNfeTroca?.(trocaAvaliacaoId)}
-                        >
-                          {nfeTroca.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                          {nfeTroca.erro ? 'Tentar novamente' : 'Emitir NF-e'}
-                        </Button>
-                      )}
-                      {onNavigateToPosCompra && trocaAvaliacaoId && (
-                        <Button variant="ghost" size="sm" className="h-9 gap-1.5"
-                          onClick={() => onNavigateToPosCompra(trocaAvaliacaoId)}>
-                          <ArrowUpRight className="h-4 w-4" /> Pós-Compra
-                        </Button>
-                      )}
-                    </div>
-                  ) : isNf ? (
-                    <>
-                      <div className="flex justify-end">
-                        <span className="flex items-center gap-2 pr-3 text-sm text-muted-foreground whitespace-nowrap">
-                          {isNfVenda ? (
-                            // Venda: abre a mesma página de emissão da NF-e (lá dentro tem o
-                            // botão de Baixar DANFE, já autorizada) — não o DANFE direto aqui.
-                            <Button size="sm" className="h-7 gap-1" onClick={() => onEmitirNfe?.()}>
-                              <FileText className="h-3.5 w-3.5" /> NF
-                            </Button>
-                          ) : (
-                            nfeObj?.nfe?.caminho_danfe && (
-                              <Button
-                                size="sm"
-                                className={cn(
-                                  'h-7 gap-1 text-white',
-                                  nfeObj.nfe.ambiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary/90',
-                                )}
-                                onClick={() => window.open(nfeObj.nfe.caminho_danfe, '_blank', 'noopener')}
-                              >
-                                <ExternalLink className="h-3.5 w-3.5" /> DANFE
-                              </Button>
-                            )
-                          )}
-                          <CalendarIcon className="h-4 w-4 shrink-0" />
-                          {nfeObj?.nfe?.data_emissao ? format(new Date(nfeObj.nfe.data_emissao), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : '—'}
-                        </span>
-                      </div>
-                      <div />
-                    </>
-                  ) : (
-                    <>
-                  <div className="flex justify-end">
-                    {dataBloqueada ? (
-                      <span
-                        className="flex items-center gap-2 pr-3 text-sm text-muted-foreground whitespace-nowrap"
-                        title="Etapa salva — remova (✕) para alterar"
+                      </>
+                    ) : nfeVenda.erro ? (
+                      <Button
+                        variant="outline" size="sm"
+                        className="h-9 gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={!podeEmitirNfeVenda || nfeVenda.loading}
+                        onClick={() => onEmitirNfe?.()}
                       >
-                        <CalendarIcon className="h-4 w-4 shrink-0" />
-                        {format(new Date(e.data_conclusao!), dateFmt, { locale: ptBR })}
-                      </span>
-                    ) : isDateOnly ? (
-                      <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
-                            <CalendarIcon className="h-4 w-4" />
-                            {e.data_conclusao
-                              ? format(new Date(e.data_conclusao), "dd/MM/yyyy", { locale: ptBR })
-                              : 'Definir data'
-                            }
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="end">
-                          <Calendar
-                            mode="single"
-                            selected={e.data_conclusao ? new Date(e.data_conclusao) : undefined}
-                            onSelect={(d) => {
-                              if (d) {
-                                setEtapas(prev => prev.map(et =>
-                                  et.etapa === e.etapa ? { ...et, data_conclusao: d.toISOString(), concluida: true } : et
-                                ));
-                                setCalendarOpen(null);
-                              }
-                            }}
-                            locale={ptBR}
-                            initialFocus
-                            className="p-3 pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    ) : (
-                      <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
-                            <CalendarIcon className="h-4 w-4" />
-                            {e.data_conclusao
-                              ? format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR })
-                              : 'Data/Hora'
-                            }
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="end">
-                          <Calendar
-                            mode="single"
-                            selected={e.data_conclusao ? new Date(e.data_conclusao) : undefined}
-                            onSelect={(d) => setDate(e.etapa, d)}
-                            locale={ptBR}
-                            initialFocus
-                            className="p-3 pointer-events-auto"
-                          />
-                          <div className="flex items-center gap-2 px-3 pb-3 border-t pt-2">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <Input
-                              type="time"
-                              className="w-auto h-8 text-sm"
-                              value={e.data_conclusao ? format(new Date(e.data_conclusao), 'HH:mm') : format(new Date(), 'HH:mm')}
-                              onChange={(ev) => {
-                                const [h, m] = ev.target.value.split(':').map(Number);
-                                setTime(e.etapa, h, m);
-                              }}
-                            />
-                            <Button size="sm" variant="default" className="ml-auto h-8" onClick={() => setCalendarOpen(null)}>
-                              OK
-                            </Button>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                  </div>
-                  <div className="flex justify-end">
-                    {e.data_conclusao && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => clearDate(e.etapa)}>
-                        <X className="h-3.5 w-3.5" />
+                        <RefreshCw className="h-4 w-4" /> Tentar novamente
                       </Button>
-                    )}
-                  </div>
-                    </>
+                    ) : (
+                      <Button
+                        variant={podeEmitirNfeVenda ? 'default' : 'outline'} size="sm" className="h-9 gap-2 text-sm"
+                        disabled={!podeEmitirNfeVenda || nfeVenda.loading}
+                        title={podeEmitirNfeVenda ? undefined : 'Disponível após a venda e o contrato gerado'}
+                        onClick={() => onEmitirNfe?.()}
+                      >
+                        <FileText className="h-4 w-4" /> Emitir NF-e
+                      </Button>
+                    )
+                  ) : isNfTroca && !nfeTroca.emitida ? (
+                    nfeTroca.pendente ? (
+                      <>
+                        <Badge variant="outline" className="gap-1.5 text-xs">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Emitindo NF-e…
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="h-9 gap-1.5" disabled={nfeTroca.loading} onClick={nfeTroca.consultar}>
+                          <RefreshCw className={`h-4 w-4 ${nfeTroca.loading ? 'animate-spin' : ''}`} /> Atualizar
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant={nfeTroca.erro ? 'outline' : 'default'} size="sm"
+                        className={`h-9 gap-2 text-sm ${nfeTroca.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : ''}`}
+                        disabled={!trocaAvaliacaoId || nfeTroca.loading}
+                        onClick={() => trocaAvaliacaoId && onEmitirNfeTroca?.(trocaAvaliacaoId)}
+                      >
+                        {nfeTroca.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                        {nfeTroca.erro ? 'Tentar novamente' : 'Emitir NF-e'}
+                      </Button>
+                    )
+                  ) : isNf ? (
+                    <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                      {isNfVenda ? (
+                        // Venda: abre a mesma página de emissão da NF-e (lá dentro tem o
+                        // botão de Baixar DANFE, já autorizada) — não o DANFE direto aqui.
+                        <Button size="sm" className="h-7 gap-1" onClick={() => onEmitirNfe?.()}>
+                          <FileText className="h-3.5 w-3.5" /> NF
+                        </Button>
+                      ) : (
+                        nfeObj?.nfe?.caminho_danfe && (
+                          <Button
+                            size="sm"
+                            className={cn(
+                              'h-7 gap-1 text-white',
+                              nfeObj.nfe.ambiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary/90',
+                            )}
+                            onClick={() => window.open(nfeObj.nfe.caminho_danfe, '_blank', 'noopener')}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" /> DANFE
+                          </Button>
+                        )
+                      )}
+                      <CalendarIcon className="h-4 w-4 shrink-0" />
+                      {nfeObj?.nfe?.data_emissao ? format(new Date(nfeObj.nfe.data_emissao), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : '—'}
+                    </span>
+                  ) : dataBloqueada ? (
+                    <span
+                      className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap"
+                      title="Etapa salva — remova (✕) para alterar"
+                    >
+                      <CalendarIcon className="h-4 w-4 shrink-0" />
+                      {format(new Date(e.data_conclusao!), dateFmt, { locale: ptBR })}
+                    </span>
+                  ) : isDateOnly ? (
+                    <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
+                          <CalendarIcon className="h-4 w-4" />
+                          {e.data_conclusao
+                            ? format(new Date(e.data_conclusao), "dd/MM/yyyy", { locale: ptBR })
+                            : 'Definir data'
+                          }
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                          mode="single"
+                          selected={e.data_conclusao ? new Date(e.data_conclusao) : undefined}
+                          onSelect={(d) => {
+                            if (d) {
+                              setEtapas(prev => prev.map(et =>
+                                et.etapa === e.etapa ? { ...et, data_conclusao: d.toISOString(), concluida: true } : et
+                              ));
+                              setCalendarOpen(null);
+                            }
+                          }}
+                          locale={ptBR}
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
+                          <CalendarIcon className="h-4 w-4" />
+                          {e.data_conclusao
+                            ? format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                            : 'Data/Hora'
+                          }
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                          mode="single"
+                          selected={e.data_conclusao ? new Date(e.data_conclusao) : undefined}
+                          onSelect={(d) => setDate(e.etapa, d)}
+                          locale={ptBR}
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                        />
+                        <div className="flex items-center gap-2 px-3 pb-3 border-t pt-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="time"
+                            className="w-auto h-8 text-sm"
+                            value={e.data_conclusao ? format(new Date(e.data_conclusao), 'HH:mm') : format(new Date(), 'HH:mm')}
+                            onChange={(ev) => {
+                              const [h, m] = ev.target.value.split(':').map(Number);
+                              setTime(e.etapa, h, m);
+                            }}
+                          />
+                          <Button size="sm" variant="default" className="ml-auto h-8" onClick={() => setCalendarOpen(null)}>
+                            OK
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   )}
+                  {/* Slot do "limpar data" sempre presente (invisível quando não
+                      se aplica) — mantém datas e botões alinhados na vertical. */}
+                  <Button
+                    variant="ghost" size="icon"
+                    className={`h-8 w-8 shrink-0 ${!isNf && e.data_conclusao ? '' : 'invisible'}`}
+                    tabIndex={!isNf && e.data_conclusao ? 0 : -1}
+                    onClick={() => { if (!isNf && e.data_conclusao) clearDate(e.etapa); }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                  </div>
                 </div>
               </React.Fragment>
               );
