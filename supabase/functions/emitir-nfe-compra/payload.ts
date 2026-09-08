@@ -34,6 +34,8 @@ export interface DadosMoto {
   placa: string | null;
   chassi: string | null;
   renavam: string | null;
+  /** Hodômetro (moto usada) — entra no infAdProd. */
+  km?: string | number | null;
   /** NCM explicito (moto 0km cadastrada). Sem isto, deriva pela cilindrada. */
   ncm?: string | null;
   /** Nº da NF de entrada (fornecedor/fábrica) — só moto 0km, cadastrado no estoque. */
@@ -173,6 +175,7 @@ export function informacoesAdicionaisItemMoto(m: DadosMoto): string {
     m.renavam ? `RENAVAM: ${onlyDigits(m.renavam)}` : null,
     m.cor ? `COR: ${m.cor.toUpperCase()}` : null,
     'COMB.: GASOLINA',
+    (m.km != null && String(m.km).trim() !== '') ? `KM: ${onlyDigits(String(m.km)) || m.km}` : null,
     m.numero_nf_entrada ? `NF ENTRADA: ${Number(m.numero_nf_entrada) || m.numero_nf_entrada}` : null,
   ];
   return linhas.filter(Boolean).join(' ');
@@ -304,6 +307,15 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     if (regraIcms.aliquota_fcp != null) item.fcp_aliquota = Number(regraIcms.aliquota_fcp);
     item.icms_base_calculo = 0;
     item.icms_valor = 0;
+    // CST 90 (TICMS90) tem também o subgrupo de ST na sequência do XSD — a NF-e
+    // de referência (compra de usado, Ducati SC) traz modBCST/vBCST/pICMSST/
+    // vICMSST zerados. Sem eles a SEFAZ pode rejeitar o grupo.
+    if (cstIcms === '90') {
+      item.icms_modalidade_base_calculo_st = 0;
+      item.icms_base_calculo_st = 0;
+      item.icms_aliquota_st = 0;
+      item.icms_valor_st = 0;
+    }
   }
 
   // --- Grupo "ICMS-ST retido anteriormente" (CST 60) ---------------------
@@ -348,29 +360,37 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   // Obrigatório para emitente CRT 3 em homologação desde 01/07/2026 (cStat 1115).
   // CST/cClassTrib e alíquotas vêm da regra 'ibscbs' da natureza (a validar com a contabilidade).
   if (regraIbsCbs?.situacao_tributaria) {
-    const baseRtc = valorFmt;
-    const red = Number(regraIbsCbs.percentual_reducao ?? 0);
-    const fatorRed = red > 0 ? 1 - red / 100 : 1;
-    const cbsAliq = Number(regraIbsCbs.cbs_aliquota ?? 0);
-    const ibsUfAliq = Number(regraIbsCbs.ibs_uf_aliquota ?? 0);
-    const ibsMunAliq = Number(regraIbsCbs.ibs_mun_aliquota ?? 0);
-
-    item.ibs_cbs_situacao_tributaria = regraIbsCbs.situacao_tributaria;
+    const cstRtc = String(regraIbsCbs.situacao_tributaria);
+    item.ibs_cbs_situacao_tributaria = cstRtc;
     if (regraIbsCbs.classificacao_tributaria) {
       item.ibs_cbs_classificacao_tributaria = regraIbsCbs.classificacao_tributaria;
     }
-    item.ibs_cbs_base_calculo = baseRtc;
-    if (red > 0) {
-      item.cbs_percentual_reducao_aliquota = red;
-      item.ibs_uf_percentual_reducao_aliquota = red;
-      item.ibs_mun_percentual_reducao_aliquota = red;
+
+    // CST 4xx (imunidade / isenção / não incidência) e 830 (regime específico —
+    // imune): só CST + cClassTrib, sem base/alíquota/valor. É o caso da compra
+    // de moto usada de PF (CST 410 na NF-e de referência).
+    const semCalculoRtc = /^4/.test(cstRtc) || cstRtc === '830';
+    if (!semCalculoRtc) {
+      const baseRtc = valorFmt;
+      const red = Number(regraIbsCbs.percentual_reducao ?? 0);
+      const fatorRed = red > 0 ? 1 - red / 100 : 1;
+      const cbsAliq = Number(regraIbsCbs.cbs_aliquota ?? 0);
+      const ibsUfAliq = Number(regraIbsCbs.ibs_uf_aliquota ?? 0);
+      const ibsMunAliq = Number(regraIbsCbs.ibs_mun_aliquota ?? 0);
+
+      item.ibs_cbs_base_calculo = baseRtc;
+      if (red > 0) {
+        item.cbs_percentual_reducao_aliquota = red;
+        item.ibs_uf_percentual_reducao_aliquota = red;
+        item.ibs_mun_percentual_reducao_aliquota = red;
+      }
+      item.cbs_aliquota = cbsAliq;
+      item.cbs_valor = r2(baseRtc * (cbsAliq / 100) * fatorRed);
+      item.ibs_uf_aliquota = ibsUfAliq;
+      item.ibs_uf_valor = r2(baseRtc * (ibsUfAliq / 100) * fatorRed);
+      item.ibs_mun_aliquota = ibsMunAliq;
+      item.ibs_mun_valor = r2(baseRtc * (ibsMunAliq / 100) * fatorRed);
     }
-    item.cbs_aliquota = cbsAliq;
-    item.cbs_valor = r2(baseRtc * (cbsAliq / 100) * fatorRed);
-    item.ibs_uf_aliquota = ibsUfAliq;
-    item.ibs_uf_valor = r2(baseRtc * (ibsUfAliq / 100) * fatorRed);
-    item.ibs_mun_aliquota = ibsMunAliq;
-    item.ibs_mun_valor = r2(baseRtc * (ibsMunAliq / 100) * fatorRed);
   }
 
   const entrada = natureza.tipo === 'entrada';
@@ -381,8 +401,10 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   // Venda: valor do IBS/CBS, vendedor, RG e formas de pagamento também entram nas
   // informações complementares — não são default de código, são dados da própria
   // venda (calculados acima ou vindos do atendimento/contrato).
-  const valorIbsCbs = regraIbsCbs?.situacao_tributaria
-    ? `VALOR DO IBS ${fmtBRL(Number(item.ibs_uf_valor ?? 0) + Number(item.ibs_mun_valor ?? 0))} * VALOR DA CBS ${fmtBRL(Number(item.cbs_valor ?? 0))}`
+  const totalIbs = Number(item.ibs_uf_valor ?? 0) + Number(item.ibs_mun_valor ?? 0);
+  const totalCbs = Number(item.cbs_valor ?? 0);
+  const valorIbsCbs = (regraIbsCbs?.situacao_tributaria && (totalIbs > 0 || totalCbs > 0))
+    ? `VALOR DO IBS ${fmtBRL(totalIbs)} * VALOR DA CBS ${fmtBRL(totalCbs)}`
     : null;
 
   return {

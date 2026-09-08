@@ -559,7 +559,7 @@ Deno.serve(async (req) => {
       .select(
         'id, atendimento_id, aprovacao_status, consulta_realizada, valor_fechamento, ' +
           'avaliacao_consignacao, valor_consignacao_nota, consignacao_status, ' +
-          'marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam',
+          'marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam, km',
       )
       .eq('id', avaliacaoId)
       .maybeSingle();
@@ -1052,6 +1052,7 @@ Deno.serve(async (req) => {
       placa: av.placa,
       chassi: av.chassi,
       renavam: av.renavam,
+      km: av.km ?? null,
     };
   }
 
