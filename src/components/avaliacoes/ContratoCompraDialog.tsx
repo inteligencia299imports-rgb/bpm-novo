@@ -158,7 +158,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       // Buscar contratos vinculados ao atendimento (pode haver de venda também),
       // pegamos o que tem observação 'CONTRATO_COMPRA' nas observacoes_internas marker,
       // ou criamos um novo. Para diferenciar do contrato de venda, usamos um marcador na coluna ipva_tipo='COMPRA'.
-      const [{ data: contratosList }, { data: histGerado }, { data: atFresh }, { data: custosData }, { data: estNova }, { data: estSemi }] = await Promise.all([
+      const [{ data: contratosList }, { data: histGerado }, { data: histVendaGerado }, { data: atFresh }, { data: custosData }, { data: estNova }, { data: estSemi }] = await Promise.all([
         supabase
           .from('contratos')
           .select('*')
@@ -169,6 +169,15 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
           .eq('entity_type', 'pos_compra')
           .eq('entity_id', avaliacao.id)
           .eq('status', 'contrato_compra_gerado')
+          .limit(1),
+        // Troca: o contrato de VENDA já engloba a compra da moto que entra — se
+        // ele foi gerado, o contrato de compra não é exigido.
+        supabase
+          .from('status_history')
+          .select('id')
+          .eq('entity_type', 'showroom')
+          .eq('entity_id', atendimentoId)
+          .in('status', ['contrato_de_venda', 'contrato_de_sinal'])
           .limit(1),
         supabase.from('atendimentos_motos').select('cliente_id, loja_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))').eq('id', atendimentoId).maybeSingle(),
         supabase.from('custos_oficina').select('responsavel, valor_previsto, valor_executado').eq('avaliacao_id', avaliacao.id),
@@ -181,7 +190,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
           .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
           .reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0),
       );
-      setJaGerado(!!(histGerado && histGerado.length > 0));
+      const valorVendaMotoLoad = Number((estNova as any)?.valor_venda ?? (estSemi as any)?.valor_venda ?? 0);
+      const ehTrocaLoad = valorVendaMotoLoad > 0;
+      setJaGerado(
+        !!(histGerado && histGerado.length > 0)
+        || (ehTrocaLoad && !!(histVendaGerado && histVendaGerado.length > 0)),
+      );
       setClienteTocado(false);
       nfe.carregar();
       setClienteId((atFresh as any)?.cliente_id ?? null);

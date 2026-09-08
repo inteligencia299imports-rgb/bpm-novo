@@ -793,15 +793,24 @@ Deno.serve(async (req) => {
   let contratoVendaId: string | null = null;
   if (tipo === 'compra') {
     if (av.consulta_realizada !== true) return jsonResponse({ error: 'A consulta veicular ainda não foi realizada.' }, 409);
-    // Troca (moto entrando como parte de pagamento) não exige aprovação da
-    // aquisição; compra pura sim.
+    // Troca (moto entrando como parte de pagamento): não exige aprovação da
+    // aquisição, e o contrato de VENDA já engloba a compra da moto que entra —
+    // não é preciso um contrato de compra separado. Compra pura exige os dois.
     const ehTroca = atendimento.interesse === 'trocar';
     if (!ehTroca && av.aprovacao_status !== 'aprovada') return jsonResponse({ error: 'A compra ainda não foi aprovada.' }, 409);
     const { data: contratoHist } = await admin
       .from('status_history').select('id')
       .eq('entity_type', 'pos_compra').eq('entity_id', avaliacaoId).eq('status', 'contrato_compra_gerado').limit(1);
-    if (!contratoHist || contratoHist.length === 0) {
-      return jsonResponse({ error: 'O contrato de compra ainda não foi gerado.' }, 409);
+    let contratoOk = !!contratoHist && contratoHist.length > 0;
+    if (!contratoOk && ehTroca) {
+      const { data: vendaHist } = await admin
+        .from('status_history').select('id')
+        .eq('entity_type', 'showroom').eq('entity_id', atendimentoId)
+        .in('status', ['contrato_de_venda', 'contrato_de_sinal']).limit(1);
+      contratoOk = !!vendaHist && vendaHist.length > 0;
+    }
+    if (!contratoOk) {
+      return jsonResponse({ error: ehTroca ? 'O contrato de venda ainda não foi gerado.' : 'O contrato de compra ainda não foi gerado.' }, 409);
     }
   } else if (tipo === 'consignacao') {
     if (av.consulta_realizada !== true) return jsonResponse({ error: 'A consulta veicular ainda não foi realizada.' }, 409);
