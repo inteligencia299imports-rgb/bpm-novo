@@ -14,6 +14,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
+import { nfeBotaoClasse } from '@/lib/nfeTag';
 import { TIPOS_PROPRIA } from '@/lib/tipoAquisicao';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -441,12 +442,13 @@ const ProcessoDialog: React.FC<Props> = ({
                       </Button>
                     ) : (
                       <Button
-                        variant={podeEmitirNfeVenda ? 'default' : 'outline'} size="sm" className="h-9 gap-2 text-sm"
+                        variant={podeEmitirNfeVenda ? 'default' : 'outline'} size="sm"
+                        className={cn('h-9 gap-2 text-sm', nfeBotaoClasse(nfeVenda.nfe))}
                         disabled={!podeEmitirNfeVenda || nfeVenda.loading}
                         title={podeEmitirNfeVenda ? undefined : 'Disponível após a venda e o contrato gerado'}
                         onClick={() => onEmitirNfe?.()}
                       >
-                        <FileText className="h-4 w-4" /> Emitir NF-e
+                        <FileText className="h-4 w-4" /> {nfeVenda.cancelada ? 'Reemitir NF-e' : 'Emitir NF-e'}
                       </Button>
                     )
                   ) : isNfTroca && !nfeTroca.emitida ? (
@@ -462,12 +464,15 @@ const ProcessoDialog: React.FC<Props> = ({
                     ) : (
                       <Button
                         variant={nfeTroca.erro ? 'outline' : 'default'} size="sm"
-                        className={`h-9 gap-2 text-sm ${nfeTroca.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : ''}`}
+                        className={cn(
+                          'h-9 gap-2 text-sm',
+                          nfeTroca.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : nfeBotaoClasse(nfeTroca.nfe),
+                        )}
                         disabled={!trocaAvaliacaoId || nfeTroca.loading}
                         onClick={() => trocaAvaliacaoId && onEmitirNfeTroca?.(trocaAvaliacaoId)}
                       >
                         {nfeTroca.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                        {nfeTroca.erro ? 'Tentar novamente' : 'Emitir NF-e'}
+                        {nfeTroca.erro ? 'Tentar novamente' : nfeTroca.cancelada ? 'Reemitir NF-e' : 'Emitir NF-e'}
                       </Button>
                     )
                   ) : isNf ? (
@@ -476,7 +481,7 @@ const ProcessoDialog: React.FC<Props> = ({
                           (lá dentro tem o Baixar DANFE / cancelar / reemitir) —
                           não o DANFE direto aqui. */}
                       <Button
-                        size="sm" className="h-7 gap-1"
+                        size="sm" className={cn('h-7 gap-1', nfeBotaoClasse(nfeObj?.nfe))}
                         onClick={() => (isNfTroca ? (trocaAvaliacaoId && onEmitirNfeTroca?.(trocaAvaliacaoId)) : onEmitirNfe?.())}
                       >
                         <FileText className="h-3.5 w-3.5" /> NF-e

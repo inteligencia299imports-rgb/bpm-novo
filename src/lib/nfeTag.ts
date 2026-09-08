@@ -44,3 +44,21 @@ export function nfeTagFromRows(rows: NfeTagRow[] | null | undefined): NfeTag | n
     ? { label: 'NF-e', className: 'bg-orange-500 hover:bg-orange-600' }
     : { label: 'NF-e', className: 'bg-primary hover:bg-primary' };
 }
+
+/**
+ * Classe de cor para BOTÕES de NF-e (processo de venda), conforme a última
+ * geração da nota: homologação = laranja, cancelada = vermelho, produção
+ * autorizada = verde. Sem status conhecido -> '' (mantém o estilo padrão).
+ */
+export function nfeBotaoClasse(
+  nfe: { status?: string | null; ambiente?: string | null } | null | undefined,
+): string {
+  const s = nfe?.status;
+  if (s === 'cancelada') return 'bg-red-600 hover:bg-red-700 text-white';
+  if (s === 'processada' || s === 'processada_com_pendencias') {
+    return nfe?.ambiente === 'producao'
+      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+      : 'bg-orange-500 hover:bg-orange-600 text-white';
+  }
+  return '';
+}
