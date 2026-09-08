@@ -58,9 +58,12 @@ interface ContratoPdfData {
     observacoes?: string;
   }[];
   
+  // Agregados (serviços cobrados à parte do cliente)
+  agregados?: { descricao: string; valor: string }[];
+
   // Observações
   observacoes: string;
-  
+
   // Datas
   dataSinal: string;
   dataVencimento: string;
@@ -490,6 +493,26 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
       }
     }
     y += sectionGap; // one line gap between each payment method
+  }
+
+  // Agregados — serviços cobrados à parte do cliente
+  if (data.agregados && data.agregados.length > 0) {
+    checkPageBreak(lineHeight);
+    setBold();
+    doc.text('Agregados (serviços cobrados à parte):', marginLeft, y); y += lineHeight;
+    setNormal();
+    let totalAgregados = 0;
+    for (const ag of data.agregados) {
+      checkPageBreak(lineHeight);
+      doc.text(`${ag.descricao}: ${ag.valor}`, marginLeft + 5, y); y += lineHeight;
+      totalAgregados += parseFloat(String(ag.valor).replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+    }
+    checkPageBreak(lineHeight);
+    setBold();
+    doc.text(`Total de agregados: R$ ${totalAgregados.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, marginLeft + 5, y);
+    y += lineHeight;
+    setNormal();
+    y += sectionGap;
   }
 
   // Confirmação das formas de pagamento (apenas seminovas, venda)

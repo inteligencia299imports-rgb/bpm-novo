@@ -782,6 +782,10 @@ const ContratoDialog: React.FC<Props> = ({
           observacoes: f.observacoes || '',
         };
       }),
+      agregados: agregados.map((a) => ({
+        descricao: a.descricao,
+        valor: `R$ ${(Number(a.valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      })),
     };
 
     // Troca info
