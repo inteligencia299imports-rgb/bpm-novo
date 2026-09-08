@@ -1,6 +1,11 @@
 -- Limpeza única: remove as NF-e de entrada geradas em HOMOLOGAÇÃO pelo fluxo de
--- emissão do BPM (compra/consignação/venda). Só NF-e de PRODUÇÃO deve ser
--- exibida/contabilizada no SISFIN.
+-- emissão do BPM (compra/consignação/venda) E as tentativas de emissão em
+-- produção que deram ERRO (sem número, não são documento fiscal). Só NF-e de
+-- PRODUÇÃO autorizada deve ser exibida/contabilizada no SISFIN.
+--
+-- Daqui pra frente a própria edge function faz essa limpeza sozinha quando uma
+-- NF-e de PRODUÇÃO é autorizada (ver limparNfeHomologacao em
+-- emitir-nfe-compra/index.ts) — esta migration é só o acerto do que já existe.
 --
 -- Discriminador: `ref_externa is not null` só é setado pela emissão via Focus
 -- (edge function emitir-nfe-compra). As NF-e de ENTRADA importadas de
@@ -17,18 +22,19 @@
 
 begin;
 
--- 1. Compromissos (e parcelas via CASCADE) presos às NF-e de homologação do BPM.
+-- 1. Compromissos (e parcelas via CASCADE) presos às NF-e de homologação /
+--    tentativas de produção com erro do BPM.
 delete from compromissos c
 using nfe_entradas n
 where n.id = c.nfe_entrada_id
   and n.ref_externa is not null
-  and n.ambiente = 'homologacao';
+  and (n.ambiente = 'homologacao' or n.status = 'erro');
 
--- 2. As NF-e de homologação do BPM (nfe_itens via CASCADE;
---    estoque_motos_novas.nfe_item_id vira NULL via SET NULL).
+-- 2. As NF-e de homologação + as de produção com erro do BPM (nfe_itens via
+--    CASCADE; estoque_motos_novas.nfe_item_id vira NULL via SET NULL).
 delete from nfe_entradas
 where ref_externa is not null
-  and ambiente = 'homologacao';
+  and (ambiente = 'homologacao' or status = 'erro');
 
 -- 3. Histórico "NF emitida" órfão (mantém o "..._cancelada" da NF de produção).
 delete from status_history
