@@ -3,6 +3,8 @@ import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTip
 import { useAuth } from '@/contexts/AuthContext';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
+import ContratoDialog from '@/components/showroom/ContratoDialog';
+import { fetchEstoqueUnificado } from '@/lib/estoqueMoto';
 import PosCompraProcessoDialog from '@/components/pos-compra/PosCompraProcessoDialog';
 import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProcessoDialog';
 import { podeAprovar } from '@/lib/aprovacao';
@@ -122,6 +124,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [showEvalDialog, setShowEvalDialog] = useState(false);
   const [contratoConsignacaoOpen, setContratoConsignacaoOpen] = useState(false);
   const [contratoCompraOpen, setContratoCompraOpen] = useState(false);
+  // Troca: no pós-compra o "Contrato" abre o MESMO contrato de venda do atendimento.
+  const [contratoVendaCtx, setContratoVendaCtx] = useState<{
+    atendimento: any; motosInteresse: any[]; motosAvaliacao: any[]; estoqueData: Record<string, any>; avaliacoes: Record<string, any>;
+  } | null>(null);
+  const [abrindoContratoVenda, setAbrindoContratoVenda] = useState(false);
   const [nfeCompraOpen, setNfeCompraOpen] = useState(false);
   const [nfeConsignacaoOpen, setNfeConsignacaoOpen] = useState(false);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
@@ -836,6 +843,21 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       />
     );
   }
+  if (contratoVendaCtx) {
+    return (
+      <ContratoDialog
+        open
+        modo="contrato"
+        atendimento={contratoVendaCtx.atendimento}
+        motosInteresse={contratoVendaCtx.motosInteresse}
+        motosAvaliacao={contratoVendaCtx.motosAvaliacao}
+        estoqueData={contratoVendaCtx.estoqueData}
+        avaliacoes={contratoVendaCtx.avaliacoes}
+        onOpenChange={(v: boolean) => { if (!v) { setContratoVendaCtx(null); refreshHistory(); loadAvaliacao(); } }}
+        onSaved={() => { setContratoVendaCtx(null); refreshHistory(); loadAvaliacao(); }}
+      />
+    );
+  }
   if ((contratoConsignacaoOpen || nfeConsignacaoOpen) && avaliacao) {
     return (
       <ContratoConsignacaoDialog
@@ -870,8 +892,43 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const souAprovador = podeAprovar(user?.id);
   // Após aprovação (ou emissão da NF-e): nada pode ser editado nem arquivo removido.
   const travado = aprovado || nfeCompraEmitida;
-  // Botões de contrato / processo / financeiro liberados: consignação sempre; pós-compra só após aprovar.
-  const liberadoProcesso = context === 'consignacao' || aprovado;
+  // Troca no pós-compra: não exige aprovação e o "Contrato" é o de venda do atendimento.
+  const ehTrocaPosCompra = context === 'pos_compra' && (avaliacao as any)?.atendimento?.interesse === 'trocar';
+  // Botões de contrato / processo / financeiro liberados: consignação sempre;
+  // pós-compra só após aprovar — exceto troca, que libera direto.
+  const liberadoProcesso = context === 'consignacao' || aprovado || ehTrocaPosCompra;
+
+  const abrirContratoVenda = async () => {
+    const atId = (avaliacao as any)?.atendimento?.id;
+    if (!atId) return;
+    setAbrindoContratoVenda(true);
+    try {
+      const [{ data: atFull }, { data: misRaw }] = await Promise.all([
+        supabase.from('atendimentos_motos')
+          .select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))`)
+          .eq('id', atId).maybeSingle(),
+        supabase.from('motos_interesse').select(`*, ${MARCA_MODELO_SELECT}`).eq('atendimento_id', atId),
+      ]);
+      const mis = ((misRaw as any[]) || []).map((m) => flattenMarcaModelo(m));
+      const ids = mis
+        .filter((m: any) => m.origem === 'estoque' && m.estoque_moto_id)
+        .map((m: any) => ({ id: m.estoque_moto_id as string, tipo: (m.estoque_tipo === '0km' ? '0km' : 'seminova') as 'seminova' | '0km' }));
+      const lista = ids.length ? await fetchEstoqueUnificado({ ids }) : [];
+      const estoqueData: Record<string, any> = {};
+      for (const e of lista) estoqueData[e.id] = e;
+      setContratoVendaCtx({
+        atendimento: { ...(atFull as any), loja: (atFull as any)?.loja_empresas?.loja },
+        motosInteresse: mis,
+        motosAvaliacao: [avaliacao],
+        estoqueData,
+        avaliacoes: { [(avaliacao as any).id]: avaliacao },
+      });
+    } catch (e) {
+      toast.error('Não foi possível abrir o contrato de venda.');
+    } finally {
+      setAbrindoContratoVenda(false);
+    }
+  };
 
   const whatsappUrl = (() => {
     if (!at?.cliente?.telefone) return '';
@@ -1089,10 +1146,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                     <Button
                       size="sm"
                       variant="default"
-                      onClick={() => setContratoCompraOpen(true)}
+                      onClick={() => (ehTrocaPosCompra ? abrirContratoVenda() : setContratoCompraOpen(true))}
+                      disabled={abrindoContratoVenda}
                       className="gap-1.5"
                     >
-                      <FileText className="h-4 w-4" /> Contrato
+                      <FileText className="h-4 w-4" /> {ehTrocaPosCompra ? 'Contrato de Venda' : 'Contrato'}
                     </Button>
                   )}
                 </>
