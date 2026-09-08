@@ -10,6 +10,7 @@ import PosVendaDetail from './PosVendaDetail';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { fetchAllRange } from '@/lib/fetchAllRange';
+import { nfeTagFromRows } from '@/lib/nfeTag';
 import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMotoNova, fetchLojaMap } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import CidadeFilter, { matchesCidade, getSiglaFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
@@ -60,18 +61,12 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       fetchLojaMap(),
       fetchAllRange<any>(() => supabase.from('nfe_entradas' as any).select('atendimento_id, status, ambiente, operacao, created_at').not('atendimento_id', 'is', null).like('operacao', 'venda%')),
     ]);
-    // Estado efetivo da NF-e por atendimento: vence a linha processada/cancelada
-    // MAIS RECENTE (ignora erro/pendente). Cancelada -> tag vermelha no card.
-    const nfePorAtendimento: Record<string, { cancelada: boolean; ambiente: 'homologacao' | 'producao' }> = {};
-    ((nfeResult.data as any[]) || [])
-      .filter((n: any) => n.atendimento_id && (n.status === 'processada' || n.status === 'cancelada'))
-      .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-      .forEach((n: any) => {
-        nfePorAtendimento[n.atendimento_id] = {
-          cancelada: n.status === 'cancelada',
-          ambiente: n.ambiente === 'producao' ? 'producao' : 'homologacao',
-        };
-      });
+    // Tag de status da NF por atendimento — reflete o último status da NF.
+    const nfeRowsPorAtendimento: Record<string, any[]> = {};
+    ((nfeResult.data as any[]) || []).forEach((n: any) => {
+      if (!n.atendimento_id) return;
+      (nfeRowsPorAtendimento[n.atendimento_id] ??= []).push(n);
+    });
     const estRes = {
       data: [
         ...(estResRaw.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)),
@@ -108,13 +103,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       .filter(a => estoquePropria[a.id] || (!estoquePropria[a.id] && !estoqueConsignada.has(a.id)))
       .map(a => {
         const est = estoquePropria[a.id];
-        const _nfe = nfePorAtendimento[a.id] || null;
-        const _nfeCancelada = !!_nfe?.cancelada;
-        const _nfeAmbiente = _nfe && !_nfe.cancelada ? _nfe.ambiente : null;
-        if (est) return { ...a, _estoqueMoto: est, _nfeAmbiente, _nfeCancelada };
+        const _nfeTag = nfeTagFromRows(nfeRowsPorAtendimento[a.id]);
+        if (est) return { ...a, _estoqueMoto: est, _nfeTag };
         // Fallback: use first moto_interesse info
         const mi = a.motos_interesse?.[0];
-        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeAmbiente, _nfeCancelada };
+        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeTag };
       });
 
     if (search.trim()) {
@@ -181,11 +174,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
                          <ProcessCard key={a.id} clientName={a.cliente?.nome_razao_social} phone={a.cliente?.telefone}
                            motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
                            loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex}
-                           nameTag={a._nfeCancelada
-                             ? { label: 'NF-e cancelada', className: 'bg-red-600 hover:bg-red-600' }
-                             : a._nfeAmbiente
-                               ? { label: 'NF-e', className: a._nfeAmbiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary' }
-                               : undefined}
+                           nameTag={a._nfeTag || undefined}
                            onClick={() => setSelectedItem(a)} />
                       );
                     })}
