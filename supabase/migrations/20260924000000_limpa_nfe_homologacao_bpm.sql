@@ -71,7 +71,7 @@ where n.id = c.nfe_entrada_id
 
 update compromissos_parcelas p
 set status_pagamento = 'cancelado', data_pagamento = null,
-    forma_pagamento_id = null, valor_juros = 0, valor_desconto = 0
+    valor_juros = 0, valor_desconto = 0
 from compromissos c
 join nfe_entradas n on n.id = c.nfe_entrada_id
 where p.compromisso_id = c.id

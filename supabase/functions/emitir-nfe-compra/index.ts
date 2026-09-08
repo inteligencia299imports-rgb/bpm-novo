@@ -189,7 +189,7 @@ async function aplicarCancelamento(
       .update({ status_compromisso: 'cancelada' })
       .in('id', compIds);
     await admin.from('compromissos_parcelas')
-      .update({ status_pagamento: 'cancelado', data_pagamento: null, forma_pagamento_id: null, valor_juros: 0, valor_desconto: 0 })
+      .update({ status_pagamento: 'cancelado', data_pagamento: null, valor_juros: 0, valor_desconto: 0 })
       .in('compromisso_id', compIds)
       .neq('status_pagamento', 'pago');
     const { count } = await admin.from('compromissos_parcelas')
