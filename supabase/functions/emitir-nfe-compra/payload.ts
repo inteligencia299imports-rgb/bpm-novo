@@ -435,10 +435,13 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   // Nomes de campo da Focus (campos.focusnfe.com.br/nfe): formas_pagamento[] com
   // forma_pagamento (tPag) / valor_pagamento (vPag) / descricao_pagamento (xPag,
   // só p/ tPag 99); numero_fatura (nFat) / valor_*_fatura (vOrig/vDesc/vLiq);
-  // duplicatas[] com numero (nDup) / valor (vDup) / data_vencimento (dVenc, opc).
+  // duplicatas[] com numero (nDup) / valor (vDup) / data_vencimento (dVenc).
   // A soma das formas TEM que bater com o valor da NF (Rejeição 851/763). Se não
   // bater (dado incompleto), cai numa única forma "99 - DIVERSOS" pelo total e
   // não manda o grupo de faturas.
+  // dVenc é OBRIGATÓRIO e não pode ser < data de emissão (Rejeição 900) — usa a
+  // própria data de emissão (pagamento "à vista"; não há plano de parcelas real).
+  const vencDup = agora.slice(0, 10);
   const formasIn = entrada ? [] : (formasPagamento || []).filter((f) => Number(f.valor) > 0);
   const somaFormas = r2(formasIn.reduce((s, f) => s + Number(f.valor), 0));
   const formasBatem = formasIn.length > 0 && Math.abs(somaFormas - valorFmt) <= 0.02;
@@ -462,6 +465,7 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
               valor_liquido_fatura: valorFmt,
               duplicatas: formasIn.map((f, i) => ({
                 numero: String(i + 1).padStart(3, '0'),
+                data_vencimento: vencDup,
                 valor: r2(Number(f.valor)),
               })),
             }
