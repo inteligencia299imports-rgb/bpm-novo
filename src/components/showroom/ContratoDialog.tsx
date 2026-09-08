@@ -307,13 +307,13 @@ const ContratoDialog: React.FC<Props> = ({
           .eq('ativo', true),
         supabase
           .from('agregados_motos')
-          .select('id, descricao, valor')
+          .select('id, descricao, valor, empresa_id')
           .eq('ativo', true)
           .order('descricao'),
       ]);
 
       setFormasPagOpcoes((formasOpts as any[]) || []);
-      setAgregadoOpcoes(((agregadosOpts as any[]) || []).map((a) => ({ id: a.id, descricao: a.descricao, valor: Number(a.valor) || 0 })));
+      setAgregadoOpcoes(((agregadosOpts as any[]) || []).map((a) => ({ id: a.id, descricao: a.descricao, valor: Number(a.valor) || 0, empresa_id: a.empresa_id })));
 
       type InstRow = {
         id: string;
@@ -1231,10 +1231,11 @@ const ContratoDialog: React.FC<Props> = ({
                     <AgregadosContrato
                       value={agregados}
                       onChange={setAgregados}
-                      catalogo={agregadoOpcoes}
-                      onCatalogoChange={setAgregadoOpcoes}
+                      catalogo={empresaId ? agregadoOpcoes.filter((a) => a.empresa_id === empresaId) : []}
+                      onNovoAgregado={(ag) => setAgregadoOpcoes((prev) => [...prev, ag].sort((a, b) => a.descricao.localeCompare(b.descricao)))}
                       soLeitura={soLeitura}
                       podeCadastrar={role === 'master' || role === 'gerente'}
+                      empresaId={empresaId || undefined}
                     />
                   </CardContent>
                 </Card>
