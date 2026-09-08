@@ -257,7 +257,9 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
 
   const item: Record<string, unknown> = {
     numero_item: 1,
-    codigo_produto: (moto.placa || moto.chassi || 'MOTO').toUpperCase().replace(/\s/g, ''),
+    // cProd = sempre o CHASSI da moto (as duas NF-e de referência autorizadas
+    // usam o chassi). Placa só como último recurso se não houver chassi.
+    codigo_produto: (moto.chassi || moto.placa || 'MOTO').toUpperCase().replace(/\s/g, ''),
     descricao: descricaoItemMoto(moto),
     informacoes_adicionais_item: informacoesAdicionaisItemMoto(moto),
     cfop: regraIcms.cfop,
