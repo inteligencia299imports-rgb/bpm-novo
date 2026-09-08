@@ -139,6 +139,17 @@ export interface MontarPayloadArgs {
 const onlyDigits = (v: string | null | undefined) => (v ?? '').replace(/\D/g, '');
 const juntarInfos = (...partes: Array<string | null | undefined>) =>
   partes.map((p) => (p ?? '').trim()).filter(Boolean).join(' | ') || undefined;
+/**
+ * Junta blocos das Informações Complementares (infCpl) com " * " — o separador
+ * que os fiscos/DANFE esperam ver entre cada informação distinta (mesmo padrão
+ * das NF-e de referência da Ducati). Cada bloco também é limpo de " * " sobrando
+ * nas pontas pra não duplicar o separador.
+ */
+const juntarInfoCpl = (...partes: Array<string | null | undefined>) =>
+  partes
+    .map((p) => (p ?? '').trim().replace(/^\*+\s*|\s*\*+$/g, '').trim())
+    .filter(Boolean)
+    .join(' * ') || undefined;
 
 /**
  * Data/hora atual no fuso de Brasília (UTC-3, sem horário de verão desde 2019),
@@ -489,7 +500,7 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     // (presencial/online/ambos) antes de chegar aqui — ver index.ts regraDe().
     presenca_comprador: regraIcms.indicador_presenca ?? regraIpi?.indicador_presenca ?? natureza.indicador_presenca ?? undefined,
     modalidade_frete: 9,
-    informacoes_adicionais_contribuinte: juntarInfos(
+    informacoes_adicionais_contribuinte: juntarInfoCpl(
       natureza.informacoes_complementares,
       regraIcms.informacoes_complementares,
       observacoes ? observacoes.toUpperCase() : null,
