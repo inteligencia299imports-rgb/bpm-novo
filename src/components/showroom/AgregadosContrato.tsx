@@ -11,6 +11,7 @@ export interface Agregado {
   id: string;
   descricao: string;
   valor: number;
+  empresa_id?: string | null;
 }
 
 export interface AgregadoLinha {
@@ -32,10 +33,13 @@ interface Props {
   value: AgregadoLinha[];
   onChange: (linhas: AgregadoLinha[]) => void;
   catalogo: Agregado[];
-  onCatalogoChange: (c: Agregado[]) => void;
+  /** Chamado quando um agregado novo é cadastrado no catálogo. */
+  onNovoAgregado?: (ag: Agregado) => void;
   soLeitura?: boolean;
   /** master/gerente: pode cadastrar um agregado novo no catálogo. */
   podeCadastrar?: boolean;
+  /** Empresa do contrato — o agregado novo é criado nela (agregados são por empresa). */
+  empresaId?: string;
 }
 
 /**
@@ -43,7 +47,7 @@ interface Props {
  * agregado do catálogo (agregados_motos) — o valor vem preenchido e pode ser
  * editado aqui no contrato (não altera o catálogo).
  */
-const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, onCatalogoChange, soLeitura, podeCadastrar }) => {
+const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, onNovoAgregado, soLeitura, podeCadastrar, empresaId }) => {
   const [selId, setSelId] = useState('');
   const [novoOpen, setNovoOpen] = useState(false);
   const [novoDesc, setNovoDesc] = useState('');
@@ -74,20 +78,21 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, onCatal
   const criarNovo = async () => {
     const descricao = novoDesc.trim();
     if (!descricao) return;
+    if (!empresaId) { toast.error('Selecione a empresa do contrato antes de cadastrar um agregado.'); return; }
     setSalvandoNovo(true);
     const valor = parseInput(novoValor);
     const { data, error } = await supabase
       .from('agregados_motos')
-      .insert({ descricao, valor })
-      .select('id, descricao, valor')
+      .insert({ descricao, valor, empresa_id: empresaId })
+      .select('id, descricao, valor, empresa_id')
       .single();
     setSalvandoNovo(false);
     if (error || !data) {
       toast.error('Não foi possível cadastrar o agregado. ' + (error?.message ?? ''));
       return;
     }
-    const ag = { id: data.id, descricao: data.descricao, valor: Number(data.valor) || 0 };
-    onCatalogoChange([...catalogo, ag].sort((a, b) => a.descricao.localeCompare(b.descricao)));
+    const ag = { id: data.id, descricao: data.descricao, valor: Number(data.valor) || 0, empresa_id: (data as any).empresa_id };
+    onNovoAgregado?.(ag);
     onChange([...value, { agregado_id: ag.id, descricao: ag.descricao, valor: ag.valor }]);
     setNovoDesc('');
     setNovoValor('');
