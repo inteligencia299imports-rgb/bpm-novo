@@ -28,6 +28,9 @@ interface Props {
         codigo_cor_fabricante?: string | null;
         codigo_cor_denatran?: string | null;
         codigo_marca_modelo_denatran?: string | null;
+        icms_st_bc_retido?: string | number | null;
+        icms_st_valor_substituto?: string | number | null;
+        icms_st_valor_retido?: string | number | null;
       }
     | null;
   onSuccess: () => void;
@@ -41,6 +44,9 @@ type FormState = {
   codigo_cor_fabricante: string;
   codigo_cor_denatran: string;
   codigo_marca_modelo_denatran: string;
+  icms_st_bc_retido: string;
+  icms_st_valor_substituto: string;
+  icms_st_valor_retido: string;
 };
 
 const vazio: FormState = {
@@ -51,6 +57,9 @@ const vazio: FormState = {
   codigo_cor_fabricante: '',
   codigo_cor_denatran: '',
   codigo_marca_modelo_denatran: '',
+  icms_st_bc_retido: '',
+  icms_st_valor_substituto: '',
+  icms_st_valor_retido: '',
 };
 
 const DadosFiscaisNovaDialog: React.FC<Props> = ({ open, onOpenChange, item, onSuccess }) => {
@@ -67,6 +76,9 @@ const DadosFiscaisNovaDialog: React.FC<Props> = ({ open, onOpenChange, item, onS
       codigo_cor_fabricante: item.codigo_cor_fabricante ?? '',
       codigo_cor_denatran: item.codigo_cor_denatran ?? '',
       codigo_marca_modelo_denatran: item.codigo_marca_modelo_denatran ?? '',
+      icms_st_bc_retido: item.icms_st_bc_retido != null ? String(item.icms_st_bc_retido) : '',
+      icms_st_valor_substituto: item.icms_st_valor_substituto != null ? String(item.icms_st_valor_substituto) : '',
+      icms_st_valor_retido: item.icms_st_valor_retido != null ? String(item.icms_st_valor_retido) : '',
     });
   }, [item]);
 
@@ -92,6 +104,9 @@ const DadosFiscaisNovaDialog: React.FC<Props> = ({ open, onOpenChange, item, onS
           codigo_cor_fabricante: strOrNull(form.codigo_cor_fabricante),
           codigo_cor_denatran: strOrNull(form.codigo_cor_denatran),
           codigo_marca_modelo_denatran: strOrNull(form.codigo_marca_modelo_denatran),
+          icms_st_bc_retido: numOrNull(form.icms_st_bc_retido),
+          icms_st_valor_substituto: numOrNull(form.icms_st_valor_substituto),
+          icms_st_valor_retido: numOrNull(form.icms_st_valor_retido),
         })
         .eq('id', item.id);
       if (error) throw error;
@@ -117,7 +132,7 @@ const DadosFiscaisNovaDialog: React.FC<Props> = ({ open, onOpenChange, item, onS
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" /> Dados fiscais (NF-e) — {item?.modelo}
@@ -159,6 +174,25 @@ const DadosFiscaisNovaDialog: React.FC<Props> = ({ open, onOpenChange, item, onS
             <div className="space-y-1.5 col-span-2">
               <Label>Código Marca/Modelo DENATRAN</Label>
               <Input value={form.codigo_marca_modelo_denatran} onChange={set('codigo_marca_modelo_denatran')} placeholder="Ex.: 000496" />
+            </div>
+          </div>
+
+          <p className="pt-1 text-xs text-muted-foreground">
+            ICMS-ST retido anteriormente (grupo <code>&lt;ICMS60&gt;</code> da NF-e de venda). Transcreva
+            da NF-e de entrada da moto. Em branco, a NF é emitida com um valor aproximado sobre a venda.
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label>BC ST retida (R$)</Label>
+              <Input value={form.icms_st_bc_retido} onChange={set('icms_st_bc_retido')} inputMode="decimal" placeholder="Ex.: 123199.79" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>ICMS do substituto (R$)</Label>
+              <Input value={form.icms_st_valor_substituto} onChange={set('icms_st_valor_substituto')} inputMode="decimal" placeholder="Ex.: 11032.82" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>ICMS-ST retido (R$)</Label>
+              <Input value={form.icms_st_valor_retido} onChange={set('icms_st_valor_retido')} inputMode="decimal" placeholder="Ex.: 3751.15" />
             </div>
           </div>
 

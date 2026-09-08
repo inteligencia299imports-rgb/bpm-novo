@@ -462,30 +462,13 @@ const ContratoDialog: React.FC<Props> = ({
     if (dasFormas) setNfeObs(dasFormas.toUpperCase());
   }, [open, ehNfe, formasPagamento, nfeObs]);
 
-  // Emite a NF-e de venda; antes, para moto 0km, grava em estoque_motos_novas os
-  // valores de ICMS-ST retido anteriormente (a Edge Function lê do banco).
-  const handleEmitirNf = async (ambiente: 'homologacao' | 'producao') => {
-    if (eh0kmVenda && motoIntNfe?.estoque_moto_id) {
-      const n = (s: string) => {
-        const v = parseCurrencyInput(s);
-        return v > 0 ? v : null;
-      };
-      await supabase
-        .from('estoque_motos_novas')
-        .update({
-          icms_st_bc_retido: n(stBcRetido),
-          icms_st_valor_substituto: n(stValorSubstituto),
-          icms_st_valor_retido: n(stValorRetido),
-        })
-        .eq('id', motoIntNfe.estoque_moto_id);
-    }
-    await nfe.emitir({
+  const handleEmitirNf = (ambiente: 'homologacao' | 'producao') =>
+    nfe.emitir({
       valor: parseCurrencyInput(nfeValor),
       observacoes: nfeObs || undefined,
       empresa_id: empresaId || undefined,
       ambiente,
     });
-  };
 
   const resetPagamentoForm = () => {
     setNovaPagamentoTipo('');
@@ -1544,37 +1527,13 @@ const ContratoDialog: React.FC<Props> = ({
                         {eh0kmVenda && (
                           <div className="space-y-2 rounded-md border border-dashed p-3">
                             <p className="text-xs font-medium text-muted-foreground">
-                              ICMS-ST retido anteriormente (grupo &lt;ICMS60&gt;) — transcreva da NF-e de entrada da moto.
+                              ICMS-ST retido anteriormente (grupo &lt;ICMS60&gt;) — vem da NF-e de entrada da moto.
                               Em branco, o sistema calcula um valor aproximado sobre o valor da venda.
                             </p>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                              <div className="space-y-1.5">
-                                <Label className="text-xs">BC ST retida (vBCSTRet)</Label>
-                                <Input
-                                  inputMode="numeric"
-                                  value={stBcRetido}
-                                  onChange={(e) => setStBcRetido(formatCurrencyInput(e.target.value))}
-                                  placeholder="0,00"
-                                />
-                              </div>
-                              <div className="space-y-1.5">
-                                <Label className="text-xs">ICMS do substituto (vICMSSubstituto)</Label>
-                                <Input
-                                  inputMode="numeric"
-                                  value={stValorSubstituto}
-                                  onChange={(e) => setStValorSubstituto(formatCurrencyInput(e.target.value))}
-                                  placeholder="0,00"
-                                />
-                              </div>
-                              <div className="space-y-1.5">
-                                <Label className="text-xs">ICMS-ST retido (vICMSSTRet)</Label>
-                                <Input
-                                  inputMode="numeric"
-                                  value={stValorRetido}
-                                  onChange={(e) => setStValorRetido(formatCurrencyInput(e.target.value))}
-                                  placeholder="0,00"
-                                />
-                              </div>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                              <InfoDisplay label="BC ST retida" value={stBcRetido ? `R$ ${stBcRetido}` : '—'} />
+                              <InfoDisplay label="ICMS do substituto" value={stValorSubstituto ? `R$ ${stValorSubstituto}` : '—'} />
+                              <InfoDisplay label="ICMS-ST retido" value={stValorRetido ? `R$ ${stValorRetido}` : '—'} />
                             </div>
                           </div>
                         )}
