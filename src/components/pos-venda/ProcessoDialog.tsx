@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import { format } from 'date-fns';
@@ -472,26 +472,15 @@ const ProcessoDialog: React.FC<Props> = ({
                     )
                   ) : isNf ? (
                     <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
-                      {isNfVenda ? (
-                        // Venda: abre a mesma página de emissão da NF-e (lá dentro tem o
-                        // botão de Baixar DANFE, já autorizada) — não o DANFE direto aqui.
-                        <Button size="sm" className="h-7 gap-1" onClick={() => onEmitirNfe?.()}>
-                          <FileText className="h-3.5 w-3.5" /> NF
-                        </Button>
-                      ) : (
-                        nfeObj?.nfe?.caminho_danfe && (
-                          <Button
-                            size="sm"
-                            className={cn(
-                              'h-7 gap-1 text-white',
-                              nfeObj.nfe.ambiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary/90',
-                            )}
-                            onClick={() => window.open(nfeObj.nfe.caminho_danfe, '_blank', 'noopener')}
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" /> DANFE
-                          </Button>
-                        )
-                      )}
+                      {/* Venda e Entrada (troca): abre a página de emissão da NF-e
+                          (lá dentro tem o Baixar DANFE / cancelar / reemitir) —
+                          não o DANFE direto aqui. */}
+                      <Button
+                        size="sm" className="h-7 gap-1"
+                        onClick={() => (isNfTroca ? (trocaAvaliacaoId && onEmitirNfeTroca?.(trocaAvaliacaoId)) : onEmitirNfe?.())}
+                      >
+                        <FileText className="h-3.5 w-3.5" /> NF-e
+                      </Button>
                       <CalendarIcon className="h-4 w-4 shrink-0" />
                       {nfeObj?.nfe?.data_emissao ? format(new Date(nfeObj.nfe.data_emissao), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : '—'}
                     </span>

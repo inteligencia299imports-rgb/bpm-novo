@@ -340,7 +340,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                     // não o DANFE direto aqui.
                     <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
                       <Button size="sm" className="h-7 gap-1" onClick={() => onEmitirNfe?.()}>
-                        <FileText className="h-3.5 w-3.5" /> NF
+                        <FileText className="h-3.5 w-3.5" /> NF-e
                       </Button>
                       <CalendarIcon className="h-4 w-4 shrink-0" />
                       {nfe.nfe?.data_emissao ? format(new Date(nfe.nfe.data_emissao), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '—'}

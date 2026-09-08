@@ -528,7 +528,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                     <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
                       {nfeEmitida && (
                         <Button size="sm" className="h-8 gap-1.5" onClick={() => onEmitirNfe?.()}>
-                          <FileText className="h-4 w-4" /> NF
+                          <FileText className="h-4 w-4" /> NF-e
                         </Button>
                       )}
                       <CalendarIcon className="h-4 w-4 shrink-0" />
