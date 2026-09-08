@@ -995,12 +995,47 @@ Deno.serve(async (req) => {
         : Promise.resolve({ data: null }),
     ]);
     vendedorNome = (vendedorRole as any)?.nome ?? null;
-    formasPagamentoTexto = ((formasPagamento as any[]) || [])
+    const linhasPagto = ((formasPagamento as any[]) || [])
       .map((fp) => {
         const v = fp.valor_total ?? fp.valor_financiado;
         return v != null ? `${fp.tipo} ${fmtBRL(Number(v))}` : fp.tipo;
-      })
-      .join(' * ') || null;
+      });
+
+    // Troca: a moto seminova que entra como parte do pagamento vira uma linha
+    // "Semi-Novo R$ <valor da NF de compra> NF DE ENTRADA <nº> - PLACA <placa>".
+    if (atendimento.interesse === 'trocar') {
+      const { data: avsTroca } = await admin
+        .from('avaliacoes')
+        .select('id, placa, valor_fechamento')
+        .eq('atendimento_id', atendimentoId);
+      const trocaIds = ((avsTroca as any[]) || []).map((a) => a.id);
+      if (trocaIds.length) {
+        const { data: nfsCompra } = await admin
+          .from('nfe_entradas')
+          .select('avaliacao_id, numero, valor_total, created_at')
+          .in('avaliacao_id', trocaIds)
+          .eq('operacao', 'compra')
+          .eq('status', 'processada')
+          .order('created_at', { ascending: false });
+        const nfPorAval = new Map<string, any>();
+        for (const n of (nfsCompra as any[]) || []) {
+          if (!nfPorAval.has(n.avaliacao_id)) nfPorAval.set(n.avaliacao_id, n);
+        }
+        for (const a of (avsTroca as any[]) || []) {
+          const nf = nfPorAval.get(a.id);
+          const valorTroca = Number(nf?.valor_total ?? a.valor_fechamento ?? 0);
+          if (valorTroca <= 0) continue;
+          const placa = String(a.placa ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+          linhasPagto.push(
+            `Semi-Novo ${fmtBRL(valorTroca)}` +
+            (nf?.numero ? ` NF DE ENTRADA ${nf.numero}` : '') +
+            (placa ? ` - PLACA ${placa}` : ''),
+          );
+        }
+      }
+    }
+
+    formasPagamentoTexto = linhasPagto.join(' * ') || null;
   }
 
   // Valor da NF. body.valor (editado na tela) tem prioridade.
