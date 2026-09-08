@@ -1172,28 +1172,6 @@ const ContratoDialog: React.FC<Props> = ({
                 </CardContent>
               </Card>
 
-              {/* Card: Agregados — serviços cobrados à parte do cliente */}
-              {(!soLeitura || agregados.length > 0) && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Package className="h-4 w-4 text-primary" /> Agregados
-                    </CardTitle>
-                    <Separator className="mt-2" />
-                  </CardHeader>
-                  <CardContent>
-                    <AgregadosContrato
-                      value={agregados}
-                      onChange={setAgregados}
-                      catalogo={agregadoOpcoes}
-                      onCatalogoChange={setAgregadoOpcoes}
-                      soLeitura={soLeitura}
-                      podeCadastrar={role === 'master' || role === 'gerente'}
-                    />
-                  </CardContent>
-                </Card>
-              )}
-
               {/* Card: Moto do Cliente (troca) */}
               {hasTroca && (
                 <Card>
@@ -1387,6 +1365,28 @@ const ContratoDialog: React.FC<Props> = ({
                 )}
                 </CardContent>
               </Card>
+
+              {/* Card: Agregados — serviços cobrados à parte do cliente */}
+              {(!soLeitura || agregados.length > 0) && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Package className="h-4 w-4 text-primary" /> Agregados
+                    </CardTitle>
+                    <Separator className="mt-2" />
+                  </CardHeader>
+                  <CardContent>
+                    <AgregadosContrato
+                      value={agregados}
+                      onChange={setAgregados}
+                      catalogo={agregadoOpcoes}
+                      onCatalogoChange={setAgregadoOpcoes}
+                      soLeitura={soLeitura}
+                      podeCadastrar={role === 'master' || role === 'gerente'}
+                    />
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Card: Observações */}
               <Card>
