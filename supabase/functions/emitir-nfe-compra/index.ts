@@ -981,11 +981,24 @@ Deno.serve(async (req) => {
   const end = (fornecedor.clientes_fornecedores_enderecos || [])[0] || {};
 
   // Venda: nome do vendedor + formas de pagamento do contrato, pra compor as
-  // informações complementares da NF-e (ver montarPayloadNfeCompra).
+  // informações complementares (texto) E os grupos pag/cobr da NF-e.
   let vendedorNome: string | null = null;
   let formasPagamentoTexto: string | null = null;
+  const formasPagamentoEstrut: { codigo: string; descricao?: string; valor: number }[] = [];
   if (ehVenda) {
     const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    // Nome da forma de pagamento -> código tPag da SEFAZ (mesmo mapa do crm-novo).
+    const CODIGO_TPAG: Record<string, string> = {
+      dinheiro: '01', cheque: '02',
+      credito: '03', 'crédito': '03', 'cartao de credito': '03', 'cartão de crédito': '03',
+      debito: '04', 'débito': '04', 'cartao de debito': '04', 'cartão de débito': '04',
+      boleto: '15', 'boleto bancario': '15', 'boleto bancário': '15',
+      pix: '17',
+      'ted/doc': '18', ted_doc_pix: '18', ted: '18', doc: '18', transferencia: '18', 'transferência': '18',
+      financiamento: '99', 'consórcio': '99', consorcio: '99', 'crédito loja': '05',
+    };
+    const tPagDe = (tipo: string) => CODIGO_TPAG[String(tipo ?? '').toLowerCase().trim()] ?? '99';
+
     const [{ data: vendedorRole }, { data: formasPagamento }] = await Promise.all([
       atendimento.vendedor_id
         ? admin.from('user_roles').select('nome').eq('user_id', atendimento.vendedor_id).eq('projeto_id', BPM_PROJETO_ID).maybeSingle()
@@ -995,14 +1008,20 @@ Deno.serve(async (req) => {
         : Promise.resolve({ data: null }),
     ]);
     vendedorNome = (vendedorRole as any)?.nome ?? null;
-    const linhasPagto = ((formasPagamento as any[]) || [])
-      .map((fp) => {
-        const v = fp.valor_total ?? fp.valor_financiado;
-        return v != null ? `${fp.tipo} ${fmtBRL(Number(v))}` : fp.tipo;
-      });
+
+    const linhasPagto: string[] = [];
+    for (const fp of ((formasPagamento as any[]) || [])) {
+      const v = Number(fp.valor_total ?? fp.valor_financiado ?? 0);
+      linhasPagto.push(v > 0 ? `${fp.tipo} ${fmtBRL(v)}` : String(fp.tipo));
+      if (v > 0) {
+        const cod = tPagDe(fp.tipo);
+        formasPagamentoEstrut.push({ codigo: cod, descricao: cod === '99' ? String(fp.tipo ?? 'OUTROS').toUpperCase() : undefined, valor: v });
+      }
+    }
 
     // Troca: a moto seminova que entra como parte do pagamento vira uma linha
-    // "Semi-Novo R$ <valor da NF de compra> NF DE ENTRADA <nº> SÉRIE <série> - PLACA <placa>".
+    // "Semi-Novo R$ <valor da NF de compra> NF DE ENTRADA <nº> SÉRIE <série> - PLACA <placa>"
+    // no texto e uma forma de pagamento tPag 99 no grupo pag/dup.
     if (atendimento.interesse === 'trocar') {
       const { data: avsTroca } = await admin
         .from('avaliacoes')
@@ -1031,6 +1050,7 @@ Deno.serve(async (req) => {
             (nf?.numero ? ` NF DE ENTRADA ${nf.numero}${nf.serie ? ` SÉRIE ${nf.serie}` : ''}` : '') +
             (placa ? ` - PLACA ${placa}` : ''),
           );
+          formasPagamentoEstrut.push({ codigo: '99', descricao: 'SEMI-NOVO', valor: valorTroca });
         }
       }
     }
@@ -1216,6 +1236,7 @@ Deno.serve(async (req) => {
     observacoes: typeof body.observacoes === 'string' ? body.observacoes : null,
     vendedorNome,
     formasPagamentoTexto,
+    formasPagamento: formasPagamentoEstrut,
   });
 
   // FKs da nfe_entradas conforme a operacao.

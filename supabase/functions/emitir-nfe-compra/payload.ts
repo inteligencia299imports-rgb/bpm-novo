@@ -129,6 +129,11 @@ export interface MontarPayloadArgs {
   vendedorNome?: string | null;
   /** Formas de pagamento do contrato, já formatadas ("PIX R$ 100,00 * CONSÓRCIO R$ 200,00"). */
   formasPagamentoTexto?: string | null;
+  /**
+   * Formas de pagamento estruturadas (grupo pag/detPag + cobr/fat/dup da NF-e).
+   * `codigo` = tPag da SEFAZ; `descricao` só quando codigo === '99'. Só venda.
+   */
+  formasPagamento?: { codigo: string; descricao?: string; valor: number }[];
 }
 
 const onlyDigits = (v: string | null | undefined) => (v ?? '').replace(/\D/g, '');
@@ -255,7 +260,7 @@ export function veiculoProdMoto(m: DadosMoto): Record<string, unknown> | null {
 }
 
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
-  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto } = args;
+  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, formasPagamento } = args;
 
   const pf = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
   const docForn = onlyDigits(fornecedor.cpf_cnpj);
@@ -426,6 +431,43 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     ? `VALOR DO IBS ${fmtBRL(totalIbs)} * VALOR DA CBS ${fmtBRL(totalCbs)}`
     : null;
 
+  // --- Grupos pag/detPag (obrigatório) e cobr/fat/dup (faturas) -----------
+  // Nomes de campo da Focus (campos.focusnfe.com.br/nfe): formas_pagamento[] com
+  // forma_pagamento (tPag) / valor_pagamento (vPag) / descricao_pagamento (xPag,
+  // só p/ tPag 99); numero_fatura (nFat) / valor_*_fatura (vOrig/vDesc/vLiq);
+  // duplicatas[] com numero (nDup) / valor (vDup) / data_vencimento (dVenc, opc).
+  // A soma das formas TEM que bater com o valor da NF (Rejeição 851/763). Se não
+  // bater (dado incompleto), cai numa única forma "99 - DIVERSOS" pelo total e
+  // não manda o grupo de faturas.
+  const formasIn = entrada ? [] : (formasPagamento || []).filter((f) => Number(f.valor) > 0);
+  const somaFormas = r2(formasIn.reduce((s, f) => s + Number(f.valor), 0));
+  const formasBatem = formasIn.length > 0 && Math.abs(somaFormas - valorFmt) <= 0.02;
+
+  // Entrada (compra/consignação): não mexe no pagamento — deixa o default da Focus.
+  // Venda: manda formas_pagamento sempre; cobr/fat/dup só quando as formas batem.
+  const pagCobr: Record<string, unknown> = entrada
+    ? {}
+    : {
+        formas_pagamento: formasBatem
+          ? formasIn.map((f) => ({
+              forma_pagamento: f.codigo,
+              valor_pagamento: r2(Number(f.valor)),
+              ...(f.codigo === '99' ? { descricao_pagamento: (f.descricao || 'OUTROS').slice(0, 60) } : {}),
+            }))
+          : [{ forma_pagamento: '99', valor_pagamento: valorFmt, descricao_pagamento: 'DIVERSOS' }],
+        ...(formasBatem
+          ? {
+              valor_original_fatura: valorFmt,
+              valor_desconto_fatura: 0,
+              valor_liquido_fatura: valorFmt,
+              duplicatas: formasIn.map((f, i) => ({
+                numero: String(i + 1).padStart(3, '0'),
+                valor: r2(Number(f.valor)),
+              })),
+            }
+          : {}),
+      };
+
   return {
     // ide/natOp: prioriza o texto específico do CFOP escolhido (regra de ICMS) —
     // uma mesma natureza pode ter CFOPs com semântica fiscal diferente (ex.: venda
@@ -478,6 +520,8 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     valor_outras_despesas: 0,
     valor_produtos: valorFmt,
     valor_total: valorFmt,
+
+    ...pagCobr,
 
     items: [item],
   };
