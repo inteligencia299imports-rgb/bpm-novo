@@ -218,6 +218,43 @@ async function aplicarCancelamento(
 
 const PENDENTES = new Set(['recebida', 'validando', 'processando_itens']);
 
+/**
+ * Chamada quando uma NF-e de PRODUÇÃO é autorizada: apaga as NF-e de
+ * HOMOLOGAÇÃO da mesma entidade (e as tentativas de produção que deram erro —
+ * sem número, não são documento fiscal) + seus relacionamentos (itens via
+ * CASCADE, compromissos/parcelas, e o histórico "NF emitida" de homologação,
+ * que o registrarPosAutorizacao logo em seguida recria com o número real).
+ * A NF de produção recém-autorizada (`keepNfeId`) fica.
+ */
+async function limparNfeHomologacao(
+  admin: any,
+  cfg: OperacaoConfig,
+  entityId: string,
+  keepNfeId: string,
+): Promise<number> {
+  const fkCol = cfg.keyBy === 'avaliacao' ? 'avaliacao_id' : 'atendimento_id';
+  const { data: lixo } = await admin
+    .from('nfe_entradas')
+    .select('id')
+    .eq(fkCol, entityId)
+    .neq('id', keepNfeId)
+    .or('ambiente.eq.homologacao,status.eq.erro');
+  const ids = ((lixo as any[]) || []).map((r) => r.id);
+  if (ids.length === 0) return 0;
+
+  // Compromissos gerados por essas NF antes da §2.14 (parcelas via CASCADE).
+  await admin.from('compromissos').delete().in('nfe_entrada_id', ids);
+  // As NF (nfe_itens via CASCADE; estoque_motos_novas.nfe_item_id via SET NULL).
+  await admin.from('nfe_entradas').delete().in('id', ids);
+  // Histórico "NF emitida" de homologação — o registrarPosAutorizacao a seguir
+  // insere de novo, agora com o número da NF de produção.
+  await admin.from('status_history').delete()
+    .eq('entity_type', cfg.statusEntity)
+    .eq('entity_id', entityId)
+    .eq('status', cfg.statusHist);
+  return ids.length;
+}
+
 async function registrarPosAutorizacao(
   admin: any,
   cfg: OperacaoConfig,
@@ -745,6 +782,7 @@ Deno.serve(async (req) => {
     // avanço de status/etapa, histórico, NPS). Homologação é só teste: persiste
     // a linha (pra baixar a DANFE e liberar o botão de produção) e para por aí.
     if (fStatus === 'autorizado' && rowAmbiente === 'producao') {
+      await limparNfeHomologacao(admin, cfg, entityId, (updated?.id as string) || nfeRow.id);
       await registrarPosAutorizacao(admin, cfg, {
         entityId,
         dataEmissao: (updated?.data_emissao as string) || nfeRow.data_emissao || new Date().toISOString(),
@@ -1267,6 +1305,9 @@ Deno.serve(async (req) => {
   // Só produção autorizada tem efeito no sistema (compromissos, status/etapa,
   // histórico, NPS). Homologação persiste a linha e não dispara mais nada.
   if (autorizado && ambiente === 'producao') {
+    // A NF de produção autorizada apaga as NF de homologação (e tentativas de
+    // produção com erro) da mesma entidade + relacionamentos.
+    await limparNfeHomologacao(admin, cfg, entityId, nfeRow.id);
     await registrarPosAutorizacao(admin, cfg, {
       entityId,
       dataEmissao,
