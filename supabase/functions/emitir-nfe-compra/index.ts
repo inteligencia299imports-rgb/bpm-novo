@@ -1002,7 +1002,7 @@ Deno.serve(async (req) => {
       });
 
     // Troca: a moto seminova que entra como parte do pagamento vira uma linha
-    // "Semi-Novo R$ <valor da NF de compra> NF DE ENTRADA <nº> - PLACA <placa>".
+    // "Semi-Novo R$ <valor da NF de compra> NF DE ENTRADA <nº> SÉRIE <série> - PLACA <placa>".
     if (atendimento.interesse === 'trocar') {
       const { data: avsTroca } = await admin
         .from('avaliacoes')
@@ -1012,7 +1012,7 @@ Deno.serve(async (req) => {
       if (trocaIds.length) {
         const { data: nfsCompra } = await admin
           .from('nfe_entradas')
-          .select('avaliacao_id, numero, valor_total, created_at')
+          .select('avaliacao_id, numero, serie, valor_total, created_at')
           .in('avaliacao_id', trocaIds)
           .eq('operacao', 'compra')
           .eq('status', 'processada')
@@ -1028,7 +1028,7 @@ Deno.serve(async (req) => {
           const placa = String(a.placa ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
           linhasPagto.push(
             `Semi-Novo ${fmtBRL(valorTroca)}` +
-            (nf?.numero ? ` NF DE ENTRADA ${nf.numero}` : '') +
+            (nf?.numero ? ` NF DE ENTRADA ${nf.numero}${nf.serie ? ` SÉRIE ${nf.serie}` : ''}` : '') +
             (placa ? ` - PLACA ${placa}` : ''),
           );
         }
