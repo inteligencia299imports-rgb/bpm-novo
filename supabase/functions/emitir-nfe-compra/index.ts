@@ -132,7 +132,10 @@ function mapStatus(focusStatus: string | undefined): string {
   switch (focusStatus) {
     case 'autorizado':
       return 'processada';
+    case 'cancelado':
+      return 'cancelada';
     case 'processando_autorizacao':
+    case 'processando_cancelamento':
       return 'processando_itens';
     case 'erro_autorizacao':
     case 'denegado':
@@ -140,6 +143,54 @@ function mapStatus(focusStatus: string | undefined): string {
     default:
       return 'validando';
   }
+}
+
+/**
+ * Aplica no sistema o cancelamento de uma NF-e (feito pelo nosso botão OU
+ * direto na SEFAZ/Focus e detectado numa consulta): grava a linha como
+ * `cancelada`, reabre a etapa do processo e registra no histórico. NÃO reverte
+ * compromisso financeiro (pode já ter havido baixa) — acerto manual.
+ */
+async function aplicarCancelamento(
+  admin: any,
+  cfg: OperacaoConfig,
+  entityId: string,
+  nfeRow: any,
+  opts: { justificativa?: string | null; xmlCancelamento?: string | null; callerId: string; callerName: string | null },
+) {
+  const patch: Record<string, unknown> = {
+    status: 'cancelada',
+    focus_status: 'cancelado',
+    cancelada_em: nfeRow.cancelada_em || new Date().toISOString(),
+    erro_mensagem: null,
+  };
+  if (opts.justificativa) patch.cancelamento_justificativa = opts.justificativa;
+  if (opts.xmlCancelamento) patch.xml_raw = opts.xmlCancelamento;
+
+  const { data: updated, error } = await admin
+    .from('nfe_entradas').update(patch).eq('id', nfeRow.id).select('*').maybeSingle();
+  if (error) return { updated: null, error };
+
+  const fkCol = cfg.keyBy === 'avaliacao' ? 'avaliacao_id' : 'atendimento_id';
+  await admin.from(cfg.etapaTable)
+    .update({ concluida: false, data_conclusao: null })
+    .eq(fkCol, entityId).eq('etapa', cfg.etapa);
+
+  const { data: jaReg } = await admin
+    .from('status_history').select('id')
+    .eq('entity_type', cfg.statusEntity).eq('entity_id', entityId)
+    .eq('status', `${cfg.statusHist}_cancelada`).limit(1);
+  if (!jaReg || jaReg.length === 0) {
+    await admin.from('status_history').insert({
+      entity_type: cfg.statusEntity,
+      entity_id: entityId,
+      status: `${cfg.statusHist}_cancelada`,
+      changed_by: opts.callerId,
+      changed_by_name: opts.callerName,
+      observacoes: `NF-e nº ${nfeRow.numero ?? '-'} cancelada${opts.justificativa ? ` — ${opts.justificativa}` : ' (evento registrado na SEFAZ)'}`,
+    });
+  }
+  return { updated, error: null };
 }
 
 const PENDENTES = new Set(['recebida', 'validando', 'processando_itens']);
@@ -614,6 +665,23 @@ Deno.serve(async (req) => {
 
     const r = await consultarNfe(rowBase, rowToken, (nfeRow.ref_externa as string) || ref);
     const fStatus = r.body.status as string | undefined;
+
+    // NF-e cancelada (pelo nosso botão OU direto na SEFAZ/Focus) — sincroniza a
+    // linha e reabre a etapa, mesmo que a linha estivesse 'processada'.
+    if (fStatus === 'cancelado' && nfeRow.status !== 'cancelada') {
+      const xmlCanc = r.body.caminho_xml_cancelamento
+        ? `${rowBase}${r.body.caminho_xml_cancelamento}`
+        : (r.body.caminho_xml_nota_fiscal ? `${rowBase}${r.body.caminho_xml_nota_fiscal}` : null);
+      const { updated, error } = await aplicarCancelamento(admin, cfg, entityId, nfeRow, {
+        justificativa: (r.body.justificativa as string) || null,
+        xmlCancelamento: xmlCanc,
+        callerId: caller.id,
+        callerName,
+      });
+      if (error) return jsonResponse({ error: `Falha ao sincronizar o cancelamento: ${error.message}` }, 500);
+      return jsonResponse({ nfe: updated ?? nfeRow }, 200);
+    }
+
     const novoStatus = mapStatus(fStatus);
     const patch: Record<string, unknown> = { focus_status: fStatus ?? null, status: novoStatus };
 
@@ -687,6 +755,13 @@ Deno.serve(async (req) => {
       console.log('cancelar: consulta', i, '->', cStatus);
     }
 
+    // Já cancelada na SEFAZ antes (pelo painel da Focus, por outra tentativa, etc.)
+    // — a Focus recusa o 2º DELETE, mas a consulta mostra 'cancelado'. Trata como ok.
+    if (!['cancelado'].includes(cStatus ?? '') && /cancelad/i.test(mensagemErroFocus(c.body))) {
+      const q = await consultarNfe(rowBase, rowToken, refCancel);
+      if (q.body.status === 'cancelado') { c = q; cStatus = 'cancelado'; }
+    }
+
     const okHttp = c.httpStatus === 200 || c.httpStatus === 201 || c.httpStatus === 204;
     const cancelado = cStatus === 'cancelado' || (okHttp && !cStatus && !c.body.erros && !c.body.mensagem && !c.body.mensagem_sefaz);
     if (!cancelado) {
@@ -695,39 +770,17 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: msg }, 422);
     }
 
-    const agora = new Date().toISOString();
-    const { data: updated, error: updErr } = await admin
-      .from('nfe_entradas')
-      .update({
-        status: 'cancelada',
-        focus_status: cStatus ?? 'cancelado',
-        cancelamento_justificativa: justificativa,
-        cancelada_em: agora,
-        erro_mensagem: null,
-        xml_raw: c.body.caminho_xml_cancelamento ? `${rowBase}${c.body.caminho_xml_cancelamento}` : nfeRow.xml_raw,
-      })
-      .eq('id', nfeRow.id)
-      .select('*')
-      .maybeSingle();
+    const xmlCanc = c.body.caminho_xml_cancelamento
+      ? `${rowBase}${c.body.caminho_xml_cancelamento}`
+      : nfeRow.xml_raw;
+    const { updated, error: updErr } = await aplicarCancelamento(admin, cfg, entityId, nfeRow, {
+      justificativa,
+      xmlCancelamento: xmlCanc,
+      callerId: caller.id,
+      callerName,
+    });
     if (updErr) return jsonResponse({ error: `NF-e cancelada na SEFAZ, mas falhou ao gravar: ${updErr.message}` }, 500);
     console.log('cancelar: gravado', nfeRow.id, '->', updated?.status);
-
-    // Reabre a etapa do checklist (a NF-e não vale mais) e registra no histórico.
-    // O compromisso financeiro NÃO é revertido aqui — pode já ter havido baixa;
-    // o acerto é manual no financeiro.
-    const porAvaliacao = cfg.keyBy === 'avaliacao';
-    const fkCol = porAvaliacao ? 'avaliacao_id' : 'atendimento_id';
-    await admin.from(cfg.etapaTable)
-      .update({ concluida: false, data_conclusao: null })
-      .eq(fkCol, entityId).eq('etapa', cfg.etapa);
-    await admin.from('status_history').insert({
-      entity_type: cfg.statusEntity,
-      entity_id: entityId,
-      status: `${cfg.statusHist}_cancelada`,
-      changed_by: caller.id,
-      changed_by_name: callerName,
-      observacoes: `NF-e nº ${nfeRow.numero ?? '-'} cancelada — ${justificativa}`,
-    });
 
     return jsonResponse({ nfe: updated ?? nfeRow, aviso: 'Compromisso financeiro não foi revertido automaticamente.' }, 200);
   }
