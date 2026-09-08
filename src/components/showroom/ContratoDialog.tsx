@@ -1527,8 +1527,7 @@ const ContratoDialog: React.FC<Props> = ({
                         {eh0kmVenda && (
                           <div className="space-y-2 rounded-md border border-dashed p-3">
                             <p className="text-xs font-medium text-muted-foreground">
-                              ICMS-ST retido anteriormente (grupo &lt;ICMS60&gt;) — vem da NF-e de entrada da moto.
-                              Em branco, o sistema calcula um valor aproximado sobre o valor da venda.
+                              De acordo com NF de Entrada da Moto.
                             </p>
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                               <InfoDisplay label="BC ST retida" value={stBcRetido ? `R$ ${stBcRetido}` : '—'} />
