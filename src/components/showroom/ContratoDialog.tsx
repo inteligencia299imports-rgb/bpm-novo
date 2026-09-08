@@ -269,6 +269,9 @@ const ContratoDialog: React.FC<Props> = ({
   const [vencCalOpen, setVencCalOpen] = useState(false);
 
   const hasTroca = atendimento.interesse === 'trocar' && motosAvaliacao.length > 0;
+  // Troca: a NF-e de venda em PRODUÇÃO só libera depois da NF-e de compra da moto
+  // da troca ter sido emitida em produção.
+  const [trocaCompraProdOk, setTrocaCompraProdOk] = useState(false);
 
   // Load existing contract data
   useEffect(() => {
@@ -333,6 +336,21 @@ const ContratoDialog: React.FC<Props> = ({
         setStValorRetido(fc((stRow as any)?.icms_st_valor_retido));
       } else {
         setStBcRetido(''); setStValorSubstituto(''); setStValorRetido('');
+      }
+
+      // Troca: a NF-e de compra da moto que entra já foi emitida em produção?
+      if (hasTroca) {
+        const { data: cp } = await supabase
+          .from('nfe_entradas')
+          .select('id')
+          .in('avaliacao_id', motosAvaliacao.map((m) => m.id))
+          .eq('operacao', 'compra')
+          .eq('ambiente', 'producao')
+          .eq('status', 'processada')
+          .limit(1);
+        setTrocaCompraProdOk(!!(cp && cp.length));
+      } else {
+        setTrocaCompraProdOk(false);
       }
 
       type InstRow = {
@@ -1598,8 +1616,10 @@ const ContratoDialog: React.FC<Props> = ({
                     {podeReemitirHomolog && !nfe.pendente && (
                       <Button
                         className="gap-1.5"
-                        disabled={disabled}
-                        title={title}
+                        disabled={disabled || (hasTroca && !trocaCompraProdOk)}
+                        title={hasTroca && !trocaCompraProdOk
+                          ? 'Emita a NF-e de compra da moto da troca em produção antes'
+                          : title}
                         onClick={() => handleEmitirNf('producao')}
                       >
                         <FileText className="h-4 w-4" /> NF-e (Produção)

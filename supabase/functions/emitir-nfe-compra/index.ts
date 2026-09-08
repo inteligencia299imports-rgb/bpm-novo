@@ -945,6 +945,21 @@ Deno.serve(async (req) => {
     if (!homologAutorizada) {
       return jsonResponse({ error: 'Emita em homologação antes de emitir em produção.' }, 409);
     }
+    // Troca: a NF-e de venda em produção só sai depois da NF-e de COMPRA da moto
+    // que está entrando como pagamento ter sido emitida em produção.
+    if (ehVenda && atendimento.interesse === 'trocar') {
+      const { data: avsTroca } = await admin
+        .from('avaliacoes').select('id').eq('atendimento_id', atendimentoId);
+      const trocaIds = ((avsTroca as any[]) || []).map((a) => a.id);
+      const { data: compraProd } = trocaIds.length
+        ? await admin.from('nfe_entradas').select('id')
+            .in('avaliacao_id', trocaIds).eq('operacao', 'compra')
+            .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle()
+        : { data: null };
+      if (!compraProd) {
+        return jsonResponse({ error: 'Emita a NF-e de compra da moto da troca em produção antes de emitir a venda.' }, 409);
+      }
+    }
   } else if (nfeExistente && nfeExistente.status === 'processada' && nfeExistente.ambiente === 'producao') {
     // Depois de produção autorizada, não reemite mais nem em homologação.
     return jsonResponse({ error: 'Já existe uma NF-e emitida em produção para esta moto — contrato bloqueado.' }, 409);
