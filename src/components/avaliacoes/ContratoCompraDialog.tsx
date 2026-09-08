@@ -15,7 +15,7 @@ import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
 import NfeCabecalhoAcoes from '@/components/shared/NfeCabecalhoAcoes';
 import { Badge } from '@/components/ui/badge';
-import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, ExternalLink, Building2 } from 'lucide-react';
+import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -861,26 +861,11 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
               {ehNfe ? (
                 <>
-                  {nfe.nfe?.status === 'processada' ? (
+                  {nfe.nfe?.status === 'processada' && nfe.nfe.ambiente === 'producao' ? (
                     <div className="flex flex-wrap items-center gap-3 mr-auto text-sm">
-                      {nfe.nfe.ambiente === 'producao' && (
-                        <Badge className="bg-primary/10 text-primary gap-1.5">
-                          <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe.numero || '-'} • série {nfe.nfe.serie || '-'}
-                        </Badge>
-                      )}
-                      {nfe.nfe.caminho_danfe && (
-                        <a
-                          href={nfe.nfe.caminho_danfe}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={cn(
-                            'inline-flex items-center gap-1 hover:underline',
-                            nfe.nfe.ambiente === 'homologacao' ? 'text-orange-500' : 'text-primary',
-                          )}
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" /> DANFE
-                        </a>
-                      )}
+                      <Badge className="bg-primary/10 text-primary gap-1.5">
+                        <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe.numero || '-'} • série {nfe.nfe.serie || '-'}
+                      </Badge>
                     </div>
                   ) : nfe.pendente ? (
                     <div className="flex items-center gap-3 mr-auto">
@@ -898,7 +883,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                     </p>
                   ) : null}
 
-                  {(nfe.emitida || nfe.cancelada) && <CancelarNfeDialog nfe={nfe} />}
+                  {(nfe.emitida || nfe.cancelada) && nfe.nfe?.ambiente === 'producao' && <CancelarNfeDialog nfe={nfe} />}
 
                   <Button variant="outline" onClick={() => onOpenChange(false)}>
                     <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
