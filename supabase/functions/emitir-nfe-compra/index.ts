@@ -793,7 +793,10 @@ Deno.serve(async (req) => {
   let contratoVendaId: string | null = null;
   if (tipo === 'compra') {
     if (av.consulta_realizada !== true) return jsonResponse({ error: 'A consulta veicular ainda não foi realizada.' }, 409);
-    if (av.aprovacao_status !== 'aprovada') return jsonResponse({ error: 'A compra ainda não foi aprovada.' }, 409);
+    // Troca (moto entrando como parte de pagamento) não exige aprovação da
+    // aquisição; compra pura sim.
+    const ehTroca = atendimento.interesse === 'trocar';
+    if (!ehTroca && av.aprovacao_status !== 'aprovada') return jsonResponse({ error: 'A compra ainda não foi aprovada.' }, 409);
     const { data: contratoHist } = await admin
       .from('status_history').select('id')
       .eq('entity_type', 'pos_compra').eq('entity_id', avaliacaoId).eq('status', 'contrato_compra_gerado').limit(1);

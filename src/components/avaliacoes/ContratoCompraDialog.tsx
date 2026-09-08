@@ -519,7 +519,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   const empresaReadonly = nfeEmProducao || (!ehNfe && modoLeitura);
 
   // Modo NF-e
-  const podeEmitirNfe = (avaliacao as any)?.aprovacao_status === 'aprovada'
+  // Troca (moto entrando como parte de pagamento): não exige aprovação da
+  // aquisição — basta contrato de compra gerado + consulta realizada.
+  // Compra pura: continua exigindo aprovação.
+  const ehTroca = !!vendaValorInfo;
+  const podeEmitirNfe =
+    (ehTroca || (avaliacao as any)?.aprovacao_status === 'aprovada')
     && jaGerado
     && (avaliacao as any)?.consulta_realizada === true;
 
@@ -896,7 +901,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                             ? 'Cadastro do cliente incompleto — resolva as pendências marcadas nos cards acima'
                             : podeEmitirNfe
                               ? undefined
-                              : 'Disponível após aprovação, contrato gerado e consulta realizada';
+                              : ehTroca
+                                ? 'Disponível após gerar o contrato de compra e realizar a consulta'
+                                : 'Disponível após aprovação, contrato gerado e consulta realizada';
                     return (
                       <>
                         {(!nfeJaEmitida || podeReemitirHomolog) && !nfe.pendente && (
