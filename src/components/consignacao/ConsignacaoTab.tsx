@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
+import { nfeTagFromRows } from '@/lib/nfeTag';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -56,18 +57,12 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
     const error = result.error;
     const data = flattenMarcaModeloList(result.data);
     const estData = estResult.data;
-    // Estado efetivo da NF-e por avaliação: vence a linha processada/cancelada
-    // MAIS RECENTE (ignora erro/pendente). Cancelada -> tag vermelha no card.
-    const nfePorAvaliacao: Record<string, { cancelada: boolean; ambiente: 'homologacao' | 'producao' }> = {};
-    ((nfeResult.data as any[]) || [])
-      .filter((n: any) => n.avaliacao_id && (n.status === 'processada' || n.status === 'cancelada'))
-      .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-      .forEach((n: any) => {
-        nfePorAvaliacao[n.avaliacao_id] = {
-          cancelada: n.status === 'cancelada',
-          ambiente: n.ambiente === 'producao' ? 'producao' : 'homologacao',
-        };
-      });
+    // Tag de status da NF por avaliação — reflete o último status da NF.
+    const nfeRowsPorAvaliacao: Record<string, any[]> = {};
+    ((nfeResult.data as any[]) || []).forEach((n: any) => {
+      if (!n.avaliacao_id) return;
+      (nfeRowsPorAvaliacao[n.avaliacao_id] ??= []).push(n);
+    });
     if (error) { toast.error('Erro ao carregar consignações'); } else {
       const estoqueMap: Record<string, { status: string; observacoes: string | null; data_entrada: string | null }> = {};
       (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes, data_entrada: e.created_at }; });
@@ -83,7 +78,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
         if (picked) acquDateMap[d.id] = picked;
       });
       let mapped = (data || [])
-        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeAmbiente: (nfePorAvaliacao[d.id] && !nfePorAvaliacao[d.id].cancelada) ? nfePorAvaliacao[d.id].ambiente : null, _nfeCancelada: !!nfePorAvaliacao[d.id]?.cancelada }));
+        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeTag: nfeTagFromRows(nfeRowsPorAvaliacao[d.id]) }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       if (filterCidade !== 'todos') { mapped = mapped.filter((a: any) => matchesCidade(a.atendimento?.loja, filterCidade)); }
       setItems(mapped);
@@ -137,11 +132,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
                       <ProcessCard key={a.id} clientName={a.atendimento?.cliente?.nome_razao_social || 'N/A'} phone={a.atendimento?.cliente?.telefone}
                         motoLabel={a.moto ? [a.moto.placa?.replace(/-/g, ''), `${a.moto.marca} ${(a.moto.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
                         loja={a.atendimento?.loja} date={a._dataAquisicao || a.updated_at}
-                        nameTag={a._nfeCancelada
-                          ? { label: 'NF-e cancelada', className: 'bg-red-600 hover:bg-red-600' }
-                          : a._nfeAmbiente
-                            ? { label: 'NF-e', className: a._nfeAmbiente === 'homologacao' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-primary hover:bg-primary' }
-                            : undefined}
+                        nameTag={a._nfeTag || undefined}
                         statusColor={col.hex} onClick={() => setSelectedItem(a)} />
                     ))}
                   </div>
