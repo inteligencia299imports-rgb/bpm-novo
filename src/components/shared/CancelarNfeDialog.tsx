@@ -4,22 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Ban, Loader2, RefreshCw } from 'lucide-react';
+import { Ban, Loader2 } from 'lucide-react';
 
 /**
- * Ações da NF-e depois de autorizada, compartilhadas pelas telas de emissão
- * (venda / compra / consignação):
- *  - "Verificar na SEFAZ" — reconsulta a Focus e sincroniza a linha (pega
- *    cancelamentos feitos fora do sistema, direto no painel da Focus/SEFAZ);
- *  - "Cancelar NF-e" + pop-up de justificativa (15–255 caracteres, SEFAZ).
- * NF já cancelada: mostra só o selo + o "Verificar na SEFAZ".
+ * Botão "Cancelar NF-e" + pop-up de justificativa (15–255 caracteres, exigência
+ * da SEFAZ), compartilhado pelas telas de emissão (venda / compra / consignação).
+ * NF já cancelada: mostra só o selo. A reconsulta da SEFAZ fica no cabeçalho da
+ * tela (NfeCabecalhoAcoes).
  */
 
 interface NfeLike {
   nfe: { status?: string | null; numero?: string | null; cancelamento_justificativa?: string | null } | null;
   loading: boolean;
   cancelar: (justificativa: string) => Promise<string | null>;
-  consultar: () => Promise<void>;
 }
 
 const MIN = 15;
@@ -31,35 +28,19 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
   const [erro, setErro] = useState<string | null>(null);
   const status = nfe.nfe?.status;
 
-  if (status !== 'processada' && status !== 'cancelada') return null;
-
-  const verificar = (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="gap-1.5 text-muted-foreground"
-      onClick={() => nfe.consultar()}
-      disabled={nfe.loading}
-      title="Reconsulta a SEFAZ e atualiza o status (pega cancelamentos feitos fora do sistema)"
-    >
-      <RefreshCw className={`h-3.5 w-3.5 ${nfe.loading ? 'animate-spin' : ''}`} /> Verificar na SEFAZ
-    </Button>
-  );
-
   if (status === 'cancelada') {
     return (
-      <span className={`inline-flex items-center gap-2 ${className ?? ''}`}>
-        <Badge
-          variant="outline"
-          className="gap-1.5 border-destructive/40 text-destructive"
-          title={nfe.nfe?.cancelamento_justificativa || undefined}
-        >
-          <Ban className="h-3.5 w-3.5" /> NF-e cancelada
-        </Badge>
-        {verificar}
-      </span>
+      <Badge
+        variant="outline"
+        className={`gap-1.5 border-destructive/40 text-destructive ${className ?? ''}`}
+        title={nfe.nfe?.cancelamento_justificativa || undefined}
+      >
+        <Ban className="h-3.5 w-3.5" /> NF-e cancelada
+      </Badge>
     );
   }
+
+  if (status !== 'processada') return null;
 
   const len = texto.trim().length;
   const valido = len >= MIN && len <= MAX;
@@ -72,11 +53,10 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
   };
 
   return (
-    <span className={`inline-flex items-center gap-1.5 ${className ?? ''}`}>
-      {verificar}
+    <>
       <Button
         variant="outline"
-        className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+        className={`gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive ${className ?? ''}`}
         onClick={() => setOpen(true)}
         disabled={nfe.loading}
       >
@@ -125,7 +105,7 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </span>
+    </>
   );
 };
 

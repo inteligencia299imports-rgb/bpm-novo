@@ -23,6 +23,7 @@ import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
+import NfeCabecalhoAcoes from '@/components/shared/NfeCabecalhoAcoes';
 
 interface Props {
   open: boolean;
@@ -544,6 +545,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         <h1 className="text-xl font-bold flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Consignação' : 'Contrato de Consignação'}
         </h1>
+        {ehNfe && <NfeCabecalhoAcoes nfe={nfe} />}
       </div>
 
       {loading ? (
