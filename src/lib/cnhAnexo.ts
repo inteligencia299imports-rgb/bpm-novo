@@ -33,6 +33,17 @@ export async function removerCnhDoStorage(bucketPath: string): Promise<void> {
  */
 export type TipoDocIdentificacao = 'cnh' | 'cartao_cnpj';
 
+/**
+ * Cliente é pessoa jurídica? `tipo_pessoa === 'juridica'` OU CNPJ (14 dígitos).
+ * Mesma regra usada em AtendimentoDetail/AvaliacaoForm — centralizada aqui para
+ * as demais telas (pós-venda, consulta, detalhe de avaliação).
+ */
+export const ehPessoaJuridica = (
+  cliente: { cpf_cnpj?: string | null; tipo_pessoa?: string | null } | null | undefined,
+): boolean =>
+  (cliente as any)?.tipo_pessoa === 'juridica' ||
+  ((cliente?.cpf_cnpj || '').replace(/\D/g, '').length > 11);
+
 /** Rótulo do documento de identificação conforme o tipo de pessoa do cliente. */
 export const docIdentificacaoLabel = (pj: boolean) => (pj ? 'Cartão CNPJ' : 'CNH');
 /** `tipo_documento` em clientes_fornecedores_documentos conforme o tipo de pessoa. */

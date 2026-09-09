@@ -46,6 +46,7 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [sexo, setSexo] = useState('');
+  const [tipoPessoa, setTipoPessoa] = useState<'fisica' | 'juridica'>('fisica');
   const [cpfCnpj, setCpfCnpj] = useState('');
   // CPF/CNPJ só é editável enquanto o cliente não tiver um cadastrado.
   const [cpfBloqueado, setCpfBloqueado] = useState(false);
@@ -73,6 +74,7 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
       setNome(cliente ? formatPersonName(cliente.nome_razao_social || '') : '');
       setTelefone(cliente?.telefone ? formatPhone(cliente.telefone.replace(/\D/g, '')) : '');
       setSexo(cliente?.sexo || '');
+      setTipoPessoa(pjCliente ? 'juridica' : 'fisica');
       setCpfCnpj(cliente?.cpf_cnpj ? formatCpfCnpj(cliente.cpf_cnpj) : '');
       setCpfBloqueado(!!cliente?.cpf_cnpj);
       setEmail(cliente?.email || '');
@@ -121,13 +123,15 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
 
     // telefone é imutável; cpf/cnpj e tipo de pessoa só entram se ainda não havia CPF/CNPJ.
     const cpfDigits = cpfCnpj.replace(/\D/g, '');
+    const ehPJ = tipoPessoa === 'juridica' || cpfDigits.length > 11;
     const { error: clienteError } = await supabase.from('clientes_fornecedores').update({
       nome_razao_social: formatPersonName(nome),
-      sexo: sexo || null,
+      sexo: ehPJ ? null : (sexo || null),
       email: email.trim() || null,
       ...(cpfBloqueado ? {} : {
         cpf_cnpj: cpfDigits || null,
-        tipo_pessoa: cpfDigits.length > 11 ? 'juridica' : 'fisica',
+        // preserva 'juridica' já marcado mesmo sem CNPJ preenchido
+        tipo_pessoa: ehPJ ? 'juridica' : 'fisica',
       }),
     }).eq('id', clienteId);
 
@@ -228,13 +232,15 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
                 placeholder="000.000.000-00"
               />
             </div>
-            <div>
-              <Label>Sexo</Label>
-              <Select value={sexo} onValueChange={setSexo}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
+            {tipoPessoa !== 'juridica' && (
+              <div>
+                <Label>Sexo</Label>
+                <Select value={sexo} onValueChange={setSexo}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{SEXOS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label>E-mail</Label>
               <Input value={email} onChange={e => setEmail(e.target.value)} type="email" />

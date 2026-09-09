@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { SEXOS, UFS, ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import type { MotoFoto } from '@/types/crm';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
+import { docIdentificacaoLabel, docIdentificacaoTipo, ehPessoaJuridica } from '@/lib/cnhAnexo';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
 import PlacaInput from '@/components/shared/PlacaInput';
@@ -108,6 +109,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
   const [motoData, setMotoData] = useState(item);
   const moto = motoData;
   const atendimento = item.atendimento || item.atendimentos;
+  const clientePj = ehPessoaJuridica(atendimento?.cliente);
   const statusValue = item[statusField] || 'em_aberto';
   const statusCol = statusColumns.find(c => c.value === statusValue);
   const whatsappUrl = atendimento?.cliente?.telefone ? `https://wa.me/55${atendimento.cliente.telefone.replace(/\D/g, '')}` : '';
@@ -247,7 +249,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
       setLoading(true);
       const [cnhRes, avRes, estRes, histRes, fotosRes] = await Promise.all([
         atendimento?.cliente_id
-          ? supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
+          ? supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', docIdentificacaoTipo(clientePj)).maybeSingle()
           : Promise.resolve({ data: null }),
         supabase.from('avaliacoes').select('quanto_pede, valor_fechamento, avaliador_id, crlv_url, atpv_url, procuracao_url').eq('id', item.id).maybeSingle(),
         supabase.from('estoque_motos').select('status, observacoes').eq('avaliacao_id', item.id).maybeSingle(),
@@ -440,7 +442,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
               {cnhUrl && (
                 <>
                   <Separator className="my-2" />
-                  <span className="text-xs text-green-600 font-medium">CNH anexada</span>
+                  <span className="text-xs text-green-600 font-medium">{docIdentificacaoLabel(clientePj)} anexado</span>
                 </>
               )}
             </CardContent>

@@ -31,7 +31,7 @@ import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsig
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { formatPersonName, firstLastName, cn, formatDataNascimento } from '@/lib/utils';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
-import { processarCnhAnexada, upsertCnhDoc } from '@/lib/cnhAnexo';
+import { processarCnhAnexada, upsertCnhDoc, docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket, ehPessoaJuridica } from '@/lib/cnhAnexo';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
 
@@ -119,13 +119,17 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const isIntermParte1 = !!processoProps?.showContratoConsignante;
   const souMaster = podeAprovarVenda(role) && !isIntermParte1;
   const bloqueadoAprovacao = !isIntermParte1 && !vendaLiberada(atAprov);
+  // PJ -> documento de identificação é o Cartão CNPJ (não a CNH). O documento
+  // da Parte 1 é do proprietário/consignante; nas demais telas, do comprador.
+  const compradorPj = ehPessoaJuridica((item as any)?.cliente);
+  const docCompradorLabel = docIdentificacaoLabel(compradorPj);
 
   const refreshConsignada = async () => {
     const consignadaEstoque = Object.values(estoqueData).find((e: any) => e.tipo === 'consignada');
     if (consignadaEstoque?.avaliacao_id) {
       const { data: avalRaw } = await supabase
         .from('avaliacoes')
-        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))`)
+        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, tipo_pessoa, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))`)
         .eq('id', consignadaEstoque.avaliacao_id)
         .single();
       const avalData = avalRaw ? flattenMarcaModelo(avalRaw as any) : avalRaw;
@@ -213,14 +217,15 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     const clienteId = (item as any).cliente_id;
     if (!clienteId) return;
     const prevUrl = cnhUrl;
-    const docId = await upsertCnhDoc(clienteId, url);
+    const docId = await upsertCnhDoc(clienteId, url, docIdentificacaoTipo(compradorPj));
     setCnhDocId(docId);
     setCnhUrl(url);
 
     await processarCnhAnexada({
       clienteId,
       url,
-      bucketPath: `docs/${clienteId}/cnh`,
+      bucketPath: `docs/${clienteId}/${docIdentificacaoBucket(compradorPj)}`,
+      ehPessoaJuridica: compradorPj,
       rollback: async () => {
         if (docId && !prevUrl) {
           await supabase.from('clientes_fornecedores_documentos').delete().eq('id', docId);
@@ -296,7 +301,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       setLoading(true);
 
       if (!processoProps?.showContratoConsignante && (item as any).cliente_id) {
-        supabase.from('clientes_fornecedores_documentos').select('id, arquivo_url').eq('cliente_fornecedor_id', (item as any).cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
+        supabase.from('clientes_fornecedores_documentos').select('id, arquivo_url').eq('cliente_fornecedor_id', (item as any).cliente_id).eq('tipo_documento', docIdentificacaoTipo(compradorPj)).maybeSingle()
           .then(({ data }) => { setCnhUrl(data?.arquivo_url || null); setCnhDocId(data?.id || null); });
       }
 
@@ -360,7 +365,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         if (consignadaEstoque?.avaliacao_id) {
           const { data: avalData } = await supabase
             .from('avaliacoes')
-            .select('*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))')
+            .select('*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, tipo_pessoa, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))')
             .eq('id', consignadaEstoque.avaliacao_id)
             .single();
           if (avalData) {
@@ -372,7 +377,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             if (owner) {
               setProprietario({ ...owner, loja: owner.loja_empresas?.loja, id: owner.id || avalData.atendimento_id });
               if (owner.cliente_id) {
-                const { data: cnhDoc } = await supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', owner.cliente_id).eq('tipo_documento', 'cnh').maybeSingle();
+                const { data: cnhDoc } = await supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', owner.cliente_id).eq('tipo_documento', docIdentificacaoTipo(ehPessoaJuridica(owner.cliente))).maybeSingle();
                 setCnhUrl(cnhDoc?.arquivo_url || null);
               }
             }
@@ -562,10 +567,10 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 <>
                   <Separator className="my-2" />
                   <DocumentUpload
-                    label="CNH"
+                    label={docCompradorLabel}
                     className="w-1/4"
                     currentUrl={cnhUrl}
-                    bucketPath={`docs/${(item as any).cliente_id}/cnh`}
+                    bucketPath={`docs/${(item as any).cliente_id}/${docIdentificacaoBucket(compradorPj)}`}
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
                     deferPreview
