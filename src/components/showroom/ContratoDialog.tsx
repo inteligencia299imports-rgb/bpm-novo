@@ -1019,6 +1019,8 @@ const ContratoDialog: React.FC<Props> = ({
   const vendaNum = parseCurrencyInput(valorVenda);
   // Variação da venda vs. preço de referência: + = acréscimo (verde), − = desconto (vermelho).
   const vendaVarPct = precoTabela > 0 && vendaNum > 0 ? ((vendaNum - precoTabela) / precoTabela) * 100 : null;
+  // Acréscimo/desconto exibido como percentual inteiro (arredondado).
+  const vendaVarPctInt = vendaVarPct != null ? Math.round(vendaVarPct) : null;
 
   // --- KPIs do resumo (abaixo do card Formas de Pagamento) ---
   // Agregado marcado como cortesia não é cobrado do cliente — fora de todo cálculo.
@@ -1589,9 +1591,9 @@ const ContratoDialog: React.FC<Props> = ({
                     <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor da Venda</span>
                     <p className="text-base font-bold">
                       {vendaNum > 0 ? formatCurrency(vendaNum) : '—'}
-                      {vendaVarPct != null && Math.abs(vendaVarPct) >= 0.05 && (
-                        <span className={cn('ml-1', vendaVarPct > 0 ? 'text-emerald-600' : 'text-red-600')}>
-                          ({vendaVarPct > 0 ? '+' : ''}{vendaVarPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)
+                      {vendaVarPctInt != null && vendaVarPctInt !== 0 && (
+                        <span className={cn('ml-1', vendaVarPctInt > 0 ? 'text-emerald-600' : 'text-red-600')}>
+                          ({vendaVarPctInt > 0 ? '+' : ''}{vendaVarPctInt}%)
                         </span>
                       )}
                     </p>
