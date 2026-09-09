@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Ban, Loader2 } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Ban, Loader2, AlertTriangle } from 'lucide-react';
 
 /**
  * Botão "Cancelar NF-e" + pop-up de justificativa (15–255 caracteres, exigência
@@ -68,11 +69,16 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
           <DialogHeader>
             <DialogTitle>Cancelar NF-e {nfe.nfe?.numero ? `nº ${nfe.nfe.numero}` : ''}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 pt-1">
-            <p className="text-xs text-muted-foreground">
-              O cancelamento é enviado à SEFAZ e é definitivo. Informe o motivo (15 a 255 caracteres).
-              O compromisso financeiro não é revertido automaticamente — ajuste no financeiro se necessário.
-            </p>
+          <div className="space-y-3 pt-1">
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Esta operação não poderá ser desfeita</AlertTitle>
+              <AlertDescription className="text-xs">
+                O cancelamento é enviado à SEFAZ e é definitivo — não há como reverter depois de confirmado.
+                O compromisso financeiro não é revertido automaticamente; ajuste no financeiro se necessário.
+              </AlertDescription>
+            </Alert>
+            <p className="text-xs text-muted-foreground">Informe o motivo (15 a 255 caracteres).</p>
             <Label>Justificativa</Label>
             <Textarea
               rows={4}
