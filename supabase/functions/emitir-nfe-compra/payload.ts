@@ -36,6 +36,9 @@ export interface DadosMoto {
   renavam: string | null;
   /** Hodômetro (moto usada) — entra no infAdProd. */
   km?: string | number | null;
+  /** Valor de aquisição da moto (entrada em estoque). Só usado na venda de
+   * seminovo: base de PIS/COFINS é a margem (venda − aquisição), Lei 9.716/98. */
+  custo_aquisicao?: number | null;
   /** NCM explicito (moto 0km cadastrada). Sem isto, deriva pela cilindrada. */
   ncm?: string | null;
   /** Nº da NF de entrada (fornecedor/fábrica) — só moto 0km, cadastrado no estoque. */
@@ -104,6 +107,10 @@ export interface RegraFiscal {
   /** pST — alíquota do ICMS-ST suportada pelo consumidor final (grupo "ICMS-ST
    * retido anteriormente", CST 60). Só na regra de ICMS. Ex.: 12 (SC). */
   aliquota_suportada_consumidor_final?: number | null;
+  /** cBenef — código de benefício fiscal da UF (regra de ICMS). Obrigatório
+   * quando o CST tem redução/benefício que a SEFAZ exige identificar.
+   * Ex.: "DF816006" (venda de veículo usado no DF, CST 20). */
+  codigo_beneficio_fiscal?: string | null;
   // Reforma Tributária — preenchidos apenas na linha imposto === 'ibscbs'.
   classificacao_tributaria?: string | null; // cClassTrib
   cbs_aliquota?: number | null;
@@ -134,6 +141,12 @@ export interface MontarPayloadArgs {
    * `codigo` = tPag da SEFAZ; `descricao` só quando codigo === '99'. Só venda.
    */
   formasPagamento?: { codigo: string; descricao?: string; valor: number }[];
+  /**
+   * Operação de bem móvel usado (venda de moto seminova). Liga:
+   * - `prod/indBemMovelUsado = 1`;
+   * - base de PIS/COFINS pela margem (venda − `moto.custo_aquisicao`), Lei 9.716/98.
+   */
+  bemMovelUsado?: boolean;
 }
 
 const onlyDigits = (v: string | null | undefined) => (v ?? '').replace(/\D/g, '');
@@ -271,7 +284,7 @@ export function veiculoProdMoto(m: DadosMoto): Record<string, unknown> | null {
 }
 
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
-  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, formasPagamento } = args;
+  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, formasPagamento, bemMovelUsado } = args;
 
   const pf = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
   const docForn = onlyDigits(fornecedor.cpf_cnpj);
@@ -309,8 +322,30 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   const veic = veiculoProdMoto(moto);
   if (veic) Object.assign(item, veic);
 
-  if (regraPis.aliquota != null) { item.pis_aliquota_porcentual = Number(regraPis.aliquota); item.pis_base_calculo = 0; item.pis_valor = 0; }
-  if (regraCofins.aliquota != null) { item.cofins_aliquota_porcentual = Number(regraCofins.aliquota); item.cofins_base_calculo = 0; item.cofins_valor = 0; }
+  // prod/indBemMovelUsado — bem móvel usado (venda de moto seminova). A NF-e de
+  // referência autorizada traz <indBemMovelUsado>1</indBemMovelUsado>.
+  // Nome do campo Focus a confirmar em homologação (indicador_bem_movel_usado).
+  if (bemMovelUsado) item.indicador_bem_movel_usado = 1;
+
+  // Revenda de veículo usado (Lei 9.716/98 art. 5º — equiparada a consignação):
+  // a base de PIS/COFINS é a MARGEM (valor de venda − valor de aquisição), não o
+  // valor total da operação — fiel à NF-e de referência (vBC << vProd). Fora
+  // desse caso mantém base 0 (Focus recalcula pelo regime da empresa).
+  const baseMargemPisCofins = bemMovelUsado && natureza.tipo === 'saida' && moto.custo_aquisicao != null
+    ? Math.max(r2(valorFmt - Number(moto.custo_aquisicao)), 0)
+    : null;
+  if (regraPis.aliquota != null) {
+    const p = Number(regraPis.aliquota);
+    item.pis_aliquota_porcentual = p;
+    item.pis_base_calculo = baseMargemPisCofins ?? 0;
+    item.pis_valor = baseMargemPisCofins != null ? r2(baseMargemPisCofins * (p / 100)) : 0;
+  }
+  if (regraCofins.aliquota != null) {
+    const c = Number(regraCofins.aliquota);
+    item.cofins_aliquota_porcentual = c;
+    item.cofins_base_calculo = baseMargemPisCofins ?? 0;
+    item.cofins_valor = baseMargemPisCofins != null ? r2(baseMargemPisCofins * (c / 100)) : 0;
+  }
   if (regraIpi) {
     item.ipi_situacao_tributaria = regraIpi.situacao_tributaria;
     if (regraIpi.aliquota != null) { item.ipi_aliquota_porcentual = Number(regraIpi.aliquota); item.ipi_valor = 0; }
@@ -341,6 +376,26 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
       item.icms_aliquota_st = 0;
       item.icms_valor_st = 0;
     }
+    // CST 20 (redução de base) com benefício de UF — ex.: venda de veículo usado
+    // no DF (pRedBC 95, cBenef DF816006). O ICMS "dispensado" pela redução é
+    // destacado como DESONERADO (motDesICMS = 9, "Outros"), fiel à NF-e de
+    // referência autorizada. vICMSDeson = vProd·pICMS − vICMS(base já reduzida).
+    // Nomes dos campos Focus a confirmar em homologação
+    // (icms_valor_desonerado / icms_motivo_desoneracao).
+    if (cstIcms === '20' && regraIcms.reducao_base_calculo != null) {
+      const pRed = Number(regraIcms.reducao_base_calculo);
+      const pIcms = Number(regraIcms.aliquota ?? 0);
+      const vBcRed = r2(valorFmt * (1 - pRed / 100));
+      const vIcmsRed = r2(vBcRed * (pIcms / 100));
+      item.icms_valor_desonerado = r2(valorFmt * (pIcms / 100) - vIcmsRed);
+      item.icms_motivo_desoneracao = 9;
+    }
+  }
+
+  // prod/cBenef — código de benefício fiscal da UF (regra de ICMS). Exigido pela
+  // SEFAZ quando o CST identifica redução/benefício (ex.: CST 20 no DF).
+  if (regraIcms.codigo_beneficio_fiscal?.trim()) {
+    item.codigo_beneficio = regraIcms.codigo_beneficio_fiscal.trim();
   }
 
   // --- Grupo "ICMS-ST retido anteriormente" (CST 60) ---------------------

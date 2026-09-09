@@ -624,7 +624,7 @@ Deno.serve(async (req) => {
       const { data: em } = await admin
         .from('estoque_motos')
         .select(
-          '*, avaliacao:avaliacao_id(marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam)',
+          '*, avaliacao:avaliacao_id(marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam, km, valor_fechamento)',
         )
         .eq('id', mi.estoque_moto_id)
         .maybeSingle();
@@ -1114,7 +1114,7 @@ Deno.serve(async (req) => {
         'informacoes_complementares, informacoes_adicionais_fisco, ' +
         'naturezas_operacao_regras(imposto, cfop, situacao_tributaria, aliquota, reducao_base_calculo, ' +
         'aliquota_fcp, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem, ' +
-        'natureza_operacao_descricao, indicador_presenca, tipo_atendimento, ' +
+        'natureza_operacao_descricao, indicador_presenca, tipo_atendimento, codigo_beneficio_fiscal, ' +
         'classificacao_tributaria, cbs_aliquota, ibs_uf_aliquota, ibs_mun_aliquota, percentual_reducao, ' +
         'aliquota_icms_efetiva, reducao_base_calculo_efetiva, aliquota_suportada_consumidor_final)',
     )
@@ -1199,6 +1199,10 @@ Deno.serve(async (req) => {
       placa: mSrc.placa ?? null,
       chassi: mSrc.chassi ?? null,
       renavam: mSrc.renavam ?? null,
+      km: eh0km ? null : (mSrc.km ?? null),
+      // Custo de aquisição da moto seminova (valor de fechamento da entrada em
+      // estoque) — base da margem de PIS/COFINS na revenda de usado.
+      custo_aquisicao: eh0km ? null : (mSrc.valor_fechamento != null ? Number(mSrc.valor_fechamento) : null),
       ncm: eh0km ? (mn.ncm ?? null) : null,
       // Nº da NF de entrada (fornecedor/fábrica) — só existe pra moto 0km,
       // cadastrado direto no estoque_motos_novas (numero_nf_entrada).
@@ -1275,6 +1279,9 @@ Deno.serve(async (req) => {
     vendedorNome,
     formasPagamentoTexto,
     formasPagamento: formasPagamentoEstrut,
+    // Venda de moto seminova = bem móvel usado: liga indBemMovelUsado + base de
+    // PIS/COFINS pela margem (venda − custo de aquisição).
+    bemMovelUsado: tipo === 'venda_seminova',
   });
 
   // FKs da nfe_entradas conforme a operacao.
