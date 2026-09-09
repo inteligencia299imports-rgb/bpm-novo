@@ -5,12 +5,15 @@ import { Camera, Loader2, ExternalLink, Trash2 } from 'lucide-react';
 import { TIPOS_FOTO, TIPOS_FOTO_LABELS } from '@/types/crm';
 import type { MotoFoto } from '@/types/crm';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface Props {
   avaliacaoId: string;
+  /** Somente leitura (ex.: após emissão da NF-e): só visualizar, sem adicionar nem excluir. */
+  readOnly?: boolean;
 }
 
-const PhotoUpload: React.FC<Props> = ({ avaliacaoId }) => {
+const PhotoUpload: React.FC<Props> = ({ avaliacaoId, readOnly }) => {
   const [fotos, setFotos] = useState<MotoFoto[]>([]);
   const [uploading, setUploading] = useState<string | null>(null);
 
@@ -94,8 +97,15 @@ const PhotoUpload: React.FC<Props> = ({ avaliacaoId }) => {
           const foto = fotos.find(f => f.tipo === tipo);
           return (
             <div key={tipo} className="relative group">
-              <label className="flex flex-col items-center justify-center aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors overflow-hidden bg-muted/50">
-                {uploading === tipo ? (
+              {React.createElement(
+                readOnly ? 'div' : 'label',
+                {
+                  className: cn(
+                    'flex flex-col items-center justify-center aspect-square rounded-lg border-2 border-dashed border-border transition-colors overflow-hidden bg-muted/50',
+                    !readOnly && 'hover:border-primary/50 cursor-pointer',
+                  ),
+                },
+                uploading === tipo ? (
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 ) : foto ? (
                   <img src={foto.url} alt={TIPOS_FOTO_LABELS[tipo]} className="w-full h-full object-cover" />
@@ -104,12 +114,14 @@ const PhotoUpload: React.FC<Props> = ({ avaliacaoId }) => {
                     <Camera className="h-5 w-5 text-muted-foreground mb-1" />
                     <span className="text-[10px] text-muted-foreground text-center px-1">{TIPOS_FOTO_LABELS[tipo]}</span>
                   </>
-                )}
-                <input type="file" accept="image/*" className="hidden" onChange={e => {
-                  const f = e.target.files?.[0];
-                  if (f) handleUpload(tipo, f);
-                }} />
-              </label>
+                ),
+                !readOnly && (
+                  <input type="file" accept="image/*" className="hidden" onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUpload(tipo, f);
+                  }} />
+                ),
+              )}
               {foto && !uploading && (
                 <>
                   <span className="absolute bottom-0 left-0 right-0 bg-foreground/60 text-background text-[9px] text-center py-0.5 truncate">
@@ -124,14 +136,16 @@ const PhotoUpload: React.FC<Props> = ({ avaliacaoId }) => {
                     >
                       <ExternalLink className="h-3 w-3" />
                     </button>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(foto); }}
-                      className="p-1 rounded-full bg-destructive/80 text-destructive-foreground hover:bg-destructive transition-colors"
-                      title="Excluir"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(foto); }}
+                        className="p-1 rounded-full bg-destructive/80 text-destructive-foreground hover:bg-destructive transition-colors"
+                        title="Excluir"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                 </>
               )}

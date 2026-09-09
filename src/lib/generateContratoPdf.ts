@@ -25,6 +25,8 @@ interface ContratoPdfData {
   // Valores
   valorSinal: string;
   valorVenda: string;
+  /** Valor Total (venda + taxas + agregados). Se ausente, cai para valorVenda. */
+  valorTotal?: string;
   
   // Transferência
   transferenciaTipo?: string | null;
@@ -372,7 +374,13 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   if (!is0km) {
     doc.text(`Cor: ${data.produtoCor}`, marginLeft, y); y += lineHeight;
   }
-  doc.text(`Placa/Chassi: ${data.produtoPlacaChassi}`, marginLeft, y); y += lineHeight + sectionGap;
+  doc.text(`Placa/Chassi: ${data.produtoPlacaChassi}`, marginLeft, y); y += lineHeight;
+  doc.text(`Valor de Venda: ${data.valorVenda}`, marginLeft, y); y += lineHeight + sectionGap;
+
+  // TAXAS ADMINISTRATIVAS (transferência + IPVA)
+  if (data.transferenciaTipo || data.ipvaTipo) {
+    sectionHeader('TAXAS ADMINISTRATIVAS');
+  }
 
   // TRANSFERÊNCIA
   if (data.transferenciaTipo) {
@@ -409,7 +417,18 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
       y += sectionGap;
     }
   }
-  
+
+  // AGREGADOS — serviços cobrados à parte do cliente
+  if (data.agregados && data.agregados.length > 0) {
+    sectionHeader('AGREGADOS');
+    setNormal();
+    for (const ag of data.agregados) {
+      checkPageBreak(lineHeight);
+      doc.text(`${ag.descricao}: ${ag.valor}`, marginLeft + 5, y); y += lineHeight;
+    }
+    y += sectionGap;
+  }
+
   // RECIBO DE SINAL DE NEGÓCIO (justified with bold values) - not shown for venda
   if (!isVenda) {
     sectionHeader('RECIBO DE SINAL DE NEGÓCIO');
@@ -424,14 +443,14 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   // CONDIÇÕES DA VENDA
   sectionHeader('CONDIÇÕES DA VENDA');
   setNormal();
-  setNormal();
-  doc.text('Valor da Venda: ', marginLeft, y);
-  const vvLabelW = doc.getTextWidth('Valor da Venda: ');
+  const vtLabelW = doc.getTextWidth('Valor Total ');
+  doc.text('Valor Total ', marginLeft, y);
   setBold();
-  doc.text(`${data.valorVenda}`, marginLeft + vvLabelW, y);
-  const vvValW = doc.getTextWidth(`${data.valorVenda}`);
+  const vtValor = data.valorTotal || data.valorVenda;
+  doc.text(vtValor, marginLeft + vtLabelW, y);
+  const vtValW = doc.getTextWidth(vtValor);
   setNormal();
-  doc.text(', sendo:', marginLeft + vvLabelW + vvValW, y);
+  doc.text(', pagos da seguinte forma:', marginLeft + vtLabelW + vtValW, y);
   y += lineHeight + sectionGap;
   
   // Moto troca
@@ -493,26 +512,6 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
       }
     }
     y += sectionGap; // one line gap between each payment method
-  }
-
-  // Agregados — serviços cobrados à parte do cliente
-  if (data.agregados && data.agregados.length > 0) {
-    checkPageBreak(lineHeight);
-    setBold();
-    doc.text('Agregados (serviços cobrados à parte):', marginLeft, y); y += lineHeight;
-    setNormal();
-    let totalAgregados = 0;
-    for (const ag of data.agregados) {
-      checkPageBreak(lineHeight);
-      doc.text(`${ag.descricao}: ${ag.valor}`, marginLeft + 5, y); y += lineHeight;
-      totalAgregados += parseFloat(String(ag.valor).replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-    }
-    checkPageBreak(lineHeight);
-    setBold();
-    doc.text(`Total de agregados: R$ ${totalAgregados.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, marginLeft + 5, y);
-    y += lineHeight;
-    setNormal();
-    y += sectionGap;
   }
 
   // Confirmação das formas de pagamento (apenas seminovas, venda)

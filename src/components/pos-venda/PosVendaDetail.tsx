@@ -3,7 +3,11 @@ import { getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard, FileText, Camera, Truck, CalendarIcon, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard, FileText, Camera, Truck, CalendarIcon, CheckCircle2, Loader2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNfeEmitida } from '@/hooks/useNfeEmitida';
+import { podeAprovarVenda, vendaLiberada, vendaAprovada, vendaRecusada } from '@/lib/aprovacaoVenda';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import type { MotoFoto } from '@/types/crm';
 import { format } from 'date-fns';
@@ -105,6 +109,15 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [intermHistory, setIntermHistory] = useState<any[]>([]);
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
+  // Aprovação da venda (master)
+  const { user, userName, role } = useAuth();
+  const [vendaAprovStatus, setVendaAprovStatus] = useState<string | null>((item as any).venda_aprovacao_status ?? null);
+  const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar'; motivo: string } | null>(null);
+  const [savingAprovacao, setSavingAprovacao] = useState(false);
+  const atAprov = { situacao: item.situacao, venda_aprovacao_status: vendaAprovStatus };
+  const souMaster = podeAprovarVenda(role);
+  const bloqueadoAprovacao = !vendaLiberada(atAprov);
+  const { emitida: nfeVendaEmitida } = useNfeEmitida(item.id, 'atendimento');
 
   const refreshConsignada = async () => {
     const consignadaEstoque = Object.values(estoqueData).find((e: any) => e.tipo === 'consignada');
@@ -144,13 +157,55 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto?.crlv_url || null);
   const [estoqueCrlvUrls, setEstoqueCrlvUrls] = useState<Record<string, string | null>>({});
   const cols = statusColumns || POS_VENDA_COLUMNS;
-  const statusCol = cols.find(c => c.value === ((item as any)[statusField] || 'em_aberto'));
+  const normalStatus = (item as any)[statusField] || 'em_aberto';
+  const colValue = vendaAprovStatus === 'recusada'
+    ? normalStatus
+    : (vendaAprovStatus === 'aguardando' || !nfeVendaEmitida)
+      ? 'aguardando_aprovacao'
+      : (vendaAprovStatus === 'aprovada' && normalStatus === 'em_aberto')
+        ? 'aprovada'
+        : normalStatus;
+  const statusCol = cols.find(c => c.value === colValue);
   const int = INTERESSES.find(i => i.value === item.interesse);
   const isIntermParte1 = !!processoProps?.showContratoConsignante;
   const displayClient = isIntermParte1 && proprietario ? proprietario : item;
   const displayName = formatPersonName(displayClient.cliente?.nome_razao_social || '');
   const displayPhone = displayClient.cliente?.telefone || '';
   const whatsappUrl = displayPhone ? `https://wa.me/55${displayPhone.replace(/\D/g, '')}` : '';
+
+  const confirmarAprovacaoVenda = async () => {
+    if (!aprovacaoPopup) return;
+    const modo = aprovacaoPopup.modo;
+    const motivo = aprovacaoPopup.motivo.trim().toUpperCase();
+    if (modo === 'recusar' && !motivo) { toast.error('Informe o motivo da recusa'); return; }
+    if (!podeAprovarVenda(role)) { toast.error('Apenas um master pode aprovar/recusar'); return; }
+    setSavingAprovacao(true);
+    const novoStatus = modo === 'aprovar' ? 'aprovada' : 'recusada';
+    const { error } = await supabase.from('atendimentos_motos').update({
+      venda_aprovacao_status: novoStatus,
+      venda_aprovacao_observacao: motivo || null,
+      venda_aprovado_por: user?.id ?? null,
+      venda_aprovado_em: new Date().toISOString(),
+    } as any).eq('id', item.id);
+    if (error) {
+      setSavingAprovacao(false);
+      toast.error('Erro ao registrar a decisão');
+      return;
+    }
+    await supabase.from('status_history').insert({
+      entity_type: 'pos_venda',
+      entity_id: item.id,
+      status: modo === 'aprovar' ? 'venda_aprovada' : 'venda_recusada',
+      changed_by: user?.id,
+      changed_by_name: userName || user?.email || null,
+      observacoes: motivo || null,
+    } as any);
+    setVendaAprovStatus(novoStatus);
+    setAprovacaoPopup(null);
+    setSavingAprovacao(false);
+    toast.success(modo === 'aprovar' ? 'Venda aprovada' : 'Venda recusada');
+    onStatusChanged?.(item.id, novoStatus, 'venda_aprovacao_status');
+  };
 
   const handleCnhUploaded = async (url: string) => {
     const clienteId = (item as any).cliente_id;
@@ -430,25 +485,39 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               {format(new Date(Object.values(estoqueData).find((e: any) => e.data_venda)?.data_venda || item.updated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {isIntermParte1 && (
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+            {souMaster && !vendaAprovada(atAprov) && (
+              <>
+                <Button size="sm" onClick={() => setAprovacaoPopup({ modo: 'aprovar', motivo: '' })} className="gap-1.5 bg-green-600 hover:bg-green-700 text-white">
+                  <ThumbsUp className="h-4 w-4" /> Aprovar
+                </Button>
+                {!vendaRecusada(atAprov) && (
+                  <Button size="sm" variant="outline" onClick={() => setAprovacaoPopup({ modo: 'recusar', motivo: '' })} className="gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive">
+                    <ThumbsDown className="h-4 w-4" /> Recusar
+                  </Button>
+                )}
+              </>
+            )}
+            {!bloqueadoAprovacao && isIntermParte1 && (
               <Button size="sm" variant="outline" onClick={() => setContratoConsignanteOpen(true)} className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10">
                 <DollarSign className="h-4 w-4" /> Pagamento
               </Button>
             )}
             {!isIntermParte1 && (
-              <>
-                <Button size="sm" variant="outline" onClick={() => setContratoOpen(true)} className="gap-1.5">
-                  <FileText className="h-4 w-4" /> Contrato
-                </Button>
-                <Button size="sm" variant="outline" onClick={openEntrega} className="gap-1.5">
-                  <Truck className="h-4 w-4" /> Entrega
-                </Button>
-              </>
+              <Button size="sm" variant="outline" onClick={() => setContratoOpen(true)} className="gap-1.5">
+                <FileText className="h-4 w-4" /> Proposta
+              </Button>
             )}
-            <Button size="sm" onClick={() => setProcessoOpen(true)} className="gap-1.5">
-              <ClipboardList className="h-4 w-4" /> Processo
-            </Button>
+            {!bloqueadoAprovacao && !isIntermParte1 && (
+              <Button size="sm" variant="outline" onClick={openEntrega} className="gap-1.5">
+                <Truck className="h-4 w-4" /> Entrega
+              </Button>
+            )}
+            {!bloqueadoAprovacao && (
+              <Button size="sm" onClick={() => setProcessoOpen(true)} className="gap-1.5">
+                <ClipboardList className="h-4 w-4" /> Processo
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -980,7 +1049,44 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         onEmitirNfe={() => { setProcessoOpen(false); setNfeVendaOpen(true); }}
         onEmitirNfeTroca={abrirNfeTroca}
         onNavigateToPosCompra={onNavigateToPosCompra}
+        vendaBloqueadaAprovacao={bloqueadoAprovacao}
       />
+
+      {/* Aprovar / Recusar venda (master) */}
+      <Dialog open={aprovacaoPopup !== null} onOpenChange={(open) => { if (!open) setAprovacaoPopup(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {aprovacaoPopup?.modo === 'recusar'
+                ? <><ThumbsDown className="h-5 w-5 text-destructive" /> Recusar Venda</>
+                : <><ThumbsUp className="h-5 w-5 text-green-600" /> Aprovar Venda</>}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <Label>
+              {aprovacaoPopup?.modo === 'recusar' ? 'Motivo da recusa' : 'Observação da aprovação'}
+              {aprovacaoPopup?.modo === 'recusar' && <span className="text-destructive"> *</span>}
+            </Label>
+            <Textarea
+              rows={4}
+              value={aprovacaoPopup?.motivo || ''}
+              onChange={(e) => setAprovacaoPopup(p => p ? { ...p, motivo: e.target.value.toUpperCase() } : p)}
+              placeholder="INFORME O MOTIVO..."
+            />
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setAprovacaoPopup(null)}>Cancelar</Button>
+              <Button
+                variant={aprovacaoPopup?.modo === 'recusar' ? 'destructive' : 'default'}
+                className={aprovacaoPopup?.modo === 'aprovar' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
+                disabled={savingAprovacao || (aprovacaoPopup?.modo === 'recusar' && !aprovacaoPopup?.motivo.trim())}
+                onClick={confirmarAprovacaoVenda}
+              >
+                {savingAprovacao ? <Loader2 className="h-4 w-4 animate-spin" /> : (aprovacaoPopup?.modo === 'recusar' ? 'Recusar' : 'Aprovar')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

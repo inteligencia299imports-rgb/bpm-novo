@@ -5,27 +5,36 @@ export type SituacaoShowroom = 'em_aberto' | 'pendente' | 'sinal' | 'perdido' | 
 export type SituacaoAvaliacao = 'sem_avaliar' | 'em_aberto' | 'adquirida' | 'dispensada' | 'perdido';
 export type SituacaoNps = 'em_aberto' | 'enviado' | 'respondido';
 export type Negociacao = 'compra' | 'consignacao';
-export type PosVendaStatus = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
+export type PosVendaStatus = 'aguardando_aprovacao' | 'aprovada' | 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
 export type PosCompraStatus = 'aguardando_aprovacao' | 'aprovada' | 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'pausado' | 'concluido';
 export type AprovacaoStatus = 'aguardando' | 'aprovada' | 'recusada';
 export type ConsignacaoStatus = 'em_aberto' | 'contrato_assinado' | 'pausado' | 'concluido';
 export type PreparacaoStatus = 'em_aberto' | 'pendente' | 'aguardando_aceite' | 'oficina' | 'servico_externo' | 'aguardando_liberacao_estoque' | 'estoque';
-export type IntermediacaoParte1Status = 'em_aberto' | 'em_andamento' | 'autorizacao_pagamento' | 'concluido';
-export type IntermediacaoParte2Status = 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
+export type IntermediacaoParte1Status = 'aguardando_aprovacao' | 'aprovada' | 'em_aberto' | 'em_andamento' | 'autorizacao_pagamento' | 'concluido';
+export type IntermediacaoParte2Status = 'aguardando_aprovacao' | 'aprovada' | 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
+
+// Colunas de aprovação da venda (venda_aprovacao_status), no início dos kanbans.
+const APROVACAO_VENDA_COLUMNS = [
+  { value: 'aguardando_aprovacao', label: 'Aguardando Aprovação', hex: '#6B7280' },
+  { value: 'aprovada', label: 'Aprovada', hex: '#169d53' },
+] as const;
 
 export const POS_VENDA_COLUMNS: { value: PosVendaStatus; label: string; hex: string }[] = [
+  ...APROVACAO_VENDA_COLUMNS,
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#b376c4' },
 ];
 
 export const INTERMEDIACAO_PARTE1_COLUMNS: { value: IntermediacaoParte1Status; label: string; hex: string }[] = [
+  ...APROVACAO_VENDA_COLUMNS,
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'autorizacao_pagamento', label: 'Autorização de Pagamento', hex: '#b376c4' },
 ];
 
 export const INTERMEDIACAO_PARTE2_COLUMNS: { value: IntermediacaoParte2Status; label: string; hex: string }[] = [
+  ...APROVACAO_VENDA_COLUMNS,
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#b376c4' },

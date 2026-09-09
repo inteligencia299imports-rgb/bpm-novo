@@ -54,7 +54,9 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     setLoading(true);
     const PER_STATUS_LIMIT = 50;
     const isSearching = search.trim().length > 0;
-    const statuses = POS_VENDA_COLUMNS.map(c => c.value);
+    // Colunas de aprovação são um eixo separado (venda_aprovacao_status), não pos_venda_status.
+    const statuses = POS_VENDA_COLUMNS.map(c => c.value).filter(v => v !== 'aguardando_aprovacao' && v !== 'aprovada');
+    const AT_SELECT = `*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`;
     const [estResRaw, estNovasRaw, lojaMap, nfeResult] = await Promise.all([
       fetchAllRange<any>(() => supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).not('atendimento_venda_id', 'is', null)),
       supabase.from('estoque_motos_novas').select(ESTOQUE_NOVA_SELECT).not('atendimento_venda_id', 'is', null),
@@ -78,13 +80,18 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     let atData: any[];
     let atError: any;
     if (isSearching) {
-      const result = await fetchAllRange(() => supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`).eq('situacao', 'vendido').order('updated_at', { ascending: false }));
+      const result = await fetchAllRange(() => supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido').order('updated_at', { ascending: false }));
       atError = result.error;
       atData = result.data || [];
     } else {
-      const statusResults = await Promise.all(statuses.map(s => supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`).eq('situacao', 'vendido').eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)));
+      const statusResults = await Promise.all([
+        ...statuses.map(s => supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido').eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)),
+        (supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido') as any).eq('venda_aprovacao_status', 'aguardando').order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT),
+        (supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido') as any).eq('venda_aprovacao_status', 'aprovada').order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT),
+      ]);
       atError = statusResults.find(r => r.error)?.error;
-      atData = statusResults.flatMap(r => r.data || []);
+      const seen = new Set<string>();
+      atData = statusResults.flatMap(r => r.data || []).filter((a: any) => (seen.has(a.id) ? false : (seen.add(a.id), true)));
     }
     if (atError) { toast.error('Erro ao carregar pós-venda'); setLoading(false); return; }
     atData = atData.map((a: any) => ({ ...flattenMarcaModelo(a), loja: a.loja_empresas?.loja }));
@@ -104,10 +111,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       .map(a => {
         const est = estoquePropria[a.id];
         const _nfeTag = nfeTagFromRows(nfeRowsPorAtendimento[a.id]);
-        if (est) return { ...a, _estoqueMoto: est, _nfeTag };
+        const _nfeVendaEmitida = (nfeRowsPorAtendimento[a.id] || []).some((n: any) => n.status === 'processada');
+        if (est) return { ...a, _estoqueMoto: est, _nfeTag, _nfeVendaEmitida };
         // Fallback: use first moto_interesse info
         const mi = a.motos_interesse?.[0];
-        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeTag };
+        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeTag, _nfeVendaEmitida };
       });
 
     if (search.trim()) {
@@ -122,7 +130,15 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
   }, [search, filterCidade]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
-  const getColumnItems = (status: PosVendaStatus) => items.filter((a: any) => (a.pos_venda_status || 'em_aberto') === status);
+  const columnOf = (a: any): PosVendaStatus => {
+    const normal = (a.pos_venda_status || 'em_aberto') as PosVendaStatus;
+    if (a.venda_aprovacao_status === 'recusada') return normal; // fica na coluna normal com a tag "Recusado"
+    // Aguardando aprovação enquanto o master não aprova OU a NF-e de venda não foi emitida.
+    if (a.venda_aprovacao_status === 'aguardando' || !a._nfeVendaEmitida) return 'aguardando_aprovacao';
+    if (a.venda_aprovacao_status === 'aprovada' && normal === 'em_aberto') return 'aprovada';
+    return normal;
+  };
+  const getColumnItems = (status: PosVendaStatus) => items.filter((a: any) => columnOf(a) === status);
 
   const handleStatusChanged = useCallback((itemId: string, newStatus: string, field: string) => {
     setItems(prev => prev.map(a => a.id === itemId ? { ...a, [field]: newStatus } : a));
@@ -155,11 +171,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
         <KanbanSkeleton columns={4} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-3">
+          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-5">
             {POS_VENDA_COLUMNS.map(col => {
               const colItems = getColumnItems(col.value);
               return (
-                <div key={col.value} className="w-[320px] shrink-0 md:w-auto md:shrink flex flex-col">
+                <div key={col.value} className="w-[300px] shrink-0 md:w-auto md:shrink flex flex-col">
                   <div className="flex items-center justify-between mb-3 px-1">
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.hex }} />
@@ -174,7 +190,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
                          <ProcessCard key={a.id} clientName={a.cliente?.nome_razao_social} phone={a.cliente?.telefone}
                            motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined}
                            loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex}
-                           nameTag={a._nfeTag || undefined}
+                           nameTag={a.venda_aprovacao_status === 'recusada' ? { label: 'Recusado', className: 'bg-red-600 hover:bg-red-600' } : (a._nfeTag || undefined)}
                            onClick={() => setSelectedItem(a)} />
                       );
                     })}

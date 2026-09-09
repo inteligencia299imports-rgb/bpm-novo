@@ -16,6 +16,11 @@ interface Props {
   /** Somente leitura: permite apenas visualizar/baixar o arquivo (sem anexar nem remover). */
   readOnly?: boolean;
   /**
+   * Trava pós-emissão de NF-e: ainda é possível anexar um documento AUSENTE,
+   * mas não remover nem substituir um já anexado. Ignorado quando `readOnly`.
+   */
+  bloquearRemocao?: boolean;
+  /**
    * Ao anexar: não abre o preview do arquivo nem mostra "enviado com sucesso".
    * Mantém o botão em "Lendo…" até `onUploaded` (leitura/validação do doc) terminar.
    * O arquivo só fica disponível para abrir depois disso.
@@ -23,7 +28,9 @@ interface Props {
   deferPreview?: boolean;
 }
 
-const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUploaded, onRemoved, className, readOnly, deferPreview }) => {
+const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUploaded, onRemoved, className, readOnly, bloquearRemocao, deferPreview }) => {
+  // Sem botão "Remover" (logo, sem substituir) quando em somente leitura ou trava pós-NF.
+  const semRemover = readOnly || bloquearRemocao;
   const [uploading, setUploading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -153,7 +160,7 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
               </div>
 
               {/* Actions */}
-              <div className={cn('grid gap-2', readOnly ? 'grid-cols-2' : 'grid-cols-3')}>
+              <div className={cn('grid gap-2', semRemover ? 'grid-cols-2' : 'grid-cols-3')}>
                 <Button
                   size="sm"
                   variant="outline"
@@ -185,6 +192,14 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
                     onClick={() => window.open(currentUrl, '_blank')}
                   >
                     <Eye className="h-4 w-4" /> Abrir
+                  </Button>
+                ) : semRemover ? (
+                  <Button
+                    size="sm"
+                    className="gap-1.5 w-full"
+                    onClick={() => setDialogOpen(false)}
+                  >
+                    <Save className="h-4 w-4" /> Salvar
                   </Button>
                 ) : (
                   <>

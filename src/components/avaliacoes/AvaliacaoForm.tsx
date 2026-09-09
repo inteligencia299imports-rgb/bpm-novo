@@ -35,6 +35,7 @@ import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
+import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
@@ -98,7 +99,7 @@ const numberToCurrencyMask = (value: number | null): string => {
   return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-const CurrencyField = ({ label, value, onChange, opcional }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; opcional?: boolean }) => (
+const CurrencyField = ({ label, value, onChange, opcional, disabled }: { label: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; opcional?: boolean; disabled?: boolean }) => (
   <div className="space-y-1.5">
     <Label>{label}{opcional ? '' : <> <span className="text-destructive">*</span></>}</Label>
     <div className="relative">
@@ -106,6 +107,7 @@ const CurrencyField = ({ label, value, onChange, opcional }: { label: string; va
       <Input
         value={value}
         onChange={onChange}
+        disabled={disabled}
         className="pl-10"
         placeholder="0,00"
         inputMode="numeric"
@@ -147,6 +149,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [solicitandoConsulta, setSolicitandoConsulta] = useState(false);
   const canEdit = role === 'gerente' || role === 'master' || role === 'vendedor';
   const [history, setHistory] = useState<any[]>([]);
+  // NF-e de compra/consignação autorizada -> avaliação travada (destrava se cancelada).
+  const { emitida: nfeEmitida, recarregar: recarregarNfe } = useNfeEmitida(avaliacao?.id, 'avaliacao');
   const [editClienteOpen, setEditClienteOpen] = useState(false);
   // Etapa de aprovação (contexto pos_compra)
   const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar'; motivo: string } | null>(null);
@@ -504,14 +508,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       avaliacao_compra: parseCurrencyToNumber(avalCompra),
       previsao_custos_loja: parseCurrencyToNumber(prevCustosLoja),
       previsao_custos_cliente: parseCurrencyToNumber(prevCustosCliente),
-      valor_quitacao: parseCurrencyToNumber(valorQuitacao),
       trade_in: parseCurrencyToNumber(valorBonus) || null,
       classificacao: classificacao || null,
       observacao_avaliador: obsAvaliador.trim() || null,
       // Na 1ª avaliação o avaliador é quem está salvando; na edição respeita a seleção.
       avaliador_id: (avaliacao?.situacao !== 'sem_avaliar' && avaliadorId) ? avaliadorId : user!.id,
       situacao: avaliacao?.situacao === 'sem_avaliar' ? 'em_aberto' : avaliacao?.situacao ?? 'em_aberto',
-      ...((avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
+      // Após a NF-e, "Valor de Quitação" e "Valor de Fechamento" ficam congelados (não são regravados).
+      ...(!nfeCompraEmitida ? { valor_quitacao: parseCurrencyToNumber(valorQuitacao) } : {}),
+      ...(!nfeCompraEmitida && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
     };
 
     const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
@@ -568,8 +573,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     const updateData: any = { situacao: newStatus };
     if (tipoAquisicao) updateData.tipo_aquisicao = tipoAquisicao;
     if (valorFechamento && valorFechamento > 0) updateData.valor_fechamento = valorFechamento;
-    // Aquisição como própria entra na fila de aprovação do Pós-Compra.
-    if (newStatus === 'adquirida' && isTipoPropria(tipoAquisicao)) updateData.aprovacao_status = 'aguardando';
+    // Aquisição como própria entra na fila de aprovação do Pós-Compra — exceto troca
+    // (moto como parte de pagamento), que não passa por aprovação e já entra aprovada.
+    if (newStatus === 'adquirida' && isTipoPropria(tipoAquisicao)) {
+      const ehTroca = (avaliacao as any)?.atendimento?.interesse === 'trocar';
+      updateData.aprovacao_status = ehTroca ? 'aprovada' : 'aguardando';
+    }
    const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
     if (error) {
       toast.error('Erro ao alterar status');
@@ -839,7 +848,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
         open
         avaliacao={avaliacao}
         modo={nfeCompraOpen ? 'nfe' : 'contrato'}
-        onOpenChange={() => { setContratoCompraOpen(false); setNfeCompraOpen(false); refreshHistory(); loadAvaliacao(); }}
+        onOpenChange={() => { setContratoCompraOpen(false); setNfeCompraOpen(false); refreshHistory(); loadAvaliacao(); recarregarNfe(); }}
       />
     );
   }
@@ -864,7 +873,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
         open
         avaliacao={avaliacao}
         modo={nfeConsignacaoOpen ? 'nfe' : 'contrato'}
-        onOpenChange={() => { setContratoConsignacaoOpen(false); setNfeConsignacaoOpen(false); refreshHistory(); loadAvaliacao(); }}
+        onOpenChange={() => { setContratoConsignacaoOpen(false); setNfeConsignacaoOpen(false); refreshHistory(); loadAvaliacao(); recarregarNfe(); }}
       />
     );
   }
@@ -876,7 +885,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
 
   const hasEvaluation = !!(avaliacao?.valor_fipe || avaliacao?.avaliacao_compra || avaliacao?.avaliacao_consignacao || avaliacao?.quanto_pede);
   const contratoGerado = history.some((h: any) => h.status === 'contrato_compra_gerado');
-  const nfeCompraEmitida = history.some((h: any) => h.status === 'nfe_compra_emitida' || h.status === 'nfe_consignacao_emitida');
+  const nfeCompraEmitida = nfeEmitida;
 
   // Empresa do atendimento faz consignação? (FAG e afins só vendem moto nova)
   const permiteConsignar = empresaConsignaMoto((avaliacao as any)?.atendimento?.empresa_id);
@@ -884,16 +893,20 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   // Com CRLV anexado: marca, modelo, anos e placa da moto ficam travados.
   const crlvBloqueado = !!crlvUrl;
 
-  // Etapa de aprovação (só no contexto de Pós-Compra, para motos próprias)
+  // Troca no pós-compra: moto que entra como parte de pagamento não passa por aprovação
+  // (vai direto pra 'aprovada') e o "Contrato" é o de venda do atendimento.
+  const ehTrocaPosCompra = context === 'pos_compra' && (avaliacao as any)?.atendimento?.interesse === 'trocar';
+  // Etapa de aprovação (só no contexto de Pós-Compra, para motos próprias — exceto troca)
   const apSt: string | null = avaliacao?.aprovacao_status ?? null;
-  const precisaAprovacao = context === 'pos_compra' && isTipoPropria(avaliacao?.tipo_aquisicao);
+  const precisaAprovacao = context === 'pos_compra' && isTipoPropria(avaliacao?.tipo_aquisicao) && !ehTrocaPosCompra;
   const aguardandoAprovacao = precisaAprovacao && apSt !== 'aprovada' && apSt !== 'recusada';
   const aprovado = precisaAprovacao && apSt === 'aprovada';
   const souAprovador = podeAprovar(user?.id);
   // Após aprovação (ou emissão da NF-e): nada pode ser editado nem arquivo removido.
   const travado = aprovado || nfeCompraEmitida;
-  // Troca no pós-compra: não exige aprovação e o "Contrato" é o de venda do atendimento.
-  const ehTrocaPosCompra = context === 'pos_compra' && (avaliacao as any)?.atendimento?.interesse === 'trocar';
+  // Exceção: mesmo após a NF-e, os valores da avaliação comercial continuam editáveis
+  // (só "Valor de Quitação" e "Valor de Fechamento" ficam bloqueados — ver diálogo abaixo).
+  const podeEditarAvaliacao = !travado || nfeCompraEmitida;
   // Botões de contrato / processo / financeiro liberados: consignação sempre;
   // pós-compra só após aprovar — exceto troca, que libera direto.
   const liberadoProcesso = context === 'consignacao' || aprovado || ehTrocaPosCompra;
@@ -1139,7 +1152,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   )}
                   {context === 'consignacao' && (
                     <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
-                      <FileText className="h-4 w-4" /> Contrato
+                      <FileText className="h-4 w-4" /> Proposta
                     </Button>
                   )}
                   {context === 'pos_compra' && (
@@ -1150,7 +1163,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                       disabled={abrindoContratoVenda}
                       className="gap-1.5"
                     >
-                      <FileText className="h-4 w-4" /> {ehTrocaPosCompra ? 'Contrato de Venda' : 'Contrato'}
+                      <FileText className="h-4 w-4" /> {ehTrocaPosCompra ? 'Proposta de Venda' : 'Proposta'}
                     </Button>
                   )}
                 </>
@@ -1159,7 +1172,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
               <>
                 {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao === 'consignada' && (
                   <Button size="sm" onClick={() => setContratoConsignacaoOpen(true)} className="gap-1.5">
-                    <FileText className="h-4 w-4" /> Contrato
+                    <FileText className="h-4 w-4" /> Proposta
                   </Button>
                 )}
                 {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && isTipoPropria(avaliacao?.tipo_aquisicao) && (
@@ -1169,7 +1182,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                     onClick={() => setContratoCompraOpen(true)}
                     className="gap-1.5"
                   >
-                    <FileText className="h-4 w-4" /> Contrato
+                    <FileText className="h-4 w-4" /> Proposta
                   </Button>
                 )}
               </>
@@ -1231,7 +1244,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                     bucketPath={`docs/${at.cliente_id}/${docIdentificacaoBucket(clientePj)}`}
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
-                    readOnly={travado}
+                    readOnly={aprovado} bloquearRemocao={nfeEmitida}
                     deferPreview
                   />
                 </>
@@ -1335,7 +1348,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <DocumentUpload
                   label="CRLV"
                   className="flex-1"
-                  readOnly={travado}
+                  readOnly={aprovado} bloquearRemocao={nfeEmitida}
                   currentUrl={crlvUrl}
                   bucketPath={`docs/${moto?.id}/crlv`}
                   deferPreview
@@ -1359,7 +1372,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <DocumentUpload
                   label="ATPV"
                   className="flex-1"
-                  readOnly={travado}
+                  readOnly={aprovado} bloquearRemocao={nfeEmitida}
                   currentUrl={atpvUrl}
                   bucketPath={`docs/${moto?.id}/atpv`}
                   onUploaded={async (url) => {
@@ -1374,7 +1387,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <DocumentUpload
                   label="Procuração"
                   className="flex-1"
-                  readOnly={travado}
+                  readOnly={aprovado} bloquearRemocao={nfeEmitida}
                   currentUrl={procuracaoUrl}
                   bucketPath={`docs/${moto?.id}/procuracao`}
                   onUploaded={async (url) => {
@@ -1395,7 +1408,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-primary" /> Avaliação Comercial
-                {canEdit && hasEvaluation && !travado && (
+                {canEdit && hasEvaluation && podeEditarAvaliacao && (
                   <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setShowEvalDialog(true)} title="Editar Avaliação">
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -1633,7 +1646,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             <CurrencyField label="Avaliação Compra" value={avalCompra} onChange={handleCurrencyChange(setAvalCompra)} />
             <CurrencyField label="Previsão Custos Loja" value={prevCustosLoja} onChange={handleCurrencyChange(setPrevCustosLoja)} />
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
-            <CurrencyField label="Valor de Quitação" opcional value={valorQuitacao} onChange={handleCurrencyChange(setValorQuitacao)} />
+            <CurrencyField label="Valor de Quitação" opcional value={valorQuitacao} onChange={handleCurrencyChange(setValorQuitacao)} disabled={nfeCompraEmitida} />
             {isLojaDucati(avaliacao?.atendimento?.loja) && avaliacao?.atendimento?.interesse === 'trocar' && (
               <CurrencyField label="Valor do Bônus" value={valorBonus} onChange={handleCurrencyChange(setValorBonus)} />
             )}
@@ -1668,7 +1681,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
               </div>
             )}
             {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && (
-              <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} />
+              <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} disabled={nfeCompraEmitida} />
             )}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Classificação da Moto <span className="text-destructive">*</span></Label>

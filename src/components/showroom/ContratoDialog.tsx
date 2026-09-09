@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, PlusCircle, Download, Loader2, RefreshCw, AlertTriangle, User, Bike, MessageSquare, Wallet, ArrowLeft, Pencil, MapPin, Landmark, Building2, Package } from 'lucide-react';
+import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, Download, Loader2, RefreshCw, AlertTriangle, User, Bike, MessageSquare, Wallet, ArrowLeft, Pencil, MapPin, Landmark, Building2, Package, DollarSign, Receipt, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { vendaLiberada } from '@/lib/aprovacaoVenda';
 import type { Atendimento, MotoInteresse, Avaliacao } from '@/types/crm';
 import { generateContratoPdf, type ContratoPdfData } from '@/lib/generateContratoPdf';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
@@ -115,6 +116,47 @@ const CurrencyField = ({ label, value, onChange, required, disabled }: { label: 
   </div>
 );
 
+/**
+ * Textarea que cresce verticalmente conforme o texto (sem alça de redimensionar) e
+ * refaz a altura quando a largura muda (ex.: tela encolhe e o texto quebra em mais
+ * linhas) — nunca deixa conteúdo cortado.
+ */
+const AutoTextarea = ({ value, onChange, placeholder, disabled }: { value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean }) => {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const larguraRef = useRef(0);
+  const ajustarAltura = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  // Recalcula ao digitar / carregar valor.
+  useLayoutEffect(ajustarAltura, [value]);
+  // Recalcula quando a LARGURA do campo muda (resize da janela / do container).
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    larguraRef.current = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      const w = el.clientWidth;
+      if (w !== larguraRef.current) { larguraRef.current = w; ajustarAltura(); }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <Textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      disabled={disabled}
+      rows={2}
+      className="resize-none overflow-hidden"
+    />
+  );
+};
+
 const formatPhone = (phone: string | null | undefined) => {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, '');
@@ -168,7 +210,7 @@ const ContratoDialog: React.FC<Props> = ({
   open, onOpenChange, atendimento, motosInteresse, motosAvaliacao, estoqueData, avaliacoes, onSaved,
   modo = 'contrato',
 }) => {
-  const { userName, user, role } = useAuth();
+  const { userName, user } = useAuth();
   const ehNfe = modo === 'nfe';
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -298,11 +340,13 @@ const ContratoDialog: React.FC<Props> = ({
           .select('loja_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))')
           .eq('id', atendimento.id)
           .maybeSingle(),
-        supabase
-          .from(estoqueTabela)
-          .select('valor_sinal, valor_venda')
-          .eq('atendimento_venda_id', atendimento.id)
-          .maybeSingle(),
+        // Lê valor_sinal/valor_venda pela MESMA chave usada no save: pelo id da moto do
+        // estoque quando for de estoque (o vínculo atendimento_venda_id pode ainda não
+        // existir na linha), senão pelo atendimento_venda_id.
+        (motoIntNfe?.origem === 'estoque' && motoIntNfe?.estoque_moto_id
+          ? supabase.from(estoqueTabela).select('valor_sinal, valor_venda').eq('id', motoIntNfe.estoque_moto_id).maybeSingle()
+          : supabase.from(estoqueTabela).select('valor_sinal, valor_venda').eq('atendimento_venda_id', atendimento.id).maybeSingle()
+        ),
         supabase
           .from('formas_pagamento')
           .select('id, nome')
@@ -315,13 +359,13 @@ const ContratoDialog: React.FC<Props> = ({
           .eq('ativo', true),
         supabase
           .from('agregados_motos')
-          .select('id, descricao, valor, empresa_id')
+          .select('id, descricao, valor, empresa_id, ativo')
           .eq('ativo', true)
           .order('descricao'),
       ]);
 
       setFormasPagOpcoes((formasOpts as any[]) || []);
-      setAgregadoOpcoes(((agregadosOpts as any[]) || []).map((a) => ({ id: a.id, descricao: a.descricao, valor: Number(a.valor) || 0, empresa_id: a.empresa_id })));
+      setAgregadoOpcoes(((agregadosOpts as any[]) || []).map((a) => ({ id: a.id, descricao: a.descricao, valor: Number(a.valor) || 0, empresa_id: a.empresa_id, ativo: a.ativo !== false })));
 
       // ICMS-ST retido anteriormente — só moto 0km; prefill de estoque_motos_novas.
       if (eh0kmVenda && motoIntNfe?.estoque_moto_id) {
@@ -409,17 +453,17 @@ const ContratoDialog: React.FC<Props> = ({
         setCpfCnpj(contrato.cpf_cnpj || atCpf || '');
         setIpvaTipo(contrato.ipva_tipo || '');
         setIpvaCotas(contrato.ipva_cotas ? String(contrato.ipva_cotas) : '');
-        setIpvaValor(contrato.ipva_valor ? formatCurrencyInput(String(Math.round(contrato.ipva_valor * 100))) : '');
+        setIpvaValor(contrato.ipva_valor != null ? formatCurrencyInput(String(Math.round(contrato.ipva_valor * 100))) : '');
         setTransferenciaTipo(contrato.transferencia_tipo || '');
-        setTransferenciaValor(contrato.transferencia_valor ? formatCurrencyInput(String(Math.round(contrato.transferencia_valor * 100))) : '');
+        setTransferenciaValor(contrato.transferencia_valor != null ? formatCurrencyInput(String(Math.round(contrato.transferencia_valor * 100))) : '');
         setValorQuitacao(contrato.valor_quitacao != null ? fmtCur(contrato.valor_quitacao) : (avQuitacao != null ? fmtCur(avQuitacao) : ''));
         setValorFechamento(contrato.valor_fechamento != null ? fmtCur(contrato.valor_fechamento) : (avFechamento != null ? fmtCur(avFechamento) : ''));
         setObsInternas(contrato.observacoes_internas || '');
         setObsContrato(contrato.observacoes_contrato || '');
         setDataSinal(contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined);
         setDataVencimento(contrato.data_vencimento_sinal ? new Date(contrato.data_vencimento_sinal + 'T12:00:00') : undefined);
-        setValorSinal(atSinal ? formatCurrencyInput(String(Math.round(atSinal * 100))) : '');
-        setValorVenda(atVenda ? formatCurrencyInput(String(Math.round(atVenda * 100))) : '');
+        setValorSinal(atSinal != null ? formatCurrencyInput(String(Math.round(atSinal * 100))) : '');
+        setValorVenda(atVenda != null ? formatCurrencyInput(String(Math.round(atVenda * 100))) : '');
 
         // Load formas de pagamento
         const { data: formas } = await supabase
@@ -433,10 +477,16 @@ const ContratoDialog: React.FC<Props> = ({
 
         const { data: ags } = await supabase
           .from('contratos_agregados')
-          .select('agregado_id, descricao, valor')
+          .select('agregado_id, descricao, valor, observacoes, taxa_retorno_pct')
           .eq('contrato_id', contrato.id)
           .order('created_at', { ascending: true });
-        setAgregados(((ags as any[]) || []).map((a) => ({ agregado_id: a.agregado_id, descricao: a.descricao, valor: Number(a.valor) || 0 })));
+        setAgregados(((ags as any[]) || []).map((a) => ({
+          agregado_id: a.agregado_id,
+          descricao: a.descricao,
+          valor: Number(a.valor) || 0,
+          observacoes: a.observacoes ?? null,
+          taxa_retorno_pct: a.taxa_retorno_pct != null ? Number(a.taxa_retorno_pct) : null,
+        })));
       } else {
         // Reset
         setContratoId(null);
@@ -454,8 +504,8 @@ const ContratoDialog: React.FC<Props> = ({
         setDataVencimento(undefined);
         setFormasPagamento([]);
         setAgregados([]);
-        setValorSinal(atSinal ? formatCurrencyInput(String(Math.round(atSinal * 100))) : '');
-        setValorVenda(atVenda ? formatCurrencyInput(String(Math.round(atVenda * 100))) : '');
+        setValorSinal(atSinal != null ? formatCurrencyInput(String(Math.round(atSinal * 100))) : '');
+        setValorVenda(atVenda != null ? formatCurrencyInput(String(Math.round(atVenda * 100))) : '');
       }
       setLoading(false);
     };
@@ -566,6 +616,24 @@ const ContratoDialog: React.FC<Props> = ({
     // Observação é livre pra qualquer forma de pagamento, não só as vinculadas a instituição.
     formaData.observacoes = novaObservacoes.trim() || null;
 
+    // A soma das formas de pagamento não pode passar do Valor Total (financiamento conta
+    // só o valor financiado; na troca o valor de fechamento da moto já entra em `somaPagamentos`).
+    if (valorTotalContrato > 0.005) {
+      const contribNova = ehFinanciamento(novaFormaNome)
+        ? Number(formaData.valor_financiado) || 0
+        : Number(formaData.valor_total) || 0;
+      const fpAntiga = editingId ? formasPagamento.find((f) => f.id === editingId) : undefined;
+      const contribAntiga = fpAntiga
+        ? (ehFinanciamento(fpAntiga.tipo) ? (Number(fpAntiga.valor_financiado) || 0) : (Number(fpAntiga.valor_total) || 0))
+        : 0;
+      const jaPago = somaPagamentos - contribAntiga;
+      if (jaPago + contribNova > valorTotalContrato + 0.005) {
+        const restante = Math.max(valorTotalContrato - jaPago, 0);
+        toast.error(`A soma das formas de pagamento não pode passar do Valor Total (${formatCurrency(valorTotalContrato)}). Restante: ${formatCurrency(restante)}.`);
+        return;
+      }
+    }
+
     if (editingId) {
       const { data, error } = await supabase.from('formas_pagamento_contrato').update(formaData).eq('id', editingId).select().single();
       if (error) {
@@ -615,7 +683,8 @@ const ContratoDialog: React.FC<Props> = ({
       empresa_id: empresaId || null,
       ipva_tipo: ipvaTipo || null,
       ipva_cotas: ipvaTipo === 'ambos' && ipvaCotas ? ipvaCotas : null,
-      ipva_valor: ipvaTipo === 'loja' ? parseCurrencyInput(ipvaValor) || null : null,
+      // Valor pago pela loja: vale para "Loja" (paga tudo) e "Ambos" (paga a parte dela).
+      ipva_valor: (ipvaTipo === 'loja' || ipvaTipo === 'ambos') && ipvaValor?.trim() ? parseCurrencyInput(ipvaValor) : null,
       transferencia_tipo: transferenciaTipo || null,
       transferencia_valor: transferenciaTipo === 'cliente' ? parseCurrencyInput(transferenciaValor) || null : null,
       valor_quitacao: valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : null,
@@ -637,7 +706,11 @@ const ContratoDialog: React.FC<Props> = ({
         // Filtra pelo id da moto (não por atendimento_venda_id): o contrato pode ser o
         // primeiro passo a gravar um valor, antes desse vínculo existir no estoque.
         estoqueUpdate.atendimento_venda_id = atendimento.id;
-        await supabase.from(estoqueTabela).update(estoqueUpdate).eq('id', motoIntNfe.estoque_moto_id);
+        const r = await supabase.from(estoqueTabela).update(estoqueUpdate).eq('id', motoIntNfe.estoque_moto_id).select('id');
+        if (r.error || (r.data?.length ?? 0) === 0) {
+          console.error('[contrato] Falha ao gravar Valor do Sinal / Valor da Venda no estoque', { error: r.error, matched: r.data?.length ?? 0, estoqueTabela });
+          toast.error('Não foi possível salvar o Valor do Sinal / Valor da Venda (permissão no estoque). Avise um gerente.');
+        }
       } else {
         await supabase.from(estoqueTabela).update(estoqueUpdate).eq('atendimento_venda_id', atendimento.id);
       }
@@ -652,7 +725,14 @@ const ContratoDialog: React.FC<Props> = ({
       await supabase.from('contratos_agregados').delete().eq('contrato_id', cId);
       if (agregados.length > 0) {
         await supabase.from('contratos_agregados').insert(
-          agregados.map((a) => ({ contrato_id: cId, agregado_id: a.agregado_id, descricao: a.descricao, valor: Number(a.valor) || 0 })),
+          agregados.map((a) => ({
+            contrato_id: cId,
+            agregado_id: a.agregado_id,
+            descricao: a.descricao,
+            valor: Number(a.valor) || 0,
+            observacoes: (a.observacoes ?? '').trim() || null,
+            taxa_retorno_pct: a.taxa_retorno_pct ?? null,
+          })),
         );
       }
     };
@@ -692,38 +772,10 @@ const ContratoDialog: React.FC<Props> = ({
   const handleSave = async () => {
     const id = await saveContrato();
     if (id) {
-      toast.success('Contrato salvo com sucesso!');
+      toast.success('Proposta salva com sucesso!');
       onSaved?.();
       onOpenChange(false);
     }
-  };
-
-  // Auto-save on close: if user closes the dialog (X, ESC, click outside)
-  // without explicitly saving, persist whatever was filled to avoid losing data.
-  const hasAnyData = (): boolean => {
-    return !!(
-      cpfCnpj || ipvaTipo || ipvaCotas || ipvaValor ||
-      transferenciaTipo || transferenciaValor ||
-      valorQuitacao || valorFechamento ||
-      obsInternas || obsContrato ||
-      dataSinal || dataVencimento ||
-      valorSinal || valorVenda ||
-      formasPagamento.length > 0 ||
-      agregados.length > 0
-    );
-  };
-
-  const handleOpenChange = async (next: boolean) => {
-    // Na tela de NF-e só valor/observação da nota são editáveis (ver handleEmitirNfe) —
-    // não há o que autosalvar no contrato aqui.
-    if (!next && !loading && !saving && !generating && !viewing && !ehNfe && hasAnyData()) {
-      const id = await saveContrato();
-      if (id) {
-        toast.success('Alterações salvas');
-        onSaved?.();
-      }
-    }
-    onOpenChange(next);
   };
 
   const handleClienteSaved = async (savedId: string) => {
@@ -798,6 +850,7 @@ const ContratoDialog: React.FC<Props> = ({
       vendedorNome: userName || 'Vendedor',
       valorSinal: `R$ ${valorSinal}`,
       valorVenda: `R$ ${valorVenda}`,
+      valorTotal: formatCurrency(valorTotalContrato),
       transferenciaTipo: transferenciaTipo || null,
       transferenciaValor: transferenciaValor ? `R$ ${transferenciaValor}` : null,
       ipvaTipo: ipvaTipo || null,
@@ -850,7 +903,9 @@ const ContratoDialog: React.FC<Props> = ({
     return pdfData;
   };
 
-  const validateForGeneration = (): boolean => {
+  // Campos obrigatórios pendentes para gerar o contrato (sinal/venda). Sem toast — usado
+  // tanto para bloquear/ocultar os botões quanto pela validação abaixo (com toast).
+  const errosGeracao: string[] = (() => {
     const errors: string[] = [];
     if (!empresaId) errors.push('Empresa vendedora');
     if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
@@ -858,31 +913,39 @@ const ContratoDialog: React.FC<Props> = ({
     if (!valorVenda) errors.push('Valor da Venda');
     if (!dataSinal) errors.push('Data do Sinal');
     if (!dataVencimento) errors.push('Data de Vencimento do Sinal');
-    
+
     if (!motoInt && !estItem) errors.push('Moto de Interesse');
     if (!transferenciaTipo) errors.push('Transferência');
     if (transferenciaTipo === 'cliente' && !transferenciaValor) errors.push('Valor da Transferência');
     const isDucati = atendimento.loja?.toLowerCase().startsWith('ducati');
     if (!isDucati && !ipvaTipo) errors.push('IPVA');
     if (!isDucati && ipvaTipo === 'ambos' && !ipvaCotas) errors.push('Número de Cotas do IPVA');
-    if (!isDucati && ipvaTipo === 'loja' && !ipvaValor) errors.push('Valor do IPVA');
+    if (!isDucati && (ipvaTipo === 'loja' || ipvaTipo === 'ambos') && !ipvaValor) errors.push('Valor do IPVA');
     // Quitação da moto do cliente é obrigatória quando há troca — vem da avaliação (informar 0 se não houver).
     if (hasTroca && !valorQuitacao?.trim()) errors.push('Valor de Quitação da moto do cliente (defina na avaliação — 0 se não houver)');
     if (!obsContrato && !obsContrato.trim()) errors.push('Observações do Contrato');
+    return errors;
+  })();
 
-    if (errors.length > 0) {
-      toast.error(`Preencha os campos obrigatórios: ${errors.join(', ')}`);
+  const validateForGeneration = (): boolean => {
+    if (errosGeracao.length > 0) {
+      toast.error(`Preencha os campos obrigatórios: ${errosGeracao.join(', ')}`);
       return false;
     }
     return true;
   };
 
   const handleGerar = async (variant: 'sinal' | 'venda' = 'sinal') => {
-    if (nfeEmProducao) { toast.error('NF-e de venda já emitida em produção — contrato bloqueado.'); return; }
     if (!validateForGeneration()) return;
+    if (!soLeitura && valorFaltante > 0.005) {
+      toast.error(`As formas de pagamento ainda não cobrem o Valor Total. Valor faltante: ${formatCurrency(valorFaltante)}.`);
+      return;
+    }
 
     setGenerating(true);
-    const id = await saveContrato();
+    // Somente leitura (NF-e de venda já emitida em produção): não salva nada, só
+    // regera o PDF a partir do contrato já persistido — download continua liberado.
+    const id = soLeitura ? contratoId : await saveContrato();
     if (!id) {
       setGenerating(false);
       return;
@@ -894,19 +957,20 @@ const ContratoDialog: React.FC<Props> = ({
 
       await generateContratoPdf(pdfData, variant);
 
-      // Registrar no histórico de movimentações
-      if (user) {
-        await supabase.from('status_history').insert({
-          entity_type: 'showroom',
-          entity_id: atendimento.id,
-          status: variant === 'venda' ? 'contrato_de_venda' : 'contrato_de_sinal',
-          changed_by: user.id,
-          changed_by_name: userName || 'Vendedor',
-        });
+      if (!soLeitura) {
+        // Registrar no histórico de movimentações (só na geração "real", não no re-download).
+        if (user) {
+          await supabase.from('status_history').insert({
+            entity_type: 'showroom',
+            entity_id: atendimento.id,
+            status: variant === 'venda' ? 'contrato_de_venda' : 'contrato_de_sinal',
+            changed_by: user.id,
+            changed_by_name: userName || 'Vendedor',
+          });
+        }
+        setJaGerado(true);
       }
-
-      setJaGerado(true);
-      toast.success(variant === 'venda' ? 'Contrato de venda gerado com sucesso!' : 'Contrato gerado com sucesso!');
+      toast.success(variant === 'venda' ? 'Proposta de venda gerada com sucesso!' : 'Proposta gerada com sucesso!');
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
       toast.error('Erro ao gerar o contrato PDF');
@@ -922,12 +986,12 @@ const ContratoDialog: React.FC<Props> = ({
 
     setViewing(true);
     try {
-      const id = await saveContrato();
+      const id = soLeitura ? contratoId : await saveContrato();
       if (!id) { setViewing(false); return; }
       const pdfData = buildPdfData();
       if (!pdfData) throw new Error('Dados insuficientes');
       await generateContratoPdf(pdfData, 'sinal');
-      toast.success('Contrato visualizado');
+      toast.success('Proposta visualizada');
     } catch (err) {
       console.error('Erro ao visualizar PDF:', err);
       toast.error('Erro ao visualizar o contrato PDF');
@@ -941,16 +1005,50 @@ const ContratoDialog: React.FC<Props> = ({
 
   const tipoLabel = (tipo: string) => tipo || '—';
 
+  // Total de taxas administrativas cobrado do CLIENTE. Hoje só a transferência tem valor
+  // e só é cobrada do cliente quando o tipo é "Cliente" (IPVA: o valor informado é a parte
+  // da loja; "cliente"/"ambos" não têm valor numérico da parte do cliente).
+  const totalTaxasCliente = transferenciaTipo === 'cliente' ? (parseCurrencyInput(transferenciaValor) || 0) : 0;
+
+  // Preço de referência da moto: "Preço Ação" quando existir (> 0), senão o "Preço" de tabela.
+  // Usado em todos os cálculos e comparações de venda.
+  const precoTabela = (Number(estItem?.preco_acao) || 0) > 0 ? Number(estItem.preco_acao) : (Number(estItem?.preco) || 0);
+  const vendaNum = parseCurrencyInput(valorVenda);
+  // Variação da venda vs. preço de referência: + = acréscimo (verde), − = desconto (vermelho).
+  const vendaVarPct = precoTabela > 0 && vendaNum > 0 ? ((vendaNum - precoTabela) / precoTabela) * 100 : null;
+
+  // --- KPIs do resumo (abaixo do card Formas de Pagamento) ---
+  const totalAgregados = agregados.reduce((s, a) => s + (Number(a.valor) || 0), 0);
+  const totalTaxasEAgregados = totalAgregados + totalTaxasCliente;
+  // O que o cliente deve: venda + agregados + taxas administrativas cobradas do cliente.
+  const valorTotalContrato = vendaNum + totalTaxasEAgregados;
+  // O que já está coberto pelas formas de pagamento (financiamento = só o valor financiado,
+  // a entrada é lançada à parte; demais = valor total) + o valor de fechamento da moto do
+  // cliente, quando há troca.
+  const somaFormasPagamento = formasPagamento.reduce((s, fp) => (
+    ehFinanciamento(fp.tipo)
+      ? s + (Number(fp.valor_financiado) || 0)
+      : s + (Number(fp.valor_total) || 0)
+  ), 0);
+  const somaPagamentos = somaFormasPagamento + (hasTroca ? parseCurrencyInput(valorFechamento) : 0);
+  const valorFaltante = valorTotalContrato - somaPagamentos;
+
+  // Só libera gerar contrato (sinal/venda) quando não há campo obrigatório pendente E as
+  // formas de pagamento cobrem 100% do Valor Total (valor faltante zerado).
+  // Venda finalizada só gera contrato depois da aprovação do master (pós-venda / intermediação).
+  const vendaBloqueadaAprovacao = !vendaLiberada(atendimento as any);
+  const podeGerarContrato = errosGeracao.length === 0 && valorTotalContrato > 0.005 && valorFaltante <= 0.005 && !vendaBloqueadaAprovacao;
+
   if (!open) return null;
 
   return (
     <div className="space-y-4 animate-fade-in pb-10">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => handleOpenChange(false)}>
+        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-xl font-bold flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Venda' : 'Emissão de Contrato'}
+          <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Venda' : 'Emissão de Proposta'}
         </h1>
         {ehNfe && <NfeCabecalhoAcoes nfe={nfe} />}
       </div>
@@ -958,6 +1056,12 @@ const ContratoDialog: React.FC<Props> = ({
       {nfeEmProducao && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 flex items-center gap-1.5">
           <AlertTriangle className="h-3.5 w-3.5" /> NF-e de venda emitida em produção — contrato bloqueado para edição.
+        </div>
+      )}
+
+      {!ehNfe && vendaBloqueadaAprovacao && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 flex items-center gap-1.5">
+          <AlertTriangle className="h-3.5 w-3.5" /> Proposta aguardando aprovação - Preencha os dados e solicite aprovação para seu Gestor.
         </div>
       )}
 
@@ -1119,10 +1223,8 @@ const ContratoDialog: React.FC<Props> = ({
                       {estItem.fonte !== '0km' && !estItem.placa && estItem.chassi && <InfoDisplay label="Chassi" value={estItem.chassi} />}
                     </div>
                     <div className="pt-2 border-t border-border grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-4">
-                      <InfoDisplay label="Preço" value={formatCurrency(estItem.preco)} />
+                      <InfoDisplay label="Preço" value={formatCurrency(estItem.preco)} valueClassName="text-primary" />
                       {!!estItem.preco_acao && <InfoDisplay label="Preço Ação" value={formatCurrency(estItem.preco_acao)} />}
-                      {estItem.valor_sinal != null && <InfoDisplay label="Valor do Sinal" value={formatCurrency(estItem.valor_sinal)} />}
-                      {estItem.valor_venda != null && <InfoDisplay label="Valor de Venda" value={formatCurrency(estItem.valor_venda)} valueClassName="text-primary" />}
                     </div>
                   </>
                 ) : motoInt ? (
@@ -1136,13 +1238,48 @@ const ContratoDialog: React.FC<Props> = ({
                   <p className="text-sm text-muted-foreground">Nenhuma moto de interesse</p>
                 )}
 
+                </CardContent>
+              </Card>
+
+              {/* Card: Negociação */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-primary" /> Negociação
+                  </CardTitle>
+                  <Separator className="mt-2" />
+                </CardHeader>
+                <CardContent>
+                  {soLeitura ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <InfoDisplay label="Valor do Sinal" value={valorSinal ? `R$ ${valorSinal}` : undefined} />
+                      <InfoDisplay label="Valor da Venda" value={valorVenda ? `R$ ${valorVenda}` : undefined} valueClassName="text-primary" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <CurrencyField label="Valor do Sinal" value={valorSinal} onChange={setValorSinal} required />
+                      <CurrencyField label="Valor da Venda" value={valorVenda} onChange={setValorVenda} required />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Card: Taxas Administrativas — IPVA e Transferência */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-primary" /> Taxas Administrativas
+                  </CardTitle>
+                  <Separator className="mt-2" />
+                </CardHeader>
+                <CardContent className="space-y-4">
                 {soLeitura ? (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {!atendimento.loja?.toLowerCase().startsWith('ducati') && (
                       <>
                         <InfoDisplay label="IPVA" value={ipvaTipo === 'ambos' ? 'Ambos' : ipvaTipo === 'cliente' ? 'Cliente' : ipvaTipo === 'loja' ? 'Loja' : undefined} />
                         {ipvaTipo === 'ambos' && <InfoDisplay label="Cotas do IPVA" value={ipvaCotas} />}
-                        {ipvaTipo === 'loja' && <InfoDisplay label="Valor do IPVA" value={ipvaValor ? `R$ ${ipvaValor}` : undefined} />}
+                        {(ipvaTipo === 'loja' || ipvaTipo === 'ambos') && <InfoDisplay label="Valor do IPVA" value={ipvaValor ? `R$ ${ipvaValor}` : undefined} />}
                       </>
                     )}
                     <InfoDisplay label="Transferência" value={transferenciaTipo === 'cliente' ? 'Cliente' : transferenciaTipo === 'loja' ? 'Loja' : transferenciaTipo === 'outra_uf' ? 'Outra UF' : undefined} />
@@ -1150,11 +1287,6 @@ const ContratoDialog: React.FC<Props> = ({
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <CurrencyField label="Valor do Sinal" value={valorSinal} onChange={setValorSinal} required />
-                      <CurrencyField label="Valor da Venda" value={valorVenda} onChange={setValorVenda} required />
-                    </div>
-
                     {/* IPVA - hidden for Ducati */}
                     {!atendimento.loja?.toLowerCase().startsWith('ducati') && (
                     <div>
@@ -1184,9 +1316,9 @@ const ContratoDialog: React.FC<Props> = ({
                           />
                         </div>
                       )}
-                      {ipvaTipo === 'loja' && (
+                      {(ipvaTipo === 'loja' || ipvaTipo === 'ambos') && (
                         <div className="mt-2">
-                          <CurrencyField label="Valor do IPVA" value={ipvaValor} onChange={setIpvaValor} required />
+                          <CurrencyField label={ipvaTipo === 'ambos' ? 'Valor do IPVA (parte da loja)' : 'Valor do IPVA'} value={ipvaValor} onChange={setIpvaValor} required />
                         </div>
                       )}
                     </div>
@@ -1215,6 +1347,10 @@ const ContratoDialog: React.FC<Props> = ({
                     </div>
                   </>
                 )}
+                <div className="flex items-center justify-between border-t border-border pt-2 text-sm font-semibold">
+                  <span>Total de Taxas Administrativas</span>
+                  <span className="text-primary">R$ {totalTaxasCliente.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
                 </CardContent>
               </Card>
 
@@ -1277,28 +1413,30 @@ const ContratoDialog: React.FC<Props> = ({
                     <AgregadosContrato
                       value={agregados}
                       onChange={setAgregados}
-                      catalogo={empresaId ? agregadoOpcoes.filter((a) => a.empresa_id === empresaId) : []}
-                      onNovoAgregado={(ag) => setAgregadoOpcoes((prev) => [...prev, ag].sort((a, b) => a.descricao.localeCompare(b.descricao)))}
+                      catalogo={empresaId ? agregadoOpcoes.filter((a) => a.empresa_id === empresaId && a.ativo !== false) : []}
                       soLeitura={soLeitura}
-                      podeCadastrar={role === 'master' || role === 'gerente'}
-                      empresaId={empresaId || undefined}
                     />
                   </CardContent>
                 </Card>
               )}
 
-              {/* Card: Negociação */}
+              {/* Card: Formas de Pagamento */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Wallet className="h-4 w-4 text-primary" /> Negociação
+                    <Wallet className="h-4 w-4 text-primary" /> Formas de Pagamento
                   </CardTitle>
                   <Separator className="mt-2" />
                 </CardHeader>
                 <CardContent className="space-y-4">
 
-                {/* Adicionar / editar forma */}
-                {!soLeitura && (
+                {/* Adicionar / editar forma — bloqueado quando o Valor Total já está coberto */}
+                {!soLeitura && !editingId && valorTotalContrato > 0.005 && valorFaltante <= 0.005 && (
+                  <p className="text-xs text-muted-foreground rounded-lg border border-dashed p-3">
+                    Valor Total já coberto pelas formas de pagamento{hasTroca ? ' + valor de fechamento da moto' : ''}. Para ajustar, edite ou remova uma forma abaixo.
+                  </p>
+                )}
+                {!soLeitura && (editingId || valorTotalContrato <= 0.005 || valorFaltante > 0.005) && (
                 <div className={cn('rounded-lg border p-3 space-y-3', editingId && 'border-primary')}>
                   <div className="flex items-center gap-2">
                     {editingId ? <Pencil className="h-4 w-4 text-primary" /> : <Plus className="h-4 w-4 text-muted-foreground" />}
@@ -1378,16 +1516,14 @@ const ContratoDialog: React.FC<Props> = ({
                   )}
 
                   {novaPagamentoTipo && (
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={handleAddPagamento} className="flex-1">
-                        {editingId ? <Save className="h-4 w-4 mr-1" /> : <PlusCircle className="h-4 w-4 mr-1" />}
-                        {editingId ? 'Salvar Alterações' : 'Adicionar'}
+                    <div className="flex justify-center gap-2 pt-1">
+                      <Button size="sm" variant="outline" className="flex-1 max-w-[10.5rem]" onClick={handleCancelEdit}>
+                        <X className="h-4 w-4 mr-1" /> Cancelar
                       </Button>
-                      {editingId && (
-                        <Button size="sm" variant="outline" onClick={handleCancelEdit}>
-                          Cancelar
-                        </Button>
-                      )}
+                      <Button size="sm" onClick={handleAddPagamento} className="flex-1 max-w-[10.5rem]">
+                        <Plus className="h-4 w-4 mr-1" />
+                        {editingId ? 'Salvar Alterações' : 'Registrar'}
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -1403,13 +1539,14 @@ const ContratoDialog: React.FC<Props> = ({
                             <span className="text-xs font-semibold">{tipoLabel(fp.tipo)}</span>
                             {fp.financeira && <span className="text-xs text-muted-foreground">{fp.financeira}</span>}
                           </div>
-                          {ehFinanciamento(fp.tipo) ? (
-                            <div className="text-xs text-muted-foreground space-x-3">
-                              {fp.valor_entrada != null && <span>Entrada: {formatCurrency(fp.valor_entrada)}</span>}
+                          {ehFinanciamento(fp.tipo) || ehConsorcio(fp.tipo) ? (
+                            <div className="text-xs text-muted-foreground space-y-0.5">
+                              {fp.valor_entrada != null && <div>Entrada: {formatCurrency(fp.valor_entrada)}</div>}
                               {fp.numero_parcelas != null && fp.valor_parcelas != null && (
-                                <span>{fp.numero_parcelas}x de {formatCurrency(fp.valor_parcelas)}</span>
+                                <div>{fp.numero_parcelas}x de {formatCurrency(fp.valor_parcelas)}</div>
                               )}
-                              {fp.valor_financiado != null && <span>Financiado: {formatCurrency(fp.valor_financiado)}</span>}
+                              {fp.valor_financiado != null && <div>Financiado: {formatCurrency(fp.valor_financiado)}</div>}
+                              {fp.valor_total != null && <div>Valor: {formatCurrency(fp.valor_total)}</div>}
                             </div>
                           ) : (
                             fp.valor_total != null && <p className="text-xs text-muted-foreground">Valor: {formatCurrency(fp.valor_total)}</p>
@@ -1434,6 +1571,49 @@ const ContratoDialog: React.FC<Props> = ({
                 )}
                 </CardContent>
               </Card>
+
+              {/* Resumo financeiro — KPIs abaixo das Formas de Pagamento (um por card) */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                <Card>
+                  <CardContent className="pt-4">
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Preço de Tabela</span>
+                    <p className="text-base font-bold">{precoTabela > 0 ? formatCurrency(precoTabela) : '—'}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor da Venda</span>
+                    <p className="text-base font-bold">
+                      {vendaNum > 0 ? formatCurrency(vendaNum) : '—'}
+                      {vendaVarPct != null && Math.abs(vendaVarPct) >= 0.05 && (
+                        <span className={cn('ml-1', vendaVarPct > 0 ? 'text-emerald-600' : 'text-red-600')}>
+                          ({vendaVarPct > 0 ? '+' : ''}{vendaVarPct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)
+                        </span>
+                      )}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Taxas e Agregados</span>
+                    <p className="text-base font-bold">{formatCurrency(totalTaxasEAgregados)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor Total</span>
+                    <p className="text-base font-bold text-primary">{formatCurrency(valorTotalContrato)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor Faltante</span>
+                    <p className={cn('text-base font-bold', valorFaltante > 0.005 ? 'text-orange-600' : 'text-emerald-600')}>
+                      {formatCurrency(valorFaltante)}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* Card: Observações */}
               <Card>
@@ -1470,11 +1650,11 @@ const ContratoDialog: React.FC<Props> = ({
                     <>
                   <div className="space-y-1.5">
                     <Label>Observações Internas</Label>
-                    <Textarea rows={3} value={obsInternas} onChange={(e) => setObsInternas(e.target.value)} placeholder="Observações internas..." />
+                    <AutoTextarea value={obsInternas} onChange={setObsInternas} placeholder="Observações internas..." />
                   </div>
                   <div className="space-y-1.5">
                     <Label>Observações do Contrato <span className="text-destructive">*</span></Label>
-                    <Textarea rows={3} value={obsContrato} onChange={(e) => setObsContrato(e.target.value)} placeholder="Observações do contrato..." />
+                    <AutoTextarea value={obsContrato} onChange={setObsContrato} placeholder="Observações do contrato..." />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -1639,21 +1819,25 @@ const ContratoDialog: React.FC<Props> = ({
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
-              <Button variant="outline" onClick={() => handleOpenChange(false)}>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
-              {jaGerado && contratoId && (
-                <Button variant="outline" onClick={handleVisualizar} disabled={viewing}>
-                  <Eye className="h-4 w-4 mr-1" />{viewing ? 'Abrindo...' : 'Visualizar'}
-                </Button>
-              )}
-              <Button variant="outline" onClick={() => handleGerar('sinal')} disabled={generating || nfeEmProducao}>
-                <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Contrato Sinal'}
-              </Button>
-              {canGerarVenda && (
-                <Button variant="outline" onClick={() => handleGerar('venda')} disabled={generating || nfeEmProducao}>
-                  <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Contrato Venda'}
-                </Button>
+              {(soLeitura || podeGerarContrato) && (
+                <>
+                  {jaGerado && contratoId && (
+                    <Button variant="outline" onClick={handleVisualizar} disabled={viewing}>
+                      <Eye className="h-4 w-4 mr-1" />{viewing ? 'Abrindo...' : 'Visualizar'}
+                    </Button>
+                  )}
+                  <Button variant="outline" onClick={() => handleGerar('sinal')} disabled={generating}>
+                    <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Proposta Sinal'}
+                  </Button>
+                  {canGerarVenda && (
+                    <Button variant="outline" onClick={() => handleGerar('venda')} disabled={generating}>
+                      <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Proposta Venda'}
+                    </Button>
+                  )}
+                </>
               )}
               <Button onClick={handleSave} disabled={saving || nfeEmProducao} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md px-6">
                 <Save className="h-4 w-4 mr-1" />

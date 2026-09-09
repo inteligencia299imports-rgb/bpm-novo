@@ -12,6 +12,7 @@ import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
 import MotoCompraSection from './MotoCompraSection';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
+import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 import { toast } from 'sonner';
 import { cn, formatPersonName, firstLastName } from '@/lib/utils';
 import { empresaCompraDireta } from '@/lib/tipoAquisicao';
@@ -46,6 +47,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const isEditing = !!atendimentoId;
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEditing);
+  // NF-e de venda emitida: atendimento travado para edição (defesa — o ponto de entrada já fica oculto).
+  const { emitida: nfeVendaEmitida } = useNfeEmitida(atendimentoId, 'atendimento');
   const [searchingPhone, setSearchingPhone] = useState(false);
   const [clientFound, setClientFound] = useState<boolean | null>(null);
   const [clienteId, setClienteId] = useState<string | null>(null);
@@ -397,6 +400,10 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const isPhoneValid = unformatPhone(telefone).length === 11;
 
   const handleSave = async () => {
+    if (nfeVendaEmitida) {
+      toast.error('NF-e de venda emitida — este atendimento não pode mais ser editado.');
+      return;
+    }
     if (!nomeCliente.trim() || !isPhoneValid || !empresaId || !loja || !sexo || !uf || !tipoAtendimento || !origem || !temperatura) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
@@ -652,6 +659,12 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         <h1 className="text-xl font-bold">{isEditing ? 'Editar Atendimento' : 'Novo Atendimento'}</h1>
       </div>
 
+      {nfeVendaEmitida && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs font-medium text-primary">
+          NF-e de venda emitida — este atendimento está travado para edição.
+        </div>
+      )}
+
       {/* Card: Empresa */}
       <Card>
         <CardHeader>
@@ -896,7 +909,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
       <div className="flex gap-3 justify-end pt-2 pb-8">
         <Button variant="outline" onClick={onClose}>Cancelar</Button>
-        <Button onClick={handleSave} disabled={saving} className="gap-2">
+        <Button onClick={handleSave} disabled={saving || nfeVendaEmitida} className="gap-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Salvar
         </Button>

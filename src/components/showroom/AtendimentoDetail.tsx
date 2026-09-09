@@ -41,6 +41,8 @@ import AtendimentoObservacoes from './AtendimentoObservacoes';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import ContratoDialog from './ContratoDialog';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
+import { useNfeEmitida } from '@/hooks/useNfeEmitida';
+import { vendaLiberada } from '@/lib/aprovacaoVenda';
 
 interface Props {
   atendimento: Atendimento;
@@ -120,6 +122,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [solicitandoConsulta, setSolicitandoConsulta] = useState(false);
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
+  // NF-e de venda autorizada -> atendimento/avaliação travados p/ edição (destrava se cancelada).
+  const { emitida: nfeVendaEmitida } = useNfeEmitida(atendimento.id, 'atendimento');
 
   // Edicao de dados da moto avaliada
   const [editMotoId, setEditMotoId] = useState<string | null>(null);
@@ -397,6 +401,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   };
 
   const handleSaveMotoEdit = async () => {
+    if (nfeVendaEmitida) { toast.error('NF-e de venda emitida — edição bloqueada.'); return; }
     if (!editMotoId || !editMarcaId || !editModeloId) {
       toast.error('Marca e Modelo são obrigatórios');
       return;
@@ -598,6 +603,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   };
 
   const handleSaveMotivo = async () => {
+    if (nfeVendaEmitida) { toast.error('NF-e de venda emitida — edição bloqueada.'); return; }
     if (!motivoPopup) return;
     if (!motivoPopup.motivo.trim()) {
       toast.error('Informe o motivo para alterar o status');
@@ -611,6 +617,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   };
 
   const handleSaveValor = async () => {
+    if (nfeVendaEmitida) { toast.error('NF-e de venda emitida — edição bloqueada.'); return; }
     if (!valorPopup) return;
     const sinal = parseCurrencyInput(valorPopup.valorSinal);
     const venda = parseCurrencyInput(valorPopup.valorVenda);
@@ -644,6 +651,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     const updateData: any = {};
     const newStatus = valorPopup.modo;
     const label = newStatus === 'vendido' ? 'Vendido' : 'Sinal';
+    // Toda venda finalizada entra na fila de aprovação do master (pós-venda / intermediação).
+    if (newStatus === 'vendido') updateData.venda_aprovacao_status = 'aguardando';
 
     // Atualizar estoque ANTES de mudar o status (pois handleStatusChange pode desmontar o componente)
     if (newStatus === 'vendido' || newStatus === 'sinal') {
@@ -676,7 +685,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         }
       }
 
-      // Se for troca e vendido, marcar todas as avaliações como adquirida/própria com valor de fechamento
+      // Se for troca e vendido, marcar todas as avaliações como adquirida/própria com valor de fechamento.
+      // Troca (moto como parte de pagamento) não passa por aprovação — entra direto como 'aprovada'.
       if (newStatus === 'vendido' && atendimento.interesse === 'trocar') {
         const fechamento = parseCurrencyInput(valorPopup.valorFechamento);
         for (const moto of motosAvaliacao) {
@@ -685,7 +695,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             const avUpdate: any = {
               situacao: 'adquirida',
               tipo_aquisicao: 'propria',
-              aprovacao_status: 'aguardando',
+              aprovacao_status: 'aprovada',
             };
             if (fechamento > 0) avUpdate.valor_fechamento = fechamento;
             estoquePromises.push(supabase.from('avaliacoes').update(avUpdate).eq('id', av.id).then(r => r));
@@ -820,17 +830,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           <div className="hidden sm:flex items-center gap-2 shrink-0">
             {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && !aguardandoAprovacaoAquisicao && (
               <Button size="sm" onClick={() => setContratoOpen(true)} className="gap-1.5">
-                <FileText className="h-4 w-4" /> Contrato
+                <FileText className="h-4 w-4" /> Proposta
               </Button>
             )}
-            {atendimento.situacao === 'vendido' && !aguardandoAprovacaoAquisicao && (
+            {atendimento.situacao === 'vendido' && !aguardandoAprovacaoAquisicao && vendaLiberada(atendimento) && (
               <Button size="sm" variant="outline" onClick={openEntrega} className="gap-1.5">
                 <Truck className="h-4 w-4" /> Entrega
               </Button>
             )}
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onEdit(atendimento.id)}>
-              <Edit className="h-4 w-4" /> Editar
-            </Button>
+            {!nfeVendaEmitida && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => onEdit(atendimento.id)}>
+                <Edit className="h-4 w-4" /> Editar
+              </Button>
+            )}
           </div>
         </div>
         {/* Mobile buttons - below name/date, centered, equal width */}
@@ -840,14 +852,16 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               <FileText className="h-4 w-4" />
             </Button>
           )}
-          {atendimento.situacao === 'vendido' && !aguardandoAprovacaoAquisicao && (
+          {atendimento.situacao === 'vendido' && !aguardandoAprovacaoAquisicao && vendaLiberada(atendimento) && (
             <Button size="sm" variant="outline" onClick={openEntrega} className="flex-1">
               <Truck className="h-4 w-4" />
             </Button>
           )}
-          <Button size="sm" variant="outline" className="flex-1" onClick={() => onEdit(atendimento.id)}>
-            <Edit className="h-4 w-4" />
-          </Button>
+          {!nfeVendaEmitida && (
+            <Button size="sm" variant="outline" className="flex-1" onClick={() => onEdit(atendimento.id)}>
+              <Edit className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -862,6 +876,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         </div>
       )}
 
+      {nfeVendaEmitida && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-start gap-2.5">
+          <FileText className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+          <p className="text-xs font-medium text-primary">
+            NF-e de venda emitida. O atendimento e a avaliação ficam travados para edição — documentos ausentes ainda podem ser anexados, mas não removidos nem substituídos.
+          </p>
+        </div>
+      )}
+
       <ScrollArea className="h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 pr-3">
           {/* Dados do Cliente */}
@@ -869,9 +892,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <User className="h-4 w-4 text-primary" /> Dados do Cliente
-                <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" onClick={() => setEditClienteOpen(true)} title="Editar dados do cliente">
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
+                {!nfeVendaEmitida && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" onClick={() => setEditClienteOpen(true)} title="Editar dados do cliente">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </CardTitle>
               <Separator className="mt-2" />
             </CardHeader>
@@ -909,6 +934,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     bucketPath={`docs/${atendimento.cliente_id}/${docIdentificacaoBucket(clientePj)}`}
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
+                    bloquearRemocao={nfeVendaEmitida}
                     deferPreview
                   />
                 </>
@@ -1161,9 +1187,11 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           </div>
                         )}
                       </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => openEditMoto(moto)} title="Editar dados da moto">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
+                      {!nfeVendaEmitida && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => openEditMoto(moto)} title="Editar dados da moto">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                     <MaintenanceBadges
                       temManual={(moto as any).tem_manual}
@@ -1264,6 +1292,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         className="flex-1"
                         currentUrl={crlvUrls[moto.id] || null}
                         bucketPath={`docs/${moto.id}/crlv`}
+                        bloquearRemocao={nfeVendaEmitida}
                         deferPreview
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto.id);
@@ -1285,6 +1314,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         className="flex-1"
                         currentUrl={atpvUrls[moto.id] || null}
                         bucketPath={`docs/${moto.id}/atpv`}
+                        bloquearRemocao={nfeVendaEmitida}
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', moto.id);
                           setAtpvUrls(prev => ({ ...prev, [moto.id]: url }));
@@ -1299,6 +1329,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         className="flex-1"
                         currentUrl={procuracaoUrls[moto.id] || null}
                         bucketPath={`docs/${moto.id}/procuracao`}
+                        bloquearRemocao={nfeVendaEmitida}
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', moto.id);
                           setProcuracaoUrls(prev => ({ ...prev, [moto.id]: url }));
@@ -1358,6 +1389,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 { value: 'dispensada' as SituacaoShowroom, label: 'Dispensada', icon: <XCircle className="h-4 w-4" />, color: '#FF8C00' },
               ]
                 .filter(b => b.value !== atendimento.situacao)
+                // NF-e de venda emitida: atendimento finalizado, não muda mais de situação.
+                .filter(() => !nfeVendaEmitida)
                 .filter(b => {
                   if (b.value === 'dispensada') return false;
                   if (atendimento.interesse === 'vender' && (b.value === 'sinal' || b.value === 'vendido')) {
@@ -1470,7 +1503,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               <Camera className="h-5 w-5" /> Fotos da Moto
             </DialogTitle>
           </DialogHeader>
-          {photoMotoId && <PhotoUpload avaliacaoId={photoMotoId} />}
+          {photoMotoId && <PhotoUpload avaliacaoId={photoMotoId} readOnly={nfeVendaEmitida} />}
           <div className="flex justify-end pt-2">
             <Button size="sm" onClick={async () => {
               if (photoMotoId) {
