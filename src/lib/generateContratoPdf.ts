@@ -9,6 +9,10 @@ interface ContratoPdfData {
   nomeCliente: string;
   telefone: string;
   cpfCnpj: string;
+  /** E-mail do cliente (PF e PJ). */
+  emailCliente?: string;
+  /** Endereço completo do cliente, já formatado numa linha (PF e PJ). */
+  enderecoCompleto?: string;
   
   // Moto de interesse (produto)
   produtoMarca: string;
@@ -363,7 +367,17 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   setNormal();
   doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += lineHeight;
   doc.text(`Telefone: ${data.telefone}`, marginLeft, y); y += lineHeight;
-  doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y); y += lineHeight + sectionGap;
+  doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y); y += lineHeight;
+  if (data.emailCliente) {
+    doc.text(`E-mail: ${data.emailCliente}`, marginLeft, y); y += lineHeight;
+  }
+  if (data.enderecoCompleto) {
+    for (const linha of doc.splitTextToSize(`Endereço: ${data.enderecoCompleto}`, contentWidth) as string[]) {
+      checkPageBreak(lineHeight);
+      doc.text(linha, marginLeft, y); y += lineHeight;
+    }
+  }
+  y += sectionGap;
 
   // OBJETO
   sectionHeader('OBJETO');
