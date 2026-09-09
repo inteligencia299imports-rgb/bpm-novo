@@ -371,11 +371,14 @@ export function ClienteForm({
   const setE = (k: keyof Endereco) => (v: any) => setEndereco((e) => ({ ...e, [k]: v }));
 
   useEffect(() => {
+    // Durante a carga de um cadastro existente não força nada — o tipo_pessoa
+    // (PJ inclusive) vem do banco. Só age em troca real feita pelo usuário.
+    if (loading) return;
     if ((form.tipo_cadastro === "cliente" || form.tipo_cadastro === "colaborador") && prevTipoCadastro.current !== "cliente" && prevTipoCadastro.current !== "colaborador") {
       setForm((f: any) => ({ ...f, tipo_pessoa: "fisica" }));
     }
     prevTipoCadastro.current = form.tipo_cadastro;
-  }, [form.tipo_cadastro]);
+  }, [form.tipo_cadastro, loading]);
 
   // Pessoa física: origem sempre manual; sair da aba "fiscais" se selecionada
   useEffect(() => {
