@@ -702,33 +702,36 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             <User className="h-4 w-4 text-primary" /> Dados do Cliente
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[220px_2fr_auto_auto] gap-4">
-          <div className="space-y-1.5">
-            <Label>Telefone *</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                value={telefone}
-                onChange={handlePhoneChange}
-                disabled={isEditing}
-                title={isEditing ? 'Telefone do cliente não pode ser alterado' : undefined}
-                placeholder="(61) 90000-0000"
-                maxLength={15}
-                className="flex-1"
-              />
-              {searchingPhone && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-              {!searchingPhone && clientFound === true && <CheckCircle className="h-5 w-5 text-primary" />}
+        <CardContent className="space-y-4">
+          {/* Linha 1: Telefone + Tipo de Pessoa */}
+          <div className="grid grid-cols-1 sm:grid-cols-[220px_1fr] gap-4 items-start">
+            <div className="space-y-1.5">
+              <Label>Telefone *</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={telefone}
+                  onChange={handlePhoneChange}
+                  disabled={isEditing}
+                  title={isEditing ? 'Telefone do cliente não pode ser alterado' : undefined}
+                  placeholder="(61) 90000-0000"
+                  maxLength={15}
+                  className="flex-1"
+                />
+                {searchingPhone && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                {!searchingPhone && clientFound === true && <CheckCircle className="h-5 w-5 text-primary" />}
+              </div>
+              {clientFound === true && (
+                <p className="text-xs text-primary font-medium">Cliente encontrado!</p>
+              )}
+              {clientFound === false && (
+                <p className="text-xs text-muted-foreground">Cliente não encontrado. Preencha os dados.</p>
+              )}
+              {telefone && !isPhoneValid && (
+                <p className="text-xs text-destructive">Telefone deve ter 11 dígitos</p>
+              )}
             </div>
-            {clientFound === true && (
-              <p className="text-xs text-primary font-medium">Cliente encontrado!</p>
-            )}
-            {clientFound === false && (
-              <p className="text-xs text-muted-foreground">Cliente não encontrado. Preencha os dados.</p>
-            )}
-            {telefone && !isPhoneValid && (
-              <p className="text-xs text-destructive">Telefone deve ter 11 dígitos</p>
-            )}
             {isPhoneValid && !isEditing && clientFound !== true && (
-              <div className="space-y-1.5 pt-1">
+              <div className="space-y-1.5">
                 <Label>Tipo de Pessoa *</Label>
                 <div className="flex flex-wrap gap-2">
                   <ToggleButton label="Física" value="fisica" selected={tipoPessoa} onSelect={(v) => setTipoPessoa(v as 'fisica' | 'juridica')} />
@@ -737,8 +740,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               </div>
             )}
           </div>
+          {/* Linha 2: Nome + UF + Sexo (só física) */}
           {(isEditing || isPhoneValid) && (
-            <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto] gap-4 items-start">
               <div className="space-y-1.5">
                 <Label>{tipoPessoa === 'juridica' ? 'Razão Social *' : 'Nome do Cliente *'}</Label>
                 <Input
@@ -769,7 +773,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
