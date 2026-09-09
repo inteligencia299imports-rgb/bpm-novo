@@ -61,6 +61,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [nomeCliente, setNomeCliente] = useState('');
   const [telefone, setTelefone] = useState('');
   const [sexo, setSexo] = useState('');
+  const [tipoPessoa, setTipoPessoa] = useState<'fisica' | 'juridica'>('fisica');
   const [uf, setUf] = useState('');
   const [tipoAtendimento, setTipoAtendimento] = useState('');
   const [origem, setOrigem] = useState('');
@@ -299,6 +300,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setNomeCliente(at.cliente?.nome_razao_social || '');
           setTelefone(formatPhone(at.cliente?.telefone || ''));
           setSexo(at.cliente?.sexo || '');
+          setTipoPessoa((at.cliente as any)?.tipo_pessoa === 'juridica' ? 'juridica' : 'fisica');
           setUf(at.cliente?.clientes_fornecedores_enderecos?.[0]?.uf || 'DF');
           setTipoAtendimento(at.tipo_atendimento);
           setOrigem(at.origem || '');
@@ -370,7 +372,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     try {
       const { data } = await supabase
         .from('clientes_fornecedores')
-        .select('id, nome_razao_social, sexo, clientes_fornecedores_enderecos(uf)')
+        .select('id, nome_razao_social, sexo, tipo_pessoa, clientes_fornecedores_enderecos(uf)')
         .eq('telefone', digits)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -380,12 +382,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         setClienteId(data.id);
         setNomeCliente(data.nome_razao_social);
         setSexo(data.sexo || '');
+        setTipoPessoa((data as any).tipo_pessoa === 'juridica' ? 'juridica' : 'fisica');
         setUf(data.clientes_fornecedores_enderecos?.[0]?.uf || ufPrincipal || '');
         setClientFound(true);
       } else {
         setClienteId(null);
         setNomeCliente('');
         setSexo('');
+        setTipoPessoa('fisica');
         setUf(ufPrincipal || '');
         setClientFound(false);
       }
@@ -404,7 +408,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('NF-e de venda emitida — este atendimento não pode mais ser editado.');
       return;
     }
-    if (!nomeCliente.trim() || !isPhoneValid || !empresaId || !loja || !sexo || !uf || !tipoAtendimento || !origem || !temperatura) {
+    const ehPJ = tipoPessoa === 'juridica';
+    if (!nomeCliente.trim() || !isPhoneValid || !empresaId || !loja || (!ehPJ && !sexo) || !uf || !tipoAtendimento || !origem || !temperatura) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -416,7 +421,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         return;
       }
     }
-    if (nomeCliente.trim().split(/\s+/).length < 2) {
+    if (!ehPJ && nomeCliente.trim().split(/\s+/).length < 2) {
       toast.error('Informe o nome completo do cliente (nome e sobrenome)');
       return;
     }
@@ -457,14 +462,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     if (finalClienteId) {
       // Cliente existente: telefone é imutável — não vai no update.
       const { error: clienteError } = await supabase.from('clientes_fornecedores')
-        .update({ nome_razao_social: formatPersonName(nomeCliente), sexo })
+        .update({ nome_razao_social: formatPersonName(nomeCliente), sexo: ehPJ ? null : sexo, tipo_pessoa: tipoPessoa })
         .eq('id', finalClienteId);
       if (clienteError) { toast.error('Erro ao salvar dados do cliente'); setSaving(false); return; }
     } else {
       const clientePayload = {
         nome_razao_social: formatPersonName(nomeCliente),
         telefone: unformatPhone(telefone),
-        sexo,
+        sexo: ehPJ ? null : sexo,
+        tipo_pessoa: tipoPessoa,
       };
       const { data: novoCliente, error: clienteError } = await supabase.from('clientes_fornecedores').insert(clientePayload).select('id').single();
       if (clienteError || !novoCliente) { toast.error('Erro ao criar cliente'); setSaving(false); return; }
@@ -721,13 +727,22 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             {telefone && !isPhoneValid && (
               <p className="text-xs text-destructive">Telefone deve ter 11 dígitos</p>
             )}
+            {isPhoneValid && !isEditing && clientFound !== true && (
+              <div className="space-y-1.5 pt-1">
+                <Label>Tipo de Pessoa *</Label>
+                <div className="flex flex-wrap gap-2">
+                  <ToggleButton label="Física" value="fisica" selected={tipoPessoa} onSelect={(v) => setTipoPessoa(v as 'fisica' | 'juridica')} />
+                  <ToggleButton label="Jurídica" value="juridica" selected={tipoPessoa} onSelect={(v) => setTipoPessoa(v as 'fisica' | 'juridica')} />
+                </div>
+              </div>
+            )}
           </div>
           {(isEditing || isPhoneValid) && (
             <>
               <div className="space-y-1.5">
-                <Label>Nome do Cliente *</Label>
+                <Label>{tipoPessoa === 'juridica' ? 'Razão Social *' : 'Nome do Cliente *'}</Label>
                 <Input
-                  placeholder="Nome Sobrenome"
+                  placeholder={tipoPessoa === 'juridica' ? 'Razão Social' : 'Nome Sobrenome'}
                   value={nomeCliente}
                   onChange={e => {
                     const formatted = e.target.value
@@ -744,14 +759,16 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                   <SelectContent>{UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Sexo *</Label>
-                <div className="flex flex-wrap gap-2">
-                  {SEXOS.map(s => (
-                    <ToggleButton key={s} label={s} value={s} selected={sexo} onSelect={setSexo} />
-                  ))}
+              {tipoPessoa !== 'juridica' && (
+                <div className="space-y-1.5">
+                  <Label>Sexo *</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {SEXOS.map(s => (
+                      <ToggleButton key={s} label={s} value={s} selected={sexo} onSelect={setSexo} />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
         </CardContent>

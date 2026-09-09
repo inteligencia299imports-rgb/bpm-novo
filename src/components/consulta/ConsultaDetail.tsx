@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
+import { docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket, ehPessoaJuridica } from '@/lib/cnhAnexo';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -90,13 +91,14 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const [inputNumeroCrv, setInputNumeroCrv] = useState('');
 
   const atendimento = moto.atendimento || moto.atendimentos;
+  const clientePj = ehPessoaJuridica(atendimento?.cliente);
 
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
       const [cnhRes, histRes, fotosRes] = await Promise.all([
         atendimento?.cliente_id
-          ? supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', 'cnh').maybeSingle()
+          ? supabase.from('clientes_fornecedores_documentos').select('arquivo_url').eq('cliente_fornecedor_id', atendimento.cliente_id).eq('tipo_documento', docIdentificacaoTipo(clientePj)).maybeSingle()
           : Promise.resolve({ data: null }),
         supabase.from('status_history').select('*').eq('entity_type', 'consulta').eq('entity_id', moto.id).order('created_at', { ascending: true }),
         supabase.from('moto_fotos').select('*').eq('avaliacao_id', moto.id),
@@ -409,11 +411,11 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               </div>
               <Separator className="my-2" />
               <DocumentUpload
-                label="CNH"
+                label={docIdentificacaoLabel(clientePj)}
                 className="w-1/4"
                 readOnly
                 currentUrl={cnhUrl}
-                bucketPath={`docs/${atendimento?.cliente_id}/cnh`}
+                bucketPath={`docs/${atendimento?.cliente_id}/${docIdentificacaoBucket(clientePj)}`}
                 onUploaded={() => {}}
               />
             </CardContent>
