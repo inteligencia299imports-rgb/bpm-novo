@@ -177,6 +177,8 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
 
   const columnOf = (a: any): string => {
     const normal = (a as any)[config.statusField] || 'em_aberto';
+    // Parte 1 (consignante) não passa pela aprovação de venda — vai direto p/ o status normal.
+    if (parte === 'parte1') return normal;
     if (a.venda_aprovacao_status === 'recusada') return normal; // coluna normal + tag "Recusado"
     if (a.venda_aprovacao_status === 'aguardando') return 'aguardando_aprovacao'; // NF-e de venda não é pré-requisito
     if (a.venda_aprovacao_status === 'aprovada' && normal === 'em_aberto') return 'aprovada';
@@ -256,7 +258,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
         <KanbanSkeleton columns={3} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-5">
+          <div className={`flex gap-4 min-w-max md:min-w-0 md:grid ${config.columns.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-5'}`}>
             {config.columns.map(col => {
               const colItems = getColumnItems(col.value);
               return (
@@ -276,7 +278,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
                       const clientPhone = parte === 'parte1' && owner ? owner.cliente?.telefone : a.cliente?.telefone;
                       const prev = a._previsaoPagamento;
                       const prevBadge = prev ? { label: (<span className="inline-flex items-center gap-1"><DollarSign className="h-3 w-3" />{new Date(prev).toLocaleDateString('pt-BR')}</span>), className: 'border-primary/30 text-primary' } : undefined;
-                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex} extraBadge={prevBadge} nameTag={a.venda_aprovacao_status === 'recusada' ? { label: 'Recusado', className: 'bg-red-600 hover:bg-red-600' } : undefined} onClick={() => setSelectedItem(a)} />;
+                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex} extraBadge={prevBadge} nameTag={parte !== 'parte1' && a.venda_aprovacao_status === 'recusada' ? { label: 'Recusado', className: 'bg-red-600 hover:bg-red-600' } : undefined} onClick={() => setSelectedItem(a)} />;
                     })}
                   </div>
                 </div>

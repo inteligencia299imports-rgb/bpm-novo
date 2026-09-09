@@ -114,8 +114,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar'; motivo: string } | null>(null);
   const [savingAprovacao, setSavingAprovacao] = useState(false);
   const atAprov = { situacao: item.situacao, venda_aprovacao_status: vendaAprovStatus };
-  const souMaster = podeAprovarVenda(role);
-  const bloqueadoAprovacao = !vendaLiberada(atAprov);
+  // Parte 1 da intermediação (relação com o consignante) não passa pela aprovação
+  // de venda do master — sem selo, sem bloqueio, sem botões Aprovar/Recusar.
+  const isIntermParte1 = !!processoProps?.showContratoConsignante;
+  const souMaster = podeAprovarVenda(role) && !isIntermParte1;
+  const bloqueadoAprovacao = !isIntermParte1 && !vendaLiberada(atAprov);
 
   const refreshConsignada = async () => {
     const consignadaEstoque = Object.values(estoqueData).find((e: any) => e.tipo === 'consignada');
@@ -156,16 +159,17 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [estoqueCrlvUrls, setEstoqueCrlvUrls] = useState<Record<string, string | null>>({});
   const cols = statusColumns || POS_VENDA_COLUMNS;
   const normalStatus = (item as any)[statusField] || 'em_aberto';
-  const colValue = vendaAprovStatus === 'recusada'
+  const colValue = isIntermParte1
     ? normalStatus
-    : vendaAprovStatus === 'aguardando'
-      ? 'aguardando_aprovacao'
-      : (vendaAprovStatus === 'aprovada' && normalStatus === 'em_aberto')
-        ? 'aprovada'
-        : normalStatus;
+    : vendaAprovStatus === 'recusada'
+      ? normalStatus
+      : vendaAprovStatus === 'aguardando'
+        ? 'aguardando_aprovacao'
+        : (vendaAprovStatus === 'aprovada' && normalStatus === 'em_aberto')
+          ? 'aprovada'
+          : normalStatus;
   const statusCol = cols.find(c => c.value === colValue);
   const int = INTERESSES.find(i => i.value === item.interesse);
-  const isIntermParte1 = !!processoProps?.showContratoConsignante;
   const displayClient = isIntermParte1 && proprietario ? proprietario : item;
   const displayName = formatPersonName(displayClient.cliente?.nome_razao_social || '');
   const displayPhone = displayClient.cliente?.telefone || '';
