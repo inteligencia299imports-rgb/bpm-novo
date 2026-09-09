@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, Pencil, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +22,8 @@ export interface AgregadoLinha {
   observacoes?: string | null;
   /** Taxa de retorno em % — só faz sentido para o "Financiamento TIF". */
   taxa_retorno_pct?: number | null;
+  /** Cortesia: item não cobrado do cliente. Nunca entra no total nem em cálculos. */
+  cortesia?: boolean;
 }
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -61,12 +64,14 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
   const [fValor, setFValor] = useState('');
   const [fObs, setFObs] = useState('');
   const [fTaxa, setFTaxa] = useState('');
+  const [fCortesia, setFCortesia] = useState(false);
 
   const disponiveis = useMemo(
     () => catalogo.filter((c) => !value.some((l) => l.agregado_id === c.id)),
     [catalogo, value],
   );
-  const total = value.reduce((s, l) => s + (Number(l.valor) || 0), 0);
+  // Cortesia nunca entra no total.
+  const total = value.reduce((s, l) => s + (l.cortesia ? 0 : Number(l.valor) || 0), 0);
 
   const editando = editIdx !== null;
   const agSel = catalogo.find((c) => c.id === selId);
@@ -80,6 +85,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setFValor('');
     setFObs('');
     setFTaxa('');
+    setFCortesia(false);
   };
 
   // Selecionar um agregado do catálogo (novo) — já traz o valor padrão.
@@ -90,6 +96,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setFValor(ag ? toInput(Number(ag.valor) || 0) : '');
     setFObs('');
     setFTaxa('');
+    setFCortesia(false);
   };
 
   const editar = (i: number) => {
@@ -99,6 +106,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setFValor(toInput(Number(l.valor) || 0));
     setFObs(l.observacoes ?? '');
     setFTaxa(l.taxa_retorno_pct != null ? String(l.taxa_retorno_pct) : '');
+    setFCortesia(!!l.cortesia);
   };
 
   const salvar = () => {
@@ -111,6 +119,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         valor: parseInput(fValor),
         observacoes: obs,
         taxa_retorno_pct: ehTif(next[i].descricao) ? parsePct(fTaxa) : null,
+        cortesia: fCortesia,
       };
       onChange(next);
     } else {
@@ -122,6 +131,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         valor: fValor.trim() ? parseInput(fValor) : (Number(ag.valor) || 0),
         observacoes: obs,
         taxa_retorno_pct: ehTif(ag.descricao) ? parsePct(fTaxa) : null,
+        cortesia: fCortesia,
       }]);
     }
     resetForm();
@@ -138,9 +148,16 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
       {value.map((l, i) => (
         <div key={i} className={cn('flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2', editIdx === i && 'border-primary')}>
           <div className="space-y-0.5">
-            <span className="text-xs font-semibold">{l.descricao}</span>
+            <span className="text-xs font-semibold">
+              {l.descricao}
+              {l.cortesia && (
+                <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">Cortesia</span>
+              )}
+            </span>
             <p className="text-xs text-muted-foreground">
-              Valor: {brl(Number(l.valor) || 0)}
+              {l.cortesia
+                ? `Cortesia — não cobrado do cliente${(Number(l.valor) || 0) > 0 ? ` (valor de referência: ${brl(Number(l.valor) || 0)})` : ''}`
+                : `Valor: ${brl(Number(l.valor) || 0)}`}
               {ehTif(l.descricao) && l.taxa_retorno_pct != null ? ` · Taxa de Retorno: ${l.taxa_retorno_pct}%` : ''}
             </p>
             {l.observacoes?.trim() && (
@@ -235,6 +252,11 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
                 onChange={(e) => setFObs(e.target.value)}
               />
             </div>
+
+            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
+              <Checkbox checked={fCortesia} onCheckedChange={(c) => setFCortesia(c === true)} />
+              Cortesia — não cobrar do cliente (não soma no total nem nos cálculos)
+            </label>
 
             <div className="flex justify-center gap-2 pt-1">
               <Button size="sm" variant="outline" className="flex-1 max-w-[10.5rem]" onClick={resetForm}>
