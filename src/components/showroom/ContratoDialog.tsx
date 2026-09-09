@@ -836,11 +836,28 @@ const ContratoDialog: React.FC<Props> = ({
     const produtoPlaca = (estItem?.placa || '')?.replace(/-/g, '') || estItem?.chassi || motoInt?.chassi || 'N/A';
     const produtoCor = (estItem?.cor || '').toUpperCase();
 
+    // Cliente: prioriza o registro completo carregado (cli) — o `atendimento.cliente`
+    // da prop pode vir parcial (ex.: PJ sem razão social/telefone).
+    const cliPdf = cli || atendimento.cliente || {};
+    const telefoneCliente = cliPdf.telefone || cliPdf.telefone_comercial || '';
+    const maskCep = (v: string) => { const d = String(v || '').replace(/\D/g, '').slice(0, 8); return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d; };
+    const enderecoCompleto = cliEndereco
+      ? [
+          [cliEndereco.logradouro, cliEndereco.numero].filter(Boolean).join(', '),
+          cliEndereco.complemento,
+          cliEndereco.bairro,
+          [cliEndereco.cidade, cliEndereco.uf].filter(Boolean).join('/'),
+          cliEndereco.cep ? `CEP ${maskCep(cliEndereco.cep)}` : null,
+        ].filter(Boolean).join(' - ')
+      : '';
+
     const pdfData: ContratoPdfData = {
       loja: atendimento.loja,
       empresaMotoInteresse: estItem?.empresa || null,
-      nomeCliente: atendimento.cliente?.nome_razao_social || '',
-      telefone: (atendimento.cliente?.telefone ? formatPhone(atendimento.cliente.telefone) : atendimento.cliente?.telefone) || '',
+      nomeCliente: cliPdf.nome_razao_social || '',
+      telefone: (telefoneCliente ? formatPhone(telefoneCliente) : telefoneCliente) || '',
+      emailCliente: cliPdf.email || '',
+      enderecoCompleto,
       cpfCnpj,
       produtoMarca: produtoMarca.toUpperCase(),
       produtoModelo: produtoModelo.toUpperCase(),
