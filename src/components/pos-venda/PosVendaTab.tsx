@@ -111,11 +111,10 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       .map(a => {
         const est = estoquePropria[a.id];
         const _nfeTag = nfeTagFromRows(nfeRowsPorAtendimento[a.id]);
-        const _nfeVendaEmitida = (nfeRowsPorAtendimento[a.id] || []).some((n: any) => n.status === 'processada');
-        if (est) return { ...a, _estoqueMoto: est, _nfeTag, _nfeVendaEmitida };
+        if (est) return { ...a, _estoqueMoto: est, _nfeTag };
         // Fallback: use first moto_interesse info
         const mi = a.motos_interesse?.[0];
-        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeTag, _nfeVendaEmitida };
+        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeTag };
       });
 
     if (search.trim()) {
@@ -133,8 +132,8 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
   const columnOf = (a: any): PosVendaStatus => {
     const normal = (a.pos_venda_status || 'em_aberto') as PosVendaStatus;
     if (a.venda_aprovacao_status === 'recusada') return normal; // fica na coluna normal com a tag "Recusado"
-    // Aguardando aprovação enquanto o master não aprova OU a NF-e de venda não foi emitida.
-    if (a.venda_aprovacao_status === 'aguardando' || !a._nfeVendaEmitida) return 'aguardando_aprovacao';
+    // Aguardando aprovação só enquanto o master não decide — a NF-e de venda não é pré-requisito.
+    if (a.venda_aprovacao_status === 'aguardando') return 'aguardando_aprovacao';
     if (a.venda_aprovacao_status === 'aprovada' && normal === 'em_aberto') return 'aprovada';
     return normal;
   };

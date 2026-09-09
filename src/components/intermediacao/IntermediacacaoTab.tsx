@@ -156,18 +156,17 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       });
     }
 
-    // Fetch Previsão de Pagamento + status da NF-e de venda para os cards.
+    // Fetch Previsão de Pagamento para os cards.
     const allIds = filtered.map(a => a.id);
     if (allIds.length > 0) {
-      const [{ data: prevData }, { data: nfeData }] = await Promise.all([
-        supabase.from('pos_venda_processos').select('atendimento_id, data_conclusao').eq('etapa', 'PREVISÃO DE PAGAMENTO').in('atendimento_id', allIds),
-        supabase.from('nfe_entradas' as any).select('atendimento_id, status').in('atendimento_id', allIds).like('operacao', 'venda%'),
-      ]);
+      const { data: prevData } = await supabase
+        .from('pos_venda_processos')
+        .select('atendimento_id, data_conclusao')
+        .eq('etapa', 'PREVISÃO DE PAGAMENTO')
+        .in('atendimento_id', allIds);
       const prevMap: Record<string, string> = {};
       (prevData || []).forEach((p: any) => { if (p.data_conclusao) prevMap[p.atendimento_id] = p.data_conclusao; });
-      const nfeEmitidaSet = new Set<string>();
-      ((nfeData as any[]) || []).forEach((n: any) => { if (n.atendimento_id && n.status === 'processada') nfeEmitidaSet.add(n.atendimento_id); });
-      filtered = filtered.map(a => ({ ...a, _previsaoPagamento: prevMap[a.id] || null, _nfeVendaEmitida: nfeEmitidaSet.has(a.id) }));
+      filtered = filtered.map(a => ({ ...a, _previsaoPagamento: prevMap[a.id] || null }));
     }
 
     setItems(filtered);
@@ -179,7 +178,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
   const columnOf = (a: any): string => {
     const normal = (a as any)[config.statusField] || 'em_aberto';
     if (a.venda_aprovacao_status === 'recusada') return normal; // coluna normal + tag "Recusado"
-    if (a.venda_aprovacao_status === 'aguardando' || !a._nfeVendaEmitida) return 'aguardando_aprovacao';
+    if (a.venda_aprovacao_status === 'aguardando') return 'aguardando_aprovacao'; // NF-e de venda não é pré-requisito
     if (a.venda_aprovacao_status === 'aprovada' && normal === 'em_aberto') return 'aprovada';
     return normal;
   };

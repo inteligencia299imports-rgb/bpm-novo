@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard, FileText, Camera, Truck, CalendarIcon, CheckCircle2, Loader2, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 import { podeAprovarVenda, vendaLiberada, vendaAprovada, vendaRecusada } from '@/lib/aprovacaoVenda';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import type { MotoFoto } from '@/types/crm';
@@ -117,7 +116,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const atAprov = { situacao: item.situacao, venda_aprovacao_status: vendaAprovStatus };
   const souMaster = podeAprovarVenda(role);
   const bloqueadoAprovacao = !vendaLiberada(atAprov);
-  const { emitida: nfeVendaEmitida } = useNfeEmitida(item.id, 'atendimento');
 
   const refreshConsignada = async () => {
     const consignadaEstoque = Object.values(estoqueData).find((e: any) => e.tipo === 'consignada');
@@ -160,7 +158,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const normalStatus = (item as any)[statusField] || 'em_aberto';
   const colValue = vendaAprovStatus === 'recusada'
     ? normalStatus
-    : (vendaAprovStatus === 'aguardando' || !nfeVendaEmitida)
+    : vendaAprovStatus === 'aguardando'
       ? 'aguardando_aprovacao'
       : (vendaAprovStatus === 'aprovada' && normalStatus === 'em_aberto')
         ? 'aprovada'
