@@ -324,8 +324,8 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
 
   // prod/indBemMovelUsado — bem móvel usado (venda de moto seminova). A NF-e de
   // referência autorizada traz <indBemMovelUsado>1</indBemMovelUsado>.
-  // Nome do campo Focus a confirmar em homologação (indicador_bem_movel_usado).
-  if (bemMovelUsado) item.indicador_bem_movel_usado = 1;
+  // Campo Focus: bem_movel_usado (campos.focusnfe.com.br/nfe).
+  if (bemMovelUsado) item.bem_movel_usado = 1;
 
   // Revenda de veículo usado (Lei 9.716/98 art. 5º — equiparada a consignação):
   // a base de PIS/COFINS é a MARGEM (valor de venda − valor de aquisição), não o
@@ -380,8 +380,7 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     // no DF (pRedBC 95, cBenef DF816006). O ICMS "dispensado" pela redução é
     // destacado como DESONERADO (motDesICMS = 9, "Outros"), fiel à NF-e de
     // referência autorizada. vICMSDeson = vProd·pICMS − vICMS(base já reduzida).
-    // Nomes dos campos Focus a confirmar em homologação
-    // (icms_valor_desonerado / icms_motivo_desoneracao).
+    // Campos Focus: icms_valor_desonerado / icms_motivo_desoneracao.
     if (cstIcms === '20' && regraIcms.reducao_base_calculo != null) {
       const pRed = Number(regraIcms.reducao_base_calculo);
       const pIcms = Number(regraIcms.aliquota ?? 0);
@@ -393,9 +392,10 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   }
 
   // prod/cBenef — código de benefício fiscal da UF (regra de ICMS). Exigido pela
-  // SEFAZ quando o CST identifica redução/benefício (ex.: CST 20 no DF).
+  // SEFAZ (rejeição 930) quando o CST identifica redução/benefício (ex.: CST 20
+  // no DF). Campo Focus: codigo_beneficio_fiscal.
   if (regraIcms.codigo_beneficio_fiscal?.trim()) {
-    item.codigo_beneficio = regraIcms.codigo_beneficio_fiscal.trim();
+    item.codigo_beneficio_fiscal = regraIcms.codigo_beneficio_fiscal.trim();
   }
 
   // --- Grupo "ICMS-ST retido anteriormente" (CST 60) ---------------------
