@@ -60,6 +60,8 @@ interface Props {
   onEmitirNfeTroca?: (avaliacaoId: string) => void;
   /** Navega para o Pós-Compra da avaliação da moto de troca. */
   onNavigateToPosCompra?: (avaliacaoId: string) => void;
+  /** Venda aguardando/recusada na aprovação do master — bloqueia salvar e emitir NF-e. */
+  vendaBloqueadaAprovacao?: boolean;
 }
 
 const ProcessoDialog: React.FC<Props> = ({
@@ -73,6 +75,7 @@ const ProcessoDialog: React.FC<Props> = ({
   onEmitirNfe,
   onEmitirNfeTroca,
   onNavigateToPosCompra,
+  vendaBloqueadaAprovacao,
 }) => {
   const isPosVenda = !customEtapas;
   const [etapas, setEtapas] = useState<EtapaData[]>(
@@ -249,6 +252,10 @@ const ProcessoDialog: React.FC<Props> = ({
   };
 
   const handleSave = async () => {
+    if (vendaBloqueadaAprovacao) {
+      toast.error('Venda aguardando aprovação de um master — não é possível avançar o processo.');
+      return;
+    }
     setSaving(true);
     try {
       const rows = etapas.map(e => ({
@@ -435,7 +442,7 @@ const ProcessoDialog: React.FC<Props> = ({
                       <Button
                         variant="outline" size="sm"
                         className="h-9 gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        disabled={!podeEmitirNfeVenda || nfeVenda.loading}
+                        disabled={!podeEmitirNfeVenda || nfeVenda.loading || vendaBloqueadaAprovacao}
                         onClick={() => onEmitirNfe?.()}
                       >
                         <RefreshCw className="h-4 w-4" /> Tentar novamente
@@ -444,7 +451,7 @@ const ProcessoDialog: React.FC<Props> = ({
                       <Button
                         variant={podeEmitirNfeVenda ? 'default' : 'outline'} size="sm"
                         className={cn('h-9 gap-2 text-sm', nfeBotaoClasse(nfeVenda.nfe))}
-                        disabled={!podeEmitirNfeVenda || nfeVenda.loading}
+                        disabled={!podeEmitirNfeVenda || nfeVenda.loading || vendaBloqueadaAprovacao}
                         title={podeEmitirNfeVenda ? undefined : 'Disponível após a venda e o contrato gerado'}
                         onClick={() => onEmitirNfe?.()}
                       >
@@ -468,7 +475,7 @@ const ProcessoDialog: React.FC<Props> = ({
                           'h-9 gap-2 text-sm',
                           nfeTroca.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : nfeBotaoClasse(nfeTroca.nfe),
                         )}
-                        disabled={!trocaAvaliacaoId || nfeTroca.loading}
+                        disabled={!trocaAvaliacaoId || nfeTroca.loading || vendaBloqueadaAprovacao}
                         onClick={() => trocaAvaliacaoId && onEmitirNfeTroca?.(trocaAvaliacaoId)}
                       >
                         {nfeTroca.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
@@ -582,7 +589,7 @@ const ProcessoDialog: React.FC<Props> = ({
 
             <Separator />
             <div className="flex justify-end pt-3">
-              <Button onClick={handleSave} disabled={saving} className="gap-1.5">
+              <Button onClick={handleSave} disabled={saving || vendaBloqueadaAprovacao} className="gap-1.5">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Salvar
               </Button>

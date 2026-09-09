@@ -460,6 +460,15 @@ async function registrarPosAutorizacao(
 
   let compId: string | null = compExistente?.id ?? null;
   if (!compId) {
+    // Número do compromisso no padrão do SisFin: VND-R-XXXX (venda / a receber) ou
+    // CPR-D-XXXX (compra / a pagar). Gerado pela mesma RPC que o SisFin usa —
+    // sem passar valor explícito, um trigger do banco cai no padrão antigo "NF-D-XXXX".
+    const numeroPrefix = cfg.compromissoTipo === 'receber' ? 'VND-R' : 'CPR-D';
+    const { data: numeroCompromisso, error: numeroErr } = await admin.rpc('gerar_numero_compromisso', {
+      _prefix: numeroPrefix,
+    });
+    if (numeroErr) console.error('erro ao gerar numero_compromisso', numeroErr);
+
     const { data: comp, error: compErr } = await admin
       .from('compromissos')
       .insert({
@@ -472,6 +481,7 @@ async function registrarPosAutorizacao(
         observacoes: obsCompromisso,
         status_compromisso: 'em_aberto',
         nfe_entrada_id: nfeRow.id,
+        numero_compromisso: (numeroCompromisso as string | null) ?? null,
         numero_documento: nfeRow.numero ? `NF-${nfeRow.numero}` : null,
         created_by: callerId,
       })
