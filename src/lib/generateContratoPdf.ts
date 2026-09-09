@@ -61,7 +61,7 @@ interface ContratoPdfData {
   }[];
   
   // Agregados (serviços cobrados à parte do cliente)
-  agregados?: { descricao: string; valor: string }[];
+  agregados?: { descricao: string; valor: string; cortesia?: boolean }[];
 
   // Observações
   observacoes: string;
@@ -424,7 +424,10 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     setNormal();
     for (const ag of data.agregados) {
       checkPageBreak(lineHeight);
-      doc.text(`${ag.descricao}: ${ag.valor}`, marginLeft + 5, y); y += lineHeight;
+      const linha = ag.cortesia
+        ? `${ag.descricao}: Cortesia (não cobrado do cliente)`
+        : `${ag.descricao}: ${ag.valor}`;
+      doc.text(linha, marginLeft + 5, y); y += lineHeight;
     }
     y += sectionGap;
   }
