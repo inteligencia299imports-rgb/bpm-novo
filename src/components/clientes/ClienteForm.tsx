@@ -269,6 +269,10 @@ export function ClienteForm({
   const [ddiComercial, setDdiComercial] = useState("+55");
   const [cnpjConsultado, setCnpjConsultado] = useState("");
   const [cepConsultado, setCepConsultado] = useState("");
+  // Último tipo_cadastro visto — usado para só forçar "física" quando o USUÁRIO
+  // troca o tipo de cadastro para cliente/colaborador, nunca na carga de um
+  // cadastro existente (que pode ser PJ). Sincronizado no load a partir do banco.
+  const prevTipoCadastro = useRef<string>(emptyForm.tipo_cadastro);
 
   const { data: ramos = [] } = useQuery({
     queryKey: ["ramos-atividade-ativos"],
@@ -331,6 +335,9 @@ export function ClienteForm({
     if (existing === undefined) return;
     if (existing) {
       const { clientes_fornecedores_enderecos: ends, ...rest } = existing as any;
+      // Respeita o tipo de cadastro/pessoa do banco: evita que o efeito de
+      // "trocou para cliente → força física" dispare na carga e converta um PJ.
+      prevTipoCadastro.current = (rest.tipo_cadastro as string) || emptyForm.tipo_cadastro;
       setForm({
         ...emptyForm,
         ...Object.fromEntries(
@@ -363,7 +370,6 @@ export function ClienteForm({
   const set = (k: string) => (v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   const setE = (k: keyof Endereco) => (v: any) => setEndereco((e) => ({ ...e, [k]: v }));
 
-  const prevTipoCadastro = useRef<string>(form.tipo_cadastro);
   useEffect(() => {
     if ((form.tipo_cadastro === "cliente" || form.tipo_cadastro === "colaborador") && prevTipoCadastro.current !== "cliente" && prevTipoCadastro.current !== "colaborador") {
       setForm((f: any) => ({ ...f, tipo_pessoa: "fisica" }));
