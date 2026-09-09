@@ -359,7 +359,11 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   // espera dentro de <ICMS60>, o que quebra a validacao da sequencia mais
   // adiante — foi a causa real do erro "vBCEfet not expected, expected
   // vBCSTRet/vBCFCPSTRet/pRedBCEfet" (nao era o pRedBCEfet em si).
-  const semCalculoIcmsNormal = cstIcms === '60';
+  // CSTs sem grupo de cálculo de ICMS próprio no XSD:
+  //  60 (TICMS60), e 40/41/50 (TICMS40 — só orig + CST, opcional vICMSDeson).
+  //  Ex.: compra de veículo usado no DF é isenta (CST 40). Mandar modBC/pICMS/
+  //  vBC/vICMS aqui insere elementos que o <ICMS40> não aceita → rejeição SEFAZ.
+  const semCalculoIcmsNormal = ['40', '41', '50', '60'].includes(cstIcms);
   if (!isCsosn && !semCalculoIcmsNormal) {
     item.icms_modalidade_base_calculo = modalidadeBc;
     item.icms_aliquota = Number(regraIcms.aliquota ?? 0);
