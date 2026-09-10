@@ -20,6 +20,7 @@ import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoque
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto } from '@/lib/clienteCadastro';
+import { rotuloDocumento, ehCnpj, placeholderDocumento } from '@/lib/documento';
 
 /** Props for ContratoConsignanteDialog */
 interface Props {
@@ -638,14 +639,14 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                         </div>
                       </div>
                       <div className="space-y-1.5 sm:max-w-[50%]">
-                        <Label>CPF/CNPJ</Label>
-                        <Input value={cpfCnpj} onChange={e => setCpfCnpj(formatCpfCnpj(e.target.value))} maxLength={18} placeholder="000.000.000-00" />
+                        <Label>{rotuloDocumento(cpfCnpj)}</Label>
+                        <Input value={cpfCnpj} onChange={e => setCpfCnpj(formatCpfCnpj(e.target.value))} maxLength={18} placeholder={placeholderDocumento(rotuloDocumento(cpfCnpj))} />
                       </div>
                     </div>
                   ) : (cadastroCompleto && !editandoCliente) ? (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <InfoDisplay label="Nome" value={cli?.nome_razao_social} />
-                      <InfoDisplay label="CPF/CNPJ" value={cli?.cpf_cnpj ? formatCpfCnpj(cli.cpf_cnpj) : undefined} />
+                      <InfoDisplay label={rotuloDocumento(cli)} value={cli?.cpf_cnpj ? formatCpfCnpj(cli.cpf_cnpj) : undefined} />
                       <InfoDisplay label="Sexo" value={cli?.sexo} />
                       <InfoDisplay label="Data de Nascimento" value={fmtDataNasc(cli?.data_nascimento)} />
                       <InfoDisplay label="E-mail (NF)" value={cli?.email_nf} />
@@ -712,7 +713,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                       <InfoDisplay label="Conta" value={cli?.conta ? `${cli.conta}${cli?.digito_conta ? `-${cli.digito_conta}` : ''}` : undefined} />
                       <InfoDisplay label="Chave PIX" value={cli?.chave_pix} />
                       <InfoDisplay label="Favorecido" value={cli?.favorecido} />
-                      <InfoDisplay label="CPF/CNPJ do Favorecido" value={cli?.cpf_cnpj_favorecido ? formatCpfCnpj(cli.cpf_cnpj_favorecido) : undefined} />
+                      <InfoDisplay label={`${ehCnpj(cli?.cpf_cnpj_favorecido) ? 'CNPJ' : 'CPF'} do Favorecido`} value={cli?.cpf_cnpj_favorecido ? formatCpfCnpj(cli.cpf_cnpj_favorecido) : undefined} />
                     </CardContent>
                   </Card>
                 </>

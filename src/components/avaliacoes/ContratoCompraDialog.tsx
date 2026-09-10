@@ -23,6 +23,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateContratoCompraPdf } from '@/lib/generateContratoCompraPdf';
+import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 
 interface Props {
@@ -674,7 +675,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               ) : (soLeitura || (cadastroCompleto && !editandoCliente)) ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <InfoDisplay label="Nome" value={cli?.nome_razao_social} />
-                  <InfoDisplay label="CPF/CNPJ" value={cli?.cpf_cnpj ? formatCpfCnpj(cli.cpf_cnpj) : undefined} />
+                  <InfoDisplay label={rotuloDocumento(cli)} value={cli?.cpf_cnpj ? formatCpfCnpj(cli.cpf_cnpj) : undefined} />
                   <InfoDisplay label="Sexo" value={cli?.sexo} />
                   <InfoDisplay label="Data de Nascimento" value={fmtDataNasc(cli?.data_nascimento)} />
                   <InfoDisplay label="E-mail (NF)" value={cli?.email_nf} />
@@ -731,7 +732,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                   <InfoDisplay label="Conta" value={cli?.conta ? `${cli.conta}${cli?.digito_conta ? `-${cli.digito_conta}` : ''}` : undefined} />
                   <InfoDisplay label="Chave PIX" value={cli?.chave_pix} />
                   <InfoDisplay label="Favorecido" value={cli?.favorecido} />
-                  <InfoDisplay label="CPF/CNPJ do Favorecido" value={cli?.cpf_cnpj_favorecido ? formatCpfCnpj(cli.cpf_cnpj_favorecido) : undefined} />
+                  <InfoDisplay label={`${ehCnpj(cli?.cpf_cnpj_favorecido) ? 'CNPJ' : 'CPF'} do Favorecido`} value={cli?.cpf_cnpj_favorecido ? formatCpfCnpj(cli.cpf_cnpj_favorecido) : undefined} />
                 </CardContent>
               </Card>
               )}
