@@ -127,7 +127,7 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
     const { error: clienteError } = await supabase.from('clientes_fornecedores').update({
       nome_razao_social: formatPersonName(nome),
       sexo: ehPJ ? null : (sexo || null),
-      email: email.trim() || null,
+      email: email.trim().toLowerCase() || null,
       ...(cpfBloqueado ? {} : {
         cpf_cnpj: cpfDigits || null,
         // preserva 'juridica' já marcado mesmo sem CNPJ preenchido
@@ -243,7 +243,7 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
             )}
             <div>
               <Label>E-mail</Label>
-              <Input value={email} onChange={e => setEmail(e.target.value)} type="email" />
+              <Input value={email} onChange={e => setEmail(e.target.value.toLowerCase())} type="email" />
             </div>
 
             <div className="col-span-2 pt-2">
