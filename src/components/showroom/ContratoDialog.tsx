@@ -200,6 +200,8 @@ interface FormaPagamento {
   valor_financiado: number | null;
   /** Taxa de retorno (%) — só para Financiamento. */
   taxa_retorno_pct: number | null;
+  /** data do pagamento (yyyy-MM-dd) — vira data_vencimento da parcela do compromisso a receber */
+  data_pagamento: string | null;
   /** instituição (banco / administradora) escolhida — só para Financiamento / Consórcio */
   cliente_fornecedor_id: string | null;
   /** observação da forma, editável, com default vindo de formas_pagamento_instituicoes.observacoes_contrato */
@@ -218,6 +220,7 @@ const mapFormaRow = (data: any): FormaPagamento => ({
   valor_parcelas: data.valor_parcelas,
   valor_financiado: data.valor_financiado,
   taxa_retorno_pct: data.taxa_retorno_pct != null ? Number(data.taxa_retorno_pct) : null,
+  data_pagamento: data.data_pagamento ?? null,
   cliente_fornecedor_id: data.cliente_fornecedor_id ?? null,
   observacoes: data.observacoes ?? '',
 });
@@ -321,6 +324,8 @@ const ContratoDialog: React.FC<Props> = ({
   const [finValorParcelas, setFinValorParcelas] = useState('');
   const [finValorFinanciado, setFinValorFinanciado] = useState('');
   const [finTaxaRetorno, setFinTaxaRetorno] = useState('');
+  // Data do pagamento (yyyy-MM-dd) — comum a qualquer forma
+  const [novaDataPagamento, setNovaDataPagamento] = useState('');
   // Other payment valor
   const [outroValor, setOutroValor] = useState('');
 
@@ -564,6 +569,7 @@ const ContratoDialog: React.FC<Props> = ({
     setFinValorParcelas('');
     setFinValorFinanciado('');
     setFinTaxaRetorno('');
+    setNovaDataPagamento('');
     setOutroValor('');
   };
 
@@ -582,6 +588,7 @@ const ContratoDialog: React.FC<Props> = ({
     setFinValorParcelas(fp.valor_parcelas != null ? formatCurrencyInput(String(Math.round(fp.valor_parcelas * 100))) : '');
     setFinValorFinanciado(fp.valor_financiado != null ? formatCurrencyInput(String(Math.round(fp.valor_financiado * 100))) : '');
     setFinTaxaRetorno(fp.taxa_retorno_pct != null ? String(fp.taxa_retorno_pct) : '');
+    setNovaDataPagamento(fp.data_pagamento || '');
     setOutroValor(fp.valor_total != null ? formatCurrencyInput(String(Math.round(fp.valor_total * 100))) : '');
   };
 
@@ -615,6 +622,7 @@ const ContratoDialog: React.FC<Props> = ({
       valor_parcelas: null,
       valor_financiado: null,
       taxa_retorno_pct: null,
+      data_pagamento: null,
       cliente_fornecedor_id: null,
       financeira: null,
       observacoes: null,
@@ -636,6 +644,8 @@ const ContratoDialog: React.FC<Props> = ({
     }
     // Observação é livre pra qualquer forma de pagamento, não só as vinculadas a instituição.
     formaData.observacoes = novaObservacoes.trim() || null;
+    // Data do pagamento (opcional) — vira data_vencimento da parcela do compromisso a receber.
+    formaData.data_pagamento = novaDataPagamento || null;
 
     // A soma das formas de pagamento não pode passar do Valor Total (financiamento conta
     // só o valor financiado; na troca o valor de fechamento da moto já entra em `somaPagamentos`).
@@ -898,6 +908,9 @@ const ContratoDialog: React.FC<Props> = ({
       dataVencimento: dataVencimento ? format(dataVencimento, "dd/MM/yyyy", { locale: ptBR }) : '',
       formasPagamento: formasPagamento.map(f => {
         const fmt = (v: number | null | undefined) => v ? `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ 0,00';
+        const dataPagamento = f.data_pagamento
+          ? format(new Date(`${f.data_pagamento}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR })
+          : '';
         if (ehFinanciamento(f.tipo)) {
           return {
             tipo: 'financiamento',
@@ -908,6 +921,7 @@ const ContratoDialog: React.FC<Props> = ({
             numeroParcelas: f.numero_parcelas || 0,
             valorParcelas: fmt(f.valor_parcelas),
             valorFinanciado: fmt(f.valor_financiado),
+            dataPagamento,
             observacoes: f.observacoes || '',
           };
         }
@@ -916,6 +930,7 @@ const ContratoDialog: React.FC<Props> = ({
           descricao: tipoLabel(f.tipo),
           valor: fmt(f.valor_total),
           financeira: f.financeira || '',
+          dataPagamento,
           observacoes: f.observacoes || '',
         };
       }),
@@ -1531,7 +1546,7 @@ const ContratoDialog: React.FC<Props> = ({
                         key={fp.id}
                         size="sm"
                         variant={novaPagamentoTipo === fp.id ? 'default' : 'outline'}
-                        onClick={() => { setNovaPagamentoTipo(fp.id); setNovaInstituicaoId(''); setNovaObservacoes(''); setOutroValor(''); setFinValorEntrada(''); setFinParcelas(''); setFinValorParcelas(''); setFinValorFinanciado(''); setFinTaxaRetorno(''); }}
+                        onClick={() => { setNovaPagamentoTipo(fp.id); setNovaInstituicaoId(''); setNovaObservacoes(''); setNovaDataPagamento(''); setOutroValor(''); setFinValorEntrada(''); setFinParcelas(''); setFinValorParcelas(''); setFinValorFinanciado(''); setFinTaxaRetorno(''); }}
                         className="text-xs"
                       >
                         {fp.nome}
@@ -1591,6 +1606,17 @@ const ContratoDialog: React.FC<Props> = ({
                   )}
 
                   {novaPagamentoTipo && (
+                    <div className="max-w-[12rem] space-y-1.5">
+                      <label className="text-sm font-medium text-foreground">Data do Pagamento</label>
+                      <Input
+                        type="date"
+                        value={novaDataPagamento}
+                        onChange={(e) => setNovaDataPagamento(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {novaPagamentoTipo && (
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-foreground">Observações</label>
                       <Textarea
@@ -1638,6 +1664,11 @@ const ContratoDialog: React.FC<Props> = ({
                             </div>
                           ) : (
                             fp.valor_total != null && <p className="text-xs text-muted-foreground">Valor: {formatCurrency(fp.valor_total)}</p>
+                          )}
+                          {fp.data_pagamento && (
+                            <p className="text-xs text-muted-foreground">
+                              Pagamento: {format(new Date(`${fp.data_pagamento}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR })}
+                            </p>
                           )}
                           {fp.observacoes && (
                             <p className="text-xs text-muted-foreground italic whitespace-pre-wrap">{fp.observacoes}</p>
