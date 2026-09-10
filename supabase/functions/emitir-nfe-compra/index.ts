@@ -362,6 +362,8 @@ async function registrarPosAutorizacao(
   const compromissoNatureza = cfg.compromissoTipo === 'receber' ? 'receita' : 'despesa';
   let parcelasDesejadas: ParcelaDesejada[] = [];
   let obsCompromisso: string | null = null;
+  // Vínculo do compromisso criado na PROPOSTA (gerar-compromissos-proposta), p/ reconciliar.
+  let contratoVendaId: string | null = null;
   // Troca sem quitação: o repasse ao cliente já foi liquidado pela própria moto
   // dada em pagamento — a despesa nasce quitada. Com parcela de quitação, fica em aberto.
   let compromissoJaPago = false;
@@ -383,6 +385,7 @@ async function registrarPosAutorizacao(
       .eq('atendimento_id', entityId)
       .order('created_at', { ascending: false });
     const contratoVenda = ((contratosAt || []) as any[]).find((c) => c.ipva_tipo !== 'COMPRA') ?? null;
+    contratoVendaId = contratoVenda?.id ?? null;
 
     const { data: formas } = contratoVenda?.id
       ? await admin
@@ -494,8 +497,21 @@ async function registrarPosAutorizacao(
     obsCompromisso = obsMoto(avFin?.marca, avFin?.modelo, avFin?.placa);
   }
 
-  // Compromisso: reaproveita se já existe (idempotente por nfe_entrada_id).
-  const { data: compExistente } = await admin
+  // Compromisso: o normal é já existir — criado na GERAÇÃO DA PROPOSTA por
+  // `gerar-compromissos-proposta` (origem 'venda' / 'compra' / 'troca'). Aqui a
+  // NF-e apenas RECONCILIA: vincula nfe_entrada_id e ajusta as parcelas não pagas
+  // aos valores finais da nota. Só cria do zero se não achar nenhum (dados antigos).
+  const numeroPrefix = cfg.compromissoTipo === 'receber' ? 'VND-R' : 'CPR-D';
+
+  const buscaPorVinculo = porAvaliacao
+    ? admin.from('compromissos').select('id').eq('avaliacao_id', entityId).in('origem', ['compra', 'troca'])
+    : (contratoVendaId
+        ? admin.from('compromissos').select('id').eq('contrato_id', contratoVendaId).eq('origem', 'venda')
+        : null);
+  const { data: compViaVinculo } = buscaPorVinculo
+    ? await buscaPorVinculo.is('deleted_at', null).order('created_at', { ascending: true }).limit(1).maybeSingle()
+    : { data: null };
+  const { data: compViaNfe } = await admin
     .from('compromissos')
     .select('id')
     .eq('nfe_entrada_id', nfeRow.id)
@@ -503,12 +519,23 @@ async function registrarPosAutorizacao(
     .limit(1)
     .maybeSingle();
 
-  let compId: string | null = compExistente?.id ?? null;
-  if (!compId) {
-    // Número do compromisso no padrão do SisFin: VND-R-XXXX (venda / a receber) ou
-    // CPR-D-XXXX (compra / a pagar). Gerado pela mesma RPC que o SisFin usa —
-    // sem passar valor explícito, um trigger do banco cai no padrão antigo "NF-D-XXXX".
-    const numeroPrefix = cfg.compromissoTipo === 'receber' ? 'VND-R' : 'CPR-D';
+  let compId: string | null = (compViaVinculo as any)?.id ?? (compViaNfe as any)?.id ?? null;
+
+  if (compId) {
+    // Reconcilia o cabeçalho com os dados finais da NF-e (não mexe se cancelado).
+    await admin.from('compromissos')
+      .update({
+        nfe_entrada_id: nfeRow.id,
+        empresa_id: nfeRow.empresa_id,
+        fornecedor_id: nfeRow.fornecedor_id,
+        numero_documento: nfeRow.numero ? `NF-${nfeRow.numero}` : null,
+        observacoes: obsCompromisso,
+        updated_by: callerId,
+        ...(compromissoJaPago ? { status_compromisso: 'pago' } : {}),
+      })
+      .eq('id', compId)
+      .neq('status_compromisso', 'cancelada');
+  } else {
     const { data: numeroCompromisso, error: numeroErr } = await admin.rpc('gerar_numero_compromisso', {
       _prefix: numeroPrefix,
     });
@@ -526,6 +553,8 @@ async function registrarPosAutorizacao(
         observacoes: obsCompromisso,
         status_compromisso: compromissoJaPago ? 'pago' : 'em_aberto',
         nfe_entrada_id: nfeRow.id,
+        origem: porAvaliacao ? 'compra' : 'venda',
+        ...(porAvaliacao ? { avaliacao_id: entityId } : (contratoVendaId ? { contrato_id: contratoVendaId } : {})),
         numero_compromisso: (numeroCompromisso as string | null) ?? null,
         numero_documento: nfeRow.numero ? `NF-${nfeRow.numero}` : null,
         created_by: callerId,
@@ -539,15 +568,21 @@ async function registrarPosAutorizacao(
     compId = comp.id;
   }
 
-  // Parcelas: insere apenas as que ainda não existem (por numero_parcela). Nunca duplica.
+  // Parcelas: mantém as PAGAS; apaga e recria as demais com os valores finais.
   const { data: parcelasExistentes } = await admin
     .from('compromissos_parcelas')
-    .select('numero_parcela')
+    .select('numero_parcela, status_pagamento')
     .eq('compromisso_id', compId);
-  const jaTem = new Set((parcelasExistentes || []).map((p: any) => p.numero_parcela));
+  const parcelasPagas = new Set(
+    (parcelasExistentes || []).filter((p: any) => p.status_pagamento === 'pago').map((p: any) => p.numero_parcela),
+  );
+  await admin.from('compromissos_parcelas')
+    .delete()
+    .eq('compromisso_id', compId)
+    .neq('status_pagamento', 'pago');
 
   const parcelasAInserir = parcelasDesejadas
-    .filter((p) => !jaTem.has(p.numero_parcela))
+    .filter((p) => !parcelasPagas.has(p.numero_parcela))
     .map((p) => ({
       compromisso_id: compId,
       numero_parcela: p.numero_parcela,
