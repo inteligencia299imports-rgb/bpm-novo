@@ -583,15 +583,24 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     // (presencial/online/ambos) antes de chegar aqui — ver index.ts regraDe().
     presenca_comprador: regraIcms.indicador_presenca ?? regraIpi?.indicador_presenca ?? natureza.indicador_presenca ?? undefined,
     modalidade_frete: 9,
+    // Ordem fixa do infCpl (padrão das NF-e de venda FAG/FLN):
+    //  1. VALOR DO IBS / VALOR DA CBS
+    //  2. FORMA DE PAGAMENTO (formas + "VEICULO NA TROCA R$ X")
+    //  3. bloco da moto da troca — "NF DE ENTRADA <nº> - PLACA <placa>"
+    //  4. observações da NF
+    //  5. complemento da natureza (ex.: "TPC-Tributado de Pis/Cofins...")
+    //  6. RG do vendedor da moto (troca)
+    //  7. VENDEDOR
+    //  8. complemento da regra de ICMS (ex.: "Imposto retido por ST - RICMS-SC-Anexo 3")
     informacoes_adicionais_contribuinte: juntarInfoCpl(
-      natureza.informacoes_complementares,
-      regraIcms.informacoes_complementares,
-      observacoes ? observacoes.toUpperCase() : null,
       valorIbsCbs,
       formasPagamentoTexto ? `FORMA DE PAGAMENTO: ${formasPagamentoTexto.toUpperCase()}` : null,
       trocaInfoCpl ? trocaInfoCpl.toUpperCase() : null,
-      vendedorNome ? `VENDEDOR: ${vendedorNome.toUpperCase()}` : null,
+      observacoes ? observacoes.toUpperCase() : null,
+      natureza.informacoes_complementares,
       fornecedor.rg ? `RG.: ${fornecedor.rg.toUpperCase()}` : null,
+      vendedorNome ? `VENDEDOR: ${vendedorNome.toUpperCase()}` : null,
+      regraIcms.informacoes_complementares,
     ),
     informacoes_adicionais_fisco: juntarInfos(
       natureza.informacoes_adicionais_fisco,
