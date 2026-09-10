@@ -1078,8 +1078,10 @@ const ContratoDialog: React.FC<Props> = ({
   ), 0);
   // Repasse ao cliente pela moto da troca (mesma conta do card "Moto do Cliente":
   // avaliação de compra − custos da loja).
-  const valorRepasseTroca = hasTroca && avaliacaoData?.avaliacao_compra != null && avaliacaoData?.previsao_custos_loja != null
-    ? Math.max(Number(avaliacaoData.avaliacao_compra) - Number(avaliacaoData.previsao_custos_loja), 0)
+  // Custos da loja ausentes contam como 0 — o valor de aquisição da moto do
+  // cliente (Avaliação Compra) tem de entrar no abatimento mesmo sem custos.
+  const valorRepasseTroca = hasTroca && avaliacaoData?.avaliacao_compra != null
+    ? Math.max(Number(avaliacaoData.avaliacao_compra) - Number(avaliacaoData.previsao_custos_loja ?? 0), 0)
     : 0;
   // O quanto a moto da troca abate do Valor Faltante:
   //  - com Valor de Fechamento preenchido: fechamento − repasse ao cliente;
@@ -1446,8 +1448,8 @@ const ContratoDialog: React.FC<Props> = ({
                               <div>
                                 <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
                                 <p className="text-sm font-bold text-primary">
-                                  {avaliacaoData.avaliacao_compra != null && avaliacaoData.previsao_custos_loja != null
-                                    ? formatCurrency(avaliacaoData.avaliacao_compra - avaliacaoData.previsao_custos_loja)
+                                  {avaliacaoData.avaliacao_compra != null
+                                    ? formatCurrency(Math.max(avaliacaoData.avaliacao_compra - (avaliacaoData.previsao_custos_loja ?? 0), 0))
                                     : '-'}
                                 </p>
                               </div>
