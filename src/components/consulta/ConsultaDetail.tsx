@@ -64,6 +64,8 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   // Documentos podem ser anexados quando ausentes (mesmo após NF-e); só não
   // podem ser removidos/substituídos quando há NF-e de produção.
   const { emitidaProducao: nfeMotoProducao } = useNfeEmitida(moto?.id, 'avaliacao');
+  // Remoção travada: aquisição aprovada OU NF-e da moto em produção.
+  const docRemocaoTravada = (moto as any)?.aprovacao_status === 'aprovada' || nfeMotoProducao;
   const [crlvUrl, setCrlvUrl] = useState<string | null>(moto.crlv_url || null);
   const [atpvUrl, setAtpvUrl] = useState<string | null>((moto as any).atpv_url || null);
   const [procuracaoUrl, setProcuracaoUrl] = useState<string | null>((moto as any).procuracao_url || null);
@@ -417,7 +419,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               <DocumentUpload
                 label={docIdentificacaoLabel(clientePj)}
                 className="w-1/4"
-                bloquearRemocao={nfeMotoProducao}
+                bloquearRemocao={docRemocaoTravada}
                 currentUrl={cnhUrl}
                 bucketPath={`docs/${atendimento?.cliente_id}/${docIdentificacaoBucket(clientePj)}`}
                 onUploaded={async (url) => {
@@ -477,7 +479,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 <DocumentUpload
                   label="CRLV"
                   className="flex-1"
-                  bloquearRemocao={nfeMotoProducao}
+                  bloquearRemocao={docRemocaoTravada}
                   currentUrl={crlvUrl}
                   bucketPath={`docs/${moto.id}/crlv`}
                   onUploaded={async (url) => {
@@ -492,7 +494,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 <DocumentUpload
                   label="ATPV"
                   className="flex-1"
-                  bloquearRemocao={nfeMotoProducao}
+                  bloquearRemocao={docRemocaoTravada}
                   currentUrl={atpvUrl}
                   bucketPath={`docs/${moto.id}/atpv`}
                   deferPreview
@@ -514,7 +516,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 <DocumentUpload
                   label="Procuração"
                   className="flex-1"
-                  bloquearRemocao={nfeMotoProducao}
+                  bloquearRemocao={docRemocaoTravada}
                   currentUrl={procuracaoUrl}
                   bucketPath={`docs/${moto.id}/procuracao`}
                   deferPreview
