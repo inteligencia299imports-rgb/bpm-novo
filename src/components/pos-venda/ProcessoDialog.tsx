@@ -311,6 +311,17 @@ const ProcessoDialog: React.FC<Props> = ({
         return;
       }
 
+      // Intermediação Parte 1: ao gravar a PREVISÃO DE PAGAMENTO, gera o
+      // compromisso a pagar do consignante (vencimento = essa data). Best-effort.
+      if (showContratoConsignante) {
+        const previsao = etapas.find(e => e.etapa === 'PREVISÃO DE PAGAMENTO');
+        if (previsao?.data_conclusao) {
+          supabase.functions
+            .invoke('gerar-compromissos-proposta', { body: { acao: 'consignante', atendimento_id: atendimentoId } })
+            .then(({ error }) => { if (error) console.error('gerar-compromissos-proposta (consignante)', error); });
+        }
+      }
+
       // Determine status
       let newStatus = 'em_aberto';
       const anyConcluida = etapas.some(e => (isNfEtapa(e.etapa) ? nfEmitidaDe(e.etapa) : e.concluida));
