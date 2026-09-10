@@ -979,6 +979,11 @@ const ContratoDialog: React.FC<Props> = ({
 
   const handleGerar = async (variant: 'sinal' | 'venda' = 'sinal') => {
     if (!validateForGeneration()) return;
+    // Venda de moto nova (Ducati): exige a moto do estoque de novas selecionada.
+    if (variant === 'venda' && !soLeitura && exigeMotoNovaParaVenda) {
+      toast.error('Selecione a moto do estoque de novas na Moto de Interesse para gerar a venda. Sem ela, só é possível gerar o sinal.');
+      return;
+    }
     // Só a proposta de VENDA exige as formas de pagamento cobrindo 100% do total.
     if (variant === 'venda' && !soLeitura && valorFaltante > 0.005) {
       toast.error(`As formas de pagamento ainda não cobrem o Valor Total. Valor faltante: ${formatCurrency(valorFaltante)}.`);
@@ -1044,7 +1049,14 @@ const ContratoDialog: React.FC<Props> = ({
   };
 
   const lojaLower = (atendimento.loja || '').toLowerCase();
-  const canGerarVenda = ['ducati bsb', 'ducati fln', 'ducati poa', '299i', '299s', '299f', '299p', 'aventura'].includes(lojaLower) && atendimento.situacao === 'vendido';
+  // Atendimento Ducati = negociação de moto 0km. A VENDA (contrato de venda) exige
+  // a moto do estoque de novas selecionada; sem ela, só sinal / contrato de sinal.
+  const ehAtendimentoMotoNova = lojaLower.startsWith('ducati');
+  const motoNovaEstoqueSelecionada = !!estItem && ((estItem as any).fonte === '0km' || (estItem as any).tipo === '0km');
+  const exigeMotoNovaParaVenda = ehAtendimentoMotoNova && !motoNovaEstoqueSelecionada;
+  const canGerarVenda = ['ducati bsb', 'ducati fln', 'ducati poa', '299i', '299s', '299f', '299p', 'aventura'].includes(lojaLower)
+    && atendimento.situacao === 'vendido'
+    && !exigeMotoNovaParaVenda;
 
   const tipoLabel = (tipo: string) => tipo || '—';
 
@@ -1103,7 +1115,8 @@ const ContratoDialog: React.FC<Props> = ({
   const podeGerarSinal = errosGeracao.length === 0 && valorTotalContrato > 0.005;
   // Contrato de VENDA (proposta finalizada): além do acima, formas de pagamento
   // cobrindo 100% do Valor Total e aprovação do master.
-  const podeGerarContrato = podeGerarSinal && valorFaltante <= 0.005 && !vendaBloqueadaAprovacao;
+  const podeGerarContrato = podeGerarSinal && valorFaltante <= 0.005 && !vendaBloqueadaAprovacao
+    && !exigeMotoNovaParaVenda;
 
   if (!open) return null;
 
@@ -1895,6 +1908,11 @@ const ContratoDialog: React.FC<Props> = ({
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-3 justify-end pt-2">
+              {exigeMotoNovaParaVenda && !soLeitura && (
+                <p className="w-full text-right text-xs text-amber-600">
+                  Selecione a moto do estoque de novas na Moto de Interesse para liberar a <strong>Proposta Venda</strong> — sem ela, só a Proposta Sinal.
+                </p>
+              )}
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
