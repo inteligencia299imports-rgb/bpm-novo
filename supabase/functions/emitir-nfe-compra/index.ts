@@ -23,6 +23,32 @@ const DIAS_VENCIMENTO = 7;
 const nomeCat = (v: any): string | null =>
   (v && typeof v === 'object' ? (v.nome ?? null) : (v ?? null));
 
+/**
+ * Extrai os valores de ICMS-ST retido anteriormente da NF-e de ENTRADA da moto
+ * 0km (grupo de ICMS do 1º item), para transcrever no `<ICMS60>` da NF de venda.
+ * Cobre CST 60 (subgrupo "ST retido" explícito: vBCSTRet / vICMSSubstituto /
+ * vICMSSTRet) e CST 10/30/70/90 (a NF de entrada reteve a ST na própria
+ * operação: vBCST = base, vICMSST = ST retida, vICMS = ICMS próprio do substituto).
+ */
+function stRetidoDoXmlEntrada(xml: string): { bc: number; subst: number; ret: number } | null {
+  if (!xml) return null;
+  // Restringe ao bloco <imposto> do item pra não pegar <vICMS> dos totais.
+  const bloco = xml.match(/<imposto>[\s\S]*?<\/imposto>/)?.[0] ?? xml;
+  const num = (re: RegExp) => {
+    const m = bloco.match(re);
+    const v = m ? Number(m[1]) : NaN;
+    return Number.isFinite(v) ? v : null;
+  };
+  let bc = num(/<vBCSTRet>([\d.]+)<\/vBCSTRet>/);
+  let subst = num(/<vICMSSubstituto>([\d.]+)<\/vICMSSubstituto>/);
+  let ret = num(/<vICMSSTRet>([\d.]+)<\/vICMSSTRet>/);
+  if (bc == null) bc = num(/<vBCST>([\d.]+)<\/vBCST>/);
+  if (ret == null) ret = num(/<vICMSST>([\d.]+)<\/vICMSST>/);
+  if (subst == null) subst = num(/<vICMS>([\d.]+)<\/vICMS>/);
+  if (!bc || !ret) return null;
+  return { bc, subst: subst ?? 0, ret };
+}
+
 /** atendimentos_motos.tipo_atendimento ('Presencial' | 'Online') normalizado pro
  * mesmo vocabulário de naturezas_operacao_regras.tipo_atendimento ('presencial' |
  * 'online' | 'ambos') — usado como critério extra de match do CFOP/regra (ver
@@ -645,6 +671,32 @@ Deno.serve(async (req) => {
           icms_st_valor_retido: en.icms_st_valor_retido ?? null,
         },
       };
+
+      // Fallback: sem os valores de ICMS-ST retido cadastrados na moto (não passou
+      // pelo "Liberar Estoque" do SisFin), extrai direto do XML da NF-e de entrada
+      // vinculada e cacheia na moto pra próximas emissões e pro card do contrato.
+      const mnRef = estoqueMoto.moto_nova;
+      if (!(Number(mnRef.icms_st_bc_retido) > 0) || !(Number(mnRef.icms_st_valor_retido) > 0)) {
+        const { data: nfEnt } = await admin
+          .from('nfe_entradas')
+          .select('xml_raw')
+          .eq('estoque_moto_nova_id', en.id)
+          .eq('operacao', 'compra')
+          .not('xml_raw', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const st = nfEnt?.xml_raw ? stRetidoDoXmlEntrada(String(nfEnt.xml_raw)) : null;
+        if (st) {
+          mnRef.icms_st_bc_retido = st.bc;
+          mnRef.icms_st_valor_substituto = st.subst;
+          mnRef.icms_st_valor_retido = st.ret;
+          await admin.from('estoque_motos_novas')
+            .update({ icms_st_bc_retido: st.bc, icms_st_valor_substituto: st.subst, icms_st_valor_retido: st.ret })
+            .eq('id', en.id)
+            .is('icms_st_bc_retido', null);
+        }
+      }
     } else {
       const { data: em } = await admin
         .from('estoque_motos')
