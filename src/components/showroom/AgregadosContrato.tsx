@@ -20,8 +20,6 @@ export interface AgregadoLinha {
   descricao: string;
   valor: number;
   observacoes?: string | null;
-  /** Taxa de retorno em % — só faz sentido para o "Financiamento TIF". */
-  taxa_retorno_pct?: number | null;
   /** Cortesia: item não cobrado do cliente. Nunca entra no total nem em cálculos. */
   cortesia?: boolean;
 }
@@ -34,14 +32,6 @@ const fmtInput = (v: string) => {
 };
 const parseInput = (v: string) => parseInt(v.replace(/\D/g, '') || '0', 10) / 100;
 const toInput = (n: number) => (n ? (Math.round(n * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
-/** Aceita "12,5" ou "12.5"; devolve número ou null. */
-const parsePct = (v: string): number | null => {
-  const s = v.replace(/[^\d.,]/g, '').replace(',', '.');
-  if (!s) return null;
-  const n = parseFloat(s);
-  return Number.isFinite(n) ? n : null;
-};
-const ehTif = (descricao: string) => /tif/i.test(descricao);
 
 interface Props {
   value: AgregadoLinha[];
@@ -54,7 +44,7 @@ interface Props {
  * Agregados do contrato: serviços cobrados à parte do cliente. Seleciona um
  * agregado do catálogo (agregados_motos) — o valor vem preenchido e pode ser
  * editado aqui no contrato (não altera o catálogo). Cada agregado tem campo de
- * observações; o "Financiamento TIF" tem também a Taxa de Retorno (%).
+ * observações. (A Taxa de Retorno do financiamento fica na forma de pagamento.)
  * Após registrado, o agregado é editado/excluído pelos ícones do card (igual
  * às Formas de Pagamento) — os campos não ficam sempre abertos.
  */
@@ -63,7 +53,6 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [fValor, setFValor] = useState('');
   const [fObs, setFObs] = useState('');
-  const [fTaxa, setFTaxa] = useState('');
   const [fCortesia, setFCortesia] = useState(false);
 
   const disponiveis = useMemo(
@@ -76,7 +65,6 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
   const editando = editIdx !== null;
   const agSel = catalogo.find((c) => c.id === selId);
   const descAtual = editando ? (value[editIdx as number]?.descricao ?? '') : (agSel?.descricao ?? '');
-  const ehTifAtual = ehTif(descAtual);
   const mostrarCampos = !!selId || editando;
 
   const resetForm = () => {
@@ -84,7 +72,6 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setEditIdx(null);
     setFValor('');
     setFObs('');
-    setFTaxa('');
     setFCortesia(false);
   };
 
@@ -95,7 +82,6 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     const ag = catalogo.find((c) => c.id === id);
     setFValor(ag ? toInput(Number(ag.valor) || 0) : '');
     setFObs('');
-    setFTaxa('');
     setFCortesia(false);
   };
 
@@ -105,7 +91,6 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setEditIdx(i);
     setFValor(toInput(Number(l.valor) || 0));
     setFObs(l.observacoes ?? '');
-    setFTaxa(l.taxa_retorno_pct != null ? String(l.taxa_retorno_pct) : '');
     setFCortesia(!!l.cortesia);
   };
 
@@ -118,7 +103,6 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         ...next[i],
         valor: parseInput(fValor),
         observacoes: obs,
-        taxa_retorno_pct: ehTif(next[i].descricao) ? parsePct(fTaxa) : null,
         cortesia: fCortesia,
       };
       onChange(next);
@@ -130,7 +114,6 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         descricao: ag.descricao,
         valor: fValor.trim() ? parseInput(fValor) : (Number(ag.valor) || 0),
         observacoes: obs,
-        taxa_retorno_pct: ehTif(ag.descricao) ? parsePct(fTaxa) : null,
         cortesia: fCortesia,
       }]);
     }
@@ -158,7 +141,6 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
               {l.cortesia
                 ? `Cortesia — não cobrado do cliente${(Number(l.valor) || 0) > 0 ? ` (valor de referência: ${brl(Number(l.valor) || 0)})` : ''}`
                 : `Valor: ${brl(Number(l.valor) || 0)}`}
-              {ehTif(l.descricao) && l.taxa_retorno_pct != null ? ` · Taxa de Retorno: ${l.taxa_retorno_pct}%` : ''}
             </p>
             {l.observacoes?.trim() && (
               <p className="text-xs text-muted-foreground italic whitespace-pre-wrap">{l.observacoes}</p>
@@ -212,35 +194,18 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
 
         {mostrarCampos && (
           <>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs text-muted-foreground">Valor</Label>
-                <div className="relative mt-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                  <Input
-                    className="pl-10"
-                    inputMode="numeric"
-                    placeholder="0,00"
-                    value={fValor}
-                    onChange={(e) => setFValor(fmtInput(e.target.value))}
-                  />
-                </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Valor</Label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <Input
+                  className="pl-10"
+                  inputMode="numeric"
+                  placeholder="0,00"
+                  value={fValor}
+                  onChange={(e) => setFValor(fmtInput(e.target.value))}
+                />
               </div>
-              {ehTifAtual && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">Taxa de Retorno (%)</Label>
-                  <div className="relative mt-1">
-                    <Input
-                      className="pr-7"
-                      inputMode="decimal"
-                      placeholder="0"
-                      value={fTaxa}
-                      onChange={(e) => setFTaxa(e.target.value)}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
-                  </div>
-                </div>
-              )}
             </div>
 
             <div>
