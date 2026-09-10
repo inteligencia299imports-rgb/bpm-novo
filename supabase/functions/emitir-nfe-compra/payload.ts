@@ -156,6 +156,18 @@ export interface MontarPayloadArgs {
 }
 
 const onlyDigits = (v: string | null | undefined) => (v ?? '').replace(/\D/g, '');
+
+/**
+ * "R$ 1.234,56" — formato pt-BR determinístico para o texto do infCpl.
+ * Não usa `toLocaleString` (o ICU do runtime Deno às vezes cai em `.` decimal,
+ * gerando "R$ 92.99" num campo e "R$ 836,91" noutro na mesma nota).
+ */
+export const brl = (n: number | null | undefined): string => {
+  const cents = Math.round(Math.abs(Number(n) || 0) * 100).toString().padStart(3, '0');
+  const dec = cents.slice(-2);
+  const int = cents.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${(Number(n) || 0) < 0 ? '-' : ''}R$ ${int},${dec}`;
+};
 const juntarInfos = (...partes: Array<string | null | undefined>) =>
   partes.map((p) => (p ?? '').trim()).filter(Boolean).join(' | ') || undefined;
 /**
@@ -504,14 +516,13 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
 
   const agora = nowBrasiliaIso();
 
-  const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   // Venda: valor do IBS/CBS, vendedor, RG e formas de pagamento também entram nas
   // informações complementares — não são default de código, são dados da própria
   // venda (calculados acima ou vindos do atendimento/contrato).
   const totalIbs = Number(item.ibs_uf_valor ?? 0) + Number(item.ibs_mun_valor ?? 0);
   const totalCbs = Number(item.cbs_valor ?? 0);
   const valorIbsCbs = (regraIbsCbs?.situacao_tributaria && (totalIbs > 0 || totalCbs > 0))
-    ? `VALOR DO IBS ${fmtBRL(totalIbs)} * VALOR DA CBS ${fmtBRL(totalCbs)}`
+    ? `VALOR DO IBS ${brl(totalIbs)} * VALOR DA CBS ${brl(totalCbs)}`
     : null;
 
   // --- Grupos pag/detPag (obrigatório) e cobr/fat/dup (faturas) -----------

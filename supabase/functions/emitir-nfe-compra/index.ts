@@ -1,7 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { cancelarNfe, consultarNfe, emitirNfe, focusBaseUrl, mensagemErroFocus, type FocusAmbiente } from './focus.ts';
-import { montarPayloadNfeCompra, type RegraFiscal } from './payload.ts';
+import { montarPayloadNfeCompra, brl, type RegraFiscal } from './payload.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
@@ -1089,7 +1089,7 @@ Deno.serve(async (req) => {
   let trocaInfoCpl: string | null = null;
   const formasPagamentoEstrut: { codigo: string; descricao?: string; valor: number }[] = [];
   if (ehVenda) {
-    const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const fmtBRL = brl; // formato pt-BR determinístico (mesmo do infCpl do payload)
     // Nome da forma de pagamento -> código tPag da SEFAZ (mesmo mapa do crm-novo).
     const CODIGO_TPAG: Record<string, string> = {
       dinheiro: '01', cheque: '02',
