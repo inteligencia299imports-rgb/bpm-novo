@@ -1054,7 +1054,15 @@ const ContratoDialog: React.FC<Props> = ({
       ? s + (Number(fp.valor_financiado) || 0)
       : s + (Number(fp.valor_total) || 0)
   ), 0);
-  const somaPagamentos = somaFormasPagamento + (hasTroca ? parseCurrencyInput(valorFechamento) : 0);
+  // Repasse ao cliente pela moto da troca (mesma conta do card "Moto do Cliente":
+  // avaliação de compra − custos da loja). É dinheiro que a loja paga de volta ao
+  // cliente, então NÃO abate o Valor Faltante.
+  const valorRepasseTroca = hasTroca && avaliacaoData?.avaliacao_compra != null && avaliacaoData?.previsao_custos_loja != null
+    ? Math.max(Number(avaliacaoData.avaliacao_compra) - Number(avaliacaoData.previsao_custos_loja), 0)
+    : 0;
+  // A moto da troca abate (valor de fechamento − repasse ao cliente).
+  const abatimentoTroca = hasTroca ? Math.max(parseCurrencyInput(valorFechamento) - valorRepasseTroca, 0) : 0;
+  const somaPagamentos = somaFormasPagamento + abatimentoTroca;
   const valorFaltante = valorTotalContrato - somaPagamentos;
 
   // Só libera gerar contrato quando não há campo obrigatório pendente E as formas
