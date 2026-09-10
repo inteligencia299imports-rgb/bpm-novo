@@ -138,6 +138,8 @@ export interface MontarPayloadArgs {
   observacoes?: string | null;
   /** Nome do vendedor do atendimento (venda) — entra nas informações complementares. */
   vendedorNome?: string | null;
+  /** Bloco(s) da moto que entra como troca no infCpl — "PLACA X - NF DE ENTRADA N". Só venda. */
+  trocaInfoCpl?: string | null;
   /** Formas de pagamento do contrato, já formatadas ("PIX R$ 100,00 * CONSÓRCIO R$ 200,00"). */
   formasPagamentoTexto?: string | null;
   /**
@@ -288,7 +290,7 @@ export function veiculoProdMoto(m: DadosMoto): Record<string, unknown> | null {
 }
 
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
-  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, formasPagamento, bemMovelUsado } = args;
+  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, trocaInfoCpl, formasPagamento, bemMovelUsado } = args;
 
   const pf = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
   const docForn = onlyDigits(fornecedor.cpf_cnpj);
@@ -576,6 +578,7 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
       observacoes ? observacoes.toUpperCase() : null,
       valorIbsCbs,
       formasPagamentoTexto ? `FORMA DE PAGAMENTO: ${formasPagamentoTexto.toUpperCase()}` : null,
+      trocaInfoCpl ? trocaInfoCpl.toUpperCase() : null,
       vendedorNome ? `VENDEDOR: ${vendedorNome.toUpperCase()}` : null,
       fornecedor.rg ? `RG.: ${fornecedor.rg.toUpperCase()}` : null,
     ),

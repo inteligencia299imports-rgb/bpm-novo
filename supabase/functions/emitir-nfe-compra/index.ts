@@ -1034,6 +1034,7 @@ Deno.serve(async (req) => {
   // informações complementares (texto) E os grupos pag/cobr da NF-e.
   let vendedorNome: string | null = null;
   let formasPagamentoTexto: string | null = null;
+  let trocaInfoCpl: string | null = null;
   const formasPagamentoEstrut: { codigo: string; descricao?: string; valor: number }[] = [];
   if (ehVenda) {
     const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -1069,9 +1070,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Troca: a moto seminova que entra como parte do pagamento vira uma linha
-    // "Semi-Novo R$ <valor da NF de compra> NF DE ENTRADA <nº> SÉRIE <série> - PLACA <placa>"
-    // no texto e uma forma de pagamento tPag 99 no grupo pag/dup.
+    // Troca: a moto que entra como parte do pagamento aparece como no padrão das
+    // NF-e de venda da FAG/FLN:
+    //  - na "Forma de Pagamento:" do infCpl → linha "Veiculo na Troca R$ <valor>";
+    //  - um bloco próprio no infCpl → "PLACA <placa> - NF DE ENTRADA <nº>";
+    //  - no grupo pag/dup → forma tPag 99 pelo valor da troca.
+    // Valor = valor_total da NF de compra da troca; fallback valor_fechamento.
     if (atendimento.interesse === 'trocar') {
       const { data: avsTroca } = await admin
         .from('avaliacoes')
@@ -1081,7 +1085,7 @@ Deno.serve(async (req) => {
       if (trocaIds.length) {
         const { data: nfsCompra } = await admin
           .from('nfe_entradas')
-          .select('avaliacao_id, numero, serie, valor_total, created_at')
+          .select('avaliacao_id, numero, valor_total, created_at')
           .in('avaliacao_id', trocaIds)
           .eq('operacao', 'compra')
           .eq('status', 'processada')
@@ -1090,18 +1094,21 @@ Deno.serve(async (req) => {
         for (const n of (nfsCompra as any[]) || []) {
           if (!nfPorAval.has(n.avaliacao_id)) nfPorAval.set(n.avaliacao_id, n);
         }
+        const blocosTroca: string[] = [];
         for (const a of (avsTroca as any[]) || []) {
           const nf = nfPorAval.get(a.id);
           const valorTroca = Number(nf?.valor_total ?? a.valor_fechamento ?? 0);
           if (valorTroca <= 0) continue;
           const placa = String(a.placa ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-          linhasPagto.push(
-            `Semi-Novo ${fmtBRL(valorTroca)}` +
-            (nf?.numero ? ` NF DE ENTRADA ${nf.numero}${nf.serie ? ` SÉRIE ${nf.serie}` : ''}` : '') +
-            (placa ? ` - PLACA ${placa}` : ''),
-          );
-          formasPagamentoEstrut.push({ codigo: '99', descricao: 'SEMI-NOVO', valor: valorTroca });
+          linhasPagto.push(`Veiculo na Troca ${fmtBRL(valorTroca)}`);
+          formasPagamentoEstrut.push({ codigo: '99', descricao: 'VEICULO NA TROCA', valor: valorTroca });
+          const bloco = [
+            placa ? `PLACA ${placa}` : null,
+            nf?.numero ? `NF DE ENTRADA ${nf.numero}` : null,
+          ].filter(Boolean).join(' - ');
+          if (bloco) blocosTroca.push(bloco);
         }
+        trocaInfoCpl = blocosTroca.join(' * ') || null;
       }
     }
 
@@ -1317,6 +1324,7 @@ Deno.serve(async (req) => {
     observacoes: typeof body.observacoes === 'string' ? body.observacoes : null,
     vendedorNome,
     formasPagamentoTexto,
+    trocaInfoCpl,
     formasPagamento: formasPagamentoEstrut,
     // Venda de moto seminova = bem móvel usado: liga indBemMovelUsado + base de
     // PIS/COFINS pela margem (venda − custo de aquisição).
