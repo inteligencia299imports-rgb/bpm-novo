@@ -32,6 +32,7 @@ import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
 import PlacaInput from '@/components/shared/PlacaInput';
 import { processarCnhAnexada, upsertCnhDoc, docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket } from '@/lib/cnhAnexo';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
+import { conferirDocVeiculo, removerDocDoStorage } from '@/lib/docVeiculoAnexo';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
@@ -1375,9 +1376,18 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   bloquearRemocao={nfeEmitidaProducao}
                   currentUrl={atpvUrl}
                   bucketPath={`docs/${moto?.id}/atpv`}
+                  deferPreview
                   onUploaded={async (url) => {
                     await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', moto?.id);
                     setAtpvUrl(url);
+                    if (moto?.id) {
+                      const { ok } = await conferirDocVeiculo(moto.id, url, 'atpv');
+                      if (!ok) {
+                        await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', moto.id);
+                        setAtpvUrl(null);
+                        await removerDocDoStorage(`docs/${moto.id}/atpv`);
+                      }
+                    }
                   }}
                   onRemoved={async () => {
                     await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', moto?.id);
@@ -1390,9 +1400,18 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   bloquearRemocao={nfeEmitidaProducao}
                   currentUrl={procuracaoUrl}
                   bucketPath={`docs/${moto?.id}/procuracao`}
+                  deferPreview
                   onUploaded={async (url) => {
                     await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', moto?.id);
                     setProcuracaoUrl(url);
+                    if (moto?.id) {
+                      const { ok } = await conferirDocVeiculo(moto.id, url, 'procuracao');
+                      if (!ok) {
+                        await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', moto.id);
+                        setProcuracaoUrl(null);
+                        await removerDocDoStorage(`docs/${moto.id}/procuracao`);
+                      }
+                    }
                   }}
                   onRemoved={async () => {
                     await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', moto?.id);
