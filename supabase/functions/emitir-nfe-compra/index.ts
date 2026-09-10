@@ -1024,7 +1024,7 @@ Deno.serve(async (req) => {
   // Nos dois casos e o cliente_id do atendimento.
   const { data: fornecedor } = await admin
     .from('clientes_fornecedores')
-    .select('id, nome_razao_social, cpf_cnpj, tipo_pessoa, telefone, telefone_comercial, rg, clientes_fornecedores_enderecos(*)')
+    .select('id, nome_razao_social, cpf_cnpj, tipo_pessoa, telefone, telefone_comercial, rg, contribuinte_icms, inscricao_estadual, isento_inscricao_estadual, clientes_fornecedores_enderecos(*)')
     .eq('id', atendimento.cliente_id)
     .maybeSingle();
   if (!fornecedor) return jsonResponse({ error: 'Cliente não encontrado' }, 409);
@@ -1294,6 +1294,9 @@ Deno.serve(async (req) => {
       nome: fornecedor.nome_razao_social,
       cpf_cnpj: fornecedor.cpf_cnpj,
       tipo_pessoa: fornecedor.tipo_pessoa,
+      contribuinte_icms: fornecedor.contribuinte_icms ?? null,
+      inscricao_estadual: fornecedor.inscricao_estadual ?? null,
+      isento_inscricao_estadual: fornecedor.isento_inscricao_estadual ?? null,
       telefone: fornecedor.telefone || fornecedor.telefone_comercial || null,
       cep: end.cep ?? null,
       logradouro: end.logradouro ?? null,
