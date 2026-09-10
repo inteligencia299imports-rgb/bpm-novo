@@ -312,10 +312,11 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       return null;
     }
     setSaving(true);
+    const emailNorm = email.trim().toLowerCase();
     const payload: any = {
       avaliacao_id: avaliacao.id,
       cpf_cnpj: cpfCnpj || null,
-      email: email || null,
+      email: emailNorm || null,
       endereco: endereco || null,
       cep: cep || null,
       valor_quitacao: valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : 0,
@@ -333,7 +334,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         await supabase.from('clientes_fornecedores').update({
           // CPF/CNPJ do cliente é imutável: só grava se ainda não havia um.
           ...(cpfBloqueado ? {} : { cpf_cnpj: cpfCnpj || null }),
-          email: email || null,
+          email: emailNorm || null,
         }).eq('id', atRow.cliente_id);
         const { data: endRow } = await supabase.from('clientes_fornecedores_enderecos').select('id').eq('cliente_fornecedor_id', atRow.cliente_id).eq('tipo', 'fiscal').maybeSingle();
         if (endRow) {
