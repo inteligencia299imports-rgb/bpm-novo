@@ -331,6 +331,7 @@ const ContratoDialog: React.FC<Props> = ({
 
   const [sinalCalOpen, setSinalCalOpen] = useState(false);
   const [vencCalOpen, setVencCalOpen] = useState(false);
+  const [pagCalOpen, setPagCalOpen] = useState(false);
 
   const hasTroca = atendimento.interesse === 'trocar' && motosAvaliacao.length > 0;
   // Troca: a NF-e de venda em PRODUÇÃO só libera depois da NF-e de compra da moto
@@ -1606,13 +1607,31 @@ const ContratoDialog: React.FC<Props> = ({
                   )}
 
                   {novaPagamentoTipo && (
-                    <div className="max-w-[12rem] space-y-1.5">
+                    <div className="max-w-[14rem] space-y-1.5">
                       <label className="text-sm font-medium text-foreground">Data do Pagamento</label>
-                      <Input
-                        type="date"
-                        value={novaDataPagamento}
-                        onChange={(e) => setNovaDataPagamento(e.target.value)}
-                      />
+                      <Popover open={pagCalOpen} onOpenChange={setPagCalOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !novaDataPagamento && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {novaDataPagamento ? format(new Date(`${novaDataPagamento}T00:00:00`), "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={novaDataPagamento ? new Date(`${novaDataPagamento}T00:00:00`) : undefined}
+                            onSelect={(d) => { setNovaDataPagamento(d ? format(d, "yyyy-MM-dd") : ''); setPagCalOpen(false); }}
+                            initialFocus
+                            className="p-3 pointer-events-auto"
+                          />
+                          {novaDataPagamento && (
+                            <div className="border-t p-2 flex justify-between">
+                              <Button size="sm" variant="ghost" onClick={() => { setNovaDataPagamento(''); setPagCalOpen(false); }}>Limpar</Button>
+                              <Button size="sm" onClick={() => setPagCalOpen(false)}>OK</Button>
+                            </div>
+                          )}
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   )}
 
