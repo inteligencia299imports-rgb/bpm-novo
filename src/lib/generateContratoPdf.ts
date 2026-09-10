@@ -792,22 +792,45 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     y += sectionGap;
   }
   
-  // Signature lines - spacing for digital signature
+  // Assinaturas — Sinal: Vendedor + Cliente. Venda: Vendedor + Cliente + Empresa.
+  // O Vendedor assina à direita, na mesma linha da Empresa (venda) ou do Cliente
+  // (sinal); abaixo da linha, apenas "Vendedor".
   checkPageBreak(lineHeight * 5 + 50);
-  y += lineHeight * 5; // space before company signature for digital signature
+  y += lineHeight * 5; // space before signatures for digital signature
   doc.setLineWidth(0.3);
-  doc.line(marginLeft, y, marginLeft + 70, y);
-  y += lineHeight;
   setNormal();
-  doc.text(template.empresaNome, marginLeft, y); y += lineHeight;
-  doc.text(templateType === 'mmatos' ? `CNPJ: ${template.cnpj}` : template.cnpj, marginLeft, y);
-  y += lineHeight * 8;
-  
-  doc.line(marginLeft, y, marginLeft + 70, y);
-  y += lineHeight;
-  doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += lineHeight;
-  doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y);
-  y += sectionGap * 2;
+
+  const sigW = 70;
+  const sigRightX = pageWidth - marginRight - sigW;
+  const drawVendedor = (lineY: number) => {
+    doc.line(sigRightX, lineY, sigRightX + sigW, lineY);
+    doc.text('Vendedor', sigRightX, lineY + lineHeight);
+  };
+
+  if (isVenda) {
+    // Linha 1: Empresa (esquerda) + Vendedor (direita)
+    doc.line(marginLeft, y, marginLeft + sigW, y);
+    drawVendedor(y);
+    y += lineHeight;
+    doc.text(template.empresaNome, marginLeft, y); y += lineHeight;
+    doc.text(templateType === 'mmatos' ? `CNPJ: ${template.cnpj}` : template.cnpj, marginLeft, y);
+    y += lineHeight * 8;
+
+    // Linha 2: Cliente
+    doc.line(marginLeft, y, marginLeft + sigW, y);
+    y += lineHeight;
+    doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += lineHeight;
+    doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y);
+    y += sectionGap * 2;
+  } else {
+    // Sinal: Cliente (esquerda) + Vendedor (direita) na mesma linha; sem Empresa.
+    doc.line(marginLeft, y, marginLeft + sigW, y);
+    drawVendedor(y);
+    y += lineHeight;
+    doc.text(`Nome: ${data.nomeCliente}`, marginLeft, y); y += lineHeight;
+    doc.text(`CPF/CNPJ: ${data.cpfCnpj}`, marginLeft, y);
+    y += sectionGap * 2;
+  }
   
   // Data do sinal / venda
   checkPageBreak(lineHeight);
