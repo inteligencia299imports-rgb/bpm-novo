@@ -77,10 +77,14 @@ const parseCurrencyInput = (value: string): number => {
   return parseInt(digits || '0', 10) / 100;
 };
 
-/** Percentual: aceita "12,5" ou "12.5"; devolve número ou null. */
+/**
+ * Percentual: "." e "," são sempre separador decimal. Aceita "12,5", "12.5",
+ * "1.234,5" (o último separador é o decimal; os anteriores são milhar).
+ */
 const parsePct = (v: string): number | null => {
-  const s = v.replace(/[^\d.,]/g, '').replace(',', '.');
-  if (!s) return null;
+  const cleaned = v.replace(/[^\d.,]/g, '');
+  if (!cleaned) return null;
+  const s = cleaned.replace(/[.,](?=.*[.,])/g, '').replace(',', '.');
   const n = parseFloat(s);
   return Number.isFinite(n) ? n : null;
 };
