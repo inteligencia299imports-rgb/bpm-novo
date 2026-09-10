@@ -957,7 +957,8 @@ const ContratoDialog: React.FC<Props> = ({
 
   const handleGerar = async (variant: 'sinal' | 'venda' = 'sinal') => {
     if (!validateForGeneration()) return;
-    if (!soLeitura && valorFaltante > 0.005) {
+    // Só a proposta de VENDA exige as formas de pagamento cobrindo 100% do total.
+    if (variant === 'venda' && !soLeitura && valorFaltante > 0.005) {
       toast.error(`As formas de pagamento ainda não cobrem o Valor Total. Valor faltante: ${formatCurrency(valorFaltante)}.`);
       return;
     }
@@ -1059,12 +1060,13 @@ const ContratoDialog: React.FC<Props> = ({
   // Só libera gerar contrato quando não há campo obrigatório pendente E as formas
   // de pagamento cobrem 100% do Valor Total (valor faltante zerado).
   const vendaBloqueadaAprovacao = !vendaLiberada(atendimento as any);
-  const podeGerarBase = errosGeracao.length === 0 && valorTotalContrato > 0.005 && valorFaltante <= 0.005;
-  // Contrato de SINAL não depende da aprovação do master — pode gerar/emitir mesmo
-  // com a venda aguardando aprovação.
-  const podeGerarSinal = podeGerarBase;
-  // Contrato de VENDA (proposta finalizada) só depois da aprovação do master.
-  const podeGerarContrato = podeGerarBase && !vendaBloqueadaAprovacao;
+  // Contrato de SINAL: campos obrigatórios preenchidos e Valor da Venda definido.
+  // NÃO exige aprovação do master nem que as formas de pagamento cubram 100% do
+  // total — o sinal é "paga o sinal agora, o resto até o vencimento".
+  const podeGerarSinal = errosGeracao.length === 0 && valorTotalContrato > 0.005;
+  // Contrato de VENDA (proposta finalizada): além do acima, formas de pagamento
+  // cobrindo 100% do Valor Total e aprovação do master.
+  const podeGerarContrato = podeGerarSinal && valorFaltante <= 0.005 && !vendaBloqueadaAprovacao;
 
   if (!open) return null;
 
