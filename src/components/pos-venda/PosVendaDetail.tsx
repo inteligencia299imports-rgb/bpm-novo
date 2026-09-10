@@ -7,6 +7,7 @@ import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle,
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { podeAprovarVenda, vendaLiberada, vendaAprovada, vendaRecusada } from '@/lib/aprovacaoVenda';
+import { exigeAprovacao } from '@/lib/aprovacao';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import type { MotoFoto } from '@/types/crm';
 import { format } from 'date-fns';
@@ -206,6 +207,44 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       changed_by_name: userName || user?.email || null,
       observacoes: motivo || null,
     } as any);
+
+    // Troca: aprovar a venda também aprova automaticamente a aquisição da moto
+    // do cliente (pós-compra) que ainda estiver pendente.
+    if (modo === 'aprovar' && item.interesse === 'trocar') {
+      const pendentes = motosAvaliacao.filter(
+        (av) => exigeAprovacao(av) && av.aprovacao_status !== 'aprovada' && av.aprovacao_status !== 'recusada',
+      );
+      if (pendentes.length > 0) {
+        const nowIso = new Date().toISOString();
+        const obsAuto = 'Aprovada automaticamente com a aprovação da venda';
+        await Promise.all(pendentes.map(async (av) => {
+          await supabase.from('avaliacoes').update({
+            aprovacao_status: 'aprovada',
+            aprovacao_observacao: motivo || obsAuto,
+            aprovado_por: user?.id ?? null,
+            aprovado_em: nowIso,
+            pos_compra_status: 'aprovada',
+          } as any).eq('id', av.id);
+          await supabase.from('status_history').insert({
+            entity_type: 'pos_compra',
+            entity_id: av.id,
+            status: 'aprovada',
+            changed_by: user?.id,
+            changed_by_name: userName || user?.email || null,
+            observacoes: obsAuto,
+          } as any);
+        }));
+        const ids = new Set(pendentes.map((av) => av.id));
+        setMotosAvaliacao((prev) => prev.map((av) => ids.has(av.id)
+          ? { ...av, aprovacao_status: 'aprovada', pos_compra_status: 'aprovada' } : av));
+        setAvaliacoes((prev) => {
+          const next = { ...prev };
+          for (const id of ids) if (next[id]) next[id] = { ...next[id], aprovacao_status: 'aprovada', pos_compra_status: 'aprovada' };
+          return next;
+        });
+      }
+    }
+
     setVendaAprovStatus(novoStatus);
     setAprovacaoPopup(null);
     setSavingAprovacao(false);
