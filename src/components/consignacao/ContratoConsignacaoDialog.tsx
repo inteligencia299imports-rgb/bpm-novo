@@ -21,6 +21,7 @@ import { generateContratoConsignacaoPdf } from '@/lib/generateContratoConsignaca
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
+import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
 import NfeCabecalhoAcoes from '@/components/shared/NfeCabecalhoAcoes';
@@ -624,7 +625,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                   ) : (soLeitura || (cadastroCompleto && !editandoCliente)) ? (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <InfoDisplay label="Nome" value={cli?.nome_razao_social} />
-                      <InfoDisplay label="CPF/CNPJ" value={cli?.cpf_cnpj ? formatCpfCnpj(cli.cpf_cnpj) : undefined} />
+                      <InfoDisplay label={rotuloDocumento(cli)} value={cli?.cpf_cnpj ? formatCpfCnpj(cli.cpf_cnpj) : undefined} />
                       <InfoDisplay label="Sexo" value={cli?.sexo} />
                       <InfoDisplay label="Data de Nascimento" value={fmtDataNasc(cli?.data_nascimento)} />
                       <InfoDisplay label="E-mail (NF)" value={cli?.email_nf} />
@@ -680,7 +681,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                       <InfoDisplay label="Conta" value={cli?.conta ? `${cli.conta}${cli?.digito_conta ? `-${cli.digito_conta}` : ''}` : undefined} />
                       <InfoDisplay label="Chave PIX" value={cli?.chave_pix} />
                       <InfoDisplay label="Favorecido" value={cli?.favorecido} />
-                      <InfoDisplay label="CPF/CNPJ do Favorecido" value={cli?.cpf_cnpj_favorecido ? formatCpfCnpj(cli.cpf_cnpj_favorecido) : undefined} />
+                      <InfoDisplay label={`${ehCnpj(cli?.cpf_cnpj_favorecido) ? 'CNPJ' : 'CPF'} do Favorecido`} value={cli?.cpf_cnpj_favorecido ? formatCpfCnpj(cli.cpf_cnpj_favorecido) : undefined} />
                     </CardContent>
                   </Card>
                 </>
