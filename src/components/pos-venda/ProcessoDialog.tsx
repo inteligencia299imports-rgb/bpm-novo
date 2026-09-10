@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 
 const NF_VENDA = 'NF-E DE VENDA';
 const NF_TROCA = 'NF-E DE ENTRADA (TROCA)';
+const ATPV_E = 'ATPV-E';
 
 const DEFAULT_ETAPAS = [
   'CHECK-LIST',
@@ -30,7 +31,7 @@ const DEFAULT_ETAPAS = [
   'DOCUMENTAÇÃO COM DESPACHANTE',
   'DOC. OUTRA UF',
   'PENDENTE (BOLETO)',
-  'TRANSFERÊNCIA FINALIZADA',
+  ATPV_E,
 ];
 
 interface EtapaData {
@@ -58,6 +59,8 @@ interface Props {
   onEmitirNfe?: () => void;
   /** Abre a tela de emissão da NF-e de entrada da moto de troca (etapa NF-E DE ENTRADA (TROCA)). */
   onEmitirNfeTroca?: (avaliacaoId: string) => void;
+  /** Abre a tela de emissão do ATPV-e (etapa ATPV-E) — só moto 0km (RENAVE). */
+  onEmitirAtpv?: () => void;
   /** Navega para o Pós-Compra da avaliação da moto de troca. */
   onNavigateToPosCompra?: (avaliacaoId: string) => void;
   /** Venda aguardando/recusada na aprovação do master — bloqueia salvar e emitir NF-e. */
@@ -74,6 +77,7 @@ const ProcessoDialog: React.FC<Props> = ({
   onContratoSaved,
   onEmitirNfe,
   onEmitirNfeTroca,
+  onEmitirAtpv,
   onNavigateToPosCompra,
   vendaBloqueadaAprovacao,
 }) => {
@@ -140,12 +144,15 @@ const ProcessoDialog: React.FC<Props> = ({
 
         if ((mi as any)?.estoque_moto_id) {
           const eh0km = (mi as any).estoque_tipo === '0km';
-          const { data: em } = await supabase
+          const cols = eh0km
+            ? 'id, status, renave_id_estoque, renave_estado, renave_atpv_numero, renave_atpv_url'
+            : 'id, status';
+          const { data: em } = await (supabase as any)
             .from(eh0km ? 'estoque_motos_novas' : 'estoque_motos')
-            .select('id, status')
+            .select(cols)
             .eq('id', (mi as any).estoque_moto_id)
             .maybeSingle();
-          estMoto = em ? { ...em, fonte: eh0km ? '0km' : 'seminova' } : null;
+          estMoto = em ? { ...(em as any), fonte: eh0km ? '0km' : 'seminova' } : null;
         }
 
         if (inter === 'trocar') {
@@ -205,9 +212,19 @@ const ProcessoDialog: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, trocaAvaliacaoId]);
 
+  // ATPV-e (só moto 0km, via RENAVE). "Emitido" = tem numeroAtpv gravado.
+  const is0km = (estoqueMoto as any)?.fonte === '0km';
+  const atpvEmitido = !!(estoqueMoto as any)?.renave_atpv_numero;
+  const renaveEntrouEstoque = !!(estoqueMoto as any)?.renave_id_estoque;
+
   const nfEmitidaDe = (etapa: string) =>
-    etapa === NF_VENDA ? nfeVenda.emitida : etapa === NF_TROCA ? nfeTroca.emitida : false;
-  const isNfEtapa = (etapa: string) => etapa === NF_VENDA || etapa === NF_TROCA;
+    etapa === NF_VENDA ? nfeVenda.emitida
+    : etapa === NF_TROCA ? nfeTroca.emitida
+    : (etapa === ATPV_E && is0km) ? atpvEmitido
+    : false;
+  // Etapas "automáticas" (sem checkbox, marcadas por estado externo).
+  const isNfEtapa = (etapa: string) =>
+    etapa === NF_VENDA || etapa === NF_TROCA || (etapa === ATPV_E && is0km);
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     if (isNfEtapa(etapa)) return; // estado dirigido pela emissão da NF-e
@@ -307,11 +324,12 @@ const ProcessoDialog: React.FC<Props> = ({
           newStatus = statusRules.default || 'em_andamento';
         }
       } else {
-        // Default pos-venda behavior
-        const transferenciaFinalizada = etapas.find(e => e.etapa === 'TRANSFERÊNCIA FINALIZADA')?.concluida;
+        // Default pos-venda behavior — a etapa ATPV-E finaliza o processo.
+        // 0km: concluída = ATPV-e emitido no RENAVE. Demais: checkbox manual.
+        const atpvConcluido = is0km ? atpvEmitido : etapas.find(e => e.etapa === ATPV_E)?.concluida;
         const docDespachante = etapas.find(e => e.etapa === 'DOCUMENTAÇÃO COM DESPACHANTE')?.concluida;
 
-        if (transferenciaFinalizada) {
+        if (atpvConcluido) {
           newStatus = 'concluido';
         } else if (docDespachante) {
           newStatus = 'doc_despachante';
@@ -386,9 +404,11 @@ const ProcessoDialog: React.FC<Props> = ({
               const isDateOnly = isPrevisaoPagamento || isEntregaMoto;
               const isNfVenda = e.etapa === NF_VENDA;
               const isNfTroca = e.etapa === NF_TROCA;
-              const isNf = isNfVenda || isNfTroca;
+              const isAtpv = e.etapa === ATPV_E;
+              const isAtpvAuto = isAtpv && is0km;   // 0km: emitido via RENAVE (sem checkbox)
+              const isNf = isNfVenda || isNfTroca || isAtpvAuto;
               const nfeObj = isNfVenda ? nfeVenda : isNfTroca ? nfeTroca : null;
-              const nfMarcada = isNf ? !!nfeObj?.emitida : false;
+              const nfMarcada = isAtpvAuto ? atpvEmitido : (isNf ? !!nfeObj?.emitida : false);
               const dataBloqueada = !isNf && !!e.data_conclusao && e.data_conclusao === datasSalvas[e.etapa];
               const dateFmt = isDateOnly ? 'dd/MM/yyyy' : 'dd/MM/yyyy HH:mm';
               return (
@@ -480,6 +500,30 @@ const ProcessoDialog: React.FC<Props> = ({
                       >
                         {nfeTroca.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                         {nfeTroca.erro ? 'Tentar novamente' : nfeTroca.cancelada ? 'Reemitir NF-e' : 'Emitir NF-e'}
+                      </Button>
+                    )
+                  ) : isAtpvAuto ? (
+                    atpvEmitido ? (
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                        <Button
+                          size="sm" className="h-7 gap-1"
+                          onClick={() => onEmitirAtpv?.()}
+                        >
+                          <FileText className="h-3.5 w-3.5" /> ATPV-e
+                        </Button>
+                        {(estoqueMoto as any)?.renave_atpv_numero && (
+                          <span>Nº {(estoqueMoto as any).renave_atpv_numero}</span>
+                        )}
+                      </span>
+                    ) : (
+                      <Button
+                        variant={renaveEntrouEstoque ? 'default' : 'outline'} size="sm"
+                        className="h-9 gap-2 text-sm"
+                        disabled={!renaveEntrouEstoque}
+                        title={renaveEntrouEstoque ? undefined : 'Disponível após a entrada da moto no estoque RENAVE'}
+                        onClick={() => onEmitirAtpv?.()}
+                      >
+                        <FileText className="h-4 w-4" /> Emitir ATPV-e
                       </Button>
                     )
                   ) : isNf ? (
