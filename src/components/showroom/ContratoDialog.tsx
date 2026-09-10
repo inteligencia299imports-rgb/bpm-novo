@@ -916,7 +916,11 @@ const ContratoDialog: React.FC<Props> = ({
         placaChassi: (motoAv.placa || '')?.replace(/-/g, '') || 'N/A',
         km: motoAv.km || 'N/A',
         valorQuitacao: `R$ ${valorQuitacao || '0,00'}`,
-        valorNegociado: `R$ ${valorFechamento || '0,00'}`,
+        // Sem Valor de Fechamento, usa o repasse de compra ao cliente
+        // (Avaliação − Custos Loja), igual ao cálculo do Valor Faltante.
+        valorNegociado: parseCurrencyInput(valorFechamento) > 0
+          ? `R$ ${valorFechamento}`
+          : formatCurrency(valorRepasseTroca || 0),
       };
     }
 
