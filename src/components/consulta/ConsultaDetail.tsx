@@ -18,7 +18,8 @@ import { supabase } from '@/lib/supabase';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
-import { docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket, ehPessoaJuridica } from '@/lib/cnhAnexo';
+import { docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket, ehPessoaJuridica, upsertCnhDoc } from '@/lib/cnhAnexo';
+import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,10 +60,12 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
   const { user, userName } = useAuth();
   const [history, setHistory] = useState<any[]>([]);
   const [cnhUrl, setCnhUrl] = useState<string | null>(null);
-  // Documentos são somente leitura na consulta (ver DocumentUpload readOnly).
-  const crlvUrl = moto.crlv_url || null;
-  const atpvUrl = (moto as any).atpv_url || null;
-  const procuracaoUrl = (moto as any).procuracao_url || null;
+  // Documentos podem ser anexados quando ausentes (mesmo após NF-e); só não
+  // podem ser removidos/substituídos quando há NF-e de produção.
+  const { emitidaProducao: nfeMotoProducao } = useNfeEmitida(moto?.id, 'avaliacao');
+  const [crlvUrl, setCrlvUrl] = useState<string | null>(moto.crlv_url || null);
+  const [atpvUrl, setAtpvUrl] = useState<string | null>((moto as any).atpv_url || null);
+  const [procuracaoUrl, setProcuracaoUrl] = useState<string | null>((moto as any).procuracao_url || null);
   const [resultadoTexto, setResultadoTexto] = useState<string>(moto.resultado_consulta || '');
   const [saving, setSaving] = useState(false);
   const [isConsultada, setIsConsultada] = useState(moto.consulta_realizada === true);
@@ -413,10 +416,21 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               <DocumentUpload
                 label={docIdentificacaoLabel(clientePj)}
                 className="w-1/4"
-                readOnly
+                bloquearRemocao={nfeMotoProducao}
                 currentUrl={cnhUrl}
                 bucketPath={`docs/${atendimento?.cliente_id}/${docIdentificacaoBucket(clientePj)}`}
-                onUploaded={() => {}}
+                onUploaded={async (url) => {
+                  if (atendimento?.cliente_id) await upsertCnhDoc(atendimento.cliente_id, url, docIdentificacaoTipo(clientePj));
+                  setCnhUrl(url);
+                }}
+                onRemoved={async () => {
+                  if (atendimento?.cliente_id) {
+                    await supabase.from('clientes_fornecedores_documentos').delete()
+                      .eq('cliente_fornecedor_id', atendimento.cliente_id)
+                      .eq('tipo_documento', docIdentificacaoTipo(clientePj));
+                  }
+                  setCnhUrl(null);
+                }}
               />
             </CardContent>
           </Card>
@@ -457,31 +471,52 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 <Button size="sm" variant="outline" className={`flex-1 gap-1.5 ${fotos.length > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setShowPhotosDialog(true)}>
                   <Camera className="h-4 w-4" /> {fotos.length > 0 ? `Fotos (${fotos.length}) ✓` : 'Fotos'}
                 </Button>
-                {/* Na consulta os documentos são apenas para conferência:
-                    visualizar/baixar, sem anexar nem remover. */}
+                {/* Documento ausente pode ser anexado aqui; só não pode ser
+                    removido quando há NF-e de produção. */}
                 <DocumentUpload
                   label="CRLV"
                   className="flex-1"
-                  readOnly
+                  bloquearRemocao={nfeMotoProducao}
                   currentUrl={crlvUrl}
                   bucketPath={`docs/${moto.id}/crlv`}
-                  onUploaded={() => {}}
+                  onUploaded={async (url) => {
+                    await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto.id);
+                    setCrlvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('avaliacoes').update({ crlv_url: null } as any).eq('id', moto.id);
+                    setCrlvUrl(null);
+                  }}
                 />
                 <DocumentUpload
                   label="ATPV"
                   className="flex-1"
-                  readOnly
+                  bloquearRemocao={nfeMotoProducao}
                   currentUrl={atpvUrl}
                   bucketPath={`docs/${moto.id}/atpv`}
-                  onUploaded={() => {}}
+                  onUploaded={async (url) => {
+                    await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', moto.id);
+                    setAtpvUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', moto.id);
+                    setAtpvUrl(null);
+                  }}
                 />
                 <DocumentUpload
                   label="Procuração"
                   className="flex-1"
-                  readOnly
+                  bloquearRemocao={nfeMotoProducao}
                   currentUrl={procuracaoUrl}
                   bucketPath={`docs/${moto.id}/procuracao`}
-                  onUploaded={() => {}}
+                  onUploaded={async (url) => {
+                    await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', moto.id);
+                    setProcuracaoUrl(url);
+                  }}
+                  onRemoved={async () => {
+                    await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', moto.id);
+                    setProcuracaoUrl(null);
+                  }}
                 />
               </div>
             </CardContent>

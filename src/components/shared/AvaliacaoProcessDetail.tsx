@@ -28,6 +28,7 @@ import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import { formatPersonName, firstLastName } from '@/lib/utils';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
+import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 
@@ -108,6 +109,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
 
   const [motoData, setMotoData] = useState(item);
   const moto = motoData;
+  // NF-e de compra/consignação da moto em produção → só bloqueia REMOÇÃO de doc.
+  const { emitidaProducao: nfeMotoProducao } = useNfeEmitida(item?.id, 'avaliacao');
   const atendimento = item.atendimento || item.atendimentos;
   const clientePj = ehPessoaJuridica(atendimento?.cliente);
   const statusValue = item[statusField] || 'em_aberto';
@@ -527,6 +530,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                         className="flex-1"
                         currentUrl={crlvUrl}
                         bucketPath={moto.id ? `docs/${moto.id}/crlv` : ''}
+                        bloquearRemocao={nfeMotoProducao}
                         deferPreview
                         onUploaded={async (url) => {
                           setCrlvUrl(url);
@@ -548,6 +552,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                         className="flex-1"
                         currentUrl={atpvUrl}
                         bucketPath={moto.id ? `docs/${moto.id}/atpv` : ''}
+                        bloquearRemocao={nfeMotoProducao}
                         onUploaded={(url) => {
                           setAtpvUrl(url);
                           if (moto.id) supabase.from('avaliacoes').update({ atpv_url: url }).eq('id', moto.id);
@@ -562,6 +567,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                         className="flex-1"
                         currentUrl={procuracaoUrl}
                         bucketPath={moto.id ? `docs/${moto.id}/procuracao` : ''}
+                        bloquearRemocao={nfeMotoProducao}
                         onUploaded={(url) => {
                           setProcuracaoUrl(url);
                           if (moto.id) supabase.from('avaliacoes').update({ procuracao_url: url }).eq('id', moto.id);

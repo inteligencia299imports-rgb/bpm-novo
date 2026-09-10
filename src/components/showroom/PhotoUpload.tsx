@@ -9,11 +9,17 @@ import { cn } from '@/lib/utils';
 
 interface Props {
   avaliacaoId: string;
-  /** Somente leitura (ex.: após emissão da NF-e): só visualizar, sem adicionar nem excluir. */
+  /** Somente leitura: só visualizar, sem adicionar nem excluir. */
   readOnly?: boolean;
+  /**
+   * Trava pós-emissão de NF-e em produção: ainda é possível anexar uma foto de
+   * um tipo AUSENTE, mas não excluir nem substituir uma já enviada.
+   * Ignorado quando `readOnly`.
+   */
+  bloquearRemocao?: boolean;
 }
 
-const PhotoUpload: React.FC<Props> = ({ avaliacaoId, readOnly }) => {
+const PhotoUpload: React.FC<Props> = ({ avaliacaoId, readOnly, bloquearRemocao }) => {
   const [fotos, setFotos] = useState<MotoFoto[]>([]);
   const [uploading, setUploading] = useState<string | null>(null);
 
@@ -95,14 +101,18 @@ const PhotoUpload: React.FC<Props> = ({ avaliacaoId, readOnly }) => {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {TIPOS_FOTO.map(tipo => {
           const foto = fotos.find(f => f.tipo === tipo);
+          // Anexar foto ausente é sempre permitido (salvo readOnly). Substituir/
+          // excluir foto existente é bloqueado quando há NF-e de produção.
+          const podeAnexar = !readOnly && (!bloquearRemocao || !foto);
+          const podeRemover = !readOnly && !bloquearRemocao;
           return (
             <div key={tipo} className="relative group">
               {React.createElement(
-                readOnly ? 'div' : 'label',
+                podeAnexar ? 'label' : 'div',
                 {
                   className: cn(
                     'flex flex-col items-center justify-center aspect-square rounded-lg border-2 border-dashed border-border transition-colors overflow-hidden bg-muted/50',
-                    !readOnly && 'hover:border-primary/50 cursor-pointer',
+                    podeAnexar && 'hover:border-primary/50 cursor-pointer',
                   ),
                 },
                 uploading === tipo ? (
@@ -115,7 +125,7 @@ const PhotoUpload: React.FC<Props> = ({ avaliacaoId, readOnly }) => {
                     <span className="text-[10px] text-muted-foreground text-center px-1">{TIPOS_FOTO_LABELS[tipo]}</span>
                   </>
                 ),
-                !readOnly && (
+                podeAnexar && (
                   <input type="file" accept="image/*" className="hidden" onChange={e => {
                     const f = e.target.files?.[0];
                     if (f) handleUpload(tipo, f);
@@ -136,7 +146,7 @@ const PhotoUpload: React.FC<Props> = ({ avaliacaoId, readOnly }) => {
                     >
                       <ExternalLink className="h-3 w-3" />
                     </button>
-                    {!readOnly && (
+                    {podeRemover && (
                       <button
                         type="button"
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(foto); }}
