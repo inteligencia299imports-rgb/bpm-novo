@@ -16,6 +16,8 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
+import { nfeBotaoClasse } from '@/lib/nfeTag';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
@@ -527,7 +529,11 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                     // autorizada, e a opção de emitir em Produção depois da homologação).
                     <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
                       {nfeEmitida && (
-                        <Button size="sm" className="h-8 gap-1.5" onClick={() => onEmitirNfe?.()}>
+                        <Button
+                          size="sm"
+                          className={cn('h-8 gap-1.5', nfeBotaoClasse(nfeCompra))}
+                          onClick={() => onEmitirNfe?.()}
+                        >
                           <FileText className="h-4 w-4" /> NF-e
                         </Button>
                       )}
