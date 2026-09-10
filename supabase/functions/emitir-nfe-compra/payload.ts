@@ -12,6 +12,10 @@ export interface DadosFornecedor {
   nome: string;
   cpf_cnpj: string;
   tipo_pessoa: string | null;
+  /** Indicador de IE do destinatário (NF-e): contribuinte + IE → 1; isento → 2; senão 9. */
+  contribuinte_icms?: boolean | null;
+  inscricao_estadual?: string | null;
+  isento_inscricao_estadual?: boolean | null;
   telefone: string | null;
   cep: string | null;
   logradouro: string | null;
@@ -288,6 +292,13 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
 
   const pf = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
   const docForn = onlyDigits(fornecedor.cpf_cnpj);
+
+  // Indicador de IE do destinatário (SEFAZ [232] quando um CNPJ contribuinte
+  // é declarado sem IE). PF vendedora/consignante = sempre 9 (não contribuinte).
+  const ieForn = onlyDigits(fornecedor.inscricao_estadual);
+  const destContribuinteComIe = !pf && fornecedor.contribuinte_icms === true && ieForn.length > 0;
+  const destIsento = !pf && fornecedor.isento_inscricao_estadual === true;
+  const indIeDest = destContribuinteComIe ? 1 : destIsento ? 2 : 9;
   const valorFmt = Number(valor.toFixed(2));
   const r2 = (n: number) => Number(n.toFixed(2));
 
@@ -577,7 +588,8 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
 
     nome_destinatario: fornecedor.nome,
     [pf ? 'cpf_destinatario' : 'cnpj_destinatario']: docForn,
-    indicador_inscricao_estadual_destinatario: 9,
+    indicador_inscricao_estadual_destinatario: indIeDest,
+    ...(indIeDest === 1 ? { inscricao_estadual_destinatario: ieForn } : {}),
     telefone_destinatario: onlyDigits(fornecedor.telefone) || undefined,
     logradouro_destinatario: fornecedor.logradouro || undefined,
     numero_destinatario: fornecedor.numero || 'S/N',
