@@ -110,8 +110,10 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
 
   const [motoData, setMotoData] = useState(item);
   const moto = motoData;
-  // NF-e de compra/consignação da moto em produção → só bloqueia REMOÇÃO de doc.
+  // Remoção de documento travada: aquisição aprovada OU NF-e da moto em produção.
+  // Anexar documento ausente segue liberado.
   const { emitidaProducao: nfeMotoProducao } = useNfeEmitida(item?.id, 'avaliacao');
+  const docRemocaoTravada = (item as any)?.aprovacao_status === 'aprovada' || nfeMotoProducao;
   const atendimento = item.atendimento || item.atendimentos;
   const clientePj = ehPessoaJuridica(atendimento?.cliente);
   const statusValue = item[statusField] || 'em_aberto';
@@ -531,7 +533,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                         className="flex-1"
                         currentUrl={crlvUrl}
                         bucketPath={moto.id ? `docs/${moto.id}/crlv` : ''}
-                        bloquearRemocao={nfeMotoProducao}
+                        bloquearRemocao={docRemocaoTravada}
                         deferPreview
                         onUploaded={async (url) => {
                           setCrlvUrl(url);
@@ -553,7 +555,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                         className="flex-1"
                         currentUrl={atpvUrl}
                         bucketPath={moto.id ? `docs/${moto.id}/atpv` : ''}
-                        bloquearRemocao={nfeMotoProducao}
+                        bloquearRemocao={docRemocaoTravada}
                         deferPreview
                         onUploaded={async (url) => {
                           setAtpvUrl(url);
@@ -576,7 +578,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                         className="flex-1"
                         currentUrl={procuracaoUrl}
                         bucketPath={moto.id ? `docs/${moto.id}/procuracao` : ''}
-                        bloquearRemocao={nfeMotoProducao}
+                        bloquearRemocao={docRemocaoTravada}
                         deferPreview
                         onUploaded={async (url) => {
                           setProcuracaoUrl(url);

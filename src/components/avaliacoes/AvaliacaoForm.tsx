@@ -902,6 +902,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const precisaAprovacao = context === 'pos_compra' && isTipoPropria(avaliacao?.tipo_aquisicao) && !ehTrocaPosCompra;
   const aguardandoAprovacao = precisaAprovacao && apSt !== 'aprovada' && apSt !== 'recusada';
   const aprovado = precisaAprovacao && apSt === 'aprovada';
+  // Remoção de documento travada: aquisição aprovada (inclui troca auto-aprovada
+  // junto com a venda) OU NF-e em produção. Anexar documento ausente segue liberado.
+  const docRemocaoTravada = apSt === 'aprovada' || nfeEmitidaProducao;
   const souAprovador = podeAprovar(user?.id);
   // Após aprovação (ou emissão da NF-e): nada pode ser editado nem arquivo removido.
   const travado = aprovado || nfeCompraEmitida;
@@ -1245,7 +1248,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                     bucketPath={`docs/${at.cliente_id}/${docIdentificacaoBucket(clientePj)}`}
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
-                    bloquearRemocao={nfeEmitidaProducao}
+                    bloquearRemocao={docRemocaoTravada}
                     deferPreview
                   />
                 </>
@@ -1349,7 +1352,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <DocumentUpload
                   label="CRLV"
                   className="flex-1"
-                  bloquearRemocao={nfeEmitidaProducao}
+                  bloquearRemocao={docRemocaoTravada}
                   currentUrl={crlvUrl}
                   bucketPath={`docs/${moto?.id}/crlv`}
                   deferPreview
@@ -1373,7 +1376,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <DocumentUpload
                   label="ATPV"
                   className="flex-1"
-                  bloquearRemocao={nfeEmitidaProducao}
+                  bloquearRemocao={docRemocaoTravada}
                   currentUrl={atpvUrl}
                   bucketPath={`docs/${moto?.id}/atpv`}
                   deferPreview
@@ -1397,7 +1400,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <DocumentUpload
                   label="Procuração"
                   className="flex-1"
-                  bloquearRemocao={nfeEmitidaProducao}
+                  bloquearRemocao={docRemocaoTravada}
                   currentUrl={procuracaoUrl}
                   bucketPath={`docs/${moto?.id}/procuracao`}
                   deferPreview

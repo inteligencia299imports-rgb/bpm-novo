@@ -131,6 +131,10 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   // NF-e em produção → só bloqueia REMOÇÃO de documento (anexar ausente continua ok).
   const { emitidaProducao: nfeVendaProducao } = useNfeEmitida(item.id, 'atendimento');
   const { emitidaProducao: nfeMotoConsignadaProducao } = useNfeEmitida(motoConsignada?.id, 'avaliacao');
+  // Remoção de documento travada: venda/aquisição aprovada OU NF-e em produção.
+  // Anexar documento ausente segue liberado.
+  const docRemocaoTravadaVenda = vendaAprovStatus === 'aprovada' || nfeVendaProducao;
+  const docRemocaoTravadaConsignada = (motoConsignada as any)?.aprovacao_status === 'aprovada' || nfeMotoConsignadaProducao;
 
   const refreshConsignada = async () => {
     const consignadaEstoque = Object.values(estoqueData).find((e: any) => e.tipo === 'consignada');
@@ -635,7 +639,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                     bucketPath={`docs/${(item as any).cliente_id}/${docIdentificacaoBucket(compradorPj)}`}
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
-                    bloquearRemocao={nfeVendaProducao}
+                    bloquearRemocao={docRemocaoTravadaVenda}
                     deferPreview
                   />
                 </>
@@ -712,7 +716,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                         className="flex-1"
                         currentUrl={motoConsignada.crlv_url || null}
                         bucketPath={`docs/${motoConsignada.id}/crlv`}
-                        bloquearRemocao={nfeMotoConsignadaProducao}
+                        bloquearRemocao={docRemocaoTravadaConsignada}
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', motoConsignada.id);
                           setMotoConsignada({ ...motoConsignada, crlv_url: url });
@@ -727,7 +731,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                         className="flex-1"
                         currentUrl={motoConsignada.atpv_url || null}
                         bucketPath={`docs/${motoConsignada.id}/atpv`}
-                        bloquearRemocao={nfeMotoConsignadaProducao}
+                        bloquearRemocao={docRemocaoTravadaConsignada}
                         deferPreview
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', motoConsignada.id);
@@ -749,7 +753,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                         className="flex-1"
                         currentUrl={motoConsignada.procuracao_url || null}
                         bucketPath={`docs/${motoConsignada.id}/procuracao`}
-                        bloquearRemocao={nfeMotoConsignadaProducao}
+                        bloquearRemocao={docRemocaoTravadaConsignada}
                         deferPreview
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', motoConsignada.id);
@@ -949,7 +953,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                                 label="CRLV"
                                 currentUrl={estoqueCrlvUrls[estItem.avaliacoes.id] ?? estItem.avaliacoes.crlv_url ?? null}
                                 bucketPath={`docs/${estItem.avaliacoes.id}/crlv`}
-                                bloquearRemocao={nfeVendaProducao}
+                                bloquearRemocao={docRemocaoTravadaVenda}
                                 onUploaded={async (url) => {
                                   const maId = estItem.avaliacoes.id;
                                   await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', maId);

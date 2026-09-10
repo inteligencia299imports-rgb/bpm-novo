@@ -125,6 +125,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [editClienteOpen, setEditClienteOpen] = useState(false);
   // NF-e de venda autorizada -> atendimento/avaliação travados p/ edição (destrava se cancelada).
   const { emitida: nfeVendaEmitida, emitidaProducao: nfeVendaEmitidaProducao } = useNfeEmitida(atendimento.id, 'atendimento');
+  // Remoção de documento travada: venda aprovada OU NF-e de venda em produção.
+  // Anexar documento ausente segue liberado.
+  const docRemocaoTravada = (atendimento as any)?.venda_aprovacao_status === 'aprovada' || nfeVendaEmitidaProducao;
 
   // Edicao de dados da moto avaliada
   const [editMotoId, setEditMotoId] = useState<string | null>(null);
@@ -935,7 +938,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     bucketPath={`docs/${atendimento.cliente_id}/${docIdentificacaoBucket(clientePj)}`}
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
-                    bloquearRemocao={nfeVendaEmitidaProducao}
+                    bloquearRemocao={docRemocaoTravada}
                     deferPreview
                   />
                 </>
@@ -1293,7 +1296,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         className="flex-1"
                         currentUrl={crlvUrls[moto.id] || null}
                         bucketPath={`docs/${moto.id}/crlv`}
-                        bloquearRemocao={nfeVendaEmitidaProducao}
+                        bloquearRemocao={docRemocaoTravada}
                         deferPreview
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', moto.id);
@@ -1315,7 +1318,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         className="flex-1"
                         currentUrl={atpvUrls[moto.id] || null}
                         bucketPath={`docs/${moto.id}/atpv`}
-                        bloquearRemocao={nfeVendaEmitidaProducao}
+                        bloquearRemocao={docRemocaoTravada}
                         deferPreview
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', moto.id);
@@ -1337,7 +1340,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         className="flex-1"
                         currentUrl={procuracaoUrls[moto.id] || null}
                         bucketPath={`docs/${moto.id}/procuracao`}
-                        bloquearRemocao={nfeVendaEmitidaProducao}
+                        bloquearRemocao={docRemocaoTravada}
                         deferPreview
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', moto.id);
@@ -1518,7 +1521,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               <Camera className="h-5 w-5" /> Fotos da Moto
             </DialogTitle>
           </DialogHeader>
-          {photoMotoId && <PhotoUpload avaliacaoId={photoMotoId} bloquearRemocao={nfeVendaEmitidaProducao} />}
+          {photoMotoId && <PhotoUpload avaliacaoId={photoMotoId} bloquearRemocao={docRemocaoTravada} />}
           <div className="flex justify-end pt-2">
             <Button size="sm" onClick={async () => {
               if (photoMotoId) {
