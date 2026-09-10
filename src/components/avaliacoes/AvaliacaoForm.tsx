@@ -150,7 +150,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const canEdit = role === 'gerente' || role === 'master' || role === 'vendedor';
   const [history, setHistory] = useState<any[]>([]);
   // NF-e de compra/consignação autorizada -> avaliação travada (destrava se cancelada).
-  const { emitida: nfeEmitida, recarregar: recarregarNfe } = useNfeEmitida(avaliacao?.id, 'avaliacao');
+  const { emitida: nfeEmitida, emitidaProducao: nfeEmitidaProducao, recarregar: recarregarNfe } = useNfeEmitida(avaliacao?.id, 'avaliacao');
   const [editClienteOpen, setEditClienteOpen] = useState(false);
   // Etapa de aprovação (contexto pos_compra)
   const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar'; motivo: string } | null>(null);
@@ -1244,7 +1244,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                     bucketPath={`docs/${at.cliente_id}/${docIdentificacaoBucket(clientePj)}`}
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
-                    readOnly={aprovado} bloquearRemocao={nfeEmitida}
+                    bloquearRemocao={nfeEmitidaProducao}
                     deferPreview
                   />
                 </>
@@ -1348,7 +1348,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <DocumentUpload
                   label="CRLV"
                   className="flex-1"
-                  readOnly={aprovado} bloquearRemocao={nfeEmitida}
+                  bloquearRemocao={nfeEmitidaProducao}
                   currentUrl={crlvUrl}
                   bucketPath={`docs/${moto?.id}/crlv`}
                   deferPreview
@@ -1372,7 +1372,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <DocumentUpload
                   label="ATPV"
                   className="flex-1"
-                  readOnly={aprovado} bloquearRemocao={nfeEmitida}
+                  bloquearRemocao={nfeEmitidaProducao}
                   currentUrl={atpvUrl}
                   bucketPath={`docs/${moto?.id}/atpv`}
                   onUploaded={async (url) => {
@@ -1387,7 +1387,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <DocumentUpload
                   label="Procuração"
                   className="flex-1"
-                  readOnly={aprovado} bloquearRemocao={nfeEmitida}
+                  bloquearRemocao={nfeEmitidaProducao}
                   currentUrl={procuracaoUrl}
                   bucketPath={`docs/${moto?.id}/procuracao`}
                   onUploaded={async (url) => {
