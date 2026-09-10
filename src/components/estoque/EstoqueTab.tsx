@@ -21,6 +21,7 @@ import { firstLastName } from '@/lib/utils';
 import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
 import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import DadosFiscaisNovaDialog from '@/components/estoque/DadosFiscaisNovaDialog';
+import RenaveDialog from '@/components/estoque/RenaveDialog';
 import { pendenciasVeicProd } from '@/lib/veicProd';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -146,6 +147,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [retiradaItem, setRetiradaItem] = useState<EstoqueItem | null>(null);
   const [consultaItem, setConsultaItem] = useState<EstoqueItem | null>(null);
   const [dadosFiscaisItem, setDadosFiscaisItem] = useState<EstoqueItem | null>(null);
+  const [renaveItem, setRenaveItem] = useState<EstoqueItem | null>(null);
 
   const handleOpenHistory = async (item: EstoqueItem) => {
     setHistoryItem(item);
@@ -414,6 +416,11 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         label: faltaVeic > 0 ? `Dados fiscais (NF-e) · ${faltaVeic} pend.` : 'Dados fiscais (NF-e)',
         icon: <FileText className="h-4 w-4" />,
         action: () => setDadosFiscaisItem(item),
+      });
+      options.push({
+        label: (item as any).renave_id_estoque ? 'RENAVE ✓' : 'RENAVE — entrada em estoque',
+        icon: <FileText className="h-4 w-4" />,
+        action: () => setRenaveItem(item),
       });
     }
 
@@ -777,6 +784,13 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           setDadosFiscaisItem(null);
           fetchEstoque();
         }}
+      />
+
+      <RenaveDialog
+        open={!!renaveItem}
+        onOpenChange={(open) => { if (!open) setRenaveItem(null); }}
+        item={renaveItem}
+        onDone={() => { setRenaveItem(null); fetchEstoque(); }}
       />
 
       <Dialog open={!!historyItem} onOpenChange={(open) => { if (!open) setHistoryItem(null); }}>
