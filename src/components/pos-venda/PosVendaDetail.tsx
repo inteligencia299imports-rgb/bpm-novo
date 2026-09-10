@@ -34,6 +34,7 @@ import StatusTimeline from '@/components/shared/StatusTimeline';
 import { formatPersonName, firstLastName, cn, formatDataNascimento } from '@/lib/utils';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { processarCnhAnexada, upsertCnhDoc, docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket, ehPessoaJuridica } from '@/lib/cnhAnexo';
+import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
 
@@ -126,6 +127,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   // da Parte 1 é do proprietário/consignante; nas demais telas, do comprador.
   const compradorPj = ehPessoaJuridica((item as any)?.cliente);
   const docCompradorLabel = docIdentificacaoLabel(compradorPj);
+  // NF-e em produção → só bloqueia REMOÇÃO de documento (anexar ausente continua ok).
+  const { emitidaProducao: nfeVendaProducao } = useNfeEmitida(item.id, 'atendimento');
+  const { emitidaProducao: nfeMotoConsignadaProducao } = useNfeEmitida(motoConsignada?.id, 'avaliacao');
 
   const refreshConsignada = async () => {
     const consignadaEstoque = Object.values(estoqueData).find((e: any) => e.tipo === 'consignada');
@@ -630,6 +634,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                     bucketPath={`docs/${(item as any).cliente_id}/${docIdentificacaoBucket(compradorPj)}`}
                     onUploaded={handleCnhUploaded}
                     onRemoved={handleCnhRemoved}
+                    bloquearRemocao={nfeVendaProducao}
                     deferPreview
                   />
                 </>
@@ -706,6 +711,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                         className="flex-1"
                         currentUrl={motoConsignada.crlv_url || null}
                         bucketPath={`docs/${motoConsignada.id}/crlv`}
+                        bloquearRemocao={nfeMotoConsignadaProducao}
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', motoConsignada.id);
                           setMotoConsignada({ ...motoConsignada, crlv_url: url });
@@ -720,6 +726,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                         className="flex-1"
                         currentUrl={motoConsignada.atpv_url || null}
                         bucketPath={`docs/${motoConsignada.id}/atpv`}
+                        bloquearRemocao={nfeMotoConsignadaProducao}
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', motoConsignada.id);
                           setMotoConsignada({ ...motoConsignada, atpv_url: url });
@@ -734,6 +741,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                         className="flex-1"
                         currentUrl={motoConsignada.procuracao_url || null}
                         bucketPath={`docs/${motoConsignada.id}/procuracao`}
+                        bloquearRemocao={nfeMotoConsignadaProducao}
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', motoConsignada.id);
                           setMotoConsignada({ ...motoConsignada, procuracao_url: url });
@@ -926,6 +934,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                                 label="CRLV"
                                 currentUrl={estoqueCrlvUrls[estItem.avaliacoes.id] ?? estItem.avaliacoes.crlv_url ?? null}
                                 bucketPath={`docs/${estItem.avaliacoes.id}/crlv`}
+                                bloquearRemocao={nfeVendaProducao}
                                 onUploaded={async (url) => {
                                   const maId = estItem.avaliacoes.id;
                                   await supabase.from('avaliacoes').update({ crlv_url: url } as any).eq('id', maId);
