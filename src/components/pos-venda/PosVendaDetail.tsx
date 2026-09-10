@@ -106,7 +106,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [nfeVendaOpen, setNfeVendaOpen] = useState(false);
   const [trocaNfeAval, setTrocaNfeAval] = useState<any | null>(null);
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
-  const [intermHistory, setIntermHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
   const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
   // Aprovação da venda (master)
@@ -441,20 +441,22 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         setEntregaDataConclusao(entregaRow?.data_conclusao || null);
       }
 
-      // Fetch intermediação history (sale date + contract generation)
-      if (processoProps?.showContratoConsignante) {
-        const { data: histData } = await supabase
-          .from('status_history')
-          .select('*')
+      // Histórico de movimentações do atendimento (timeline completa: showroom +
+      // pós-venda + contrato consignante, e avaliação/consulta/pós-compra/consignação
+      // das motos do cliente).
+      const avIds = (motosAv || []).map((m: any) => m.id).filter(Boolean);
+      const [{ data: histAt }, { data: histAv }] = await Promise.all([
+        supabase.from('status_history').select('*')
           .eq('entity_id', item.id)
-          .in('entity_type', ['showroom', 'contrato_consignante'])
-          .order('created_at', { ascending: false });
-        // Filter to only show vendido + contrato gerado events
-        const filtered = (histData || []).filter((h: any) =>
-          h.status === 'vendido' || h.status?.startsWith('CONTRATO GERADO')
-        );
-        setIntermHistory(filtered);
-      }
+          .in('entity_type', ['showroom', 'pos_venda', 'contrato_consignante', 'contrato']),
+        avIds.length > 0
+          ? supabase.from('status_history').select('*')
+              .in('entity_id', avIds)
+              .in('entity_type', ['avaliacao', 'consulta', 'pos_compra', 'consignacao'])
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+      // StatusTimeline ordena e remove linhas espelhadas (mesmo status em dois entity_types).
+      setHistory([...(histAt || []), ...(histAv || [])]);
 
       setLoading(false);
     };
@@ -943,25 +945,30 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           {/* Observações */}
           <AtendimentoObservacoes idOperacao={item.id} />
 
-          {/* Histórico de Movimentações - Intermediação */}
-          {isIntermParte1 && intermHistory.length > 0 && (
-            <Card className="md:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-primary" /> Histórico de Movimentações
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+          {/* Histórico de Movimentações do atendimento */}
+          <Card className="md:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" /> Histórico de Movimentações
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {history.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">Nenhuma movimentação registrada</p>
+              ) : (
                 <StatusTimeline
-                  history={intermHistory}
-                  formatLabel={(raw) => {
-                    if (raw === 'vendido') return 'VENDA REALIZADA';
-                    return raw.replace(/_/g, ' ');
-                  }}
+                  history={history}
+                  formatLabel={(raw) => (raw === 'vendido' ? 'VENDA REALIZADA' : raw.replace(/_/g, ' '))}
+                  renderPopupExtra={(h) => h.observacoes ? (
+                    <div>
+                      <span className="text-xs text-muted-foreground">Observações</span>
+                      <p className="text-sm mt-0.5 whitespace-pre-wrap">{h.observacoes}</p>
+                    </div>
+                  ) : null}
                 />
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
 
         </div>
       </ScrollArea>
