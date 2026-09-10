@@ -1083,14 +1083,13 @@ const ContratoDialog: React.FC<Props> = ({
   const valorRepasseTroca = hasTroca && avaliacaoData?.avaliacao_compra != null
     ? Math.max(Number(avaliacaoData.avaliacao_compra) - Number(avaliacaoData.previsao_custos_loja ?? 0), 0)
     : 0;
-  // O quanto a moto da troca abate do Valor Faltante:
-  //  - com Valor de Fechamento preenchido: fechamento − repasse ao cliente;
-  //  - sem Valor de Fechamento: usa o repasse de compra (Avaliação − Custos Loja).
+  // O quanto a moto da troca abate do Valor Faltante — a moto do cliente entra
+  // como pagamento pelo seu valor cheio:
+  //  - com Valor de Fechamento preenchido: o próprio Valor de Fechamento;
+  //  - sem Valor de Fechamento: o repasse de compra (Avaliação − Custos Loja).
   const fechamentoTrocaNum = parseCurrencyInput(valorFechamento);
   const abatimentoTroca = hasTroca
-    ? (fechamentoTrocaNum > 0
-        ? Math.max(fechamentoTrocaNum - valorRepasseTroca, 0)
-        : valorRepasseTroca)
+    ? (fechamentoTrocaNum > 0 ? fechamentoTrocaNum : valorRepasseTroca)
     : 0;
   const somaPagamentos = somaFormasPagamento + abatimentoTroca;
   const valorFaltante = valorTotalContrato - somaPagamentos;
