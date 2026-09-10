@@ -1056,11 +1056,15 @@ const ContratoDialog: React.FC<Props> = ({
   const somaPagamentos = somaFormasPagamento + (hasTroca ? parseCurrencyInput(valorFechamento) : 0);
   const valorFaltante = valorTotalContrato - somaPagamentos;
 
-  // Só libera gerar contrato (sinal/venda) quando não há campo obrigatório pendente E as
-  // formas de pagamento cobrem 100% do Valor Total (valor faltante zerado).
-  // Venda finalizada só gera contrato depois da aprovação do master (pós-venda / intermediação).
+  // Só libera gerar contrato quando não há campo obrigatório pendente E as formas
+  // de pagamento cobrem 100% do Valor Total (valor faltante zerado).
   const vendaBloqueadaAprovacao = !vendaLiberada(atendimento as any);
-  const podeGerarContrato = errosGeracao.length === 0 && valorTotalContrato > 0.005 && valorFaltante <= 0.005 && !vendaBloqueadaAprovacao;
+  const podeGerarBase = errosGeracao.length === 0 && valorTotalContrato > 0.005 && valorFaltante <= 0.005;
+  // Contrato de SINAL não depende da aprovação do master — pode gerar/emitir mesmo
+  // com a venda aguardando aprovação.
+  const podeGerarSinal = podeGerarBase;
+  // Contrato de VENDA (proposta finalizada) só depois da aprovação do master.
+  const podeGerarContrato = podeGerarBase && !vendaBloqueadaAprovacao;
 
   if (!open) return null;
 
@@ -1084,7 +1088,7 @@ const ContratoDialog: React.FC<Props> = ({
 
       {!ehNfe && vendaBloqueadaAprovacao && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 flex items-center gap-1.5">
-          <AlertTriangle className="h-3.5 w-3.5" /> Proposta aguardando aprovação - Preencha os dados e solicite aprovação para seu Gestor.
+          <AlertTriangle className="h-3.5 w-3.5" /> Proposta aguardando aprovação — o contrato de sinal já pode ser gerado; a proposta de venda libera após a aprovação do seu Gestor.
         </div>
       )}
 
@@ -1847,7 +1851,7 @@ const ContratoDialog: React.FC<Props> = ({
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
-              {(soLeitura || podeGerarContrato) && (
+              {(soLeitura || podeGerarSinal) && (
                 <>
                   {jaGerado && contratoId && (
                     <Button variant="outline" onClick={handleVisualizar} disabled={viewing}>
@@ -1857,7 +1861,7 @@ const ContratoDialog: React.FC<Props> = ({
                   <Button variant="outline" onClick={() => handleGerar('sinal')} disabled={generating}>
                     <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Proposta Sinal'}
                   </Button>
-                  {canGerarVenda && (
+                  {canGerarVenda && (soLeitura || podeGerarContrato) && (
                     <Button variant="outline" onClick={() => handleGerar('venda')} disabled={generating}>
                       <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Proposta Venda'}
                     </Button>
