@@ -358,7 +358,7 @@ async function registrarPosAutorizacao(
   venc.setDate(venc.getDate() + DIAS_VENCIMENTO);
   const vencStr = venc.toISOString().slice(0, 10);
 
-  type ParcelaDesejada = { numero_parcela: number; valor: number; tipo: string; forma_pagamento_id: string; pago?: boolean };
+  type ParcelaDesejada = { numero_parcela: number; valor: number; tipo: string; forma_pagamento_id: string; pago?: boolean; data_vencimento?: string };
   const compromissoNatureza = cfg.compromissoTipo === 'receber' ? 'receita' : 'despesa';
   let parcelasDesejadas: ParcelaDesejada[] = [];
   let obsCompromisso: string | null = null;
@@ -387,7 +387,7 @@ async function registrarPosAutorizacao(
     const { data: formas } = contratoVenda?.id
       ? await admin
           .from('formas_pagamento_contrato')
-          .select('tipo, forma_pagamento_id, valor_total, valor_entrada, valor_financiado')
+          .select('tipo, forma_pagamento_id, valor_total, valor_entrada, valor_financiado, data_pagamento')
           .eq('contrato_id', contratoVenda.id)
           .order('created_at', { ascending: true })
       : { data: [] };
@@ -397,11 +397,14 @@ async function registrarPosAutorizacao(
 
     let n = 0;
     for (const f of (formas || []) as any[]) {
+      // Data do pagamento informada na forma → vira o vencimento da(s) parcela(s)
+      // dessa forma. Vazio: cai no fallback (data de emissão + DIAS_VENCIMENTO).
+      const vencForma = typeof f.data_pagamento === 'string' && f.data_pagamento ? f.data_pagamento : undefined;
       if (ehFinanciamentoContrato(f.tipo)) {
         const entrada = Number(f.valor_entrada ?? 0);
         const financiado = Number(f.valor_financiado ?? 0);
-        if (entrada > 0) parcelasDesejadas.push({ numero_parcela: ++n, valor: entrada, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_ID });
-        if (financiado > 0) parcelasDesejadas.push({ numero_parcela: ++n, valor: financiado, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID });
+        if (entrada > 0) parcelasDesejadas.push({ numero_parcela: ++n, valor: entrada, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: vencForma });
+        if (financiado > 0) parcelasDesejadas.push({ numero_parcela: ++n, valor: financiado, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, data_vencimento: vencForma });
       } else {
         const total = Number(f.valor_total ?? 0);
         if (total > 0) {
@@ -410,6 +413,7 @@ async function registrarPosAutorizacao(
             valor: total,
             tipo: 'unico',
             forma_pagamento_id: f.forma_pagamento_id ?? FORMA_PAGAMENTO_ID,
+            data_vencimento: vencForma,
           });
         }
       }
@@ -548,7 +552,7 @@ async function registrarPosAutorizacao(
       compromisso_id: compId,
       numero_parcela: p.numero_parcela,
       valor: p.valor,
-      data_vencimento: vencStr,
+      data_vencimento: p.data_vencimento || vencStr,
       tipo: p.tipo,
       forma_pagamento_id: p.forma_pagamento_id,
       status_pagamento: p.pago ? 'pago' : 'em_aberto',
