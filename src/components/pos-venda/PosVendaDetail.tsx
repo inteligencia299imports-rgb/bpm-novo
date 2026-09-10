@@ -35,6 +35,7 @@ import { formatPersonName, firstLastName, cn, formatDataNascimento } from '@/lib
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { processarCnhAnexada, upsertCnhDoc, docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket, ehPessoaJuridica } from '@/lib/cnhAnexo';
 import { useNfeEmitida } from '@/hooks/useNfeEmitida';
+import { conferirDocVeiculo, removerDocDoStorage } from '@/lib/docVeiculoAnexo';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
 
@@ -727,9 +728,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                         currentUrl={motoConsignada.atpv_url || null}
                         bucketPath={`docs/${motoConsignada.id}/atpv`}
                         bloquearRemocao={nfeMotoConsignadaProducao}
+                        deferPreview
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', motoConsignada.id);
                           setMotoConsignada({ ...motoConsignada, atpv_url: url });
+                          const { ok } = await conferirDocVeiculo(motoConsignada.id, url, 'atpv');
+                          if (!ok) {
+                            await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', motoConsignada.id);
+                            setMotoConsignada((m: any) => ({ ...m, atpv_url: null }));
+                            await removerDocDoStorage(`docs/${motoConsignada.id}/atpv`);
+                          }
                         }}
                         onRemoved={async () => {
                           await supabase.from('avaliacoes').update({ atpv_url: null } as any).eq('id', motoConsignada.id);
@@ -742,9 +750,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                         currentUrl={motoConsignada.procuracao_url || null}
                         bucketPath={`docs/${motoConsignada.id}/procuracao`}
                         bloquearRemocao={nfeMotoConsignadaProducao}
+                        deferPreview
                         onUploaded={async (url) => {
                           await supabase.from('avaliacoes').update({ procuracao_url: url } as any).eq('id', motoConsignada.id);
                           setMotoConsignada({ ...motoConsignada, procuracao_url: url });
+                          const { ok } = await conferirDocVeiculo(motoConsignada.id, url, 'procuracao');
+                          if (!ok) {
+                            await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', motoConsignada.id);
+                            setMotoConsignada((m: any) => ({ ...m, procuracao_url: null }));
+                            await removerDocDoStorage(`docs/${motoConsignada.id}/procuracao`);
+                          }
                         }}
                         onRemoved={async () => {
                           await supabase.from('avaliacoes').update({ procuracao_url: null } as any).eq('id', motoConsignada.id);
