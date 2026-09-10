@@ -1125,7 +1125,7 @@ Deno.serve(async (req) => {
     // Troca: a moto que entra como parte do pagamento aparece como no padrão das
     // NF-e de venda da FAG/FLN:
     //  - na "Forma de Pagamento:" do infCpl → linha "Veiculo na Troca R$ <valor>";
-    //  - um bloco próprio no infCpl → "PLACA <placa> - NF DE ENTRADA <nº>";
+    //  - um bloco próprio no infCpl → "NF DE ENTRADA <nº> - PLACA <placa>";
     //  - no grupo pag/dup → forma tPag 99 pelo valor da troca.
     // Valor = valor_total da NF de compra da troca; fallback valor_fechamento.
     if (atendimento.interesse === 'trocar') {
@@ -1155,8 +1155,8 @@ Deno.serve(async (req) => {
           linhasPagto.push(`Veiculo na Troca ${fmtBRL(valorTroca)}`);
           formasPagamentoEstrut.push({ codigo: '99', descricao: 'VEICULO NA TROCA', valor: valorTroca });
           const bloco = [
-            placa ? `PLACA ${placa}` : null,
             nf?.numero ? `NF DE ENTRADA ${nf.numero}` : null,
+            placa ? `PLACA ${placa}` : null,
           ].filter(Boolean).join(' - ');
           if (bloco) blocosTroca.push(bloco);
         }
