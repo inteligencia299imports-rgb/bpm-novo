@@ -61,6 +61,7 @@ interface ContratoPdfData {
     numeroParcelas?: number;
     valorParcelas?: string;
     valorFinanciado?: string;
+    dataPagamento?: string;
     observacoes?: string;
   }[];
   
@@ -510,6 +511,10 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
       doc.text(`Valor Parcelas: ${forma.valorParcelas || '-'}`, marginLeft + 5, y); y += lineHeight;
       checkPageBreak(lineHeight);
       doc.text(`Valor Financiado: ${forma.valorFinanciado || '-'}`, marginLeft + 5, y); y += lineHeight;
+      if (forma.dataPagamento) {
+        checkPageBreak(lineHeight);
+        doc.text(`Data do Pagamento: ${forma.dataPagamento}`, marginLeft + 5, y); y += lineHeight;
+      }
     } else {
       checkPageBreak(6);
       setNormal();
@@ -517,6 +522,10 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
       if (forma.financeira) {
         checkPageBreak(lineHeight);
         doc.text(`Banco/Administradora: ${forma.financeira}`, marginLeft + 5, y); y += lineHeight;
+      }
+      if (forma.dataPagamento) {
+        checkPageBreak(lineHeight);
+        doc.text(`Data do Pagamento: ${forma.dataPagamento}`, marginLeft + 5, y); y += lineHeight;
       }
     }
     if (forma.observacoes) {

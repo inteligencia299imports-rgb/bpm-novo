@@ -1172,6 +1172,7 @@ export type Database = {
         Row: {
           contrato_id: string
           created_at: string
+          data_pagamento: string | null
           financeira: string | null
           forma_pagamento_id: string | null
           id: string
@@ -1185,6 +1186,7 @@ export type Database = {
         Insert: {
           contrato_id: string
           created_at?: string
+          data_pagamento?: string | null
           financeira?: string | null
           forma_pagamento_id?: string | null
           id?: string
@@ -1198,6 +1200,7 @@ export type Database = {
         Update: {
           contrato_id?: string
           created_at?: string
+          data_pagamento?: string | null
           financeira?: string | null
           forma_pagamento_id?: string | null
           id?: string
