@@ -435,6 +435,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         });
       }
 
+      // Proposta de compra → gera o compromisso financeiro a pagar (repasse ao
+      // cliente), vencimento = data do contrato + 7 dias. Best-effort.
+      supabase.functions
+        .invoke('gerar-compromissos-proposta', { body: { acao: 'compra', avaliacao_id: avaliacao.id } })
+        .then(({ error }) => { if (error) console.error('gerar-compromissos-proposta (compra)', error); });
+
       setJaGerado(true);
       setBaseline(snapshotFields({ cpfCnpj, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato }));
       setClienteTocado(false);

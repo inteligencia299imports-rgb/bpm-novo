@@ -1034,6 +1034,15 @@ const ContratoDialog: React.FC<Props> = ({
           });
         }
         setJaGerado(true);
+
+        // Proposta de VENDA → gera o compromisso financeiro a receber (parcelas =
+        // formas de pagamento) e, se houver troca, o a pagar da moto da troca.
+        // Best-effort: não bloqueia o PDF nem a tela.
+        if (variant === 'venda') {
+          supabase.functions
+            .invoke('gerar-compromissos-proposta', { body: { acao: 'venda', atendimento_id: atendimento.id } })
+            .then(({ error }) => { if (error) console.error('gerar-compromissos-proposta (venda)', error); });
+        }
       }
       toast.success(variant === 'venda' ? 'Proposta de venda gerada com sucesso!' : 'Proposta gerada com sucesso!');
     } catch (err) {
