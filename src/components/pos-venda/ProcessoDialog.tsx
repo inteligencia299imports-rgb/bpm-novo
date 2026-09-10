@@ -21,6 +21,9 @@ import { cn } from '@/lib/utils';
 
 const NF_VENDA = 'NF-E DE VENDA';
 const NF_TROCA = 'NF-E DE ENTRADA (TROCA)';
+// Última etapa do pós-venda: seminova encerra em "TRANSFERÊNCIA FINALIZADA"
+// (checkbox manual); moto 0km encerra em "ATPV-E" (emitido via RENAVE).
+const TRANSF_FINALIZADA = 'TRANSFERÊNCIA FINALIZADA';
 const ATPV_E = 'ATPV-E';
 
 const DEFAULT_ETAPAS = [
@@ -31,7 +34,7 @@ const DEFAULT_ETAPAS = [
   'DOCUMENTAÇÃO COM DESPACHANTE',
   'DOC. OUTRA UF',
   'PENDENTE (BOLETO)',
-  ATPV_E,
+  TRANSF_FINALIZADA,
 ];
 
 interface EtapaData {
@@ -109,6 +112,11 @@ const ProcessoDialog: React.FC<Props> = ({
   const etapaNames = useMemo(() => {
     if (customEtapas) return customEtapas;
     const names = [...DEFAULT_ETAPAS];
+    // Moto 0km: a última etapa é o ATPV-e (RENAVE) no lugar da transferência.
+    if (eh0km) {
+      const i = names.indexOf(TRANSF_FINALIZADA);
+      if (i >= 0) names[i] = ATPV_E;
+    }
     if (estoqueMoto) {
       // NF-e depois da VISTORIA. Quando há troca, a NF-e de entrada (troca) vem
       // ANTES da NF-e de venda.
@@ -118,7 +126,7 @@ const ProcessoDialog: React.FC<Props> = ({
       if (interesse === 'trocar' && trocaAvaliacaoId) names.splice(pos, 0, NF_TROCA);
     }
     return names;
-  }, [customEtapas, estoqueMoto, interesse, trocaAvaliacaoId]);
+  }, [customEtapas, estoqueMoto, eh0km, interesse, trocaAvaliacaoId]);
 
   useEffect(() => {
     if (!open) return;
@@ -165,6 +173,12 @@ const ProcessoDialog: React.FC<Props> = ({
             .limit(1)
             .maybeSingle();
           trocaAvId = (tav as any)?.id ?? '';
+        }
+
+        if (estMoto?.fonte === '0km') {
+          // Moto 0km encerra o pós-venda no ATPV-e (RENAVE), não na transferência.
+          const i = names.indexOf(TRANSF_FINALIZADA);
+          if (i >= 0) names[i] = ATPV_E;
         }
 
         if (estMoto) {
@@ -324,12 +338,15 @@ const ProcessoDialog: React.FC<Props> = ({
           newStatus = statusRules.default || 'em_andamento';
         }
       } else {
-        // Default pos-venda behavior — a etapa ATPV-E finaliza o processo.
-        // 0km: concluída = ATPV-e emitido no RENAVE. Demais: checkbox manual.
-        const atpvConcluido = is0km ? atpvEmitido : etapas.find(e => e.etapa === ATPV_E)?.concluida;
+        // Default pos-venda behavior — a última etapa finaliza o processo:
+        // 0km encerra no ATPV-e (emitido no RENAVE); seminova na TRANSFERÊNCIA
+        // FINALIZADA (checkbox manual).
+        const finalConcluido = is0km
+          ? atpvEmitido
+          : !!etapas.find(e => e.etapa === TRANSF_FINALIZADA)?.concluida;
         const docDespachante = etapas.find(e => e.etapa === 'DOCUMENTAÇÃO COM DESPACHANTE')?.concluida;
 
-        if (atpvConcluido) {
+        if (finalConcluido) {
           newStatus = 'concluido';
         } else if (docDespachante) {
           newStatus = 'doc_despachante';
