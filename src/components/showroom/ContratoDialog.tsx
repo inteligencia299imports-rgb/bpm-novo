@@ -77,6 +77,14 @@ const parseCurrencyInput = (value: string): number => {
   return parseInt(digits || '0', 10) / 100;
 };
 
+/** Percentual: aceita "12,5" ou "12.5"; devolve número ou null. */
+const parsePct = (v: string): number | null => {
+  const s = v.replace(/[^\d.,]/g, '').replace(',', '.');
+  if (!s) return null;
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : null;
+};
+
 const tipoContaLabel = (v: string | null | undefined) => {
   if (v === 'corrente') return 'Corrente';
   if (v === 'poupanca') return 'Poupança';
@@ -185,6 +193,8 @@ interface FormaPagamento {
   numero_parcelas: number | null;
   valor_parcelas: number | null;
   valor_financiado: number | null;
+  /** Taxa de retorno (%) — só para Financiamento. */
+  taxa_retorno_pct: number | null;
   /** instituição (banco / administradora) escolhida — só para Financiamento / Consórcio */
   cliente_fornecedor_id: string | null;
   /** observação da forma, editável, com default vindo de formas_pagamento_instituicoes.observacoes_contrato */
@@ -202,6 +212,7 @@ const mapFormaRow = (data: any): FormaPagamento => ({
   numero_parcelas: data.numero_parcelas,
   valor_parcelas: data.valor_parcelas,
   valor_financiado: data.valor_financiado,
+  taxa_retorno_pct: data.taxa_retorno_pct != null ? Number(data.taxa_retorno_pct) : null,
   cliente_fornecedor_id: data.cliente_fornecedor_id ?? null,
   observacoes: data.observacoes ?? '',
 });
@@ -304,6 +315,7 @@ const ContratoDialog: React.FC<Props> = ({
   const [finParcelas, setFinParcelas] = useState('');
   const [finValorParcelas, setFinValorParcelas] = useState('');
   const [finValorFinanciado, setFinValorFinanciado] = useState('');
+  const [finTaxaRetorno, setFinTaxaRetorno] = useState('');
   // Other payment valor
   const [outroValor, setOutroValor] = useState('');
 
@@ -477,7 +489,7 @@ const ContratoDialog: React.FC<Props> = ({
 
         const { data: ags } = await supabase
           .from('contratos_agregados')
-          .select('agregado_id, descricao, valor, observacoes, taxa_retorno_pct, cortesia')
+          .select('agregado_id, descricao, valor, observacoes, cortesia')
           .eq('contrato_id', contrato.id)
           .order('created_at', { ascending: true });
         setAgregados(((ags as any[]) || []).map((a) => ({
@@ -485,7 +497,6 @@ const ContratoDialog: React.FC<Props> = ({
           descricao: a.descricao,
           valor: Number(a.valor) || 0,
           observacoes: a.observacoes ?? null,
-          taxa_retorno_pct: a.taxa_retorno_pct != null ? Number(a.taxa_retorno_pct) : null,
           cortesia: !!a.cortesia,
         })));
       } else {
@@ -547,6 +558,7 @@ const ContratoDialog: React.FC<Props> = ({
     setFinParcelas('');
     setFinValorParcelas('');
     setFinValorFinanciado('');
+    setFinTaxaRetorno('');
     setOutroValor('');
   };
 
@@ -564,6 +576,7 @@ const ContratoDialog: React.FC<Props> = ({
     setFinParcelas(fp.numero_parcelas != null ? String(fp.numero_parcelas) : '');
     setFinValorParcelas(fp.valor_parcelas != null ? formatCurrencyInput(String(Math.round(fp.valor_parcelas * 100))) : '');
     setFinValorFinanciado(fp.valor_financiado != null ? formatCurrencyInput(String(Math.round(fp.valor_financiado * 100))) : '');
+    setFinTaxaRetorno(fp.taxa_retorno_pct != null ? String(fp.taxa_retorno_pct) : '');
     setOutroValor(fp.valor_total != null ? formatCurrencyInput(String(Math.round(fp.valor_total * 100))) : '');
   };
 
@@ -596,6 +609,7 @@ const ContratoDialog: React.FC<Props> = ({
       numero_parcelas: null,
       valor_parcelas: null,
       valor_financiado: null,
+      taxa_retorno_pct: null,
       cliente_fornecedor_id: null,
       financeira: null,
       observacoes: null,
@@ -606,6 +620,7 @@ const ContratoDialog: React.FC<Props> = ({
       formaData.numero_parcelas = finParcelas ? parseInt(finParcelas) : null;
       formaData.valor_parcelas = parseCurrencyInput(finValorParcelas) || null;
       formaData.valor_financiado = parseCurrencyInput(finValorFinanciado) || null;
+      formaData.taxa_retorno_pct = parsePct(finTaxaRetorno);
     } else {
       formaData.valor_total = parseCurrencyInput(outroValor) || null;
     }
@@ -732,7 +747,6 @@ const ContratoDialog: React.FC<Props> = ({
             descricao: a.descricao,
             valor: Number(a.valor) || 0,
             observacoes: (a.observacoes ?? '').trim() || null,
-            taxa_retorno_pct: a.taxa_retorno_pct ?? null,
             cortesia: !!a.cortesia,
           })),
         );
@@ -1498,7 +1512,7 @@ const ContratoDialog: React.FC<Props> = ({
                         key={fp.id}
                         size="sm"
                         variant={novaPagamentoTipo === fp.id ? 'default' : 'outline'}
-                        onClick={() => { setNovaPagamentoTipo(fp.id); setNovaInstituicaoId(''); setNovaObservacoes(''); setOutroValor(''); setFinValorEntrada(''); setFinParcelas(''); setFinValorParcelas(''); setFinValorFinanciado(''); }}
+                        onClick={() => { setNovaPagamentoTipo(fp.id); setNovaInstituicaoId(''); setNovaObservacoes(''); setOutroValor(''); setFinValorEntrada(''); setFinParcelas(''); setFinValorParcelas(''); setFinValorFinanciado(''); setFinTaxaRetorno(''); }}
                         className="text-xs"
                       >
                         {fp.nome}
@@ -1542,6 +1556,13 @@ const ContratoDialog: React.FC<Props> = ({
                         </div>
                         <CurrencyField label="Valor Parcelas" value={finValorParcelas} onChange={setFinValorParcelas} />
                         <CurrencyField label="Valor Financiado" value={finValorFinanciado} onChange={setFinValorFinanciado} />
+                      </div>
+                      <div className="max-w-[10rem]">
+                        <label className="text-sm font-medium text-foreground">Taxa de Retorno (%)</label>
+                        <div className="relative mt-1">
+                          <Input className="pr-7" inputMode="decimal" placeholder="0" value={finTaxaRetorno} onChange={e => setFinTaxaRetorno(e.target.value)} />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1593,6 +1614,7 @@ const ContratoDialog: React.FC<Props> = ({
                                 <div>{fp.numero_parcelas}x de {formatCurrency(fp.valor_parcelas)}</div>
                               )}
                               {fp.valor_financiado != null && <div>Financiado: {formatCurrency(fp.valor_financiado)}</div>}
+                              {fp.taxa_retorno_pct != null && <div>Taxa de Retorno: {fp.taxa_retorno_pct}%</div>}
                               {fp.valor_total != null && <div>Valor: {formatCurrency(fp.valor_total)}</div>}
                             </div>
                           ) : (
