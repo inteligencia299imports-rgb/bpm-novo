@@ -17,6 +17,8 @@ export interface ClienteCadastro {
   sexo?: string | null;
   data_nascimento?: string | null;
   ramo?: string | null;
+  inscricao_estadual?: string | null;
+  isento_inscricao_estadual?: boolean | null;
   email?: string | null;
   email_nf?: string | null;
   telefone?: string | null;
@@ -60,6 +62,8 @@ export function cadastroClienteCompleto(
     if (!preenchido(cliente.data_nascimento)) return false;
   } else {
     if (!preenchido(cliente.ramo)) return false;
+    // PJ: dados fiscais para emissão de NF — Inscrição Estadual ou isento.
+    if (cliente.isento_inscricao_estadual !== true && !preenchido(cliente.inscricao_estadual)) return false;
   }
 
   if (!emailOk(cliente.email) || !emailOk(cliente.email_nf)) return false;
@@ -112,8 +116,11 @@ export function pendenciasCadastroCliente(
   if (pf) {
     if (!preenchido(cliente?.sexo)) out.cliente.push("Sexo");
     if (!preenchido(cliente?.data_nascimento)) out.cliente.push("Data de nascimento");
-  } else if (!preenchido(cliente?.ramo)) {
-    out.cliente.push("Ramo");
+  } else {
+    if (!preenchido(cliente?.ramo)) out.cliente.push("Ramo");
+    if (cliente?.isento_inscricao_estadual !== true && !preenchido(cliente?.inscricao_estadual)) {
+      out.cliente.push("Inscrição Estadual (ou marcar isento)");
+    }
   }
   if (!emailOk(cliente?.email)) out.cliente.push("E-mail");
   if (!emailOk(cliente?.email_nf)) out.cliente.push("E-mail para NF");

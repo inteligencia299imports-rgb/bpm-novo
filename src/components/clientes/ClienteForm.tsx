@@ -389,7 +389,8 @@ export function ClienteForm({
         setForm((f: any) => ({ ...f, cpf_cnpj: maskCpfCnpj(onlyDigits(f.cpf_cnpj).slice(0, 11)) }));
       }
     }
-    if ((form.tipo_pessoa === "fisica" || form.tipo_cadastro === "cliente" || form.tipo_cadastro === "colaborador") && tab === "fiscais") {
+    // Pessoa física não tem aba Fiscais; PJ (inclusive cliente) sempre tem.
+    if (form.tipo_pessoa === "fisica" && tab === "fiscais") {
       setTab("principais");
     }
   }, [form.tipo_pessoa, form.origem_cadastro, tab, form.tipo_cadastro]);
@@ -540,7 +541,13 @@ export function ClienteForm({
     return true;
   };
 
-  const fiscaisOk = typeof form.contribuinte_icms === "boolean";
+  // PJ: campos fiscais obrigatórios para emissão de NF — contribuinte de ICMS
+  // definido, Isento de IE definido, e Inscrição Estadual quando não isento.
+  const fiscaisOk =
+    !isJuridica ||
+    (typeof form.contribuinte_icms === "boolean" &&
+      typeof form.isento_inscricao_estadual === "boolean" &&
+      (form.isento_inscricao_estadual === true || !!s(form.inscricao_estadual)));
 
   const agenciaDig = onlyDigits(form.agencia);
   const contaDig = onlyDigits(form.conta);
@@ -555,7 +562,7 @@ export function ClienteForm({
 
   const tabMissing = (t: TabKey): boolean => {
     if (t === "principais") return !principaisOk();
-    if (t === "fiscais") return isJuridica && !isCliente && !fiscaisOk;
+    if (t === "fiscais") return isJuridica && !fiscaisOk;
     if (t === "contatos") return !contatosOk;
     if (t === "endereco") return !enderecoCompleto;
     if (t === "bancario") return !bancarioOk;
@@ -581,7 +588,7 @@ export function ClienteForm({
       if (!dataNascOk) throw new Error(`Data de nascimento inválida (idade entre ${IDADE_MIN} e ${IDADE_MAX} anos)`);
       if (isJuridica && form.tipo_cadastro !== "fornecedor" && !form.consumidor_final) throw new Error("Consumidor final obrigatório");
       if (isDuplicate) throw new Error("Este CPF/CNPJ já possui cadastro");
-      if (isJuridica && !isCliente && !fiscaisOk) throw new Error("Selecione se é contribuinte de ICMS");
+      if (isJuridica && !fiscaisOk) throw new Error("Preencha os dados fiscais (Inscrição Estadual ou isento, e contribuinte de ICMS)");
       if (s(form.email) && !isValidEmail(form.email)) throw new Error("E-mail para contato inválido");
       if (s(form.email_nf) && !isValidEmail(form.email_nf)) throw new Error("E-mail para NF inválido");
       if (!contatosOk) throw new Error("Preencha e-mails, telefones e aceites obrigatórios");
@@ -706,7 +713,7 @@ export function ClienteForm({
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
         <TabsList className="flex-wrap h-auto">
           <TabTrigger value="principais">Principais</TabTrigger>
-          {isJuridica && !isCliente && <TabTrigger value="fiscais">Fiscais</TabTrigger>}
+          {isJuridica && <TabTrigger value="fiscais">Fiscais</TabTrigger>}
           <TabTrigger value="contatos">Contatos</TabTrigger>
           <TabTrigger value="endereco">Endereço</TabTrigger>
           <TabTrigger value="bancario">Bancário</TabTrigger>
@@ -866,11 +873,22 @@ export function ClienteForm({
         <TabsContent value="fiscais" className="space-y-4 pt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Inscrição Estadual</Label>
-              <Input value={form.inscricao_estadual} onChange={(e) => set("inscricao_estadual")(e.target.value)} disabled={form.isento_inscricao_estadual === true} />
+              <Label>
+                Inscrição Estadual
+                {isJuridica && form.isento_inscricao_estadual !== true && <span className="text-red-500"> *</span>}
+              </Label>
+              <Input
+                value={form.inscricao_estadual}
+                onChange={(e) => set("inscricao_estadual")(e.target.value)}
+                disabled={form.isento_inscricao_estadual === true}
+                className={errCls(isJuridica && form.isento_inscricao_estadual !== true && !s(form.inscricao_estadual))}
+              />
             </div>
             <div className="space-y-1.5">
-              <Label className="block">Isento de IE</Label>
+              <Label className="block">
+                Isento de IE
+                {isJuridica && <span className="text-red-500"> *</span>}
+              </Label>
               <ToggleGroup
                 type="single"
                 value={form.isento_inscricao_estadual === true ? "sim" : form.isento_inscricao_estadual === false ? "nao" : ""}
