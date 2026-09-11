@@ -325,10 +325,14 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
 
   // Indicador de IE do destinatário (SEFAZ [232] quando um CNPJ contribuinte
   // é declarado sem IE). PF vendedora/consignante = sempre 9 (não contribuinte).
+  // Nunca usar indIEDest=2 ("Contribuinte isento de IE"): a maioria dos estados
+  // (incl. GO) rejeita esse indicador em operação interestadual — Rejeição
+  // [805] "A SEFAZ do destinatario nao permite Contribuinte Isento de
+  // Inscricao Estadual" (ver docs-fiscal-299 §2.16). Sem IE real → sempre 9,
+  // isento ou não (9 = "pode ou não possuir Inscrição Estadual").
   const ieForn = onlyDigits(fornecedor.inscricao_estadual);
   const destContribuinteComIe = !pf && fornecedor.contribuinte_icms === true && ieForn.length > 0;
-  const destIsento = !pf && fornecedor.isento_inscricao_estadual === true;
-  const indIeDest = destContribuinteComIe ? 1 : destIsento ? 2 : 9;
+  const indIeDest = destContribuinteComIe ? 1 : 9;
   const valorFmt = Number(valor.toFixed(2));
   const r2 = (n: number) => Number(n.toFixed(2));
 
