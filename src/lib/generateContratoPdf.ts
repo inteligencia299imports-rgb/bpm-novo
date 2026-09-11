@@ -440,7 +440,7 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     for (const ag of data.agregados) {
       checkPageBreak(lineHeight);
       const linha = ag.cortesia
-        ? `${ag.descricao}: Cortesia (não cobrado do cliente)`
+        ? `${ag.descricao}: ${ag.valor} (Cortesia)`
         : `${ag.descricao}: ${ag.valor}`;
       doc.text(linha, marginLeft + 5, y); y += lineHeight;
     }
