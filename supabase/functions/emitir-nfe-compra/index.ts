@@ -1384,6 +1384,7 @@ Deno.serve(async (req) => {
       ufDestino: end.uf ?? null,
       indIeDest: indIeDestPreview,
       consumidorFinal: !!natureza.consumidor_final,
+      cstIcms: regraIcms?.situacao_tributaria,
     });
     if (difalNecessario && regraIcms?.aliquota_interna_destino == null) {
       faltando.push(`DIFAL (alíquota interna do ICMS não cadastrada pra UF de destino ${ufDestino || '?'} na regra de ICMS)`);

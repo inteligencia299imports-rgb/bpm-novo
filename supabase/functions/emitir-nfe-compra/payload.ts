@@ -347,6 +347,12 @@ export function indicadorIeDestinatario(
  * emitente do Regime Normal — o Simples Nacional não recolhe/destaca DIFAL
  * (STF ADI 5464, cautelar sobre a cláusula 9ª do Convênio ICMS 93/2015; a
  * LC 190/2022 não alcança o Simples). Ver docs-fiscal-299/difal-ec87.md.
+ *
+ * Também não se aplica quando o CST do item é 40/41/50 (isenta/não
+ * tributada/suspensão — sem ICMS destacado) — DIFAL é uma partilha do
+ * ICMS realmente devido entre origem e destino; sem incidência na
+ * operação em si, não há o que partilhar. Achado numa devolução simbólica
+ * de consignação interestadual (CST 41) — 2026-09-12.
  */
 export function difalAplicavel(p: {
   regimeTributarioEmitente: string | null | undefined;
@@ -354,12 +360,14 @@ export function difalAplicavel(p: {
   ufDestino: string | null | undefined;
   indIeDest: number;
   consumidorFinal: boolean;
+  cstIcms?: string | null;
 }): boolean {
   const emitenteRegimeNormal = !(p.regimeTributarioEmitente || '').toUpperCase().includes('SIMPLES');
   const ufO = (p.ufEmitente || '').trim().toUpperCase();
   const ufD = (p.ufDestino || '').trim().toUpperCase();
   const mesmaUf = !!ufO && ufO === ufD;
-  return emitenteRegimeNormal && !mesmaUf && p.indIeDest === 9 && p.consumidorFinal;
+  const icmsNaoIncidente = ['40', '41', '50'].includes(String(p.cstIcms ?? ''));
+  return emitenteRegimeNormal && !mesmaUf && p.indIeDest === 9 && p.consumidorFinal && !icmsNaoIncidente;
 }
 
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
@@ -478,6 +486,19 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     }
   }
 
+  // CST 41 (não tributada) — devolução simbólica de consignação: desoneração
+  // nocional pela alíquota interna "cheia" da UF (não há redução de base
+  // aqui, é não incidência total), fiel à NF-e de referência autorizada da
+  // própria MMATOS (DF: vICMSDeson = vProd × 20%). CST 41 entra no
+  // `semCalculoIcmsNormal` acima (sem modBC/vBC/pICMS/vICMS), mas ainda pode
+  // levar o grupo opcional de desoneração — só quando a regra cadastra uma
+  // alíquota de referência; sem ela, não manda o grupo.
+  if (cstIcms === '41' && regraIcms.aliquota != null && Number(regraIcms.aliquota) > 0) {
+    const pIcmsRef = Number(regraIcms.aliquota);
+    item.icms_valor_desonerado = r2(valorFmt * (pIcmsRef / 100));
+    item.icms_motivo_desoneracao = 9;
+  }
+
   // prod/cBenef — código de benefício fiscal da UF (regra de ICMS). Exigido pela
   // SEFAZ (rejeição 930) quando o CST identifica redução/benefício (ex.: CST 20
   // no DF). Campo Focus: codigo_beneficio_fiscal.
@@ -550,6 +571,7 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
       ufDestino: fornecedor.uf,
       indIeDest,
       consumidorFinal: !!natureza.consumidor_final,
+      cstIcms,
     })
   ) {
     const pIcmsInter = Number(regraIcms.aliquota ?? 0);
