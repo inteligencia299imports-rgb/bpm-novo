@@ -49,18 +49,6 @@ function stRetidoDoXmlEntrada(xml: string): { bc: number; subst: number; ret: nu
   return { bc, subst: subst ?? 0, ret };
 }
 
-/** atendimentos_motos.tipo_atendimento ('Presencial' | 'Online') normalizado pro
- * mesmo vocabulário de naturezas_operacao_regras.tipo_atendimento ('presencial' |
- * 'online' | 'ambos') — usado como critério extra de match do CFOP/regra (ver
- * regraDe() abaixo). indPres não é mais calculado aqui: sai da própria regra
- * escolhida (regraIcms/regraIpi.indicador_presenca), igual CST/CFOP/natOp —
- * ver ORIENTACAO_CONFIG_NATUREZAS.md do SisFin §4.2/4.3. */
-const tipoAtendPorAtendimento = (tipo: string | null | undefined): 'presencial' | 'online' | null => {
-  if (tipo === 'Presencial') return 'presencial';
-  if (tipo === 'Online') return 'online';
-  return null;
-};
-
 type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km';
 
 interface OperacaoConfig {
@@ -1337,11 +1325,12 @@ Deno.serve(async (req) => {
   const regrasTodas = (natureza.naturezas_operacao_regras || []) as Array<
     RegraFiscal & { destino_ufs: string[] | null; ordem: number | null; tipo_atendimento: string | null }
   >;
-  // Venda: tipo_atendimento do atendimento ('presencial'/'online') é mais um
-  // critério de match do CFOP — regra com tipo_atendimento='ambos' (default) casa
-  // com qualquer atendimento; 'presencial'/'online' só casa com o correspondente.
-  // Compra/consignação não filtra (tipoAtendNorm fica null, sem restrição).
-  const tipoAtendNorm = ehVenda ? tipoAtendPorAtendimento((atendimento as any).tipo_atendimento) : null;
+  // Venda: toda venda passa a ser tratada como 'presencial' pra fim de CFOP/CST
+  // — não referencia mais atendimentos_motos.tipo_atendimento (decisão fiscal
+  // 2026-09-11, ver docs-fiscal-299/pendencias.md §2.19b). Regra com
+  // tipo_atendimento='ambos' (default) casa igual; regra 'online' simplesmente
+  // deixa de ser escolhida. Compra/consignação não filtra (tipoAtendNorm null).
+  const tipoAtendNorm = ehVenda ? 'presencial' : null;
   const regras = tipoAtendNorm
     ? regrasTodas.filter((r) => !r.tipo_atendimento || r.tipo_atendimento === 'ambos' || r.tipo_atendimento === tipoAtendNorm)
     : regrasTodas;
