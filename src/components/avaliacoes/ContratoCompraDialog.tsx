@@ -25,7 +25,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { generateContratoCompraPdf } from '@/lib/generateContratoCompraPdf';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
-import { TIPOS_ATENDIMENTO } from '@/types/crm';
 
 interface Props {
   open: boolean;
@@ -139,9 +138,6 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   // Empresa emitente da NF-e (restrita às empresas vinculadas à loja do atendimento).
   const [empresasLoja, setEmpresasLoja] = useState<any[]>([]);
   const [empresaId, setEmpresaId] = useState<string>('');
-  // Presencial/Online — mesmo campo de atendimentos_motos usado como critério de
-  // match de CFOP/CST na emissão da NF-e (ver regraDe() em emitir-nfe-compra).
-  const [tipoAtendimento, setTipoAtendimentoState] = useState<string>('');
 
   // Date
   const [dataContrato, setDataContrato] = useState<Date | undefined>();
@@ -184,7 +180,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
           .eq('entity_id', atendimentoId)
           .in('status', ['contrato_de_venda', 'contrato_de_sinal'])
           .limit(1),
-        supabase.from('atendimentos_motos').select('cliente_id, loja_id, tipo_atendimento, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))').eq('id', atendimentoId).maybeSingle(),
+        supabase.from('atendimentos_motos').select('cliente_id, loja_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))').eq('id', atendimentoId).maybeSingle(),
         supabase.from('custos_oficina').select('responsavel, valor_previsto, valor_executado').eq('avaliacao_id', avaliacao.id),
         supabase.from('estoque_motos_novas').select('valor_venda').eq('atendimento_venda_id', atendimentoId).maybeSingle(),
         supabase.from('estoque_motos').select('valor_venda').eq('atendimento_venda_id', atendimentoId).maybeSingle(),
@@ -205,7 +201,6 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       nfe.carregar();
       setClienteId((atFresh as any)?.cliente_id ?? null);
       setClienteRecord((atFresh as any)?.cliente ?? null);
-      setTipoAtendimentoState((atFresh as any)?.tipo_atendimento || '');
 
       const contratosAll = (contratosList || []) as any[];
       const contrato = contratosAll.find((c) => (c.ipva_tipo ?? '') === 'COMPRA') ?? null;
@@ -346,16 +341,6 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       const { error } = await supabase.from('contratos').update({ empresa_id: v }).eq('id', contratoId);
       if (error) toast.error('Erro ao salvar a empresa emitente');
     }
-  };
-
-  // Presencial/Online é do atendimento (não do contrato) — grava direto,
-  // independente de já ter contrato salvo.
-  const handleTipoAtendimentoChange = async (v: string) => {
-    setTipoAtendimentoState(v);
-    const atendimentoId = atendimento?.id;
-    if (!atendimentoId) return;
-    const { error } = await supabase.from('atendimentos_motos').update({ tipo_atendimento: v }).eq('id', atendimentoId);
-    if (error) toast.error('Erro ao salvar o tipo de atendimento');
   };
 
   const validateFields = (): boolean => {
@@ -596,62 +581,34 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               <Separator className="mt-2" />
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:items-start">
-                <div className="min-w-0 space-y-1.5">
-                  {empresasLoja.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Nenhuma empresa vinculada à loja do atendimento.
-                    </p>
-                  ) : empresaReadonly ? (
-                    <InfoDisplay
-                      label="Empresa"
-                      value={(() => {
-                        const e = empresasLoja.find((x) => x.id === empresaId);
-                        if (!e) return '—';
-                        return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
-                      })()}
-                    />
-                  ) : (
-                    <>
-                      <Label>{ehNfe ? 'Empresa da operação' : 'Empresa compradora'} <span className="text-destructive">*</span></Label>
-                      <Select value={empresaId} onValueChange={handleEmpresaChange}>
-                        <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
-                        <SelectContent>
-                          {empresasLoja.map((e) => (
-                            <SelectItem key={e.id} value={e.id}>
-                              {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </>
-                  )}
-                </div>
-
-                {/* Presencial/Online — critério de CFOP/CST na emissão da NF-e. */}
-                <div className="min-w-0 space-y-1.5">
-                  <Label>Atendimento {!empresaReadonly && <span className="text-destructive">*</span>}</Label>
-                  {empresaReadonly ? (
-                    <p className="text-sm font-semibold text-primary">{tipoAtendimento || '—'}</p>
-                  ) : (
-                    <div className="flex gap-2">
-                      {TIPOS_ATENDIMENTO.map((t) => (
-                        <Button
-                          key={t}
-                          type="button"
-                          size="sm"
-                          className="w-24"
-                          variant={tipoAtendimento === t ? 'default' : 'outline'}
-                          onClick={() => handleTipoAtendimentoChange(t)}
-                        >
-                          {t}
-                        </Button>
+              {empresasLoja.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma empresa vinculada à loja do atendimento.
+                </p>
+              ) : empresaReadonly ? (
+                <InfoDisplay
+                  label="Empresa"
+                  value={(() => {
+                    const e = empresasLoja.find((x) => x.id === empresaId);
+                    if (!e) return '—';
+                    return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
+                  })()}
+                />
+              ) : (
+                <div className="max-w-sm space-y-1.5">
+                  <Label>{ehNfe ? 'Empresa da operação' : 'Empresa compradora'} <span className="text-destructive">*</span></Label>
+                  <Select value={empresaId} onValueChange={handleEmpresaChange}>
+                    <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+                    <SelectContent>
+                      {empresasLoja.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
+                        </SelectItem>
                       ))}
-                    </div>
-                  )}
-                  <p className="text-xs text-muted-foreground">Define o CFOP/CST usado na emissão da NF-e.</p>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
