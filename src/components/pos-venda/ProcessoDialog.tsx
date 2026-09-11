@@ -264,6 +264,14 @@ const ProcessoDialog: React.FC<Props> = ({
     if (open && trocaAvaliacaoId) nfeTroca.carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, trocaAvaliacaoId]);
+  useEffect(() => {
+    if (open && avaliacaoConsignadaId) {
+      nfeConsignacaoConv.carregar();
+      nfeDevolucaoConv.carregar();
+      nfeCompraConv.carregar();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, avaliacaoConsignadaId]);
 
   const nfEmitidaDe = (etapa: string) =>
     etapa === NF_VENDA ? nfeVenda.emitida
