@@ -26,6 +26,7 @@ import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProcessoDialog from './ProcessoDialog';
+import AtpvDialog from './AtpvDialog';
 import ContratoDialog from '@/components/showroom/ContratoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
@@ -106,6 +107,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [savingEntrega, setSavingEntrega] = useState(false);
   const [entregaDataConclusao, setEntregaDataConclusao] = useState<string | null>(null);
   const [nfeVendaOpen, setNfeVendaOpen] = useState(false);
+  const [atpvOpen, setAtpvOpen] = useState(false);
   const [trocaNfeAval, setTrocaNfeAval] = useState<any | null>(null);
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
@@ -188,6 +190,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const displayName = formatPersonName(displayClient.cliente?.nome_razao_social || '');
   const displayPhone = displayClient.cliente?.telefone || '';
   const whatsappUrl = displayPhone ? `https://wa.me/55${displayPhone.replace(/\D/g, '')}` : '';
+
+  // Moto 0km da venda (para o ATPV-e / RENAVE na última etapa do pós-venda).
+  const moto0km = Object.values(estoqueData).find((e: any) => e?.fonte === '0km') as any | undefined;
 
   const confirmarAprovacaoVenda = async () => {
     if (!aprovacaoPopup) return;
@@ -501,6 +506,17 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         motosAvaliacao={motosAvaliacao}
         estoqueData={estoqueData}
         avaliacoes={avaliacoes}
+      />
+    );
+  }
+  if (!isIntermParte1 && atpvOpen) {
+    return (
+      <AtpvDialog
+        open
+        onOpenChange={setAtpvOpen}
+        atendimento={item}
+        estoqueMoto={moto0km}
+        onDone={() => onStatusChanged?.(item.id, 'concluido', processoProps?.statusField || statusField)}
       />
     );
   }
@@ -1129,6 +1145,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         onContratoSaved={refreshConsignada}
         onEmitirNfe={() => { setProcessoOpen(false); setNfeVendaOpen(true); }}
         onEmitirNfeTroca={abrirNfeTroca}
+        onEmitirAtpv={moto0km ? () => { setProcessoOpen(false); setAtpvOpen(true); } : undefined}
         onNavigateToPosCompra={onNavigateToPosCompra}
         vendaBloqueadaAprovacao={bloqueadoAprovacao}
       />
