@@ -453,7 +453,7 @@ const ContratoDialog: React.FC<Props> = ({
       if (lojaId) {
         const { data: le } = await supabase
           .from('loja_empresas')
-          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, uf, inscricao_estadual, regime_tributario)')
+          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj)')
           .eq('id', lojaId);
         const seen = new Set<string>();
         empresas = (le || [])
@@ -1226,18 +1226,10 @@ const ContratoDialog: React.FC<Props> = ({
                     </div>
                   )}
 
-                  {/* Dados fiscais da empresa — mesmo espaçamento em grid dos demais
-                      cards. "Atendimento" só na emissão de NF-e (fixo, ver docs-fiscal-299
-                      §2.5); IE/Regime só quando o cliente é PJ (contexto B2B). */}
-                  {empresaSel && (ehNfe || isJuridica) && (
+                  {/* "Atendimento" só na emissão de NF-e (fixo, ver docs-fiscal-299 §2.5). */}
+                  {empresaSel && ehNfe && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {ehNfe && <InfoDisplay label="Atendimento" value="Presencial" valueClassName="text-primary" />}
-                      {isJuridica && (
-                        <>
-                          <InfoDisplay label="IE da Empresa" value={empresaSel.inscricao_estadual || 'Isenta'} />
-                          <InfoDisplay label="Regime Tributário" value={empresaSel.regime_tributario} />
-                        </>
-                      )}
+                      <InfoDisplay label="Atendimento" value="Presencial" valueClassName="text-primary" />
                     </div>
                   )}
                 </CardContent>
@@ -1274,6 +1266,12 @@ const ContratoDialog: React.FC<Props> = ({
                       <InfoDisplay label="Data de Nascimento" value={fmtDataNasc(cli?.data_nascimento)} />
                       <InfoDisplay label="E-mail (NF)" value={cli?.email_nf} />
                       <InfoDisplay label="Telefone (comercial)" value={fmtTelefone(cli?.telefone_comercial)} />
+                      {isJuridica && (
+                        <>
+                          <InfoDisplay label="IE do Cliente" value={cli?.isento_inscricao_estadual ? 'Isenta' : cli?.inscricao_estadual} />
+                          <InfoDisplay label="Regime Tributário" value={cli?.regime_tributario} />
+                        </>
+                      )}
                     </div>
                   ) : (
                     <ClienteForm
