@@ -594,8 +594,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               <Separator className="mt-2" />
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1 min-w-0 space-y-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:items-start">
+                <div className="min-w-0 space-y-1.5">
                   {empresasLoja.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       Nenhuma empresa vinculada à loja do atendimento.
@@ -627,7 +627,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                 </div>
 
                 {/* Presencial/Online — critério de CFOP/CST na emissão da NF-e. */}
-                <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                   <Label>Atendimento {!empresaReadonly && <span className="text-destructive">*</span>}</Label>
                   {empresaReadonly ? (
                     <InfoDisplay label="Tipo de Atendimento" value={tipoAtendimento || '—'} />
