@@ -285,6 +285,14 @@ const ProcessoDialog: React.FC<Props> = ({
     if (open && trocaAvaliacaoId) nfeTroca.carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, trocaAvaliacaoId]);
+  useEffect(() => {
+    if (open && avaliacaoConsignadaId) {
+      nfeConsignacaoConv.carregar();
+      nfeDevolucaoConv.carregar();
+      nfeCompraConv.carregar();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, avaliacaoConsignadaId]);
 
   // ATPV-e (só moto 0km, via RENAVE). "Emitido" = tem numeroAtpv gravado.
   const is0km = (estoqueMoto as any)?.fonte === '0km';
