@@ -461,12 +461,14 @@ export function ClienteForm({
     }
   }, [form.tipo_pessoa, form.origem_cadastro, tab, form.tipo_cadastro]);
 
-  // Pessoa jurídica sempre é contribuinte de ICMS
+  // Pessoa jurídica sempre é contribuinte de ICMS — exceto MEI, que em geral
+  // não tem inscrição estadual e não é contribuinte (Rejeição SEFAZ [805]:
+  // ver docs-fiscal-299 §2.16). Nesse caso o campo fica liberado pra edição.
   useEffect(() => {
-    if (form.tipo_pessoa === "juridica") {
+    if (form.tipo_pessoa === "juridica" && form.regime_tributario !== "mei") {
       setForm((f: any) => ({ ...f, contribuinte_icms: true }));
     }
-  }, [form.tipo_pessoa]);
+  }, [form.tipo_pessoa, form.regime_tributario]);
 
   // Validação de CPF/CNPJ (dígitos verificadores) — de acordo com o tipo de pessoa
   const pessoaFisica = form.tipo_pessoa === "fisica";
@@ -1010,7 +1012,7 @@ export function ClienteForm({
               <Label>CNAE principal</Label>
               <Input value={form.cnae_principal} onChange={(e) => set("cnae_principal")(e.target.value)} />
             </div>
-            <div className={`space-y-1.5 ${isJuridica ? "opacity-60" : ""}`}>
+            <div className={`space-y-1.5 ${isJuridica && form.regime_tributario !== "mei" ? "opacity-60" : ""}`}>
               <Label className="block">Contribuinte de ICMS <span className="text-red-500">*</span></Label>
               <ToggleGroup
                 type="single"
@@ -1018,10 +1020,10 @@ export function ClienteForm({
                 onValueChange={(v) => v && set("contribuinte_icms")(v === "sim")}
                 variant="outline"
                 className="w-max"
-                disabled={isJuridica}
+                disabled={isJuridica && form.regime_tributario !== "mei"}
               >
-                <ToggleGroupItem value="sim" disabled={isJuridica}>Sim</ToggleGroupItem>
-                <ToggleGroupItem value="nao" disabled={isJuridica}>Não</ToggleGroupItem>
+                <ToggleGroupItem value="sim" disabled={isJuridica && form.regime_tributario !== "mei"}>Sim</ToggleGroupItem>
+                <ToggleGroupItem value="nao" disabled={isJuridica && form.regime_tributario !== "mei"}>Não</ToggleGroupItem>
               </ToggleGroup>
             </div>
           </div>
