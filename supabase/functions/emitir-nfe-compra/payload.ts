@@ -550,7 +550,15 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   // bater (dado incompleto), cai numa única forma "99 - DIVERSOS" pelo total e
   // não manda o grupo de faturas.
   // dVenc é OBRIGATÓRIO e não pode ser < data de emissão (Rejeição 900) — usa a
-  // própria data de emissão (pagamento "à vista"; não há plano de parcelas real).
+  // própria data de emissão.
+  //
+  // <cobr> só entra quando existe forma BOLETO (tPag 15) — é o único meio de
+  // pagamento que representa de fato um instrumento de cobrança/duplicata.
+  // Pix/dinheiro/cartão/TED são liquidados na hora; mandar <cobr> nesses casos
+  // é rejeitado pela SEFAZ — [853] "Dados de cobranca nao devem ser informados
+  // para pagamento a vista" (bpm-novo, achado numa venda só-Pix em 2026-09-11).
+  // Quando há boleto + outra(s) forma(s), a fatura/duplicata cobre só a
+  // parcela do boleto, não o valor total da NF.
   const vencDup = agora.slice(0, 10);
   // Sem movimentação financeira real (entrada, ou devolução simbólica de saída):
   // não manda formas de pagamento calculadas — ver `semPagamentoReal` acima.
@@ -558,10 +566,12 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   const formasIn = semPagto ? [] : (formasPagamento || []).filter((f) => Number(f.valor) > 0);
   const somaFormas = r2(formasIn.reduce((s, f) => s + Number(f.valor), 0));
   const formasBatem = formasIn.length > 0 && Math.abs(somaFormas - valorFmt) <= 0.02;
+  const formasBoleto = formasBatem ? formasIn.filter((f) => f.codigo === '15') : [];
+  const somaBoleto = r2(formasBoleto.reduce((s, f) => s + Number(f.valor), 0));
 
   // Entrada (compra/consignação) e devolução simbólica: não mexe no pagamento —
   // deixa o default da Focus. Venda: manda formas_pagamento sempre; cobr/fat/dup
-  // só quando as formas batem.
+  // só quando as formas batem E há ao menos uma forma boleto.
   const pagCobr: Record<string, unknown> = semPagto
     ? {}
     : {
@@ -572,12 +582,12 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
               ...(f.codigo === '99' ? { descricao_pagamento: (f.descricao || 'OUTROS').slice(0, 60) } : {}),
             }))
           : [{ forma_pagamento: '99', valor_pagamento: valorFmt, descricao_pagamento: 'DIVERSOS' }],
-        ...(formasBatem
+        ...(formasBoleto.length > 0
           ? {
-              valor_original_fatura: valorFmt,
+              valor_original_fatura: somaBoleto,
               valor_desconto_fatura: 0,
-              valor_liquido_fatura: valorFmt,
-              duplicatas: formasIn.map((f, i) => ({
+              valor_liquido_fatura: somaBoleto,
+              duplicatas: formasBoleto.map((f, i) => ({
                 numero: String(i + 1).padStart(3, '0'),
                 data_vencimento: vencDup,
                 valor: r2(Number(f.valor)),
