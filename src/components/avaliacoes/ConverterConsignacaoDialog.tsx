@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeftRight, FileText, Loader2, RefreshCw, CheckCircle2, Lock, AlertTriangle } from 'lucide-react';
+import { ArrowLeftRight, FileText, Loader2, RefreshCw, Lock, AlertTriangle } from 'lucide-react';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import NfeCabecalhoAcoes from '@/components/shared/NfeCabecalhoAcoes';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
@@ -73,22 +73,44 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
         </DialogHeader>
 
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Moto <strong>{[avaliacao?.marca, avaliacao?.modelo].filter(Boolean).join(' ')}</strong>
-            {avaliacao?.placa ? ` — placa ${String(avaliacao.placa).replace(/-/g, '')}` : ''}. Para vender esta
-            moto como estoque próprio, primeiro é preciso devolver simbolicamente ao consignante (NF de saída) e,
-            em seguida, comprá-la de fato (NF de entrada).
+          <p className="text-sm">
+            {[avaliacao?.marca, avaliacao?.modelo].filter(Boolean).join(' ')}
+            {avaliacao?.placa ? ` - ${String(avaliacao.placa).replace(/-/g, '')}` : ''}
           </p>
 
           {/* Etapa 1 — Devolução Simbólica */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center justify-between gap-2">
+              <CardTitle className="text-sm flex items-center justify-between gap-2 flex-wrap">
                 <span className="flex items-center gap-2">
                   <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">1</span>
                   Devolução Simbólica
                 </span>
-                <NfeCabecalhoAcoes nfe={nfeDevolucao} />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <NfeCabecalhoAcoes nfe={nfeDevolucao} />
+                  {(!devolucaoOk || podeReemitirHomologDevolucao) && !nfeDevolucao.pendente && (
+                    <Button
+                      size="sm"
+                      className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
+                      disabled={nfeDevolucao.loading || valorConsignacao <= 0}
+                      onClick={() => nfeDevolucao.emitir({ ambiente: 'homologacao' })}
+                    >
+                      {nfeDevolucao.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfeDevolucao.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                      {nfeDevolucao.erro ? 'Tentar novamente' : 'Devolução (Homologação)'}
+                    </Button>
+                  )}
+                  {podeReemitirHomologDevolucao && !nfeDevolucao.pendente && (
+                    <Button
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={nfeDevolucao.loading}
+                      onClick={() => nfeDevolucao.emitir({ ambiente: 'producao' })}
+                    >
+                      <FileText className="h-4 w-4" /> Devolução (Produção)
+                    </Button>
+                  )}
+                  {devolucaoProducaoOk && <CancelarNfeDialog nfe={nfeDevolucao} />}
+                </div>
               </CardTitle>
               <Separator className="mt-2" />
             </CardHeader>
@@ -103,43 +125,43 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
               {valorConsignacao <= 0 && (
                 <p className="text-xs text-destructive">Sem valor de consignação registrado — não é possível emitir a devolução.</p>
               )}
-              <div className="flex flex-wrap items-center gap-2">
-                {(!devolucaoOk || podeReemitirHomologDevolucao) && !nfeDevolucao.pendente && (
-                  <Button
-                    size="sm"
-                    className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
-                    disabled={nfeDevolucao.loading || valorConsignacao <= 0}
-                    onClick={() => nfeDevolucao.emitir({ ambiente: 'homologacao' })}
-                  >
-                    {nfeDevolucao.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfeDevolucao.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                    {nfeDevolucao.erro ? 'Tentar novamente' : 'Devolução (Homologação)'}
-                  </Button>
-                )}
-                {podeReemitirHomologDevolucao && !nfeDevolucao.pendente && (
-                  <Button
-                    size="sm"
-                    className="gap-1.5"
-                    disabled={nfeDevolucao.loading}
-                    onClick={() => nfeDevolucao.emitir({ ambiente: 'producao' })}
-                  >
-                    <FileText className="h-4 w-4" /> Devolução (Produção)
-                  </Button>
-                )}
-                {devolucaoProducaoOk && <CancelarNfeDialog nfe={nfeDevolucao} />}
-              </div>
             </CardContent>
           </Card>
 
           {/* Etapa 2 — Compra */}
           <Card className={!devolucaoProducaoOk ? 'opacity-60' : undefined}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center justify-between gap-2">
+              <CardTitle className="text-sm flex items-center justify-between gap-2 flex-wrap">
                 <span className="flex items-center gap-2">
                   <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">2</span>
                   Compra
                   {!devolucaoProducaoOk && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                 </span>
-                <NfeCabecalhoAcoes nfe={nfeCompra} />
+                <div className="flex items-center gap-2 flex-wrap">
+                  <NfeCabecalhoAcoes nfe={nfeCompra} />
+                  {devolucaoProducaoOk && (!compraOk || podeReemitirHomologCompra) && !nfeCompra.pendente && (
+                    <Button
+                      size="sm"
+                      className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
+                      disabled={nfeCompra.loading || parseCurrencyInput(valorCompra) <= 0}
+                      onClick={() => nfeCompra.emitir({ valor: parseCurrencyInput(valorCompra), ambiente: 'homologacao' })}
+                    >
+                      {nfeCompra.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfeCompra.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                      {nfeCompra.erro ? 'Tentar novamente' : 'Compra (Homologação)'}
+                    </Button>
+                  )}
+                  {devolucaoProducaoOk && podeReemitirHomologCompra && !nfeCompra.pendente && (
+                    <Button
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={nfeCompra.loading || parseCurrencyInput(valorCompra) <= 0}
+                      onClick={() => nfeCompra.emitir({ valor: parseCurrencyInput(valorCompra), ambiente: 'producao' })}
+                    >
+                      <FileText className="h-4 w-4" /> Compra (Produção)
+                    </Button>
+                  )}
+                  {devolucaoProducaoOk && compraOk && nfeCompra.nfe?.ambiente === 'producao' && <CancelarNfeDialog nfe={nfeCompra} />}
+                </div>
               </CardTitle>
               <Separator className="mt-2" />
             </CardHeader>
@@ -169,43 +191,10 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                       {nfeCompra.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
                     </p>
                   )}
-                  <div className="flex flex-wrap items-center gap-2">
-                    {(!compraOk || podeReemitirHomologCompra) && !nfeCompra.pendente && (
-                      <Button
-                        size="sm"
-                        className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
-                        disabled={nfeCompra.loading || parseCurrencyInput(valorCompra) <= 0}
-                        onClick={() => nfeCompra.emitir({ valor: parseCurrencyInput(valorCompra), ambiente: 'homologacao' })}
-                      >
-                        {nfeCompra.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfeCompra.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                        {nfeCompra.erro ? 'Tentar novamente' : 'Compra (Homologação)'}
-                      </Button>
-                    )}
-                    {podeReemitirHomologCompra && !nfeCompra.pendente && (
-                      <Button
-                        size="sm"
-                        className="gap-1.5"
-                        disabled={nfeCompra.loading || parseCurrencyInput(valorCompra) <= 0}
-                        onClick={() => nfeCompra.emitir({ valor: parseCurrencyInput(valorCompra), ambiente: 'producao' })}
-                      >
-                        <FileText className="h-4 w-4" /> Compra (Produção)
-                      </Button>
-                    )}
-                    {compraOk && nfeCompra.nfe?.ambiente === 'producao' && <CancelarNfeDialog nfe={nfeCompra} />}
-                  </div>
                 </>
               )}
             </CardContent>
           </Card>
-
-          {compraOk && nfeCompra.nfe?.ambiente === 'producao' && (
-            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 flex items-start gap-2.5">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
-              <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                Conversão concluída — a moto já pode ser vendida como estoque próprio.
-              </p>
-            </div>
-          )}
 
           <div className="flex justify-end pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
