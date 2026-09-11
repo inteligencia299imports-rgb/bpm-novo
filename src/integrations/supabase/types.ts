@@ -562,59 +562,6 @@ export type Database = {
           },
         ]
       }
-      clientes_fornecedores_enderecos_atpv: {
-        Row: {
-          bairro: string | null
-          cep: string | null
-          cidade: string | null
-          cliente_fornecedor_id: string
-          complemento: string | null
-          created_at: string
-          id: string
-          logradouro: string | null
-          numero: string | null
-          pais: string
-          uf: string | null
-          updated_at: string
-        }
-        Insert: {
-          bairro?: string | null
-          cep?: string | null
-          cidade?: string | null
-          cliente_fornecedor_id: string
-          complemento?: string | null
-          created_at?: string
-          id?: string
-          logradouro?: string | null
-          numero?: string | null
-          pais?: string
-          uf?: string | null
-          updated_at?: string
-        }
-        Update: {
-          bairro?: string | null
-          cep?: string | null
-          cidade?: string | null
-          cliente_fornecedor_id?: string
-          complemento?: string | null
-          created_at?: string
-          id?: string
-          logradouro?: string | null
-          numero?: string | null
-          pais?: string
-          uf?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "clientes_fornecedores_enderecos_atpv_cliente_fornecedor_id_fkey"
-            columns: ["cliente_fornecedor_id"]
-            isOneToOne: true
-            referencedRelation: "clientes_fornecedores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       consignacao_processos: {
         Row: {
           avaliacao_id: string

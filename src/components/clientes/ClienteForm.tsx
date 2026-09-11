@@ -45,22 +45,11 @@ const emptyEndereco: Endereco = {
   bairro: "", cidade: "", uf: "", pais: "Brasil",
 };
 
-// Endereço RESIDENCIAL (ATPV) — só Pessoa Jurídica. Tabela própria (ver migration
-// clientes_fornecedores_enderecos_atpv); mesmos campos do endereço comercial.
-type EnderecoAtpv = {
-  id?: string;
-  cep: string;
-  logradouro: string;
-  numero: string;
-  complemento: string;
-  bairro: string;
-  cidade: string;
-  uf: string;
-  pais: string;
-};
-
-const emptyEnderecoAtpv: EnderecoAtpv = {
-  cep: "", logradouro: "", numero: "", complemento: "",
+// Endereço RESIDENCIAL (ATPV) — só Pessoa Jurídica. Mesma tabela do endereço
+// comercial (clientes_fornecedores_enderecos já existe pra guardar mais de um
+// endereço por cliente), só muda o `tipo`.
+const emptyEnderecoAtpv: Endereco = {
+  tipo: "residencial", cep: "", logradouro: "", numero: "", complemento: "",
   bairro: "", cidade: "", uf: "", pais: "Brasil",
 };
 
@@ -282,7 +271,7 @@ export function ClienteForm({
 
   const [form, setForm] = useState<any>(emptyForm);
   const [endereco, setEndereco] = useState<Endereco>(emptyEndereco);
-  const [enderecoAtpv, setEnderecoAtpv] = useState<EnderecoAtpv>(emptyEnderecoAtpv);
+  const [enderecoAtpv, setEnderecoAtpv] = useState<Endereco>(emptyEnderecoAtpv);
   const [loading, setLoading] = useState(isEdit);
   const [tab, setTab] = useState<TabKey>("principais");
   const [ddi, setDdi] = useState("+55");
@@ -337,7 +326,7 @@ export function ClienteForm({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clientes_fornecedores")
-        .select("*, clientes_fornecedores_enderecos(*), clientes_fornecedores_enderecos_atpv(*)")
+        .select("*, clientes_fornecedores_enderecos(*)")
         .eq("id", id!)
         .maybeSingle();
       if (error) throw error;
@@ -354,7 +343,7 @@ export function ClienteForm({
   useEffect(() => {
     if (existing === undefined) return;
     if (existing) {
-      const { clientes_fornecedores_enderecos: ends, clientes_fornecedores_enderecos_atpv: endsAtpv, ...rest } = existing as any;
+      const { clientes_fornecedores_enderecos: ends, ...rest } = existing as any;
       // Respeita o tipo de cadastro/pessoa do banco: evita que o efeito de
       // "trocou para cliente → força física" dispare na carga e converta um PJ.
       prevTipoCadastro.current = (rest.tipo_cadastro as string) || emptyForm.tipo_cadastro;
@@ -386,18 +375,18 @@ export function ClienteForm({
           id: fiscal.id,
         } as Endereco);
       }
-      if (endsAtpv?.[0]) {
-        const a0: any = endsAtpv[0];
+      const residencial = ((ends as any[]) || []).find((e) => e.tipo === "residencial");
+      if (residencial) {
         setEnderecoAtpv({
           ...emptyEnderecoAtpv,
           ...Object.fromEntries(
-            Object.entries(a0).map(([k, v]) => {
+            Object.entries(residencial).map(([k, v]) => {
               if (k === "cep") return [k, maskCEP(String(v ?? ""))];
               return [k, v ?? (k === "pais" ? "Brasil" : "")];
             }),
           ),
-          id: a0.id,
-        } as EnderecoAtpv);
+          id: residencial.id,
+        } as Endereco);
       }
     }
     setLoading(false);
@@ -405,7 +394,7 @@ export function ClienteForm({
 
   const set = (k: string) => (v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   const setE = (k: keyof Endereco) => (v: any) => setEndereco((e) => ({ ...e, [k]: v }));
-  const setEAtpv = (k: keyof EnderecoAtpv) => (v: any) => setEnderecoAtpv((e) => ({ ...e, [k]: v }));
+  const setEAtpv = (k: keyof Endereco) => (v: any) => setEnderecoAtpv((e) => ({ ...e, [k]: v }));
 
   // Botões "puxar dados" entre os dois endereços — copiam os campos, mantendo
   // o id (se houver) de quem está recebendo os dados, pra não trocar a linha.
@@ -678,7 +667,6 @@ export function ClienteForm({
       delete payload.updated_at;
       delete payload.deleted_at;
       delete payload.clientes_fornecedores_enderecos;
-      delete payload.clientes_fornecedores_enderecos_atpv;
 
       let cfId = id;
       if (isEdit) {
@@ -725,11 +713,11 @@ export function ClienteForm({
           delete apayload.created_at;
           delete apayload.updated_at;
           if (enderecoAtpv.id) {
-            const { error } = await (supabase as any).from("clientes_fornecedores_enderecos_atpv").update(apayload).eq("id", enderecoAtpv.id);
+            const { error } = await supabase.from("clientes_fornecedores_enderecos").update(apayload).eq("id", enderecoAtpv.id);
             if (error) throw error;
           } else {
             delete apayload.id;
-            const { error } = await (supabase as any).from("clientes_fornecedores_enderecos_atpv").insert(apayload);
+            const { error } = await supabase.from("clientes_fornecedores_enderecos").insert(apayload);
             if (error) throw error;
           }
         }
