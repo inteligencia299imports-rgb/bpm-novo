@@ -61,15 +61,16 @@ const tipoAtendPorAtendimento = (tipo: string | null | undefined): 'presencial' 
   return null;
 };
 
-type Operacao = 'compra' | 'consignacao' | 'venda_seminova' | 'venda_0km';
+type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km';
 
 interface OperacaoConfig {
   refPrefix: string;
   naturezaDescricao: string;
   statusEntity: string;
   statusHist: string;
-  etapaTable: string;
-  etapa: string;
+  /** Sem etapaTable/etapa (ex.: devolução simbólica) — pula o upsert de checklist. */
+  etapaTable?: string;
+  etapa?: string;
   avStatusField: string | null;
   avStatusEmAndamento: string;
   criaCompromisso: boolean;
@@ -106,6 +107,21 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     etapa: 'NF EMITIDA',
     avStatusField: 'consignacao_status',
     avStatusEmAndamento: 'concluido',
+    criaCompromisso: false,
+    keyBy: 'avaliacao',
+  },
+  // Devolução simbólica da moto ao consignante (saída, referenciando a NF de
+  // entrada em consignação) — 1º passo para transformar consignação em compra,
+  // antes de vender a moto como estoque próprio. Sem etapa de checklist própria
+  // (não aparece em consignacao_processos) e sem compromisso financeiro (não há
+  // movimentação de caixa real).
+  devolucao_consignacao: {
+    refPrefix: 'devolucao',
+    naturezaDescricao: 'Devolução Simbólica de Consignação',
+    statusEntity: 'consignacao',
+    statusHist: 'nfe_devolucao_consignacao_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
     criaCompromisso: false,
     keyBy: 'avaliacao',
   },
@@ -200,9 +216,11 @@ async function aplicarCancelamento(
   if (error) return { updated: null, error };
 
   const fkCol = cfg.keyBy === 'avaliacao' ? 'avaliacao_id' : 'atendimento_id';
-  await admin.from(cfg.etapaTable)
-    .update({ concluida: false, data_conclusao: null })
-    .eq(fkCol, entityId).eq('etapa', cfg.etapa);
+  if (cfg.etapaTable && cfg.etapa) {
+    await admin.from(cfg.etapaTable)
+      .update({ concluida: false, data_conclusao: null })
+      .eq(fkCol, entityId).eq('etapa', cfg.etapa);
+  }
 
   // Cancela os compromissos financeiros dessa NF. Parcelas já pagas ficam como
   // estão (baixa real — acerto/estorno manual); as demais viram 'cancelado'.
@@ -257,12 +275,17 @@ async function limparNfeHomologacao(
   cfg: OperacaoConfig,
   entityId: string,
   keepNfeId: string,
+  operacao: Operacao,
 ): Promise<number> {
   const fkCol = cfg.keyBy === 'avaliacao' ? 'avaliacao_id' : 'atendimento_id';
+  // Escopado por `operacao`: uma mesma avaliação pode acumular várias operações
+  // em sequência (consignação -> devolução simbólica -> compra) — cada uma com
+  // seu próprio ciclo de homologação/produção, sem interferir nas outras.
   const { data: lixo } = await admin
     .from('nfe_entradas')
     .select('id')
     .eq(fkCol, entityId)
+    .eq('operacao', operacao)
     .neq('id', keepNfeId)
     .or('ambiente.eq.homologacao,status.eq.erro');
   const ids = ((lixo as any[]) || []).map((r) => r.id);
@@ -286,6 +309,7 @@ async function registrarPosAutorizacao(
   cfg: OperacaoConfig,
   params: {
     entityId: string; // avaliacaoId ou atendimentoId conforme cfg.keyBy
+    operacao: Operacao;
     dataEmissao: string;
     numero: string | null;
     serie: string | null;
@@ -293,7 +317,7 @@ async function registrarPosAutorizacao(
     callerName: string | null;
   },
 ) {
-  const { entityId, dataEmissao, numero, serie, callerId, callerName } = params;
+  const { entityId, operacao, dataEmissao, numero, serie, callerId, callerName } = params;
   const porAvaliacao = cfg.keyBy === 'avaliacao';
   const fkCol = porAvaliacao ? 'avaliacao_id' : 'atendimento_id';
 
@@ -317,16 +341,19 @@ async function registrarPosAutorizacao(
     });
   }
 
-  // Marca a etapa do checklist como concluida.
-  await admin.from(cfg.etapaTable).upsert(
-    {
-      [fkCol]: entityId,
-      etapa: cfg.etapa,
-      concluida: true,
-      data_conclusao: dataEmissao,
-    },
-    { onConflict: `${fkCol},etapa` },
-  );
+  // Marca a etapa do checklist como concluida (operações sem etapa própria,
+  // como a devolução simbólica, pulam este bloco).
+  if (cfg.etapaTable && cfg.etapa) {
+    await admin.from(cfg.etapaTable).upsert(
+      {
+        [fkCol]: entityId,
+        etapa: cfg.etapa,
+        concluida: true,
+        data_conclusao: dataEmissao,
+      },
+      { onConflict: `${fkCol},etapa` },
+    );
+  }
 
   // Emitir a NF avanca o status do processo (so p/ entradas keyed por avaliacao).
   if (porAvaliacao && cfg.avStatusField) {
@@ -340,6 +367,16 @@ async function registrarPosAutorizacao(
     }
   }
 
+  // Compra que sucede uma devolução simbólica (transformação de consignação em
+  // compra): a moto deixa de estar "em consignação" — vira estoque próprio
+  // (mesmo tratamento de 'propria' em toda a regra de negócio, ver tipoAquisicao.ts).
+  if (operacao === 'compra' && porAvaliacao) {
+    const { data: avTipo } = await admin.from('avaliacoes').select('tipo_aquisicao').eq('id', entityId).maybeSingle();
+    if ((avTipo as any)?.tipo_aquisicao === 'consignada') {
+      await admin.from('avaliacoes').update({ tipo_aquisicao: 'convertida' }).eq('id', entityId);
+    }
+  }
+
   if (!cfg.criaCompromisso || !cfg.planoContaId || !cfg.centroCustoId) return;
 
   // Compromisso financeiro (contas a pagar/receber) da NF-e.
@@ -347,6 +384,7 @@ async function registrarPosAutorizacao(
     .from('nfe_entradas')
     .select('*')
     .eq(fkCol, entityId)
+    .eq('operacao', operacao)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -647,13 +685,13 @@ Deno.serve(async (req) => {
 
   const acao: 'consultar' | 'cancelar' | 'emitir' =
     body.acao === 'consultar' ? 'consultar' : body.acao === 'cancelar' ? 'cancelar' : 'emitir';
-  const tipo: Operacao = (['compra', 'consignacao', 'venda_seminova', 'venda_0km'] as const).includes(body.tipo as any)
+  const tipo: Operacao = (['compra', 'consignacao', 'devolucao_consignacao', 'venda_seminova', 'venda_0km'] as const).includes(body.tipo as any)
     ? (body.tipo as Operacao)
     : 'compra';
   const cfg = CFG[tipo];
   const ehVenda = cfg.keyBy === 'atendimento';
-  // Compra/consignação de moto seminova entram no departamento "motos_seminovas".
-  const departamento = (tipo === 'compra' || tipo === 'consignacao') ? 'motos_seminovas' : 'motos';
+  // Compra/consignação/devolução simbólica de moto seminova entram no departamento "motos_seminovas".
+  const departamento = (tipo === 'compra' || tipo === 'consignacao' || tipo === 'devolucao_consignacao') ? 'motos_seminovas' : 'motos';
 
   const avaliacaoId = typeof body.avaliacao_id === 'string' ? body.avaliacao_id : '';
   const atendimentoIdBody = typeof body.atendimento_id === 'string' ? body.atendimento_id : '';
@@ -740,7 +778,7 @@ Deno.serve(async (req) => {
       const { data: em } = await admin
         .from('estoque_motos')
         .select(
-          '*, avaliacao:avaliacao_id(marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam, km, valor_fechamento, valor_nf_entrada)',
+          '*, avaliacao:avaliacao_id(marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam, km, valor_fechamento, valor_nf_entrada, tipo_aquisicao)',
         )
         .eq('id', mi.estoque_moto_id)
         .maybeSingle();
@@ -843,8 +881,11 @@ Deno.serve(async (req) => {
   const token = ambiente === 'producao' ? focusCfg?.token_producao : focusCfg?.token_homologacao;
 
   const nfeKey = ehVenda ? 'atendimento_id' : 'avaliacao_id';
+  // Escopado por `tipo`: uma mesma avaliação pode ter várias operações em
+  // sequência (consignação -> devolução simbólica -> compra), cada uma com seu
+  // próprio ciclo de NF-e — nunca pegar a "última linha" de outra operação.
   const buscarNfe = () =>
-    admin.from('nfe_entradas').select('*').eq(nfeKey, entityId)
+    admin.from('nfe_entradas').select('*').eq(nfeKey, entityId).eq('operacao', tipo)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
 
   // =====================================================================
@@ -908,9 +949,10 @@ Deno.serve(async (req) => {
     // avanço de status/etapa, histórico, NPS). Homologação é só teste: persiste
     // a linha (pra baixar a DANFE e liberar o botão de produção) e para por aí.
     if (fStatus === 'autorizado' && rowAmbiente === 'producao') {
-      await limparNfeHomologacao(admin, cfg, entityId, (updated?.id as string) || nfeRow.id);
+      await limparNfeHomologacao(admin, cfg, entityId, (updated?.id as string) || nfeRow.id, tipo);
       await registrarPosAutorizacao(admin, cfg, {
         entityId,
+        operacao: tipo,
         dataEmissao: (updated?.data_emissao as string) || nfeRow.data_emissao || new Date().toISOString(),
         numero: (updated?.numero as string) ?? null,
         serie: (updated?.serie as string) ?? null,
@@ -998,26 +1040,39 @@ Deno.serve(async (req) => {
 
   // Guards
   let contratoVendaId: string | null = null;
+  // Compra que sucede uma devolução simbólica (transformação de consignação em
+  // compra): dispensa a aprovação de aquisição e o contrato de compra separados
+  // — a moto já tem contrato de consignação + NF de consignação + NF de
+  // devolução simbólica autorizadas, prova documental suficiente da conversão.
+  const { data: devolucaoAutorizada } = tipo === 'compra'
+    ? await admin.from('nfe_entradas').select('id').eq('avaliacao_id', avaliacaoId)
+        .eq('operacao', 'devolucao_consignacao').eq('status', 'processada').limit(1).maybeSingle()
+    : { data: null };
+  const viaConversaoConsignacao = !!devolucaoAutorizada;
   if (tipo === 'compra') {
     if (av.consulta_realizada !== true) return jsonResponse({ error: 'A consulta veicular ainda não foi realizada.' }, 409);
     // Troca (moto entrando como parte de pagamento): não exige aprovação da
     // aquisição, e o contrato de VENDA já engloba a compra da moto que entra —
     // não é preciso um contrato de compra separado. Compra pura exige os dois.
     const ehTroca = atendimento.interesse === 'trocar';
-    if (!ehTroca && av.aprovacao_status !== 'aprovada') return jsonResponse({ error: 'A compra ainda não foi aprovada.' }, 409);
-    const { data: contratoHist } = await admin
-      .from('status_history').select('id')
-      .eq('entity_type', 'pos_compra').eq('entity_id', avaliacaoId).eq('status', 'contrato_compra_gerado').limit(1);
-    let contratoOk = !!contratoHist && contratoHist.length > 0;
-    if (!contratoOk && ehTroca) {
-      const { data: vendaHist } = await admin
-        .from('status_history').select('id')
-        .eq('entity_type', 'showroom').eq('entity_id', atendimentoId)
-        .in('status', ['contrato_de_venda', 'contrato_de_sinal']).limit(1);
-      contratoOk = !!vendaHist && vendaHist.length > 0;
+    if (!ehTroca && !viaConversaoConsignacao && av.aprovacao_status !== 'aprovada') {
+      return jsonResponse({ error: 'A compra ainda não foi aprovada.' }, 409);
     }
-    if (!contratoOk) {
-      return jsonResponse({ error: ehTroca ? 'O contrato de venda ainda não foi gerado.' : 'O contrato de compra ainda não foi gerado.' }, 409);
+    if (!viaConversaoConsignacao) {
+      const { data: contratoHist } = await admin
+        .from('status_history').select('id')
+        .eq('entity_type', 'pos_compra').eq('entity_id', avaliacaoId).eq('status', 'contrato_compra_gerado').limit(1);
+      let contratoOk = !!contratoHist && contratoHist.length > 0;
+      if (!contratoOk && ehTroca) {
+        const { data: vendaHist } = await admin
+          .from('status_history').select('id')
+          .eq('entity_type', 'showroom').eq('entity_id', atendimentoId)
+          .in('status', ['contrato_de_venda', 'contrato_de_sinal']).limit(1);
+        contratoOk = !!vendaHist && vendaHist.length > 0;
+      }
+      if (!contratoOk) {
+        return jsonResponse({ error: ehTroca ? 'O contrato de venda ainda não foi gerado.' : 'O contrato de compra ainda não foi gerado.' }, 409);
+      }
     }
   } else if (tipo === 'consignacao') {
     if (av.consulta_realizada !== true) return jsonResponse({ error: 'A consulta veicular ainda não foi realizada.' }, 409);
@@ -1026,8 +1081,26 @@ Deno.serve(async (req) => {
     if (!contratoConsig || contratoConsig.length === 0) {
       return jsonResponse({ error: 'O contrato do consignante ainda não foi gerado.' }, 409);
     }
+  } else if (tipo === 'devolucao_consignacao') {
+    const { data: consignacaoOk } = await admin
+      .from('nfe_entradas').select('id').eq('avaliacao_id', avaliacaoId)
+      .eq('operacao', 'consignacao').eq('status', 'processada').limit(1).maybeSingle();
+    if (!consignacaoOk) {
+      return jsonResponse({ error: 'A NF-e de entrada em consignação ainda não foi emitida.' }, 409);
+    }
+    const { data: devolucaoJaOk } = await admin
+      .from('nfe_entradas').select('id').eq('avaliacao_id', avaliacaoId)
+      .eq('operacao', 'devolucao_consignacao').eq('status', 'processada').limit(1).maybeSingle();
+    if (devolucaoJaOk) {
+      return jsonResponse({ error: 'A devolução simbólica desta consignação já foi emitida.' }, 409);
+    }
   } else {
     // venda
+    // Moto ainda "em consignação" (não convertida em compra): a venda como
+    // estoque próprio só é permitida depois da devolução simbólica + compra.
+    if (!ehVenda0km && (estoqueMoto?.avaliacao as any)?.tipo_aquisicao === 'consignada') {
+      return jsonResponse({ error: 'Moto ainda em consignação — emita a devolução simbólica e a compra antes de vender.' }, 409);
+    }
     if (!['vendido', 'sinal'].includes(estoqueMoto?.status)) {
       return jsonResponse({ error: 'A moto ainda não foi marcada como vendida.' }, 409);
     }
@@ -1060,13 +1133,13 @@ Deno.serve(async (req) => {
     // cancelamento) e só libera depois de pelo menos uma homologação autorizada
     // pra essa mesma operação — nunca emite direto em produção sem testar antes.
     const { data: producaoAutorizada } = await admin
-      .from('nfe_entradas').select('id').eq(nfeKey, entityId)
+      .from('nfe_entradas').select('id').eq(nfeKey, entityId).eq('operacao', tipo)
       .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
     if (producaoAutorizada) {
       return jsonResponse({ error: 'Já existe uma NF-e emitida em produção para esta moto.' }, 409);
     }
     const { data: homologAutorizada } = await admin
-      .from('nfe_entradas').select('id').eq(nfeKey, entityId)
+      .from('nfe_entradas').select('id').eq(nfeKey, entityId).eq('operacao', tipo)
       .eq('ambiente', 'homologacao').eq('status', 'processada').limit(1).maybeSingle();
     if (!homologAutorizada) {
       return jsonResponse({ error: 'Emita em homologação antes de emitir em produção.' }, 409);
@@ -1225,6 +1298,11 @@ Deno.serve(async (req) => {
     if (valorBody != null) {
       await admin.from('avaliacoes').update({ valor_consignacao_nota: valorBody }).eq('id', avaliacaoId);
     }
+  } else if (tipo === 'devolucao_consignacao') {
+    // A devolução simbólica tem que devolver o MESMO valor da NF de entrada em
+    // consignação já autorizada — não é editável na tela (evita divergir do que
+    // a SEFAZ já tem registrado como recebido).
+    valor = Number(av.valor_consignacao_nota ?? av.avaliacao_consignacao ?? 0);
   } else {
     // venda: preco de venda da moto (estoque_motos.valor_venda); 0km cai p/ tabela.
     valor = valorBody
@@ -1373,6 +1451,17 @@ Deno.serve(async (req) => {
     };
   }
 
+  // Devolução simbólica: referencia a chave de acesso da NF-e de entrada em
+  // consignação (grupo NFref/refNFe — SEFAZ rejeita devolução sem isso).
+  let notaReferenciada: string | null = null;
+  if (tipo === 'devolucao_consignacao') {
+    const { data: nfConsignacao } = await admin
+      .from('nfe_entradas').select('chave_nfe')
+      .eq('avaliacao_id', avaliacaoId).eq('operacao', 'consignacao').eq('status', 'processada')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    notaReferenciada = (nfConsignacao as any)?.chave_nfe ?? null;
+  }
+
   const payload = montarPayloadNfeCompra({
     natureza: {
       descricao: natureza.descricao,
@@ -1420,6 +1509,8 @@ Deno.serve(async (req) => {
     // Venda de moto seminova = bem móvel usado: liga indBemMovelUsado + base de
     // PIS/COFINS pela margem (venda − custo de aquisição).
     bemMovelUsado: tipo === 'venda_seminova',
+    notaReferenciada,
+    semPagamentoReal: tipo === 'devolucao_consignacao',
   });
 
   // FKs da nfe_entradas conforme a operacao.
@@ -1546,9 +1637,10 @@ Deno.serve(async (req) => {
   if (autorizado && ambiente === 'producao') {
     // A NF de produção autorizada apaga as NF de homologação (e tentativas de
     // produção com erro) da mesma entidade + relacionamentos.
-    await limparNfeHomologacao(admin, cfg, entityId, nfeRow.id);
+    await limparNfeHomologacao(admin, cfg, entityId, nfeRow.id, tipo);
     await registrarPosAutorizacao(admin, cfg, {
       entityId,
+      operacao: tipo,
       dataEmissao,
       numero: (focusBody.numero as string) ?? null,
       serie: (focusBody.serie as string) ?? null,
