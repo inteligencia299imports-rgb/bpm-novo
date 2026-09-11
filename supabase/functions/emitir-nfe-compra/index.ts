@@ -1362,6 +1362,14 @@ Deno.serve(async (req) => {
   if (!regraIbsCbs?.situacao_tributaria || !regraIbsCbs?.classificacao_tributaria) {
     faltando.push('IBS/CBS (CST/cClassTrib — Reforma Tributária)');
   }
+  // CST 20 (redução de base de ICMS) exige prod/cBenef — sem ele a SEFAZ
+  // rejeita com [930] "CST com beneficio fiscal e nao informado o codigo de
+  // beneficio fiscal" (achado numa venda MMATOS DF→GO, 2026-09-11 — a regra
+  // de ICMS tinha reducao_base_calculo mas codigo_beneficio_fiscal vazio).
+  // Bloqueia aqui com erro claro em vez de deixar a SEFAZ rejeitar.
+  if (regraIcms?.situacao_tributaria === '20' && Number(regraIcms?.reducao_base_calculo ?? 0) > 0 && !regraIcms?.codigo_beneficio_fiscal?.trim()) {
+    faltando.push(`cBenef (CST 20 com redução de base exige o código de benefício fiscal na regra de ICMS — UF ${ufDestino || '?'})`);
+  }
   // DIFAL (EC 87/2015): venda interestadual a consumidor final não contribuinte
   // precisa do grupo ICMSUFDest — sem a alíquota interna da UF de destino
   // cadastrada na regra de ICMS, a SEFAZ rejeita com [694] "Nao informado o
