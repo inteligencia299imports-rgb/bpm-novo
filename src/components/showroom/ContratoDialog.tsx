@@ -100,6 +100,14 @@ const tipoContaLabel = (v: string | null | undefined) => {
 const fmtDataNasc = (v: string | null | undefined) =>
   v ? String(v).replace(/^(\d{4})-(\d{2})-(\d{2}).*/, '$3/$2/$1') : undefined;
 
+const fmtRegimeTributario = (v: string | null | undefined) => {
+  if (v === 'simples') return 'Simples Nacional';
+  if (v === 'lucro_presumido') return 'Lucro Presumido';
+  if (v === 'lucro_real') return 'Lucro Real';
+  if (v === 'mei') return 'MEI';
+  return v || undefined;
+};
+
 const formatCpfCnpj = (value: string): string => {
   const digits = value.replace(/\D/g, '');
   if (digits.length <= 11) {
@@ -1268,8 +1276,8 @@ const ContratoDialog: React.FC<Props> = ({
                       <InfoDisplay label="Telefone (comercial)" value={fmtTelefone(cli?.telefone_comercial)} />
                       {isJuridica && (
                         <>
-                          <InfoDisplay label="IE do Cliente" value={cli?.isento_inscricao_estadual ? 'Isenta' : cli?.inscricao_estadual} />
-                          <InfoDisplay label="Regime Tributário" value={cli?.regime_tributario} />
+                          <InfoDisplay label="Inscrição Estadual" value={cli?.isento_inscricao_estadual ? 'Isenta' : cli?.inscricao_estadual} />
+                          <InfoDisplay label="Regime Tributário" value={fmtRegimeTributario(cli?.regime_tributario)} />
                         </>
                       )}
                     </div>
