@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
-import { nfeTagFromRows } from '@/lib/nfeTag';
+import { nfeTagFromRows, NFE_TAG_SEM_REGISTRO } from '@/lib/nfeTag';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -51,6 +51,9 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
 
     const estResult = await fetchAllRange(() => supabase.from('estoque_motos').select('avaliacao_id, status, observacoes, created_at').not('avaliacao_id', 'is', null));
     const nfeResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('avaliacao_id, status, ambiente, created_at').not('avaliacao_id', 'is', null));
+    // Etapa "NF EMITIDA" concluída sem nfe_entradas (emitida fora do bpm-novo,
+    // ou avaliação importada) — cai no fallback cinza (NFE_TAG_SEM_REGISTRO).
+    const etapaNfResult = await fetchAllRange(() => supabase.from('consignacao_processos').select('avaliacao_id').eq('etapa', 'NF EMITIDA').eq('concluida', true));
     const result = await fetchAllRange(() =>
       supabase.from('avaliacoes').select(selectStr).eq('tipo_aquisicao', 'consignada').order('updated_at', { ascending: false })
     );
@@ -63,6 +66,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
       if (!n.avaliacao_id) return;
       (nfeRowsPorAvaliacao[n.avaliacao_id] ??= []).push(n);
     });
+    const etapaNfConcluidaSet = new Set(((etapaNfResult.data as any[]) || []).map((e: any) => e.avaliacao_id));
     if (error) { toast.error('Erro ao carregar consignações'); } else {
       const estoqueMap: Record<string, { status: string; observacoes: string | null; data_entrada: string | null }> = {};
       (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes, data_entrada: e.created_at }; });
@@ -78,7 +82,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
         if (picked) acquDateMap[d.id] = picked;
       });
       let mapped = (data || [])
-        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeTag: nfeTagFromRows(nfeRowsPorAvaliacao[d.id]) }));
+        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeTag: nfeTagFromRows(nfeRowsPorAvaliacao[d.id]) ?? (etapaNfConcluidaSet.has(d.id) ? NFE_TAG_SEM_REGISTRO : undefined) }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       if (filterCidade !== 'todos') { mapped = mapped.filter((a: any) => matchesCidade(a.atendimento?.loja, filterCidade)); }
       setItems(mapped);
