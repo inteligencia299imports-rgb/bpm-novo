@@ -12,7 +12,7 @@ export interface DadosFornecedor {
   nome: string;
   cpf_cnpj: string;
   tipo_pessoa: string | null;
-  /** Indicador de IE do destinatário (NF-e): contribuinte + IE → 1; isento → 2; senão 9. */
+  /** Indicador de IE do destinatário (NF-e): contribuinte + IE → 1; senão 9 — ver indicadorIeDestinatario(). */
   contribuinte_icms?: boolean | null;
   inscricao_estadual?: string | null;
   isento_inscricao_estadual?: boolean | null;
@@ -115,6 +115,12 @@ export interface RegraFiscal {
    * quando o CST tem redução/benefício que a SEFAZ exige identificar.
    * Ex.: "DF816006" (venda de veículo usado no DF, CST 20). */
   codigo_beneficio_fiscal?: string | null;
+  /** pICMSUFDest — alíquota interna do ICMS na UF de destino. Alimenta o
+   * grupo ICMSUFDest (DIFAL, EC 87/2015) quando a venda é interestadual a
+   * consumidor final não contribuinte — ver difalAplicavel() e
+   * docs-fiscal-299/difal-ec87.md. Vazio na regra que casou com a UF de
+   * destino → index.ts bloqueia a emissão antes de montar o payload. */
+  aliquota_interna_destino?: number | null;
   // Reforma Tributária — preenchidos apenas na linha imposto === 'ibscbs'.
   classificacao_tributaria?: string | null; // cClassTrib
   cbs_aliquota?: number | null;
@@ -317,22 +323,54 @@ export function veiculoProdMoto(m: DadosMoto): Record<string, unknown> | null {
   return v;
 }
 
+/**
+ * Indicador de IE do destinatário (indIEDest): 1 = contribuinte com IE
+ * preenchida; 9 = não contribuinte (PF, ou PJ sem IE/sem contribuinte_icms).
+ * Nunca 2 ("Contribuinte isento de IE") — a maioria dos estados (incl. GO)
+ * rejeita esse indicador em operação interestadual — Rejeição [805] "A SEFAZ
+ * do destinatario nao permite Contribuinte Isento de Inscricao Estadual"
+ * (ver docs-fiscal-299 §2.16).
+ */
+export function indicadorIeDestinatario(
+  pf: boolean,
+  contribuinteIcms: boolean | null | undefined,
+  inscricaoEstadual: string | null | undefined,
+): number {
+  const ie = onlyDigits(inscricaoEstadual);
+  const destContribuinteComIe = !pf && contribuinteIcms === true && ie.length > 0;
+  return destContribuinteComIe ? 1 : 9;
+}
+
+/**
+ * DIFAL (EC 87/2015): venda interestadual a consumidor final NÃO contribuinte
+ * leva o grupo ICMSUFDest no item, além do ICMS próprio. Só se aplica ao
+ * emitente do Regime Normal — o Simples Nacional não recolhe/destaca DIFAL
+ * (STF ADI 5464, cautelar sobre a cláusula 9ª do Convênio ICMS 93/2015; a
+ * LC 190/2022 não alcança o Simples). Ver docs-fiscal-299/difal-ec87.md.
+ */
+export function difalAplicavel(p: {
+  regimeTributarioEmitente: string | null | undefined;
+  ufEmitente: string | null | undefined;
+  ufDestino: string | null | undefined;
+  indIeDest: number;
+  consumidorFinal: boolean;
+}): boolean {
+  const emitenteRegimeNormal = !(p.regimeTributarioEmitente || '').toUpperCase().includes('SIMPLES');
+  const ufO = (p.ufEmitente || '').trim().toUpperCase();
+  const ufD = (p.ufDestino || '').trim().toUpperCase();
+  const mesmaUf = !!ufO && ufO === ufD;
+  return emitenteRegimeNormal && !mesmaUf && p.indIeDest === 9 && p.consumidorFinal;
+}
+
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
   const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, trocaInfoCpl, formasPagamento, bemMovelUsado, notaReferenciada, semPagamentoReal } = args;
 
   const pf = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
   const docForn = onlyDigits(fornecedor.cpf_cnpj);
 
-  // Indicador de IE do destinatário (SEFAZ [232] quando um CNPJ contribuinte
-  // é declarado sem IE). PF vendedora/consignante = sempre 9 (não contribuinte).
-  // Nunca usar indIEDest=2 ("Contribuinte isento de IE"): a maioria dos estados
-  // (incl. GO) rejeita esse indicador em operação interestadual — Rejeição
-  // [805] "A SEFAZ do destinatario nao permite Contribuinte Isento de
-  // Inscricao Estadual" (ver docs-fiscal-299 §2.16). Sem IE real → sempre 9,
-  // isento ou não (9 = "pode ou não possuir Inscrição Estadual").
+  // Indicador de IE do destinatário — ver indicadorIeDestinatario() acima.
   const ieForn = onlyDigits(fornecedor.inscricao_estadual);
-  const destContribuinteComIe = !pf && fornecedor.contribuinte_icms === true && ieForn.length > 0;
-  const indIeDest = destContribuinteComIe ? 1 : 9;
+  const indIeDest = indicadorIeDestinatario(pf, fornecedor.contribuinte_icms, fornecedor.inscricao_estadual);
   const valorFmt = Number(valor.toFixed(2));
   const r2 = (n: number) => Number(n.toFixed(2));
 
@@ -493,6 +531,44 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     item.icms_base_calculo_efetiva = baseEfet;
     item.icms_aliquota_efetiva = aliqEfet;
     item.icms_valor_efetivo = r2(baseEfet * (aliqEfet / 100));
+  }
+
+  // --- Grupo ICMSUFDest (DIFAL — EC 87/2015) ------------------------------
+  // Venda interestadual a consumidor final NÃO contribuinte: além do ICMS
+  // próprio (grupo(s) acima), a NF-e leva a partilha do ICMS pra UF de
+  // destino. Ver difalAplicavel() acima e docs-fiscal-299/difal-ec87.md.
+  // `regraIcms.aliquota_interna_destino` vazio == UF de destino sem alíquota
+  // interna cadastrada na regra — index.ts bloqueia a emissão antes de chegar
+  // aqui (nunca monta o grupo pela metade); esta função só confere de novo
+  // por segurança (chamador que não bloquear cai simplesmente sem o grupo).
+  if (
+    natureza.tipo === 'saida' &&
+    regraIcms.aliquota_interna_destino != null &&
+    difalAplicavel({
+      regimeTributarioEmitente: empresa.regime_tributario,
+      ufEmitente: empresa.uf,
+      ufDestino: fornecedor.uf,
+      indIeDest,
+      consumidorFinal: !!natureza.consumidor_final,
+    })
+  ) {
+    const pIcmsInter = Number(regraIcms.aliquota ?? 0);
+    const pIcmsUfDest = Number(regraIcms.aliquota_interna_destino);
+    const pFcpUfDest = Number(regraIcms.aliquota_fcp ?? 0);
+    const redDifal = Number(regraIcms.reducao_base_calculo ?? 0);
+    const vBcUfDest = r2(valorFmt * (1 - redDifal / 100));
+    // Partilha 100% destino (regra desde 2019): vICMSUFDest = vBCUFDest × (pICMSUFDest − pICMSInter).
+    item.icms_base_calculo_uf_destino = vBcUfDest;
+    item.icms_aliquota_interna_uf_destino = pIcmsUfDest;
+    item.icms_aliquota_interestadual = pIcmsInter;
+    item.icms_percentual_partilha = 100;
+    item.icms_valor_uf_destino = r2(vBcUfDest * (pIcmsUfDest - pIcmsInter) / 100);
+    item.icms_valor_uf_remetente = 0;
+    if (pFcpUfDest > 0) {
+      item.fcp_base_calculo_uf_destino = vBcUfDest;
+      item.fcp_percentual_uf_destino = pFcpUfDest;
+      item.fcp_valor_uf_destino = r2(vBcUfDest * pFcpUfDest / 100);
+    }
   }
 
   // --- Grupo IBS/CBS (Reforma Tributária) ---------------------------------

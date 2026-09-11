@@ -1,7 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { cancelarNfe, consultarNfe, emitirNfe, focusBaseUrl, mensagemErroFocus, type FocusAmbiente } from './focus.ts';
-import { montarPayloadNfeCompra, brl, type RegraFiscal } from './payload.ts';
+import { montarPayloadNfeCompra, brl, indicadorIeDestinatario, difalAplicavel, type RegraFiscal } from './payload.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
@@ -1311,7 +1311,7 @@ Deno.serve(async (req) => {
       'id, descricao, serie, tipo, indicador_presenca, consumidor_final, operacao_devolucao, ' +
         'informacoes_complementares, informacoes_adicionais_fisco, ' +
         'naturezas_operacao_regras(imposto, cfop, situacao_tributaria, aliquota, reducao_base_calculo, ' +
-        'aliquota_fcp, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem, ' +
+        'aliquota_fcp, aliquota_interna_destino, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem, ' +
         'natureza_operacao_descricao, indicador_presenca, tipo_atendimento, codigo_beneficio_fiscal, ' +
         'classificacao_tributaria, cbs_aliquota, ibs_uf_aliquota, ibs_mun_aliquota, percentual_reducao, ' +
         'aliquota_icms_efetiva, reducao_base_calculo_efetiva, aliquota_suportada_consumidor_final)',
@@ -1361,6 +1361,25 @@ Deno.serve(async (req) => {
   // Reforma Tributária: emitente CRT 3 precisa do grupo IBS/CBS (SEFAZ rejeita com cStat 1115).
   if (!regraIbsCbs?.situacao_tributaria || !regraIbsCbs?.classificacao_tributaria) {
     faltando.push('IBS/CBS (CST/cClassTrib — Reforma Tributária)');
+  }
+  // DIFAL (EC 87/2015): venda interestadual a consumidor final não contribuinte
+  // precisa do grupo ICMSUFDest — sem a alíquota interna da UF de destino
+  // cadastrada na regra de ICMS, a SEFAZ rejeita com [694] "Nao informado o
+  // grupo de ICMS para a UF de destino". Bloqueia aqui com erro claro em vez
+  // de deixar a Focus tentar e a SEFAZ rejeitar. Ver docs-fiscal-299/difal-ec87.md.
+  if (ehVenda) {
+    const pfFornecedor = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
+    const indIeDestPreview = indicadorIeDestinatario(pfFornecedor, fornecedor.contribuinte_icms, fornecedor.inscricao_estadual);
+    const difalNecessario = difalAplicavel({
+      regimeTributarioEmitente: empresa.regime_tributario,
+      ufEmitente: empresa.uf,
+      ufDestino: end.uf ?? null,
+      indIeDest: indIeDestPreview,
+      consumidorFinal: !!natureza.consumidor_final,
+    });
+    if (difalNecessario && regraIcms?.aliquota_interna_destino == null) {
+      faltando.push(`DIFAL (alíquota interna do ICMS não cadastrada pra UF de destino ${ufDestino || '?'} na regra de ICMS)`);
+    }
   }
   if (faltando.length) {
     return jsonResponse(
