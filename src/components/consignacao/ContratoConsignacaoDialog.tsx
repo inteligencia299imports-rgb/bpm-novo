@@ -120,6 +120,7 @@ const snapshotFields = (v: {
   cpfCnpj: string; email: string; endereco: string; cep: string;
   valorQuitacao: string; valorFechamento: string;
   obsInternas: string; obsContrato: string; dataContrato?: Date;
+  percentualComissao?: string;
 }) => JSON.stringify({ ...v, dataContrato: v.dataContrato ? v.dataContrato.toISOString().slice(0, 10) : '' });
 
 const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, modo = 'contrato' }) => {
@@ -175,6 +176,10 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // Date
   const [dataContrato, setDataContrato] = useState<Date | undefined>();
   const [calOpen, setCalOpen] = useState(false);
+
+  // Percentual de comissão que sai no contrato (0/vazio = contrato normal, sem
+  // cláusula de comissão) — substitui a antiga opção fixa de 5%.
+  const [percentualComissao, setPercentualComissao] = useState('');
 
   // Baseline p/ detectar edição desde a última geração/carregamento (igual compra).
   const [baseline, setBaseline] = useState('');
@@ -303,7 +308,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // Após terminar de carregar, fixa o baseline com os valores atuais.
   useEffect(() => {
     if (loading) return;
-    setBaseline(snapshotFields({ cpfCnpj, email, endereco, cep, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato }));
+    setBaseline(snapshotFields({ cpfCnpj, email, endereco, cep, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato, percentualComissao }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
@@ -401,10 +406,14 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // Resumo do cliente (quando o cadastro está completo) — igual ao contrato de compra.
   const cli = clienteRecord;
   const cliEndereco = cli?.clientes_fornecedores_enderecos?.[0] || null;
-  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco);
-  // Consignação: a loja repassa o valor ao consignante -> dados bancários sempre exigidos.
-  const pendenciasNf = pendenciasCadastroCliente(cli, cliEndereco, { exigirBancarios: true });
+  // Consignação não paga o consignante nem no contrato nem na NF de entrada —
+  // moto só é paga se/quando vendida, via a compra que sucede a devolução
+  // simbólica (é nessa etapa que os dados bancários passam a fazer sentido).
+  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco, { exigirBancarios: false });
+  const pendenciasNf = pendenciasCadastroCliente(cli, cliEndereco, { exigirBancarios: false });
   const nfSemPendencias = semPendencias(pendenciasNf);
+  const percentualComissaoNum = parseFloat(percentualComissao.replace(',', '.')) || 0;
+  const temComissao = percentualComissaoNum > 0;
 
   // KPIs de valores — mesma lógica do contrato de compra.
   const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -415,12 +424,14 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const repasseCliente = fechamentoNum - abatimentos - quitacaoNum;
 
   // Houve edição desde a última geração/carregamento? (igual contrato de compra)
-  const currentSnapshot = snapshotFields({ cpfCnpj, email, endereco, cep, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato });
+  const currentSnapshot = snapshotFields({ cpfCnpj, email, endereco, cep, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato, percentualComissao });
   const editado = currentSnapshot !== baseline || clienteTocado;
   // Contrato já gerado e sem edições (ou NF-e já emitida em produção) -> só permite baixar/visualizar.
   const modoLeitura = (jaGerado && !editado) || nfeEmProducao;
 
   const validateFields = (): boolean => {
+    if (!moto?.chassi?.trim()) { toast.error('Chassi da moto é obrigatório'); return false; }
+    if (!moto?.renavam?.trim()) { toast.error('RENAVAM da moto é obrigatório'); return false; }
     if (!cpfCnpj?.trim()) { toast.error('CPF/CNPJ é obrigatório'); return false; }
     if (!email?.trim()) { toast.error('E-mail é obrigatório'); return false; }
     if (!endereco?.trim()) { toast.error('Endereço é obrigatório'); return false; }
@@ -432,7 +443,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     return true;
   };
 
-  const buildPdfData = (comPercentual?: number) => {
+  const buildPdfData = () => {
     const anoStr = moto ? [moto.ano_fabricacao, moto.ano_modelo].filter(Boolean).join('/') : '';
     const formatCurrencyValue = (val: string) => {
       const num = parseCurrencyInput(val);
@@ -471,23 +482,23 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       observacoes: obsContrato || '',
       valorFechamento: formatCurrencyValue(valorFechamento),
       dataContrato: dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : '-',
-      comPercentual5: !!comPercentual,
+      percentualComissao: percentualComissaoNum,
     };
   };
 
-  const handleGerar = async (comPercentual?: number) => {
+  const handleGerar = async () => {
     if (!validateFields()) return;
     setGenerating(true);
     const id = await saveContrato();
     if (!id) { setGenerating(false); return; }
     try {
-      await generateContratoConsignacaoPdf(buildPdfData(comPercentual), 'download');
+      await generateContratoConsignacaoPdf(buildPdfData(), 'download');
 
       if (user) {
         const { error } = await supabase.from('status_history').insert({
           entity_type: 'consignacao',
           entity_id: avaliacao.id,
-          status: comPercentual ? 'CONTRATO GERADO (5%)' : 'CONTRATO GERADO',
+          status: temComissao ? `CONTRATO GERADO (${percentualComissao}%)` : 'CONTRATO GERADO',
           changed_by: user.id,
           changed_by_name: userName || 'Vendedor',
         });
@@ -495,9 +506,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       }
 
       setJaGerado(true);
-      setBaseline(snapshotFields({ cpfCnpj, email, endereco, cep, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato }));
+      setBaseline(snapshotFields({ cpfCnpj, email, endereco, cep, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato, percentualComissao }));
       setClienteTocado(false);
-      toast.success(`Contrato de consignação ${comPercentual ? '(5%) ' : ''}gerado com sucesso!`);
+      toast.success(`Contrato de consignação ${temComissao ? `(${percentualComissao}%) ` : ''}gerado com sucesso!`);
       // Volta para a tela de detalhes.
       onOpenChange(false);
     } catch (err) {
@@ -508,10 +519,10 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     }
   };
 
-  const handleVisualizar = async (comPercentual?: number) => {
+  const handleVisualizar = async () => {
     setGenerating(true);
     try {
-      await generateContratoConsignacaoPdf(buildPdfData(comPercentual), 'view');
+      await generateContratoConsignacaoPdf(buildPdfData(), 'view');
     } catch (err) {
       console.error('Erro ao visualizar contrato:', err);
       toast.error('Erro ao visualizar o contrato');
@@ -520,10 +531,10 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     }
   };
 
-  const handleBaixar = async (comPercentual?: number) => {
+  const handleBaixar = async () => {
     setGenerating(true);
     try {
-      await generateContratoConsignacaoPdf(buildPdfData(comPercentual), 'download');
+      await generateContratoConsignacaoPdf(buildPdfData(), 'download');
       // Volta para a tela de detalhes.
       onOpenChange(false);
     } catch (err) {
@@ -635,6 +646,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                     <ClienteForm
                       embedded
                       id={clienteId}
+                      exigirBancarios={false}
                       onSaved={handleClienteSaved}
                       onCancel={editandoCliente && cadastroCompleto ? () => setEditandoCliente(false) : undefined}
                     />
@@ -752,22 +764,37 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                   <Separator className="mt-2" />
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-1.5 max-w-xs">
-                    <Label>Data do Contrato <span className="text-destructive">*</span></Label>
-                    <Popover open={calOpen} onOpenChange={setCalOpen}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dataContrato && "text-muted-foreground")}>
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={dataContrato} onSelect={setDataContrato} disabled={{ after: new Date() }} initialFocus className="p-3 pointer-events-auto" />
-                        <div className="border-t p-2 flex justify-end">
-                          <Button size="sm" disabled={!dataContrato} onClick={() => setCalOpen(false)}>OK</Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                  <div className="flex flex-wrap items-start gap-4">
+                    <div className="space-y-1.5 w-52">
+                      <Label>Data do Contrato <span className="text-destructive">*</span></Label>
+                      <Popover open={calOpen} onOpenChange={setCalOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dataContrato && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={dataContrato} onSelect={setDataContrato} disabled={{ after: new Date() }} initialFocus className="p-3 pointer-events-auto" />
+                          <div className="border-t p-2 flex justify-end">
+                            <Button size="sm" disabled={!dataContrato} onClick={() => setCalOpen(false)}>OK</Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-1.5 w-52">
+                      <Label>Comissão (%)</Label>
+                      <div className="relative">
+                        <Input
+                          className="pr-7 text-right"
+                          placeholder="0"
+                          inputMode="decimal"
+                          value={percentualComissao}
+                          onChange={(e) => setPercentualComissao(e.target.value.replace(/[^\d,]/g, ''))}
+                        />
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -900,16 +927,10 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
             ) : modoLeitura ? (
               <>
                 <Button variant="outline" onClick={() => handleBaixar()} disabled={generating}>
-                  <Download className="h-4 w-4 mr-1" /> Baixar
+                  <Download className="h-4 w-4 mr-1" /> {temComissao ? `Baixar (${percentualComissao}%)` : 'Baixar'}
                 </Button>
-                <Button variant="outline" onClick={() => handleBaixar(5)} disabled={generating}>
-                  <Download className="h-4 w-4 mr-1" /> Baixar (5%)
-                </Button>
-                <Button variant="outline" onClick={() => handleVisualizar()} disabled={generating}>
-                  <Eye className="h-4 w-4 mr-1" /> Visualizar
-                </Button>
-                <Button onClick={() => handleVisualizar(5)} disabled={generating}>
-                  <Eye className="h-4 w-4 mr-1" /> Visualizar (5%)
+                <Button onClick={() => handleVisualizar()} disabled={generating}>
+                  <Eye className="h-4 w-4 mr-1" /> {temComissao ? `Visualizar (${percentualComissao}%)` : 'Visualizar'}
                 </Button>
               </>
             ) : (
@@ -917,12 +938,15 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                 <Button variant="outline" onClick={handleSave} disabled={saving} className="gap-1">
                   <Save className="h-4 w-4" /> {saving ? 'Salvando...' : 'Salvar'}
                 </Button>
-                <Button variant="outline" onClick={() => handleGerar(5)} disabled={generating}>
-                  <Percent className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar (5%)'}
-                </Button>
-                <Button onClick={() => handleGerar()} disabled={generating}>
-                  <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar'}
-                </Button>
+                {temComissao ? (
+                  <Button onClick={() => handleGerar()} disabled={generating}>
+                    <Percent className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : `Gerar (${percentualComissao}%)`}
+                  </Button>
+                ) : (
+                  <Button onClick={() => handleGerar()} disabled={generating}>
+                    <Download className="h-4 w-4 mr-1" />{generating ? 'Gerando...' : 'Gerar'}
+                  </Button>
+                )}
               </>
             )}
           </div>
