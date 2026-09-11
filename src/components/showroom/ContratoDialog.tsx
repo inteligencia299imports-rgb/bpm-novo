@@ -17,6 +17,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { vendaLiberada } from '@/lib/aprovacaoVenda';
 import type { Atendimento, MotoInteresse, Avaliacao } from '@/types/crm';
+import { TIPOS_ATENDIMENTO } from '@/types/crm';
 import { generateContratoPdf, type ContratoPdfData } from '@/lib/generateContratoPdf';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { useAuth } from '@/contexts/AuthContext';
@@ -268,6 +269,9 @@ const ContratoDialog: React.FC<Props> = ({
   // Empresa emitente / vendedora (restrita à empresa vinculada à loja do atendimento).
   const [empresasLoja, setEmpresasLoja] = useState<any[]>([]);
   const [empresaId, setEmpresaId] = useState<string>('');
+  // Presencial/Online — mesmo campo de atendimentos_motos usado como critério de
+  // match de CFOP/CST na emissão da NF-e (ver regraDe() em emitir-nfe-compra).
+  const [tipoAtendimento, setTipoAtendimentoState] = useState<string>(atendimento.tipo_atendimento || '');
 
   // Client data
   const [cpfCnpj, setCpfCnpj] = useState('');
@@ -705,6 +709,14 @@ const ContratoDialog: React.FC<Props> = ({
     setFormasPagamento(prev => prev.filter(f => f.id !== id));
     if (editingId === id) handleCancelEdit();
     toast.success('Forma de pagamento removida');
+  };
+
+  // Presencial/Online é do atendimento (não do contrato) — grava direto, sem
+  // depender do contrato já ter sido salvo.
+  const handleTipoAtendimentoChange = async (v: string) => {
+    setTipoAtendimentoState(v);
+    const { error } = await supabase.from('atendimentos_motos').update({ tipo_atendimento: v }).eq('id', atendimento.id);
+    if (error) toast.error('Erro ao salvar o tipo de atendimento');
   };
 
   const saveContrato = async (): Promise<string | null> => {
@@ -1219,6 +1231,29 @@ const ContratoDialog: React.FC<Props> = ({
                       </Select>
                     </div>
                   )}
+
+                  {/* Presencial/Online — critério de CFOP/CST na emissão da NF-e. */}
+                  <div className="space-y-1.5 max-w-sm mt-4">
+                    <Label>Atendimento {!soLeitura && <span className="text-destructive">*</span>}</Label>
+                    {soLeitura ? (
+                      <InfoDisplay label="Tipo de Atendimento" value={tipoAtendimento || '—'} />
+                    ) : (
+                      <div className="flex gap-2">
+                        {TIPOS_ATENDIMENTO.map((t) => (
+                          <Button
+                            key={t}
+                            type="button"
+                            size="sm"
+                            variant={tipoAtendimento === t ? 'default' : 'outline'}
+                            onClick={() => handleTipoAtendimentoChange(t)}
+                          >
+                            {t}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">Presencial ou online — define o CFOP/CST usado na emissão da NF-e.</p>
+                  </div>
                 </CardContent>
               </Card>
 
