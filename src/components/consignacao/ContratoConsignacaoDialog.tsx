@@ -409,6 +409,8 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // (ex.: 'residencial', PJ) em clientes_fornecedores_enderecos.
   const cliEndereco = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'fiscal')
     ?? cli?.clientes_fornecedores_enderecos?.[0] ?? null;
+  // Endereço RESIDENCIAL (ATPV) — só existe (2ª linha) pra PJ que preencheu no cadastro.
+  const cliEnderecoAtpv = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'residencial') ?? null;
   // Consignação não paga o consignante nem no contrato nem na NF de entrada —
   // moto só é paga se/quando vendida, via a compra que sucede a devolução
   // simbólica (é nessa etapa que os dados bancários passam a fazer sentido).
@@ -659,7 +661,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
               {clienteId && !editandoCliente && (cadastroCompleto || ehNfe) && (
                 <>
-                  {/* Card: Endereço — na emissão de NF-e fica sempre visível */}
+                  {/* Card: Endereço — na emissão de NF-e fica sempre visível. PJ com os
+                      dois endereços (comercial/NF + residencial/ATPV) mostra os dois,
+                      cada um com seu próprio sub-título. */}
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
@@ -668,15 +672,37 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                       </CardTitle>
                       <Separator className="mt-2" />
                     </CardHeader>
-                    <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <InfoDisplay label="CEP" value={cliEndereco?.cep} />
-                      <InfoDisplay label="Logradouro" value={cliEndereco?.logradouro} />
-                      <InfoDisplay label="Número" value={cliEndereco?.numero} />
-                      <InfoDisplay label="Complemento" value={cliEndereco?.complemento} />
-                      <InfoDisplay label="Bairro" value={cliEndereco?.bairro} />
-                      <InfoDisplay label="Cidade" value={cliEndereco?.cidade} />
-                      <InfoDisplay label="UF" value={cliEndereco?.uf} />
-                      <InfoDisplay label="País" value={cliEndereco?.pais} />
+                    <CardContent className="space-y-4">
+                      <div>
+                        {cliEnderecoAtpv && (
+                          <p className="text-[11px] uppercase tracking-wider text-primary font-semibold mb-2">Endereço Comercial (NF)</p>
+                        )}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          <InfoDisplay label="CEP" value={cliEndereco?.cep} />
+                          <InfoDisplay label="Logradouro" value={cliEndereco?.logradouro} />
+                          <InfoDisplay label="Número" value={cliEndereco?.numero} />
+                          <InfoDisplay label="Complemento" value={cliEndereco?.complemento} />
+                          <InfoDisplay label="Bairro" value={cliEndereco?.bairro} />
+                          <InfoDisplay label="Cidade" value={cliEndereco?.cidade} />
+                          <InfoDisplay label="UF" value={cliEndereco?.uf} />
+                          <InfoDisplay label="País" value={cliEndereco?.pais} />
+                        </div>
+                      </div>
+                      {cliEnderecoAtpv && (
+                        <div className="pt-4 border-t border-border">
+                          <p className="text-[11px] uppercase tracking-wider text-primary font-semibold mb-2">Endereço Residencial (ATPV)</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <InfoDisplay label="CEP" value={cliEnderecoAtpv.cep} />
+                            <InfoDisplay label="Logradouro" value={cliEnderecoAtpv.logradouro} />
+                            <InfoDisplay label="Número" value={cliEnderecoAtpv.numero} />
+                            <InfoDisplay label="Complemento" value={cliEnderecoAtpv.complemento} />
+                            <InfoDisplay label="Bairro" value={cliEnderecoAtpv.bairro} />
+                            <InfoDisplay label="Cidade" value={cliEnderecoAtpv.cidade} />
+                            <InfoDisplay label="UF" value={cliEnderecoAtpv.uf} />
+                            <InfoDisplay label="País" value={cliEnderecoAtpv.pais} />
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
