@@ -2,9 +2,10 @@
  * Tag de status da NF-e no card do kanban (pós-venda / compra / consignação).
  * Reflete o ÚLTIMO status da NF do atendimento/avaliação:
  *  - linha mais recente ainda em processamento -> "NF-e" (emitindo, âmbar)
+ *  - linha mais recente em erro -> "NF-e" (vermelho)
  *  - senão, a última linha concluída (processada/cancelada) manda:
  *      cancelada -> vermelho · homologação -> laranja · produção -> azul
- *  - só linhas de erro / nenhuma linha -> sem tag
+ *  - nenhuma linha -> sem tag
  */
 
 export interface NfeTagRow {
@@ -31,6 +32,9 @@ export function nfeTagFromRows(rows: NfeTagRow[] | null | undefined): NfeTag | n
   const ultima = list[list.length - 1];
   if (PENDENTE.has(String(ultima.status))) {
     return { label: 'NF-e', className: 'bg-amber-400 hover:bg-amber-400 text-black' };
+  }
+  if (String(ultima.status) === 'erro') {
+    return { label: 'NF-e', className: 'bg-red-600 hover:bg-red-600' };
   }
 
   let concluida: NfeTagRow | null = null;
