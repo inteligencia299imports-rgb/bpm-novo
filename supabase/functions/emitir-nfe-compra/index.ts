@@ -1326,9 +1326,17 @@ Deno.serve(async (req) => {
   // simbolicamente). Achado numa NF de referência real da MMATOS — natOp
   // "Compra p/ comerc. de merc. recebida anter. em consignacao" — 2026-09-12,
   // ver docs-fiscal-299 §2.27.
+  // Venda de moto que veio de consignação convertida em compra (§2.27/§2.28)
+  // — o "compra" bem-sucedido marca avaliacoes.tipo_aquisicao = 'convertida'
+  // (linha ~364 acima). Mesma lógica: natureza dedicada, CFOP e natOp
+  // próprios, achada numa NF de referência real da MMATOS — "Venda de
+  // Mercadoria Recebida Anteriormente Em Consignacao", 2026-09-12.
+  const viaVendaPosConsignacao = ehVenda && !ehVenda0km && (estoqueMoto?.avaliacao as any)?.tipo_aquisicao === 'convertida';
   const naturezaDescricaoEfetiva = (tipo === 'compra' && viaConversaoConsignacao)
     ? 'Compra p/ comerc. de merc. recebida anter. em consignacao'
-    : cfg.naturezaDescricao;
+    : viaVendaPosConsignacao
+      ? 'Venda de Mercadoria Recebida Anteriormente Em Consignacao'
+      : cfg.naturezaDescricao;
   const { data: natureza } = await admin
     .from('naturezas_operacao')
     .select(
