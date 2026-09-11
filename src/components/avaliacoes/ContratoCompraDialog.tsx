@@ -594,56 +594,61 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               <Separator className="mt-2" />
             </CardHeader>
             <CardContent>
-              {empresasLoja.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Nenhuma empresa vinculada à loja do atendimento.
-                </p>
-              ) : empresaReadonly ? (
-                <InfoDisplay
-                  label="Empresa"
-                  value={(() => {
-                    const e = empresasLoja.find((x) => x.id === empresaId);
-                    if (!e) return '—';
-                    return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
-                  })()}
-                />
-              ) : (
-                <div className="space-y-1.5 max-w-sm">
-                  <Label>{ehNfe ? 'Empresa da operação' : 'Empresa compradora'} <span className="text-destructive">*</span></Label>
-                  <Select value={empresaId} onValueChange={handleEmpresaChange}>
-                    <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
-                    <SelectContent>
-                      {empresasLoja.map((e) => (
-                        <SelectItem key={e.id} value={e.id}>
-                          {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  {empresasLoja.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma empresa vinculada à loja do atendimento.
+                    </p>
+                  ) : empresaReadonly ? (
+                    <InfoDisplay
+                      label="Empresa"
+                      value={(() => {
+                        const e = empresasLoja.find((x) => x.id === empresaId);
+                        if (!e) return '—';
+                        return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
+                      })()}
+                    />
+                  ) : (
+                    <>
+                      <Label>{ehNfe ? 'Empresa da operação' : 'Empresa compradora'} <span className="text-destructive">*</span></Label>
+                      <Select value={empresaId} onValueChange={handleEmpresaChange}>
+                        <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+                        <SelectContent>
+                          {empresasLoja.map((e) => (
+                            <SelectItem key={e.id} value={e.id}>
+                              {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </>
+                  )}
                 </div>
-              )}
 
-              {/* Presencial/Online — critério de CFOP/CST na emissão da NF-e. */}
-              <div className="space-y-1.5 max-w-sm mt-4">
-                <Label>Atendimento {!empresaReadonly && <span className="text-destructive">*</span>}</Label>
-                {empresaReadonly ? (
-                  <InfoDisplay label="Tipo de Atendimento" value={tipoAtendimento || '—'} />
-                ) : (
-                  <div className="flex gap-2">
-                    {TIPOS_ATENDIMENTO.map((t) => (
-                      <Button
-                        key={t}
-                        type="button"
-                        size="sm"
-                        variant={tipoAtendimento === t ? 'default' : 'outline'}
-                        onClick={() => handleTipoAtendimentoChange(t)}
-                      >
-                        {t}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">Presencial ou online — define o CFOP/CST usado na emissão da NF-e.</p>
+                {/* Presencial/Online — critério de CFOP/CST na emissão da NF-e. */}
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <Label>Atendimento {!empresaReadonly && <span className="text-destructive">*</span>}</Label>
+                  {empresaReadonly ? (
+                    <InfoDisplay label="Tipo de Atendimento" value={tipoAtendimento || '—'} />
+                  ) : (
+                    <div className="flex gap-2">
+                      {TIPOS_ATENDIMENTO.map((t) => (
+                        <Button
+                          key={t}
+                          type="button"
+                          size="sm"
+                          className="flex-1"
+                          variant={tipoAtendimento === t ? 'default' : 'outline'}
+                          onClick={() => handleTipoAtendimentoChange(t)}
+                        >
+                          {t}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">Define o CFOP/CST usado na emissão da NF-e.</p>
+                </div>
               </div>
             </CardContent>
           </Card>
