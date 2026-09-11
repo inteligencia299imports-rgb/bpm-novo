@@ -1028,6 +1028,12 @@ Deno.serve(async (req) => {
 
   // Guards
   let contratoVendaId: string | null = null;
+  // Ambiente da NF de consignação referenciada (só setado quando tipo ===
+  // 'devolucao_consignacao', abaixo) — usado no guard de produção mais
+  // adiante pra dispensar a exigência de homologação prévia quando a
+  // consignação já é produção (nesse caso a devolução NUNCA passa em
+  // homologação — Rejeição 321, ver docs-fiscal-299 §2.26).
+  let consignacaoRefAmbiente: string | null = null;
   // Compra que sucede uma devolução simbólica (transformação de consignação em
   // compra): dispensa a aprovação de aquisição e o contrato de compra separados
   // — a moto já tem contrato de consignação + NF de consignação + NF de
@@ -1071,11 +1077,12 @@ Deno.serve(async (req) => {
     }
   } else if (tipo === 'devolucao_consignacao') {
     const { data: consignacaoOk } = await admin
-      .from('nfe_entradas').select('id').eq('avaliacao_id', avaliacaoId)
+      .from('nfe_entradas').select('id, ambiente').eq('avaliacao_id', avaliacaoId)
       .eq('operacao', 'consignacao').eq('status', 'processada').limit(1).maybeSingle();
     if (!consignacaoOk) {
       return jsonResponse({ error: 'A NF-e de entrada em consignação ainda não foi emitida.' }, 409);
     }
+    consignacaoRefAmbiente = (consignacaoOk as any).ambiente ?? null;
     const { data: devolucaoJaOk } = await admin
       .from('nfe_entradas').select('id').eq('avaliacao_id', avaliacaoId)
       .eq('operacao', 'devolucao_consignacao').eq('status', 'processada').limit(1).maybeSingle();
@@ -1129,7 +1136,13 @@ Deno.serve(async (req) => {
     const { data: homologAutorizada } = await admin
       .from('nfe_entradas').select('id').eq(nfeKey, entityId).eq('operacao', tipo)
       .eq('ambiente', 'homologacao').eq('status', 'processada').limit(1).maybeSingle();
-    if (!homologAutorizada) {
+    // Devolução simbólica referenciando uma NF de consignação em PRODUÇÃO:
+    // testar em homologação é impossível por definição (a chave de produção
+    // não existe na base da SEFAZ homologação — Rejeição 321, ver
+    // docs-fiscal-299 §2.26/§2.27). Dispensa a exigência de homolog prévia
+    // só nesse caso.
+    const dispensaHomologPrevia = tipo === 'devolucao_consignacao' && consignacaoRefAmbiente === 'producao';
+    if (!homologAutorizada && !dispensaHomologPrevia) {
       return jsonResponse({ error: 'Emita em homologação antes de emitir em produção.' }, 409);
     }
     // Troca: a NF-e de venda em produção só sai depois da NF-e de COMPRA da moto
