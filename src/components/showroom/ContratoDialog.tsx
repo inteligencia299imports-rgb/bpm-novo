@@ -612,6 +612,10 @@ const ContratoDialog: React.FC<Props> = ({
       toast.error('Selecione o banco / administradora');
       return;
     }
+    if (!novaDataPagamento) {
+      toast.error('Informe a data do pagamento');
+      return;
+    }
 
     // Campos zerados por padrão para não deixar resíduo de outra forma ao editar (ex.: trocar Financiamento -> Pix).
     const formaData: any = {
@@ -645,8 +649,8 @@ const ContratoDialog: React.FC<Props> = ({
     }
     // Observação é livre pra qualquer forma de pagamento, não só as vinculadas a instituição.
     formaData.observacoes = novaObservacoes.trim() || null;
-    // Data do pagamento (opcional) — vira data_vencimento da parcela do compromisso a receber.
-    formaData.data_pagamento = novaDataPagamento || null;
+    // Data do pagamento (obrigatória) — vira data_vencimento da parcela do compromisso a receber.
+    formaData.data_pagamento = novaDataPagamento;
 
     // A soma das formas de pagamento não pode passar do Valor Total (financiamento conta
     // só o valor financiado; na troca o valor de fechamento da moto já entra em `somaPagamentos`).
@@ -1620,7 +1624,7 @@ const ContratoDialog: React.FC<Props> = ({
 
                   {novaPagamentoTipo && (
                     <div className="max-w-[14rem] space-y-1.5">
-                      <label className="text-sm font-medium text-foreground">Data do Pagamento</label>
+                      <label className="text-sm font-medium text-foreground">Data do Pagamento <span className="text-destructive">*</span></label>
                       <Popover open={pagCalOpen} onOpenChange={setPagCalOpen}>
                         <PopoverTrigger asChild>
                           <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !novaDataPagamento && "text-muted-foreground")}>
