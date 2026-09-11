@@ -15,7 +15,6 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
-import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 import { nfeBotaoClasse } from '@/lib/nfeTag';
 import { TIPOS_PROPRIA } from '@/lib/tipoAquisicao';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
@@ -102,8 +101,15 @@ const ProcessoDialog: React.FC<Props> = ({
   const [converterConsignacaoOpen, setConverterConsignacaoOpen] = useState(false);
   // Só é elegível pra "Converter em Compra" depois que a NF de ENTRADA em
   // consignação estiver autorizada em produção (mesma regra de antes, na
-  // avaliação) — sem isso não dá pra referenciar a chave na devolução.
-  const { emitidaProducao: consignacaoEmProducao } = useNfeEmitida(avaliacaoConsignadaId || null, 'avaliacao');
+  // avaliação) — sem isso não dá pra referenciar a chave na devolução. Tem
+  // que ser a NF de operacao='consignacao' especificamente — useNfeCompra já
+  // filtra por operação (não pode usar useNfeEmitida aqui: ela pega só a
+  // linha mais recente da avaliação, então uma tentativa de devolução com
+  // erro, mais recente que a consignação, mascarava a consignação já
+  // autorizada e a etapa ficava presa em "Aguardando NF de consignação em
+  // produção" pra sempre — achado 2026-09-11).
+  const nfeConsignacaoConv = useNfeCompra(avaliacaoConsignadaId, open && !!avaliacaoConsignadaId, 'consignacao', 'avaliacao');
+  const consignacaoEmProducao = nfeConsignacaoConv.emitida && nfeConsignacaoConv.nfe?.ambiente === 'producao';
   const nfeDevolucaoConv = useNfeCompra(avaliacaoConsignadaId, open && !!avaliacaoConsignadaId, 'devolucao_consignacao', 'avaliacao');
   const nfeCompraConv = useNfeCompra(avaliacaoConsignadaId, open && !!avaliacaoConsignadaId, 'compra', 'avaliacao');
   const converterConcluido = nfeCompraConv.emitida && nfeCompraConv.nfe?.ambiente === 'producao';
