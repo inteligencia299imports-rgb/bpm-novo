@@ -1005,22 +1005,27 @@ const ContratoDialog: React.FC<Props> = ({
     if (!isDucati && !ipvaTipo) errors.push('IPVA');
     if (!isDucati && ipvaTipo === 'ambos' && !ipvaCotas) errors.push('Número de Cotas do IPVA');
     if (!isDucati && (ipvaTipo === 'loja' || ipvaTipo === 'ambos') && !ipvaValor) errors.push('Valor do IPVA');
-    // Quitação da moto do cliente é obrigatória quando há troca — vem da avaliação (informar 0 se não houver).
-    if (hasTroca && !valorQuitacao?.trim()) errors.push('Valor de Quitação da moto do cliente (defina na avaliação — 0 se não houver)');
     if (!obsContrato && !obsContrato.trim()) errors.push('Observações do Contrato');
     return errors;
   })();
+  // Quitação da moto do cliente (troca) só é exigida pra fechar a Proposta de
+  // VENDA (é o que alimenta o repasse/compromisso financeiro definitivo) — no
+  // sinal ainda pode não estar confirmada com o cliente/financeira.
+  const errosGeracaoVenda: string[] = hasTroca && !valorQuitacao?.trim()
+    ? [...errosGeracao, 'Valor de Quitação da moto do cliente (defina na avaliação — 0 se não houver)']
+    : errosGeracao;
 
-  const validateForGeneration = (): boolean => {
-    if (errosGeracao.length > 0) {
-      toast.error(`Preencha os campos obrigatórios: ${errosGeracao.join(', ')}`);
+  const validateForGeneration = (variant: 'sinal' | 'venda'): boolean => {
+    const erros = variant === 'venda' ? errosGeracaoVenda : errosGeracao;
+    if (erros.length > 0) {
+      toast.error(`Preencha os campos obrigatórios: ${erros.join(', ')}`);
       return false;
     }
     return true;
   };
 
   const handleGerar = async (variant: 'sinal' | 'venda' = 'sinal') => {
-    if (!validateForGeneration()) return;
+    if (!validateForGeneration(variant)) return;
     // Venda de moto nova (Ducati): exige a moto do estoque de novas selecionada.
     if (variant === 'venda' && !soLeitura && exigeMotoNovaParaVenda) {
       toast.error('Selecione a moto do estoque de novas na Moto de Interesse para gerar a venda. Sem ela, só é possível gerar o sinal.');
@@ -1081,7 +1086,7 @@ const ContratoDialog: React.FC<Props> = ({
   
 
   const handleVisualizar = async () => {
-    if (!validateForGeneration()) return;
+    if (!validateForGeneration('sinal')) return;
 
     setViewing(true);
     try {
@@ -1164,10 +1169,11 @@ const ContratoDialog: React.FC<Props> = ({
   // NÃO exige aprovação do master nem que as formas de pagamento cubram 100% do
   // total — o sinal é "paga o sinal agora, o resto até o vencimento".
   const podeGerarSinal = errosGeracao.length === 0 && valorTotalContrato > 0.005;
-  // Contrato de VENDA (proposta finalizada): além do acima, formas de pagamento
-  // cobrindo 100% do Valor Total e aprovação do master.
-  const podeGerarContrato = podeGerarSinal && valorFaltante <= 0.005 && !vendaBloqueadaAprovacao
-    && !exigeMotoNovaParaVenda;
+  // Contrato de VENDA (proposta finalizada): além do acima, exige a quitação
+  // da troca (quando houver), formas de pagamento cobrindo 100% do Valor
+  // Total e aprovação do master.
+  const podeGerarContrato = errosGeracaoVenda.length === 0 && valorTotalContrato > 0.005
+    && valorFaltante <= 0.005 && !vendaBloqueadaAprovacao && !exigeMotoNovaParaVenda;
 
   if (!open) return null;
 
