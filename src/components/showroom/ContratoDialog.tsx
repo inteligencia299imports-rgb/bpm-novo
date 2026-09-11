@@ -1454,7 +1454,7 @@ const ContratoDialog: React.FC<Props> = ({
                             size="sm"
                             variant={ipvaTipo === opt ? 'default' : 'outline'}
                             onClick={() => setIpvaTipo(opt)}
-                            className="capitalize"
+                            className="w-24"
                           >
                             {opt === 'ambos' ? 'Ambos' : opt === 'cliente' ? 'Cliente' : 'Loja'}
                           </Button>
@@ -1490,6 +1490,7 @@ const ContratoDialog: React.FC<Props> = ({
                             size="sm"
                             variant={transferenciaTipo === opt ? 'default' : 'outline'}
                             onClick={() => setTransferenciaTipo(opt)}
+                            className="w-24"
                           >
                             {opt === 'cliente' ? 'Cliente' : opt === 'loja' ? 'Loja' : 'Outra UF'}
                           </Button>
