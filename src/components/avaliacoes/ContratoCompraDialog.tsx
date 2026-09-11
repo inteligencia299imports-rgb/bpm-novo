@@ -501,7 +501,10 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
 
   // Resumo do cliente (quando o cadastro está completo)
   const cli = clienteRecord;
-  const cliEndereco = cli?.clientes_fornecedores_enderecos?.[0] || null;
+  // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma linha
+  // (ex.: 'residencial', PJ) em clientes_fornecedores_enderecos.
+  const cliEndereco = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'fiscal')
+    ?? cli?.clientes_fornecedores_enderecos?.[0] ?? null;
   // Compra pura (sem contrato de venda no atendimento): a loja paga o vendedor
   // -> dados bancários obrigatórios. Troca (há contrato de venda): só obrigatórios
   // se a loja fica devendo pro cliente, ou seja, o valor de fechamento da moto

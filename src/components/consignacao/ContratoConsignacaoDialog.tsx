@@ -405,7 +405,10 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
   // Resumo do cliente (quando o cadastro está completo) — igual ao contrato de compra.
   const cli = clienteRecord;
-  const cliEndereco = cli?.clientes_fornecedores_enderecos?.[0] || null;
+  // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma linha
+  // (ex.: 'residencial', PJ) em clientes_fornecedores_enderecos.
+  const cliEndereco = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'fiscal')
+    ?? cli?.clientes_fornecedores_enderecos?.[0] ?? null;
   // Consignação não paga o consignante nem no contrato nem na NF de entrada —
   // moto só é paga se/quando vendida, via a compra que sucede a devolução
   // simbólica (é nessa etapa que os dados bancários passam a fazer sentido).
