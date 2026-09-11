@@ -320,6 +320,33 @@ export function ClienteForm({
     onError: (e: any) => toast.error(e.message ?? "Erro ao consultar CEP"),
   });
 
+  // Mesma busca de CEP, pro endereço residencial (ATPV).
+  const [cepConsultadoAtpv, setCepConsultadoAtpv] = useState("");
+  const cepApiAtpv = useMutation({
+    mutationFn: async () => {
+      const cep = onlyDigits(enderecoAtpv.cep);
+      if (cep.length !== 8) throw new Error("Informe um CEP válido (8 dígitos)");
+      const res = await fetch(`https://brasilapi.com.br/api/cep/v1/${cep}`);
+      if (!res.ok) {
+        if (res.status === 404) throw new Error("CEP não encontrado");
+        throw new Error("Erro ao consultar CEP");
+      }
+      return (await res.json()) as any;
+    },
+    onSuccess: (api) => {
+      setEnderecoAtpv((e) => ({
+        ...e,
+        logradouro: api.street ?? e.logradouro,
+        bairro: api.neighborhood ?? e.bairro,
+        cidade: api.city ?? e.cidade,
+        uf: (api.state ?? e.uf).toString().toUpperCase(),
+      }));
+      setCepConsultadoAtpv(onlyDigits(enderecoAtpv.cep));
+      toast.success("Endereço preenchido a partir do CEP");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro ao consultar CEP"),
+  });
+
   const { data: existing } = useQuery({
     queryKey: ["cliente", id],
     enabled: isEdit,
@@ -1204,7 +1231,21 @@ export function ClienteForm({
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <Label>CEP</Label>
-                  <Input inputMode="numeric" value={enderecoAtpv.cep} onChange={(e) => setEAtpv("cep")(maskCEP(e.target.value))} placeholder="00000-000" />
+                  <div className="flex gap-2">
+                    <Input inputMode="numeric" value={enderecoAtpv.cep} onChange={(e) => setEAtpv("cep")(maskCEP(e.target.value))} placeholder="00000-000" />
+                    {onlyDigits(enderecoAtpv.cep).length === 8 && onlyDigits(enderecoAtpv.cep) !== cepConsultadoAtpv && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => cepApiAtpv.mutate()}
+                        disabled={cepApiAtpv.isPending}
+                        title="Buscar endereço pelo CEP"
+                      >
+                        {cepApiAtpv.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="md:col-span-2">
                   <Label>Logradouro</Label>
