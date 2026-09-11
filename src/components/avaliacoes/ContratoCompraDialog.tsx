@@ -627,7 +627,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                 </div>
 
                 {/* Presencial/Online — critério de CFOP/CST na emissão da NF-e. */}
-                <div className="min-w-0 space-y-1.5 flex flex-col items-end">
+                <div className="min-w-0 space-y-1.5">
                   <Label>Atendimento {!empresaReadonly && <span className="text-destructive">*</span>}</Label>
                   {empresaReadonly ? (
                     <InfoDisplay label="Tipo de Atendimento" value={tipoAtendimento || '—'} />
