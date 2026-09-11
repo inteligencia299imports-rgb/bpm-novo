@@ -243,6 +243,10 @@ const ContratoDialog: React.FC<Props> = ({
   const motoIntNfe = motosInteresse[0];
   const estItemNfe = motoIntNfe?.origem === 'estoque' && motoIntNfe?.estoque_moto_id ? estoqueData[motoIntNfe.estoque_moto_id] : null;
   const eh0kmVenda = motoIntNfe?.estoque_tipo === '0km' || estItemNfe?.tipo === '0km';
+  // 0km: primeiro emplacamento, não "transferência" de propriedade (isso só existe p/ seminova).
+  // "Valor do Emplacamento" (masc.) x "Valor da Transferência" (fem.) — concordância.
+  const transferenciaLabel = eh0kmVenda ? 'Emplacamento' : 'Transferência';
+  const transferenciaValorLabel = eh0kmVenda ? 'Valor do Emplacamento' : 'Valor da Transferência';
   const estoqueTabela = eh0kmVenda ? 'estoque_motos_novas' : 'estoque_motos';
   const tipoVenda = eh0kmVenda ? 'venda_0km' : 'venda_seminova';
   // Após a NF-e de venda autorizada, volta para a tela de Pós-Venda.
@@ -907,7 +911,7 @@ const ContratoDialog: React.FC<Props> = ({
       telefone: (telefoneCliente ? formatPhone(telefoneCliente) : telefoneCliente) || '',
       emailCliente: cliPdf.email || '',
       enderecoCompleto,
-      cpfCnpj,
+      cpfCnpj: formatCpfCnpj(cpfCnpj),
       produtoMarca: produtoMarca.toUpperCase(),
       produtoModelo: produtoModelo.toUpperCase(),
       produtoAnoFabMod: [produtoAnoFab, produtoAnoMod].filter(Boolean).join('/'),
@@ -993,8 +997,8 @@ const ContratoDialog: React.FC<Props> = ({
     if (!dataVencimento) errors.push('Data de Vencimento do Sinal');
 
     if (!motoInt && !estItem) errors.push('Moto de Interesse');
-    if (!transferenciaTipo) errors.push('Transferência');
-    if (transferenciaTipo === 'cliente' && !transferenciaValor) errors.push('Valor da Transferência');
+    if (!transferenciaTipo) errors.push(transferenciaLabel);
+    if (transferenciaTipo === 'cliente' && !transferenciaValor) errors.push(transferenciaValorLabel);
     const isDucati = atendimento.loja?.toLowerCase().startsWith('ducati');
     if (!isDucati && !ipvaTipo) errors.push('IPVA');
     if (!isDucati && ipvaTipo === 'ambos' && !ipvaCotas) errors.push('Número de Cotas do IPVA');
@@ -1434,8 +1438,8 @@ const ContratoDialog: React.FC<Props> = ({
                         {(ipvaTipo === 'loja' || ipvaTipo === 'ambos') && <InfoDisplay label="Valor do IPVA" value={ipvaValor ? `R$ ${ipvaValor}` : undefined} />}
                       </>
                     )}
-                    <InfoDisplay label="Transferência" value={transferenciaTipo === 'cliente' ? 'Cliente' : transferenciaTipo === 'loja' ? 'Loja' : transferenciaTipo === 'outra_uf' ? 'Outra UF' : undefined} />
-                    {transferenciaTipo === 'cliente' && <InfoDisplay label="Valor da Transferência" value={transferenciaValor ? `R$ ${transferenciaValor}` : undefined} />}
+                    <InfoDisplay label={transferenciaLabel} value={transferenciaTipo === 'cliente' ? 'Cliente' : transferenciaTipo === 'loja' ? 'Loja' : transferenciaTipo === 'outra_uf' ? 'Outra UF' : undefined} />
+                    {transferenciaTipo === 'cliente' && <InfoDisplay label={transferenciaValorLabel} value={transferenciaValor ? `R$ ${transferenciaValor}` : undefined} />}
                   </div>
                 ) : (
                   <>
@@ -1476,9 +1480,9 @@ const ContratoDialog: React.FC<Props> = ({
                     </div>
                     )}
 
-                    {/* Transferência */}
+                    {/* Transferência (seminova) / Emplacamento (0km) */}
                     <div>
-                      <label className="text-sm font-medium text-foreground">Transferência<span className="text-destructive ml-0.5">*</span></label>
+                      <label className="text-sm font-medium text-foreground">{transferenciaLabel}<span className="text-destructive ml-0.5">*</span></label>
                       <div className="flex gap-2 mt-1 flex-wrap">
                         {['loja', 'cliente', 'outra_uf'].map(opt => (
                           <Button
@@ -1493,7 +1497,7 @@ const ContratoDialog: React.FC<Props> = ({
                       </div>
                       {transferenciaTipo === 'cliente' && (
                         <div className="mt-2">
-                          <CurrencyField label="Valor da Transferência" value={transferenciaValor} onChange={setTransferenciaValor} required />
+                          <CurrencyField label={transferenciaValorLabel} value={transferenciaValor} onChange={setTransferenciaValor} required />
                         </div>
                       )}
                     </div>
