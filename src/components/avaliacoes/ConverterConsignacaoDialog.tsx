@@ -9,6 +9,7 @@ import { ArrowLeftRight, FileText, Loader2, RefreshCw, Lock, AlertTriangle } fro
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import NfeCabecalhoAcoes from '@/components/shared/NfeCabecalhoAcoes';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 interface Props {
@@ -48,17 +49,38 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
     toast.success('Consignação convertida em compra!');
     onConcluido?.();
   });
+  // A devolução simbólica referencia a chave da NF de ENTRADA em consignação
+  // (NFref/refNFe) — SEFAZ homologação não enxerga chaves de produção (são
+  // ambientes/bases totalmente separados), então tentar a devolução em
+  // homologação quando a consignação em si foi autorizada em PRODUÇÃO sempre
+  // rejeita: [321] "NF-e de devolucao de mercadoria nao possui documento
+  // fiscal referenciado" (achado numa devolução real, 2026-09-11). Por isso
+  // só oferece o passo em homologação quando a consignação também é homolog.
+  const [consignacaoAmbiente, setConsignacaoAmbiente] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     nfeDevolucao.carregar();
     nfeCompra.carregar();
     setValorCompra(valorConsignacao > 0 ? formatCurrencyInput(String(Math.round(valorConsignacao * 100))) : '');
+    if (avaliacao?.id) {
+      supabase
+        .from('nfe_entradas' as any)
+        .select('ambiente')
+        .eq('avaliacao_id', avaliacao.id)
+        .eq('operacao', 'consignacao')
+        .eq('status', 'processada')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => setConsignacaoAmbiente((data as any)?.ambiente ?? null));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, avaliacao?.id]);
 
   const devolucaoOk = nfeDevolucao.emitida;
   const devolucaoProducaoOk = devolucaoOk && nfeDevolucao.nfe?.ambiente === 'producao';
+  const referenciaProducao = consignacaoAmbiente === 'producao';
   const podeReemitirHomologDevolucao = devolucaoOk && nfeDevolucao.nfe?.ambiente === 'homologacao';
   const compraOk = nfeCompra.emitida;
   const podeReemitirHomologCompra = compraOk && nfeCompra.nfe?.ambiente === 'homologacao';
@@ -88,7 +110,7 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                 </span>
                 <div className="flex items-center gap-2 flex-wrap">
                   <NfeCabecalhoAcoes nfe={nfeDevolucao} />
-                  {(!devolucaoOk || podeReemitirHomologDevolucao) && !nfeDevolucao.pendente && (
+                  {!referenciaProducao && (!devolucaoOk || podeReemitirHomologDevolucao) && !nfeDevolucao.pendente && (
                     <Button
                       size="sm"
                       className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
@@ -99,14 +121,15 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                       {nfeDevolucao.erro ? 'Tentar novamente' : 'Devolução (Homologação)'}
                     </Button>
                   )}
-                  {podeReemitirHomologDevolucao && !nfeDevolucao.pendente && (
+                  {((referenciaProducao && !devolucaoOk) || podeReemitirHomologDevolucao) && !nfeDevolucao.pendente && (
                     <Button
                       size="sm"
                       className="gap-1.5"
-                      disabled={nfeDevolucao.loading}
+                      disabled={nfeDevolucao.loading || valorConsignacao <= 0}
                       onClick={() => nfeDevolucao.emitir({ ambiente: 'producao' })}
                     >
-                      <FileText className="h-4 w-4" /> Devolução (Produção)
+                      {nfeDevolucao.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfeDevolucao.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                      {nfeDevolucao.erro ? 'Tentar novamente' : 'Devolução (Produção)'}
                     </Button>
                   )}
                   {devolucaoProducaoOk && <CancelarNfeDialog nfe={nfeDevolucao} />}
@@ -124,6 +147,12 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
               )}
               {valorConsignacao <= 0 && (
                 <p className="text-xs text-destructive">Sem valor de consignação registrado — não é possível emitir a devolução.</p>
+              )}
+              {referenciaProducao && !devolucaoOk && (
+                <p className="text-xs text-muted-foreground">
+                  A NF de consignação foi autorizada em produção — a devolução precisa ser emitida direto em
+                  produção (a SEFAZ de homologação não reconhece essa referência).
+                </p>
               )}
             </CardContent>
           </Card>
