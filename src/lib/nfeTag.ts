@@ -50,6 +50,16 @@ export function nfeTagFromRows(rows: NfeTagRow[] | null | undefined): NfeTag | n
 }
 
 /**
+ * Tag pra quando a etapa "NF EMITIDA" (pos_compra_processos /
+ * consignacao_processos) está concluída mas não tem `nfe_entradas`
+ * correspondente — NF emitida fora do bpm-novo, ou avaliação importada de
+ * outro sistema. `nfeTagFromRows` não cobre esse caso (não tem linha pra
+ * olhar); os callers usam `nfeTagFromRows(rows) ?? (etapaConcluida ?
+ * NFE_TAG_SEM_REGISTRO : undefined)`.
+ */
+export const NFE_TAG_SEM_REGISTRO: NfeTag = { label: 'NF-e', className: 'bg-gray-400 hover:bg-gray-400 text-white' };
+
+/**
  * Classe de cor para BOTÕES de NF-e (processo de venda), conforme a última
  * geração da nota: homologação = laranja, cancelada = vermelho, produção
  * autorizada = verde. Sem status conhecido -> '' (mantém o estilo padrão).
