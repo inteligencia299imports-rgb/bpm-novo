@@ -45,6 +45,25 @@ const emptyEndereco: Endereco = {
   bairro: "", cidade: "", uf: "", pais: "Brasil",
 };
 
+// Endereço RESIDENCIAL (ATPV) — só Pessoa Jurídica. Tabela própria (ver migration
+// clientes_fornecedores_enderecos_atpv); mesmos campos do endereço comercial.
+type EnderecoAtpv = {
+  id?: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  uf: string;
+  pais: string;
+};
+
+const emptyEnderecoAtpv: EnderecoAtpv = {
+  cep: "", logradouro: "", numero: "", complemento: "",
+  bairro: "", cidade: "", uf: "", pais: "Brasil",
+};
+
 const emptyForm = {
   tipo_cadastro: "ambos",
   tipo_pessoa: "fisica",
@@ -263,6 +282,7 @@ export function ClienteForm({
 
   const [form, setForm] = useState<any>(emptyForm);
   const [endereco, setEndereco] = useState<Endereco>(emptyEndereco);
+  const [enderecoAtpv, setEnderecoAtpv] = useState<EnderecoAtpv>(emptyEnderecoAtpv);
   const [loading, setLoading] = useState(isEdit);
   const [tab, setTab] = useState<TabKey>("principais");
   const [ddi, setDdi] = useState("+55");
@@ -317,7 +337,7 @@ export function ClienteForm({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clientes_fornecedores")
-        .select("*, clientes_fornecedores_enderecos(*)")
+        .select("*, clientes_fornecedores_enderecos(*), clientes_fornecedores_enderecos_atpv(*)")
         .eq("id", id!)
         .maybeSingle();
       if (error) throw error;
@@ -334,7 +354,7 @@ export function ClienteForm({
   useEffect(() => {
     if (existing === undefined) return;
     if (existing) {
-      const { clientes_fornecedores_enderecos: ends, ...rest } = existing as any;
+      const { clientes_fornecedores_enderecos: ends, clientes_fornecedores_enderecos_atpv: endsAtpv, ...rest } = existing as any;
       // Respeita o tipo de cadastro/pessoa do banco: evita que o efeito de
       // "trocou para cliente → força física" dispare na carga e converta um PJ.
       prevTipoCadastro.current = (rest.tipo_cadastro as string) || emptyForm.tipo_cadastro;
@@ -350,18 +370,34 @@ export function ClienteForm({
           }),
         ),
       });
-      if (ends?.[0]) {
-        const e0: any = ends[0];
+      // Endereço comercial (NF): explicitamente o de tipo='fiscal' — a tabela
+      // pode ter mais de uma linha por cliente (ex.: 'residencial', legado de
+      // outro fluxo), então não dá pra confiar em "a primeira que vier".
+      const fiscal = ((ends as any[]) || []).find((e) => e.tipo === "fiscal") || (ends as any[])?.[0];
+      if (fiscal) {
         setEndereco({
           ...emptyEndereco,
           ...Object.fromEntries(
-            Object.entries(e0).map(([k, v]) => {
+            Object.entries(fiscal).map(([k, v]) => {
               if (k === "cep") return [k, maskCEP(String(v ?? ""))];
               return [k, v ?? (k === "pais" ? "Brasil" : "")];
             }),
           ),
-          id: e0.id,
+          id: fiscal.id,
         } as Endereco);
+      }
+      if (endsAtpv?.[0]) {
+        const a0: any = endsAtpv[0];
+        setEnderecoAtpv({
+          ...emptyEnderecoAtpv,
+          ...Object.fromEntries(
+            Object.entries(a0).map(([k, v]) => {
+              if (k === "cep") return [k, maskCEP(String(v ?? ""))];
+              return [k, v ?? (k === "pais" ? "Brasil" : "")];
+            }),
+          ),
+          id: a0.id,
+        } as EnderecoAtpv);
       }
     }
     setLoading(false);
@@ -369,6 +405,20 @@ export function ClienteForm({
 
   const set = (k: string) => (v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   const setE = (k: keyof Endereco) => (v: any) => setEndereco((e) => ({ ...e, [k]: v }));
+  const setEAtpv = (k: keyof EnderecoAtpv) => (v: any) => setEnderecoAtpv((e) => ({ ...e, [k]: v }));
+
+  // Botões "puxar dados" entre os dois endereços — copiam os campos, mantendo
+  // o id (se houver) de quem está recebendo os dados, pra não trocar a linha.
+  const copiarComercialParaAtpv = () => setEnderecoAtpv((a) => ({
+    ...a, cep: endereco.cep, logradouro: endereco.logradouro, numero: endereco.numero,
+    complemento: endereco.complemento, bairro: endereco.bairro, cidade: endereco.cidade,
+    uf: endereco.uf, pais: endereco.pais,
+  }));
+  const copiarAtpvParaComercial = () => setEndereco((e) => ({
+    ...e, cep: enderecoAtpv.cep, logradouro: enderecoAtpv.logradouro, numero: enderecoAtpv.numero,
+    complemento: enderecoAtpv.complemento, bairro: enderecoAtpv.bairro, cidade: enderecoAtpv.cidade,
+    uf: enderecoAtpv.uf, pais: enderecoAtpv.pais,
+  }));
 
   useEffect(() => {
     // Durante a carga de um cadastro existente não força nada — o tipo_pessoa
@@ -525,6 +575,9 @@ export function ClienteForm({
   const enderecoCompleto =
     !!s(endereco.cep) && !!s(endereco.logradouro) && !!s(endereco.numero) &&
     !!s(endereco.bairro) && !!s(endereco.cidade) && !!s(endereco.uf);
+  // Usados só pra habilitar os botões "Copiar do ..." (tem algo pra copiar?).
+  const enderecoComercialPreenchido = !!s(endereco.cep) || !!s(endereco.logradouro) || !!s(endereco.numero) || !!s(endereco.bairro) || !!s(endereco.cidade) || !!s(endereco.uf);
+  const enderecoAtpvPreenchido = !!s(enderecoAtpv.cep) || !!s(enderecoAtpv.logradouro) || !!s(enderecoAtpv.numero) || !!s(enderecoAtpv.bairro) || !!s(enderecoAtpv.cidade) || !!s(enderecoAtpv.uf);
 
   const contatosOk =
     !!s(form.email) && isValidEmail(form.email) &&
@@ -625,6 +678,7 @@ export function ClienteForm({
       delete payload.updated_at;
       delete payload.deleted_at;
       delete payload.clientes_fornecedores_enderecos;
+      delete payload.clientes_fornecedores_enderecos_atpv;
 
       let cfId = id;
       if (isEdit) {
@@ -657,6 +711,27 @@ export function ClienteForm({
           delete epayload.id;
           const { error } = await supabase.from("clientes_fornecedores_enderecos").insert(epayload);
           if (error) throw error;
+        }
+      }
+
+      // Endereço residencial (ATPV) — só Pessoa Jurídica; informativo, sem
+      // obrigatoriedade (não faz parte de enderecoCompleto).
+      if (isJuridica) {
+        const hasEnderecoAtpv = enderecoAtpv.cep || enderecoAtpv.logradouro || enderecoAtpv.numero
+          || enderecoAtpv.complemento || enderecoAtpv.bairro || enderecoAtpv.cidade || enderecoAtpv.uf;
+        if (hasEnderecoAtpv) {
+          const apayload: any = { ...enderecoAtpv, cliente_fornecedor_id: cfId };
+          Object.keys(apayload).forEach((k) => { if (apayload[k] === "") apayload[k] = null; });
+          delete apayload.created_at;
+          delete apayload.updated_at;
+          if (enderecoAtpv.id) {
+            const { error } = await (supabase as any).from("clientes_fornecedores_enderecos_atpv").update(apayload).eq("id", enderecoAtpv.id);
+            if (error) throw error;
+          } else {
+            delete apayload.id;
+            const { error } = await (supabase as any).from("clientes_fornecedores_enderecos_atpv").insert(apayload);
+            if (error) throw error;
+          }
         }
       }
       return cfId as string;
@@ -1054,64 +1129,129 @@ export function ClienteForm({
           </div>
         </TabsContent>
 
-        <TabsContent value="endereco" className="space-y-4 pt-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <Label>CEP <span className="text-red-500">*</span></Label>
-              <div className="flex gap-2">
-                <Input
-                  inputMode="numeric"
-                  value={endereco.cep}
-                  className={errCls(!s(endereco.cep))}
-                  onChange={(e) => setE("cep")(maskCEP(e.target.value))}
-                  placeholder="00000-000"
-                />
-                {onlyDigits(endereco.cep).length === 8 && onlyDigits(endereco.cep) !== cepConsultado && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => cepApi.mutate()}
-                    disabled={cepApi.isPending}
-                    title="Buscar endereço pelo CEP"
-                  >
-                    {cepApi.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+        <TabsContent value="endereco" className="space-y-6 pt-4">
+          <div className="space-y-3">
+            {isJuridica && (
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold text-foreground">Endereço Comercial (NF)</Label>
+                {enderecoAtpvPreenchido && (
+                  <Button type="button" variant="outline" size="sm" onClick={copiarAtpvParaComercial}>
+                    <Import className="h-3.5 w-3.5 mr-1.5" /> Copiar do Residencial
                   </Button>
                 )}
               </div>
-            </div>
-            <div className="md:col-span-2">
-              <Label>Logradouro <span className="text-red-500">*</span></Label>
-              <Input value={endereco.logradouro} className={errCls(!s(endereco.logradouro))} onChange={(e) => setE("logradouro")(e.target.value)} />
-            </div>
-            <div>
-              <Label>Número <span className="text-red-500">*</span></Label>
-              <Input value={endereco.numero} className={errCls(!s(endereco.numero))} onChange={(e) => setE("numero")(e.target.value)} />
-            </div>
-            <div>
-              <Label>Complemento</Label>
-              <Input value={endereco.complemento} onChange={(e) => setE("complemento")(e.target.value)} />
-            </div>
-            <div>
-              <Label>Bairro <span className="text-red-500">*</span></Label>
-              <Input value={endereco.bairro} className={errCls(!s(endereco.bairro))} onChange={(e) => setE("bairro")(e.target.value)} />
-            </div>
-            <div>
-              <Label>Cidade <span className="text-red-500">*</span></Label>
-              <Input value={endereco.cidade} className={errCls(!s(endereco.cidade))} onChange={(e) => setE("cidade")(e.target.value)} />
-            </div>
-            <div>
-              <Label>UF <span className="text-red-500">*</span></Label>
-              <Select value={endereco.uf || ""} onValueChange={(v) => setE("uf")(v)}>
-                <SelectTrigger className={errCls(!s(endereco.uf))}><SelectValue placeholder="—" /></SelectTrigger>
-                <SelectContent>
-                  {UFS.map((uf) => (
-                    <SelectItem key={uf} value={uf}>{uf}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <Label>CEP <span className="text-red-500">*</span></Label>
+                <div className="flex gap-2">
+                  <Input
+                    inputMode="numeric"
+                    value={endereco.cep}
+                    className={errCls(!s(endereco.cep))}
+                    onChange={(e) => setE("cep")(maskCEP(e.target.value))}
+                    placeholder="00000-000"
+                  />
+                  {onlyDigits(endereco.cep).length === 8 && onlyDigits(endereco.cep) !== cepConsultado && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => cepApi.mutate()}
+                      disabled={cepApi.isPending}
+                      title="Buscar endereço pelo CEP"
+                    >
+                      {cepApi.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <Label>Logradouro <span className="text-red-500">*</span></Label>
+                <Input value={endereco.logradouro} className={errCls(!s(endereco.logradouro))} onChange={(e) => setE("logradouro")(e.target.value)} />
+              </div>
+              <div>
+                <Label>Número <span className="text-red-500">*</span></Label>
+                <Input value={endereco.numero} className={errCls(!s(endereco.numero))} onChange={(e) => setE("numero")(e.target.value)} />
+              </div>
+              <div>
+                <Label>Complemento</Label>
+                <Input value={endereco.complemento} onChange={(e) => setE("complemento")(e.target.value)} />
+              </div>
+              <div>
+                <Label>Bairro <span className="text-red-500">*</span></Label>
+                <Input value={endereco.bairro} className={errCls(!s(endereco.bairro))} onChange={(e) => setE("bairro")(e.target.value)} />
+              </div>
+              <div>
+                <Label>Cidade <span className="text-red-500">*</span></Label>
+                <Input value={endereco.cidade} className={errCls(!s(endereco.cidade))} onChange={(e) => setE("cidade")(e.target.value)} />
+              </div>
+              <div>
+                <Label>UF <span className="text-red-500">*</span></Label>
+                <Select value={endereco.uf || ""} onValueChange={(v) => setE("uf")(v)}>
+                  <SelectTrigger className={errCls(!s(endereco.uf))}><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    {UFS.map((uf) => (
+                      <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
+
+          {isJuridica && (
+            <div className="space-y-3 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-semibold text-foreground">Endereço Residencial (ATPV)</Label>
+                  <p className="text-xs text-muted-foreground">Informativo — usado na ATPV. A NF continua saindo com o endereço comercial acima.</p>
+                </div>
+                {enderecoComercialPreenchido && (
+                  <Button type="button" variant="outline" size="sm" onClick={copiarComercialParaAtpv}>
+                    <Import className="h-3.5 w-3.5 mr-1.5" /> Copiar do Comercial
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <Label>CEP</Label>
+                  <Input inputMode="numeric" value={enderecoAtpv.cep} onChange={(e) => setEAtpv("cep")(maskCEP(e.target.value))} placeholder="00000-000" />
+                </div>
+                <div className="md:col-span-2">
+                  <Label>Logradouro</Label>
+                  <Input value={enderecoAtpv.logradouro} onChange={(e) => setEAtpv("logradouro")(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Número</Label>
+                  <Input value={enderecoAtpv.numero} onChange={(e) => setEAtpv("numero")(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Complemento</Label>
+                  <Input value={enderecoAtpv.complemento} onChange={(e) => setEAtpv("complemento")(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Bairro</Label>
+                  <Input value={enderecoAtpv.bairro} onChange={(e) => setEAtpv("bairro")(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Cidade</Label>
+                  <Input value={enderecoAtpv.cidade} onChange={(e) => setEAtpv("cidade")(e.target.value)} />
+                </div>
+                <div>
+                  <Label>UF</Label>
+                  <Select value={enderecoAtpv.uf || ""} onValueChange={(v) => setEAtpv("uf")(v)}>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      {UFS.map((uf) => (
+                        <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="bancario" className="space-y-4 pt-4">

@@ -1192,7 +1192,11 @@ Deno.serve(async (req) => {
     .eq('id', atendimento.cliente_id)
     .maybeSingle();
   if (!fornecedor) return jsonResponse({ error: 'Cliente não encontrado' }, 409);
-  const end = (fornecedor.clientes_fornecedores_enderecos || [])[0] || {};
+  // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma linha
+  // em clientes_fornecedores_enderecos (ex.: 'residencial', ver ClienteForm);
+  // a NF sempre usa o fiscal, nunca "a primeira que vier".
+  const enderecosFornecedor = (fornecedor.clientes_fornecedores_enderecos || []) as Array<{ tipo?: string }>;
+  const end = enderecosFornecedor.find((e) => e.tipo === 'fiscal') || enderecosFornecedor[0] || {};
 
   // Venda: nome do vendedor + formas de pagamento do contrato, pra compor as
   // informações complementares (texto) E os grupos pag/cobr da NF-e.
