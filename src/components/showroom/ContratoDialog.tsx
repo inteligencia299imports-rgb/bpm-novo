@@ -17,7 +17,6 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { vendaLiberada } from '@/lib/aprovacaoVenda';
 import type { Atendimento, MotoInteresse, Avaliacao } from '@/types/crm';
-import { TIPOS_ATENDIMENTO } from '@/types/crm';
 import { generateContratoPdf, type ContratoPdfData } from '@/lib/generateContratoPdf';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { useAuth } from '@/contexts/AuthContext';
@@ -273,9 +272,6 @@ const ContratoDialog: React.FC<Props> = ({
   // Empresa emitente / vendedora (restrita à empresa vinculada à loja do atendimento).
   const [empresasLoja, setEmpresasLoja] = useState<any[]>([]);
   const [empresaId, setEmpresaId] = useState<string>('');
-  // Presencial/Online — mesmo campo de atendimentos_motos usado como critério de
-  // match de CFOP/CST na emissão da NF-e (ver regraDe() em emitir-nfe-compra).
-  const [tipoAtendimento, setTipoAtendimentoState] = useState<string>(atendimento.tipo_atendimento || '');
 
   // Client data
   const [cpfCnpj, setCpfCnpj] = useState('');
@@ -713,14 +709,6 @@ const ContratoDialog: React.FC<Props> = ({
     setFormasPagamento(prev => prev.filter(f => f.id !== id));
     if (editingId === id) handleCancelEdit();
     toast.success('Forma de pagamento removida');
-  };
-
-  // Presencial/Online é do atendimento (não do contrato) — grava direto, sem
-  // depender do contrato já ter sido salvo.
-  const handleTipoAtendimentoChange = async (v: string) => {
-    setTipoAtendimentoState(v);
-    const { error } = await supabase.from('atendimentos_motos').update({ tipo_atendimento: v }).eq('id', atendimento.id);
-    if (error) toast.error('Erro ao salvar o tipo de atendimento');
   };
 
   const saveContrato = async (): Promise<string | null> => {
@@ -1211,60 +1199,32 @@ const ContratoDialog: React.FC<Props> = ({
                   <Separator className="mt-2" />
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:items-start">
-                    <div className="min-w-0 space-y-1.5">
-                      {empresasLoja.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Nenhuma empresa vinculada à loja do atendimento.</p>
-                      ) : soLeitura ? (
-                        <InfoDisplay
-                          label="Empresa"
-                          value={(() => {
-                            const e = empresasLoja.find((x) => x.id === empresaId);
-                            if (!e) return '—';
-                            return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
-                          })()}
-                        />
-                      ) : (
-                        <>
-                          <Label>Empresa vendedora <span className="text-destructive">*</span></Label>
-                          <Select value={empresaId} onValueChange={setEmpresaId}>
-                            <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
-                            <SelectContent>
-                              {empresasLoja.map((e) => (
-                                <SelectItem key={e.id} value={e.id}>
-                                  {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Presencial/Online — critério de CFOP/CST na emissão da NF-e. */}
-                    <div className="min-w-0 space-y-1.5">
-                      <Label>Atendimento {!soLeitura && <span className="text-destructive">*</span>}</Label>
-                      {soLeitura ? (
-                        <p className="text-sm font-semibold text-primary">{tipoAtendimento || '—'}</p>
-                      ) : (
-                        <div className="flex gap-2">
-                          {TIPOS_ATENDIMENTO.map((t) => (
-                            <Button
-                              key={t}
-                              type="button"
-                              size="sm"
-                              className="w-24"
-                              variant={tipoAtendimento === t ? 'default' : 'outline'}
-                              onClick={() => handleTipoAtendimentoChange(t)}
-                            >
-                              {t}
-                            </Button>
+                  {empresasLoja.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhuma empresa vinculada à loja do atendimento.</p>
+                  ) : soLeitura ? (
+                    <InfoDisplay
+                      label="Empresa"
+                      value={(() => {
+                        const e = empresasLoja.find((x) => x.id === empresaId);
+                        if (!e) return '—';
+                        return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
+                      })()}
+                    />
+                  ) : (
+                    <div className="max-w-sm space-y-1.5">
+                      <Label>Empresa vendedora <span className="text-destructive">*</span></Label>
+                      <Select value={empresaId} onValueChange={setEmpresaId}>
+                        <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+                        <SelectContent>
+                          {empresasLoja.map((e) => (
+                            <SelectItem key={e.id} value={e.id}>
+                              {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
+                            </SelectItem>
                           ))}
-                        </div>
-                      )}
-                      <p className="text-xs text-muted-foreground">Define o CFOP/CST usado na emissão da NF-e.</p>
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 
