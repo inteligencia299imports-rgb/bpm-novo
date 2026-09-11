@@ -16,6 +16,8 @@ import FiltersPanel from '@/components/shared/FiltersPanel';
 import { isLojaDucati } from '@/lib/lojaUtils';
 import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMotoNova, fetchLojaMap } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
+import { fetchAllRange } from '@/lib/fetchAllRange';
+import { nfeTagFromRows } from '@/lib/nfeTag';
 import NpsDateFilter from './NpsDateFilter';
 
 interface NpsVendasTabProps {
@@ -102,6 +104,23 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
           }
           return a;
         });
+      }
+
+      // Tag de status da NF-e de venda — reflete o último status da NF do atendimento.
+      if (atIds.length > 0) {
+        const nfeResult = await fetchAllRange(() =>
+          supabase.from('nfe_entradas' as any)
+            .select('atendimento_id, status, ambiente, operacao, created_at')
+            .not('atendimento_id', 'is', null)
+            .like('operacao', 'venda%')
+            .in('atendimento_id', atIds),
+        );
+        const nfeRowsPorAtendimento: Record<string, any[]> = {};
+        ((nfeResult.data as any[]) || []).forEach((n: any) => {
+          if (!n.atendimento_id) return;
+          (nfeRowsPorAtendimento[n.atendimento_id] ??= []).push(n);
+        });
+        mapped = mapped.map((a: any) => ({ ...a, _nfeTag: nfeTagFromRows(nfeRowsPorAtendimento[a.id]) }));
       }
 
       if (search.trim()) {
@@ -292,6 +311,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                           statusColorOverride={SITUACOES_NPS.find(s => s.value === status)?.hex}
                           readyIndicator={indicator}
                           readyReason={reason}
+                          nameTag={a._nfeTag || undefined}
                           actions={
                             <>
                               {(a.nps_status || 'em_aberto') === 'em_aberto' && entregaMap[a.id] && (
