@@ -15,7 +15,8 @@ import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
+import { nfeBotaoClasse } from '@/lib/nfeTag';
+import { cn } from '@/lib/utils';
 
 const ETAPAS = [
   'CONTRATO ASSINADO',
@@ -49,7 +50,6 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
   const [datasSalvas, setDatasSalvas] = useState<Record<string, string | null>>({});
   const [previousStatus, setPreviousStatus] = useState('em_aberto');
-  const [atendimentoId, setAtendimentoId] = useState<string | null>(null);
 
   // ---- NF-e de entrada em consignação ----
   const nfe = useNfeCompra(avaliacaoId, open, 'consignacao');
@@ -123,7 +123,6 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       const salvas: Record<string, string | null> = {};
       built.forEach((b: any) => { salvas[b.etapa] = b.concluida ? (b.data_conclusao ?? null) : null; });
       setDatasSalvas(salvas);
-      setAtendimentoId((avData as any)?.atendimento_id || null);
       setPreviousStatus((avData as any)?.consignacao_status || 'em_aberto');
       setLoading(false);
     };
@@ -339,7 +338,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                     // autorizada, e a opção de emitir em Produção depois da homologação) —
                     // não o DANFE direto aqui.
                     <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
-                      <Button size="sm" className="h-7 gap-1" onClick={() => onEmitirNfe?.()}>
+                      <Button size="sm" className={cn('h-7 gap-1', nfeBotaoClasse(nfe.nfe))} onClick={() => onEmitirNfe?.()}>
                         <FileText className="h-3.5 w-3.5" /> NF-e
                       </Button>
                       <CalendarIcon className="h-4 w-4 shrink-0" />
@@ -406,11 +405,6 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
             })}
 
             <Separator />
-            {atendimentoId && (
-              <div className="pt-3">
-                <AtendimentoObservacoes idOperacao={atendimentoId} />
-              </div>
-            )}
             <div className="flex justify-end pt-3">
               <Button onClick={handleSave} disabled={saving} className="gap-1.5">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

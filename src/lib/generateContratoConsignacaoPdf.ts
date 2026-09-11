@@ -21,7 +21,8 @@ interface ContratoConsignacaoPdfData {
   observacoes: string;
   valorFechamento: string;
   dataContrato: string;
-  comPercentual5: boolean;
+  /** Percentual de comissão (0/vazio = contrato normal, sem cláusula de comissão). */
+  percentualComissao: number;
 }
 
 async function loadImage(path: string): Promise<string> {
@@ -209,6 +210,9 @@ export async function generateContratoConsignacaoPdf(
   const foroSede = override?.foroSede || 'BRASÍLIA - DF';
   const cidadeAssinatura = override?.cidadeAssinatura || 'Brasília';
   const logoPath = override && isDucati ? '/logos/ducati-logo.png' : '/logos/299-logo.jpg';
+  const temComissao = Number(data.percentualComissao) > 0;
+  // "5" -> "5%"; "2.5" -> "2,5%" (sem escrever por extenso — percentual é editável e livre).
+  const pctLabel = `${String(data.percentualComissao).replace('.', ',')}%`;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageWidth = 210;
@@ -268,11 +272,11 @@ export async function generateContratoConsignacaoPdf(
   // Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
-  const title = data.comPercentual5
+  const title = temComissao
     ? 'CONTRATO DE CONSIGNAÇÃO E TERMO DE RESPONSABILIDADE'
     : 'CONTRATO DE CONSIGNAÇÃO COM VALOR ESTIPULADO E TERMO DE RESPONSABILIDADE';
   // For the long title, use smaller font if needed
-  const titleFontSize = data.comPercentual5 ? 14 : 12;
+  const titleFontSize = temComissao ? 14 : 12;
   doc.setFontSize(titleFontSize);
   const titleLines = doc.splitTextToSize(title, contentWidth);
   for (const tl of titleLines) {
@@ -328,9 +332,9 @@ export async function generateContratoConsignacaoPdf(
   setNormal();
   checkPageBreak(15);
   {
-    const prefix = data.comPercentual5
-      ? 'A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de '
-      : 'A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de ';
+    const prefix = temComissao
+      ? 'A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de'
+      : 'A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de';
     const suffix = ';';
     const valor = data.valorFechamento;
 
@@ -338,7 +342,10 @@ export async function generateContratoConsignacaoPdf(
     let cx = marginLeft;
     setNormal();
     doc.text(prefix, cx, y);
-    cx += doc.getTextWidth(prefix);
+    // doc.getTextWidth() do jsPDF não conta bem espaço em branco no final da
+    // string — some o espaço entre "de" e o valor ("de R$ 95.000,00"). Mede o
+    // espaço à parte e soma explicitamente.
+    cx += doc.getTextWidth(prefix) + doc.getTextWidth(' ');
 
     // Check if valor fits on same line
     setBold();
@@ -361,7 +368,7 @@ export async function generateContratoConsignacaoPdf(
   sectionHeader('DO PAGAMENTO:');
   setNormal();
   checkPageBreak(lineHeight);
-  if (data.comPercentual5) {
+  if (temComissao) {
     const pagText = 'O repasse do valor acordado será efetuado após a entrega integral da documentação exigida pela empresa, conforme especificado no campo "Observações". Ressalta-se que o DUT (Documento Único de Transferência) ou ATPV-e (Autorização para Transferência de Propriedade de Veículo Eletrônica) deverá estar devidamente preenchido e com firma reconhecida. Concluída essa etapa documental, proceder-se-á ao pagamento da motocicleta consignada.';
     y = drawJustifiedText(doc, pagText, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
   } else {
@@ -404,8 +411,8 @@ export async function generateContratoConsignacaoPdf(
   sectionHeader('DA COMISSÃO:');
   setNormal();
   checkPageBreak(lineHeight);
-  if (data.comPercentual5) {
-    y = drawJustifiedText(doc, 'Fica desde já convencionado entre as partes que, na hipótese de o veículo objeto do presente contrato vir a ser alienado, seja pelo valor indicado no campo "VALOR" ou por quantia inferior, desde que haja anuência expressa do(a) CONSIGNANTE —, será devida à CONSIGNATÁRIA comissão correspondente a 5% (cinco por cento) do valor efetivo da transação. Tal comissão será automaticamente retida pela CONSIGNATÁRIA no ato do pagamento efetuado pelo comprador, por ocasião da quitação final.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
+  if (temComissao) {
+    y = drawJustifiedText(doc, `Fica desde já convencionado entre as partes que, na hipótese de o veículo objeto do presente contrato vir a ser alienado, seja pelo valor indicado no campo "VALOR" ou por quantia inferior, desde que haja anuência expressa do(a) CONSIGNANTE —, será devida à CONSIGNATÁRIA comissão correspondente a ${pctLabel} do valor efetivo da transação. Tal comissão será automaticamente retida pela CONSIGNATÁRIA no ato do pagamento efetuado pelo comprador, por ocasião da quitação final.`, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
     y += sectionGap;
     checkPageBreak(lineHeight);
     y = drawJustifiedText(doc, '§1º Caso o(a) CONSIGNANTE deseje fixar o valor líquido que pretende auferir com a venda, deverá informar tal quantia de maneira clara e expressa no momento da consignação, a fim de que conste no campo "Observações" do presente contrato.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
@@ -668,7 +675,7 @@ export async function generateContratoConsignacaoPdf(
   y += lineHeight;
   doc.text(empresaNome, marginLeft, y); y += lineHeight;
   doc.text(`CNPJ: ${cnpj}`, marginLeft, y);
-  y += lineHeight;
+  y += lineHeight + sectionGap;
 
   // DEVOLUÇÃO DO VEÍCULO
   checkPageBreak(lineHeight);
@@ -695,7 +702,7 @@ export async function generateContratoConsignacaoPdf(
   setNormal();
 
   // Save / View
-  const suffix = data.comPercentual5 ? '_5PCT' : '';
+  const suffix = temComissao ? `_${String(data.percentualComissao).replace('.', ',')}PCT` : '';
   const fileName = `CONSIGNACAO${suffix}_${data.nomeCliente.replace(/\s+/g, '_').toUpperCase()}.pdf`;
   if (modo === 'view') {
     window.open(URL.createObjectURL(doc.output('blob')), '_blank');

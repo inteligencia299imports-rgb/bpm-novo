@@ -153,6 +153,22 @@ export interface MontarPayloadArgs {
    * - base de PIS/COFINS pela margem (venda − `moto.custo_aquisicao`), Lei 9.716/98.
    */
   bemMovelUsado?: boolean;
+  /**
+   * Chave de acesso (44 dígitos) da NF-e referenciada — grupo `NFref/refNFe` do
+   * XML. Obrigatório em nota de devolução (SEFAZ rejeição 321 "NF-e de
+   * devolução não possui documento fiscal referenciado"); aqui usado na
+   * devolução simbólica de consignação, referenciando a NF-e de entrada.
+   * Campo Focus: `notas_referenciadas: [{ chave_nfe }]` (campos.focusnfe.com.br/nfe).
+   */
+  notaReferenciada?: string | null;
+  /**
+   * `true` para operações sem movimentação financeira real (ex.: devolução
+   * simbólica) — não manda o grupo pag/cobr/dup calculado por formas de
+   * pagamento, mesmo sendo uma nota de saída; comporta-se como as entradas
+   * (deixa o default da Focus). Sem isto, toda saída cai no "99 - DIVERSOS"
+   * pelo valor total (ver `pagCobr` abaixo).
+   */
+  semPagamentoReal?: boolean;
 }
 
 const onlyDigits = (v: string | null | undefined) => (v ?? '').replace(/\D/g, '');
@@ -302,7 +318,7 @@ export function veiculoProdMoto(m: DadosMoto): Record<string, unknown> | null {
 }
 
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
-  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, trocaInfoCpl, formasPagamento, bemMovelUsado } = args;
+  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, trocaInfoCpl, formasPagamento, bemMovelUsado, notaReferenciada, semPagamentoReal } = args;
 
   const pf = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
   const docForn = onlyDigits(fornecedor.cpf_cnpj);
@@ -536,13 +552,17 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   // dVenc é OBRIGATÓRIO e não pode ser < data de emissão (Rejeição 900) — usa a
   // própria data de emissão (pagamento "à vista"; não há plano de parcelas real).
   const vencDup = agora.slice(0, 10);
-  const formasIn = entrada ? [] : (formasPagamento || []).filter((f) => Number(f.valor) > 0);
+  // Sem movimentação financeira real (entrada, ou devolução simbólica de saída):
+  // não manda formas de pagamento calculadas — ver `semPagamentoReal` acima.
+  const semPagto = semPagamentoReal ?? entrada;
+  const formasIn = semPagto ? [] : (formasPagamento || []).filter((f) => Number(f.valor) > 0);
   const somaFormas = r2(formasIn.reduce((s, f) => s + Number(f.valor), 0));
   const formasBatem = formasIn.length > 0 && Math.abs(somaFormas - valorFmt) <= 0.02;
 
-  // Entrada (compra/consignação): não mexe no pagamento — deixa o default da Focus.
-  // Venda: manda formas_pagamento sempre; cobr/fat/dup só quando as formas batem.
-  const pagCobr: Record<string, unknown> = entrada
+  // Entrada (compra/consignação) e devolução simbólica: não mexe no pagamento —
+  // deixa o default da Focus. Venda: manda formas_pagamento sempre; cobr/fat/dup
+  // só quando as formas batem.
+  const pagCobr: Record<string, unknown> = semPagto
     ? {}
     : {
         formas_pagamento: formasBatem
@@ -631,6 +651,7 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     valor_total: valorFmt,
 
     ...pagCobr,
+    ...(notaReferenciada ? { notas_referenciadas: [{ chave_nfe: onlyDigits(notaReferenciada) }] } : {}),
 
     items: [item],
   };
