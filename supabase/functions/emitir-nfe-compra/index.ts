@@ -1318,6 +1318,17 @@ Deno.serve(async (req) => {
   }
 
   // Natureza + regras fiscais (tudo vem da tabela; nao ha default no codigo)
+  // Compra "pós-consignação" (conversão consignação -> compra) é uma natureza
+  // fiscal DIFERENTE da compra normal — CFOP e tratamento próprio (ex.: IBS/CBS
+  // isento/não incidência, CST 410, em vez do IBS/CBS normal da compra de PF)
+  // porque não é uma aquisição nova: só formaliza a titularidade de mercadoria
+  // já fisicamente no estabelecimento (recebida em consignação, devolvida
+  // simbolicamente). Achado numa NF de referência real da MMATOS — natOp
+  // "Compra p/ comerc. de merc. recebida anter. em consignacao" — 2026-09-12,
+  // ver docs-fiscal-299 §2.27.
+  const naturezaDescricaoEfetiva = (tipo === 'compra' && viaConversaoConsignacao)
+    ? 'Compra p/ comerc. de merc. recebida anter. em consignacao'
+    : cfg.naturezaDescricao;
   const { data: natureza } = await admin
     .from('naturezas_operacao')
     .select(
@@ -1330,10 +1341,10 @@ Deno.serve(async (req) => {
         'aliquota_icms_efetiva, reducao_base_calculo_efetiva, aliquota_suportada_consumidor_final)',
     )
     .eq('empresa_id', empresaId)
-    .eq('descricao', cfg.naturezaDescricao)
+    .eq('descricao', naturezaDescricaoEfetiva)
     .eq('ativo', true)
     .maybeSingle();
-  if (!natureza) return jsonResponse({ error: `Natureza de operação "${cfg.naturezaDescricao}" não configurada ou inativa.` }, 409);
+  if (!natureza) return jsonResponse({ error: `Natureza de operação "${naturezaDescricaoEfetiva}" não configurada ou inativa.` }, 409);
 
   const regrasTodas = (natureza.naturezas_operacao_regras || []) as Array<
     RegraFiscal & { destino_ufs: string[] | null; ordem: number | null; tipo_atendimento: string | null }
@@ -1405,7 +1416,7 @@ Deno.serve(async (req) => {
   }
   if (faltando.length) {
     return jsonResponse(
-      { error: `Regras fiscais da natureza "${cfg.naturezaDescricao}" incompletas: ${faltando.join(', ')}.` },
+      { error: `Regras fiscais da natureza "${naturezaDescricaoEfetiva}" incompletas: ${faltando.join(', ')}.` },
       409,
     );
   }
