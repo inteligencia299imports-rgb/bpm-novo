@@ -1202,14 +1202,25 @@ const ContratoDialog: React.FC<Props> = ({
                   {empresasLoja.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Nenhuma empresa vinculada à loja do atendimento.</p>
                   ) : soLeitura ? (
-                    <InfoDisplay
-                      label="Empresa"
-                      value={(() => {
-                        const e = empresasLoja.find((x) => x.id === empresaId);
-                        if (!e) return '—';
-                        return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
-                      })()}
-                    />
+                    <div className="flex items-center gap-6">
+                      <InfoDisplay
+                        label="Empresa"
+                        value={(() => {
+                          const e = empresasLoja.find((x) => x.id === empresaId);
+                          if (!e) return '—';
+                          return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
+                        })()}
+                      />
+                      {/* Emissão de NF-e: toda venda é tratada como presencial, fixo
+                          (ver docs-fiscal-299/pendencias.md §2.5) — não vem mais do
+                          atendimento, só informativo aqui. */}
+                      {ehNfe && (
+                        <div>
+                          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Atendimento</span>
+                          <p className="text-sm font-semibold text-primary">Presencial</p>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="max-w-sm space-y-1.5">
                       <Label>Empresa vendedora <span className="text-destructive">*</span></Label>
