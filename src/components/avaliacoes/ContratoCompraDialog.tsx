@@ -221,7 +221,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       if (lojaId) {
         const { data: le } = await supabase
           .from('loja_empresas')
-          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, endereco, uf, inscricao_estadual, regime_tributario)')
+          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, endereco, uf)')
           .eq('id', lojaId);
         const seen = new Set<string>();
         empresas = (le || [])
@@ -609,14 +609,6 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                   </Select>
                 </div>
               )}
-
-              {/* Dados fiscais da empresa — só quando o cliente é PJ (contexto B2B). */}
-              {empresaSel && isJuridica && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <InfoDisplay label="IE da Empresa" value={empresaSel.inscricao_estadual || 'Isenta'} />
-                  <InfoDisplay label="Regime Tributário" value={empresaSel.regime_tributario} />
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -699,6 +691,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                   <InfoDisplay label="Data de Nascimento" value={fmtDataNasc(cli?.data_nascimento)} />
                   <InfoDisplay label="E-mail (NF)" value={cli?.email_nf} />
                   <InfoDisplay label="Telefone (comercial)" value={fmtTelefone(cli?.telefone_comercial)} />
+                  {isJuridica && (
+                    <>
+                      <InfoDisplay label="IE do Cliente" value={cli?.isento_inscricao_estadual ? 'Isenta' : cli?.inscricao_estadual} />
+                      <InfoDisplay label="Regime Tributário" value={cli?.regime_tributario} />
+                    </>
+                  )}
                 </div>
               ) : (
                 <ClienteForm
