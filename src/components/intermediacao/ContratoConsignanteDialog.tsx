@@ -603,7 +603,10 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
 
   // Resumo do consignante (quando o cadastro está completo) — igual ao contrato de compra.
   const cli = clienteRecord;
-  const cliEndereco = cli?.clientes_fornecedores_enderecos?.[0] || null;
+  // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma linha
+  // (ex.: 'residencial', PJ) em clientes_fornecedores_enderecos.
+  const cliEndereco = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'fiscal')
+    ?? cli?.clientes_fornecedores_enderecos?.[0] ?? null;
   const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco);
   const fmtTelefone = (v: string | null | undefined) => {
     const d = (v || '').replace(/\D/g, '');
