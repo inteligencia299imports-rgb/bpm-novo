@@ -1240,12 +1240,12 @@ const ContratoDialog: React.FC<Props> = ({
                     </div>
 
                     {/* Presencial/Online — critério de CFOP/CST na emissão da NF-e. */}
-                    <div className="min-w-0 space-y-1.5">
+                    <div className="min-w-0 space-y-1.5 flex flex-col items-end">
                       <Label>Atendimento {!soLeitura && <span className="text-destructive">*</span>}</Label>
                       {soLeitura ? (
                         <InfoDisplay label="Tipo de Atendimento" value={tipoAtendimento || '—'} />
                       ) : (
-                        <div className="flex gap-2 justify-end">
+                        <div className="flex gap-2">
                           {TIPOS_ATENDIMENTO.map((t) => (
                             <Button
                               key={t}
