@@ -141,11 +141,14 @@ Deno.serve(async (req) => {
       if (!nfVenda?.chave_nfe) return json({ error: 'NF-e de venda 0km autorizada em produção não encontrada.' }, 409);
 
       const { data: at } = await admin.from('atendimentos_motos')
-        .select('id, cliente:clientes_fornecedores(nome_razao_social, cpf_cnpj, tipo_pessoa, email, clientes_fornecedores_enderecos(cep, logradouro, numero, bairro, complemento, cidade, uf))')
+        .select('id, cliente:clientes_fornecedores(nome_razao_social, cpf_cnpj, tipo_pessoa, email, clientes_fornecedores_enderecos(tipo, cep, logradouro, numero, bairro, complemento, cidade, uf))')
         .eq('id', atendimentoId).maybeSingle();
       const cli = (at as any)?.cliente;
       if (!cli?.cpf_cnpj) return json({ error: 'Comprador sem CPF/CNPJ no cadastro.' }, 409);
-      const end = cli.clientes_fornecedores_enderecos?.[0] || {};
+      // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma
+      // linha em clientes_fornecedores_enderecos; nunca confiar "na primeira".
+      const enderecosCli = (cli.clientes_fornecedores_enderecos || []) as Array<{ tipo?: string }>;
+      const end = enderecosCli.find((e) => e.tipo === 'fiscal') || enderecosCli[0] || {};
 
       let codigoMunicipio: number | undefined = body.codigo_municipio ? Number(body.codigo_municipio) : undefined;
       if (!codigoMunicipio && end.cidade && end.uf) {
