@@ -632,13 +632,13 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                   {empresaReadonly ? (
                     <InfoDisplay label="Tipo de Atendimento" value={tipoAtendimento || '—'} />
                   ) : (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 justify-end">
                       {TIPOS_ATENDIMENTO.map((t) => (
                         <Button
                           key={t}
                           type="button"
                           size="sm"
-                          className="flex-1"
+                          className="w-24"
                           variant={tipoAtendimento === t ? 'default' : 'outline'}
                           onClick={() => handleTipoAtendimentoChange(t)}
                         >
