@@ -221,7 +221,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       if (lojaId) {
         const { data: le } = await supabase
           .from('loja_empresas')
-          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, endereco, uf)')
+          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, endereco, uf, inscricao_estadual, regime_tributario)')
           .eq('id', lojaId);
         const seen = new Set<string>();
         empresas = (le || [])
@@ -501,6 +501,10 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
 
   // Resumo do cliente (quando o cadastro está completo)
   const cli = clienteRecord;
+  const isJuridica = ((cli?.cpf_cnpj || '').replace(/\D/g, '').length > 11) || (cli as any)?.tipo_pessoa === 'juridica';
+  // Dados fiscais da empresa emitente selecionada — só exibidos quando o
+  // cliente (vendedor da moto, na compra) é PJ (contexto B2B).
+  const empresaSel = empresasLoja.find((x) => x.id === empresaId) ?? null;
   // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma linha
   // (ex.: 'residencial', PJ) em clientes_fornecedores_enderecos.
   const cliEndereco = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'fiscal')
@@ -580,7 +584,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               </CardTitle>
               <Separator className="mt-2" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               {empresasLoja.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Nenhuma empresa vinculada à loja do atendimento.
@@ -588,11 +592,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               ) : empresaReadonly ? (
                 <InfoDisplay
                   label="Empresa"
-                  value={(() => {
-                    const e = empresasLoja.find((x) => x.id === empresaId);
-                    if (!e) return '—';
-                    return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
-                  })()}
+                  value={empresaSel ? `${empresaSel.razao_social || empresaSel.nome}${empresaSel.cnpj ? ` - ${empresaSel.cnpj}` : ''}` : undefined}
                 />
               ) : (
                 <div className="max-w-sm space-y-1.5">
@@ -607,6 +607,14 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+
+              {/* Dados fiscais da empresa — só quando o cliente é PJ (contexto B2B). */}
+              {empresaSel && isJuridica && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <InfoDisplay label="IE da Empresa" value={empresaSel.inscricao_estadual || 'Isenta'} />
+                  <InfoDisplay label="Regime Tributário" value={empresaSel.regime_tributario} />
                 </div>
               )}
             </CardContent>

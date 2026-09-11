@@ -453,7 +453,7 @@ const ContratoDialog: React.FC<Props> = ({
       if (lojaId) {
         const { data: le } = await supabase
           .from('loja_empresas')
-          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, uf)')
+          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, uf, inscricao_estadual, regime_tributario)')
           .eq('id', lojaId);
         const seen = new Set<string>();
         empresas = (le || [])
@@ -837,6 +837,10 @@ const ContratoDialog: React.FC<Props> = ({
 
   // Resumo do cliente (quando o cadastro está completo) — igual ao contrato de compra.
   const cli = clienteRecord;
+  const isJuridica = ((cli?.cpf_cnpj || '').replace(/\D/g, '').length > 11) || (cli as any)?.tipo_pessoa === 'juridica';
+  // Dados fiscais da empresa emitente selecionada — só exibidos quando o
+  // cliente é PJ (contexto B2B em que essa conferência importa mais).
+  const empresaSel = empresasLoja.find((x) => x.id === empresaId) ?? null;
   // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma linha
   // (ex.: 'residencial', PJ) em clientes_fornecedores_enderecos.
   const cliEndereco = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'fiscal')
@@ -1198,29 +1202,14 @@ const ContratoDialog: React.FC<Props> = ({
                   </CardTitle>
                   <Separator className="mt-2" />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   {empresasLoja.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Nenhuma empresa vinculada à loja do atendimento.</p>
                   ) : soLeitura ? (
-                    <div className="flex items-center gap-6">
-                      <InfoDisplay
-                        label="Empresa"
-                        value={(() => {
-                          const e = empresasLoja.find((x) => x.id === empresaId);
-                          if (!e) return '—';
-                          return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
-                        })()}
-                      />
-                      {/* Emissão de NF-e: toda venda é tratada como presencial, fixo
-                          (ver docs-fiscal-299/pendencias.md §2.5) — não vem mais do
-                          atendimento, só informativo aqui. */}
-                      {ehNfe && (
-                        <div>
-                          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Atendimento</span>
-                          <p className="text-sm font-semibold text-primary">Presencial</p>
-                        </div>
-                      )}
-                    </div>
+                    <InfoDisplay
+                      label="Empresa"
+                      value={empresaSel ? `${empresaSel.razao_social || empresaSel.nome}${empresaSel.cnpj ? ` - ${empresaSel.cnpj}` : ''}` : undefined}
+                    />
                   ) : (
                     <div className="max-w-sm space-y-1.5">
                       <Label>Empresa vendedora <span className="text-destructive">*</span></Label>
@@ -1234,6 +1223,21 @@ const ContratoDialog: React.FC<Props> = ({
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                  )}
+
+                  {/* Dados fiscais da empresa — mesmo espaçamento em grid dos demais
+                      cards. "Atendimento" só na emissão de NF-e (fixo, ver docs-fiscal-299
+                      §2.5); IE/Regime só quando o cliente é PJ (contexto B2B). */}
+                  {empresaSel && (ehNfe || isJuridica) && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {ehNfe && <InfoDisplay label="Atendimento" value="Presencial" valueClassName="text-primary" />}
+                      {isJuridica && (
+                        <>
+                          <InfoDisplay label="IE da Empresa" value={empresaSel.inscricao_estadual || 'Isenta'} />
+                          <InfoDisplay label="Regime Tributário" value={empresaSel.regime_tributario} />
+                        </>
+                      )}
                     </div>
                   )}
                 </CardContent>
