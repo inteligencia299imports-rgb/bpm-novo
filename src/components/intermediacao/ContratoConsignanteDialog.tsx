@@ -116,6 +116,12 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
 
   // Loja da venda (define a filial/CNPJ do contrato)
   const [loja, setLoja] = useState<string | null>(null);
+  // Empresa emitente vinculada à loja do atendimento — mesma lógica de
+  // ContratoCompraDialog/ContratoDialog (loja_empresas -> empresas), usada
+  // aqui só para o bloco de assinatura da empresa no PDF (sem seletor: essa
+  // tela não emite NF-e, então não há por que o usuário escolher entre
+  // empresas de uma mesma loja).
+  const [empresa, setEmpresa] = useState<{ nome?: string | null; razao_social?: string | null; cnpj?: string | null; endereco?: string | null; uf?: string | null } | null>(null);
 
   // Moto / financeiro from avaliacao
   const [motoInfo, setMotoInfo] = useState<any>(null);
@@ -175,10 +181,23 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
         .select(ESTOQUE_MOTO_SELECT)
         .eq('atendimento_venda_id', atendimentoId)
         .limit(1),
-      supabase.from('atendimentos_motos').select('loja_empresas:loja_id(loja)').eq('id', atendimentoId).maybeSingle(),
+      supabase.from('atendimentos_motos').select('loja_id, loja_empresas:loja_id(loja)').eq('id', atendimentoId).maybeSingle(),
       fetchLojaMap(),
     ]);
     setLoja((vendaAtendimento as any)?.loja_empresas?.loja || null);
+
+    // Empresa emitente da loja (loja_empresas.id = atendimento.loja_id) — mesma
+    // busca usada em ContratoCompraDialog/ContratoDialog.
+    const lojaId = (vendaAtendimento as any)?.loja_id;
+    if (lojaId) {
+      const { data: le } = await supabase
+        .from('loja_empresas')
+        .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, endereco, uf)')
+        .eq('id', lojaId);
+      setEmpresa((le || []).map((r: any) => r.empresas).find(Boolean) || null);
+    } else {
+      setEmpresa(null);
+    }
 
     const estoqueRaw = estoqueItems?.[0];
     const estoque = estoqueRaw ? mapEstoqueMoto(estoqueRaw, lojaMap) : null;
@@ -473,6 +492,13 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
 
     return {
       loja,
+      empresa: empresa ? {
+        razaoSocial: empresa.razao_social ?? null,
+        nome: empresa.nome ?? null,
+        cnpj: empresa.cnpj ?? null,
+        endereco: empresa.endereco ?? null,
+        uf: empresa.uf ?? null,
+      } : null,
       nomeConsignante: nomeConsignante || '-',
       telefoneConsignante: telefoneConsignante || '-',
       cpfCnpj: cpfCnpj || '-',
