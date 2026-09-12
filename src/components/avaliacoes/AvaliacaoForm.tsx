@@ -7,7 +7,6 @@ import ContratoDialog from '@/components/showroom/ContratoDialog';
 import { fetchEstoqueUnificado } from '@/lib/estoqueMoto';
 import PosCompraProcessoDialog from '@/components/pos-compra/PosCompraProcessoDialog';
 import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProcessoDialog';
-import ConverterConsignacaoDialog from '@/components/avaliacoes/ConverterConsignacaoDialog';
 import { podeAprovar } from '@/lib/aprovacao';
 import { marcarAtendimentoPerdido } from '@/lib/atendimentoCascata';
 import { supabase } from '@/lib/supabase';
@@ -571,7 +570,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [aquisChaveReserva, setAquisChaveReserva] = useState('');
   const [aquisRevisaoVencida, setAquisRevisaoVencida] = useState('');
   const [isConvertendo, setIsConvertendo] = useState(false);
-  const [converterConsignacaoOpen, setConverterConsignacaoOpen] = useState(false);
   const handleStatusChange = async (newStatus: SituacaoAvaliacao, tipoAquisicao?: string, valorFechamento?: number, observacoes?: string) => {
     const updateData: any = { situacao: newStatus };
     if (tipoAquisicao) updateData.tipo_aquisicao = tipoAquisicao;
@@ -1605,17 +1603,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   <ArrowLeftRight className="h-4 w-4" /> Converter
                 </Button>
               )}
-              {!ehProcesso && isTipoConsignada(avaliacao?.tipo_aquisicao) && estoqueVendido && nfeEmitidaProducao && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-2"
-                  onClick={() => setConverterConsignacaoOpen(true)}
-                  title="Moto consignada com comprador — emita a devolução simbólica e a compra antes da NF de venda"
-                >
-                  <ArrowLeftRight className="h-4 w-4" /> Converter em Compra
-                </Button>
-              )}
               {statusButtons.map(btn => (
                 <Button
                   key={btn.value}
@@ -1783,13 +1770,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
           </div>
         </DialogContent>
       </Dialog>
-      {/* Dialog Tipo de Aquisição / Conversão */}
-      <ConverterConsignacaoDialog
-        open={converterConsignacaoOpen}
-        onOpenChange={setConverterConsignacaoOpen}
-        avaliacao={avaliacao}
-        onConcluido={() => { setConverterConsignacaoOpen(false); refreshHistory(); loadAvaliacao(); }}
-      />
 
       <Dialog open={tipoAquisicaoPopup} onOpenChange={(o) => { if (!o) { setTipoAquisicaoPopup(false); setValorFechamentoAquisicao(''); setValorQuitacaoAquisicao(''); setTipoSelecionado(null); setObsMotaAquisicao(''); setIsConvertendo(false); } }}>
         <DialogContent className="w-[96vw] max-w-2xl max-h-[90vh] overflow-y-auto">

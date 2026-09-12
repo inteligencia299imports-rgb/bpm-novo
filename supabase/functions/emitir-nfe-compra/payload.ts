@@ -12,7 +12,7 @@ export interface DadosFornecedor {
   nome: string;
   cpf_cnpj: string;
   tipo_pessoa: string | null;
-  /** Indicador de IE do destinatário (NF-e): contribuinte + IE → 1; isento → 2; senão 9. */
+  /** Indicador de IE do destinatário (NF-e): contribuinte + IE → 1; senão 9 — ver indicadorIeDestinatario(). */
   contribuinte_icms?: boolean | null;
   inscricao_estadual?: string | null;
   isento_inscricao_estadual?: boolean | null;
@@ -115,6 +115,12 @@ export interface RegraFiscal {
    * quando o CST tem redução/benefício que a SEFAZ exige identificar.
    * Ex.: "DF816006" (venda de veículo usado no DF, CST 20). */
   codigo_beneficio_fiscal?: string | null;
+  /** pICMSUFDest — alíquota interna do ICMS na UF de destino. Alimenta o
+   * grupo ICMSUFDest (DIFAL, EC 87/2015) quando a venda é interestadual a
+   * consumidor final não contribuinte — ver difalAplicavel() e
+   * docs-fiscal-299/difal-ec87.md. Vazio na regra que casou com a UF de
+   * destino → index.ts bloqueia a emissão antes de montar o payload. */
+  aliquota_interna_destino?: number | null;
   // Reforma Tributária — preenchidos apenas na linha imposto === 'ibscbs'.
   classificacao_tributaria?: string | null; // cClassTrib
   cbs_aliquota?: number | null;
@@ -317,18 +323,62 @@ export function veiculoProdMoto(m: DadosMoto): Record<string, unknown> | null {
   return v;
 }
 
+/**
+ * Indicador de IE do destinatário (indIEDest): 1 = contribuinte com IE
+ * preenchida; 9 = não contribuinte (PF, ou PJ sem IE/sem contribuinte_icms).
+ * Nunca 2 ("Contribuinte isento de IE") — a maioria dos estados (incl. GO)
+ * rejeita esse indicador em operação interestadual — Rejeição [805] "A SEFAZ
+ * do destinatario nao permite Contribuinte Isento de Inscricao Estadual"
+ * (ver docs-fiscal-299 §2.16).
+ */
+export function indicadorIeDestinatario(
+  pf: boolean,
+  contribuinteIcms: boolean | null | undefined,
+  inscricaoEstadual: string | null | undefined,
+): number {
+  const ie = onlyDigits(inscricaoEstadual);
+  const destContribuinteComIe = !pf && contribuinteIcms === true && ie.length > 0;
+  return destContribuinteComIe ? 1 : 9;
+}
+
+/**
+ * DIFAL (EC 87/2015): venda interestadual a consumidor final NÃO contribuinte
+ * leva o grupo ICMSUFDest no item, além do ICMS próprio. Só se aplica ao
+ * emitente do Regime Normal — o Simples Nacional não recolhe/destaca DIFAL
+ * (STF ADI 5464, cautelar sobre a cláusula 9ª do Convênio ICMS 93/2015; a
+ * LC 190/2022 não alcança o Simples). Ver docs-fiscal-299/difal-ec87.md.
+ *
+ * Também não se aplica quando o CST do item é 40/41/50 (isenta/não
+ * tributada/suspensão — sem ICMS destacado) — DIFAL é uma partilha do
+ * ICMS realmente devido entre origem e destino; sem incidência na
+ * operação em si, não há o que partilhar. Achado numa devolução simbólica
+ * de consignação interestadual (CST 41) — 2026-09-12.
+ */
+export function difalAplicavel(p: {
+  regimeTributarioEmitente: string | null | undefined;
+  ufEmitente: string | null | undefined;
+  ufDestino: string | null | undefined;
+  indIeDest: number;
+  consumidorFinal: boolean;
+  cstIcms?: string | null;
+}): boolean {
+  const emitenteRegimeNormal = !(p.regimeTributarioEmitente || '').toUpperCase().includes('SIMPLES');
+  const ufO = (p.ufEmitente || '').trim().toUpperCase();
+  const ufD = (p.ufDestino || '').trim().toUpperCase();
+  const mesmaUf = !!ufO && ufO === ufD;
+  const icmsNaoIncidente = ['40', '41', '50'].includes(String(p.cstIcms ?? ''));
+  return emitenteRegimeNormal && !mesmaUf && p.indIeDest === 9 && p.consumidorFinal && !icmsNaoIncidente;
+}
+
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
   const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, trocaInfoCpl, formasPagamento, bemMovelUsado, notaReferenciada, semPagamentoReal } = args;
 
   const pf = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
   const docForn = onlyDigits(fornecedor.cpf_cnpj);
 
-  // Indicador de IE do destinatário (SEFAZ [232] quando um CNPJ contribuinte
-  // é declarado sem IE). PF vendedora/consignante = sempre 9 (não contribuinte).
+  // Indicador de IE do destinatário — ver indicadorIeDestinatario() acima.
   const ieForn = onlyDigits(fornecedor.inscricao_estadual);
-  const destContribuinteComIe = !pf && fornecedor.contribuinte_icms === true && ieForn.length > 0;
-  const destIsento = !pf && fornecedor.isento_inscricao_estadual === true;
-  const indIeDest = destContribuinteComIe ? 1 : destIsento ? 2 : 9;
+  const indIeDest = indicadorIeDestinatario(pf, fornecedor.contribuinte_icms, fornecedor.inscricao_estadual);
   const valorFmt = Number(valor.toFixed(2));
   const r2 = (n: number) => Number(n.toFixed(2));
 
@@ -436,6 +486,19 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     }
   }
 
+  // CST 41 (não tributada) — devolução simbólica de consignação: desoneração
+  // nocional pela alíquota interna "cheia" da UF (não há redução de base
+  // aqui, é não incidência total), fiel à NF-e de referência autorizada da
+  // própria MMATOS (DF: vICMSDeson = vProd × 20%). CST 41 entra no
+  // `semCalculoIcmsNormal` acima (sem modBC/vBC/pICMS/vICMS), mas ainda pode
+  // levar o grupo opcional de desoneração — só quando a regra cadastra uma
+  // alíquota de referência; sem ela, não manda o grupo.
+  if (cstIcms === '41' && regraIcms.aliquota != null && Number(regraIcms.aliquota) > 0) {
+    const pIcmsRef = Number(regraIcms.aliquota);
+    item.icms_valor_desonerado = r2(valorFmt * (pIcmsRef / 100));
+    item.icms_motivo_desoneracao = 9;
+  }
+
   // prod/cBenef — código de benefício fiscal da UF (regra de ICMS). Exigido pela
   // SEFAZ (rejeição 930) quando o CST identifica redução/benefício (ex.: CST 20
   // no DF). Campo Focus: codigo_beneficio_fiscal.
@@ -489,6 +552,45 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     item.icms_base_calculo_efetiva = baseEfet;
     item.icms_aliquota_efetiva = aliqEfet;
     item.icms_valor_efetivo = r2(baseEfet * (aliqEfet / 100));
+  }
+
+  // --- Grupo ICMSUFDest (DIFAL — EC 87/2015) ------------------------------
+  // Venda interestadual a consumidor final NÃO contribuinte: além do ICMS
+  // próprio (grupo(s) acima), a NF-e leva a partilha do ICMS pra UF de
+  // destino. Ver difalAplicavel() acima e docs-fiscal-299/difal-ec87.md.
+  // `regraIcms.aliquota_interna_destino` vazio == UF de destino sem alíquota
+  // interna cadastrada na regra — index.ts bloqueia a emissão antes de chegar
+  // aqui (nunca monta o grupo pela metade); esta função só confere de novo
+  // por segurança (chamador que não bloquear cai simplesmente sem o grupo).
+  if (
+    natureza.tipo === 'saida' &&
+    regraIcms.aliquota_interna_destino != null &&
+    difalAplicavel({
+      regimeTributarioEmitente: empresa.regime_tributario,
+      ufEmitente: empresa.uf,
+      ufDestino: fornecedor.uf,
+      indIeDest,
+      consumidorFinal: !!natureza.consumidor_final,
+      cstIcms,
+    })
+  ) {
+    const pIcmsInter = Number(regraIcms.aliquota ?? 0);
+    const pIcmsUfDest = Number(regraIcms.aliquota_interna_destino);
+    const pFcpUfDest = Number(regraIcms.aliquota_fcp ?? 0);
+    const redDifal = Number(regraIcms.reducao_base_calculo ?? 0);
+    const vBcUfDest = r2(valorFmt * (1 - redDifal / 100));
+    // Partilha 100% destino (regra desde 2019): vICMSUFDest = vBCUFDest × (pICMSUFDest − pICMSInter).
+    item.icms_base_calculo_uf_destino = vBcUfDest;
+    item.icms_aliquota_interna_uf_destino = pIcmsUfDest;
+    item.icms_aliquota_interestadual = pIcmsInter;
+    item.icms_percentual_partilha = 100;
+    item.icms_valor_uf_destino = r2(vBcUfDest * (pIcmsUfDest - pIcmsInter) / 100);
+    item.icms_valor_uf_remetente = 0;
+    if (pFcpUfDest > 0) {
+      item.fcp_base_calculo_uf_destino = vBcUfDest;
+      item.fcp_percentual_uf_destino = pFcpUfDest;
+      item.fcp_valor_uf_destino = r2(vBcUfDest * pFcpUfDest / 100);
+    }
   }
 
   // --- Grupo IBS/CBS (Reforma Tributária) ---------------------------------
@@ -550,7 +652,15 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   // bater (dado incompleto), cai numa única forma "99 - DIVERSOS" pelo total e
   // não manda o grupo de faturas.
   // dVenc é OBRIGATÓRIO e não pode ser < data de emissão (Rejeição 900) — usa a
-  // própria data de emissão (pagamento "à vista"; não há plano de parcelas real).
+  // própria data de emissão.
+  //
+  // <cobr> só entra quando existe forma BOLETO (tPag 15) — é o único meio de
+  // pagamento que representa de fato um instrumento de cobrança/duplicata.
+  // Pix/dinheiro/cartão/TED são liquidados na hora; mandar <cobr> nesses casos
+  // é rejeitado pela SEFAZ — [853] "Dados de cobranca nao devem ser informados
+  // para pagamento a vista" (bpm-novo, achado numa venda só-Pix em 2026-09-11).
+  // Quando há boleto + outra(s) forma(s), a fatura/duplicata cobre só a
+  // parcela do boleto, não o valor total da NF.
   const vencDup = agora.slice(0, 10);
   // Sem movimentação financeira real (entrada, ou devolução simbólica de saída):
   // não manda formas de pagamento calculadas — ver `semPagamentoReal` acima.
@@ -558,10 +668,12 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   const formasIn = semPagto ? [] : (formasPagamento || []).filter((f) => Number(f.valor) > 0);
   const somaFormas = r2(formasIn.reduce((s, f) => s + Number(f.valor), 0));
   const formasBatem = formasIn.length > 0 && Math.abs(somaFormas - valorFmt) <= 0.02;
+  const formasBoleto = formasBatem ? formasIn.filter((f) => f.codigo === '15') : [];
+  const somaBoleto = r2(formasBoleto.reduce((s, f) => s + Number(f.valor), 0));
 
   // Entrada (compra/consignação) e devolução simbólica: não mexe no pagamento —
   // deixa o default da Focus. Venda: manda formas_pagamento sempre; cobr/fat/dup
-  // só quando as formas batem.
+  // só quando as formas batem E há ao menos uma forma boleto.
   const pagCobr: Record<string, unknown> = semPagto
     ? {}
     : {
@@ -572,12 +684,12 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
               ...(f.codigo === '99' ? { descricao_pagamento: (f.descricao || 'OUTROS').slice(0, 60) } : {}),
             }))
           : [{ forma_pagamento: '99', valor_pagamento: valorFmt, descricao_pagamento: 'DIVERSOS' }],
-        ...(formasBatem
+        ...(formasBoleto.length > 0
           ? {
-              valor_original_fatura: valorFmt,
+              valor_original_fatura: somaBoleto,
               valor_desconto_fatura: 0,
-              valor_liquido_fatura: valorFmt,
-              duplicatas: formasIn.map((f, i) => ({
+              valor_liquido_fatura: somaBoleto,
+              duplicatas: formasBoleto.map((f, i) => ({
                 numero: String(i + 1).padStart(3, '0'),
                 data_vencimento: vencDup,
                 valor: r2(Number(f.valor)),

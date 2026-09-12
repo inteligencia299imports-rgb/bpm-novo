@@ -17,6 +17,8 @@ interface Props {
   readyIndicator?: 'ready' | 'not_ready' | null;
   readyReason?: string;
   interesseLabelOverride?: string;
+  /** Tag de status da NF-e (ver src/lib/nfeTag.ts) — badge colorido ao lado do nome. */
+  nameTag?: { label: string; className?: string };
 }
 
 const formatPhone = (value: string): string => {
@@ -62,7 +64,7 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator, readyReason, interesseLabelOverride }) => {
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator, readyReason, interesseLabelOverride, nameTag }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
@@ -84,6 +86,11 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
             <h3 className="font-semibold text-sm text-foreground truncate min-w-0 flex-1">
               {atendimento.cliente?.nome_razao_social}
             </h3>
+            {nameTag && (
+              <Badge className={`text-[10px] shrink-0 whitespace-nowrap text-white ${nameTag.className || 'bg-primary hover:bg-primary'}`}>
+                {nameTag.label}
+              </Badge>
+            )}
             {readyIndicator && (
               <span
                 className={`w-2.5 h-2.5 rounded-full shrink-0 ${readyIndicator === 'ready' ? 'bg-green-500' : 'bg-red-500'}`}

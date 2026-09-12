@@ -6,9 +6,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, AlertTriangle, ArrowLeftRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
+import ConverterConsignacaoDialog from '@/components/avaliacoes/ConverterConsignacaoDialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -16,11 +17,17 @@ import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { nfeBotaoClasse } from '@/lib/nfeTag';
 import { TIPOS_PROPRIA } from '@/lib/tipoAquisicao';
+import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const NF_VENDA = 'NF-E DE VENDA';
 const NF_TROCA = 'NF-E DE ENTRADA (TROCA)';
+// Intermediação Parte 2 (moto consignada vendida) — devolução simbólica ao
+// consignante + compra, antes de liberar o resto do processo de transferência.
+// Reaparece aqui (era um botão solto na avaliação) porque é literalmente uma
+// etapa do processo — mesmo padrão das etapas de NF-e acima.
+const CONVERTER_CONSIGNACAO = 'DEVOLUÇÃO SIMBÓLICA / COMPRA';
 
 const DEFAULT_ETAPAS = [
   'CHECK-LIST',
@@ -87,6 +94,26 @@ const ProcessoDialog: React.FC<Props> = ({
   const [datasSalvas, setDatasSalvas] = useState<Record<string, string | null>>({});
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
 
+  // ---- Intermediação Parte 2: devolução simbólica / compra da consignada vendida ----
+  const hasConverterEtapa = (customEtapas || []).includes(CONVERTER_CONSIGNACAO);
+  const [avaliacaoConsignadaId, setAvaliacaoConsignadaId] = useState<string>('');
+  const [avaliacaoConsignada, setAvaliacaoConsignada] = useState<any>(null);
+  const [converterConsignacaoOpen, setConverterConsignacaoOpen] = useState(false);
+  // Só é elegível pra "Converter em Compra" depois que a NF de ENTRADA em
+  // consignação estiver autorizada em produção (mesma regra de antes, na
+  // avaliação) — sem isso não dá pra referenciar a chave na devolução. Tem
+  // que ser a NF de operacao='consignacao' especificamente — useNfeCompra já
+  // filtra por operação (não pode usar useNfeEmitida aqui: ela pega só a
+  // linha mais recente da avaliação, então uma tentativa de devolução com
+  // erro, mais recente que a consignação, mascarava a consignação já
+  // autorizada e a etapa ficava presa em "Aguardando NF de consignação em
+  // produção" pra sempre — achado 2026-09-11).
+  const nfeConsignacaoConv = useNfeCompra(avaliacaoConsignadaId, open && !!avaliacaoConsignadaId, 'consignacao', 'avaliacao');
+  const consignacaoEmProducao = nfeConsignacaoConv.emitida && nfeConsignacaoConv.nfe?.ambiente === 'producao';
+  const nfeDevolucaoConv = useNfeCompra(avaliacaoConsignadaId, open && !!avaliacaoConsignadaId, 'devolucao_consignacao', 'avaliacao');
+  const nfeCompraConv = useNfeCompra(avaliacaoConsignadaId, open && !!avaliacaoConsignadaId, 'compra', 'avaliacao');
+  const converterConcluido = nfeCompraConv.emitida && nfeCompraConv.nfe?.ambiente === 'producao';
+
   // ---- Contexto pós-venda (moto vendida + troca) ----
   const [estoqueMoto, setEstoqueMoto] = useState<any>(null);
   const [interesse, setInteresse] = useState<string | null>(null);
@@ -127,6 +154,37 @@ const ProcessoDialog: React.FC<Props> = ({
       let inter: string | null = null;
       let trocaAvId = '';
       let contratoVenda = false;
+      let avConsigId = '';
+      let avConsig: any = null;
+
+      if (hasConverterEtapa) {
+        // Moto consignada vendida (Intermediação Parte 2) — acha a avaliação
+        // de origem pelo mesmo caminho de sempre (motos_interesse ->
+        // estoque_motos.avaliacao_id). Só seminova entra em consignação, não 0km.
+        const { data: mi } = await supabase
+          .from('motos_interesse')
+          .select('estoque_moto_id, estoque_tipo')
+          .eq('atendimento_id', atendimentoId)
+          .not('estoque_moto_id', 'is', null)
+          .limit(1)
+          .maybeSingle();
+        if ((mi as any)?.estoque_moto_id && (mi as any)?.estoque_tipo !== '0km') {
+          const { data: em } = await supabase
+            .from('estoque_motos')
+            .select('avaliacao_id')
+            .eq('id', (mi as any).estoque_moto_id)
+            .maybeSingle();
+          avConsigId = (em as any)?.avaliacao_id ?? '';
+          if (avConsigId) {
+            const { data: av } = await supabase
+              .from('avaliacoes')
+              .select(`id, placa, valor_consignacao_nota, avaliacao_consignacao, ${MARCA_MODELO_SELECT}`)
+              .eq('id', avConsigId)
+              .maybeSingle();
+            avConsig = av ? flattenMarcaModelo(av as any) : null;
+          }
+        }
+      }
 
       if (isPosVenda) {
         const [{ data: at }, { data: mi }, { data: contratos }] = await Promise.all([
@@ -179,6 +237,8 @@ const ProcessoDialog: React.FC<Props> = ({
       setInteresse(inter);
       setContratoVendaGerado(contratoVenda);
       setTrocaAvaliacaoId(trocaAvId);
+      setAvaliacaoConsignadaId(avConsigId);
+      setAvaliacaoConsignada(avConsig);
 
       const map: Record<string, EtapaData> = {};
       if (data) {
@@ -204,10 +264,21 @@ const ProcessoDialog: React.FC<Props> = ({
     if (open && trocaAvaliacaoId) nfeTroca.carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, trocaAvaliacaoId]);
+  useEffect(() => {
+    if (open && avaliacaoConsignadaId) {
+      nfeConsignacaoConv.carregar();
+      nfeDevolucaoConv.carregar();
+      nfeCompraConv.carregar();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, avaliacaoConsignadaId]);
 
   const nfEmitidaDe = (etapa: string) =>
-    etapa === NF_VENDA ? nfeVenda.emitida : etapa === NF_TROCA ? nfeTroca.emitida : false;
-  const isNfEtapa = (etapa: string) => etapa === NF_VENDA || etapa === NF_TROCA;
+    etapa === NF_VENDA ? nfeVenda.emitida
+    : etapa === NF_TROCA ? nfeTroca.emitida
+    : etapa === CONVERTER_CONSIGNACAO ? converterConcluido
+    : false;
+  const isNfEtapa = (etapa: string) => etapa === NF_VENDA || etapa === NF_TROCA || etapa === CONVERTER_CONSIGNACAO;
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     if (isNfEtapa(etapa)) return; // estado dirigido pela emissão da NF-e
@@ -267,7 +338,9 @@ const ProcessoDialog: React.FC<Props> = ({
           ? (nfeVenda.nfe?.data_emissao ?? null)
           : e.etapa === NF_TROCA
             ? (nfeTroca.nfe?.data_emissao ?? null)
-            : e.data_conclusao,
+            : e.etapa === CONVERTER_CONSIGNACAO
+              ? (nfeCompraConv.nfe?.data_emissao ?? null)
+              : e.data_conclusao,
       }));
 
       const { error: persistError } = await persistChecklistRows({
@@ -370,6 +443,22 @@ const ProcessoDialog: React.FC<Props> = ({
     );
   }
 
+  // Devolução simbólica / compra (Intermediação Parte 2) — mesma tela usada
+  // antes na avaliação (ConverterConsignacaoDialog), agora aberta como etapa
+  // do processo. O componente já tem seu próprio <Dialog>, então troca de
+  // lugar com o popup do processo (mesma ideia do contrato do consignante
+  // acima) em vez de aninhar um Dialog dentro do outro.
+  if (hasConverterEtapa && converterConsignacaoOpen && avaliacaoConsignada) {
+    return (
+      <ConverterConsignacaoDialog
+        open
+        onOpenChange={setConverterConsignacaoOpen}
+        avaliacao={avaliacaoConsignada}
+        onConcluido={() => { nfeCompraConv.carregar(); nfeDevolucaoConv.carregar(); }}
+      />
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
@@ -397,9 +486,10 @@ const ProcessoDialog: React.FC<Props> = ({
               const isDateOnly = isPrevisaoPagamento || isEntregaMoto;
               const isNfVenda = e.etapa === NF_VENDA;
               const isNfTroca = e.etapa === NF_TROCA;
-              const isNf = isNfVenda || isNfTroca;
+              const isConverterConsignacao = e.etapa === CONVERTER_CONSIGNACAO;
+              const isNf = isNfVenda || isNfTroca || isConverterConsignacao;
               const nfeObj = isNfVenda ? nfeVenda : isNfTroca ? nfeTroca : null;
-              const nfMarcada = isNf ? !!nfeObj?.emitida : false;
+              const nfMarcada = isConverterConsignacao ? converterConcluido : (isNf ? !!nfeObj?.emitida : false);
               const dataBloqueada = !isNf && !!e.data_conclusao && e.data_conclusao === datasSalvas[e.etapa];
               const dateFmt = isDateOnly ? 'dd/MM/yyyy' : 'dd/MM/yyyy HH:mm';
               return (
@@ -491,6 +581,32 @@ const ProcessoDialog: React.FC<Props> = ({
                       >
                         {nfeTroca.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                         {nfeTroca.erro ? 'Tentar novamente' : nfeTroca.cancelada ? 'Reemitir NF-e' : 'Emitir NF-e'}
+                      </Button>
+                    )
+                  ) : isConverterConsignacao ? (
+                    converterConcluido ? (
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                        <Button size="sm" className="h-7 gap-1" onClick={() => setConverterConsignacaoOpen(true)}>
+                          <ArrowLeftRight className="h-3.5 w-3.5" /> Compra
+                        </Button>
+                        <CalendarIcon className="h-4 w-4 shrink-0" />
+                        {nfeCompraConv.nfe?.data_emissao ? format(new Date(nfeCompraConv.nfe.data_emissao), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : '—'}
+                      </span>
+                    ) : !avaliacaoConsignadaId ? (
+                      <span className="text-sm text-muted-foreground">Moto de estoque não encontrada</span>
+                    ) : !consignacaoEmProducao ? (
+                      <span
+                        className="text-sm text-muted-foreground text-right"
+                        title="Fiscalmente só dá pra devolver referenciando uma NF-e de consignação com valor fiscal real"
+                      >
+                        Aguardando NF de consignação em produção
+                      </span>
+                    ) : (
+                      <Button
+                        variant="default" size="sm" className="h-9 gap-2 text-sm"
+                        onClick={() => setConverterConsignacaoOpen(true)}
+                      >
+                        <ArrowLeftRight className="h-4 w-4" /> Converter em Compra
                       </Button>
                     )
                   ) : isNf ? (

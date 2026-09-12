@@ -397,17 +397,24 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     sectionHeader('TAXAS ADMINISTRATIVAS');
   }
 
-  // TRANSFERÊNCIA
+  // TRANSFERÊNCIA (seminova, transferência de propriedade) / EMPLACAMENTO
+  // (0km, primeiro emplacamento — não há propriedade anterior a transferir).
   if (data.transferenciaTipo) {
     checkPageBreak(10);
     setNormal();
     let transferenciaText = '';
     if (data.transferenciaTipo === 'cliente') {
-      transferenciaText = `Transferência: O cliente pagará a transferência de propriedade da moto com a intermediação entre a 299 Imports e o DETRAN, no valor de ${data.transferenciaValor || '-'}.`;
+      transferenciaText = is0km
+        ? `Emplacamento: O cliente pagará o emplacamento da moto com a intermediação entre a 299 Imports e o DETRAN, no valor de ${data.transferenciaValor || '-'}.`
+        : `Transferência: O cliente pagará a transferência de propriedade da moto com a intermediação entre a 299 Imports e o DETRAN, no valor de ${data.transferenciaValor || '-'}.`;
     } else if (data.transferenciaTipo === 'loja') {
-      transferenciaText = 'Transferência: A taxa de transferência será paga pela 299 Imports.';
+      transferenciaText = is0km
+        ? 'Emplacamento: A taxa de emplacamento será paga pela 299 Imports.'
+        : 'Transferência: A taxa de transferência será paga pela 299 Imports.';
     } else if (data.transferenciaTipo === 'outra_uf') {
-      transferenciaText = 'Transferência: O cliente realizará a transferência de propriedade no seu estado de origem.';
+      transferenciaText = is0km
+        ? 'Emplacamento: O cliente realizará o emplacamento no seu estado de origem.'
+        : 'Transferência: O cliente realizará a transferência de propriedade no seu estado de origem.';
     }
     if (transferenciaText) {
       y = drawJustifiedText(doc, transferenciaText, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
@@ -440,7 +447,7 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     for (const ag of data.agregados) {
       checkPageBreak(lineHeight);
       const linha = ag.cortesia
-        ? `${ag.descricao}: Cortesia (não cobrado do cliente)`
+        ? `${ag.descricao}: ${ag.valor} (Cortesia)`
         : `${ag.descricao}: ${ag.valor}`;
       doc.text(linha, marginLeft + 5, y); y += lineHeight;
     }
@@ -516,9 +523,12 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
         doc.text(`Data do Pagamento: ${forma.dataPagamento}`, marginLeft + 5, y); y += lineHeight;
       }
     } else {
-      checkPageBreak(6);
+      checkPageBreak(lineHeight);
+      setBold();
+      doc.text(forma.descricao, marginLeft, y); y += lineHeight;
       setNormal();
-      doc.text(`${forma.descricao}: ${forma.valor}`, marginLeft, y); y += lineHeight;
+      checkPageBreak(lineHeight);
+      doc.text(`Valor: ${forma.valor}`, marginLeft + 5, y); y += lineHeight;
       if (forma.financeira) {
         checkPageBreak(lineHeight);
         doc.text(`Banco/Administradora: ${forma.financeira}`, marginLeft + 5, y); y += lineHeight;

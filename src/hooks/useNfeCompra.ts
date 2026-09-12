@@ -61,10 +61,21 @@ export function useNfeCompra(
       .eq(keyCol, avaliacaoId)
       .order('created_at', { ascending: false })
       .limit(1);
-    if (by === 'atendimento') query = query.like('operacao', 'venda%');
+    if (by === 'atendimento') {
+      query = query.like('operacao', 'venda%');
+    } else {
+      // Uma mesma avaliação pode ter mais de uma `operacao` de nfe_entradas ao
+      // longo da vida (ex.: consignação -> devolução simbólica -> compra, no
+      // fluxo de "Converter em Compra") — sem filtrar por `tipo`, pegava
+      // sempre a linha mais recente por created_at, IGNORANDO a operação,
+      // e mostrava status de uma etapa como se fosse de outra (achado:
+      // ConverterConsignacaoDialog mostrando "Autorizada" na Devolução e na
+      // Compra usando na real a NF de Consignação, a única que existia).
+      query = query.eq('operacao', tipo);
+    }
     const { data } = await query;
     setNfe((data as any[])?.[0] || null);
-  }, [avaliacaoId, keyCol, by]);
+  }, [avaliacaoId, keyCol, by, tipo]);
 
   const emitir = useCallback(async (opts?: { observacoes?: string; valor?: number; empresa_id?: string; ambiente?: 'homologacao' | 'producao' }) => {
     setLoading(true);

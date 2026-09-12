@@ -179,8 +179,11 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         id: e.id,
         avaliacao_id: avaliacaoId,
         etapa: e.etapa,
-        concluida: e.etapa === 'NF EMITIDA' ? nfeEmitida : e.concluida,
-        data_conclusao: e.etapa === 'NF EMITIDA' ? (nfe.nfe?.data_emissao ?? null) : e.data_conclusao,
+        // A etapa NF-E e dirigida pela emissao da NF-e, nao pelo estado manual —
+        // mas preserva concluida=true já salvo (NF emitida fora do sistema/
+        // importada) em vez de reverter pra false só por faltar nfe_entradas.
+        concluida: e.etapa === 'NF EMITIDA' ? (nfeEmitida || e.concluida) : e.concluida,
+        data_conclusao: e.etapa === 'NF EMITIDA' ? (nfe.nfe?.data_emissao ?? e.data_conclusao ?? null) : e.data_conclusao,
       }));
 
       const { error: persistError } = await persistChecklistRows({
@@ -195,8 +198,9 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
       // Determine status based on etapas
       let newStatus = 'em_aberto';
-      const anyConcluida = etapas.some(e => e.concluida) || nfeEmitida;
-      const nfEmitida = nfeEmitida;
+      const nfEtapaConcluida = etapas.find(e => e.etapa === 'NF EMITIDA')?.concluida ?? false;
+      const nfEmitida = nfeEmitida || nfEtapaConcluida;
+      const anyConcluida = etapas.some(e => e.concluida) || nfEmitida;
       const processoPausado = etapas.find(e => e.etapa === 'PROCESSO PAUSADO')?.concluida;
       const contratoAssinado = etapas.find(e => e.etapa === 'CONTRATO ASSINADO')?.concluida;
 
@@ -250,7 +254,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     }
   };
 
-  const concluidas = etapas.filter(e => (e.etapa === 'NF EMITIDA' ? nfeEmitida : e.concluida)).length;
+  const concluidas = etapas.filter(e => (e.etapa === 'NF EMITIDA' ? (nfeEmitida || e.concluida) : e.concluida)).length;
   const statusLabel = concluidas === ETAPAS.length ? 'CONCLUÍDO' : 'EM ABERTO';
 
   return (
@@ -279,7 +283,12 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
               const isNf = e.etapa === 'NF EMITIDA';
               const dataBloqueada = !isConsulta && !isNf && !!e.data_conclusao && e.data_conclusao === datasSalvas[e.etapa];
               const soLeitura = isConsulta || dataBloqueada;
-              const marcada = isNf ? nfeEmitida : e.concluida;
+              // "Emitida" cobre tanto a NF rastreada pelo bpm-novo (nfeEmitida)
+              // quanto uma já registrada como concluída sem nfe_entradas (emitida
+              // fora do sistema, ou avaliação importada) — nesse caso trava do
+              // mesmo jeito, só sem o botão de abrir a tela de emissão.
+              const nfConcluidaSemRegistro = isNf && !nfeEmitida && e.concluida;
+              const marcada = isNf ? (nfeEmitida || e.concluida) : e.concluida;
               return (
               <React.Fragment key={e.etapa}>
                 {idx > 0 && <Separator />}
@@ -304,7 +313,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                     )}
                   </div>
                   <div className="flex items-center justify-end gap-2">
-                  {isNf && !nfeEmitida ? (
+                  {isNf && !nfeEmitida && !e.concluida ? (
                     nfePendente ? (
                       <>
                         <Badge variant="outline" className="gap-1.5 text-xs">
@@ -336,13 +345,20 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                   ) : isNf ? (
                     // Abre a mesma tela de emissão (lá tem o botão de Baixar DANFE já
                     // autorizada, e a opção de emitir em Produção depois da homologação) —
-                    // não o DANFE direto aqui.
-                    <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
-                      <Button size="sm" className={cn('h-7 gap-1', nfeBotaoClasse(nfe.nfe))} onClick={() => onEmitirNfe?.()}>
-                        <FileText className="h-3.5 w-3.5" /> NF-e
-                      </Button>
+                    // não o DANFE direto aqui. Sem nfe_entradas (nfConcluidaSemRegistro —
+                    // emitida fora do sistema ou avaliação importada), não tem tela pra
+                    // abrir: só mostra a data já registrada na etapa, travada.
+                    <span
+                      className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap"
+                      title={nfConcluidaSemRegistro ? 'NF emitida fora do bpm-novo (registro da etapa)' : undefined}
+                    >
+                      {nfeEmitida && (
+                        <Button size="sm" className={cn('h-7 gap-1', nfeBotaoClasse(nfe.nfe))} onClick={() => onEmitirNfe?.()}>
+                          <FileText className="h-3.5 w-3.5" /> NF-e
+                        </Button>
+                      )}
                       <CalendarIcon className="h-4 w-4 shrink-0" />
-                      {nfe.nfe?.data_emissao ? format(new Date(nfe.nfe.data_emissao), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '—'}
+                      {(nfe.nfe?.data_emissao ?? e.data_conclusao) ? format(new Date((nfe.nfe?.data_emissao ?? e.data_conclusao)!), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '—'}
                     </span>
                   ) : soLeitura ? (
                     <span

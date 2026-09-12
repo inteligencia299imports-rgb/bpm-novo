@@ -65,6 +65,14 @@ const tipoContaLabel = (v: string | null | undefined) => {
   return v || undefined;
 };
 
+const fmtRegimeTributario = (v: string | null | undefined) => {
+  if (v === 'simples') return 'Simples Nacional';
+  if (v === 'lucro_presumido') return 'Lucro Presumido';
+  if (v === 'lucro_real') return 'Lucro Real';
+  if (v === 'mei') return 'MEI';
+  return v || undefined;
+};
+
 interface SnapshotVals {
   cpfCnpj: string;
   valorQuitacao: string;
@@ -501,7 +509,16 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
 
   // Resumo do cliente (quando o cadastro está completo)
   const cli = clienteRecord;
-  const cliEndereco = cli?.clientes_fornecedores_enderecos?.[0] || null;
+  const isJuridica = ((cli?.cpf_cnpj || '').replace(/\D/g, '').length > 11) || (cli as any)?.tipo_pessoa === 'juridica';
+  // Dados fiscais da empresa emitente selecionada — só exibidos quando o
+  // cliente (vendedor da moto, na compra) é PJ (contexto B2B).
+  const empresaSel = empresasLoja.find((x) => x.id === empresaId) ?? null;
+  // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma linha
+  // (ex.: 'residencial', PJ) em clientes_fornecedores_enderecos.
+  const cliEndereco = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'fiscal')
+    ?? cli?.clientes_fornecedores_enderecos?.[0] ?? null;
+  // Endereço RESIDENCIAL (ATPV) — só existe (2ª linha) pra PJ que preencheu no cadastro.
+  const cliEnderecoAtpv = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'residencial') ?? null;
   // Compra pura (sem contrato de venda no atendimento): a loja paga o vendedor
   // -> dados bancários obrigatórios. Troca (há contrato de venda): só obrigatórios
   // se a loja fica devendo pro cliente, ou seja, o valor de fechamento da moto
@@ -575,7 +592,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               </CardTitle>
               <Separator className="mt-2" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               {empresasLoja.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Nenhuma empresa vinculada à loja do atendimento.
@@ -583,14 +600,10 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               ) : empresaReadonly ? (
                 <InfoDisplay
                   label="Empresa"
-                  value={(() => {
-                    const e = empresasLoja.find((x) => x.id === empresaId);
-                    if (!e) return '—';
-                    return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
-                  })()}
+                  value={empresaSel ? `${empresaSel.razao_social || empresaSel.nome}${empresaSel.cnpj ? ` - ${empresaSel.cnpj}` : ''}` : undefined}
                 />
               ) : (
-                <div className="space-y-1.5 max-w-sm">
+                <div className="max-w-sm space-y-1.5">
                   <Label>{ehNfe ? 'Empresa da operação' : 'Empresa compradora'} <span className="text-destructive">*</span></Label>
                   <Select value={empresaId} onValueChange={handleEmpresaChange}>
                     <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
@@ -686,6 +699,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                   <InfoDisplay label="Data de Nascimento" value={fmtDataNasc(cli?.data_nascimento)} />
                   <InfoDisplay label="E-mail (NF)" value={cli?.email_nf} />
                   <InfoDisplay label="Telefone (comercial)" value={fmtTelefone(cli?.telefone_comercial)} />
+                  {isJuridica && (
+                    <>
+                      <InfoDisplay label="Inscrição Estadual" value={cli?.isento_inscricao_estadual ? 'Isenta' : cli?.inscricao_estadual} />
+                      <InfoDisplay label="Regime Tributário" value={fmtRegimeTributario(cli?.regime_tributario)} />
+                    </>
+                  )}
                 </div>
               ) : (
                 <ClienteForm
@@ -700,7 +719,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
 
           {clienteId && !editandoCliente && (cadastroCompleto || ehNfe) && (
             <>
-              {/* Card: Endereço — na emissão de NF-e fica sempre visível */}
+              {/* Card: Endereço — na emissão de NF-e fica sempre visível. PJ com os dois
+                  endereços (comercial/NF + residencial/ATPV) mostra os dois, cada um
+                  com seu próprio sub-título. */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
@@ -709,15 +730,37 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                   </CardTitle>
                   <Separator className="mt-2" />
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <InfoDisplay label="CEP" value={cliEndereco?.cep} />
-                  <InfoDisplay label="Logradouro" value={cliEndereco?.logradouro} />
-                  <InfoDisplay label="Número" value={cliEndereco?.numero} />
-                  <InfoDisplay label="Complemento" value={cliEndereco?.complemento} />
-                  <InfoDisplay label="Bairro" value={cliEndereco?.bairro} />
-                  <InfoDisplay label="Cidade" value={cliEndereco?.cidade} />
-                  <InfoDisplay label="UF" value={cliEndereco?.uf} />
-                  <InfoDisplay label="País" value={cliEndereco?.pais} />
+                <CardContent className="space-y-4">
+                  <div>
+                    {cliEnderecoAtpv && (
+                      <p className="text-[11px] uppercase tracking-wider text-primary font-semibold mb-2">Endereço Comercial (NF)</p>
+                    )}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <InfoDisplay label="CEP" value={cliEndereco?.cep} />
+                      <InfoDisplay label="Logradouro" value={cliEndereco?.logradouro} />
+                      <InfoDisplay label="Número" value={cliEndereco?.numero} />
+                      <InfoDisplay label="Complemento" value={cliEndereco?.complemento} />
+                      <InfoDisplay label="Bairro" value={cliEndereco?.bairro} />
+                      <InfoDisplay label="Cidade" value={cliEndereco?.cidade} />
+                      <InfoDisplay label="UF" value={cliEndereco?.uf} />
+                      <InfoDisplay label="País" value={cliEndereco?.pais} />
+                    </div>
+                  </div>
+                  {cliEnderecoAtpv && (
+                    <div className="pt-4 border-t border-border">
+                      <p className="text-[11px] uppercase tracking-wider text-primary font-semibold mb-2">Endereço Residencial (ATPV)</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <InfoDisplay label="CEP" value={cliEnderecoAtpv.cep} />
+                        <InfoDisplay label="Logradouro" value={cliEnderecoAtpv.logradouro} />
+                        <InfoDisplay label="Número" value={cliEnderecoAtpv.numero} />
+                        <InfoDisplay label="Complemento" value={cliEnderecoAtpv.complemento} />
+                        <InfoDisplay label="Bairro" value={cliEnderecoAtpv.bairro} />
+                        <InfoDisplay label="Cidade" value={cliEnderecoAtpv.cidade} />
+                        <InfoDisplay label="UF" value={cliEnderecoAtpv.uf} />
+                        <InfoDisplay label="País" value={cliEnderecoAtpv.pais} />
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

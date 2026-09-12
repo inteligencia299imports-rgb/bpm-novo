@@ -1,7 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { cancelarNfe, consultarNfe, emitirNfe, focusBaseUrl, mensagemErroFocus, type FocusAmbiente } from './focus.ts';
-import { montarPayloadNfeCompra, brl, type RegraFiscal } from './payload.ts';
+import { montarPayloadNfeCompra, brl, indicadorIeDestinatario, difalAplicavel, type RegraFiscal } from './payload.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
@@ -48,18 +48,6 @@ function stRetidoDoXmlEntrada(xml: string): { bc: number; subst: number; ret: nu
   if (!bc || !ret) return null;
   return { bc, subst: subst ?? 0, ret };
 }
-
-/** atendimentos_motos.tipo_atendimento ('Presencial' | 'Online') normalizado pro
- * mesmo vocabulário de naturezas_operacao_regras.tipo_atendimento ('presencial' |
- * 'online' | 'ambos') — usado como critério extra de match do CFOP/regra (ver
- * regraDe() abaixo). indPres não é mais calculado aqui: sai da própria regra
- * escolhida (regraIcms/regraIpi.indicador_presenca), igual CST/CFOP/natOp —
- * ver ORIENTACAO_CONFIG_NATUREZAS.md do SisFin §4.2/4.3. */
-const tipoAtendPorAtendimento = (tipo: string | null | undefined): 'presencial' | 'online' | null => {
-  if (tipo === 'Presencial') return 'presencial';
-  if (tipo === 'Online') return 'online';
-  return null;
-};
 
 type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km';
 
@@ -1040,6 +1028,12 @@ Deno.serve(async (req) => {
 
   // Guards
   let contratoVendaId: string | null = null;
+  // Ambiente da NF de consignação referenciada (só setado quando tipo ===
+  // 'devolucao_consignacao', abaixo) — usado no guard de produção mais
+  // adiante pra dispensar a exigência de homologação prévia quando a
+  // consignação já é produção (nesse caso a devolução NUNCA passa em
+  // homologação — Rejeição 321, ver docs-fiscal-299 §2.26).
+  let consignacaoRefAmbiente: string | null = null;
   // Compra que sucede uma devolução simbólica (transformação de consignação em
   // compra): dispensa a aprovação de aquisição e o contrato de compra separados
   // — a moto já tem contrato de consignação + NF de consignação + NF de
@@ -1083,11 +1077,12 @@ Deno.serve(async (req) => {
     }
   } else if (tipo === 'devolucao_consignacao') {
     const { data: consignacaoOk } = await admin
-      .from('nfe_entradas').select('id').eq('avaliacao_id', avaliacaoId)
+      .from('nfe_entradas').select('id, ambiente').eq('avaliacao_id', avaliacaoId)
       .eq('operacao', 'consignacao').eq('status', 'processada').limit(1).maybeSingle();
     if (!consignacaoOk) {
       return jsonResponse({ error: 'A NF-e de entrada em consignação ainda não foi emitida.' }, 409);
     }
+    consignacaoRefAmbiente = (consignacaoOk as any).ambiente ?? null;
     const { data: devolucaoJaOk } = await admin
       .from('nfe_entradas').select('id').eq('avaliacao_id', avaliacaoId)
       .eq('operacao', 'devolucao_consignacao').eq('status', 'processada').limit(1).maybeSingle();
@@ -1141,7 +1136,13 @@ Deno.serve(async (req) => {
     const { data: homologAutorizada } = await admin
       .from('nfe_entradas').select('id').eq(nfeKey, entityId).eq('operacao', tipo)
       .eq('ambiente', 'homologacao').eq('status', 'processada').limit(1).maybeSingle();
-    if (!homologAutorizada) {
+    // Devolução simbólica referenciando uma NF de consignação em PRODUÇÃO:
+    // testar em homologação é impossível por definição (a chave de produção
+    // não existe na base da SEFAZ homologação — Rejeição 321, ver
+    // docs-fiscal-299 §2.26/§2.27). Dispensa a exigência de homolog prévia
+    // só nesse caso.
+    const dispensaHomologPrevia = tipo === 'devolucao_consignacao' && consignacaoRefAmbiente === 'producao';
+    if (!homologAutorizada && !dispensaHomologPrevia) {
       return jsonResponse({ error: 'Emita em homologação antes de emitir em produção.' }, 409);
     }
     // Troca: a NF-e de venda em produção só sai depois da NF-e de COMPRA da moto
@@ -1192,7 +1193,11 @@ Deno.serve(async (req) => {
     .eq('id', atendimento.cliente_id)
     .maybeSingle();
   if (!fornecedor) return jsonResponse({ error: 'Cliente não encontrado' }, 409);
-  const end = (fornecedor.clientes_fornecedores_enderecos || [])[0] || {};
+  // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma linha
+  // em clientes_fornecedores_enderecos (ex.: 'residencial', ver ClienteForm);
+  // a NF sempre usa o fiscal, nunca "a primeira que vier".
+  const enderecosFornecedor = (fornecedor.clientes_fornecedores_enderecos || []) as Array<{ tipo?: string }>;
+  const end = enderecosFornecedor.find((e) => e.tipo === 'fiscal') || enderecosFornecedor[0] || {};
 
   // Venda: nome do vendedor + formas de pagamento do contrato, pra compor as
   // informações complementares (texto) E os grupos pag/cobr da NF-e.
@@ -1312,37 +1317,52 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Valor da NF-e não informado.' }, 409);
   }
 
-  // Natureza + regras fiscais (tudo vem da tabela; nao ha default no codigo).
-  // Venda de moto que veio de consignação (devolução simbólica + compra já feitas,
-  // tipo_aquisicao='convertida'): natureza própria "Venda de Mercadoria Recebida
-  // Anteriormente Em Consignação" — CFOP/CST diferem da venda de seminova comum.
-  const vendaDeConvertida = tipo === 'venda_seminova' && (estoqueMoto?.avaliacao as any)?.tipo_aquisicao === 'convertida';
-  const naturezaDescricao = vendaDeConvertida ? 'Venda de Mercadoria Recebida Anteriormente Em Consignacao' : cfg.naturezaDescricao;
+  // Natureza + regras fiscais (tudo vem da tabela; nao ha default no codigo)
+  // Compra "pós-consignação" (conversão consignação -> compra) é uma natureza
+  // fiscal DIFERENTE da compra normal — CFOP e tratamento próprio (ex.: IBS/CBS
+  // isento/não incidência, CST 410, em vez do IBS/CBS normal da compra de PF)
+  // porque não é uma aquisição nova: só formaliza a titularidade de mercadoria
+  // já fisicamente no estabelecimento (recebida em consignação, devolvida
+  // simbolicamente). Achado numa NF de referência real da MMATOS — natOp
+  // "Compra p/ comerc. de merc. recebida anter. em consignacao" — 2026-09-12,
+  // ver docs-fiscal-299 §2.27.
+  // Venda de moto que veio de consignação convertida em compra (§2.27/§2.28)
+  // — o "compra" bem-sucedido marca avaliacoes.tipo_aquisicao = 'convertida'
+  // (linha ~364 acima). Mesma lógica: natureza dedicada, CFOP e natOp
+  // próprios, achada numa NF de referência real da MMATOS — "Venda de
+  // Mercadoria Recebida Anteriormente Em Consignacao", 2026-09-12.
+  const viaVendaPosConsignacao = ehVenda && !ehVenda0km && (estoqueMoto?.avaliacao as any)?.tipo_aquisicao === 'convertida';
+  const naturezaDescricaoEfetiva = (tipo === 'compra' && viaConversaoConsignacao)
+    ? 'Compra p/ comerc. de merc. recebida anter. em consignacao'
+    : viaVendaPosConsignacao
+      ? 'Venda de Mercadoria Recebida Anteriormente Em Consignacao'
+      : cfg.naturezaDescricao;
   const { data: natureza } = await admin
     .from('naturezas_operacao')
     .select(
       'id, descricao, serie, tipo, indicador_presenca, consumidor_final, operacao_devolucao, ' +
         'informacoes_complementares, informacoes_adicionais_fisco, ' +
         'naturezas_operacao_regras(imposto, cfop, situacao_tributaria, aliquota, reducao_base_calculo, ' +
-        'aliquota_fcp, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem, ' +
+        'aliquota_fcp, aliquota_interna_destino, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem, ' +
         'natureza_operacao_descricao, indicador_presenca, tipo_atendimento, codigo_beneficio_fiscal, ' +
         'classificacao_tributaria, cbs_aliquota, ibs_uf_aliquota, ibs_mun_aliquota, percentual_reducao, ' +
         'aliquota_icms_efetiva, reducao_base_calculo_efetiva, aliquota_suportada_consumidor_final)',
     )
     .eq('empresa_id', empresaId)
-    .eq('descricao', naturezaDescricao)
+    .eq('descricao', naturezaDescricaoEfetiva)
     .eq('ativo', true)
     .maybeSingle();
-  if (!natureza) return jsonResponse({ error: `Natureza de operação "${naturezaDescricao}" não configurada ou inativa.` }, 409);
+  if (!natureza) return jsonResponse({ error: `Natureza de operação "${naturezaDescricaoEfetiva}" não configurada ou inativa.` }, 409);
 
   const regrasTodas = (natureza.naturezas_operacao_regras || []) as Array<
     RegraFiscal & { destino_ufs: string[] | null; ordem: number | null; tipo_atendimento: string | null }
   >;
-  // Venda: tipo_atendimento do atendimento ('presencial'/'online') é mais um
-  // critério de match do CFOP — regra com tipo_atendimento='ambos' (default) casa
-  // com qualquer atendimento; 'presencial'/'online' só casa com o correspondente.
-  // Compra/consignação não filtra (tipoAtendNorm fica null, sem restrição).
-  const tipoAtendNorm = ehVenda ? tipoAtendPorAtendimento((atendimento as any).tipo_atendimento) : null;
+  // Venda: toda venda passa a ser tratada como 'presencial' pra fim de CFOP/CST
+  // — não referencia mais atendimentos_motos.tipo_atendimento (decisão fiscal
+  // 2026-09-11, ver docs-fiscal-299/pendencias.md §2.19b). Regra com
+  // tipo_atendimento='ambos' (default) casa igual; regra 'online' simplesmente
+  // deixa de ser escolhida. Compra/consignação não filtra (tipoAtendNorm null).
+  const tipoAtendNorm = ehVenda ? 'presencial' : null;
   const regras = tipoAtendNorm
     ? regrasTodas.filter((r) => !r.tipo_atendimento || r.tipo_atendimento === 'ambos' || r.tipo_atendimento === tipoAtendNorm)
     : regrasTodas;
@@ -1374,9 +1394,37 @@ Deno.serve(async (req) => {
   if (!regraIbsCbs?.situacao_tributaria || !regraIbsCbs?.classificacao_tributaria) {
     faltando.push('IBS/CBS (CST/cClassTrib — Reforma Tributária)');
   }
+  // CST 20 (redução de base de ICMS) exige prod/cBenef — sem ele a SEFAZ
+  // rejeita com [930] "CST com beneficio fiscal e nao informado o codigo de
+  // beneficio fiscal" (achado numa venda MMATOS DF→GO, 2026-09-11 — a regra
+  // de ICMS tinha reducao_base_calculo mas codigo_beneficio_fiscal vazio).
+  // Bloqueia aqui com erro claro em vez de deixar a SEFAZ rejeitar.
+  if (regraIcms?.situacao_tributaria === '20' && Number(regraIcms?.reducao_base_calculo ?? 0) > 0 && !regraIcms?.codigo_beneficio_fiscal?.trim()) {
+    faltando.push(`cBenef (CST 20 com redução de base exige o código de benefício fiscal na regra de ICMS — UF ${ufDestino || '?'})`);
+  }
+  // DIFAL (EC 87/2015): venda interestadual a consumidor final não contribuinte
+  // precisa do grupo ICMSUFDest — sem a alíquota interna da UF de destino
+  // cadastrada na regra de ICMS, a SEFAZ rejeita com [694] "Nao informado o
+  // grupo de ICMS para a UF de destino". Bloqueia aqui com erro claro em vez
+  // de deixar a Focus tentar e a SEFAZ rejeitar. Ver docs-fiscal-299/difal-ec87.md.
+  if (ehVenda) {
+    const pfFornecedor = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
+    const indIeDestPreview = indicadorIeDestinatario(pfFornecedor, fornecedor.contribuinte_icms, fornecedor.inscricao_estadual);
+    const difalNecessario = difalAplicavel({
+      regimeTributarioEmitente: empresa.regime_tributario,
+      ufEmitente: empresa.uf,
+      ufDestino: end.uf ?? null,
+      indIeDest: indIeDestPreview,
+      consumidorFinal: !!natureza.consumidor_final,
+      cstIcms: regraIcms?.situacao_tributaria,
+    });
+    if (difalNecessario && regraIcms?.aliquota_interna_destino == null) {
+      faltando.push(`DIFAL (alíquota interna do ICMS não cadastrada pra UF de destino ${ufDestino || '?'} na regra de ICMS)`);
+    }
+  }
   if (faltando.length) {
     return jsonResponse(
-      { error: `Regras fiscais da natureza "${naturezaDescricao}" incompletas: ${faltando.join(', ')}.` },
+      { error: `Regras fiscais da natureza "${naturezaDescricaoEfetiva}" incompletas: ${faltando.join(', ')}.` },
       409,
     );
   }

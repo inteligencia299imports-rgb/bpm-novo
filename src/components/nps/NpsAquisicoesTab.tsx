@@ -14,6 +14,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import RespostasNpsDialog from './RespostasNpsDialog';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import FiltersPanel from '@/components/shared/FiltersPanel';
+import { fetchAllRange } from '@/lib/fetchAllRange';
+import { nfeTagFromRows } from '@/lib/nfeTag';
 
 import NpsDateFilter from './NpsDateFilter';
 
@@ -67,6 +69,24 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
 
       // Fetch acquisition dates from status_history (próprias/convertidas/repasse)
       const avalIds = mapped.map((m: any) => m.id).filter(Boolean);
+
+      // Tag de status da NF-e de entrada (compra/consignação/devolução simbólica)
+      // — reflete o último status da NF da avaliação.
+      if (avalIds.length > 0) {
+        const nfeResult = await fetchAllRange(() =>
+          supabase.from('nfe_entradas' as any)
+            .select('avaliacao_id, status, ambiente, created_at')
+            .not('avaliacao_id', 'is', null)
+            .in('avaliacao_id', avalIds),
+        );
+        const nfeRowsPorAvaliacao: Record<string, any[]> = {};
+        ((nfeResult.data as any[]) || []).forEach((n: any) => {
+          if (!n.avaliacao_id) return;
+          (nfeRowsPorAvaliacao[n.avaliacao_id] ??= []).push(n);
+        });
+        mapped = mapped.map((m: any) => ({ ...m, _nfeTag: nfeTagFromRows(nfeRowsPorAvaliacao[m.id]) }));
+      }
+
       const avalAcqMap: Record<string, string> = {};
       if (avalIds.length > 0) {
         const { data: histData } = await supabase.from('status_history').select('entity_id, created_at').eq('status', 'adquirida').in('entity_id', avalIds);
@@ -356,6 +376,7 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                           readyIndicator={indicator}
                           readyReason={reason}
                           interesseLabelOverride={a._isRetirada ? 'Retirada' : a.tipo_aquisicao === 'consignada' ? 'Consignada' : a.tipo_aquisicao === 'propria' ? 'Própria' : a.tipo_aquisicao === 'convertida' ? 'Convertida' : a.tipo_aquisicao === 'repasse' ? 'Repasse' : undefined}
+                          nameTag={a._nfeTag || undefined}
                           actions={
                             <>
                               {(a.nps_status || 'em_aberto') === 'em_aberto' && a._ready && (

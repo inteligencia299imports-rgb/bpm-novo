@@ -100,6 +100,14 @@ const tipoContaLabel = (v: string | null | undefined) => {
 const fmtDataNasc = (v: string | null | undefined) =>
   v ? String(v).replace(/^(\d{4})-(\d{2})-(\d{2}).*/, '$3/$2/$1') : undefined;
 
+const fmtRegimeTributario = (v: string | null | undefined) => {
+  if (v === 'simples') return 'Simples Nacional';
+  if (v === 'lucro_presumido') return 'Lucro Presumido';
+  if (v === 'lucro_real') return 'Lucro Real';
+  if (v === 'mei') return 'MEI';
+  return v || undefined;
+};
+
 const formatCpfCnpj = (value: string): string => {
   const digits = value.replace(/\D/g, '');
   if (digits.length <= 11) {
@@ -242,6 +250,10 @@ const ContratoDialog: React.FC<Props> = ({
   const motoIntNfe = motosInteresse[0];
   const estItemNfe = motoIntNfe?.origem === 'estoque' && motoIntNfe?.estoque_moto_id ? estoqueData[motoIntNfe.estoque_moto_id] : null;
   const eh0kmVenda = motoIntNfe?.estoque_tipo === '0km' || estItemNfe?.tipo === '0km';
+  // 0km: primeiro emplacamento, não "transferência" de propriedade (isso só existe p/ seminova).
+  // "Valor do Emplacamento" (masc.) x "Valor da Transferência" (fem.) — concordância.
+  const transferenciaLabel = eh0kmVenda ? 'Emplacamento' : 'Transferência';
+  const transferenciaValorLabel = eh0kmVenda ? 'Valor do Emplacamento' : 'Valor da Transferência';
   const estoqueTabela = eh0kmVenda ? 'estoque_motos_novas' : 'estoque_motos';
   const tipoVenda = eh0kmVenda ? 'venda_0km' : 'venda_seminova';
   // Após a NF-e de venda autorizada, volta para a tela de Pós-Venda.
@@ -449,7 +461,7 @@ const ContratoDialog: React.FC<Props> = ({
       if (lojaId) {
         const { data: le } = await supabase
           .from('loja_empresas')
-          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, uf)')
+          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj)')
           .eq('id', lojaId);
         const seen = new Set<string>();
         empresas = (le || [])
@@ -613,7 +625,7 @@ const ContratoDialog: React.FC<Props> = ({
       return;
     }
     if (!novaDataPagamento) {
-      toast.error('Informe a Data do Pagamento');
+      toast.error('Informe a data do pagamento');
       return;
     }
 
@@ -833,7 +845,16 @@ const ContratoDialog: React.FC<Props> = ({
 
   // Resumo do cliente (quando o cadastro está completo) — igual ao contrato de compra.
   const cli = clienteRecord;
-  const cliEndereco = cli?.clientes_fornecedores_enderecos?.[0] || null;
+  const isJuridica = ((cli?.cpf_cnpj || '').replace(/\D/g, '').length > 11) || (cli as any)?.tipo_pessoa === 'juridica';
+  // Dados fiscais da empresa emitente selecionada — só exibidos quando o
+  // cliente é PJ (contexto B2B em que essa conferência importa mais).
+  const empresaSel = empresasLoja.find((x) => x.id === empresaId) ?? null;
+  // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma linha
+  // (ex.: 'residencial', PJ) em clientes_fornecedores_enderecos.
+  const cliEndereco = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'fiscal')
+    ?? cli?.clientes_fornecedores_enderecos?.[0] ?? null;
+  // Endereço RESIDENCIAL (ATPV) — só existe (2ª linha) pra PJ que preencheu no cadastro.
+  const cliEnderecoAtpv = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'residencial') ?? null;
   // Dados bancários do cliente só são obrigatórios quando há troca E a loja fica
   // devendo pro cliente — ou seja, o valor de fechamento da moto que entra é
   // maior que o valor da moto vendida (aí a loja paga a diferença nessa conta).
@@ -892,7 +913,7 @@ const ContratoDialog: React.FC<Props> = ({
       telefone: (telefoneCliente ? formatPhone(telefoneCliente) : telefoneCliente) || '',
       emailCliente: cliPdf.email || '',
       enderecoCompleto,
-      cpfCnpj,
+      cpfCnpj: formatCpfCnpj(cpfCnpj),
       produtoMarca: produtoMarca.toUpperCase(),
       produtoModelo: produtoModelo.toUpperCase(),
       produtoAnoFabMod: [produtoAnoFab, produtoAnoMod].filter(Boolean).join('/'),
@@ -978,28 +999,33 @@ const ContratoDialog: React.FC<Props> = ({
     if (!dataVencimento) errors.push('Data de Vencimento do Sinal');
 
     if (!motoInt && !estItem) errors.push('Moto de Interesse');
-    if (!transferenciaTipo) errors.push('Transferência');
-    if (transferenciaTipo === 'cliente' && !transferenciaValor) errors.push('Valor da Transferência');
+    if (!transferenciaTipo) errors.push(transferenciaLabel);
+    if (transferenciaTipo === 'cliente' && !transferenciaValor) errors.push(transferenciaValorLabel);
     const isDucati = atendimento.loja?.toLowerCase().startsWith('ducati');
     if (!isDucati && !ipvaTipo) errors.push('IPVA');
     if (!isDucati && ipvaTipo === 'ambos' && !ipvaCotas) errors.push('Número de Cotas do IPVA');
     if (!isDucati && (ipvaTipo === 'loja' || ipvaTipo === 'ambos') && !ipvaValor) errors.push('Valor do IPVA');
-    // Quitação da moto do cliente é obrigatória quando há troca — vem da avaliação (informar 0 se não houver).
-    if (hasTroca && !valorQuitacao?.trim()) errors.push('Valor de Quitação da moto do cliente (defina na avaliação — 0 se não houver)');
     if (!obsContrato && !obsContrato.trim()) errors.push('Observações do Contrato');
     return errors;
   })();
+  // Quitação da moto do cliente (troca) só é exigida pra fechar a Proposta de
+  // VENDA (é o que alimenta o repasse/compromisso financeiro definitivo) — no
+  // sinal ainda pode não estar confirmada com o cliente/financeira.
+  const errosGeracaoVenda: string[] = hasTroca && !valorQuitacao?.trim()
+    ? [...errosGeracao, 'Valor de Quitação da moto do cliente (defina na avaliação — 0 se não houver)']
+    : errosGeracao;
 
-  const validateForGeneration = (): boolean => {
-    if (errosGeracao.length > 0) {
-      toast.error(`Preencha os campos obrigatórios: ${errosGeracao.join(', ')}`);
+  const validateForGeneration = (variant: 'sinal' | 'venda'): boolean => {
+    const erros = variant === 'venda' ? errosGeracaoVenda : errosGeracao;
+    if (erros.length > 0) {
+      toast.error(`Preencha os campos obrigatórios: ${erros.join(', ')}`);
       return false;
     }
     return true;
   };
 
   const handleGerar = async (variant: 'sinal' | 'venda' = 'sinal') => {
-    if (!validateForGeneration()) return;
+    if (!validateForGeneration(variant)) return;
     // Venda de moto nova (Ducati): exige a moto do estoque de novas selecionada.
     if (variant === 'venda' && !soLeitura && exigeMotoNovaParaVenda) {
       toast.error('Selecione a moto do estoque de novas na Moto de Interesse para gerar a venda. Sem ela, só é possível gerar o sinal.');
@@ -1060,7 +1086,7 @@ const ContratoDialog: React.FC<Props> = ({
   
 
   const handleVisualizar = async () => {
-    if (!validateForGeneration()) return;
+    if (!validateForGeneration('sinal')) return;
 
     setViewing(true);
     try {
@@ -1143,10 +1169,11 @@ const ContratoDialog: React.FC<Props> = ({
   // NÃO exige aprovação do master nem que as formas de pagamento cubram 100% do
   // total — o sinal é "paga o sinal agora, o resto até o vencimento".
   const podeGerarSinal = errosGeracao.length === 0 && valorTotalContrato > 0.005;
-  // Contrato de VENDA (proposta finalizada): além do acima, formas de pagamento
-  // cobrindo 100% do Valor Total e aprovação do master.
-  const podeGerarContrato = podeGerarSinal && valorFaltante <= 0.005 && !vendaBloqueadaAprovacao
-    && !exigeMotoNovaParaVenda;
+  // Contrato de VENDA (proposta finalizada): além do acima, exige a quitação
+  // da troca (quando houver), formas de pagamento cobrindo 100% do Valor
+  // Total e aprovação do master.
+  const podeGerarContrato = errosGeracaoVenda.length === 0 && valorTotalContrato > 0.005
+    && valorFaltante <= 0.005 && !vendaBloqueadaAprovacao && !exigeMotoNovaParaVenda;
 
   if (!open) return null;
 
@@ -1189,20 +1216,16 @@ const ContratoDialog: React.FC<Props> = ({
                   </CardTitle>
                   <Separator className="mt-2" />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   {empresasLoja.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Nenhuma empresa vinculada à loja do atendimento.</p>
                   ) : soLeitura ? (
                     <InfoDisplay
                       label="Empresa"
-                      value={(() => {
-                        const e = empresasLoja.find((x) => x.id === empresaId);
-                        if (!e) return '—';
-                        return `${e.razao_social || e.nome}${e.cnpj ? ` - ${e.cnpj}` : ''}`;
-                      })()}
+                      value={empresaSel ? `${empresaSel.razao_social || empresaSel.nome}${empresaSel.cnpj ? ` - ${empresaSel.cnpj}` : ''}` : undefined}
                     />
                   ) : (
-                    <div className="space-y-1.5 max-w-sm">
+                    <div className="max-w-sm space-y-1.5">
                       <Label>Empresa vendedora <span className="text-destructive">*</span></Label>
                       <Select value={empresaId} onValueChange={setEmpresaId}>
                         <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
@@ -1214,6 +1237,13 @@ const ContratoDialog: React.FC<Props> = ({
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                  )}
+
+                  {/* "Atendimento" só na emissão de NF-e (fixo, ver docs-fiscal-299 §2.5). */}
+                  {empresaSel && ehNfe && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <InfoDisplay label="Atendimento" value="Presencial" valueClassName="text-primary" />
                     </div>
                   )}
                 </CardContent>
@@ -1250,6 +1280,12 @@ const ContratoDialog: React.FC<Props> = ({
                       <InfoDisplay label="Data de Nascimento" value={fmtDataNasc(cli?.data_nascimento)} />
                       <InfoDisplay label="E-mail (NF)" value={cli?.email_nf} />
                       <InfoDisplay label="Telefone (comercial)" value={fmtTelefone(cli?.telefone_comercial)} />
+                      {isJuridica && (
+                        <>
+                          <InfoDisplay label="Inscrição Estadual" value={cli?.isento_inscricao_estadual ? 'Isenta' : cli?.inscricao_estadual} />
+                          <InfoDisplay label="Regime Tributário" value={fmtRegimeTributario(cli?.regime_tributario)} />
+                        </>
+                      )}
                     </div>
                   ) : (
                     <ClienteForm
@@ -1265,7 +1301,9 @@ const ContratoDialog: React.FC<Props> = ({
 
               {clienteId && !editandoCliente && (cadastroCompleto || ehNfe) && (
                 <>
-                  {/* Card: Endereço — na emissão de NF-e fica sempre visível */}
+                  {/* Card: Endereço — na emissão de NF-e fica sempre visível. PJ com os
+                      dois endereços (comercial/NF + residencial/ATPV) mostra os dois,
+                      cada um com seu próprio sub-título. */}
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
@@ -1274,15 +1312,37 @@ const ContratoDialog: React.FC<Props> = ({
                       </CardTitle>
                       <Separator className="mt-2" />
                     </CardHeader>
-                    <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <InfoDisplay label="CEP" value={cliEndereco?.cep} />
-                      <InfoDisplay label="Logradouro" value={cliEndereco?.logradouro} />
-                      <InfoDisplay label="Número" value={cliEndereco?.numero} />
-                      <InfoDisplay label="Complemento" value={cliEndereco?.complemento} />
-                      <InfoDisplay label="Bairro" value={cliEndereco?.bairro} />
-                      <InfoDisplay label="Cidade" value={cliEndereco?.cidade} />
-                      <InfoDisplay label="UF" value={cliEndereco?.uf} />
-                      <InfoDisplay label="País" value={cliEndereco?.pais} />
+                    <CardContent className="space-y-4">
+                      <div>
+                        {cliEnderecoAtpv && (
+                          <p className="text-[11px] uppercase tracking-wider text-primary font-semibold mb-2">Endereço Comercial (NF)</p>
+                        )}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          <InfoDisplay label="CEP" value={cliEndereco?.cep} />
+                          <InfoDisplay label="Logradouro" value={cliEndereco?.logradouro} />
+                          <InfoDisplay label="Número" value={cliEndereco?.numero} />
+                          <InfoDisplay label="Complemento" value={cliEndereco?.complemento} />
+                          <InfoDisplay label="Bairro" value={cliEndereco?.bairro} />
+                          <InfoDisplay label="Cidade" value={cliEndereco?.cidade} />
+                          <InfoDisplay label="UF" value={cliEndereco?.uf} />
+                          <InfoDisplay label="País" value={cliEndereco?.pais} />
+                        </div>
+                      </div>
+                      {cliEnderecoAtpv && (
+                        <div className="pt-4 border-t border-border">
+                          <p className="text-[11px] uppercase tracking-wider text-primary font-semibold mb-2">Endereço Residencial (ATPV)</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <InfoDisplay label="CEP" value={cliEnderecoAtpv.cep} />
+                            <InfoDisplay label="Logradouro" value={cliEnderecoAtpv.logradouro} />
+                            <InfoDisplay label="Número" value={cliEnderecoAtpv.numero} />
+                            <InfoDisplay label="Complemento" value={cliEnderecoAtpv.complemento} />
+                            <InfoDisplay label="Bairro" value={cliEnderecoAtpv.bairro} />
+                            <InfoDisplay label="Cidade" value={cliEnderecoAtpv.cidade} />
+                            <InfoDisplay label="UF" value={cliEnderecoAtpv.uf} />
+                            <InfoDisplay label="País" value={cliEnderecoAtpv.pais} />
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
@@ -1391,8 +1451,8 @@ const ContratoDialog: React.FC<Props> = ({
                         {(ipvaTipo === 'loja' || ipvaTipo === 'ambos') && <InfoDisplay label="Valor do IPVA" value={ipvaValor ? `R$ ${ipvaValor}` : undefined} />}
                       </>
                     )}
-                    <InfoDisplay label="Transferência" value={transferenciaTipo === 'cliente' ? 'Cliente' : transferenciaTipo === 'loja' ? 'Loja' : transferenciaTipo === 'outra_uf' ? 'Outra UF' : undefined} />
-                    {transferenciaTipo === 'cliente' && <InfoDisplay label="Valor da Transferência" value={transferenciaValor ? `R$ ${transferenciaValor}` : undefined} />}
+                    <InfoDisplay label={transferenciaLabel} value={transferenciaTipo === 'cliente' ? 'Cliente' : transferenciaTipo === 'loja' ? 'Loja' : transferenciaTipo === 'outra_uf' ? 'Outra UF' : undefined} />
+                    {transferenciaTipo === 'cliente' && <InfoDisplay label={transferenciaValorLabel} value={transferenciaValor ? `R$ ${transferenciaValor}` : undefined} />}
                   </div>
                 ) : (
                   <>
@@ -1407,7 +1467,7 @@ const ContratoDialog: React.FC<Props> = ({
                             size="sm"
                             variant={ipvaTipo === opt ? 'default' : 'outline'}
                             onClick={() => setIpvaTipo(opt)}
-                            className="capitalize"
+                            className="w-24"
                           >
                             {opt === 'ambos' ? 'Ambos' : opt === 'cliente' ? 'Cliente' : 'Loja'}
                           </Button>
@@ -1433,9 +1493,9 @@ const ContratoDialog: React.FC<Props> = ({
                     </div>
                     )}
 
-                    {/* Transferência */}
+                    {/* Transferência (seminova) / Emplacamento (0km) */}
                     <div>
-                      <label className="text-sm font-medium text-foreground">Transferência<span className="text-destructive ml-0.5">*</span></label>
+                      <label className="text-sm font-medium text-foreground">{transferenciaLabel}<span className="text-destructive ml-0.5">*</span></label>
                       <div className="flex gap-2 mt-1 flex-wrap">
                         {['loja', 'cliente', 'outra_uf'].map(opt => (
                           <Button
@@ -1443,6 +1503,7 @@ const ContratoDialog: React.FC<Props> = ({
                             size="sm"
                             variant={transferenciaTipo === opt ? 'default' : 'outline'}
                             onClick={() => setTransferenciaTipo(opt)}
+                            className="w-24"
                           >
                             {opt === 'cliente' ? 'Cliente' : opt === 'loja' ? 'Loja' : 'Outra UF'}
                           </Button>
@@ -1450,7 +1511,7 @@ const ContratoDialog: React.FC<Props> = ({
                       </div>
                       {transferenciaTipo === 'cliente' && (
                         <div className="mt-2">
-                          <CurrencyField label="Valor da Transferência" value={transferenciaValor} onChange={setTransferenciaValor} required />
+                          <CurrencyField label={transferenciaValorLabel} value={transferenciaValor} onChange={setTransferenciaValor} required />
                         </div>
                       )}
                     </div>

@@ -2,9 +2,10 @@
  * Tag de status da NF-e no card do kanban (pós-venda / compra / consignação).
  * Reflete o ÚLTIMO status da NF do atendimento/avaliação:
  *  - linha mais recente ainda em processamento -> "NF-e" (emitindo, âmbar)
+ *  - linha mais recente em erro -> "NF-e" (vermelho)
  *  - senão, a última linha concluída (processada/cancelada) manda:
  *      cancelada -> vermelho · homologação -> laranja · produção -> azul
- *  - só linhas de erro / nenhuma linha -> sem tag
+ *  - nenhuma linha -> sem tag
  */
 
 export interface NfeTagRow {
@@ -32,6 +33,9 @@ export function nfeTagFromRows(rows: NfeTagRow[] | null | undefined): NfeTag | n
   if (PENDENTE.has(String(ultima.status))) {
     return { label: 'NF-e', className: 'bg-amber-400 hover:bg-amber-400 text-black' };
   }
+  if (String(ultima.status) === 'erro') {
+    return { label: 'NF-e', className: 'bg-red-600 hover:bg-red-600' };
+  }
 
   let concluida: NfeTagRow | null = null;
   for (const r of list) if (CONCLUIDA.has(String(r.status))) concluida = r;
@@ -44,6 +48,16 @@ export function nfeTagFromRows(rows: NfeTagRow[] | null | undefined): NfeTag | n
     ? { label: 'NF-e', className: 'bg-orange-500 hover:bg-orange-600' }
     : { label: 'NF-e', className: 'bg-primary hover:bg-primary' };
 }
+
+/**
+ * Tag pra quando a etapa "NF EMITIDA" (pos_compra_processos /
+ * consignacao_processos) está concluída mas não tem `nfe_entradas`
+ * correspondente — NF emitida fora do bpm-novo, ou avaliação importada de
+ * outro sistema. `nfeTagFromRows` não cobre esse caso (não tem linha pra
+ * olhar); os callers usam `nfeTagFromRows(rows) ?? (etapaConcluida ?
+ * NFE_TAG_SEM_REGISTRO : undefined)`.
+ */
+export const NFE_TAG_SEM_REGISTRO: NfeTag = { label: 'NF-e', className: 'bg-gray-400 hover:bg-gray-400 text-white' };
 
 /**
  * Classe de cor para BOTÕES de NF-e (processo de venda), conforme a última

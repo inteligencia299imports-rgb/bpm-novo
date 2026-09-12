@@ -320,9 +320,11 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         id: e.id,
         avaliacao_id: avaliacaoId,
         etapa: e.etapa,
-        // A etapa NF-E e dirigida pela emissao da NF-e, nao pelo estado manual.
-        concluida: e.etapa === 'NF EMITIDA' ? nfeEmitida : e.concluida,
-        data_conclusao: e.etapa === 'NF EMITIDA' ? (nfeCompra?.data_emissao ?? null) : e.data_conclusao,
+        // A etapa NF-E e dirigida pela emissao da NF-e, nao pelo estado manual —
+        // mas preserva concluida=true já salvo (NF emitida fora do sistema/
+        // importada) em vez de reverter pra false só por faltar nfe_entradas.
+        concluida: e.etapa === 'NF EMITIDA' ? (nfeEmitida || e.concluida) : e.concluida,
+        data_conclusao: e.etapa === 'NF EMITIDA' ? (nfeCompra?.data_emissao ?? e.data_conclusao ?? null) : e.data_conclusao,
         destino_transferencia: e.etapa === 'TRANSFERÊNCIA CONCLUÍDA' ? (e.destino_transferencia ?? null) : null,
       }));
 
@@ -400,7 +402,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
     }
   };
 
-  const concluidas = etapas.filter(e => (e.etapa === 'NF EMITIDA' ? nfeEmitida : e.concluida)).length;
+  const concluidas = etapas.filter(e => (e.etapa === 'NF EMITIDA' ? (nfeEmitida || e.concluida) : e.concluida)).length;
   const statusLabel = concluidas === ETAPAS.length ? 'CONCLUÍDO' : 'APROVADA';
 
   return (
@@ -446,7 +448,12 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
             {etapas.map((e, idx) => {
               const isNf = e.etapa === 'NF EMITIDA';
               const isConsulta = e.etapa === 'CONSULTA REALIZADA';
-              const marcada = isNf ? nfeEmitida : e.concluida;
+              // "Emitida" cobre tanto a NF rastreada pelo bpm-novo (nfeEmitida)
+              // quanto uma já registrada como concluída sem nfe_entradas (emitida
+              // fora do sistema, ou avaliação importada) — nesse caso trava do
+              // mesmo jeito, só sem o botão de abrir a tela de emissão.
+              const nfConcluidaSemRegistro = isNf && !nfeEmitida && e.concluida;
+              const marcada = isNf ? (nfeEmitida || e.concluida) : e.concluida;
               // Etapa ja salva com data -> travada (so o X libera).
               const dataBloqueada = !isNf && !isConsulta && !!e.data_conclusao && e.data_conclusao === datasSalvas[e.etapa];
               return (
@@ -492,7 +499,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                   </div>
 
                   <div className="flex items-center justify-end gap-2">
-                  {isNf && !nfeEmitida ? (
+                  {isNf && !nfeEmitida && !e.concluida ? (
                     nfePendente ? (
                       <>
                         <Badge variant="outline" className="gap-1.5 text-xs">
@@ -527,7 +534,13 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                   ) : isNf ? (
                     // Abre a mesma tela de emissão (lá tem o botão de Baixar DANFE já
                     // autorizada, e a opção de emitir em Produção depois da homologação).
-                    <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                    // Sem nfe_entradas (nfConcluidaSemRegistro — emitida fora do sistema
+                    // ou avaliação importada), não tem tela pra abrir: só mostra a data
+                    // já registrada na etapa, travada.
+                    <span
+                      className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap"
+                      title={nfConcluidaSemRegistro ? 'NF emitida fora do bpm-novo (registro da etapa)' : undefined}
+                    >
                       {nfeEmitida && (
                         <Button
                           size="sm"
@@ -538,7 +551,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                         </Button>
                       )}
                       <CalendarIcon className="h-4 w-4 shrink-0" />
-                      {nfeCompra?.data_emissao ? format(new Date(nfeCompra.data_emissao), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '—'}
+                      {(nfeCompra?.data_emissao ?? e.data_conclusao) ? format(new Date((nfeCompra?.data_emissao ?? e.data_conclusao)!), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '—'}
                     </span>
                   ) : isConsulta ? (
                     <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">

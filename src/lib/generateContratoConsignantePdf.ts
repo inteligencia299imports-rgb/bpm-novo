@@ -3,6 +3,14 @@ import { formatCpfCnpjPdf, formatKmPdf, bancoClienteLinhas, type BancoClientePdf
 
 interface ContratoConsignantePdfData {
   loja?: string | null;
+  /** Empresa emitente selecionada/vinculada à loja (mesmo shape dos demais contratos). */
+  empresa?: {
+    razaoSocial?: string | null;
+    nome?: string | null;
+    cnpj?: string | null;
+    endereco?: string | null;
+    uf?: string | null;
+  } | null;
   nomeConsignante: string;
   telefoneConsignante: string;
   cpfCnpj: string;
@@ -120,9 +128,13 @@ interface CidadeOverride {
   cidadeAssinatura: string;
 }
 
-const CIDADE_OVERRIDES: { match: (l: string) => boolean; data: CidadeOverride }[] = [
+// Dados cadastrais (razão social / sede / cidade) que não vivem na tabela `empresas`.
+// Casados pelo CNPJ da empresa selecionada (mesmo padrão de generateContratoCompraPdf.ts);
+// `matchLoja` fica como fallback legado para quando não há empresa vinculada.
+const CIDADE_OVERRIDES: { cnpj?: string; matchLoja?: (l: string) => boolean; data: CidadeOverride }[] = [
   {
-    match: (l) => l.includes('POA') || l.includes('299P'),
+    cnpj: '05.564.902/0002-55',
+    matchLoja: (l) => l.includes('POA') || l.includes('299P'),
     data: {
       empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
       cnpj: '05.564.902/0002-55',
@@ -131,7 +143,8 @@ const CIDADE_OVERRIDES: { match: (l: string) => boolean; data: CidadeOverride }[
     },
   },
   {
-    match: (l) => l.includes('FLN') || l.includes('299F'),
+    cnpj: '05.564.902/0001-74',
+    matchLoja: (l) => l.includes('FLN') || l.includes('299F'),
     data: {
       empresaNome: 'INTERCONTINENTAL MOTORSPORT LTDA',
       cnpj: '05.564.902/0001-74',
@@ -141,22 +154,32 @@ const CIDADE_OVERRIDES: { match: (l: string) => boolean; data: CidadeOverride }[
   },
 ];
 
-const getCidadeOverride = (loja?: string | null): CidadeOverride | null => {
+const digitsOnly = (v?: string | null) => (v || '').replace(/\D/g, '');
+
+const getCidadeOverride = (cnpj?: string | null, loja?: string | null): CidadeOverride | null => {
+  const cd = digitsOnly(cnpj);
+  if (cd) {
+    const byCnpj = CIDADE_OVERRIDES.find(o => digitsOnly(o.cnpj) === cd);
+    if (byCnpj) return byCnpj.data;
+  }
   const l = (loja || '').toUpperCase();
-  return CIDADE_OVERRIDES.find(o => o.match(l))?.data || null;
+  return CIDADE_OVERRIDES.find(o => o.matchLoja?.(l))?.data || null;
 };
 
 export async function generateContratoConsignantePdf(
   data: ContratoConsignantePdfData,
   modo: 'download' | 'view' = 'download',
 ): Promise<void> {
-  const override = getCidadeOverride(data.loja);
+  const override = getCidadeOverride(data.empresa?.cnpj, data.loja);
   const isDucati = (data.loja || '').toUpperCase().includes('DUCATI');
-  const empresaNome = override?.empresaNome || 'MMATOS COMERCIO DE VEÍCULOS E PEÇAS LTDA';
-  const cnpj = override?.cnpj || '21.194.795/0001-96';
+  // Empresa vinculada à loja (buscada no cadastro) tem prioridade; override por
+  // CNPJ/loja preenche a sede/cidade quando o cadastro não tem esses campos;
+  // por fim o default histórico (MMATOS/DF), igual aos demais contratos.
+  const empresaNome = data.empresa?.razaoSocial || data.empresa?.nome || override?.empresaNome || 'MMATOS COMERCIO DE VEÍCULOS E PEÇAS LTDA';
+  const cnpj = data.empresa?.cnpj || override?.cnpj || '21.194.795/0001-96';
   const nomeFantasiaSuffix = override && isDucati ? '' : ', 299 Imports';
-  const enderecoSede = override?.enderecoSede || 'SCIA QD 15 Conjunto 03 Loja 06 parte a Brasília–DF';
-  const cidadeAssinatura = override?.cidadeAssinatura || 'Brasília';
+  const enderecoSede = data.empresa?.endereco || override?.enderecoSede || 'SCIA QD 15 Conjunto 03 Loja 06 parte a Brasília–DF';
+  const cidadeAssinatura = override?.cidadeAssinatura || data.empresa?.uf || 'Brasília';
   const logoPath = override && isDucati ? '/logos/ducati-logo.png' : '/logos/299-logo.jpg';
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -363,7 +386,7 @@ export async function generateContratoConsignantePdf(
   y = drawJustifiedText(doc, 'Por ser verdade assino o presente recibo.', marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
 
   // ===== SIGNATURES =====
-  const clientSigBlockHeight = lineHeight * 5 + lineHeight * 4; // gap + signature lines
+  const clientSigBlockHeight = lineHeight * 5 + lineHeight * 5; // gap + signature lines (+ rótulo "Assinatura da empresa")
   checkPageBreak(clientSigBlockHeight);
   y += lineHeight * 5;
   doc.setLineWidth(0.3);
@@ -379,9 +402,12 @@ export async function generateContratoConsignantePdf(
 
   doc.line(marginLeft, y, marginLeft + 70, y);
   y += lineHeight;
+  setBold();
+  doc.text('Assinatura da empresa', marginLeft, y);
+  y += lineHeight;
   setNormal();
   doc.text(empresaNome, marginLeft, y); y += lineHeight;
-  doc.text(cnpj, marginLeft, y);
+  doc.text(`CNPJ: ${cnpj}`, marginLeft, y);
   y += lineHeight * 2;
 
   // ===== Digital signature + LGPD (same page, after company signature) =====
