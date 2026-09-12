@@ -1312,7 +1312,12 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Valor da NF-e não informado.' }, 409);
   }
 
-  // Natureza + regras fiscais (tudo vem da tabela; nao ha default no codigo)
+  // Natureza + regras fiscais (tudo vem da tabela; nao ha default no codigo).
+  // Venda de moto que veio de consignação (devolução simbólica + compra já feitas,
+  // tipo_aquisicao='convertida'): natureza própria "Venda de Mercadoria Recebida
+  // Anteriormente Em Consignação" — CFOP/CST diferem da venda de seminova comum.
+  const vendaDeConvertida = tipo === 'venda_seminova' && (estoqueMoto?.avaliacao as any)?.tipo_aquisicao === 'convertida';
+  const naturezaDescricao = vendaDeConvertida ? 'Venda de Mercadoria Recebida Anteriormente Em Consignacao' : cfg.naturezaDescricao;
   const { data: natureza } = await admin
     .from('naturezas_operacao')
     .select(
@@ -1325,10 +1330,10 @@ Deno.serve(async (req) => {
         'aliquota_icms_efetiva, reducao_base_calculo_efetiva, aliquota_suportada_consumidor_final)',
     )
     .eq('empresa_id', empresaId)
-    .eq('descricao', cfg.naturezaDescricao)
+    .eq('descricao', naturezaDescricao)
     .eq('ativo', true)
     .maybeSingle();
-  if (!natureza) return jsonResponse({ error: `Natureza de operação "${cfg.naturezaDescricao}" não configurada ou inativa.` }, 409);
+  if (!natureza) return jsonResponse({ error: `Natureza de operação "${naturezaDescricao}" não configurada ou inativa.` }, 409);
 
   const regrasTodas = (natureza.naturezas_operacao_regras || []) as Array<
     RegraFiscal & { destino_ufs: string[] | null; ordem: number | null; tipo_atendimento: string | null }
@@ -1371,7 +1376,7 @@ Deno.serve(async (req) => {
   }
   if (faltando.length) {
     return jsonResponse(
-      { error: `Regras fiscais da natureza "${cfg.naturezaDescricao}" incompletas: ${faltando.join(', ')}.` },
+      { error: `Regras fiscais da natureza "${naturezaDescricao}" incompletas: ${faltando.join(', ')}.` },
       409,
     );
   }
