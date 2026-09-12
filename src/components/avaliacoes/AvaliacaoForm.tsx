@@ -516,9 +516,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       // Na 1ª avaliação o avaliador é quem está salvando; na edição respeita a seleção.
       avaliador_id: (avaliacao?.situacao !== 'sem_avaliar' && avaliadorId) ? avaliadorId : user!.id,
       situacao: avaliacao?.situacao === 'sem_avaliar' ? 'em_aberto' : avaliacao?.situacao ?? 'em_aberto',
-      // Após a NF-e, "Valor de Quitação" e "Valor de Fechamento" ficam congelados (não são regravados).
+      // Após a NF-e ou a aprovação da aquisição, "Valor de Quitação" e "Valor de Fechamento" ficam congelados (não são regravados).
       ...(!nfeCompraEmitida ? { valor_quitacao: parseCurrencyToNumber(valorQuitacao) } : {}),
-      ...(!nfeCompraEmitida && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
+      ...(!valorFechamentoTravado && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
     };
 
     const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
@@ -904,6 +904,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const precisaAprovacao = context === 'pos_compra' && isTipoPropria(avaliacao?.tipo_aquisicao) && !ehTrocaPosCompra;
   const aguardandoAprovacao = precisaAprovacao && apSt !== 'aprovada' && apSt !== 'recusada';
   const aprovado = precisaAprovacao && apSt === 'aprovada';
+  // Valor de Fechamento congela após a aquisição ser aprovada (troca já nasce aprovada
+  // junto com a venda) ou após a NF-e de compra emitida — o que ocorrer primeiro.
+  const valorFechamentoTravado = nfeCompraEmitida || apSt === 'aprovada';
   // Remoção de documento travada: aquisição aprovada (inclui troca auto-aprovada
   // junto com a venda) OU NF-e em produção. Anexar documento ausente segue liberado.
   const docRemocaoTravada = apSt === 'aprovada' || nfeEmitidaProducao;
@@ -1716,7 +1719,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
               </div>
             )}
             {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && (
-              <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} disabled={nfeCompraEmitida} />
+              <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} disabled={valorFechamentoTravado} />
             )}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Classificação da Moto <span className="text-destructive">*</span></Label>
