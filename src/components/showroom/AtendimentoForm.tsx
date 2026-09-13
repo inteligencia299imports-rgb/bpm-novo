@@ -21,7 +21,8 @@ import { empresaCompraDireta } from '@/lib/tipoAquisicao';
 const formatPhone = (value: string): string => {
   const digits = value.replace(/\D/g, '').slice(0, 11);
   if (digits.length <= 2) return `(${digits}`;
-  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
 
@@ -357,16 +358,16 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     const formatted = formatPhone(e.target.value);
     setTelefone(formatted);
     setClientFound(null);
-    // Auto-search when phone reaches 11 digits (only for new atendimentos)
+    // Auto-search quando o telefone atinge o tamanho final (11 = celular, 10 = fixo/comercial PJ; só em novos atendimentos)
     const digits = unformatPhone(formatted);
-    if (digits.length === 11 && !isEditing) {
+    if ([10, 11].includes(digits.length) && !isEditing) {
       // Trigger search after state update
       setTimeout(() => searchClientByPhoneDigits(digits), 100);
     }
   };
 
   const searchClientByPhoneDigits = useCallback(async (digits: string) => {
-    if (digits.length !== 11) return;
+    if (![10, 11].includes(digits.length)) return;
 
     setSearchingPhone(true);
     try {
@@ -401,7 +402,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   }, [ufPrincipal]);
 
 
-  const isPhoneValid = unformatPhone(telefone).length === 11;
+  // 11 dígitos = celular; 10 = fixo (comum em telefone comercial de cliente PJ).
+  const isPhoneValid = [10, 11].includes(unformatPhone(telefone).length);
 
   const handleSave = async () => {
     if (nfeVendaEmitida) {
@@ -727,7 +729,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 <p className="text-xs text-muted-foreground">Cliente não encontrado. Preencha os dados.</p>
               )}
               {telefone && !isPhoneValid && (
-                <p className="text-xs text-destructive">Telefone deve ter 11 dígitos</p>
+                <p className="text-xs text-destructive">Telefone deve ter 10 ou 11 dígitos</p>
               )}
             </div>
             {isPhoneValid && !isEditing && clientFound !== true && (
