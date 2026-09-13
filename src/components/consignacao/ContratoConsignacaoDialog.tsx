@@ -24,7 +24,7 @@ import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } fro
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
-import NfeCabecalhoAcoes from '@/components/shared/NfeCabecalhoAcoes';
+import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 
 interface Props {
   open: boolean;
@@ -135,6 +135,14 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // não deve bloquear edição/geração do contrato (mesma regra do fluxo de venda).
   const nfeEmProducao = nfeJaEmitida && nfe.nfe?.ambiente === 'producao';
   const podeReemitirHomolog = nfeJaEmitida && nfe.nfe?.ambiente === 'homologacao';
+  // Só pra checar se a devolução simbólica (próxima etapa da cadeia) já foi
+  // autorizada em produção — usado pra travar o cancelamento da NF de
+  // consignação abaixo (cadeia: consignação -> devolução -> compra -> venda).
+  const nfeDevolucaoCheck = useNfeCompra(avaliacao?.id, open, 'devolucao_consignacao', 'avaliacao');
+  useEffect(() => { if (open) nfeDevolucaoCheck.carregar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [open, avaliacao?.id]);
+  // Não trava no nfeEmProducao daqui: o botão de cancelar já checa isso na
+  // renderização — aqui só entra a restrição extra da cadeia.
+  const podeCancelarNfe = !(nfeDevolucaoCheck.emitida && nfeDevolucaoCheck.nfe?.ambiente === 'producao');
   const soLeitura = ehNfe || nfeEmProducao;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -563,8 +571,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         <h1 className="text-xl font-bold flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Consignação' : 'Contrato de Consignação'}
         </h1>
-        {ehNfe && <NfeCabecalhoAcoes nfe={nfe} />}
+        {ehNfe && <span className="ml-auto"><NfeStatusBadge nfe={nfe} /></span>}
       </div>
+      {ehNfe && <div className="flex items-center gap-2 flex-wrap"><NfeDanfeButton nfe={nfe} /></div>}
 
       {loading ? (
         <div className="flex justify-center py-12">
@@ -911,7 +920,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
               </p>
             )}
 
-            {ehNfe && (nfe.emitida || nfe.cancelada) && nfe.nfe?.ambiente === 'producao' && <CancelarNfeDialog nfe={nfe} />}
+            {ehNfe && (nfe.emitida || nfe.cancelada) && nfe.nfe?.ambiente === 'producao' && podeCancelarNfe && <CancelarNfeDialog nfe={nfe} />}
 
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
