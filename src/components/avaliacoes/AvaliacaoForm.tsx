@@ -37,7 +37,7 @@ import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, vali
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { useNfeEmitida } from '@/hooks/useNfeEmitida';
-import StatusTimeline from '@/components/shared/StatusTimeline';
+import StatusTimeline, { defaultFormatStatusLabel } from '@/components/shared/StatusTimeline';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
 import type { SituacaoAvaliacao, MotoFoto } from '@/types/crm';
@@ -1558,9 +1558,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             </CardHeader>
             <CardContent>
               <StatusTimeline history={history} formatLabel={(raw) => {
-                const remap: Record<string, string> = { vendido: 'adquirida', aprovada: 'aprovada', recusada: 'recusada', contrato_compra_gerado: 'CONTRATO GERADO', nfe_compra_emitida: 'NF-e emitida', nfe_consignacao_emitida: 'NF-e emitida', 'Em Andamento': 'Pós-Compra em andamento', em_andamento: 'Pós-Compra em andamento' };
-                const mapped = remap[raw] || raw;
-                return mapped.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação');
+                const remap: Record<string, string> = { vendido: 'adquirida', aprovada: 'aprovada', recusada: 'recusada', contrato_compra_gerado: 'CONTRATO GERADO', 'Em Andamento': 'Pós-Compra em andamento', em_andamento: 'Pós-Compra em andamento' };
+                return remap[raw] || defaultFormatStatusLabel(raw);
               }} renderPopupExtra={(h) => {
                 if (h.observacoes) {
                   return (
