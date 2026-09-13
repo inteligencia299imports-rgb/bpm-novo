@@ -23,7 +23,8 @@ const PARTE_CONFIG = {
     statusField: 'intermediacao_parte1_status',
     etapas: INTERMEDIACAO_PARTE1_ETAPAS,
     statusRules: {
-      concluded: 'AUTORIZAÇÃO DE PAGAMENTO',
+      concluded: 'TRANSFERÊNCIA FINALIZADA',
+      special: { etapa: 'DOCUMENTAÇÃO COM DESPACHANTE', status: 'doc_despachante' },
       default: 'em_andamento',
     },
   },
@@ -32,8 +33,7 @@ const PARTE_CONFIG = {
     statusField: 'intermediacao_parte2_status',
     etapas: INTERMEDIACAO_PARTE2_ETAPAS,
     statusRules: {
-      concluded: 'TRANSFERÊNCIA FINALIZADA',
-      special: { etapa: 'DOCUMENTAÇÃO COM DESPACHANTE', status: 'doc_despachante' },
+      concluded: 'AUTORIZAÇÃO DE PAGAMENTO',
       default: 'em_andamento',
     },
   },
@@ -115,7 +115,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
 
     // Auto-transition: check autorizacao_pagamento items whose previsão date is > 1 day past
     const autoTransitionIds = filtered
-      .filter(a => a.intermediacao_parte1_status === 'autorizacao_pagamento')
+      .filter(a => a.intermediacao_parte2_status === 'autorizacao_pagamento')
       .map(a => a.id);
 
     if (autoTransitionIds.length > 0) {
@@ -137,9 +137,9 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       if (idsToComplete.length > 0) {
         // Update in background, don't block UI
         for (const id of idsToComplete) {
-          supabase.from('atendimentos_motos').update({ intermediacao_parte1_status: 'concluido' } as any).eq('id', id).then();
+          supabase.from('atendimentos_motos').update({ intermediacao_parte2_status: 'concluido' } as any).eq('id', id).then();
         }
-        filtered = filtered.map(a => idsToComplete.includes(a.id) ? { ...a, intermediacao_parte1_status: 'concluido' } : a);
+        filtered = filtered.map(a => idsToComplete.includes(a.id) ? { ...a, intermediacao_parte2_status: 'concluido' } : a);
       }
     }
 
@@ -151,7 +151,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
 
     if (filterCidade !== 'todos') {
       filtered = filtered.filter((a: any) => {
-        const loja = parte === 'parte1' ? (a._proprietario?.loja || a.loja) : a.loja;
+        const loja = parte === 'parte2' ? (a._proprietario?.loja || a.loja) : a.loja;
         return matchesCidade(loja, filterCidade);
       });
     }
@@ -177,8 +177,8 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
 
   const columnOf = (a: any): string => {
     const normal = (a as any)[config.statusField] || 'em_aberto';
-    // Parte 1 (consignante) não passa pela aprovação de venda — vai direto p/ o status normal.
-    if (parte === 'parte1') return normal;
+    // Parte 2 (consignante) não passa pela aprovação de venda — vai direto p/ o status normal.
+    if (parte === 'parte2') return normal;
     if (a.venda_aprovacao_status === 'recusada') return normal; // coluna normal + tag "Recusado"
     if (a.venda_aprovacao_status === 'aguardando') return 'aguardando_aprovacao'; // NF-e de venda não é pré-requisito
     if (a.venda_aprovacao_status === 'aprovada' && normal === 'em_aberto') return 'aprovada';
@@ -202,7 +202,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
           customEtapas: config.etapas,
           statusField: config.statusField,
           statusRules: config.statusRules,
-          showContratoConsignante: parte === 'parte1',
+          showContratoConsignante: parte === 'parte2',
         }}
         onStatusChanged={handleStatusChanged}
       />
@@ -274,11 +274,11 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
                     {colItems.length === 0 ? <p className="text-xs text-muted-foreground text-center py-8">Nenhum item</p> : colItems.map((a: any) => {
                       const est = a._estoqueMoto;
                       const owner = a._proprietario;
-                      const clientName = parte === 'parte1' && owner ? owner.cliente?.nome_razao_social : a.cliente?.nome_razao_social;
-                      const clientPhone = parte === 'parte1' && owner ? owner.cliente?.telefone : a.cliente?.telefone;
+                      const clientName = parte === 'parte2' && owner ? owner.cliente?.nome_razao_social : a.cliente?.nome_razao_social;
+                      const clientPhone = parte === 'parte2' && owner ? owner.cliente?.telefone : a.cliente?.telefone;
                       const prev = a._previsaoPagamento;
                       const prevBadge = prev ? { label: (<span className="inline-flex items-center gap-1"><DollarSign className="h-3 w-3" />{new Date(prev).toLocaleDateString('pt-BR')}</span>), className: 'border-primary/30 text-primary' } : undefined;
-                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex} extraBadge={prevBadge} nameTag={parte !== 'parte1' && a.venda_aprovacao_status === 'recusada' ? { label: 'Recusado', className: 'bg-red-600 hover:bg-red-600' } : undefined} onClick={() => setSelectedItem(a)} />;
+                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex} extraBadge={prevBadge} nameTag={parte !== 'parte2' && a.venda_aprovacao_status === 'recusada' ? { label: 'Recusado', className: 'bg-red-600 hover:bg-red-600' } : undefined} onClick={() => setSelectedItem(a)} />;
                     })}
                   </div>
                 </div>
