@@ -22,8 +22,24 @@ interface StatusTimelineProps {
   formatLabel?: (raw: string) => string;
 }
 
-const defaultFormatStatusLabel = (raw: string): string => {
-  return raw.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação').replace(/\bpreparacao\b/gi, 'preparação').replace(/\breenviada\b/gi, 'reenviada').replace(/\bconcluida\b/gi, 'concluída');
+export const defaultFormatStatusLabel = (raw: string): string => {
+  return raw
+    .replace(/_/g, ' ')
+    .replace(/\bnfe\b/gi, 'NF-e')
+    .replace(/\bavaliacao\b/gi, 'avaliação')
+    .replace(/\bpreparacao\b/gi, 'preparação')
+    .replace(/\breenviada\b/gi, 'reenviada')
+    .replace(/\bconcluida\b/gi, 'concluída')
+    .replace(/\bconcluido\b/gi, 'concluído')
+    .replace(/\bconsignacao\b/gi, 'consignação')
+    .replace(/\bdevolucao\b/gi, 'devolução')
+    .replace(/\bautorizacao\b/gi, 'autorização')
+    .replace(/\baprovacao\b/gi, 'aprovação')
+    .replace(/\bdisponivel\b/gi, 'disponível')
+    .replace(/\bpendencia\b/gi, 'pendência')
+    .replace(/\bservico\b/gi, 'serviço')
+    .replace(/\bsituacao\b/gi, 'situação')
+    .replace(/\baquisicao\b/gi, 'aquisição');
 };
 
 const MIRROR_WINDOW_MS = 15000;

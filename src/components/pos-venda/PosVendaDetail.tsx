@@ -29,7 +29,7 @@ import ProcessoDialog from './ProcessoDialog';
 import ContratoDialog from '@/components/showroom/ContratoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
-import StatusTimeline from '@/components/shared/StatusTimeline';
+import StatusTimeline, { defaultFormatStatusLabel } from '@/components/shared/StatusTimeline';
 import { formatPersonName, firstLastName, cn, formatDataNascimento } from '@/lib/utils';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { processarCnhAnexada, upsertCnhDoc, docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket, ehPessoaJuridica } from '@/lib/cnhAnexo';
@@ -452,8 +452,14 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
       // Histórico de movimentações do atendimento (timeline completa: showroom +
       // pós-venda + contrato consignante, e avaliação/consulta/pós-compra/consignação
-      // das motos do cliente).
-      const avIds = (motosAv || []).map((m: any) => m.id).filter(Boolean);
+      // das motos do cliente). Moto consignada sendo vendida (Intermediação): a
+      // avaliação dela pertence ao atendimento do CONSIGNANTE, não ao desta venda
+      // — motosAv (eq. atendimento_id = item.id) não pega; soma via estoqueMap.
+      const consignadaAvaliacaoId = Object.values(estoqueMap).find((e: any) => e.tipo === 'consignada')?.avaliacao_id;
+      const avIds = [...new Set([
+        ...(motosAv || []).map((m: any) => m.id).filter(Boolean),
+        ...(consignadaAvaliacaoId ? [consignadaAvaliacaoId] : []),
+      ])];
       const [{ data: histAt }, { data: histAv }] = await Promise.all([
         supabase.from('status_history').select('*')
           .eq('entity_id', item.id)
@@ -986,7 +992,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               ) : (
                 <StatusTimeline
                   history={history}
-                  formatLabel={(raw) => (raw === 'vendido' ? 'VENDA REALIZADA' : raw.replace(/_/g, ' '))}
+                  formatLabel={(raw) => (raw === 'vendido' ? 'venda realizada' : defaultFormatStatusLabel(raw))}
                   renderPopupExtra={(h) => h.observacoes ? (
                     <div>
                       <span className="text-xs text-muted-foreground">Observações</span>
