@@ -24,7 +24,7 @@ import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
-import NfeCabecalhoAcoes from '@/components/shared/NfeCabecalhoAcoes';
+import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 import AgregadosContrato, { type Agregado, type AgregadoLinha } from '@/components/showroom/AgregadosContrato';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 
@@ -1186,8 +1186,9 @@ const ContratoDialog: React.FC<Props> = ({
         <h1 className="text-xl font-bold flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Venda' : 'Emissão de Proposta'}
         </h1>
-        {ehNfe && <NfeCabecalhoAcoes nfe={nfe} />}
+        {ehNfe && <span className="ml-auto"><NfeStatusBadge nfe={nfe} /></span>}
       </div>
+      {ehNfe && <div className="flex items-center gap-2 flex-wrap"><NfeDanfeButton nfe={nfe} /></div>}
 
       {nfeEmProducao && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 flex items-center gap-1.5">

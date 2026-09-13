@@ -13,7 +13,7 @@ import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
-import NfeCabecalhoAcoes from '@/components/shared/NfeCabecalhoAcoes';
+import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 import { Badge } from '@/components/ui/badge';
 import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -575,8 +575,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         <h1 className="text-xl font-bold flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Compra' : 'Contrato de Compra'}
         </h1>
-        {ehNfe && <NfeCabecalhoAcoes nfe={nfe} />}
+        {ehNfe && <span className="ml-auto"><NfeStatusBadge nfe={nfe} /></span>}
       </div>
+      {ehNfe && <div className="flex items-center gap-2 flex-wrap"><NfeDanfeButton nfe={nfe} /></div>}
 
       {loading ? (
         <div className="flex justify-center py-12">
