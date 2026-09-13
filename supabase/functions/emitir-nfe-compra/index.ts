@@ -356,14 +356,10 @@ async function registrarPosAutorizacao(
   }
 
   // Compra que sucede uma devolução simbólica (transformação de consignação em
-  // compra): a moto deixa de estar "em consignação" — vira estoque próprio
-  // (mesmo tratamento de 'propria' em toda a regra de negócio, ver tipoAquisicao.ts).
-  if (operacao === 'compra' && porAvaliacao) {
-    const { data: avTipo } = await admin.from('avaliacoes').select('tipo_aquisicao').eq('id', entityId).maybeSingle();
-    if ((avTipo as any)?.tipo_aquisicao === 'consignada') {
-      await admin.from('avaliacoes').update({ tipo_aquisicao: 'convertida' }).eq('id', entityId);
-    }
-  }
+  // compra): decisão de negócio — a moto continua tratada como 'consignada' em
+  // tudo (taxa fixa, KPIs de relatório, aprovação); NÃO vira mais 'convertida'.
+  // O "já passou pela devolução + compra" (liberação de venda, natureza fiscal)
+  // é verificado direto no histórico de NF-e (nfe_entradas), não por esse campo.
 
   if (!cfg.criaCompromisso || !cfg.planoContaId || !cfg.centroCustoId) return;
 
@@ -1043,6 +1039,16 @@ Deno.serve(async (req) => {
         .eq('operacao', 'devolucao_consignacao').eq('status', 'processada').limit(1).maybeSingle()
     : { data: null };
   const viaConversaoConsignacao = !!devolucaoAutorizada;
+  // Venda de moto que veio de consignação: tipo_aquisicao continua 'consignada'
+  // pra sempre (decisão de negócio, ver comentário em registrarPosAutorizacao
+  // acima) — "já passou pela devolução + compra, pode vender" é verificado
+  // direto pelo histórico de NF-e, não pelo campo.
+  const { data: compraPosConsignacaoAutorizada } = (ehVenda && !ehVenda0km && estoqueMoto?.avaliacao_id)
+    ? await admin.from('nfe_entradas').select('id').eq('avaliacao_id', estoqueMoto.avaliacao_id)
+        .eq('operacao', 'compra').eq('status', 'processada').limit(1).maybeSingle()
+    : { data: null };
+  const viaVendaPosConsignacao = ehVenda && !ehVenda0km
+    && (estoqueMoto?.avaliacao as any)?.tipo_aquisicao === 'consignada' && !!compraPosConsignacaoAutorizada;
   if (tipo === 'compra') {
     if (av.consulta_realizada !== true) return jsonResponse({ error: 'A consulta veicular ainda não foi realizada.' }, 409);
     // Troca (moto entrando como parte de pagamento): não exige aprovação da
@@ -1091,9 +1097,11 @@ Deno.serve(async (req) => {
     }
   } else {
     // venda
-    // Moto ainda "em consignação" (não convertida em compra): a venda como
-    // estoque próprio só é permitida depois da devolução simbólica + compra.
-    if (!ehVenda0km && (estoqueMoto?.avaliacao as any)?.tipo_aquisicao === 'consignada') {
+    // Moto ainda "em consignação" (tipo_aquisicao='consignada' pra sempre — não
+    // vira mais 'convertida'): a venda como estoque próprio só é permitida
+    // depois da devolução simbólica + compra, verificado pelo histórico de NF-e
+    // (viaVendaPosConsignacao), não pelo valor do campo em si.
+    if (!ehVenda0km && (estoqueMoto?.avaliacao as any)?.tipo_aquisicao === 'consignada' && !viaVendaPosConsignacao) {
       return jsonResponse({ error: 'Moto ainda em consignação — emita a devolução simbólica e a compra antes de vender.' }, 409);
     }
     if (!['vendido', 'sinal'].includes(estoqueMoto?.status)) {
@@ -1326,12 +1334,12 @@ Deno.serve(async (req) => {
   // simbolicamente). Achado numa NF de referência real da MMATOS — natOp
   // "Compra p/ comerc. de merc. recebida anter. em consignacao" — 2026-09-12,
   // ver docs-fiscal-299 §2.27.
-  // Venda de moto que veio de consignação convertida em compra (§2.27/§2.28)
-  // — o "compra" bem-sucedido marca avaliacoes.tipo_aquisicao = 'convertida'
-  // (linha ~364 acima). Mesma lógica: natureza dedicada, CFOP e natOp
-  // próprios, achada numa NF de referência real da MMATOS — "Venda de
-  // Mercadoria Recebida Anteriormente Em Consignacao", 2026-09-12.
-  const viaVendaPosConsignacao = ehVenda && !ehVenda0km && (estoqueMoto?.avaliacao as any)?.tipo_aquisicao === 'convertida';
+  // Venda de moto que veio de consignação (§2.27/§2.28) — tipo_aquisicao segue
+  // 'consignada' pra sempre; viaVendaPosConsignacao (calculado acima, pelo
+  // histórico de NF-e de compra pós-devolução) que identifica o caso. Mesma
+  // lógica: natureza dedicada, CFOP e natOp próprios, achada numa NF de
+  // referência real da MMATOS — "Venda de Mercadoria Recebida Anteriormente
+  // Em Consignacao", 2026-09-12.
   const naturezaDescricaoEfetiva = (tipo === 'compra' && viaConversaoConsignacao)
     ? 'Compra p/ comerc. de merc. recebida anter. em consignacao'
     : viaVendaPosConsignacao
