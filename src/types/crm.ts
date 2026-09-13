@@ -43,6 +43,7 @@ export const INTERMEDIACAO_PARTE2_COLUMNS: { value: IntermediacaoParte2Status; l
 
 export const INTERMEDIACAO_PARTE1_ETAPAS = [
   'DEVOLUÇÃO SIMBÓLICA / COMPRA',
+  'NF-E DE VENDA',
   'DOC. FORMALIZADO',
   'DOCUMENTAÇÃO COM DESPACHANTE',
   'DOC. OUTRA UF',
