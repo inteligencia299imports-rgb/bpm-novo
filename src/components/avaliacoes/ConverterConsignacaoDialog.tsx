@@ -121,7 +121,8 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                 </span>
                 <NfeStatusBadge nfe={nfeDevolucao} />
               </CardTitle>
-              <div className="flex items-center gap-2 flex-wrap mt-1">
+              <Separator className="mt-2 mb-3" />
+              <div className="flex items-center gap-2 flex-wrap">
                 {!referenciaProducao && (!devolucaoOk || podeReemitirHomologDevolucao) && !nfeDevolucao.pendente && (
                   <Button
                     size="sm"
@@ -147,10 +148,11 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                 <NfeDanfeButton nfe={nfeDevolucao} />
                 {podeCancelarDevolucao && <CancelarNfeDialog nfe={nfeDevolucao} />}
               </div>
-              <Separator className="mt-2" />
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-xs text-muted-foreground">Valor da devolução (igual ao da NF de consignação): <strong>{brl(valorConsignacao)}</strong></p>
+              {!compraProducaoOk && (
+                <p className="text-xs text-muted-foreground">Valor da devolução (igual ao da NF de consignação): <strong>{brl(valorConsignacao)}</strong></p>
+              )}
               {nfeDevolucao.erro && (
                 <p className="text-xs text-destructive flex items-start gap-1.5">
                   <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
@@ -180,7 +182,8 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                 </span>
                 <NfeStatusBadge nfe={nfeCompra} />
               </CardTitle>
-              <div className="flex items-center gap-2 flex-wrap mt-1">
+              <Separator className="mt-2 mb-3" />
+              <div className="flex items-center gap-2 flex-wrap">
                 {devolucaoProducaoOk && (!compraOk || podeReemitirHomologCompra) && !nfeCompra.pendente && (
                   <Button
                     size="sm"
@@ -205,28 +208,29 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                 <NfeDanfeButton nfe={nfeCompra} />
                 {podeCancelarCompra && <CancelarNfeDialog nfe={nfeCompra} />}
               </div>
-              <Separator className="mt-2" />
             </CardHeader>
             <CardContent className="space-y-3">
               {!devolucaoProducaoOk ? (
                 <p className="text-xs text-muted-foreground">Disponível após a devolução simbólica autorizada em produção.</p>
               ) : (
                 <>
-                  <div>
-                    <label className="text-sm font-medium text-foreground">Valor de Compra</label>
-                    <div className="relative mt-1 max-w-[220px]">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                      <Input
-                        className="pl-10"
-                        placeholder="0,00"
-                        value={valorCompra}
-                        onChange={(e) => setValorCompra(formatCurrencyInput(e.target.value))}
-                        inputMode="numeric"
-                        disabled={compraOk && !podeReemitirHomologCompra}
-                      />
+                  {!compraProducaoOk && (
+                    <div>
+                      <label className="text-sm font-medium text-foreground">Valor de Compra</label>
+                      <div className="relative mt-1 max-w-[220px]">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                        <Input
+                          className="pl-10"
+                          placeholder="0,00"
+                          value={valorCompra}
+                          onChange={(e) => setValorCompra(formatCurrencyInput(e.target.value))}
+                          inputMode="numeric"
+                          disabled={compraOk && !podeReemitirHomologCompra}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Pode ser renegociado com o consignante — não precisa ser igual ao valor da consignação.</p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Pode ser renegociado com o consignante — não precisa ser igual ao valor da consignação.</p>
-                  </div>
+                  )}
                   {nfeCompra.erro && (
                     <p className="text-xs text-destructive flex items-start gap-1.5">
                       <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
