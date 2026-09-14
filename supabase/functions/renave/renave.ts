@@ -118,9 +118,20 @@ async function call(
   return resp;
 }
 
-/** Mensagem de erro legível de uma resposta do RENAVE. */
+/**
+ * Mensagem de erro legível de uma resposta do RENAVE. O formato real de erro
+ * da SERPRO (confirmado em produção/homologação) é
+ * `{ titulo, detalhe, mensagemParaUsuarioFinal, dataHora }` — prioriza
+ * `mensagemParaUsuarioFinal` (é literalmente pra isso que o campo existe),
+ * depois `detalhe`, depois `titulo`. Mantém os formatos antigos (message/
+ * errors/mensagens/raw) como fallback pra outros endpoints que não sigam
+ * esse padrão, e só cai no HTTP genérico se nada disso vier preenchido.
+ */
 export function erroRenave(r: RenaveResp): string {
   const b = r.body || {};
+  if (typeof b.mensagemParaUsuarioFinal === 'string' && b.mensagemParaUsuarioFinal) return b.mensagemParaUsuarioFinal;
+  if (typeof b.detalhe === 'string' && b.detalhe) return b.detalhe;
+  if (typeof b.titulo === 'string' && b.titulo) return b.titulo;
   if (typeof b.message === 'string' && b.message) return b.message;
   if (Array.isArray(b.errors) && b.errors.length) {
     return b.errors.map((e: any) => (typeof e === 'string' ? e : (e.message || e.mensagem || JSON.stringify(e)))).join(' | ');
