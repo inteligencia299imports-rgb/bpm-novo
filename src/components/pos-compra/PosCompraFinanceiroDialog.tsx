@@ -142,7 +142,7 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
             <div className="space-y-6 pb-6 px-6 pt-4">
               {/* Valor de Fechamento */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Valor de Fechamento</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Valor de Fechamento (moto avaliada)</h3>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                   <Input className="pl-10" placeholder="0,00" value={valorFechamento} onChange={e => setValorFechamento(formatCurrencyInput(e.target.value))} inputMode="numeric" disabled={valorFechamentoTravado} />
