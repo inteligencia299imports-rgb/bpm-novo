@@ -30,11 +30,17 @@ export interface RenaveLogCtx {
 }
 
 function buildClient(): { client: unknown | undefined; base: string } {
-  const base = (Deno.env.get('RENAVE_BASE_URL') || DEFAULT_BASE).replace(/\/+$/, '');
+  const baseUrlSecret = Deno.env.get('RENAVE_BASE_URL');
+  const base = (baseUrlSecret || DEFAULT_BASE).replace(/\/+$/, '');
   const cert = Deno.env.get('RENAVE_CERT_PEM');
   const key = Deno.env.get('RENAVE_KEY_PEM');
   let client: unknown | undefined;
-  if (cert && key) {
+  // O certificado só é anexado quando RENAVE_BASE_URL aponta pra produção —
+  // em homologação (base default, "estaleiro") o SERPRO espera o "cliente
+  // padrão de teste" sem certificado. Isso evita usar um certificado real de
+  // produção contra o estaleiro por engano (RENAVE_CERT_PEM/KEY_PEM podem
+  // estar configurados de antemão, sem que isso já ligue produção sozinho).
+  if (baseUrlSecret && cert && key) {
     // Deno: fetch com certificado de cliente (mTLS).
     client = (Deno as any).createHttpClient({ cert, key });
   }

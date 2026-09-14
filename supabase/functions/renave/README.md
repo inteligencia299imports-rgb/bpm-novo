@@ -5,13 +5,19 @@ Registro Nacional de Veículos em Estoque. Fluxo de moto **0km** da concessioná
 ## Ambiente / autenticação
 
 - **Homologação:** SERPRO oferece um "cliente padrão de teste" — basta **não enviar
-  certificado**. Sem `RENAVE_CERT_PEM`/`RENAVE_KEY_PEM` a função usa `fetch` normal.
-  Base default: `https://renave.estaleiro.serpro.gov.br/renave-ws`.
+  certificado**. Base default: `https://renave.estaleiro.serpro.gov.br/renave-ws`.
 - **Produção:** mTLS com certificado ICP-Brasil e-CNPJ do estabelecimento.
   Setar secrets:
   - `RENAVE_BASE_URL` (host de produção)
   - `RENAVE_CERT_PEM` (certificado PEM)
   - `RENAVE_KEY_PEM` (chave privada PEM)
+- **O certificado só é usado quando `RENAVE_BASE_URL` está setado** (produção) —
+  `RENAVE_CERT_PEM`/`RENAVE_KEY_PEM` podem estar configurados de antemão sem
+  "ligar" produção sozinhos; enquanto `RENAVE_BASE_URL` não existir, a função
+  continua chamando o estaleiro (homolog) sem certificado, mesmo com o par
+  cert/key já presente. Evita usar certificado real de produção contra o
+  estaleiro por engano. Certificado atual: e-CNPJ A1 da **FAG** (CNPJ
+  49.580.035/0001-36), válido até 18/03/2027 — configurado em 2026-09-14.
 
 ## Ações (body JSON `{ acao: ... }`)
 
