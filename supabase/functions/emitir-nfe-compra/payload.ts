@@ -460,8 +460,29 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     item.icms_aliquota = Number(regraIcms.aliquota ?? 0);
     if (regraIcms.reducao_base_calculo != null) item.icms_reducao_base_calculo = Number(regraIcms.reducao_base_calculo);
     if (regraIcms.aliquota_fcp != null) item.fcp_aliquota = Number(regraIcms.aliquota_fcp);
-    item.icms_base_calculo = 0;
-    item.icms_valor = 0;
+    // vBC/vICMS reais do ICMS próprio (base já reduzida, se houver redução).
+    //
+    // BUG (achado 2026-09-14, comparando com XML real autorizado nº7221 —
+    // venda comum da MMATOS já em produção; achado de novo, de forma
+    // independente, numa venda interestadual CST00 — natureza "Venda de moto
+    // 0km", Bahia): esses campos ficavam hardcoded em 0 aqui, mesmo com
+    // icms_aliquota/icms_reducao_base_calculo preenchidos. A Focus NÃO
+    // recalcula vBC/vICMS a partir desses campos — manda os 0 explícitos
+    // direto pro XML. Resultado: a NF-e saía com o ICMS próprio zerado
+    // (vBC=0/vICMS=0) mesmo numa operação tributada normalmente. No caso da
+    // venda interestadual isso quebrava o DIFAL: a SEFAZ calcula
+    // vICMSUFDest usando o vICMS próprio REAL do item (não o que a gente
+    // mandava, 0) — rejeição real [815] "Valor Calculado" batia exatamente
+    // com `base × alíquota interna`, ou seja, a SEFAZ estava tratando o
+    // ICMS interestadual "pago" como zero. Afeta qualquer CST deste bloco
+    // (00/10/20/30/70/90), não só o CST20 onde foi corrigido antes — ver
+    // docs-fiscal-299 §2.31 (CST20/MMATOS) e §2.37 (CST00/DIFAL, achado aqui).
+    const pRedIcms = Number(regraIcms.reducao_base_calculo ?? 0);
+    const pIcmsProprio = Number(regraIcms.aliquota ?? 0);
+    const vBcIcms = r2(valorFmt * (1 - pRedIcms / 100));
+    const vIcmsProprio = r2(vBcIcms * (pIcmsProprio / 100));
+    item.icms_base_calculo = vBcIcms;
+    item.icms_valor = vIcmsProprio;
     // CST 90 (TICMS90) tem também o subgrupo de ST na sequência do XSD — a NF-e
     // de referência (compra de usado, Ducati SC) traz modBCST/vBCST/pICMSST/
     // vICMSST zerados. Sem eles a SEFAZ pode rejeitar o grupo.
@@ -474,29 +495,10 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     // CST 20 (redução de base) com benefício de UF — ex.: venda de veículo usado
     // no DF (pRedBC 95, cBenef DF816006). O ICMS "dispensado" pela redução é
     // destacado como DESONERADO (motDesICMS = 9, "Outros"), fiel à NF-e de
-    // referência autorizada. vICMSDeson = vProd·pICMS − vICMS(base já reduzida).
-    // Campos Focus: icms_valor_desonerado / icms_motivo_desoneracao.
-    //
-    // BUG (achado 2026-09-14, comparando com XML real autorizado nº7221 —
-    // venda comum da MMATOS já em produção): icms_base_calculo/icms_valor
-    // ficavam zerados (linhas acima) mesmo aqui, onde vBcRed/vIcmsRed já são
-    // calculados corretamente pra achar o vICMSDeson — só nunca eram
-    // atribuídos ao vBC/vICMS que de fato vão pra NF-e. A Focus NÃO recalcula
-    // esses campos a partir de icms_aliquota/icms_reducao_base_calculo; ela
-    // manda os 0 explícitos direto pro XML. Resultado: a NF-e autorizada
-    // declarava vICMS=0 (imposto zerado) quando o correto — conferido contra
-    // NF-e real emitida pelo sistema legado (NBS) — é vBC/vICMS com a base já
-    // reduzida (ex.: vBC 3095,00 / vICMS 371,40, não 0/0). Afeta toda venda
-    // CST20 com redução de base já emitida (MMATOS, empresa que usa esse CST
-    // na venda comum e na venda pós-consignação) — ver docs-fiscal-299 §2.31.
+    // referência autorizada. vICMSDeson = vProd·pICMS − vICMS(base já reduzida)
+    // — reaproveita vBcIcms/vIcmsProprio já calculados acima.
     if (cstIcms === '20' && regraIcms.reducao_base_calculo != null) {
-      const pRed = Number(regraIcms.reducao_base_calculo);
-      const pIcms = Number(regraIcms.aliquota ?? 0);
-      const vBcRed = r2(valorFmt * (1 - pRed / 100));
-      const vIcmsRed = r2(vBcRed * (pIcms / 100));
-      item.icms_base_calculo = vBcRed;
-      item.icms_valor = vIcmsRed;
-      item.icms_valor_desonerado = r2(valorFmt * (pIcms / 100) - vIcmsRed);
+      item.icms_valor_desonerado = r2(valorFmt * (pIcmsProprio / 100) - vIcmsProprio);
       item.icms_motivo_desoneracao = 9;
     }
   }
