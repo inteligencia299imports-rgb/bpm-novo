@@ -1198,8 +1198,8 @@ const ContratoDialog: React.FC<Props> = ({
       </div>
 
       {nfeEmProducao && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 flex items-center gap-1.5">
-          <AlertTriangle className="h-3.5 w-3.5" /> NF-e de venda emitida em produção — contrato bloqueado para edição.
+        <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-700 flex items-center gap-1.5">
+          <AlertTriangle className="h-3.5 w-3.5" /> NF-e Emitida - Proposta bloqueada para edição.
         </div>
       )}
 
