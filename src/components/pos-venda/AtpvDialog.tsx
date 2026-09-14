@@ -211,7 +211,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2"><Bike className="h-4 w-4 text-primary" /> Moto que Será Emplacada</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><Bike className="h-4 w-4 text-primary" /> Dados da Moto</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <Info label="Marca / Modelo" value={motoLabel} />
