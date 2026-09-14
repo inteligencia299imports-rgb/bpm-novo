@@ -2,13 +2,14 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Ban, AlertTriangle, Loader2, RefreshCw, ExternalLink } from 'lucide-react';
+import { CheckCircle2, Ban, AlertTriangle, Loader2, ExternalLink } from 'lucide-react';
 
 /**
- * Cabeçalho da tela de emissão de NF-e: selo do status da nota (ao lado do
- * título) + "Atualizar SEFAZ" (reconsulta) + "DANFE" (baixa o PDF), alinhados
- * à direita da linha. Homologação = laranja, produção = verde.
- * Some enquanto nenhuma NF-e foi emitida.
+ * Selo do status da NF-e (ao lado do título) + botão DANFE (baixa o PDF),
+ * como peças independentes — o selo fica na linha do título, o DANFE (junto
+ * com os demais botões de ação) numa linha abaixo. Homologação = laranja,
+ * produção = verde. Sem "Atualizar SEFAZ": a reconsulta acontece via polling
+ * automático enquanto a NF-e está pendente (ver useNfeCompra).
  */
 
 interface NfeLike {
@@ -42,45 +43,34 @@ function selo(status: string, ambiente?: string | null) {
   return { label: status, cls: 'text-muted-foreground', icon: null };
 }
 
-const NfeCabecalhoAcoes: React.FC<{ nfe: NfeLike }> = ({ nfe }) => {
+/** Selo do status — colocar na linha do título, alinhado à direita. */
+export const NfeStatusBadge: React.FC<{ nfe: NfeLike }> = ({ nfe }) => {
   const status = nfe.nfe?.status;
   if (!status) return null;
   const s = selo(status, nfe.nfe?.ambiente);
-  const producao = nfe.nfe?.ambiente === 'producao';
-  const danfe = nfe.nfe?.caminho_danfe;
-
   return (
-    <>
-      <Badge variant="outline" className={`gap-1.5 ${s.cls}`}>
-        {s.icon}
-        {s.label}
-      </Badge>
-      <span className="ml-auto flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5 text-muted-foreground"
-          onClick={() => nfe.consultar()}
-          disabled={nfe.loading}
-          title="Reconsulta a SEFAZ e atualiza o status (pega cancelamentos feitos fora do sistema)"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${nfe.loading ? 'animate-spin' : ''}`} /> Atualizar SEFAZ
-        </Button>
-        {danfe && (
-          <Button
-            size="sm"
-            className={cn(
-              'gap-1.5 text-white',
-              producao ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-500 hover:bg-orange-600',
-            )}
-            onClick={() => window.open(danfe, '_blank', 'noopener')}
-          >
-            <ExternalLink className="h-3.5 w-3.5" /> DANFE
-          </Button>
-        )}
-      </span>
-    </>
+    <Badge variant="outline" className={`gap-1.5 ${s.cls}`}>
+      {s.icon}
+      {s.label}
+    </Badge>
   );
 };
 
-export default NfeCabecalhoAcoes;
+/** Botão DANFE — colocar na linha de ações, abaixo do título (junto com Cancelar NF-e etc.). */
+export const NfeDanfeButton: React.FC<{ nfe: NfeLike }> = ({ nfe }) => {
+  const danfe = nfe.nfe?.caminho_danfe;
+  if (!danfe) return null;
+  const producao = nfe.nfe?.ambiente === 'producao';
+  return (
+    <Button
+      size="sm"
+      className={cn(
+        'gap-1.5 text-white',
+        producao ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-500 hover:bg-orange-600',
+      )}
+      onClick={() => window.open(danfe, '_blank', 'noopener')}
+    >
+      <ExternalLink className="h-3.5 w-3.5" /> DANFE
+    </Button>
+  );
+};

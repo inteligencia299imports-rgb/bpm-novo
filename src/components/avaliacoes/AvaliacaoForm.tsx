@@ -37,7 +37,7 @@ import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, vali
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { useNfeEmitida } from '@/hooks/useNfeEmitida';
-import StatusTimeline from '@/components/shared/StatusTimeline';
+import StatusTimeline, { defaultFormatStatusLabel } from '@/components/shared/StatusTimeline';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
 import type { SituacaoAvaliacao, MotoFoto } from '@/types/crm';
@@ -63,6 +63,9 @@ const formatPhone = (value: string): string => {
   const digits = value.replace(/\D/g, '');
   if (digits.length === 11) {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
   }
   return value;
 };
@@ -515,9 +518,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       // Na 1ª avaliação o avaliador é quem está salvando; na edição respeita a seleção.
       avaliador_id: (avaliacao?.situacao !== 'sem_avaliar' && avaliadorId) ? avaliadorId : user!.id,
       situacao: avaliacao?.situacao === 'sem_avaliar' ? 'em_aberto' : avaliacao?.situacao ?? 'em_aberto',
-      // Após a NF-e, "Valor de Quitação" e "Valor de Fechamento" ficam congelados (não são regravados).
+      // Após a NF-e ou a aprovação da aquisição, "Valor de Quitação" e "Valor de Fechamento" ficam congelados (não são regravados).
       ...(!nfeCompraEmitida ? { valor_quitacao: parseCurrencyToNumber(valorQuitacao) } : {}),
-      ...(!nfeCompraEmitida && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
+      ...(!valorFechamentoTravado && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
     };
 
     const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
@@ -902,6 +905,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const precisaAprovacao = context === 'pos_compra' && isTipoPropria(avaliacao?.tipo_aquisicao) && !ehTrocaPosCompra;
   const aguardandoAprovacao = precisaAprovacao && apSt !== 'aprovada' && apSt !== 'recusada';
   const aprovado = precisaAprovacao && apSt === 'aprovada';
+  // Valor de Fechamento congela após a aquisição ser aprovada (troca já nasce aprovada
+  // junto com a venda) ou após a NF-e de compra emitida — o que ocorrer primeiro.
+  const valorFechamentoTravado = nfeCompraEmitida || apSt === 'aprovada';
   // Remoção de documento travada: aquisição aprovada (inclui troca auto-aprovada
   // junto com a venda) OU NF-e em produção. Anexar documento ausente segue liberado.
   const docRemocaoTravada = apSt === 'aprovada' || nfeEmitidaProducao;
@@ -1552,9 +1558,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             </CardHeader>
             <CardContent>
               <StatusTimeline history={history} formatLabel={(raw) => {
-                const remap: Record<string, string> = { vendido: 'adquirida', aprovada: 'aprovada', recusada: 'recusada', contrato_compra_gerado: 'CONTRATO GERADO', nfe_compra_emitida: 'NF-e emitida', nfe_consignacao_emitida: 'NF-e emitida', 'Em Andamento': 'Pós-Compra em andamento', em_andamento: 'Pós-Compra em andamento' };
-                const mapped = remap[raw] || raw;
-                return mapped.replace(/_/g, ' ').replace(/\bavaliacao\b/gi, 'avaliação');
+                const remap: Record<string, string> = { vendido: 'adquirida', aprovada: 'aprovada', recusada: 'recusada', contrato_compra_gerado: 'CONTRATO GERADO', 'Em Andamento': 'Pós-Compra em andamento', em_andamento: 'Pós-Compra em andamento' };
+                return remap[raw] || defaultFormatStatusLabel(raw);
               }} renderPopupExtra={(h) => {
                 if (h.observacoes) {
                   return (
@@ -1703,7 +1708,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
               </div>
             )}
             {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && (
-              <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} disabled={nfeCompraEmitida} />
+              <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} disabled={valorFechamentoTravado} />
             )}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Classificação da Moto <span className="text-destructive">*</span></Label>

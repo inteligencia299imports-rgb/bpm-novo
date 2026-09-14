@@ -27,7 +27,7 @@ const NF_TROCA = 'NF-E DE ENTRADA (TROCA)';
 // (checkbox manual); moto 0km encerra em "ATPV-E" (emitido via RENAVE).
 const TRANSF_FINALIZADA = 'TRANSFERÊNCIA FINALIZADA';
 const ATPV_E = 'ATPV-E';
-// Intermediação Parte 2 (moto consignada vendida) — devolução simbólica ao
+// Intermediação Parte 1 (moto consignada vendida) — devolução simbólica ao
 // consignante + compra, antes de liberar o resto do processo de transferência.
 // Reaparece aqui (era um botão solto na avaliação) porque é literalmente uma
 // etapa do processo — mesmo padrão das etapas de NF-e acima.
@@ -129,8 +129,12 @@ const ProcessoDialog: React.FC<Props> = ({
 
   const eh0km = estoqueMoto?.fonte === '0km';
   const tipoVenda = eh0km ? 'venda_0km' : 'venda_seminova';
+  // Intermediação Parte 1 também tem a etapa NF-E DE VENDA no checklist
+  // (mesmo padrão do Pós-Venda) — precisa do mesmo contexto (estoque/contrato/
+  // NF-e) mesmo fora do fluxo normal (customEtapas).
+  const hasNfVendaEtapa = isPosVenda || (customEtapas || []).includes(NF_VENDA);
 
-  const nfeVenda = useNfeCompra(isPosVenda ? atendimentoId : '', open && isPosVenda, tipoVenda, 'atendimento');
+  const nfeVenda = useNfeCompra(hasNfVendaEtapa ? atendimentoId : '', open && hasNfVendaEtapa, tipoVenda, 'atendimento');
   const nfeTroca = useNfeCompra(trocaAvaliacaoId, open && !!trocaAvaliacaoId, 'compra', 'avaliacao');
 
   const podeEmitirNfeVenda =
@@ -198,7 +202,7 @@ const ProcessoDialog: React.FC<Props> = ({
         }
       }
 
-      if (isPosVenda) {
+      if (isPosVenda || hasNfVendaEtapa) {
         const [{ data: at }, { data: mi }, { data: contratos }] = await Promise.all([
           supabase.from('atendimentos_motos').select('interesse').eq('id', atendimentoId).maybeSingle(),
           supabase.from('motos_interesse').select('estoque_moto_id, estoque_tipo').eq('atendimento_id', atendimentoId)
@@ -221,29 +225,35 @@ const ProcessoDialog: React.FC<Props> = ({
           estMoto = em ? { ...(em as any), fonte: eh0km ? '0km' : 'seminova' } : null;
         }
 
-        if (inter === 'trocar') {
-          const { data: tav } = await supabase
-            .from('avaliacoes')
-            .select('id')
-            .eq('atendimento_id', atendimentoId)
-            .in('tipo_aquisicao', TIPOS_PROPRIA)
-            .in('situacao', ['adquirida', 'estoque'])
-            .limit(1)
-            .maybeSingle();
-          trocaAvId = (tav as any)?.id ?? '';
-        }
+        // Detecção de troca e injeção de NF_VENDA/NF_TROCA na lista de etapas:
+        // só no Pós-Venda normal (etapas dinâmicas). Na Intermediação a
+        // etapa NF-E DE VENDA já vem fixa em customEtapas, e o item é sempre
+        // consignada (nunca troca).
+        if (isPosVenda) {
+          if (inter === 'trocar') {
+            const { data: tav } = await supabase
+              .from('avaliacoes')
+              .select('id')
+              .eq('atendimento_id', atendimentoId)
+              .in('tipo_aquisicao', TIPOS_PROPRIA)
+              .in('situacao', ['adquirida', 'estoque'])
+              .limit(1)
+              .maybeSingle();
+            trocaAvId = (tav as any)?.id ?? '';
+          }
 
-        if (estMoto?.fonte === '0km') {
-          // Moto 0km encerra o pós-venda no ATPV-e (RENAVE), não na transferência.
-          const i = names.indexOf(TRANSF_FINALIZADA);
-          if (i >= 0) names[i] = ATPV_E;
-        }
+          if (estMoto?.fonte === '0km') {
+            // Moto 0km encerra o pós-venda no ATPV-e (RENAVE), não na transferência.
+            const i = names.indexOf(TRANSF_FINALIZADA);
+            if (i >= 0) names[i] = ATPV_E;
+          }
 
-        if (estMoto) {
-          const anchor = names.indexOf('VISTORIA');
-          const pos = anchor >= 0 ? anchor + 1 : names.length;
-          names.splice(pos, 0, NF_VENDA);
-          if (inter === 'trocar' && trocaAvId) names.splice(pos, 0, NF_TROCA);
+          if (estMoto) {
+            const anchor = names.indexOf('VISTORIA');
+            const pos = anchor >= 0 ? anchor + 1 : names.length;
+            names.splice(pos, 0, NF_VENDA);
+            if (inter === 'trocar' && trocaAvId) names.splice(pos, 0, NF_TROCA);
+          }
         }
       }
 
@@ -278,9 +288,9 @@ const ProcessoDialog: React.FC<Props> = ({
 
   // Carrega a NF-e ao abrir.
   useEffect(() => {
-    if (open && isPosVenda) nfeVenda.carregar();
+    if (open && hasNfVendaEtapa) nfeVenda.carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, atendimentoId, isPosVenda]);
+  }, [open, atendimentoId, hasNfVendaEtapa]);
   useEffect(() => {
     if (open && trocaAvaliacaoId) nfeTroca.carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -523,7 +533,13 @@ const ProcessoDialog: React.FC<Props> = ({
               const isAtpvAuto = isAtpv && is0km;   // 0km: emitido via RENAVE (sem checkbox)
               const isConverterConsignacao = e.etapa === CONVERTER_CONSIGNACAO;
               const isNf = isNfVenda || isNfTroca || isAtpvAuto || isConverterConsignacao;
-              const nfeObj = isNfVenda ? nfeVenda : isNfTroca ? nfeTroca : null;
+              // Converter Consignação em Compra encadeia duas NF-e (devolução simbólica,
+              // depois compra) — "a NF-e ativa" é a devolução enquanto ela não estiver
+              // autorizada em produção, senão a compra (mesmo padrão de emissão/pendente/
+              // erro das outras etapas de NF-e, ver isNfVenda/isNfTroca acima).
+              const devolucaoConvProducaoOk = nfeDevolucaoConv.emitida && nfeDevolucaoConv.nfe?.ambiente === 'producao';
+              const nfeConverterAtiva = devolucaoConvProducaoOk ? nfeCompraConv : nfeDevolucaoConv;
+              const nfeObj = isNfVenda ? nfeVenda : isNfTroca ? nfeTroca : isConverterConsignacao ? nfeConverterAtiva : null;
               const nfMarcada = isAtpvAuto
                 ? atpvEmitido
                 : isConverterConsignacao
@@ -563,6 +579,12 @@ const ProcessoDialog: React.FC<Props> = ({
                       <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
                         <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                         {nfeTroca.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
+                      </p>
+                    )}
+                    {isConverterConsignacao && nfeConverterAtiva.erro && (
+                      <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                        {nfeConverterAtiva.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
                       </p>
                     )}
                   </div>
@@ -649,7 +671,14 @@ const ProcessoDialog: React.FC<Props> = ({
                   ) : isConverterConsignacao ? (
                     converterConcluido ? (
                       <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
-                        <Button size="sm" className="h-7 gap-1" onClick={() => setConverterConsignacaoOpen(true)}>
+                        <Button
+                          variant={nfeCompraConv.erro ? 'outline' : 'default'} size="sm"
+                          className={cn(
+                            'h-7 gap-1',
+                            nfeCompraConv.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : nfeBotaoClasse(nfeCompraConv.nfe),
+                          )}
+                          onClick={() => setConverterConsignacaoOpen(true)}
+                        >
                           <ArrowLeftRight className="h-3.5 w-3.5" /> Compra
                         </Button>
                         <CalendarIcon className="h-4 w-4 shrink-0" />
@@ -664,9 +693,28 @@ const ProcessoDialog: React.FC<Props> = ({
                       >
                         Aguardando NF de consignação em produção
                       </span>
+                    ) : nfeConverterAtiva.pendente ? (
+                      <>
+                        <Badge variant="outline" className="gap-1.5 text-xs">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Emitindo NF-e…
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="h-9 gap-1.5" disabled={nfeConverterAtiva.loading} onClick={nfeConverterAtiva.consultar}>
+                          <RefreshCw className={`h-4 w-4 ${nfeConverterAtiva.loading ? 'animate-spin' : ''}`} /> Atualizar
+                        </Button>
+                      </>
+                    ) : nfeConverterAtiva.erro ? (
+                      <Button
+                        variant="outline" size="sm"
+                        className="h-9 gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={nfeConverterAtiva.loading}
+                        onClick={() => setConverterConsignacaoOpen(true)}
+                      >
+                        <RefreshCw className="h-4 w-4" /> Tentar novamente
+                      </Button>
                     ) : (
                       <Button
-                        variant="default" size="sm" className="h-9 gap-2 text-sm"
+                        variant="default" size="sm"
+                        className={cn('h-9 gap-2 text-sm', nfeBotaoClasse(nfeConverterAtiva.nfe))}
                         onClick={() => setConverterConsignacaoOpen(true)}
                       >
                         <ArrowLeftRight className="h-4 w-4" /> Converter em Compra

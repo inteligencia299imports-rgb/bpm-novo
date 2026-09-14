@@ -1,18 +1,23 @@
 /**
  * Helpers for tipo_aquisicao classification.
  * repasse behaves like própria for all workflow purposes.
+ * 'convertida' (moto de consignação que virou compra) NÃO existe mais como
+ * transição — decisão de negócio: continua tratada como 'consignada' em tudo
+ * (taxa fixa, KPIs de relatório, aprovação). O valor pode aparecer em
+ * registros legados; tratamos como não-própria (mesmo comportamento de
+ * 'consignada') se aparecer.
  */
 
-/** Returns true if the tipo behaves like 'própria' (própria, convertida, repasse) */
+/** Returns true if the tipo behaves like 'própria' (própria, repasse) */
 export const isTipoPropria = (tipo: string | null | undefined): boolean =>
-  !!tipo && ['propria', 'convertida', 'repasse'].includes(tipo);
+  !!tipo && ['propria', 'repasse'].includes(tipo);
 
-/** Returns true if the tipo is 'consignada' */
+/** Returns true if the tipo is 'consignada' (inclui o legado 'convertida') */
 export const isTipoConsignada = (tipo: string | null | undefined): boolean =>
-  tipo === 'consignada';
+  tipo === 'consignada' || tipo === 'convertida';
 
 /** All tipo_aquisicao values that behave like própria (for DB queries) */
-export const TIPOS_PROPRIA = ['propria', 'convertida', 'repasse'];
+export const TIPOS_PROPRIA = ['propria', 'repasse'];
 
 /** All tipo_aquisicao values for NPS/listing queries */
 export const TODOS_TIPOS_AQUISICAO = ['propria', 'consignada', 'repasse'];

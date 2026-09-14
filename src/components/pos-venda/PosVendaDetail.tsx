@@ -30,7 +30,7 @@ import AtpvDialog from './AtpvDialog';
 import ContratoDialog from '@/components/showroom/ContratoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
-import StatusTimeline from '@/components/shared/StatusTimeline';
+import StatusTimeline, { defaultFormatStatusLabel } from '@/components/shared/StatusTimeline';
 import { formatPersonName, firstLastName, cn, formatDataNascimento } from '@/lib/utils';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { processarCnhAnexada, upsertCnhDoc, docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket, ehPessoaJuridica } from '@/lib/cnhAnexo';
@@ -119,13 +119,13 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar'; motivo: string } | null>(null);
   const [savingAprovacao, setSavingAprovacao] = useState(false);
   const atAprov = { situacao: item.situacao, venda_aprovacao_status: vendaAprovStatus };
-  // Parte 1 da intermediação (relação com o consignante) não passa pela aprovação
+  // Parte 2 da intermediação (relação com o consignante) não passa pela aprovação
   // de venda do master — sem selo, sem bloqueio, sem botões Aprovar/Recusar.
-  const isIntermParte1 = !!processoProps?.showContratoConsignante;
-  const souMaster = podeAprovarVenda(role) && !isIntermParte1;
-  const bloqueadoAprovacao = !isIntermParte1 && !vendaLiberada(atAprov);
+  const isIntermParte2 = !!processoProps?.showContratoConsignante;
+  const souMaster = podeAprovarVenda(role) && !isIntermParte2;
+  const bloqueadoAprovacao = !isIntermParte2 && !vendaLiberada(atAprov);
   // PJ -> documento de identificação é o Cartão CNPJ (não a CNH). O documento
-  // da Parte 1 é do proprietário/consignante; nas demais telas, do comprador.
+  // da Parte 2 é do proprietário/consignante; nas demais telas, do comprador.
   const compradorPj = ehPessoaJuridica((item as any)?.cliente);
   const docCompradorLabel = docIdentificacaoLabel(compradorPj);
   // NF-e em produção → só bloqueia REMOÇÃO de documento (anexar ausente continua ok).
@@ -175,7 +175,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [estoqueCrlvUrls, setEstoqueCrlvUrls] = useState<Record<string, string | null>>({});
   const cols = statusColumns || POS_VENDA_COLUMNS;
   const normalStatus = (item as any)[statusField] || 'em_aberto';
-  const colValue = isIntermParte1
+  const colValue = isIntermParte2
     ? normalStatus
     : vendaAprovStatus === 'recusada'
       ? normalStatus
@@ -186,7 +186,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           : normalStatus;
   const statusCol = cols.find(c => c.value === colValue);
   const int = INTERESSES.find(i => i.value === item.interesse);
-  const displayClient = isIntermParte1 && proprietario ? proprietario : item;
+  const displayClient = isIntermParte2 && proprietario ? proprietario : item;
   const displayName = formatPersonName(displayClient.cliente?.nome_razao_social || '');
   const displayPhone = displayClient.cliente?.telefone || '';
   const whatsappUrl = displayPhone ? `https://wa.me/55${displayPhone.replace(/\D/g, '')}` : '';
@@ -406,13 +406,13 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       });
       setAvaliacoes(avalMap);
 
-      // Set avaliador name from first avaliação (for non-parte1 intermediação)
+      // Set avaliador name from first avaliação (for non-parte2 intermediação)
       if (!processoProps?.showContratoConsignante) {
         const firstAval = Object.values(avalMap)[0] as any;
         if (firstAval?.avaliador_nome) setAvaliadorNome(firstAval.avaliador_nome);
       }
 
-      // Step 3: Consignada owner (Intermediação Parte 1) - single query with joins
+      // Step 3: Consignada owner (Intermediação Parte 2) - single query with joins
       if (processoProps?.showContratoConsignante) {
         const consignadaEstoque = Object.values(estoqueMap).find((e: any) => e.tipo === 'consignada');
         if (consignadaEstoque?.avaliacao_id) {
@@ -457,8 +457,14 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
       // Histórico de movimentações do atendimento (timeline completa: showroom +
       // pós-venda + contrato consignante, e avaliação/consulta/pós-compra/consignação
-      // das motos do cliente).
-      const avIds = (motosAv || []).map((m: any) => m.id).filter(Boolean);
+      // das motos do cliente). Moto consignada sendo vendida (Intermediação): a
+      // avaliação dela pertence ao atendimento do CONSIGNANTE, não ao desta venda
+      // — motosAv (eq. atendimento_id = item.id) não pega; soma via estoqueMap.
+      const consignadaAvaliacaoId = Object.values(estoqueMap).find((e: any) => e.tipo === 'consignada')?.avaliacao_id;
+      const avIds = [...new Set([
+        ...(motosAv || []).map((m: any) => m.id).filter(Boolean),
+        ...(consignadaAvaliacaoId ? [consignadaAvaliacaoId] : []),
+      ])];
       const [{ data: histAt }, { data: histAv }] = await Promise.all([
         supabase.from('status_history').select('*')
           .eq('entity_id', item.id)
@@ -482,7 +488,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   }
 
   // Contratos abrem como página (não como pop-up).
-  if (!isIntermParte1 && contratoOpen) {
+  if (!isIntermParte2 && contratoOpen) {
     return (
       <ContratoDialog
         open
@@ -495,7 +501,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       />
     );
   }
-  if (!isIntermParte1 && nfeVendaOpen) {
+  if (!isIntermParte2 && nfeVendaOpen) {
     return (
       <ContratoDialog
         open
@@ -509,7 +515,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       />
     );
   }
-  if (!isIntermParte1 && atpvOpen) {
+  if (!isIntermParte2 && atpvOpen) {
     return (
       <AtpvDialog
         open
@@ -520,7 +526,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       />
     );
   }
-  if (!isIntermParte1 && trocaNfeAval) {
+  if (!isIntermParte2 && trocaNfeAval) {
     return (
       <ContratoCompraDialog
         open
@@ -530,7 +536,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
       />
     );
   }
-  if (isIntermParte1 && contratoConsignanteOpen) {
+  if (isIntermParte2 && contratoConsignanteOpen) {
     return (
       <ContratoConsignanteDialog
         open
@@ -571,17 +577,17 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 )}
               </>
             )}
-            {!bloqueadoAprovacao && isIntermParte1 && (
+            {!bloqueadoAprovacao && isIntermParte2 && (
               <Button size="sm" variant="outline" onClick={() => setContratoConsignanteOpen(true)} className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10">
                 <DollarSign className="h-4 w-4" /> Pagamento
               </Button>
             )}
-            {!isIntermParte1 && (
+            {!isIntermParte2 && (
               <Button size="sm" variant="outline" onClick={() => setContratoOpen(true)} className="gap-1.5">
                 <FileText className="h-4 w-4" /> Proposta
               </Button>
             )}
-            {!bloqueadoAprovacao && !isIntermParte1 && (
+            {!bloqueadoAprovacao && !isIntermParte2 && (
               <Button size="sm" variant="outline" onClick={openEntrega} className="gap-1.5">
                 <Truck className="h-4 w-4" /> Entrega
               </Button>
@@ -603,7 +609,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" /> {isIntermParte1 ? 'Dados do Proprietário' : 'Dados do Cliente'}
+                <User className="h-4 w-4 text-primary" /> {isIntermParte2 ? 'Dados do Proprietário' : 'Dados do Cliente'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -620,16 +626,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                     )}
                   </div>
                 </div>
-                {!isIntermParte1 && <InfoItem label="Sexo" value={displayClient.cliente?.sexo} />}
-                {!isIntermParte1 && <InfoItem label="Data de Nascimento" value={formatDataNascimento((displayClient.cliente as any)?.data_nascimento)} />}
-                {!isIntermParte1 && <InfoItem label="UF" value={displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.uf} />}
-                {isIntermParte1 && proprietario?.loja && <InfoItem label="Loja" value={proprietario.loja} />}
+                {!isIntermParte2 && <InfoItem label="Sexo" value={displayClient.cliente?.sexo} />}
+                {!isIntermParte2 && <InfoItem label="Data de Nascimento" value={formatDataNascimento((displayClient.cliente as any)?.data_nascimento)} />}
+                {!isIntermParte2 && <InfoItem label="UF" value={displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.uf} />}
+                {isIntermParte2 && proprietario?.loja && <InfoItem label="Loja" value={proprietario.loja} />}
                 {displayClient.cliente?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj(displayClient.cliente.cpf_cnpj)} />}
                 {displayClient.cliente?.email && <InfoItem label="E-mail" value={displayClient.cliente.email} />}
                 {displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.cep && <InfoItem label="CEP" value={formatCep(displayClient.cliente.clientes_fornecedores_enderecos[0].cep)} />}
                 {displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.logradouro && <InfoItem label="Endereço" value={formatPersonName(displayClient.cliente.clientes_fornecedores_enderecos[0].logradouro)} />}
               </div>
-              {!isIntermParte1 && (item as any).cliente_id && (
+              {!isIntermParte2 && (item as any).cliente_id && (
                 <>
                   <Separator className="my-2" />
                   <DocumentUpload
@@ -647,8 +653,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </CardContent>
           </Card>
 
-          {/* Dados do Atendimento - hidden for Intermediação Parte 1 */}
-          {!isIntermParte1 && (
+          {/* Dados do Atendimento - hidden for Intermediação Parte 2 */}
+          {!isIntermParte2 && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -668,8 +674,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </Card>
           )}
 
-          {/* Dados da Moto - for Intermediação Parte 1 (same layout as consignação) */}
-          {isIntermParte1 && motoConsignada && (
+          {/* Dados da Moto - for Intermediação Parte 2 (same layout as consignação) */}
+          {isIntermParte2 && motoConsignada && (
             <Card className="flex flex-col">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -798,8 +804,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </Card>
           )}
 
-          {/* Moto de Interesse (a moto vendida do estoque) - hidden for Intermediação Parte 1 */}
-          {!isIntermParte1 && motosInteresse.length > 0 && (
+          {/* Moto de Interesse (a moto vendida do estoque) - hidden for Intermediação Parte 2 */}
+          {!isIntermParte2 && motosInteresse.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -1002,7 +1008,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               ) : (
                 <StatusTimeline
                   history={history}
-                  formatLabel={(raw) => (raw === 'vendido' ? 'VENDA REALIZADA' : raw.replace(/_/g, ' '))}
+                  formatLabel={(raw) => (raw === 'vendido' ? 'venda realizada' : defaultFormatStatusLabel(raw))}
                   renderPopupExtra={(h) => h.observacoes ? (
                     <div>
                       <span className="text-xs text-muted-foreground">Observações</span>

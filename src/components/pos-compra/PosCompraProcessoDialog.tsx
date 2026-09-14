@@ -136,8 +136,6 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           : '',
       );
 
-      const tipoAquisicao = (avData as any)?.tipo_aquisicao;
-
       // Fetch consultation date
       const consultaRealizada = (avData as any)?.consulta_realizada === true;
       setConsultaRealizada(consultaRealizada);
@@ -154,17 +152,18 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         consultaDate = consultaHistory?.[0]?.created_at || null;
       }
 
-      // If convertida, fetch consignacao process dates to pre-fill matching etapas
+      // Moto que veio de consignação (mesmo continuando tipo_aquisicao='consignada'
+      // após a devolução+compra): busca as datas do processo de consignação pra
+      // pré-preencher as etapas equivalentes do pós-compra, evitando re-marcar o
+      // que já foi feito lá. Consulta sempre — vazio se nunca foi consignada.
       const consignacaoMap: Record<string, EtapaData> = {};
-      if (tipoAquisicao === 'convertida') {
-        const { data: consigData } = await supabase
-          .from('consignacao_processos' as any)
-          .select('etapa, concluida, data_conclusao')
-          .eq('avaliacao_id', avaliacaoId);
-        if (consigData) {
-          for (const d of consigData as any[]) {
-            consignacaoMap[d.etapa] = d as EtapaData;
-          }
+      const { data: consigData } = await supabase
+        .from('consignacao_processos' as any)
+        .select('etapa, concluida, data_conclusao')
+        .eq('avaliacao_id', avaliacaoId);
+      if (consigData) {
+        for (const d of consigData as any[]) {
+          consignacaoMap[d.etapa] = d as EtapaData;
         }
       }
 
@@ -178,8 +177,8 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       const built = ETAPAS.map(e => {
         // Existing pos_compra data takes priority
         if (map[e]) return map[e];
-        // For convertida, pull matching dates from consignação process
-        if (tipoAquisicao === 'convertida' && consignacaoMap[e] && consignacaoMap[e].concluida) {
+        // Se veio de consignação, pull matching dates from consignação process
+        if (consignacaoMap[e] && consignacaoMap[e].concluida) {
           return { etapa: e, concluida: true, data_conclusao: consignacaoMap[e].data_conclusao };
         }
         if (e === 'CONSULTA REALIZADA' && consultaRealizada) {

@@ -10,8 +10,8 @@ export type PosCompraStatus = 'aguardando_aprovacao' | 'aprovada' | 'em_aberto' 
 export type AprovacaoStatus = 'aguardando' | 'aprovada' | 'recusada';
 export type ConsignacaoStatus = 'em_aberto' | 'contrato_assinado' | 'pausado' | 'concluido';
 export type PreparacaoStatus = 'em_aberto' | 'pendente' | 'aguardando_aceite' | 'oficina' | 'servico_externo' | 'aguardando_liberacao_estoque' | 'estoque';
-export type IntermediacaoParte1Status = 'em_aberto' | 'em_andamento' | 'autorizacao_pagamento' | 'concluido';
-export type IntermediacaoParte2Status = 'aguardando_aprovacao' | 'aprovada' | 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
+export type IntermediacaoParte1Status = 'aguardando_aprovacao' | 'aprovada' | 'em_aberto' | 'em_andamento' | 'doc_despachante' | 'concluido';
+export type IntermediacaoParte2Status = 'em_aberto' | 'em_andamento' | 'autorizacao_pagamento' | 'concluido';
 
 // Colunas de aprovação da venda (venda_aprovacao_status), no início dos kanbans.
 const APROVACAO_VENDA_COLUMNS = [
@@ -26,22 +26,32 @@ export const POS_VENDA_COLUMNS: { value: PosVendaStatus; label: string; hex: str
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#b376c4' },
 ];
 
-// Parte 1 (relação com o consignante) não passa pela aprovação de venda do
+// Parte 2 (relação com o consignante) não passa pela aprovação de venda do
 // master — vai direto para "Em Aberto".
 export const INTERMEDIACAO_PARTE1_COLUMNS: { value: IntermediacaoParte1Status; label: string; hex: string }[] = [
-  { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
-  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
-  { value: 'autorizacao_pagamento', label: 'Autorização de Pagamento', hex: '#b376c4' },
-];
-
-export const INTERMEDIACAO_PARTE2_COLUMNS: { value: IntermediacaoParte2Status; label: string; hex: string }[] = [
   ...APROVACAO_VENDA_COLUMNS,
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#b376c4' },
 ];
 
+export const INTERMEDIACAO_PARTE2_COLUMNS: { value: IntermediacaoParte2Status; label: string; hex: string }[] = [
+  { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
+  { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
+  { value: 'autorizacao_pagamento', label: 'Autorização de Pagamento', hex: '#b376c4' },
+];
+
 export const INTERMEDIACAO_PARTE1_ETAPAS = [
+  'DEVOLUÇÃO SIMBÓLICA / COMPRA',
+  'NF-E DE VENDA',
+  'DOC. FORMALIZADO',
+  'DOCUMENTAÇÃO COM DESPACHANTE',
+  'DOC. OUTRA UF',
+  'PENDENTE (BOLETO)',
+  'TRANSFERÊNCIA FINALIZADA',
+];
+
+export const INTERMEDIACAO_PARTE2_ETAPAS = [
   'CHECK-LIST',
   'VISTORIA',
   'ENTREGA DA MOTO',
@@ -50,15 +60,6 @@ export const INTERMEDIACAO_PARTE1_ETAPAS = [
   'COMUNICADO DE VENDA',
   'AUTORIZAÇÃO DE PAGAMENTO',
   'PREVISÃO DE PAGAMENTO',
-];
-
-export const INTERMEDIACAO_PARTE2_ETAPAS = [
-  'DEVOLUÇÃO SIMBÓLICA / COMPRA',
-  'DOC. FORMALIZADO',
-  'DOCUMENTAÇÃO COM DESPACHANTE',
-  'DOC. OUTRA UF',
-  'PENDENTE (BOLETO)',
-  'TRANSFERÊNCIA FINALIZADA',
 ];
 
 export const POS_COMPRA_COLUMNS: { value: PosCompraStatus; label: string; hex: string }[] = [

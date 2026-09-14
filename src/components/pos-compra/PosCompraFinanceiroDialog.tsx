@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Trash2, Loader2, DollarSign, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 
 interface Props {
   open: boolean;
@@ -34,6 +35,11 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [saving, setSaving] = useState(false);
   const [valorFechamento, setValorFechamento] = useState('');
   const [custosOficina, setCustosOficina] = useState<any[]>([]);
+  const [aprovacaoStatus, setAprovacaoStatus] = useState<string | null>(null);
+  const { emitida: nfeEmitida } = useNfeEmitida(open ? avaliacaoId : null, 'avaliacao');
+  // Mesma trava do AvaliacaoForm: após aprovada a aquisição ou emitida a NF-e de
+  // compra, o Valor de Fechamento fica congelado (não é regravado).
+  const valorFechamentoTravado = aprovacaoStatus === 'aprovada' || nfeEmitida;
 
   // New cost form
   const [newResp, setNewResp] = useState('Cliente');
@@ -51,7 +57,7 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const loadData = async () => {
     setLoading(true);
     const [{ data: avData }, { data: custosData }] = await Promise.all([
-      supabase.from('avaliacoes').select('valor_fechamento').eq('id', avaliacaoId).maybeSingle(),
+      supabase.from('avaliacoes').select('valor_fechamento, aprovacao_status').eq('id', avaliacaoId).maybeSingle(),
       supabase.from('custos_oficina').select('*').eq('avaliacao_id', avaliacaoId).order('created_at'),
     ]);
 
@@ -60,6 +66,7 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     } else {
       setValorFechamento('');
     }
+    setAprovacaoStatus((avData as any)?.aprovacao_status ?? null);
     setCustosOficina(custosData || []);
     setLoading(false);
   };
@@ -108,8 +115,10 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
 
   const handleSave = async () => {
     setSaving(true);
-    const newVf = parseCurrencyInput(valorFechamento);
-    await supabase.from('avaliacoes').update({ valor_fechamento: newVf || null } as any).eq('id', avaliacaoId);
+    if (!valorFechamentoTravado) {
+      const newVf = parseCurrencyInput(valorFechamento);
+      await supabase.from('avaliacoes').update({ valor_fechamento: newVf || null } as any).eq('id', avaliacaoId);
+    }
     toast.success('Resumo financeiro salvo!');
     setSaving(false);
     onOpenChange(false);
@@ -136,7 +145,7 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Valor de Fechamento</h3>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                  <Input className="pl-10" placeholder="0,00" value={valorFechamento} onChange={e => setValorFechamento(formatCurrencyInput(e.target.value))} inputMode="numeric" />
+                  <Input className="pl-10" placeholder="0,00" value={valorFechamento} onChange={e => setValorFechamento(formatCurrencyInput(e.target.value))} inputMode="numeric" disabled={valorFechamentoTravado} />
                 </div>
               </div>
 
