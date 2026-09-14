@@ -143,10 +143,13 @@ const ProcessoDialog: React.FC<Props> = ({
   const etapaNames = useMemo(() => {
     if (customEtapas) return customEtapas;
     const names = [...DEFAULT_ETAPAS];
-    // Moto 0km: a última etapa é o ATPV-e (RENAVE) no lugar da transferência.
+    // Moto 0km: o ATPV-e (RENAVE) entra no lugar da transferência, antes do
+    // PENDENTE (BOLETO).
     if (eh0km) {
       const i = names.indexOf(TRANSF_FINALIZADA);
-      if (i >= 0) names[i] = ATPV_E;
+      if (i >= 0) names.splice(i, 1);
+      const p = names.indexOf('PENDENTE (BOLETO)');
+      names.splice(p >= 0 ? p : names.length, 0, ATPV_E);
     }
     if (estoqueMoto) {
       // NF-e depois da VISTORIA. Quando há troca, a NF-e de entrada (troca) vem
@@ -243,9 +246,12 @@ const ProcessoDialog: React.FC<Props> = ({
           }
 
           if (estMoto?.fonte === '0km') {
-            // Moto 0km encerra o pós-venda no ATPV-e (RENAVE), não na transferência.
+            // Moto 0km: ATPV-e (RENAVE) no lugar da transferência, antes do
+            // PENDENTE (BOLETO).
             const i = names.indexOf(TRANSF_FINALIZADA);
-            if (i >= 0) names[i] = ATPV_E;
+            if (i >= 0) names.splice(i, 1);
+            const p = names.indexOf('PENDENTE (BOLETO)');
+            names.splice(p >= 0 ? p : names.length, 0, ATPV_E);
           }
 
           if (estMoto) {
