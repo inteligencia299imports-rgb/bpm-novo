@@ -248,7 +248,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
               value={
                 nfLoading ? 'Carregando…'
                   : !nfVenda ? 'Não emitida'
-                    : `Nº ${nfVenda.numero || '—'} / série ${nfVenda.serie || '—'} — ${nfAutorizada ? 'autorizada' : nfVenda.status}`
+                    : `Nº ${nfVenda.numero || '—'} / Série ${nfVenda.serie || '—'}`
               }
             />
           </CardContent>
