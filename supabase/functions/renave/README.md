@@ -23,6 +23,29 @@ Registro Nacional de Veículos em Estoque. Fluxo de moto **0km** da concessioná
 | `saida` | `{ estoque_moto_nova_id, atendimento_id }` → exige `renave_id_estoque` e a NF-e de venda 0km autorizada em produção. Resolve o município IBGE do comprador (`GET /api/municipios`), chama `POST /api/notas-fiscais` VENDA + `POST /api/saidas-estoque-veiculo-zero-km` (gera o ATPV-e), busca o PDF (`GET /api/pdf-atpv?chassi=`) e sobe em `moto-fotos/renave/atpv/<id>.pdf`. |
 | `atpv-pdf` | `{ chassi }` → rebusca o PDF/XML do ATPV-e. |
 
+## Log/auditoria — `renave_chamadas`
+
+Toda chamada HTTP feita ao RENAVE-WS é gravada em `renave_chamadas` (migration
+`20260914150000_renave_chamadas.sql`), uma linha por chamada — uma ação da UI
+pode gerar várias (ex.: `saida` chama municípios + notas-fiscais + saída de
+estoque + PDF do ATPV → 4 linhas, todas com `operacao='saida'`).
+
+Colunas: `chassi`, `estoque_moto_nova_id`, `operacao` (a ação: cliente/
+pendentes/entrada/saida/atpv-pdf), `endpoint`, `metodo`, `request_body`,
+`status_http`, `sucesso`, `response_body`, `erro_mensagem`, `usuario_id`,
+`created_at`. RLS: leitura livre pra autenticado, escrita só via service role
+(edge function) — não editável/apagável pela UI.
+
+Implementado em `renave.ts`: cada função exportada aceita um `ctx?:
+RenaveLogCtx` opcional (`{ admin, chassi, estoqueMotoNovaId, operacao,
+usuarioId }`) como último parâmetro — `index.ts` monta esse `ctx` uma vez por
+ação (assim que o chassi é conhecido) e passa pra cada chamada RENAVE dentro
+daquele bloco. Logar é best-effort (try/catch) — uma falha ao gravar o log
+nunca derruba a chamada real ao RENAVE.
+
+Consulta rápida do histórico de um veículo: `select * from renave_chamadas
+where chassi = '...' order by created_at desc;`
+
 ## Catálogo de endpoints RENAVE-WS (grupo Estabelecimento)
 
 Tabela oficial do SERPRO (RENAVE-WS, grupo "Estabelecimento" — CE 20),

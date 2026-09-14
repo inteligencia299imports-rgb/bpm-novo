@@ -5,6 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   clienteAutenticado, pendentesEntrada, entrarEstoqueZeroKm, enviarNotaFiscal,
   consultarEstoque, municipios, sairEstoqueZeroKm, pdfAtpvPorChassi, erroRenave,
+  type RenaveLogCtx,
 } from './renave.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
@@ -52,12 +53,14 @@ Deno.serve(async (req) => {
 
   try {
     if (acao === 'cliente') {
-      const r = await clienteAutenticado();
+      const ctx: RenaveLogCtx = { admin, operacao: acao, usuarioId: caller.id };
+      const r = await clienteAutenticado(ctx);
       return json({ status: r.status, cliente: r.body });
     }
 
     if (acao === 'pendentes') {
-      const r = await pendentesEntrada(body.chassi);
+      const ctx: RenaveLogCtx = { admin, operacao: acao, chassi: body.chassi, usuarioId: caller.id };
+      const r = await pendentesEntrada(body.chassi, ctx);
       return json({ status: r.status, pendentes: r.body });
     }
 
@@ -85,6 +88,8 @@ Deno.serve(async (req) => {
       const valorCompra = Number(body.valor_compra ?? nfCompra.valor_total ?? tag(xml, 'vNF') ?? 0);
       if (!valorCompra) return json({ error: 'valorCompra não determinado.' }, 409);
 
+      const ctx: RenaveLogCtx = { admin, operacao: acao, chassi, estoqueMotoNovaId: emnId, usuarioId: caller.id };
+
       const agora = new Date().toISOString();
       const r = await entrarEstoqueZeroKm({
         chassi: chassi.toUpperCase().replace(/\s/g, ''),
@@ -94,7 +99,7 @@ Deno.serve(async (req) => {
         dataHoraMedicaoHodometro: body.data_hora_medicao_hodometro || agora,
         quilometragemHodometro: Number.isFinite(Number(body.quilometragem_hodometro)) ? Number(body.quilometragem_hodometro) : 0,
         cpfOperadorResponsavel: body.cpf_operador ? String(body.cpf_operador).replace(/\D/g, '') : undefined,
-      });
+      }, ctx);
 
       if (r.status !== 201 && r.status !== 200) {
         await persistir(admin, emnId, { renave_ultimo_erro: erroRenave(r) });
@@ -115,7 +120,7 @@ Deno.serve(async (req) => {
 
       // Vincula a NF de compra ao estoque (best-effort).
       if (est.id) {
-        const nf = await enviarNotaFiscal(soChave(nfCompra.chave_nfe), 'COMPRA', est.id);
+        const nf = await enviarNotaFiscal(soChave(nfCompra.chave_nfe), 'COMPRA', est.id, ctx);
         if (nf.status >= 400) console.warn('renave notas-fiscais COMPRA:', erroRenave(nf));
       }
 
@@ -131,6 +136,8 @@ Deno.serve(async (req) => {
       const { data: emn } = await admin.from('estoque_motos_novas')
         .select('id, chassi, renave_id_estoque, renave_placa, renave_renavam').eq('id', emnId).maybeSingle();
       if (!emn?.renave_id_estoque) return json({ error: 'Este 0km ainda não tem entrada no RENAVE.' }, 409);
+
+      const ctx: RenaveLogCtx = { admin, operacao: acao, chassi: emn.chassi, estoqueMotoNovaId: emnId, usuarioId: caller.id };
 
       // NF-e de venda 0km autorizada em produção.
       const { data: nfVenda } = await admin.from('nfe_entradas')
@@ -152,7 +159,7 @@ Deno.serve(async (req) => {
 
       let codigoMunicipio: number | undefined = body.codigo_municipio ? Number(body.codigo_municipio) : undefined;
       if (!codigoMunicipio && end.cidade && end.uf) {
-        const mun = await municipios(end.cidade, end.uf);
+        const mun = await municipios(end.cidade, end.uf, ctx);
         const norm = (s: string) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
         const hit = Array.isArray(mun.body) ? mun.body.find((m: any) => norm(m.nome) === norm(end.cidade)) || mun.body[0] : null;
         if (hit?.id) codigoMunicipio = Number(hit.id);
@@ -163,7 +170,7 @@ Deno.serve(async (req) => {
       const chaveVenda = soChave(nfVenda.chave_nfe);
 
       // Vincula a NF de venda ao estoque.
-      const nfLink = await enviarNotaFiscal(chaveVenda, 'VENDA', emn.renave_id_estoque);
+      const nfLink = await enviarNotaFiscal(chaveVenda, 'VENDA', emn.renave_id_estoque, ctx);
       if (nfLink.status >= 400) console.warn('renave notas-fiscais VENDA:', erroRenave(nfLink));
 
       const r = await sairEstoqueZeroKm({
@@ -187,7 +194,7 @@ Deno.serve(async (req) => {
             complemento: end.complemento || undefined,
           },
         },
-      });
+      }, ctx);
       if (r.status !== 200 && r.status !== 201) {
         await persistir(admin, emnId, { renave_ultimo_erro: erroRenave(r) });
         return json({ error: erroRenave(r), status: r.status, detalhe: r.body }, 422);
@@ -203,7 +210,7 @@ Deno.serve(async (req) => {
       };
 
       // Busca o PDF do ATPV-e e guarda no storage.
-      const pdf = await pdfAtpvPorChassi(String(emn.chassi).toUpperCase());
+      const pdf = await pdfAtpvPorChassi(String(emn.chassi).toUpperCase(), ctx);
       if (pdf.status === 200 && pdf.body?.pdfAtpvBase64) {
         const bytes = Uint8Array.from(atob(pdf.body.pdfAtpvBase64), (c) => c.charCodeAt(0));
         const path = `renave/atpv/${emnId}.pdf`;
@@ -222,7 +229,8 @@ Deno.serve(async (req) => {
     if (acao === 'atpv-pdf') {
       const chassi = String(body.chassi || '').toUpperCase();
       if (!chassi) return json({ error: 'chassi é obrigatório' }, 400);
-      const r = await pdfAtpvPorChassi(chassi);
+      const ctx: RenaveLogCtx = { admin, operacao: acao, chassi, usuarioId: caller.id };
+      const r = await pdfAtpvPorChassi(chassi, ctx);
       if (r.status !== 200) return json({ error: erroRenave(r), status: r.status }, 422);
       return json({ ok: true, atpv: r.body });
     }

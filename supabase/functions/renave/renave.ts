@@ -7,12 +7,26 @@
 // cliente usa fetch normal (homolog).
 //
 // Base URL: RENAVE_BASE_URL (default: homolog estaleiro).
+//
+// Cada chamada é logada em `renave_chamadas` (best-effort — falha ao logar
+// nunca derruba a chamada real ao RENAVE) quando o chamador passa `ctx`
+// (admin client + chassi/estoque_moto_nova_id/operação/usuário). Ver
+// docs no README — tabela usada pra auditoria por moto (chassi).
 
 const DEFAULT_BASE = 'https://renave.estaleiro.serpro.gov.br/renave-ws';
 
 export interface RenaveResp {
   status: number;
   body: any;
+}
+
+/** Contexto pra log em `renave_chamadas` — opcional; sem `admin`, não loga. */
+export interface RenaveLogCtx {
+  admin?: any;
+  chassi?: string | null;
+  estoqueMotoNovaId?: string | null;
+  operacao: string;
+  usuarioId?: string | null;
 }
 
 function buildClient(): { client: unknown | undefined; base: string } {
@@ -27,10 +41,35 @@ function buildClient(): { client: unknown | undefined; base: string } {
   return { client, base };
 }
 
+async function registrarChamada(
+  ctx: RenaveLogCtx | undefined,
+  info: { endpoint: string; metodo: string; requestBody: unknown; status: number; responseBody: unknown; erro: string | null },
+) {
+  if (!ctx?.admin) return;
+  try {
+    await ctx.admin.from('renave_chamadas').insert({
+      chassi: ctx.chassi ? String(ctx.chassi).toUpperCase().replace(/\s/g, '') : null,
+      estoque_moto_nova_id: ctx.estoqueMotoNovaId || null,
+      operacao: ctx.operacao,
+      endpoint: info.endpoint,
+      metodo: info.metodo,
+      request_body: info.requestBody ?? null,
+      status_http: info.status,
+      sucesso: info.status >= 200 && info.status < 300,
+      response_body: info.responseBody ?? null,
+      erro_mensagem: info.erro,
+      usuario_id: ctx.usuarioId || null,
+    });
+  } catch (e) {
+    // Log é best-effort — nunca deixa a chamada real ao RENAVE falhar por isso.
+    console.warn('renave_chamadas insert falhou:', e);
+  }
+}
+
 async function call(
   method: string,
   path: string,
-  opts: { query?: Record<string, string | number | undefined>; body?: unknown } = {},
+  opts: { query?: Record<string, string | number | undefined>; body?: unknown; ctx?: RenaveLogCtx } = {},
 ): Promise<RenaveResp> {
   const { client, base } = buildClient();
   const qs = opts.query
@@ -49,7 +88,16 @@ async function call(
   const text = await res.text();
   let body: any = {};
   try { body = text ? JSON.parse(text) : {}; } catch { body = { raw: text }; }
-  return { status: res.status, body };
+  const resp: RenaveResp = { status: res.status, body };
+  await registrarChamada(opts.ctx, {
+    endpoint: path,
+    metodo: method,
+    requestBody: opts.query ? { ...opts.query, ...(opts.body as any ?? {}) } : opts.body,
+    status: resp.status,
+    responseBody: resp.body,
+    erro: resp.status >= 400 ? erroRenave(resp) : null,
+  });
+  return resp;
 }
 
 /** Mensagem de erro legível de uma resposta do RENAVE. */
@@ -65,11 +113,13 @@ export function erroRenave(r: RenaveResp): string {
 }
 
 // --- Operações ------------------------------------------------------------
+// Todas aceitam um `ctx` opcional (último parâmetro) pra logar em
+// renave_chamadas — sem ele, chamam o RENAVE normalmente, sem logar.
 
-export const clienteAutenticado = () => call('GET', '/api/cliente-autenticado');
+export const clienteAutenticado = (ctx?: RenaveLogCtx) => call('GET', '/api/cliente-autenticado', { ctx });
 
-export const pendentesEntrada = (chassi?: string) =>
-  call('GET', '/api/veiculos-zero-km-pendentes-entrada-estoque', { query: { chassi } });
+export const pendentesEntrada = (chassi?: string, ctx?: RenaveLogCtx) =>
+  call('GET', '/api/veiculos-zero-km-pendentes-entrada-estoque', { query: { chassi }, ctx });
 
 export interface EntradaZeroKm {
   chassi: string;
@@ -80,16 +130,16 @@ export interface EntradaZeroKm {
   quilometragemHodometro: number;
   cpfOperadorResponsavel?: string;
 }
-export const entrarEstoqueZeroKm = (e: EntradaZeroKm) =>
-  call('POST', '/api/entradas-estoque-zero-km', { body: e });
+export const entrarEstoqueZeroKm = (e: EntradaZeroKm, ctx?: RenaveLogCtx) =>
+  call('POST', '/api/entradas-estoque-zero-km', { body: e, ctx });
 
-export const enviarNotaFiscal = (chaveNotaFiscal: string, evento: 'COMPRA' | 'VENDA', idEstoque: number) =>
-  call('POST', '/api/notas-fiscais', { body: { chaveNotaFiscal, evento, idEstoque } });
+export const enviarNotaFiscal = (chaveNotaFiscal: string, evento: 'COMPRA' | 'VENDA', idEstoque: number, ctx?: RenaveLogCtx) =>
+  call('POST', '/api/notas-fiscais', { body: { chaveNotaFiscal, evento, idEstoque }, ctx });
 
-export const consultarEstoque = (id: number) => call('GET', `/api/estoques/${id}`);
+export const consultarEstoque = (id: number, ctx?: RenaveLogCtx) => call('GET', `/api/estoques/${id}`, { ctx });
 
-export const municipios = (nome: string, uf: string) =>
-  call('GET', '/api/municipios', { query: { nome, uf } });
+export const municipios = (nome: string, uf: string, ctx?: RenaveLogCtx) =>
+  call('GET', '/api/municipios', { query: { nome, uf }, ctx });
 
 export interface SaidaZeroKm {
   idEstoque: number;
@@ -113,8 +163,8 @@ export interface SaidaZeroKm {
     };
   };
 }
-export const sairEstoqueZeroKm = (s: SaidaZeroKm) =>
-  call('POST', '/api/saidas-estoque-veiculo-zero-km', { body: s });
+export const sairEstoqueZeroKm = (s: SaidaZeroKm, ctx?: RenaveLogCtx) =>
+  call('POST', '/api/saidas-estoque-veiculo-zero-km', { body: s, ctx });
 
-export const pdfAtpvPorChassi = (chassi: string) =>
-  call('GET', '/api/pdf-atpv', { query: { chassi } });
+export const pdfAtpvPorChassi = (chassi: string, ctx?: RenaveLogCtx) =>
+  call('GET', '/api/pdf-atpv', { query: { chassi }, ctx });
