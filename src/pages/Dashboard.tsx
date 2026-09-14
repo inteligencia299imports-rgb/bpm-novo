@@ -120,7 +120,7 @@ const Dashboard = () => {
         )}
         {activeTab === 'relatorios' && <RelatoriosTab />}
         {activeTab === 'novidades' && <NovidadesTab onNavigateToShowroom={handleNavigateToShowroom} />}
-        {activeTab === 'nps' && <NpsTab onNavigateToShowroom={handleNavigateToShowroom} />}
+        {activeTab === 'nps' && <NpsTab onNavigateToTab={handleEstoqueNav} />}
       </main>
       <BottomNav activeTab={activeTab} onTabChange={(tab) => { clearInitials(); setActiveTab(tab); }} />
     </div>

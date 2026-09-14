@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { TODOS_TIPOS_AQUISICAO, isTipoPropria } from '@/lib/tipoAquisicao';
+import { TODOS_TIPOS_AQUISICAO, isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { supabase } from '@/lib/supabase';
 import { MARCA_MODELO_SELECT, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { Input } from '@/components/ui/input';
@@ -18,12 +18,13 @@ import { fetchAllRange } from '@/lib/fetchAllRange';
 import { nfeTagFromRows } from '@/lib/nfeTag';
 
 import NpsDateFilter from './NpsDateFilter';
+import type { EstoqueNavTarget } from '@/components/estoque/EstoqueTab';
 
 interface NpsAquisicoesTabProps {
-  onNavigateToShowroom: (atendimentoId: string) => void;
+  onNavigateToTab: (target: EstoqueNavTarget) => void;
 }
 
-const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
+const NpsAquisicoesTab = ({ onNavigateToTab }: NpsAquisicoesTabProps) => {
   const { user, userName } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,11 +126,14 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
 
       mapped = mapped.map((m: any) => {
         const acqDate = avalAcqMap[m.id] || null;
+        // atendimento_venda_id: p/ navegar direto pra Intermediação Parte 2
+        // (pagamento ao consignante) quando a consignada já foi vendida.
+        const atendimentoVendaId = estInfoMap[m.id]?.atendimento_venda_id || null;
         if (m.tipo_aquisicao === 'consignada') {
           // Consignada: data_negociacao = estoque.data_venda OU data RETIRADA OU adquirida
-          return { ...m, _dataAquisicao: estVendaMap[m.id] || retiradaDateMap[m.id] || acqDate };
+          return { ...m, _dataAquisicao: estVendaMap[m.id] || retiradaDateMap[m.id] || acqDate, _atendimentoVendaId: atendimentoVendaId };
         }
-        return { ...m, _dataAquisicao: acqDate };
+        return { ...m, _dataAquisicao: acqDate, _atendimentoVendaId: atendimentoVendaId };
       });
 
       // Readiness indicators (vw_envio_nps rules)
@@ -370,7 +374,19 @@ const NpsAquisicoesTab = ({ onNavigateToShowroom }: NpsAquisicoesTabProps) => {
                         <AtendimentoCard
                           key={a.id}
                           atendimento={a._atendimentoCard}
-                          onClick={() => onNavigateToShowroom(a.atendimento_id)}
+                          onClick={() => {
+                            if (isTipoPropria(a.tipo_aquisicao)) {
+                              onNavigateToTab({ tab: 'pos_compra', avaliacaoId: a.id });
+                            } else if (isTipoConsignada(a.tipo_aquisicao) && a._atendimentoVendaId) {
+                              // Já vendida: a satisfação do consignante gira em torno do
+                              // pagamento (Intermediação Parte 2) — a etapa relevante aqui.
+                              onNavigateToTab({ tab: 'intermediacao', atendimentoId: a._atendimentoVendaId, parte: 'parte2' });
+                            } else {
+                              // Consignada ainda não vendida (só retirada) — não há
+                              // atendimento de venda pra abrir; cai no Showroom de sempre.
+                              onNavigateToTab({ tab: 'showroom', atendimentoId: a.atendimento_id });
+                            }
+                          }}
                           dateOverride={a._dataAquisicao || undefined}
                           statusColorOverride={SITUACOES_NPS.find(s => s.value === status)?.hex}
                           readyIndicator={indicator}

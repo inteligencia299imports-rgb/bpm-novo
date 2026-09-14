@@ -3,12 +3,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Award } from 'lucide-react';
 import NpsVendasTab from './NpsVendasTab';
 import NpsAquisicoesTab from './NpsAquisicoesTab';
+import type { EstoqueNavTarget } from '@/components/estoque/EstoqueTab';
 
 interface NpsTabProps {
-  onNavigateToShowroom: (atendimentoId: string) => void;
+  onNavigateToTab: (target: EstoqueNavTarget) => void;
 }
 
-const NpsTab = ({ onNavigateToShowroom }: NpsTabProps) => {
+const NpsTab = ({ onNavigateToTab }: NpsTabProps) => {
   const { role } = useAuth();
   const canSeeAquisicoes = role === 'master' || role === 'gerente';
   const [subTab, setSubTab] = useState<'vendas' | 'aquisicoes'>('vendas');
@@ -48,8 +49,8 @@ const NpsTab = ({ onNavigateToShowroom }: NpsTabProps) => {
         </div>
       )}
 
-      {subTab === 'vendas' && <NpsVendasTab onNavigateToShowroom={onNavigateToShowroom} />}
-      {subTab === 'aquisicoes' && canSeeAquisicoes && <NpsAquisicoesTab onNavigateToShowroom={onNavigateToShowroom} />}
+      {subTab === 'vendas' && <NpsVendasTab onNavigateToTab={onNavigateToTab} />}
+      {subTab === 'aquisicoes' && canSeeAquisicoes && <NpsAquisicoesTab onNavigateToTab={onNavigateToTab} />}
     </div>
   );
 };
