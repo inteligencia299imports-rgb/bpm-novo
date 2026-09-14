@@ -21,20 +21,52 @@ fosse o default de homologação. Corrigido: `DEFAULT_BASE` agora é o host
 
 - **Homologação (default):** SERPRO oferece um "cliente padrão de teste" —
   basta **não enviar certificado**. Base:
-  `https://hom.renave.estaleiro.serpro.gov.br/renave-ws`.
+  `https://hom.renave.estaleiro.serpro.gov.br/renave-ws`. Aceita chassi
+  fictício/de exemplo apenas — um chassi real de moto comprada de verdade
+  é rejeitado com "Chassi informado não está cadastrado" (confirmado
+  2026-09-14; a base nacional de veículos só existe em produção).
 - **Produção:** mTLS com certificado ICP-Brasil e-CNPJ do estabelecimento.
-  Setar secrets:
-  - `RENAVE_BASE_URL` = `https://renave.estaleiro.serpro.gov.br/renave-ws`
-    (sem `hom.` — é o host de produção, apesar do nome "estaleiro")
-  - `RENAVE_CERT_PEM` (certificado PEM)
-  - `RENAVE_KEY_PEM` (chave privada PEM)
-- **O certificado só é usado quando `RENAVE_BASE_URL` está setado** (produção) —
-  `RENAVE_CERT_PEM`/`RENAVE_KEY_PEM` podem estar configurados de antemão sem
-  "ligar" produção sozinhos; enquanto `RENAVE_BASE_URL` não existir, a função
-  continua chamando a homologação sem certificado, mesmo com o par cert/key já
-  presente. Certificado atual: e-CNPJ A1 da **FAG** (CNPJ 49.580.035/0001-36),
-  válido até 18/03/2027 — configurado em 2026-09-14 (`RENAVE_BASE_URL` ainda
-  **não** setado — produção ainda desligada, por decisão do usuário).
+  Setar `RENAVE_BASE_URL` = `https://renave.estaleiro.serpro.gov.br/renave-ws`
+  (sem `hom.` — é o host de produção, apesar do nome "estaleiro") — **em
+  produção desde 2026-09-14**.
+
+### Múltiplos estabelecimentos (CNPJs)
+
+A SERPRO identifica o "estabelecimento solicitante" pelo **CNPJ do
+certificado mTLS** usado na chamada — não por um campo no payload. Usar o
+certificado de um CNPJ pra operar uma moto de outro CNPJ gera a rejeição
+real *"CNPJ do estabelecimento solicitante é divergente do CNPJ informado
+pela montadora no pré-cadastro"* (achado 2026-09-14). Como o grupo opera
+com vários CNPJs (cada um com seu próprio e-CNPJ), cada um precisa do
+**próprio trio de secrets**:
+
+| Slot | CNPJ (texto, não sensível) | Certificado (PEM) | Chave (PEM) |
+|---|---|---|---|
+| Principal (1º CNPJ, já configurado) | `RENAVE_CNPJ` | `RENAVE_CERT_PEM` | `RENAVE_KEY_PEM` |
+| 2º CNPJ | `RENAVE_CNPJ_2` | `RENAVE_CERT_PEM_2` | `RENAVE_KEY_PEM_2` |
+| 3º CNPJ | `RENAVE_CNPJ_3` | `RENAVE_CERT_PEM_3` | `RENAVE_KEY_PEM_3` |
+| 4º CNPJ | `RENAVE_CNPJ_4` | `RENAVE_CERT_PEM_4` | `RENAVE_KEY_PEM_4` |
+
+(suporta até 20 slots — ver `MAX_CNPJ_SLOTS` em `renave.ts`.) `index.ts`
+resolve o CNPJ certo automaticamente a partir de
+`estoque_motos_novas.empresa_id` → `empresas.cnpj`, e `buildClient()` (em
+`renave.ts`) escolhe o par de certificado que bate com esse CNPJ. **Um
+CNPJ sem par configurado faz a chamada sair sem certificado** — a SERPRO
+rejeita com 401 em produção (falha segura: nunca usa por engano o
+certificado de outro CNPJ).
+
+Slot principal configurado hoje: e-CNPJ A1 da **FAG** (CNPJ
+49.580.035/0001-36), válido até 18/03/2027 — configurado em 2026-09-14.
+
+**Pra adicionar um novo CNPJ:** conseguir o certificado e-CNPJ A1 (.pfx +
+senha de importação) daquele estabelecimento, converter pra PEM
+(cert+chave separados, sem as linhas "Bag Attributes" que o `openssl
+pkcs12` adiciona — só o bloco `-----BEGIN...-----`/`-----END...-----`) e
+setar os 3 secrets do próximo slot livre (`RENAVE_CNPJ_N` só o CNPJ em
+dígitos; `RENAVE_CERT_PEM_N`/`RENAVE_KEY_PEM_N` os PEMs). O certificado
+`.pfx` e a senha de importação **nunca** vão pro código nem pra este
+repositório — só os secrets já convertidos, e nenhum arquivo temporário
+fica no disco depois da conversão.
 
 ## Ações (body JSON `{ acao: ... }`)
 
@@ -167,8 +199,16 @@ digitação em paths/query params).
 
 ## Pendências
 
-- Confirmar CNPJ da 299/Ducati habilitado no RENAVE (homolog e produção).
-- Certificado e-CNPJ para produção.
-- `cpfOperadorResponsavel` — hoje vem do body (`cpf_operador`), opcional; `user_roles` não guarda CPF.
-- A ação `saida` ainda não tem gatilho na UI — plano: etapa no `ProcessoDialog` do pós-venda, liberada após a NF-e de venda de produção autorizada.
-- **Assinatura do vendedor no ATPV** (catálogo acima, código 51 — `POST /api/atpv-assinatura-vendedor`): a doc do SERPRO lista esse passo separado da geração do ATPV-e (`saidas-estoque-veiculo-zero-km`, código 28). Hoje a ação `saida` não chama esse endpoint — precisa confirmar se ele é obrigatório no fluxo (a saída pode ficar pendente de assinatura antes do ATPV-e sair definitivo) antes de considerar a `saida` completa. Só verificável com o certificado/ambiente de homolog rodando de verdade.
+- **Pré-cadastro da Ducati com CNPJ divergente** (achado real 2026-09-14,
+  produção): tentativa de entrada rejeitada com "CNPJ do estabelecimento
+  solicitante é divergente do CNPJ informado pela montadora no
+  pré-cadastro" — a NF-e de compra da Ducati já cita a FAG corretamente
+  como destinatária, então o problema é externo (pré-cadastro da Ducati no
+  RENAVE, não nosso código/dado). Resolução depende de contato
+  FAG↔Ducati/suporte SERPRO pra corrigir o CNPJ pré-cadastrado daquele
+  chassi.
+- Endpoints de **cancelamento** (entrada/saída 0km — códigos 24 e 50 no
+  catálogo acima) ainda não implementados em `renave.ts`/`index.ts`. Se uma
+  entrada ou saída for aceita com dado errado, hoje não há como desfazer
+  pelo nosso sistema — só via canal direto com a SERPRO/despachante.
+- **Assinatura do vendedor no ATPV** (catálogo acima, código 51 — `POST /api/atpv-assinatura-vendedor`): a doc do SERPRO lista esse passo separado da geração do ATPV-e (`saidas-estoque-veiculo-zero-km`, código 28). Hoje a ação `saida` não chama esse endpoint — precisa confirmar se ele é obrigatório no fluxo (a saída pode ficar pendente de assinatura antes do ATPV-e sair definitivo) antes de considerar a `saida` completa.

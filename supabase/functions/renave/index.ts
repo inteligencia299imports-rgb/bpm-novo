@@ -44,6 +44,13 @@ async function persistir(admin: any, id: string, patch: Record<string, unknown>)
     .eq('id', id);
 }
 
+/** CNPJ (só dígitos) da empresa dona da moto — escolhe qual certificado a chamada usa. */
+async function cnpjDaEmpresa(admin: any, empresaId: string | null | undefined): Promise<string | null> {
+  if (!empresaId) return null;
+  const { data } = await admin.from('empresas').select('cnpj').eq('id', empresaId).maybeSingle();
+  return data?.cnpj ? String(data.cnpj).replace(/\D/g, '') : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -84,7 +91,7 @@ Deno.serve(async (req) => {
       if (!emnId) return json({ error: 'estoque_moto_nova_id é obrigatório' }, 400);
 
       const { data: emn } = await admin.from('estoque_motos_novas')
-        .select('id, chassi, renave_id_estoque').eq('id', emnId).maybeSingle();
+        .select('id, chassi, renave_id_estoque, empresa_id').eq('id', emnId).maybeSingle();
       if (!emn) return json({ error: 'Moto 0km não encontrada' }, 404);
       if (emn.renave_id_estoque) return json({ error: 'Este 0km já tem entrada no RENAVE (idEstoque ' + emn.renave_id_estoque + ')' }, 409);
 
@@ -102,7 +109,10 @@ Deno.serve(async (req) => {
       const valorCompra = Number(body.valor_compra ?? nfCompra.valor_total ?? tag(xml, 'vNF') ?? 0);
       if (!valorCompra) return json({ error: 'valorCompra não determinado.' }, 409);
 
-      const ctx: RenaveLogCtx = { admin, operacao: acao, chassi, estoqueMotoNovaId: emnId, usuarioId: caller.id };
+      const ctx: RenaveLogCtx = {
+        admin, operacao: acao, chassi, estoqueMotoNovaId: emnId, usuarioId: caller.id,
+        cnpjEstabelecimento: await cnpjDaEmpresa(admin, emn.empresa_id),
+      };
 
       const r = await entrarEstoqueZeroKm({
         chassi: chassi.toUpperCase().replace(/\s/g, ''),
@@ -147,10 +157,13 @@ Deno.serve(async (req) => {
       if (!emnId || !atendimentoId) return json({ error: 'estoque_moto_nova_id e atendimento_id são obrigatórios' }, 400);
 
       const { data: emn } = await admin.from('estoque_motos_novas')
-        .select('id, chassi, renave_id_estoque, renave_placa, renave_renavam').eq('id', emnId).maybeSingle();
+        .select('id, chassi, renave_id_estoque, renave_placa, renave_renavam, empresa_id').eq('id', emnId).maybeSingle();
       if (!emn?.renave_id_estoque) return json({ error: 'Este 0km ainda não tem entrada no RENAVE.' }, 409);
 
-      const ctx: RenaveLogCtx = { admin, operacao: acao, chassi: emn.chassi, estoqueMotoNovaId: emnId, usuarioId: caller.id };
+      const ctx: RenaveLogCtx = {
+        admin, operacao: acao, chassi: emn.chassi, estoqueMotoNovaId: emnId, usuarioId: caller.id,
+        cnpjEstabelecimento: await cnpjDaEmpresa(admin, emn.empresa_id),
+      };
 
       // NF-e de venda 0km autorizada em produção.
       const { data: nfVenda } = await admin.from('nfe_entradas')
@@ -242,7 +255,11 @@ Deno.serve(async (req) => {
     if (acao === 'atpv-pdf') {
       const chassi = String(body.chassi || '').toUpperCase();
       if (!chassi) return json({ error: 'chassi é obrigatório' }, 400);
-      const ctx: RenaveLogCtx = { admin, operacao: acao, chassi, usuarioId: caller.id };
+      const { data: emnPdf } = await admin.from('estoque_motos_novas').select('empresa_id').eq('chassi', chassi).maybeSingle();
+      const ctx: RenaveLogCtx = {
+        admin, operacao: acao, chassi, usuarioId: caller.id,
+        cnpjEstabelecimento: await cnpjDaEmpresa(admin, emnPdf?.empresa_id),
+      };
       const r = await pdfAtpvPorChassi(chassi, ctx);
       if (r.status !== 200) return json({ error: erroRenave(r), status: r.status }, 422);
       return json({ ok: true, atpv: r.body });

@@ -18,14 +18,35 @@
 //
 // Base URL: RENAVE_BASE_URL (default: homologação). Setar RENAVE_BASE_URL
 // pra `https://renave.estaleiro.serpro.gov.br/renave-ws` (sem `hom.`) —
-// junto com RENAVE_CERT_PEM/RENAVE_KEY_PEM — liga produção (ver buildClient).
+// junto com pelo menos um par de certificado (ver "Múltiplos
+// estabelecimentos (CNPJs)" abaixo) — liga produção (ver buildClient).
 //
 // Cada chamada é logada em `renave_chamadas` (best-effort — falha ao logar
 // nunca derruba a chamada real ao RENAVE) quando o chamador passa `ctx`
 // (admin client + chassi/estoque_moto_nova_id/operação/usuário). Ver
 // docs no README — tabela usada pra auditoria por moto (chassi).
+//
+// Múltiplos estabelecimentos (CNPJs) — achado 2026-09-14: a SERPRO
+// identifica "quem está chamando" pelo CNPJ do certificado mTLS, não por um
+// campo no payload — usar o certificado errado pra um CNPJ gera rejeição
+// "CNPJ do estabelecimento solicitante é divergente do CNPJ informado pela
+// montadora no pré-cadastro". Como o grupo opera com vários CNPJs (cada um
+// com seu próprio e-CNPJ), cada um precisa do PRÓPRIO par de secrets:
+//   - Slot "principal" (sem sufixo, já configurado — FAG): RENAVE_CNPJ,
+//     RENAVE_CERT_PEM, RENAVE_KEY_PEM.
+//   - Slots adicionais (2, 3, 4...): RENAVE_CNPJ_2/RENAVE_CERT_PEM_2/
+//     RENAVE_KEY_PEM_2, RENAVE_CNPJ_3/..., etc. — um trio por CNPJ novo.
+// `RENAVE_CNPJ*` é só texto (14 dígitos, com ou sem máscara — não é
+// sensível); o certificado (.pfx) e a senha de importação NUNCA vão pro
+// código nem pra este arquivo — só os secrets PEM já convertidos.
+// `buildClient()` escolhe o par certo comparando o CNPJ da empresa dona da
+// moto (resolvido em index.ts a partir de estoque_motos_novas.empresa_id)
+// contra os `RENAVE_CNPJ*` configurados. CNPJ sem par configurado = chamada
+// sai sem certificado (SERPRO rejeita com 401 em produção — falha segura,
+// nunca usa o certificado de outro CNPJ por engano).
 
 const DEFAULT_BASE = 'https://hom.renave.estaleiro.serpro.gov.br/renave-ws';
+const MAX_CNPJ_SLOTS = 20;
 
 export interface RenaveResp {
   status: number;
@@ -39,22 +60,41 @@ export interface RenaveLogCtx {
   estoqueMotoNovaId?: string | null;
   operacao: string;
   usuarioId?: string | null;
+  /** CNPJ (só dígitos) do estabelecimento dono da moto — escolhe o certificado certo em buildClient(). */
+  cnpjEstabelecimento?: string | null;
 }
 
-function buildClient(): { client: unknown | undefined; base: string } {
+interface ParCertificado { cnpj: string; cert: string; key: string }
+
+function candidatosCertificados(): ParCertificado[] {
+  const out: ParCertificado[] = [];
+  const push = (cnpjRaw: string | undefined, cert: string | undefined, key: string | undefined) => {
+    if (cnpjRaw && cert && key) out.push({ cnpj: cnpjRaw.replace(/\D/g, ''), cert, key });
+  };
+  push(Deno.env.get('RENAVE_CNPJ'), Deno.env.get('RENAVE_CERT_PEM'), Deno.env.get('RENAVE_KEY_PEM'));
+  for (let i = 2; i <= MAX_CNPJ_SLOTS; i++) {
+    push(Deno.env.get(`RENAVE_CNPJ_${i}`), Deno.env.get(`RENAVE_CERT_PEM_${i}`), Deno.env.get(`RENAVE_KEY_PEM_${i}`));
+  }
+  return out;
+}
+
+function buildClient(cnpjEstabelecimento?: string | null): { client: unknown | undefined; base: string } {
   const baseUrlSecret = Deno.env.get('RENAVE_BASE_URL');
   const base = (baseUrlSecret || DEFAULT_BASE).replace(/\/+$/, '');
-  const cert = Deno.env.get('RENAVE_CERT_PEM');
-  const key = Deno.env.get('RENAVE_KEY_PEM');
   let client: unknown | undefined;
   // O certificado só é anexado quando RENAVE_BASE_URL aponta pra produção —
   // em homologação (base default, host `hom.`) o SERPRO espera o "cliente
   // padrão de teste" sem certificado. Isso evita usar um certificado real de
-  // produção contra a homologação por engano (RENAVE_CERT_PEM/KEY_PEM podem
-  // estar configurados de antemão, sem que isso já ligue produção sozinho).
-  if (baseUrlSecret && cert && key) {
-    // Deno: fetch com certificado de cliente (mTLS).
-    client = (Deno as any).createHttpClient({ cert, key });
+  // produção contra a homologação por engano (os secrets podem estar
+  // configurados de antemão, sem que isso já ligue produção sozinho).
+  if (baseUrlSecret) {
+    const candidatos = candidatosCertificados();
+    const cnpjDigits = cnpjEstabelecimento ? cnpjEstabelecimento.replace(/\D/g, '') : null;
+    // Com CNPJ definido, só usa o par exato daquele CNPJ (nunca cai pra outro
+    // por engano). Sem CNPJ (ex.: 'cliente'/'pendentes' fora de um contexto
+    // de moto/empresa), usa o primeiro configurado como padrão.
+    const alvo = cnpjDigits ? candidatos.find((c) => c.cnpj === cnpjDigits) : candidatos[0];
+    if (alvo) client = (Deno as any).createHttpClient({ cert: alvo.cert, key: alvo.key });
   }
   return { client, base };
 }
@@ -101,7 +141,7 @@ async function call(
   path: string,
   opts: { query?: Record<string, string | number | undefined>; body?: unknown; ctx?: RenaveLogCtx } = {},
 ): Promise<RenaveResp> {
-  const { client, base } = buildClient();
+  const { client, base } = buildClient(opts.ctx?.cnpjEstabelecimento);
   const qs = opts.query
     ? '?' + Object.entries(opts.query)
         .filter(([, v]) => v !== undefined && v !== '')
