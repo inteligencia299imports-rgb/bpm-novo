@@ -6,6 +6,7 @@ import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { Input } from '@/components/ui/input';
 import { Search, X, Handshake, Filter, DollarSign } from 'lucide-react';
 import { INTERMEDIACAO_PARTE1_COLUMNS, INTERMEDIACAO_PARTE2_COLUMNS, INTERMEDIACAO_PARTE1_ETAPAS, INTERMEDIACAO_PARTE2_ETAPAS } from '@/types/crm';
+import { nfeTagFromRows } from '@/lib/nfeTag';
 import ProcessCard from '@/components/shared/ProcessCard';
 import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
 import { toast } from 'sonner';
@@ -169,6 +170,24 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       filtered = filtered.map(a => ({ ...a, _previsaoPagamento: prevMap[a.id] || null }));
     }
 
+    // Tag de status da NF-e de venda — mesma lógica/cores do Pós-Venda
+    // (NpsVendasTab etc.): reflete o último status da NF do atendimento.
+    if (allIds.length > 0) {
+      const nfeResult = await fetchAllRange(() =>
+        supabase.from('nfe_entradas' as any)
+          .select('atendimento_id, status, ambiente, operacao, created_at')
+          .not('atendimento_id', 'is', null)
+          .like('operacao', 'venda%')
+          .in('atendimento_id', allIds),
+      );
+      const nfeRowsPorAtendimento: Record<string, any[]> = {};
+      ((nfeResult.data as any[]) || []).forEach((n: any) => {
+        if (!n.atendimento_id) return;
+        (nfeRowsPorAtendimento[n.atendimento_id] ??= []).push(n);
+      });
+      filtered = filtered.map((a: any) => ({ ...a, _nfeTag: nfeTagFromRows(nfeRowsPorAtendimento[a.id]) }));
+    }
+
     setItems(filtered);
     setLoading(false);
   }, [search, parte, filterCidade]);
@@ -278,7 +297,10 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
                       const clientPhone = parte === 'parte2' && owner ? owner.cliente?.telefone : a.cliente?.telefone;
                       const prev = a._previsaoPagamento;
                       const prevBadge = prev ? { label: (<span className="inline-flex items-center gap-1"><DollarSign className="h-3 w-3" />{new Date(prev).toLocaleDateString('pt-BR')}</span>), className: 'border-primary/30 text-primary' } : undefined;
-                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex} extraBadge={prevBadge} nameTag={parte !== 'parte2' && a.venda_aprovacao_status === 'recusada' ? { label: 'Recusado', className: 'bg-red-600 hover:bg-red-600' } : undefined} onClick={() => setSelectedItem(a)} />;
+                      const nameTag = parte !== 'parte2' && a.venda_aprovacao_status === 'recusada'
+                        ? { label: 'Recusado', className: 'bg-red-600 hover:bg-red-600' }
+                        : (a._nfeTag || undefined);
+                      return <ProcessCard key={a.id} clientName={clientName} phone={clientPhone} motoLabel={est ? [est.placa?.replace(/-/g, ''), `${est.marca} ${(est.modelo || '').toUpperCase()}`].filter(Boolean).join(' - ') : undefined} loja={a.loja} patio={getSiglaFromLoja(est?.loja) || undefined} date={a.data_venda || a.updated_at} statusColor={col.hex} extraBadge={prevBadge} nameTag={nameTag} onClick={() => setSelectedItem(a)} />;
                     })}
                   </div>
                 </div>
