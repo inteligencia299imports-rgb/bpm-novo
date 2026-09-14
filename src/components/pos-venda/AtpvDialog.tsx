@@ -3,8 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
-  ArrowLeft, Bike, User, FileText, Loader2, CheckCircle2, XCircle, ExternalLink, AlertTriangle, History,
+  ArrowLeft, Bike, User, FileText, Loader2, CheckCircle2, XCircle, ExternalLink, AlertTriangle, History, PackagePlus,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -63,6 +65,9 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
   const [estoque, setEstoque] = useState<any>(estoqueMoto);
   const [historico, setHistorico] = useState<any[]>([]);
   const [historicoLoading, setHistoricoLoading] = useState(true);
+  const [km, setKm] = useState('0');
+  const [dataEntrada, setDataEntrada] = useState(() => new Date().toISOString().slice(0, 10));
+  const [entrandoEstoque, setEntrandoEstoque] = useState(false);
 
   useEffect(() => { setEstoque(estoqueMoto); }, [estoqueMoto]);
 
@@ -117,6 +122,32 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
   };
 
   const nfAutorizada = !!nfVenda && nfVenda.status === 'processada' && nfVenda.ambiente === 'producao' && !!nfVenda.chave_nfe;
+
+  const fazerEntrada = async () => {
+    if (!emnId) return;
+    setEntrandoEstoque(true);
+    try {
+      const { data: res, error } = await supabase.functions.invoke('renave', {
+        body: {
+          acao: 'entrada',
+          estoque_moto_nova_id: emnId,
+          quilometragem_hodometro: parseInt(km || '0', 10) || 0,
+          data_entrada_estoque: new Date(dataEntrada + 'T12:00:00').toISOString(),
+        },
+      });
+      if (error || (res && res.error)) {
+        toast.error(res?.error || error?.message || 'Falha na entrada RENAVE');
+        await Promise.all([recarregarEstoque(), carregarHistorico()]);
+        return;
+      }
+      toast.success(`Entrada RENAVE OK — RENAVAM ${res?.estoque?.renavam ?? '—'}`);
+      await Promise.all([recarregarEstoque(), carregarHistorico()]);
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao chamar o RENAVE');
+    } finally {
+      setEntrandoEstoque(false);
+    }
+  };
 
   const emitir = async () => {
     if (!emnId) return;
@@ -257,14 +288,40 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
             <p className="text-xs text-muted-foreground">O pós-venda foi concluído com a emissão do ATPV-e.</p>
           </CardContent>
         </Card>
+      ) : !renaveEntrouEstoque ? (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><PackagePlus className="h-4 w-4 text-primary" /> Entrada em Estoque no RENAVE</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Antes do ATPV-e, a moto precisa dar <strong>entrada em estoque no RENAVE</strong> — usa a NF-e
+              de faturamento da montadora (já vinculada a esta moto) e gera o Termo de Entrada e o RENAVAM.
+            </p>
+            <div className="grid grid-cols-2 gap-3 max-w-sm">
+              <div>
+                <Label className="text-xs text-muted-foreground">Hodômetro (km)</Label>
+                <Input className="mt-1" inputMode="numeric" value={km} onChange={(e) => setKm(e.target.value.replace(/\D/g, ''))} />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Data da entrada</Label>
+                <Input className="mt-1" type="date" value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} />
+              </div>
+            </div>
+            {estoque?.renave_ultimo_erro && (
+              <span className="flex items-start gap-2 text-sm text-destructive">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" /> Última tentativa: {estoque.renave_ultimo_erro}
+              </span>
+            )}
+            <Button className="w-full gap-2" disabled={entrandoEstoque} onClick={fazerEntrada}>
+              {entrandoEstoque ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
+              Fazer entrada no RENAVE
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-2">
-          {!renaveEntrouEstoque && (
-            <span className="flex items-center gap-2 text-sm text-amber-600">
-              <AlertTriangle className="h-4 w-4" /> Esta moto ainda não tem <strong>entrada no estoque RENAVE</strong> — faça a entrada em Estoque &gt; RENAVE.
-            </span>
-          )}
-          {renaveEntrouEstoque && !nfLoading && !nfAutorizada && (
+          {!nfLoading && !nfAutorizada && (
             <span className="flex items-center gap-2 text-sm text-amber-600">
               <AlertTriangle className="h-4 w-4" />
               {!nfVenda ? 'Nenhuma NF-e de venda 0km encontrada — emita a NF-e antes do ATPV-e.' : 'A NF-e de venda precisa estar autorizada em produção para emitir o ATPV-e.'}
@@ -277,7 +334,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
           )}
           <Button
             className="w-full gap-2"
-            disabled={emitindo || !renaveEntrouEstoque || !nfAutorizada}
+            disabled={emitindo || !nfAutorizada}
             onClick={emitir}
           >
             {emitindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}

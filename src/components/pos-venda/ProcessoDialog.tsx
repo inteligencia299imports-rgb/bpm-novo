@@ -663,12 +663,11 @@ const ProcessoDialog: React.FC<Props> = ({
                       </span>
                     ) : (
                       <Button
-                        variant={(renaveEntrouEstoque && nfVendaProducao) ? 'default' : 'outline'} size="sm"
+                        variant="default" size="sm"
                         className="h-9 gap-2 text-sm"
-                        disabled={!renaveEntrouEstoque || !nfVendaProducao}
                         title={
-                          !renaveEntrouEstoque ? 'Disponível após a entrada da moto no estoque RENAVE'
-                            : !nfVendaProducao ? 'Disponível após a NF-e de venda ser autorizada em produção'
+                          !renaveEntrouEstoque ? 'Faça a entrada da moto no estoque RENAVE'
+                            : !nfVendaProducao ? 'Emissão do ATPV-e liberada após a NF-e de venda autorizada em produção'
                             : undefined
                         }
                         onClick={() => onEmitirAtpv?.()}
