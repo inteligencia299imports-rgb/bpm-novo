@@ -24,6 +24,20 @@ const tag = (xml: string, name: string): string | null => {
   return m ? m[1].trim() : null;
 };
 
+/**
+ * RENAVE espera dataHora em horário de Brasília SEM timezone (sem "Z"/offset).
+ * Mandar em UTC com "Z" (ex.: new Date().toISOString()) faz a SERPRO ler o
+ * número como se já fosse hora local — "agora" em UTC vira "daqui a 3h" em
+ * Brasília, e ela rejeita como data futura (achado real, entrada 0km,
+ * 2026-09-14). Brasil não tem mais horário de verão desde 2019, então -03:00
+ * fixo é seguro. Aceita undefined (vira "agora") ou uma string ISO já em UTC.
+ */
+function brasiliaNaiveIso(input?: string | null): string {
+  const d = input ? new Date(input) : new Date();
+  const brt = new Date(d.getTime() - 3 * 60 * 60 * 1000);
+  return brt.toISOString().slice(0, 19);
+}
+
 async function persistir(admin: any, id: string, patch: Record<string, unknown>) {
   await admin.from('estoque_motos_novas')
     .update({ ...patch, renave_atualizado_em: new Date().toISOString() })
@@ -90,13 +104,12 @@ Deno.serve(async (req) => {
 
       const ctx: RenaveLogCtx = { admin, operacao: acao, chassi, estoqueMotoNovaId: emnId, usuarioId: caller.id };
 
-      const agora = new Date().toISOString();
       const r = await entrarEstoqueZeroKm({
         chassi: chassi.toUpperCase().replace(/\s/g, ''),
         chaveNotaFiscal: soChave(nfCompra.chave_nfe),
         valorCompra,
-        dataEntradaEstoque: body.data_entrada_estoque || agora,
-        dataHoraMedicaoHodometro: body.data_hora_medicao_hodometro || agora,
+        dataEntradaEstoque: brasiliaNaiveIso(body.data_entrada_estoque),
+        dataHoraMedicaoHodometro: brasiliaNaiveIso(body.data_hora_medicao_hodometro),
         quilometragemHodometro: Number.isFinite(Number(body.quilometragem_hodometro)) ? Number(body.quilometragem_hodometro) : 0,
         cpfOperadorResponsavel: body.cpf_operador ? String(body.cpf_operador).replace(/\D/g, '') : undefined,
       }, ctx);
@@ -175,7 +188,7 @@ Deno.serve(async (req) => {
 
       const r = await sairEstoqueZeroKm({
         idEstoque: emn.renave_id_estoque,
-        dataVenda: body.data_venda || nfVenda.data_emissao || new Date().toISOString(),
+        dataVenda: brasiliaNaiveIso(body.data_venda || nfVenda.data_emissao),
         valorVenda: Number(body.valor_venda ?? nfVenda.valor_total ?? 0),
         chaveNotaFiscal: chaveVenda,
         cpfOperadorResponsavel: body.cpf_operador ? String(body.cpf_operador).replace(/\D/g, '') : undefined,

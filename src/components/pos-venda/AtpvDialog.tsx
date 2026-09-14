@@ -214,7 +214,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
     setEmitindo(true);
     try {
       const { data: res, error } = await supabase.functions.invoke('renave', {
-        body: { acao: 'saida', estoque_moto_nova_id: emnId, atendimento_id: atendimento.id },
+        body: { acao: 'saida', estoque_moto_nova_id: emnId, atendimento_id: atendimento.id, cpf_operador: cpfEnviado },
       });
       if (error || (res && res.error)) {
         toast.error(res?.error || await extrairErroFuncao(error, 'Falha ao emitir o ATPV-e'));
@@ -363,9 +363,21 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" /> Última tentativa: {estoque.renave_ultimo_erro}
             </span>
           )}
+          {!funcionarioLoading && !funcionarioCpf && (
+            <div className="max-w-[200px]">
+              <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
+              <Input
+                className={cn('mt-1', cpfOperador.length === 11 && !cpfOperadorValido && 'border-destructive text-destructive focus-visible:ring-destructive')}
+                inputMode="numeric"
+                value={formatCpfCnpj(cpfOperador)}
+                onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                placeholder="000.000.000-00"
+              />
+            </div>
+          )}
           <Button
             className="w-full gap-2"
-            disabled={emitindo || !nfAutorizada}
+            disabled={emitindo || funcionarioLoading || !nfAutorizada || !cpfEnviadoValido}
             onClick={emitir}
           >
             {emitindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
