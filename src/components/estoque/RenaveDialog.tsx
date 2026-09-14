@@ -135,9 +135,6 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
                   <ExternalLink className="h-3.5 w-3.5" /> ATPV-e {item.renave_atpv_numero ? `(${item.renave_atpv_numero})` : ''}
                 </a>
               )}
-              {item.renave_ultimo_erro && (
-                <p className="text-xs text-destructive">{item.renave_ultimo_erro}</p>
-              )}
             </div>
           ) : (
             <>
@@ -167,9 +164,6 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
                   )}
                 </div>
               </div>
-              {item.renave_ultimo_erro && (
-                <p className="text-xs text-destructive">Última tentativa: {item.renave_ultimo_erro}</p>
-              )}
               <Button className="w-full" onClick={fazerEntrada} disabled={loading || funcionarioLoading || !cpfEnviadoValido}>
                 {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
                 Fazer entrada no RENAVE

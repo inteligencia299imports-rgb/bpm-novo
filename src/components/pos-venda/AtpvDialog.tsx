@@ -339,11 +339,6 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
                 )}
               </div>
             </div>
-            {estoque?.renave_ultimo_erro && (
-              <span className="flex items-start gap-2 text-sm text-destructive">
-                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" /> Última tentativa: {estoque.renave_ultimo_erro}
-              </span>
-            )}
             <Button className="w-full gap-2" disabled={entrandoEstoque || funcionarioLoading || !cpfEnviadoValido} onClick={fazerEntrada}>
               {entrandoEstoque ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
               Processar Entrada
@@ -356,11 +351,6 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
             <span className="flex items-center gap-2 text-sm text-amber-600">
               <AlertTriangle className="h-4 w-4" />
               {!nfVenda ? 'Nenhuma NF-e de venda 0km encontrada — emita a NF-e antes do ATPV-e.' : 'A NF-e de venda precisa estar autorizada em produção para emitir o ATPV-e.'}
-            </span>
-          )}
-          {estoque?.renave_ultimo_erro && (
-            <span className="flex items-start gap-2 text-sm text-destructive">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" /> Última tentativa: {estoque.renave_ultimo_erro}
             </span>
           )}
           {!funcionarioLoading && !funcionarioCpf && (
