@@ -13,6 +13,8 @@ import { extrairErroFuncao } from '@/lib/edgeFunctionError';
  * A saída de estoque / ATPV-e acontece no pós-venda, após a NF-e de venda
  * autorizada em produção (ação 'saida' da edge function `renave`).
  */
+const formatCpf = (v: string) => v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -22,6 +24,7 @@ interface Props {
 
 const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => {
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
+  const [cpfOperador, setCpfOperador] = useState('');
   const [loading, setLoading] = useState(false);
   const [nfCompra, setNfCompra] = useState<any | null>(null);
 
@@ -59,6 +62,7 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
           estoque_moto_nova_id: item.id,
           quilometragem_hodometro: 0, // 0km — sem hodômetro rodado
           data_entrada_estoque: new Date(data + 'T12:00:00').toISOString(),
+          cpf_operador: cpfOperador,
         },
       });
       if (error || (res && res.error)) {
@@ -113,17 +117,30 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
                 Faz a <strong>entrada em estoque no RENAVE</strong> usando a NF-e de faturamento
                 da montadora (já vinculada a esta moto). Gera o Termo de Entrada e o RENAVAM.
               </p>
-              <div>
-                <Label className="text-xs text-muted-foreground">Data da entrada</Label>
-                <Input className="mt-1" type="date" value={data} onChange={(e) => setData(e.target.value)} />
-                {nfCompra && (
-                  <p className="text-[11px] text-muted-foreground mt-1">Sugerida a partir da NF-e de compra da montadora.</p>
-                )}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Data da entrada</Label>
+                  <Input className="mt-1" type="date" value={data} onChange={(e) => setData(e.target.value)} />
+                  {nfCompra && (
+                    <p className="text-[11px] text-muted-foreground mt-1">Sugerida a partir da NF-e de compra.</p>
+                  )}
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
+                  <Input
+                    className="mt-1"
+                    inputMode="numeric"
+                    value={formatCpf(cpfOperador)}
+                    onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                    placeholder="000.000.000-00"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">Exigido pelo RENAVE.</p>
+                </div>
               </div>
               {item.renave_ultimo_erro && (
                 <p className="text-xs text-destructive">Última tentativa: {item.renave_ultimo_erro}</p>
               )}
-              <Button className="w-full" onClick={fazerEntrada} disabled={loading}>
+              <Button className="w-full" onClick={fazerEntrada} disabled={loading || cpfOperador.length !== 11}>
                 {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
                 Fazer entrada no RENAVE
               </Button>

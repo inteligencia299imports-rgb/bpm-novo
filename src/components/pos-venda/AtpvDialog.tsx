@@ -68,6 +68,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
   const [historico, setHistorico] = useState<any[]>([]);
   const [historicoLoading, setHistoricoLoading] = useState(true);
   const [dataEntrada, setDataEntrada] = useState('');
+  const [cpfOperador, setCpfOperador] = useState('');
   const [entrandoEstoque, setEntrandoEstoque] = useState(false);
 
   useEffect(() => { setEstoque(estoqueMoto); }, [estoqueMoto]);
@@ -157,6 +158,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
           estoque_moto_nova_id: emnId,
           quilometragem_hodometro: 0, // 0km — sem hodômetro rodado
           data_entrada_estoque: new Date(dataEntrada + 'T12:00:00').toISOString(),
+          cpf_operador: cpfOperador,
         },
       });
       if (error || (res && res.error)) {
@@ -318,19 +320,32 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
             <CardTitle className="text-sm flex items-center gap-2"><PackagePlus className="h-4 w-4 text-primary" /> Entrada RENAVE</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="max-w-[200px]">
-              <Label className="text-xs text-muted-foreground">Data da entrada</Label>
-              <Input className="mt-1" type="date" value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} />
-              {nfCompra && (
-                <p className="text-[11px] text-muted-foreground mt-1">Sugerida a partir da NF-e de compra da montadora.</p>
-              )}
+            <div className="grid grid-cols-2 gap-3 max-w-sm">
+              <div>
+                <Label className="text-xs text-muted-foreground">Data da entrada</Label>
+                <Input className="mt-1" type="date" value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} />
+                {nfCompra && (
+                  <p className="text-[11px] text-muted-foreground mt-1">Sugerida a partir da NF-e de compra da montadora.</p>
+                )}
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">CPF do Operador Responsável</Label>
+                <Input
+                  className="mt-1"
+                  inputMode="numeric"
+                  value={formatCpfCnpj(cpfOperador)}
+                  onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                  placeholder="000.000.000-00"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">Exigido pelo RENAVE — quem está operando a entrada.</p>
+              </div>
             </div>
             {estoque?.renave_ultimo_erro && (
               <span className="flex items-start gap-2 text-sm text-destructive">
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" /> Última tentativa: {estoque.renave_ultimo_erro}
               </span>
             )}
-            <Button className="w-full gap-2" disabled={entrandoEstoque} onClick={fazerEntrada}>
+            <Button className="w-full gap-2" disabled={entrandoEstoque || cpfOperador.length !== 11} onClick={fazerEntrada}>
               {entrandoEstoque ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
               Processar Entrada
             </Button>
