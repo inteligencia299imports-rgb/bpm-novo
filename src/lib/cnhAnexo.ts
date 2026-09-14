@@ -45,7 +45,7 @@ export const ehPessoaJuridica = (
   ((cliente?.cpf_cnpj || '').replace(/\D/g, '').length > 11);
 
 /** Rótulo do documento de identificação conforme o tipo de pessoa do cliente. */
-export const docIdentificacaoLabel = (pj: boolean) => (pj ? 'Cartão CNPJ' : 'CNH ou RG');
+export const docIdentificacaoLabel = (pj: boolean) => (pj ? 'Cartão CNPJ' : 'CNH/RG');
 /** `tipo_documento` em clientes_fornecedores_documentos conforme o tipo de pessoa. */
 export const docIdentificacaoTipo = (pj: boolean): TipoDocIdentificacao => (pj ? 'cartao_cnpj' : 'cnh');
 /** Sufixo do bucket path (docs/<clienteId>/<sufixo>). */
