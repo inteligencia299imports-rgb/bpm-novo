@@ -19,12 +19,13 @@ import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { nfeTagFromRows } from '@/lib/nfeTag';
 import NpsDateFilter from './NpsDateFilter';
+import type { EstoqueNavTarget } from '@/components/estoque/EstoqueTab';
 
 interface NpsVendasTabProps {
-  onNavigateToShowroom: (atendimentoId: string) => void;
+  onNavigateToTab: (target: EstoqueNavTarget) => void;
 }
 
-const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
+const NpsVendasTab = ({ onNavigateToTab }: NpsVendasTabProps) => {
   const { user, userName, role } = useAuth();
   const [atendimentos, setAtendimentos] = useState<any[]>([]);
   const [entregaMap, setEntregaMap] = useState<Record<string, boolean>>({});
@@ -306,7 +307,7 @@ const NpsVendasTab = ({ onNavigateToShowroom }: NpsVendasTabProps) => {
                          <AtendimentoCard
                           key={a.id}
                           atendimento={a}
-                          onClick={() => onNavigateToShowroom(a.id)}
+                          onClick={() => onNavigateToTab({ tab: 'pos_venda', atendimentoId: a.id })}
                           dateOverride={a.data_venda || undefined}
                           statusColorOverride={SITUACOES_NPS.find(s => s.value === status)?.hex}
                           readyIndicator={indicator}
