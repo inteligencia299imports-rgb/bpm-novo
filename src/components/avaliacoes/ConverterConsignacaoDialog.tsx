@@ -119,7 +119,10 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                   <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">1</span>
                   Devolução Simbólica
                 </span>
-                <NfeStatusBadge nfe={nfeDevolucao} />
+                <span className="flex items-center gap-2">
+                  <NfeStatusBadge nfe={nfeDevolucao} />
+                  <NfeDanfeButton nfe={nfeDevolucao} />
+                </span>
               </CardTitle>
               <Separator className="mt-2 mb-3" />
               <div className="flex items-center gap-2 flex-wrap">
@@ -145,7 +148,6 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                     {nfeDevolucao.erro ? 'Tentar novamente' : 'Devolução (Produção)'}
                   </Button>
                 )}
-                <NfeDanfeButton nfe={nfeDevolucao} />
                 {podeCancelarDevolucao && <CancelarNfeDialog nfe={nfeDevolucao} />}
               </div>
             </CardHeader>
@@ -180,7 +182,10 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                   Compra
                   {!devolucaoProducaoOk && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                 </span>
-                <NfeStatusBadge nfe={nfeCompra} />
+                <span className="flex items-center gap-2">
+                  <NfeStatusBadge nfe={nfeCompra} />
+                  <NfeDanfeButton nfe={nfeCompra} />
+                </span>
               </CardTitle>
               <Separator className="mt-2 mb-3" />
               <div className="flex items-center gap-2 flex-wrap">
@@ -205,7 +210,6 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                     <FileText className="h-4 w-4" /> Compra (Produção)
                   </Button>
                 )}
-                <NfeDanfeButton nfe={nfeCompra} />
                 {podeCancelarCompra && <CancelarNfeDialog nfe={nfeCompra} />}
               </div>
             </CardHeader>
