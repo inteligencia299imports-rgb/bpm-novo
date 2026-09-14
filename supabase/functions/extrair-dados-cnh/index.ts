@@ -93,7 +93,7 @@ function normDataNasc(v: string | null): string | null {
 }
 
 interface ExtracaoCnh {
-  eh_cnh: boolean;
+  tipo_detectado: 'cnh' | 'rg' | 'outro';
   tipo_documento: string | null;
   nome: string | null;
   cpf: string | null;
@@ -128,37 +128,38 @@ async function extrairViaClaude(
       max_tokens: 1024,
       tools: [
         {
-          name: 'registrar_dados_cnh',
-          description: 'Registra os dados extraídos da CNH (Carteira Nacional de Habilitação) e informa se o titular corresponde ao cliente cadastrado.',
+          name: 'registrar_dados_documento_identidade',
+          description: 'Registra os dados extraídos de um documento de identificação (CNH ou RG) e informa se o titular corresponde ao cliente cadastrado.',
           input_schema: {
             type: 'object',
             properties: {
               leitura: {
                 type: 'string',
-                description: 'ANTES de preencher os demais campos, transcreva aqui literalmente o que você consegue ler, rótulo por rótulo: "NOME: ...", "CPF: ...", "DOC. IDENTIDADE: ...", "DATA NASCIMENTO: ...", "Nº REGISTRO: ...", "VALIDADE: ...", "1ª HABILITAÇÃO: ...", "DATA EMISSÃO: ...". Escreva "ilegível" no que não der para ler. Isso serve para você não trocar os campos.',
+                description: 'ANTES de preencher os demais campos, transcreva aqui literalmente o que você consegue ler, rótulo por rótulo: "NOME: ...", "CPF: ...", "DOC. IDENTIDADE: ..." / "REGISTRO GERAL: ...", "DATA NASCIMENTO: ...", "Nº REGISTRO: ...", "VALIDADE: ...", "1ª HABILITAÇÃO: ...", "DATA EMISSÃO: ...". Escreva "ilegível" no que não der para ler. Isso serve para você não trocar os campos.',
               },
-              eh_cnh: {
-                type: 'boolean',
-                description: 'true se a imagem é realmente uma CNH (Carteira Nacional de Habilitação) brasileira — modelo antigo em papel ou CNH-e/PID digital. false se é outro documento (CRLV, RG, comprovante, contrato, nota fiscal, etc.).',
+              tipo_detectado: {
+                type: 'string',
+                enum: ['cnh', 'rg', 'outro'],
+                description: '"cnh" se for uma CNH brasileira (Carteira Nacional de Habilitação) — modelo antigo em papel ou CNH-e/PID digital. "rg" se for uma Carteira de Identidade brasileira — modelo antigo (RG) ou a nova Carteira de Identidade Nacional (CIN). "outro" se for qualquer outro documento (CRLV, comprovante, contrato, nota fiscal, etc.).',
               },
               tipo_documento: {
                 type: 'string',
-                description: 'Quando eh_cnh=false, diga em uma ou duas palavras que documento é (ex.: "CRLV", "RG", "comprovante de residência"). String vazia "" quando eh_cnh=true.',
+                description: 'Quando tipo_detectado="outro", diga em uma ou duas palavras que documento é (ex.: "CRLV", "comprovante de residência"). String vazia "" nos demais casos.',
               },
               nome: { type: 'string', description: 'Nome completo do titular, do campo rotulado "NOME" (NÃO use "NOME SOCIAL" nem "FILIAÇÃO"). String vazia "" se não estiver legível.' },
-              cpf: { type: 'string', description: 'Somente os 11 dígitos do campo rotulado "CPF". NUNCA use o "Nº REGISTRO"/"REGISTRO" da CNH (também tem 11 dígitos, mas é outro número). String vazia "" se o campo CPF não estiver legível — nunca invente dígitos.' },
-              rg: { type: 'string', description: 'Número do "DOC. IDENTIDADE" (RG) do titular, junto com o órgão emissor/UF se estiverem legíveis (ex.: "MG-12.345.678 SSP/MG"). Nem toda CNH tem esse campo preenchido. String vazia "" se não estiver presente ou legível — nunca invente.' },
-              data_nascimento: { type: 'string', description: 'Data do campo "DATA NASCIMENTO" (ou "DATA, LOCAL DE NASCIMENTO"), no formato AAAA-MM-DD. NUNCA use "VALIDADE", "1ª HABILITAÇÃO" ou "DATA EMISSÃO". String vazia "" se não estiver legível — nunca invente.' },
+              cpf: { type: 'string', description: 'Somente os 11 dígitos do campo rotulado "CPF", quando esse campo existir no documento. A CNH sempre tem; o RG/CIN às vezes tem (nem todo modelo traz), às vezes não. CUIDADO na CNH: NUNCA use o "Nº REGISTRO"/"REGISTRO" (também 11 dígitos, mas não é o CPF). String vazia "" se o campo CPF não existir ou não estiver legível — nunca invente dígitos.' },
+              rg: { type: 'string', description: 'No RG/CIN: o próprio número do documento (rotulado "REGISTRO GERAL", "RG" ou destacado em maior evidência), com órgão emissor/UF se estiverem legíveis (ex.: "MG-12.345.678 SSP/MG"). Na CNH: o campo "DOC. IDENTIDADE" do titular (nem toda CNH tem esse campo preenchido). String vazia "" se não estiver presente ou legível — nunca invente.' },
+              data_nascimento: { type: 'string', description: 'Data do campo "DATA DE NASCIMENTO" (ou "DATA, LOCAL DE NASCIMENTO" na CNH), no formato AAAA-MM-DD. Na CNH NUNCA use "VALIDADE", "1ª HABILITAÇÃO" ou "DATA EMISSÃO". String vazia "" se não estiver legível — nunca invente.' },
               confere_com_cliente: {
                 type: 'boolean',
-                description: `true se o nome do titular da CNH corresponde por proximidade ao cliente cadastrado "${nomeCliente}" (tolere abreviações, ordem, acentos e nomes do meio faltando); false se claramente é outra pessoa.`,
+                description: `true se o nome do titular do documento corresponde por proximidade ao cliente cadastrado "${nomeCliente}" (tolere abreviações, ordem, acentos e nomes do meio faltando); false se claramente é outra pessoa.`,
               },
             },
-            required: ['leitura', 'eh_cnh', 'tipo_documento', 'nome', 'cpf', 'rg', 'data_nascimento', 'confere_com_cliente'],
+            required: ['leitura', 'tipo_detectado', 'tipo_documento', 'nome', 'cpf', 'rg', 'data_nascimento', 'confere_com_cliente'],
           },
         },
       ],
-      tool_choice: { type: 'tool', name: 'registrar_dados_cnh' },
+      tool_choice: { type: 'tool', name: 'registrar_dados_documento_identidade' },
       messages: [
         {
           role: 'user',
@@ -166,13 +167,13 @@ async function extrairViaClaude(
             contentBlock,
             {
               type: 'text',
-              text: `Você vai receber a imagem de um documento que DEVERIA ser uma CNH brasileira (Carteira Nacional de Habilitação) — modelo antigo (papel) ou novo (CNH-e/PID). A foto pode estar girada, com brilho ou reflexo; leia com muita atenção, ampliando mentalmente as regiões de texto pequeno.\n\n`
-                + `Primeiro decida: eh_cnh=true somente se for mesmo uma CNH. Se for outro documento (CRLV do veículo, RG, comprovante, etc.), eh_cnh=false, preencha tipo_documento e deixe os demais campos vazios.\n\n`
-                + `Campos a extrair (quando eh_cnh=true):\n`
+              text: `Você vai receber a imagem de um documento que DEVERIA ser um documento de identificação do cliente: CNH (Carteira Nacional de Habilitação) ou RG (Carteira de Identidade, modelo antigo ou a nova Carteira de Identidade Nacional - CIN). A foto pode estar girada, com brilho ou reflexo; leia com muita atenção, ampliando mentalmente as regiões de texto pequeno.\n\n`
+                + `Primeiro decida tipo_detectado: "cnh" ou "rg" conforme o modelo do documento. Se for outro documento (CRLV do veículo, comprovante, contrato, nota fiscal, etc.), tipo_detectado="outro", preencha tipo_documento e deixe os demais campos vazios.\n\n`
+                + `Campos a extrair (quando tipo_detectado é "cnh" ou "rg"):\n`
                 + `• nome — campo "NOME" do titular.\n`
-                + `• cpf — os 11 dígitos ao lado do rótulo "CPF". CUIDADO: a CNH tem também um "Nº REGISTRO" (ou "REGISTRO") com 11 dígitos, que NÃO é o CPF. Só preencha o CPF se conseguir ler o campo rotulado "CPF".\n`
-                + `• rg — campo "DOC. IDENTIDADE", com órgão emissor/UF se estiver legível. Nem toda CNH traz esse campo preenchido — nesse caso deixe vazio.\n`
-                + `• data_nascimento — campo "DATA NASCIMENTO", formato AAAA-MM-DD. Não confunda com "VALIDADE", "1ª HABILITAÇÃO" nem "DATA EMISSÃO".\n\n`
+                + `• cpf — os 11 dígitos ao lado do rótulo "CPF", só se esse campo existir no documento. Na CNH sempre existe — CUIDADO: ela também tem um "Nº REGISTRO" (ou "REGISTRO") com 11 dígitos, que NÃO é o CPF; só preencha se achar o campo rotulado "CPF". No RG/CIN nem todo modelo traz CPF impresso — nesse caso deixe vazio.\n`
+                + `• rg — no RG/CIN é o próprio número do documento (rotulado "REGISTRO GERAL" ou similar); na CNH é o campo "DOC. IDENTIDADE" (nem toda CNH traz esse campo preenchido). Com órgão emissor/UF se estiver legível.\n`
+                + `• data_nascimento — campo "DATA DE NASCIMENTO", formato AAAA-MM-DD. Na CNH não confunda com "VALIDADE", "1ª HABILITAÇÃO" nem "DATA EMISSÃO".\n\n`
                 + `Regra de ouro: se qualquer valor não estiver claramente legível, retorne string vazia "" — nunca chute dígitos ou datas.\n`
                 + `Preencha primeiro o campo "leitura" (transcrição rótulo a rótulo) e só depois os demais.\n\n`
                 + `O cliente cadastrado no sistema é "${nomeCliente}". Defina confere_com_cliente=true apenas se for claramente a mesma pessoa (por proximidade de nome).`,
@@ -191,10 +192,11 @@ async function extrairViaClaude(
   const toolUse = data.content?.find((b: any) => b.type === 'tool_use');
   if (!toolUse) throw new Error('Resposta da IA não retornou os dados esperados');
   const input = toolUse.input as Record<string, unknown>;
-  console.log('extrair-dados-cnh leitura da IA:', input.leitura, '=> eh_cnh:', input.eh_cnh, 'tipo:', input.tipo_documento, 'nome:', input.nome, 'cpf:', input.cpf, 'rg:', input.rg, 'nasc:', input.data_nascimento);
+  console.log('extrair-dados-cnh leitura da IA:', input.leitura, '=> tipo_detectado:', input.tipo_detectado, 'tipo:', input.tipo_documento, 'nome:', input.nome, 'cpf:', input.cpf, 'rg:', input.rg, 'nasc:', input.data_nascimento);
 
+  const tipoDetectado = input.tipo_detectado;
   return {
-    eh_cnh: input.eh_cnh !== false,
+    tipo_detectado: tipoDetectado === 'cnh' || tipoDetectado === 'rg' ? tipoDetectado : 'outro',
     tipo_documento: ((input.tipo_documento as string) || '').trim() || null,
     nome: ((input.nome as string) || '').trim() || null,
     cpf: soDigitos((input.cpf as string) ?? '') || null,
@@ -406,16 +408,17 @@ Deno.serve(async (req) => {
 
     const extraido = await extrairViaClaude(base64, mediaType, apiKey, nomeCliente || '(sem nome cadastrado)');
 
-    // O arquivo anexado não é uma CNH (CRLV, RG, comprovante...) -> rejeita e faz rollback.
-    if (!extraido.eh_cnh) {
+    // O arquivo anexado não é CNH nem RG (CRLV, comprovante...) -> rejeita e faz rollback.
+    if (extraido.tipo_detectado === 'outro') {
       const tipo = extraido.tipo_documento ? ` (parece ser: ${extraido.tipo_documento})` : '';
       return jsonResponse({
         ...vazio,
         extraido: false,
         match: false,
-        motivo: `O arquivo anexado não é uma CNH${tipo}. Anexe a CNH do cliente (frente com foto ou o PDF da CNH Digital).`,
+        motivo: `O arquivo anexado não é uma CNH nem um RG${tipo}. Anexe a CNH ou o RG do cliente (frente com foto, ou o PDF da CNH Digital/CIN).`,
       }, 200);
     }
+    const nomeDocDetectado = extraido.tipo_detectado === 'rg' ? 'RG' : 'CNH';
 
     // Conferência de nome: precisa ter nome no documento e bater por proximidade.
     // A IA (com o nome no contexto) é o critério principal; a similaridade
@@ -430,7 +433,7 @@ Deno.serve(async (req) => {
         ...vazio,
         extraido: false,
         match: false,
-        motivo: `A CNH anexada não parece ser do cliente: o cadastro é "${nomeCliente}" e o documento indica "${extraido.nome ?? '?'}".`,
+        motivo: `O ${nomeDocDetectado} anexado não parece ser do cliente: o cadastro é "${nomeCliente}" e o documento indica "${extraido.nome ?? '?'}".`,
       }, 200);
     }
 
