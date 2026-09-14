@@ -328,10 +328,20 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         icon: <Bike className="h-4 w-4" />,
         action: () => nav({ tab: 'showroom', atendimentoId: item.atendimento_venda_id! }),
       });
-      // 0km vendida/reservada: menu fica só com "Venda" — dados fiscais,
-      // RENAVE etc. já ficam acessíveis de dentro do processo de venda, não
-      // precisa duplicar aqui uma vez que a moto saiu de "disponível".
-      if (item.tipo === '0km') return options;
+      // 0km vendida/reservada: menu fica só com "Venda" (+ "Pós-Venda" quando
+      // já vendida de vez, não só sinal) — dados fiscais, RENAVE etc. já
+      // ficam acessíveis de dentro do processo de venda, não precisa
+      // duplicar aqui uma vez que a moto saiu de "disponível".
+      if (item.tipo === '0km') {
+        if (item.status === 'vendido') {
+          options.push({
+            label: 'Pós-Venda',
+            icon: <ShoppingBag className="h-4 w-4" />,
+            action: () => nav({ tab: 'pos_venda', atendimentoId: item.atendimento_venda_id! }),
+          });
+        }
+        return options;
+      }
     }
 
     if (item.avaliacao_id) {
