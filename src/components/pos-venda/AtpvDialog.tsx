@@ -10,9 +10,10 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { formatPersonName } from '@/lib/utils';
+import { formatPersonName, cn } from '@/lib/utils';
 import { extrairErroFuncao } from '@/lib/edgeFunctionError';
 import { useAuth } from '@/contexts/AuthContext';
+import { validarCpf } from '@/lib/cpf';
 
 /**
  * Emissão do ATPV-e de uma moto 0km (RENAVE / SERPRO) — última etapa do pós-venda.
@@ -65,7 +66,6 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
   const [emitindo, setEmitindo] = useState(false);
   const [nfVenda, setNfVenda] = useState<any | null>(null);
   const [nfLoading, setNfLoading] = useState(true);
-  const [nfCompra, setNfCompra] = useState<any | null>(null);
   const [estoque, setEstoque] = useState<any>(estoqueMoto);
   const [historico, setHistorico] = useState<any[]>([]);
   const [historicoLoading, setHistoricoLoading] = useState(true);
@@ -138,7 +138,6 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
       .maybeSingle()
       .then(({ data }) => {
         if (cancel) return;
-        setNfCompra(data || null);
         const base = data?.data_entrada || data?.data_emissao;
         setDataEntrada(base ? String(base).slice(0, 10) : new Date().toISOString().slice(0, 10));
       });
@@ -173,6 +172,8 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
 
   const nfAutorizada = !!nfVenda && nfVenda.status === 'processada' && nfVenda.ambiente === 'producao' && !!nfVenda.chave_nfe;
   const cpfEnviado = funcionarioCpf || cpfOperador;
+  const cpfOperadorValido = validarCpf(cpfOperador);
+  const cpfEnviadoValido = !!funcionarioCpf || cpfOperadorValido;
 
   const fazerEntrada = async () => {
     if (!emnId) return;
@@ -350,30 +351,21 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
               <div>
                 <Label className="text-xs text-muted-foreground">Data da entrada</Label>
                 <Input className="mt-1" type="date" value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} />
-                {nfCompra && (
-                  <p className="text-[11px] text-muted-foreground mt-1">Sugerida a partir da NF-e de compra da montadora.</p>
-                )}
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">CPF do Operador Responsável</Label>
+                <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
                 {funcionarioLoading ? (
                   <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando…</p>
                 ) : funcionarioCpf ? (
-                  <>
-                    <p className="mt-1 text-sm font-semibold">{formatCpfCnpj(funcionarioCpf)}</p>
-                    <p className="text-[11px] text-muted-foreground mt-1">Do seu cadastro de funcionário.</p>
-                  </>
+                  <p className="mt-1 text-sm font-semibold">{formatCpfCnpj(funcionarioCpf)}</p>
                 ) : (
-                  <>
-                    <Input
-                      className="mt-1"
-                      inputMode="numeric"
-                      value={formatCpfCnpj(cpfOperador)}
-                      onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                      placeholder="000.000.000-00"
-                    />
-                    <p className="text-[11px] text-muted-foreground mt-1">Não achamos seu CPF no cadastro de funcionário — exigido pelo RENAVE.</p>
-                  </>
+                  <Input
+                    className={cn('mt-1', cpfOperador.length === 11 && !cpfOperadorValido && 'border-destructive text-destructive focus-visible:ring-destructive')}
+                    inputMode="numeric"
+                    value={formatCpfCnpj(cpfOperador)}
+                    onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                    placeholder="000.000.000-00"
+                  />
                 )}
               </div>
             </div>
@@ -382,7 +374,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" /> Última tentativa: {estoque.renave_ultimo_erro}
               </span>
             )}
-            <Button className="w-full gap-2" disabled={entrandoEstoque || funcionarioLoading || cpfEnviado.length !== 11} onClick={fazerEntrada}>
+            <Button className="w-full gap-2" disabled={entrandoEstoque || funcionarioLoading || !cpfEnviadoValido} onClick={fazerEntrada}>
               {entrandoEstoque ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
               Processar Entrada
             </Button>

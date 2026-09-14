@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { extrairErroFuncao } from '@/lib/edgeFunctionError';
 import { useAuth } from '@/contexts/AuthContext';
+import { validarCpf } from '@/lib/cpf';
+import { cn } from '@/lib/utils';
 
 /**
  * RENAVE (SERPRO) — entrada em estoque do 0km (gera o TEV e o RENAVAM).
@@ -30,7 +32,6 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
   const [funcionarioCpf, setFuncionarioCpf] = useState<string | null>(null);
   const [funcionarioLoading, setFuncionarioLoading] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [nfCompra, setNfCompra] = useState<any | null>(null);
 
   // Data de entrada, por padrão, é a data da NF-e de compra da montadora
   // (já vinculada a esta moto) — não faz sentido sugerir "hoje".
@@ -47,7 +48,6 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
       .maybeSingle()
       .then(({ data: nf }: any) => {
         if (cancel) return;
-        setNfCompra(nf || null);
         const base = nf?.data_entrada || nf?.data_emissao;
         setData(base ? String(base).slice(0, 10) : new Date().toISOString().slice(0, 10));
       });
@@ -78,6 +78,8 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
   if (!item) return null;
   const jaEntrou = !!item.renave_id_estoque;
   const cpfEnviado = funcionarioCpf || cpfOperador;
+  const cpfOperadorValido = validarCpf(cpfOperador);
+  const cpfEnviadoValido = !!funcionarioCpf || cpfOperadorValido;
 
   const fazerEntrada = async () => {
     setLoading(true);
@@ -147,37 +149,28 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
                 <div>
                   <Label className="text-xs text-muted-foreground">Data da entrada</Label>
                   <Input className="mt-1" type="date" value={data} onChange={(e) => setData(e.target.value)} />
-                  {nfCompra && (
-                    <p className="text-[11px] text-muted-foreground mt-1">Sugerida a partir da NF-e de compra.</p>
-                  )}
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
                   {funcionarioLoading ? (
                     <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando…</p>
                   ) : funcionarioCpf ? (
-                    <>
-                      <p className="mt-1 text-sm font-semibold">{formatCpf(funcionarioCpf)}</p>
-                      <p className="text-[11px] text-muted-foreground mt-1">Do seu cadastro de funcionário.</p>
-                    </>
+                    <p className="mt-1 text-sm font-semibold">{formatCpf(funcionarioCpf)}</p>
                   ) : (
-                    <>
-                      <Input
-                        className="mt-1"
-                        inputMode="numeric"
-                        value={formatCpf(cpfOperador)}
-                        onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                        placeholder="000.000.000-00"
-                      />
-                      <p className="text-[11px] text-muted-foreground mt-1">Não achamos seu CPF no cadastro — exigido pelo RENAVE.</p>
-                    </>
+                    <Input
+                      className={cn('mt-1', cpfOperador.length === 11 && !cpfOperadorValido && 'border-destructive text-destructive focus-visible:ring-destructive')}
+                      inputMode="numeric"
+                      value={formatCpf(cpfOperador)}
+                      onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                      placeholder="000.000.000-00"
+                    />
                   )}
                 </div>
               </div>
               {item.renave_ultimo_erro && (
                 <p className="text-xs text-destructive">Última tentativa: {item.renave_ultimo_erro}</p>
               )}
-              <Button className="w-full" onClick={fazerEntrada} disabled={loading || funcionarioLoading || cpfEnviado.length !== 11}>
+              <Button className="w-full" onClick={fazerEntrada} disabled={loading || funcionarioLoading || !cpfEnviadoValido}>
                 {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
                 Fazer entrada no RENAVE
               </Button>
