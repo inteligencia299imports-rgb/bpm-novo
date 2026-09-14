@@ -64,7 +64,19 @@ async function registrarChamada(
   info: { endpoint: string; metodo: string; requestBody: unknown; status: number; responseBody: unknown; erro: string | null },
 ) {
   if (!ctx?.admin) return;
+  const sucesso = info.status >= 200 && info.status < 300;
   try {
+    // Sucesso: acumula pra sempre (é a linha do tempo real da moto). Falha:
+    // mantém só a última tentativa dessa operação — sem isso, cada retry
+    // (comum enquanto se ajusta CFOP/CST/alíquota) empilhava uma linha nova,
+    // poluindo o histórico com erros já superados.
+    if (!sucesso) {
+      let del = ctx.admin.from('renave_chamadas').delete().eq('operacao', ctx.operacao).eq('sucesso', false);
+      del = ctx.estoqueMotoNovaId ? del.eq('estoque_moto_nova_id', ctx.estoqueMotoNovaId)
+        : ctx.chassi ? del.eq('chassi', ctx.chassi)
+        : del.is('estoque_moto_nova_id', null).is('chassi', null);
+      await del;
+    }
     await ctx.admin.from('renave_chamadas').insert({
       chassi: ctx.chassi ? String(ctx.chassi).toUpperCase().replace(/\s/g, '') : null,
       estoque_moto_nova_id: ctx.estoqueMotoNovaId || null,
@@ -73,7 +85,7 @@ async function registrarChamada(
       metodo: info.metodo,
       request_body: info.requestBody ?? null,
       status_http: info.status,
-      sucesso: info.status >= 200 && info.status < 300,
+      sucesso,
       response_body: info.responseBody ?? null,
       erro_mensagem: info.erro,
       usuario_id: ctx.usuarioId || null,
