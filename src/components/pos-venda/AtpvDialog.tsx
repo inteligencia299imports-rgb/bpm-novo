@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import {
-  ArrowLeft, Bike, User, FileText, Loader2, CheckCircle2, ExternalLink, AlertTriangle,
+  ArrowLeft, Bike, User, FileText, Loader2, CheckCircle2, XCircle, ExternalLink, AlertTriangle, History,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -12,8 +12,11 @@ import { formatPersonName } from '@/lib/utils';
 
 /**
  * Emissão do ATPV-e de uma moto 0km (RENAVE / SERPRO) — última etapa do pós-venda.
- * Página aberta a partir do ProcessoDialog (etapa ATPV-E). Faz a saída de estoque
- * no RENAVE usando a NF-e de venda 0km autorizada em produção e gera o ATPV-e.
+ * Página aberta a partir do ProcessoDialog (etapa ATPV-E) — centraliza aqui tudo que
+ * importa pra essa etapa: dados do cliente, moto que será emplacada e o histórico
+ * completo de chamadas ao RENAVE (entrada em estoque, saída/ATPV-e etc — tabela
+ * renave_chamadas), sem dados de pagamento/agregados/observações (isso já foi
+ * resolvido lá na proposta/NF-e de venda).
  */
 interface Props {
   open: boolean;
@@ -37,11 +40,29 @@ const Info = ({ label, value }: { label: string; value: React.ReactNode }) => (
   </div>
 );
 
+const OPERACAO_LABEL: Record<string, string> = {
+  cliente: 'Sessão RENAVE',
+  pendentes: 'Consulta de pendentes',
+  entrada: 'Entrada em estoque',
+  saida: 'Saída (ATPV-e)',
+  'atpv-pdf': 'PDF do ATPV-e',
+};
+
+const formatDataHora = (v: string) => {
+  try {
+    return new Date(v).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  } catch {
+    return v;
+  }
+};
+
 const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueMoto, onDone }) => {
   const [emitindo, setEmitindo] = useState(false);
   const [nfVenda, setNfVenda] = useState<any | null>(null);
   const [nfLoading, setNfLoading] = useState(true);
   const [estoque, setEstoque] = useState<any>(estoqueMoto);
+  const [historico, setHistorico] = useState<any[]>([]);
+  const [historicoLoading, setHistoricoLoading] = useState(true);
 
   useEffect(() => { setEstoque(estoqueMoto); }, [estoqueMoto]);
 
@@ -69,6 +90,26 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
     return () => { cancel = true; };
   }, [open, emnId]);
 
+  const carregarHistorico = async () => {
+    if (!emnId && !chassi) return;
+    setHistoricoLoading(true);
+    let query = (supabase as any).from('renave_chamadas').select('*').order('created_at', { ascending: false }).limit(50);
+    query = emnId && chassi
+      ? query.or(`estoque_moto_nova_id.eq.${emnId},chassi.eq.${chassi}`)
+      : emnId
+        ? query.eq('estoque_moto_nova_id', emnId)
+        : query.eq('chassi', chassi);
+    const { data } = await query;
+    setHistorico(data || []);
+    setHistoricoLoading(false);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    carregarHistorico();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, emnId, chassi]);
+
   const recarregarEstoque = async () => {
     if (!emnId) return;
     const { data } = await (supabase as any).from('estoque_motos_novas').select('*').eq('id', emnId).maybeSingle();
@@ -86,11 +127,11 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
       });
       if (error || (res && res.error)) {
         toast.error(res?.error || error?.message || 'Falha ao emitir o ATPV-e');
-        await recarregarEstoque();
+        await Promise.all([recarregarEstoque(), carregarHistorico()]);
         return;
       }
       toast.success(`ATPV-e emitido${res?.atpv_numero ? ` — Nº ${res.atpv_numero}` : ''}`);
-      await recarregarEstoque();
+      await Promise.all([recarregarEstoque(), carregarHistorico()]);
       onDone?.();
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao chamar o RENAVE');
@@ -125,21 +166,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2"><Bike className="h-4 w-4 text-primary" /> Moto 0km</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-4">
-            <Info label="Marca / Modelo" value={motoLabel} />
-            <Info label="Chassi" value={<span className="font-mono">{chassi || '—'}</span>} />
-            <Info label="RENAVAM" value={estoque?.renave_renavam || estoque?.renavam} />
-            <Info label="Placa" value={estoque?.renave_placa || estoque?.placa} />
-            <Info label="idEstoque RENAVE" value={estoque?.renave_id_estoque} />
-            <Info label="Estado RENAVE" value={estoque?.renave_estado} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2"><User className="h-4 w-4 text-primary" /> Comprador</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><User className="h-4 w-4 text-primary" /> Dados do Cliente</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <Info label="Nome / Razão Social" value={formatPersonName(cli?.nome_razao_social || '')} />
@@ -150,31 +177,63 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
             <Info label="CEP" value={end?.cep} />
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><Bike className="h-4 w-4 text-primary" /> Moto que Será Emplacada</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <Info label="Marca / Modelo" value={motoLabel} />
+            <Info label="Chassi" value={<span className="font-mono">{chassi || '—'}</span>} />
+            <Info label="RENAVAM" value={estoque?.renave_renavam || estoque?.renavam} />
+            <Info label="Placa" value={estoque?.renave_placa || estoque?.placa} />
+            <Info label="idEstoque RENAVE" value={estoque?.renave_id_estoque} />
+            <Info label="Estado RENAVE" value={estoque?.renave_estado} />
+            <Info
+              label="NF-e de Venda"
+              value={
+                nfLoading ? 'Carregando…'
+                  : !nfVenda ? 'Não emitida'
+                    : `Nº ${nfVenda.numero || '—'} / série ${nfVenda.serie || '—'} — ${nfAutorizada ? 'autorizada' : nfVenda.status}`
+              }
+            />
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> NF-e de venda (0km)</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4 text-primary" /> Histórico RENAVE</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          {nfLoading ? (
-            <span className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</span>
-          ) : !nfVenda ? (
-            <span className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-4 w-4" /> Nenhuma NF-e de venda 0km encontrada — emita a NF-e antes do ATPV-e.
-            </span>
+        <CardContent>
+          {historicoLoading ? (
+            <span className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</span>
+          ) : historico.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma chamada ao RENAVE registrada ainda para esta moto.</p>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <Info label="Número / Série" value={`${nfVenda.numero || '—'} / ${nfVenda.serie || '—'}`} />
-              <Info label="Situação" value={nfVenda.status || '—'} />
-              <Info label="Ambiente" value={nfVenda.ambiente || '—'} />
-              <Info label="Chave" value={<span className="font-mono text-[11px] break-all">{nfVenda.chave_nfe || '—'}</span>} />
+            <div className="space-y-2">
+              {historico.map((h) => (
+                <div key={h.id} className="flex items-start gap-2.5 text-sm border-b last:border-0 pb-2 last:pb-0">
+                  {h.sucesso ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className="font-medium">{OPERACAO_LABEL[h.operacao] || h.operacao}</span>
+                      <span className="text-xs text-muted-foreground">{formatDataHora(h.created_at)}</span>
+                      {h.status_http != null && (
+                        <span className="text-xs text-muted-foreground">HTTP {h.status_http}</span>
+                      )}
+                    </div>
+                    {!h.sucesso && h.erro_mensagem && (
+                      <p className="text-xs text-destructive mt-0.5 break-words">{h.erro_mensagem}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
-          {!nfLoading && nfVenda && !nfAutorizada && (
-            <span className="flex items-center gap-2 text-amber-600">
-              <AlertTriangle className="h-4 w-4" /> A NF-e precisa estar <strong>autorizada em produção</strong> para emitir o ATPV-e.
-            </span>
           )}
         </CardContent>
       </Card>
@@ -203,6 +262,12 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
           {!renaveEntrouEstoque && (
             <span className="flex items-center gap-2 text-sm text-amber-600">
               <AlertTriangle className="h-4 w-4" /> Esta moto ainda não tem <strong>entrada no estoque RENAVE</strong> — faça a entrada em Estoque &gt; RENAVE.
+            </span>
+          )}
+          {renaveEntrouEstoque && !nfLoading && !nfAutorizada && (
+            <span className="flex items-center gap-2 text-sm text-amber-600">
+              <AlertTriangle className="h-4 w-4" />
+              {!nfVenda ? 'Nenhuma NF-e de venda 0km encontrada — emita a NF-e antes do ATPV-e.' : 'A NF-e de venda precisa estar autorizada em produção para emitir o ATPV-e.'}
             </span>
           )}
           {estoque?.renave_ultimo_erro && (
