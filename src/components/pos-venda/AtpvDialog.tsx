@@ -62,11 +62,11 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
   const [emitindo, setEmitindo] = useState(false);
   const [nfVenda, setNfVenda] = useState<any | null>(null);
   const [nfLoading, setNfLoading] = useState(true);
+  const [nfCompra, setNfCompra] = useState<any | null>(null);
   const [estoque, setEstoque] = useState<any>(estoqueMoto);
   const [historico, setHistorico] = useState<any[]>([]);
   const [historicoLoading, setHistoricoLoading] = useState(true);
-  const [km, setKm] = useState('0');
-  const [dataEntrada, setDataEntrada] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dataEntrada, setDataEntrada] = useState('');
   const [entrandoEstoque, setEntrandoEstoque] = useState(false);
 
   useEffect(() => { setEstoque(estoqueMoto); }, [estoqueMoto]);
@@ -92,6 +92,29 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
       .limit(1)
       .maybeSingle()
       .then(({ data }) => { if (!cancel) { setNfVenda(data || null); setNfLoading(false); } });
+    return () => { cancel = true; };
+  }, [open, emnId]);
+
+  // NF-e de compra (faturamento da montadora) — mesma que a entrada RENAVE usa
+  // (chave/valor) no edge function. A data de entrada no RENAVE, por padrão,
+  // é a data dessa nota — não faz sentido sugerir "hoje".
+  useEffect(() => {
+    if (!open || !emnId) return;
+    let cancel = false;
+    (supabase as any)
+      .from('nfe_entradas')
+      .select('data_entrada, data_emissao')
+      .eq('estoque_moto_nova_id', emnId)
+      .eq('operacao', 'compra')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancel) return;
+        setNfCompra(data || null);
+        const base = data?.data_entrada || data?.data_emissao;
+        setDataEntrada(base ? String(base).slice(0, 10) : new Date().toISOString().slice(0, 10));
+      });
     return () => { cancel = true; };
   }, [open, emnId]);
 
@@ -131,7 +154,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
         body: {
           acao: 'entrada',
           estoque_moto_nova_id: emnId,
-          quilometragem_hodometro: parseInt(km || '0', 10) || 0,
+          quilometragem_hodometro: 0, // 0km — sem hodômetro rodado
           data_entrada_estoque: new Date(dataEntrada + 'T12:00:00').toISOString(),
         },
       });
@@ -298,15 +321,12 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
               Antes do ATPV-e, a moto precisa dar <strong>entrada em estoque no RENAVE</strong> — usa a NF-e
               de faturamento da montadora (já vinculada a esta moto) e gera o Termo de Entrada e o RENAVAM.
             </p>
-            <div className="grid grid-cols-2 gap-3 max-w-sm">
-              <div>
-                <Label className="text-xs text-muted-foreground">Hodômetro (km)</Label>
-                <Input className="mt-1" inputMode="numeric" value={km} onChange={(e) => setKm(e.target.value.replace(/\D/g, ''))} />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Data da entrada</Label>
-                <Input className="mt-1" type="date" value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} />
-              </div>
+            <div className="max-w-[200px]">
+              <Label className="text-xs text-muted-foreground">Data da entrada</Label>
+              <Input className="mt-1" type="date" value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} />
+              {nfCompra && (
+                <p className="text-[11px] text-muted-foreground mt-1">Sugerida a partir da NF-e de compra da montadora.</p>
+              )}
             </div>
             {estoque?.renave_ultimo_erro && (
               <span className="flex items-start gap-2 text-sm text-destructive">

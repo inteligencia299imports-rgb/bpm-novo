@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,9 +20,31 @@ interface Props {
 }
 
 const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => {
-  const [km, setKm] = useState('0');
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
+  const [nfCompra, setNfCompra] = useState<any | null>(null);
+
+  // Data de entrada, por padrão, é a data da NF-e de compra da montadora
+  // (já vinculada a esta moto) — não faz sentido sugerir "hoje".
+  useEffect(() => {
+    if (!open || !item?.id) return;
+    let cancel = false;
+    (supabase as any)
+      .from('nfe_entradas')
+      .select('data_entrada, data_emissao')
+      .eq('estoque_moto_nova_id', item.id)
+      .eq('operacao', 'compra')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data: nf }: any) => {
+        if (cancel) return;
+        setNfCompra(nf || null);
+        const base = nf?.data_entrada || nf?.data_emissao;
+        setData(base ? String(base).slice(0, 10) : new Date().toISOString().slice(0, 10));
+      });
+    return () => { cancel = true; };
+  }, [open, item?.id]);
 
   if (!item) return null;
   const jaEntrou = !!item.renave_id_estoque;
@@ -34,7 +56,7 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
         body: {
           acao: 'entrada',
           estoque_moto_nova_id: item.id,
-          quilometragem_hodometro: parseInt(km || '0', 10) || 0,
+          quilometragem_hodometro: 0, // 0km — sem hodômetro rodado
           data_entrada_estoque: new Date(data + 'T12:00:00').toISOString(),
         },
       });
@@ -90,15 +112,12 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
                 Faz a <strong>entrada em estoque no RENAVE</strong> usando a NF-e de faturamento
                 da montadora (já vinculada a esta moto). Gera o Termo de Entrada e o RENAVAM.
               </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Hodômetro (km)</Label>
-                  <Input className="mt-1" inputMode="numeric" value={km} onChange={(e) => setKm(e.target.value.replace(/\D/g, ''))} />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Data da entrada</Label>
-                  <Input className="mt-1" type="date" value={data} onChange={(e) => setData(e.target.value)} />
-                </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Data da entrada</Label>
+                <Input className="mt-1" type="date" value={data} onChange={(e) => setData(e.target.value)} />
+                {nfCompra && (
+                  <p className="text-[11px] text-muted-foreground mt-1">Sugerida a partir da NF-e de compra da montadora.</p>
+                )}
               </div>
               {item.renave_ultimo_erro && (
                 <p className="text-xs text-destructive">Última tentativa: {item.renave_ultimo_erro}</p>
