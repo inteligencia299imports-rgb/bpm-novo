@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  ArrowLeft, Bike, User, FileText, Loader2, CheckCircle2, XCircle, ExternalLink, AlertTriangle, History, PackagePlus,
+  ArrowLeft, Bike, User, FileText, Loader2, CheckCircle2, ExternalLink, AlertTriangle, History, PackagePlus,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ import { formatPersonName, cn } from '@/lib/utils';
 import { extrairErroFuncao } from '@/lib/edgeFunctionError';
 import { useAuth } from '@/contexts/AuthContext';
 import { validarCpf } from '@/lib/cpf';
+import StatusTimeline from '@/components/shared/StatusTimeline';
 
 /**
  * Emissão do ATPV-e de uma moto 0km (RENAVE / SERPRO) — última etapa do pós-venda.
@@ -51,14 +52,6 @@ const OPERACAO_LABEL: Record<string, string> = {
   entrada: 'Entrada em estoque',
   saida: 'Saída (ATPV-e)',
   'atpv-pdf': 'PDF do ATPV-e',
-};
-
-const formatDataHora = (v: string) => {
-  try {
-    return new Date(v).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-  } catch {
-    return v;
-  }
 };
 
 const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueMoto, onDone }) => {
@@ -147,14 +140,28 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
   const carregarHistorico = async () => {
     if (!emnId && !chassi) return;
     setHistoricoLoading(true);
-    let query = (supabase as any).from('renave_chamadas').select('*').order('created_at', { ascending: false }).limit(50);
+    // Só o que deu certo — falhas aparecem só como "última tentativa" no
+    // card de ação, não poluem a linha do tempo.
+    let query = (supabase as any).from('renave_chamadas').select('*').eq('sucesso', true).order('created_at', { ascending: false }).limit(50);
     query = emnId && chassi
       ? query.or(`estoque_moto_nova_id.eq.${emnId},chassi.eq.${chassi}`)
       : emnId
         ? query.eq('estoque_moto_nova_id', emnId)
         : query.eq('chassi', chassi);
     const { data } = await query;
-    setHistorico(data || []);
+    const rows: any[] = data || [];
+    const usuarioIds = Array.from(new Set(rows.map((r) => r.usuario_id).filter(Boolean)));
+    let nomes: Record<string, string> = {};
+    if (usuarioIds.length > 0) {
+      const { data: users } = await (supabase as any).from('user_roles').select('user_id, nome').in('user_id', usuarioIds);
+      nomes = Object.fromEntries((users || []).map((u: any) => [u.user_id, u.nome]));
+    }
+    setHistorico(rows.map((r) => ({
+      id: r.id,
+      status: OPERACAO_LABEL[r.operacao] || r.operacao,
+      created_at: r.created_at,
+      changed_by_name: r.usuario_id ? nomes[r.usuario_id] : null,
+    })));
     setHistoricoLoading(false);
   };
 
@@ -285,43 +292,6 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4 text-primary" /> Histórico</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {historicoLoading ? (
-            <span className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</span>
-          ) : historico.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma chamada ao RENAVE registrada ainda para esta moto.</p>
-          ) : (
-            <div className="space-y-2">
-              {historico.map((h) => (
-                <div key={h.id} className="flex items-start gap-2.5 text-sm border-b last:border-0 pb-2 last:pb-0">
-                  {h.sucesso ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <span className="font-medium">{OPERACAO_LABEL[h.operacao] || h.operacao}</span>
-                      <span className="text-xs text-muted-foreground">{formatDataHora(h.created_at)}</span>
-                      {h.status_http != null && (
-                        <span className="text-xs text-muted-foreground">HTTP {h.status_http}</span>
-                      )}
-                    </div>
-                    {!h.sucesso && h.erro_mensagem && (
-                      <p className="text-xs text-destructive mt-0.5 break-words">{h.erro_mensagem}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {atpvEmitido ? (
         <Card className="border-emerald-200 bg-emerald-50/40">
           <CardContent className="space-y-2 py-4 text-sm">
@@ -403,6 +373,19 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
           </Button>
         </div>
       )}
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4 text-primary" /> Histórico</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {historicoLoading ? (
+            <span className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</span>
+          ) : (
+            <StatusTimeline history={historico} formatLabel={(raw) => raw} />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
