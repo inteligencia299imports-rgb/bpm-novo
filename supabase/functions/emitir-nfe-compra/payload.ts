@@ -476,11 +476,26 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     // destacado como DESONERADO (motDesICMS = 9, "Outros"), fiel à NF-e de
     // referência autorizada. vICMSDeson = vProd·pICMS − vICMS(base já reduzida).
     // Campos Focus: icms_valor_desonerado / icms_motivo_desoneracao.
+    //
+    // BUG (achado 2026-09-14, comparando com XML real autorizado nº7221 —
+    // venda comum da MMATOS já em produção): icms_base_calculo/icms_valor
+    // ficavam zerados (linhas acima) mesmo aqui, onde vBcRed/vIcmsRed já são
+    // calculados corretamente pra achar o vICMSDeson — só nunca eram
+    // atribuídos ao vBC/vICMS que de fato vão pra NF-e. A Focus NÃO recalcula
+    // esses campos a partir de icms_aliquota/icms_reducao_base_calculo; ela
+    // manda os 0 explícitos direto pro XML. Resultado: a NF-e autorizada
+    // declarava vICMS=0 (imposto zerado) quando o correto — conferido contra
+    // NF-e real emitida pelo sistema legado (NBS) — é vBC/vICMS com a base já
+    // reduzida (ex.: vBC 3095,00 / vICMS 371,40, não 0/0). Afeta toda venda
+    // CST20 com redução de base já emitida (MMATOS, empresa que usa esse CST
+    // na venda comum e na venda pós-consignação) — ver docs-fiscal-299 §2.31.
     if (cstIcms === '20' && regraIcms.reducao_base_calculo != null) {
       const pRed = Number(regraIcms.reducao_base_calculo);
       const pIcms = Number(regraIcms.aliquota ?? 0);
       const vBcRed = r2(valorFmt * (1 - pRed / 100));
       const vIcmsRed = r2(vBcRed * (pIcms / 100));
+      item.icms_base_calculo = vBcRed;
+      item.icms_valor = vIcmsRed;
       item.icms_valor_desonerado = r2(valorFmt * (pIcms / 100) - vIcmsRed);
       item.icms_motivo_desoneracao = 9;
     }
