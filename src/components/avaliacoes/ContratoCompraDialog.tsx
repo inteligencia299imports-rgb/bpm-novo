@@ -575,9 +575,13 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         <h1 className="text-xl font-bold flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Compra' : 'Contrato de Compra'}
         </h1>
-        {ehNfe && <span className="ml-auto"><NfeStatusBadge nfe={nfe} /></span>}
+        {ehNfe && (
+          <span className="ml-auto flex items-center gap-2">
+            <NfeStatusBadge nfe={nfe} />
+            <NfeDanfeButton nfe={nfe} />
+          </span>
+        )}
       </div>
-      {ehNfe && <div className="flex items-center gap-2 flex-wrap"><NfeDanfeButton nfe={nfe} /></div>}
 
       {loading ? (
         <div className="flex justify-center py-12">

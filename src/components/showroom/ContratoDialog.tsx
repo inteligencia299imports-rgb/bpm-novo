@@ -1186,9 +1186,13 @@ const ContratoDialog: React.FC<Props> = ({
         <h1 className="text-xl font-bold flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Venda' : 'Emissão de Proposta'}
         </h1>
-        {ehNfe && <span className="ml-auto"><NfeStatusBadge nfe={nfe} /></span>}
+        {ehNfe && (
+          <span className="ml-auto flex items-center gap-2">
+            <NfeStatusBadge nfe={nfe} />
+            <NfeDanfeButton nfe={nfe} />
+          </span>
+        )}
       </div>
-      {ehNfe && <div className="flex items-center gap-2 flex-wrap"><NfeDanfeButton nfe={nfe} /></div>}
 
       {nfeEmProducao && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 flex items-center gap-1.5">
