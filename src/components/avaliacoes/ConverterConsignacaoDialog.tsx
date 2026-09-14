@@ -114,13 +114,11 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
           {/* Etapa 1 — Devolução Simbólica */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2">
-                  <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">1</span>
-                  Devolução Simbólica
-                </span>
-                <span className="flex items-center gap-2">
-                  <NfeStatusBadge nfe={nfeDevolucao} />
+              <CardTitle className="text-sm flex items-center gap-2">
+                <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">1</span>
+                Devolução Simbólica
+                <NfeStatusBadge nfe={nfeDevolucao} />
+                <span className="ml-auto">
                   <NfeDanfeButton nfe={nfeDevolucao} />
                 </span>
               </CardTitle>
@@ -176,14 +174,12 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
           {/* Etapa 2 — Compra */}
           <Card className={!devolucaoProducaoOk ? 'opacity-60' : undefined}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2">
-                  <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">2</span>
-                  Compra
-                  {!devolucaoProducaoOk && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
-                </span>
-                <span className="flex items-center gap-2">
-                  <NfeStatusBadge nfe={nfeCompra} />
+              <CardTitle className="text-sm flex items-center gap-2">
+                <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">2</span>
+                Compra
+                {!devolucaoProducaoOk && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+                <NfeStatusBadge nfe={nfeCompra} />
+                <span className="ml-auto">
                   <NfeDanfeButton nfe={nfeCompra} />
                 </span>
               </CardTitle>

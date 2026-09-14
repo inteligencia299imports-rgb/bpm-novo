@@ -24,7 +24,7 @@ import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
-import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
+import { NfeStatusBadge, NfeNumeroBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 import AgregadosContrato, { type Agregado, type AgregadoLinha } from '@/components/showroom/AgregadosContrato';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 
@@ -1187,10 +1187,13 @@ const ContratoDialog: React.FC<Props> = ({
           <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Venda' : 'Emissão de Proposta'}
         </h1>
         {ehNfe && (
-          <span className="ml-auto flex items-center gap-2">
+          <>
             <NfeStatusBadge nfe={nfe} />
-            <NfeDanfeButton nfe={nfe} />
-          </span>
+            <NfeNumeroBadge nfe={nfe} />
+            <span className="ml-auto">
+              <NfeDanfeButton nfe={nfe} />
+            </span>
+          </>
         )}
       </div>
 
@@ -1963,13 +1966,6 @@ const ContratoDialog: React.FC<Props> = ({
           {/* Ações */}
           {ehNfe ? (
             <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-              {nfe.nfe?.status === 'processada' && nfe.nfe.ambiente === 'producao' && (
-                <div className="flex flex-wrap items-center gap-3 mr-auto text-sm">
-                  <Badge className="bg-primary/10 text-primary gap-1.5">
-                    <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe?.numero || '-'} • série {nfe.nfe?.serie || '-'}
-                  </Badge>
-                </div>
-              )}
               {nfe.pendente && (
                 <div className="flex items-center gap-3 mr-auto">
                   <Badge variant="outline" className="gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Emitindo NF-e…</Badge>
