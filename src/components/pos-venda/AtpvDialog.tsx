@@ -257,7 +257,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4 text-primary" /> Histórico RENAVE</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4 text-primary" /> Histórico</CardTitle>
         </CardHeader>
         <CardContent>
           {historicoLoading ? (
@@ -314,13 +314,9 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
       ) : !renaveEntrouEstoque ? (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2"><PackagePlus className="h-4 w-4 text-primary" /> Entrada em Estoque no RENAVE</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><PackagePlus className="h-4 w-4 text-primary" /> Entrada RENAVE</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Antes do ATPV-e, a moto precisa dar <strong>entrada em estoque no RENAVE</strong> — usa a NF-e
-              de faturamento da montadora (já vinculada a esta moto) e gera o Termo de Entrada e o RENAVAM.
-            </p>
             <div className="max-w-[200px]">
               <Label className="text-xs text-muted-foreground">Data da entrada</Label>
               <Input className="mt-1" type="date" value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} />
@@ -335,7 +331,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
             )}
             <Button className="w-full gap-2" disabled={entrandoEstoque} onClick={fazerEntrada}>
               {entrandoEstoque ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
-              Fazer entrada no RENAVE
+              Processar Entrada
             </Button>
           </CardContent>
         </Card>
