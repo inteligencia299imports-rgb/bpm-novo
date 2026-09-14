@@ -45,7 +45,7 @@ export const ehPessoaJuridica = (
   ((cliente?.cpf_cnpj || '').replace(/\D/g, '').length > 11);
 
 /** Rótulo do documento de identificação conforme o tipo de pessoa do cliente. */
-export const docIdentificacaoLabel = (pj: boolean) => (pj ? 'Cartão CNPJ' : 'CNH');
+export const docIdentificacaoLabel = (pj: boolean) => (pj ? 'Cartão CNPJ' : 'CNH ou RG');
 /** `tipo_documento` em clientes_fornecedores_documentos conforme o tipo de pessoa. */
 export const docIdentificacaoTipo = (pj: boolean): TipoDocIdentificacao => (pj ? 'cartao_cnpj' : 'cnh');
 /** Sufixo do bucket path (docs/<clienteId>/<sufixo>). */
@@ -72,11 +72,13 @@ export async function upsertCnhDoc(
 }
 
 /**
- * Processa uma CNH recém-anexada: chama a extração via IA, confere se o nome
- * bate com o cliente e — se bater — atualiza nome (e CPF, quando o cliente
- * não tem CPF cadastrado). Se NÃO bater, faz rollback do anexo e avisa.
+ * Processa um documento de identificação recém-anexado (CNH ou RG, ou Cartão
+ * CNPJ para PJ): chama a extração via IA, confere se o nome bate com o
+ * cliente e — se bater — atualiza nome (e CPF/RG/data de nascimento, quando
+ * o cliente não tem o campo cadastrado). Se NÃO bater, ou se o arquivo não
+ * for nem CNH nem RG, faz rollback do anexo e avisa.
  *
- * Retorna `true` se a CNH foi aceita, `false` se foi rejeitada (rollback feito).
+ * Retorna `true` se o documento foi aceito, `false` se foi rejeitado (rollback feito).
  */
 export async function processarCnhAnexada(params: {
   clienteId: string;
@@ -89,7 +91,9 @@ export async function processarCnhAnexada(params: {
 }): Promise<{ aceita: boolean; resultado: CnhExtracaoResultado | null }> {
   const { clienteId, url, bucketPath, rollback } = params;
   const pj = !!params.ehPessoaJuridica;
-  const nomeDoc = pj ? 'Cartão CNPJ' : 'CNH';
+  // Antes de saber o que a IA detectou, PF pode ter anexado CNH ou RG —
+  // "documento" cobre os dois nas mensagens genéricas (loading, erro de rede).
+  const nomeDoc = pj ? 'Cartão CNPJ' : 'documento';
   const toastId = toast.loading(`Conferindo o ${nomeDoc}…`);
   try {
     const { data, error } = await supabase.functions.invoke('extrair-dados-cnh', {
@@ -122,16 +126,16 @@ export async function processarCnhAnexada(params: {
       if (res.atualizou_rg) campos.push('RG');
       if (res.atualizou_nascimento || res.data_nascimento) campos.push('data de nascimento');
       const lista = campos.length === 1 ? campos[0] : `${campos.slice(0, -1).join(', ')} e ${campos[campos.length - 1]}`;
-      toast.success(`CNH conferida — ${lista} do cliente ${campos.length > 1 ? 'atualizados' : 'atualizado'}`, { id: toastId });
+      toast.success(`Documento conferido — ${lista} do cliente ${campos.length > 1 ? 'atualizados' : 'atualizado'}`, { id: toastId });
       if (res.divergencias?.length) {
-        toast.warning(`CNH: ${res.divergencias.join('; ')}. Ajuste manualmente se necessário.`);
+        toast.warning(`Documento: ${res.divergencias.join('; ')}. Ajuste manualmente se necessário.`);
       }
     } else {
-      toast.warning('Não foi possível validar a CNH automaticamente. Anexo mantido — confira nome e CPF do cliente manualmente.', { id: toastId });
+      toast.warning('Não foi possível validar o documento automaticamente. Anexo mantido — confira nome e CPF do cliente manualmente.', { id: toastId });
     }
     return { aceita: true, resultado: res };
   } catch {
-    toast.warning('Não foi possível validar a CNH automaticamente. Anexo mantido — confira nome e CPF do cliente manualmente.', { id: toastId });
+    toast.warning('Não foi possível validar o documento automaticamente. Anexo mantido — confira nome e CPF do cliente manualmente.', { id: toastId });
     return { aceita: true, resultado: null };
   }
 }
