@@ -731,9 +731,9 @@ export function ClienteForm({
         }
       }
 
-      // Endereço residencial (ATPV) — só Pessoa Jurídica; informativo, sem
-      // obrigatoriedade (não faz parte de enderecoCompleto).
-      if (isJuridica) {
+      // Endereço residencial (ATPV) — informativo, sem obrigatoriedade (não faz
+      // parte de enderecoCompleto). Disponível pra física e jurídica.
+      {
         const hasEnderecoAtpv = enderecoAtpv.cep || enderecoAtpv.logradouro || enderecoAtpv.numero
           || enderecoAtpv.complemento || enderecoAtpv.bairro || enderecoAtpv.cidade || enderecoAtpv.uf;
         if (hasEnderecoAtpv) {
@@ -1148,16 +1148,14 @@ export function ClienteForm({
 
         <TabsContent value="endereco" className="space-y-6 pt-4">
           <div className="space-y-3">
-            {isJuridica && (
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold text-foreground">Endereço Comercial (NF)</Label>
-                {enderecoAtpvPreenchido && (
-                  <Button type="button" variant="outline" size="sm" onClick={copiarAtpvParaComercial}>
-                    <Import className="h-3.5 w-3.5 mr-1.5" /> Copiar do Residencial
-                  </Button>
-                )}
-              </div>
-            )}
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-semibold text-foreground">Endereço Comercial (NF)</Label>
+              {enderecoAtpvPreenchido && (
+                <Button type="button" variant="outline" size="sm" onClick={copiarAtpvParaComercial}>
+                  <Import className="h-3.5 w-3.5 mr-1.5" /> Copiar do Residencial
+                </Button>
+              )}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label>CEP <span className="text-red-500">*</span></Label>
@@ -1217,72 +1215,70 @@ export function ClienteForm({
             </div>
           </div>
 
-          {isJuridica && (
-            <div className="space-y-3 border-t pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-sm font-semibold text-foreground">Endereço Residencial (ATPV)</Label>
-                  <p className="text-xs text-muted-foreground">Informativo — usado na ATPV. A NF continua saindo com o endereço comercial acima.</p>
-                </div>
-                {enderecoComercialPreenchido && (
-                  <Button type="button" variant="outline" size="sm" onClick={copiarComercialParaAtpv}>
-                    <Import className="h-3.5 w-3.5 mr-1.5" /> Copiar do Comercial
-                  </Button>
-                )}
+          <div className="space-y-3 border-t pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-semibold text-foreground">Endereço Residencial (ATPV)</Label>
+                <p className="text-xs text-muted-foreground">Informativo — usado na ATPV. A NF continua saindo com o endereço comercial acima.</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <Label>CEP</Label>
-                  <div className="flex gap-2">
-                    <Input inputMode="numeric" value={enderecoAtpv.cep} onChange={(e) => setEAtpv("cep")(maskCEP(e.target.value))} placeholder="00000-000" />
-                    {onlyDigits(enderecoAtpv.cep).length === 8 && onlyDigits(enderecoAtpv.cep) !== cepConsultadoAtpv && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => cepApiAtpv.mutate()}
-                        disabled={cepApiAtpv.isPending}
-                        title="Buscar endereço pelo CEP"
-                      >
-                        {cepApiAtpv.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                      </Button>
-                    )}
-                  </div>
+              {enderecoComercialPreenchido && (
+                <Button type="button" variant="outline" size="sm" onClick={copiarComercialParaAtpv}>
+                  <Import className="h-3.5 w-3.5 mr-1.5" /> Copiar do Comercial
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <Label>CEP</Label>
+                <div className="flex gap-2">
+                  <Input inputMode="numeric" value={enderecoAtpv.cep} onChange={(e) => setEAtpv("cep")(maskCEP(e.target.value))} placeholder="00000-000" />
+                  {onlyDigits(enderecoAtpv.cep).length === 8 && onlyDigits(enderecoAtpv.cep) !== cepConsultadoAtpv && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => cepApiAtpv.mutate()}
+                      disabled={cepApiAtpv.isPending}
+                      title="Buscar endereço pelo CEP"
+                    >
+                      {cepApiAtpv.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    </Button>
+                  )}
                 </div>
-                <div className="md:col-span-2">
-                  <Label>Logradouro</Label>
-                  <Input value={enderecoAtpv.logradouro} onChange={(e) => setEAtpv("logradouro")(e.target.value)} />
-                </div>
-                <div>
-                  <Label>Número</Label>
-                  <Input value={enderecoAtpv.numero} onChange={(e) => setEAtpv("numero")(e.target.value)} />
-                </div>
-                <div>
-                  <Label>Complemento</Label>
-                  <Input value={enderecoAtpv.complemento} onChange={(e) => setEAtpv("complemento")(e.target.value)} />
-                </div>
-                <div>
-                  <Label>Bairro</Label>
-                  <Input value={enderecoAtpv.bairro} onChange={(e) => setEAtpv("bairro")(e.target.value)} />
-                </div>
-                <div>
-                  <Label>Cidade</Label>
-                  <Input value={enderecoAtpv.cidade} onChange={(e) => setEAtpv("cidade")(e.target.value)} />
-                </div>
-                <div>
-                  <Label>UF</Label>
-                  <Select value={enderecoAtpv.uf || ""} onValueChange={(v) => setEAtpv("uf")(v)}>
-                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>
-                      {UFS.map((uf) => (
-                        <SelectItem key={uf} value={uf}>{uf}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              </div>
+              <div className="md:col-span-2">
+                <Label>Logradouro</Label>
+                <Input value={enderecoAtpv.logradouro} onChange={(e) => setEAtpv("logradouro")(e.target.value)} />
+              </div>
+              <div>
+                <Label>Número</Label>
+                <Input value={enderecoAtpv.numero} onChange={(e) => setEAtpv("numero")(e.target.value)} />
+              </div>
+              <div>
+                <Label>Complemento</Label>
+                <Input value={enderecoAtpv.complemento} onChange={(e) => setEAtpv("complemento")(e.target.value)} />
+              </div>
+              <div>
+                <Label>Bairro</Label>
+                <Input value={enderecoAtpv.bairro} onChange={(e) => setEAtpv("bairro")(e.target.value)} />
+              </div>
+              <div>
+                <Label>Cidade</Label>
+                <Input value={enderecoAtpv.cidade} onChange={(e) => setEAtpv("cidade")(e.target.value)} />
+              </div>
+              <div>
+                <Label>UF</Label>
+                <Select value={enderecoAtpv.uf || ""} onValueChange={(v) => setEAtpv("uf")(v)}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    {UFS.map((uf) => (
+                      <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          )}
+          </div>
         </TabsContent>
 
         <TabsContent value="bancario" className="space-y-4 pt-4">
