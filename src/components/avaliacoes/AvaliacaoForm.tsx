@@ -1708,7 +1708,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
               </div>
             )}
             {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && (
-              <CurrencyField label="Valor de Fechamento" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} disabled={valorFechamentoTravado} />
+              <CurrencyField label="Valor de Fechamento (moto avaliada)" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} disabled={valorFechamentoTravado} />
             )}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Classificação da Moto <span className="text-destructive">*</span></Label>
