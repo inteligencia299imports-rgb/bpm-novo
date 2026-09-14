@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { formatPersonName } from '@/lib/utils';
 import { extrairErroFuncao } from '@/lib/edgeFunctionError';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Emissão do ATPV-e de uma moto 0km (RENAVE / SERPRO) — última etapa do pós-venda.
@@ -60,6 +61,7 @@ const formatDataHora = (v: string) => {
 };
 
 const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueMoto, onDone }) => {
+  const { user } = useAuth();
   const [emitindo, setEmitindo] = useState(false);
   const [nfVenda, setNfVenda] = useState<any | null>(null);
   const [nfLoading, setNfLoading] = useState(true);
@@ -69,9 +71,32 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
   const [historicoLoading, setHistoricoLoading] = useState(true);
   const [dataEntrada, setDataEntrada] = useState('');
   const [cpfOperador, setCpfOperador] = useState('');
+  const [funcionarioCpf, setFuncionarioCpf] = useState<string | null>(null);
+  const [funcionarioLoading, setFuncionarioLoading] = useState(true);
   const [entrandoEstoque, setEntrandoEstoque] = useState(false);
 
   useEffect(() => { setEstoque(estoqueMoto); }, [estoqueMoto]);
+
+  // CPF do operador vem do cadastro de funcionário (funcionarios_hcm.usuario_id
+  // = usuário logado); só se não achar é que o campo fica disponível pra
+  // preencher na mão.
+  useEffect(() => {
+    if (!open || !user?.id) return;
+    let cancel = false;
+    setFuncionarioLoading(true);
+    (supabase as any)
+      .from('funcionarios_hcm')
+      .select('cpf')
+      .eq('usuario_id', user.id)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        if (cancel) return;
+        const cpf = data?.cpf ? String(data.cpf).replace(/\D/g, '') : null;
+        setFuncionarioCpf(cpf && cpf.length === 11 ? cpf : null);
+        setFuncionarioLoading(false);
+      });
+    return () => { cancel = true; };
+  }, [open, user?.id]);
 
   const emnId: string | undefined = estoque?.id;
   const chassi: string = estoque?.chassi || '';
@@ -147,6 +172,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
   };
 
   const nfAutorizada = !!nfVenda && nfVenda.status === 'processada' && nfVenda.ambiente === 'producao' && !!nfVenda.chave_nfe;
+  const cpfEnviado = funcionarioCpf || cpfOperador;
 
   const fazerEntrada = async () => {
     if (!emnId) return;
@@ -158,7 +184,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
           estoque_moto_nova_id: emnId,
           quilometragem_hodometro: 0, // 0km — sem hodômetro rodado
           data_entrada_estoque: new Date(dataEntrada + 'T12:00:00').toISOString(),
-          cpf_operador: cpfOperador,
+          cpf_operador: cpfEnviado,
         },
       });
       if (error || (res && res.error)) {
@@ -330,14 +356,25 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">CPF do Operador Responsável</Label>
-                <Input
-                  className="mt-1"
-                  inputMode="numeric"
-                  value={formatCpfCnpj(cpfOperador)}
-                  onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                  placeholder="000.000.000-00"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">Exigido pelo RENAVE — quem está operando a entrada.</p>
+                {funcionarioLoading ? (
+                  <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando…</p>
+                ) : funcionarioCpf ? (
+                  <>
+                    <p className="mt-1 text-sm font-semibold">{formatCpfCnpj(funcionarioCpf)}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Do seu cadastro de funcionário.</p>
+                  </>
+                ) : (
+                  <>
+                    <Input
+                      className="mt-1"
+                      inputMode="numeric"
+                      value={formatCpfCnpj(cpfOperador)}
+                      onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                      placeholder="000.000.000-00"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-1">Não achamos seu CPF no cadastro de funcionário — exigido pelo RENAVE.</p>
+                  </>
+                )}
               </div>
             </div>
             {estoque?.renave_ultimo_erro && (
@@ -345,7 +382,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" /> Última tentativa: {estoque.renave_ultimo_erro}
               </span>
             )}
-            <Button className="w-full gap-2" disabled={entrandoEstoque || cpfOperador.length !== 11} onClick={fazerEntrada}>
+            <Button className="w-full gap-2" disabled={entrandoEstoque || funcionarioLoading || cpfEnviado.length !== 11} onClick={fazerEntrada}>
               {entrandoEstoque ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
               Processar Entrada
             </Button>

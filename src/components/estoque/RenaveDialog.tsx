@@ -7,6 +7,7 @@ import { Loader2, CheckCircle2, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { extrairErroFuncao } from '@/lib/edgeFunctionError';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * RENAVE (SERPRO) — entrada em estoque do 0km (gera o TEV e o RENAVAM).
@@ -23,8 +24,11 @@ interface Props {
 }
 
 const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => {
+  const { user } = useAuth();
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
   const [cpfOperador, setCpfOperador] = useState('');
+  const [funcionarioCpf, setFuncionarioCpf] = useState<string | null>(null);
+  const [funcionarioLoading, setFuncionarioLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [nfCompra, setNfCompra] = useState<any | null>(null);
 
@@ -50,8 +54,30 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
     return () => { cancel = true; };
   }, [open, item?.id]);
 
+  // CPF do operador vem do cadastro de funcionário (funcionarios_hcm.usuario_id
+  // = usuário logado); só se não achar é que o campo fica disponível pra
+  // preencher na mão.
+  useEffect(() => {
+    if (!open || !user?.id) return;
+    let cancel = false;
+    setFuncionarioLoading(true);
+    (supabase as any)
+      .from('funcionarios_hcm')
+      .select('cpf')
+      .eq('usuario_id', user.id)
+      .maybeSingle()
+      .then(({ data: fnc }: any) => {
+        if (cancel) return;
+        const cpf = fnc?.cpf ? String(fnc.cpf).replace(/\D/g, '') : null;
+        setFuncionarioCpf(cpf && cpf.length === 11 ? cpf : null);
+        setFuncionarioLoading(false);
+      });
+    return () => { cancel = true; };
+  }, [open, user?.id]);
+
   if (!item) return null;
   const jaEntrou = !!item.renave_id_estoque;
+  const cpfEnviado = funcionarioCpf || cpfOperador;
 
   const fazerEntrada = async () => {
     setLoading(true);
@@ -62,7 +88,7 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
           estoque_moto_nova_id: item.id,
           quilometragem_hodometro: 0, // 0km — sem hodômetro rodado
           data_entrada_estoque: new Date(data + 'T12:00:00').toISOString(),
-          cpf_operador: cpfOperador,
+          cpf_operador: cpfEnviado,
         },
       });
       if (error || (res && res.error)) {
@@ -127,20 +153,31 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
-                  <Input
-                    className="mt-1"
-                    inputMode="numeric"
-                    value={formatCpf(cpfOperador)}
-                    onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                    placeholder="000.000.000-00"
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">Exigido pelo RENAVE.</p>
+                  {funcionarioLoading ? (
+                    <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando…</p>
+                  ) : funcionarioCpf ? (
+                    <>
+                      <p className="mt-1 text-sm font-semibold">{formatCpf(funcionarioCpf)}</p>
+                      <p className="text-[11px] text-muted-foreground mt-1">Do seu cadastro de funcionário.</p>
+                    </>
+                  ) : (
+                    <>
+                      <Input
+                        className="mt-1"
+                        inputMode="numeric"
+                        value={formatCpf(cpfOperador)}
+                        onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                        placeholder="000.000.000-00"
+                      />
+                      <p className="text-[11px] text-muted-foreground mt-1">Não achamos seu CPF no cadastro — exigido pelo RENAVE.</p>
+                    </>
+                  )}
                 </div>
               </div>
               {item.renave_ultimo_erro && (
                 <p className="text-xs text-destructive">Última tentativa: {item.renave_ultimo_erro}</p>
               )}
-              <Button className="w-full" onClick={fazerEntrada} disabled={loading || cpfOperador.length !== 11}>
+              <Button className="w-full" onClick={fazerEntrada} disabled={loading || funcionarioLoading || cpfEnviado.length !== 11}>
                 {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
                 Fazer entrada no RENAVE
               </Button>
