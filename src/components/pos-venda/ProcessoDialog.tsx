@@ -308,6 +308,10 @@ const ProcessoDialog: React.FC<Props> = ({
   const is0km = (estoqueMoto as any)?.fonte === '0km';
   const atpvEmitido = !!(estoqueMoto as any)?.renave_atpv_numero;
   const renaveEntrouEstoque = !!(estoqueMoto as any)?.renave_id_estoque;
+  // A saída/ATPV-e no RENAVE exige a NF-e de venda autorizada em produção
+  // (o edge function 'renave' já bloqueia sem isso) — a opção só fica
+  // disponível aqui quando as duas condições estiverem ok.
+  const nfVendaProducao = nfeVenda.emitida && nfeVenda.nfe?.ambiente === 'producao';
 
   const nfEmitidaDe = (etapa: string) =>
     etapa === NF_VENDA ? nfeVenda.emitida
@@ -659,10 +663,14 @@ const ProcessoDialog: React.FC<Props> = ({
                       </span>
                     ) : (
                       <Button
-                        variant={renaveEntrouEstoque ? 'default' : 'outline'} size="sm"
+                        variant={(renaveEntrouEstoque && nfVendaProducao) ? 'default' : 'outline'} size="sm"
                         className="h-9 gap-2 text-sm"
-                        disabled={!renaveEntrouEstoque}
-                        title={renaveEntrouEstoque ? undefined : 'Disponível após a entrada da moto no estoque RENAVE'}
+                        disabled={!renaveEntrouEstoque || !nfVendaProducao}
+                        title={
+                          !renaveEntrouEstoque ? 'Disponível após a entrada da moto no estoque RENAVE'
+                            : !nfVendaProducao ? 'Disponível após a NF-e de venda ser autorizada em produção'
+                            : undefined
+                        }
                         onClick={() => onEmitirAtpv?.()}
                       >
                         <FileText className="h-4 w-4" /> Emitir ATPV-e
