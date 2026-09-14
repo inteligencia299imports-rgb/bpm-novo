@@ -6,14 +6,26 @@
 // certificado. Por isso, sem RENAVE_CERT_PEM/RENAVE_KEY_PEM configurados, o
 // cliente usa fetch normal (homolog).
 //
-// Base URL: RENAVE_BASE_URL (default: homolog estaleiro).
+// ATENÇÃO — achado 2026-09-14: "estaleiro" é o nome da PLATAFORMA do SERPRO,
+// não é sinônimo de homologação — os dois ambientes vivem sob esse domínio.
+// O que diferencia é o prefixo `hom.`:
+//   • Homologação (teste, sem certificado): hom.renave.estaleiro.serpro.gov.br
+//   • Produção (mTLS obrigatório):          renave.estaleiro.serpro.gov.br
+// Confirmado batendo em /api/cliente-autenticado sem certificado: o host SEM
+// `hom.` respondeu 401 Unauthorized (produção); o host COM `hom.` respondeu
+// 200 com "Estabelecimento padrão de teste" (homologação). O código já teve
+// isso invertido — DEFAULT_BASE apontava pro host de PRODUÇÃO.
+//
+// Base URL: RENAVE_BASE_URL (default: homologação). Setar RENAVE_BASE_URL
+// pra `https://renave.estaleiro.serpro.gov.br/renave-ws` (sem `hom.`) —
+// junto com RENAVE_CERT_PEM/RENAVE_KEY_PEM — liga produção (ver buildClient).
 //
 // Cada chamada é logada em `renave_chamadas` (best-effort — falha ao logar
 // nunca derruba a chamada real ao RENAVE) quando o chamador passa `ctx`
 // (admin client + chassi/estoque_moto_nova_id/operação/usuário). Ver
 // docs no README — tabela usada pra auditoria por moto (chassi).
 
-const DEFAULT_BASE = 'https://renave.estaleiro.serpro.gov.br/renave-ws';
+const DEFAULT_BASE = 'https://hom.renave.estaleiro.serpro.gov.br/renave-ws';
 
 export interface RenaveResp {
   status: number;
@@ -36,9 +48,9 @@ function buildClient(): { client: unknown | undefined; base: string } {
   const key = Deno.env.get('RENAVE_KEY_PEM');
   let client: unknown | undefined;
   // O certificado só é anexado quando RENAVE_BASE_URL aponta pra produção —
-  // em homologação (base default, "estaleiro") o SERPRO espera o "cliente
+  // em homologação (base default, host `hom.`) o SERPRO espera o "cliente
   // padrão de teste" sem certificado. Isso evita usar um certificado real de
-  // produção contra o estaleiro por engano (RENAVE_CERT_PEM/KEY_PEM podem
+  // produção contra a homologação por engano (RENAVE_CERT_PEM/KEY_PEM podem
   // estar configurados de antemão, sem que isso já ligue produção sozinho).
   if (baseUrlSecret && cert && key) {
     // Deno: fetch com certificado de cliente (mTLS).

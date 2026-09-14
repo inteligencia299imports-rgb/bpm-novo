@@ -4,20 +4,37 @@ Registro Nacional de Veículos em Estoque. Fluxo de moto **0km** da concessioná
 
 ## Ambiente / autenticação
 
-- **Homologação:** SERPRO oferece um "cliente padrão de teste" — basta **não enviar
-  certificado**. Base default: `https://renave.estaleiro.serpro.gov.br/renave-ws`.
+**⚠️ "estaleiro" é o nome da plataforma do SERPRO, não é sinônimo de
+homologação — os dois ambientes vivem sob esse domínio.** O que diferencia é
+o prefixo `hom.`. Confirmado em 2026-09-14 batendo em `/api/cliente-autenticado`
+sem certificado:
+- `https://hom.renave.estaleiro.serpro.gov.br/renave-ws` → **200 OK**,
+  `"nome":"Estabelecimento padrão de teste"` → **isso é homologação**.
+- `https://renave.estaleiro.serpro.gov.br/renave-ws` (sem `hom.`) → **401
+  Unauthorized** (exige mTLS) → **isso é produção**.
+
+O código teve isso **invertido** desde a implementação original —
+`DEFAULT_BASE` apontava pro host de produção (sem `hom.`), tratado como se
+fosse o default de homologação. Corrigido: `DEFAULT_BASE` agora é o host
+`hom.` de verdade. Sem dano até aqui — produção sempre exigiu certificado
+(401 sem ele), e nenhum certificado esteve configurado até 2026-09-14.
+
+- **Homologação (default):** SERPRO oferece um "cliente padrão de teste" —
+  basta **não enviar certificado**. Base:
+  `https://hom.renave.estaleiro.serpro.gov.br/renave-ws`.
 - **Produção:** mTLS com certificado ICP-Brasil e-CNPJ do estabelecimento.
   Setar secrets:
-  - `RENAVE_BASE_URL` (host de produção)
+  - `RENAVE_BASE_URL` = `https://renave.estaleiro.serpro.gov.br/renave-ws`
+    (sem `hom.` — é o host de produção, apesar do nome "estaleiro")
   - `RENAVE_CERT_PEM` (certificado PEM)
   - `RENAVE_KEY_PEM` (chave privada PEM)
 - **O certificado só é usado quando `RENAVE_BASE_URL` está setado** (produção) —
   `RENAVE_CERT_PEM`/`RENAVE_KEY_PEM` podem estar configurados de antemão sem
   "ligar" produção sozinhos; enquanto `RENAVE_BASE_URL` não existir, a função
-  continua chamando o estaleiro (homolog) sem certificado, mesmo com o par
-  cert/key já presente. Evita usar certificado real de produção contra o
-  estaleiro por engano. Certificado atual: e-CNPJ A1 da **FAG** (CNPJ
-  49.580.035/0001-36), válido até 18/03/2027 — configurado em 2026-09-14.
+  continua chamando a homologação sem certificado, mesmo com o par cert/key já
+  presente. Certificado atual: e-CNPJ A1 da **FAG** (CNPJ 49.580.035/0001-36),
+  válido até 18/03/2027 — configurado em 2026-09-14 (`RENAVE_BASE_URL` ainda
+  **não** setado — produção ainda desligada, por decisão do usuário).
 
 ## Ações (body JSON `{ acao: ... }`)
 
@@ -56,9 +73,11 @@ where chassi = '...' order by created_at desc;`
 
 Tabela oficial do SERPRO (RENAVE-WS, grupo "Estabelecimento" — CE 20),
 recebida do usuário em 2026-09-14, pra referência ao implementar novos
-fluxos. Todos os paths abaixo são relativos a `RENAVE_BASE_URL` (default
-`https://renave.estaleiro.serpro.gov.br/renave-ws`). Cruzei contra o que já
-está implementado em `renave.ts` (coluna "Uso") — os demais **não foram
+fluxos. As URLs completas da tabela usam o host **de produção**
+(`https://renave.estaleiro.serpro.gov.br/renave-ws`, sem `hom.` — ver
+"Ambiente/autenticação" acima) — os paths abaixo, porém, são os mesmos nos
+dois ambientes; só o host muda (`hom.` pra homologação). Cruzei contra o que
+já está implementado em `renave.ts` (coluna "Uso") — os demais **não foram
 verificados contra a doc oficial do SERPRO nem testados**; conferir antes de
 implementar (a transcrição de tabela em imagem é propensa a erro de
 digitação em paths/query params).
