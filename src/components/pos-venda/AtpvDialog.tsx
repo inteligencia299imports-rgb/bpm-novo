@@ -11,6 +11,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { formatPersonName } from '@/lib/utils';
+import { extrairErroFuncao } from '@/lib/edgeFunctionError';
 
 /**
  * Emissão do ATPV-e de uma moto 0km (RENAVE / SERPRO) — última etapa do pós-venda.
@@ -159,7 +160,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
         },
       });
       if (error || (res && res.error)) {
-        toast.error(res?.error || error?.message || 'Falha na entrada RENAVE');
+        toast.error(res?.error || await extrairErroFuncao(error, 'Falha na entrada RENAVE'));
         await Promise.all([recarregarEstoque(), carregarHistorico()]);
         return;
       }
@@ -180,7 +181,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
         body: { acao: 'saida', estoque_moto_nova_id: emnId, atendimento_id: atendimento.id },
       });
       if (error || (res && res.error)) {
-        toast.error(res?.error || error?.message || 'Falha ao emitir o ATPV-e');
+        toast.error(res?.error || await extrairErroFuncao(error, 'Falha ao emitir o ATPV-e'));
         await Promise.all([recarregarEstoque(), carregarHistorico()]);
         return;
       }

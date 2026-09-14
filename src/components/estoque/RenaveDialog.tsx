@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, CheckCircle2, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { extrairErroFuncao } from '@/lib/edgeFunctionError';
 
 /**
  * RENAVE (SERPRO) — entrada em estoque do 0km (gera o TEV e o RENAVAM).
@@ -61,7 +62,7 @@ const RenaveDialog: React.FC<Props> = ({ open, onOpenChange, item, onDone }) => 
         },
       });
       if (error || (res && res.error)) {
-        toast.error(res?.error || error?.message || 'Falha na entrada RENAVE');
+        toast.error(res?.error || await extrairErroFuncao(error, 'Falha na entrada RENAVE'));
         return;
       }
       toast.success(`Entrada RENAVE OK — RENAVAM ${res?.estoque?.renavam ?? '—'}`);
