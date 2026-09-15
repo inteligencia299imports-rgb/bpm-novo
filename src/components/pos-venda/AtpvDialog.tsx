@@ -115,6 +115,18 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
   const renaveEntrouEstoque = !!estoque?.renave_id_estoque;
   const atpvEmitido = !!estoque?.renave_atpv_numero;
 
+  // Reabrir a tela não garante que o `estoqueMoto` (prop, vindo do pai) esteja
+  // atualizado — se o pai não recarregou a lista depois de uma emissão, a
+  // tela reabre com dado velho e mostra o botão de emitir de novo mesmo já
+  // feito. Rebusca direto do banco toda vez que abre.
+  useEffect(() => {
+    if (!open || !emnId) return;
+    let cancel = false;
+    (supabase as any).from('estoque_motos_novas').select('*').eq('id', emnId).maybeSingle()
+      .then(({ data }: any) => { if (!cancel && data) setEstoque((prev: any) => ({ ...prev, ...data })); });
+    return () => { cancel = true; };
+  }, [open, emnId]);
+
   useEffect(() => {
     if (!open || !emnId) return;
     let cancel = false;
@@ -268,7 +280,18 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
           <p className="text-xs text-muted-foreground">RENAVE / SERPRO — {motoLabel}</p>
         </div>
         {atpvEmitido && (
-          <Badge className="text-[10px] shrink-0 bg-emerald-100 text-emerald-700">ATPV-e emitido</Badge>
+          <span className="ml-auto flex items-center gap-2 shrink-0">
+            <Badge className="text-[10px] bg-emerald-100 text-emerald-700">ATPV-e emitido</Badge>
+            {estoque?.renave_atpv_url && (
+              <Button
+                size="sm"
+                className="gap-1.5 text-white bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => window.open(estoque.renave_atpv_url, '_blank', 'noopener')}
+              >
+                <ExternalLink className="h-3.5 w-3.5" /> ATPV-e
+              </Button>
+            )}
+          </span>
         )}
       </div>
 
@@ -323,11 +346,6 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
               <Info label="Estado RENAVE" value={estoque?.renave_estado} />
               <Info label="Placa" value={estoque?.renave_placa} />
             </div>
-            {estoque?.renave_atpv_url && (
-              <a href={estoque.renave_atpv_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary font-medium">
-                <ExternalLink className="h-3.5 w-3.5" /> Baixar ATPV-e (PDF)
-              </a>
-            )}
             <p className="text-xs text-muted-foreground">O pós-venda foi concluído com a emissão do ATPV-e.</p>
           </CardContent>
         </Card>
