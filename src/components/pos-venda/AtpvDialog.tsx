@@ -282,7 +282,6 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
               </Badge>
             )}
           </h1>
-          <p className="text-xs text-muted-foreground">RENAVE / SERPRO — {motoLabel}</p>
         </div>
         {atpvEmitido && estoque?.renave_atpv_url && (
           <Button
