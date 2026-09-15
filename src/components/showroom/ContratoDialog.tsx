@@ -1275,12 +1275,15 @@ const ContratoDialog: React.FC<Props> = ({
                     </div>
                   )}
 
-                  {/* "Atendimento" só na emissão de NF-e (fixo, ver docs-fiscal-299 §2.5). */}
-                  {empresaSel && ehNfe && (
+                  {/* "Atendimento" e "Nº da Nota" só na emissão de NF-e (Atendimento é
+                      fixo, ver docs-fiscal-299 §2.5) — Vendedor aparece também na proposta. */}
+                  {empresaSel && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <InfoDisplay label="Atendimento" value="Presencial" valueClassName="text-primary" />
+                      {ehNfe && <InfoDisplay label="Atendimento" value="Presencial" valueClassName="text-primary" />}
                       <InfoDisplay label="Vendedor" value={vendedorNome || undefined} valueClassName="text-primary" />
-                      <InfoDisplay label="Nº da Nota" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
+                      {ehNfe && (
+                        <InfoDisplay label="Nº da Nota" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
+                      )}
                     </div>
                   )}
                 </CardContent>
