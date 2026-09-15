@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  ArrowLeft, Bike, User, FileText, Loader2, ExternalLink, AlertTriangle, History, PackagePlus,
+  ArrowLeft, Bike, User, FileText, Loader2, ExternalLink, AlertTriangle, History, PackagePlus, CheckCircle2,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -275,6 +276,11 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
         <div className="flex-1 min-w-0">
           <h1 className="text-lg sm:text-xl font-bold truncate flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" /> Emissão do ATPV-e
+            {atpvEmitido && (
+              <Badge variant="outline" className="gap-1.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Autorizada
+              </Badge>
+            )}
           </h1>
           <p className="text-xs text-muted-foreground">RENAVE / SERPRO — {motoLabel}</p>
         </div>
