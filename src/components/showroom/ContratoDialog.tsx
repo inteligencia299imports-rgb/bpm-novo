@@ -1243,11 +1243,11 @@ const ContratoDialog: React.FC<Props> = ({
       ) : (
         <>
           <div className="space-y-4">
-              {/* Card: Empresa Vendedora */}
+              {/* Card: Empresa */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-primary" /> Empresa Vendedora
+                    <Building2 className="h-4 w-4 text-primary" /> Empresa
                   </CardTitle>
                   <Separator className="mt-2" />
                 </CardHeader>
@@ -1579,11 +1579,10 @@ const ContratoDialog: React.FC<Props> = ({
                           <InfoDisplay label="Ano" value={[motoAv.ano_fabricacao, motoAv.ano_modelo].filter(Boolean).join('/') || undefined} />
                           <InfoDisplay label="Cor" value={motoAv.cor ? String(motoAv.cor).toUpperCase() : undefined} />
                           <InfoDisplay label="Placa" value={motoAv.placa ? motoAv.placa.replace(/-/g, '') : undefined} />
-                          <InfoDisplay label="Avaliador" value={avaliadorTrocaNome || undefined} valueClassName="text-primary" />
                         </div>
                         {avaliacaoData && (
                           <div className="space-y-2">
-                            <div className="grid grid-cols-3 gap-2 text-sm">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                               <InfoDisplay label="Avaliação Compra" value={formatCurrency(avaliacaoData.avaliacao_compra)} />
                               <InfoDisplay label="Custos Loja" value={formatCurrency(avaliacaoData.previsao_custos_loja)} />
                               <div>
@@ -1603,6 +1602,7 @@ const ContratoDialog: React.FC<Props> = ({
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <InfoDisplay label="Valor de Quitação" value={valorQuitacao ? `R$ ${valorQuitacao}` : '—'} />
                       <InfoDisplay label="Valor de Fechamento" value={valorFechamento ? `R$ ${valorFechamento}` : '—'} />
+                      <InfoDisplay label="Avaliador" value={avaliadorTrocaNome || undefined} valueClassName="text-primary" />
                     </div>
                   </CardContent>
                 </Card>
