@@ -158,8 +158,33 @@ Deno.serve(async (req) => {
       }, ctx);
 
       if (r.status !== 201 && r.status !== 200) {
-        await persistir(admin, emnId, { renave_ultimo_erro: erroRenave(r) });
-        return json({ error: erroRenave(r), status: r.status, detalhe: r.body }, 422);
+        const msg = erroRenave(r);
+        // Achado real 2026-09-15 (chassi 95V4F00AAPM000003): SERPRO recusa a
+        // entrada dizendo que o chassi "possui um estoque ativo" — ou seja,
+        // uma tentativa anterior nossa já criou o registro do lado da SERPRO,
+        // mas a resposta nunca chegou a ser gravada aqui (renave_id_estoque
+        // ficou null). Nesse caso específico, consulta os pendentes por
+        // chassi pra tentar recuperar o idEstoque já existente e resincroniza
+        // em vez de só devolver o erro de novo.
+        if (/possui um estoque ativo/i.test(msg)) {
+          const p = await pendentesEntrada(chassi.toUpperCase().replace(/\s/g, ''), ctx);
+          const lista = Array.isArray(p.body) ? p.body : (Array.isArray(p.body?.content) ? p.body.content : []);
+          const achado = lista.find((v: any) => String(v?.chassi ?? '').toUpperCase() === chassi.toUpperCase())
+            ?? (lista.length === 1 ? lista[0] : null);
+          const idRecuperado = achado?.id ?? achado?.idEstoque ?? null;
+          if (idRecuperado) {
+            await persistir(admin, emnId, {
+              renave_id_estoque: idRecuperado,
+              renave_estado: achado?.estado ?? null,
+              renave_placa: achado?.placa ?? emn.renave_placa ?? null,
+              renave_renavam: achado?.renavam ?? emn.renave_renavam ?? null,
+              renave_ultimo_erro: null,
+            });
+            return json({ ok: true, resincronizado: true, estoque: achado });
+          }
+        }
+        await persistir(admin, emnId, { renave_ultimo_erro: msg });
+        return json({ error: msg, status: r.status, detalhe: r.body }, 422);
       }
 
       const est = r.body || {};
