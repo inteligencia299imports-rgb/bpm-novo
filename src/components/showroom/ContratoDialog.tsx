@@ -1855,16 +1855,18 @@ const ContratoDialog: React.FC<Props> = ({
                     <p className="text-base font-bold text-primary">{formatCurrency(valorTotalContrato)}</p>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardContent className="pt-4">
-                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-                      {valorFaltante < -0.005 ? 'Valor Sobrando' : 'Valor Faltante'}
-                    </span>
-                    <p className={cn('text-base font-bold', valorFaltante > 0.005 ? 'text-orange-600' : 'text-emerald-600')}>
-                      {formatCurrency(valorFaltante < 0 ? Math.abs(valorFaltante) : valorFaltante)}
-                    </p>
-                  </CardContent>
-                </Card>
+                {!nfeEmProducao && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                        {valorFaltante < -0.005 ? 'Valor Sobrando' : 'Valor Faltante'}
+                      </span>
+                      <p className={cn('text-base font-bold', valorFaltante > 0.005 ? 'text-orange-600' : 'text-emerald-600')}>
+                        {formatCurrency(valorFaltante < 0 ? Math.abs(valorFaltante) : valorFaltante)}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
 
               {/* Card: Observações */}

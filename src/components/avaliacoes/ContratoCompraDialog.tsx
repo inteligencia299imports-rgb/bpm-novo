@@ -641,10 +641,13 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                   </Select>
                 </div>
               )}
-              {empresaSel && ehNfe && (
+              {empresaSel && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <InfoDisplay label="Avaliador" value={avaliadorNome || undefined} valueClassName="text-primary" />
-                  <InfoDisplay label="Nº da Nota" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
+                  {ehNfe && (
+                    <InfoDisplay label="Nº da Nota" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
+                  )}
+                  <InfoDisplay label="Data de Aquisição" value={dataContrato ? format(dataContrato, 'dd/MM/yyyy', { locale: ptBR }) : undefined} valueClassName="text-primary" />
                 </div>
               )}
             </CardContent>
