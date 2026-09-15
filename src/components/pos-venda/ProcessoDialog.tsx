@@ -667,7 +667,10 @@ const ProcessoDialog: React.FC<Props> = ({
                           <FileText className="h-3.5 w-3.5" /> ATPV-e
                         </Button>
                         {(estoqueMoto as any)?.renave_atualizado_em && (
-                          <span>{format(new Date((estoqueMoto as any).renave_atualizado_em), "dd/MM/yy", { locale: ptBR })}</span>
+                          <>
+                            <CalendarIcon className="h-4 w-4 shrink-0" />
+                            {format(new Date((estoqueMoto as any).renave_atualizado_em), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                          </>
                         )}
                       </span>
                     ) : (
