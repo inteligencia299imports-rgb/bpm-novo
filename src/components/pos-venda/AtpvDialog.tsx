@@ -144,8 +144,8 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
   }, [open, emnId]);
 
   // NF-e de compra (faturamento da montadora) — mesma que a entrada RENAVE usa
-  // (chave/valor) no edge function. A data de entrada no RENAVE, por padrão,
-  // é a data dessa nota — não faz sentido sugerir "hoje".
+  // (chave/valor) no edge function. A data de entrada no RENAVE é sempre a
+  // data dessa nota (sem edição manual — não faz sentido sugerir "hoje").
   useEffect(() => {
     if (!open || !emnId) return;
     let cancel = false;
@@ -344,7 +344,9 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
             <div className="grid grid-cols-2 gap-3 max-w-sm">
               <div>
                 <Label className="text-xs text-muted-foreground">Data da entrada</Label>
-                <Input className="mt-1" type="date" value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} />
+                <p className="mt-1 text-sm font-semibold">
+                  {dataEntrada ? dataEntrada.split('-').reverse().join('/') : '—'}
+                </p>
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
