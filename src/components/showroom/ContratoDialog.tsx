@@ -1267,27 +1267,31 @@ const ContratoDialog: React.FC<Props> = ({
                       {ehNfe && <InfoDisplay label="Atendimento" value="Presencial" />}
                     </div>
                   ) : (
-                    <div className="max-w-sm space-y-1.5">
-                      <Label>Empresa vendedora <span className="text-destructive">*</span></Label>
-                      <Select value={empresaId} onValueChange={setEmpresaId}>
-                        <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
-                        <SelectContent>
-                          {empresasLoja.map((e) => (
-                            <SelectItem key={e.id} value={e.id}>
-                              {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="sm:col-span-2 space-y-1.5">
+                        <Label>Empresa vendedora <span className="text-destructive">*</span></Label>
+                        <Select value={empresaId} onValueChange={setEmpresaId}>
+                          <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+                          <SelectContent>
+                            {empresasLoja.map((e) => (
+                              <SelectItem key={e.id} value={e.id}>
+                                {(e.razao_social || e.nome)}{e.cnpj ? ` - ${e.cnpj}` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {empresaSel && <InfoDisplay label="Vendedor" value={vendedorNome || undefined} valueClassName="text-primary" />}
                     </div>
                   )}
 
-                  {/* "Nº NF"/"Data NF" só na emissão de NF-e — Vendedor e Data da Venda
-                      aparecem também na proposta (mesmo padrão de Avaliador/Data de
-                      Aquisição em compra/consignação). */}
+                  {/* "Nº NF"/"Data NF" só na emissão de NF-e — Data da Venda aparece
+                      também na proposta (mesmo padrão de Data de Aquisição em compra/
+                      consignação). Vendedor já sai na mesma linha da Empresa na
+                      proposta (acima); na NF-e (soLeitura) continua aqui. */}
                   {empresaSel && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <InfoDisplay label="Vendedor" value={vendedorNome || undefined} valueClassName="text-primary" />
+                      {soLeitura && <InfoDisplay label="Vendedor" value={vendedorNome || undefined} valueClassName="text-primary" />}
                       <InfoDisplay label="Data Venda" value={dataSinal ? format(dataSinal, 'dd/MM/yyyy', { locale: ptBR }) : undefined} valueClassName="text-primary" />
                       {ehNfe && (
                         <>
