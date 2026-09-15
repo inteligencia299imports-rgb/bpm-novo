@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -276,9 +275,6 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
         <div className="flex-1 min-w-0">
           <h1 className="text-lg sm:text-xl font-bold truncate flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" /> Emissão do ATPV-e
-            {atpvEmitido && (
-              <Badge variant="outline" className="text-[10px] font-medium border-emerald-700 text-emerald-700">ATPV-e emitido</Badge>
-            )}
           </h1>
           <p className="text-xs text-muted-foreground">RENAVE / SERPRO — {motoLabel}</p>
         </div>
@@ -320,7 +316,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
             <Info label="RENAVAM" value={estoque?.renave_renavam || estoque?.renavam} />
             <Info label="Placa" value={estoque?.renave_placa || estoque?.placa} />
             <Info label="ID Estoque RENAVE" value={estoque?.renave_id_estoque} />
-            <Info label="Estado RENAVE" value={estoque?.renave_estado} />
+            <Info label="Estado RENAVE" value={estoque?.renave_estado ? <span className="text-primary">{estoque.renave_estado}</span> : undefined} />
             <Info label="Nº ATPV-e" value={estoque?.renave_atpv_numero} />
             <Info
               label="NF-e de Venda"
