@@ -250,13 +250,29 @@ digitação em paths/query params).
 - **Certificado do CNPJ 05.564.902/0001-74 (Florianópolis/Intercontinental
   Motorsport, slot 2) recebe 401 "No message available" em produção**
   (achado real 2026-09-15, chassi `95V1X00AASM000382`, endpoint
-  `/api/entradas-estoque-zero-km`) — cert/key conferidos (par bate,
-  configurados como `RENAVE_CERT_PEM_2`/`RENAVE_KEY_PEM_2`/`RENAVE_CNPJ_2`),
-  a chamada sai com mTLS (não é fallback sem certificado). 401 genérico sem
-  corpo de erro é característico de CNPJ ainda não credenciado pra esse
-  serviço no lado da SERPRO (diferente do cert do FAG, slot 1, que já
-  funciona). Resolução depende de confirmar com a SERPRO se esse e-CNPJ está
-  habilitado pro RENAVE-WS em produção. Adicionada a ação `cliente` com
+  `/api/entradas-estoque-zero-km`; **confirmado de novo no mesmo dia após
+  regravar o secret do zero em base64** — descartando de vez qualquer
+  suspeita de senha errada ou gravação corrompida): cert/key conferidos
+  (senha do `.pfx` confirmada, par cert/chave bate, CN do certificado
+  confere com o CNPJ, validade até 13/07/2027), configurados como
+  `RENAVE_CERT_PEM_2`/`RENAVE_KEY_PEM_2`/`RENAVE_CNPJ_2` em base64. A
+  chamada sai com mTLS de verdade (não é fallback sem certificado) e o
+  mesmo 401 genérico sem corpo de erro se repete. É característico de CNPJ
+  ainda não credenciado pra esse serviço no lado da SERPRO (diferente do
+  cert do FAG, slot 1, que já funciona, e do cert da Porto Alegre, slot 3,
+  que também já passa da autenticação — ver achado da Porto Alegre abaixo).
+  Resolução depende de confirmar com a SERPRO se esse e-CNPJ está
+  habilitado pro RENAVE-WS em produção — não há mais nada a verificar do
+  nosso lado (código, dado ou certificado). Adicionada a ação `cliente` com
   `empresa_id` opcional (`GET /api/cliente-autenticado` testando o cert de
   uma empresa específica) pra isolar esse tipo de problema sem depender do
   payload real de entrada/saída.
+- **Nota (2026-09-15):** o campo `status` retornado pela ação `entrada`/
+  `saida` pro front é sempre `422` (`index.ts` embrulha qualquer falha da
+  SERPRO como 422, veja `return json({ error: erroRenave(r), status:
+  r.status, detalhe: r.body }, 422)`), independente do status HTTP real
+  devolvido pela SERPRO (401, 422, etc. — esse status real só aparece em
+  `detalhe.status`/no log de `renave_chamadas`, não no HTTP status da
+  nossa própria função). Pra diagnosticar um erro, sempre conferir
+  `renave_chamadas.status_http`, não o que aparece no Network tab do
+  navegador.
