@@ -55,8 +55,13 @@ CNPJ sem par configurado faz a chamada sair sem certificado** — a SERPRO
 rejeita com 401 em produção (falha segura: nunca usa por engano o
 certificado de outro CNPJ).
 
-Slot principal configurado hoje: e-CNPJ A1 da **FAG** (CNPJ
-49.580.035/0001-36), válido até 18/03/2027 — configurado em 2026-09-14.
+Slots configurados hoje:
+
+| Slot | Empresa | CNPJ | Validade | Status em produção |
+|---|---|---|---|---|
+| 1 (principal) | FAG | 49.580.035/0001-36 | 18/03/2027 | ✅ funcionando |
+| 2 | Florianópolis (Intercontinental Motorsport) | 05.564.902/0001-74 | — | ❌ 401 "No message available" — CNPJ provavelmente não credenciado na SERPRO pro RENAVE-WS (ver Pendências) |
+| 3 | Porto Alegre (Intercontinental Motorsport) | 05.564.902/0002-55 | 26/11/2026 | não testado ainda — configurado em 2026-09-15 |
 
 **Pra adicionar um novo CNPJ:** conseguir o certificado e-CNPJ A1 (.pfx +
 senha de importação) daquele estabelecimento, converter pra PEM
