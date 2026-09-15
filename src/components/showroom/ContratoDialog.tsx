@@ -1197,12 +1197,6 @@ const ContratoDialog: React.FC<Props> = ({
         )}
       </div>
 
-      {nfeEmProducao && (
-        <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-700 flex items-center gap-1.5">
-          <AlertTriangle className="h-3.5 w-3.5" /> NF-e Emitida - Proposta bloqueada para edição.
-        </div>
-      )}
-
       {!ehNfe && vendaBloqueadaAprovacao && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 flex items-center gap-1.5">
           <AlertTriangle className="h-3.5 w-3.5" /> Proposta aguardando aprovação — o contrato de sinal já pode ser gerado; a proposta de venda libera após a aprovação do seu Gestor.
@@ -1919,8 +1913,9 @@ const ContratoDialog: React.FC<Props> = ({
                 </CardContent>
               </Card>
 
-              {/* Card: NF-e de Venda — só na tela de emissão de NF-e; só a observação segue editável, valor é informativo (vem do Valor da Venda). */}
-              {ehNfe && (
+              {/* Card: NF-e de Venda — só na tela de emissão de NF-e, e só antes de emitida
+                  (uma vez autorizada, os dados já ficam na linha do título + barra de ações). */}
+              {ehNfe && !(nfeJaEmitida && !podeReemitirHomolog) && (
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
@@ -1929,34 +1924,28 @@ const ContratoDialog: React.FC<Props> = ({
                     <Separator className="mt-2" />
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {nfeJaEmitida && !podeReemitirHomolog ? (
-                      <p className="text-sm text-muted-foreground">NF-e autorizada — veja os dados na barra de ações abaixo.</p>
-                    ) : (
-                      <>
-                        <InfoDisplay label="Valor da Nota" value={nfeValor ? `R$ ${nfeValor}` : undefined} valueClassName="text-primary" />
-                        <div className="space-y-1.5">
-                          <Label>Observações na NF-e</Label>
-                          <Textarea
-                            className="uppercase"
-                            rows={3}
-                            value={nfeObs}
-                            onChange={(e) => setNfeObs(e.target.value.toUpperCase())}
-                            placeholder="INFORMAÇÕES COMPLEMENTARES..."
-                          />
+                    <InfoDisplay label="Valor da Nota" value={nfeValor ? `R$ ${nfeValor}` : undefined} valueClassName="text-primary" />
+                    <div className="space-y-1.5">
+                      <Label>Observações na NF-e</Label>
+                      <Textarea
+                        className="uppercase"
+                        rows={3}
+                        value={nfeObs}
+                        onChange={(e) => setNfeObs(e.target.value.toUpperCase())}
+                        placeholder="INFORMAÇÕES COMPLEMENTARES..."
+                      />
+                    </div>
+                    {eh0kmVenda && (
+                      <div className="space-y-2 rounded-md border border-dashed p-3">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          De acordo com NF de Entrada da Moto.
+                        </p>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                          <InfoDisplay label="BC ST retida" value={stBcRetido ? `R$ ${stBcRetido}` : '—'} />
+                          <InfoDisplay label="ICMS do substituto" value={stValorSubstituto ? `R$ ${stValorSubstituto}` : '—'} />
+                          <InfoDisplay label="ICMS-ST retido" value={stValorRetido ? `R$ ${stValorRetido}` : '—'} />
                         </div>
-                        {eh0kmVenda && (
-                          <div className="space-y-2 rounded-md border border-dashed p-3">
-                            <p className="text-xs font-medium text-muted-foreground">
-                              De acordo com NF de Entrada da Moto.
-                            </p>
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                              <InfoDisplay label="BC ST retida" value={stBcRetido ? `R$ ${stBcRetido}` : '—'} />
-                              <InfoDisplay label="ICMS do substituto" value={stValorSubstituto ? `R$ ${stValorSubstituto}` : '—'} />
-                              <InfoDisplay label="ICMS-ST retido" value={stValorRetido ? `R$ ${stValorRetido}` : '—'} />
-                            </div>
-                          </div>
-                        )}
-                      </>
+                      </div>
                     )}
                   </CardContent>
                 </Card>

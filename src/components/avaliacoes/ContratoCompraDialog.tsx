@@ -628,8 +628,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             </CardContent>
           </Card>
 
-          {/* Card: NF-e de Compra (valor + observações da nota) */}
-          {ehNfe && (
+          {/* Card: NF-e de Compra (valor + observações da nota) — some inteiro uma
+              vez autorizada e não reemitível (os dados já ficam no título + barra de ações). */}
+          {ehNfe && !(nfeJaEmitida && !podeReemitirHomolog) && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -638,40 +639,34 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                 <Separator className="mt-2" />
               </CardHeader>
               <CardContent className="space-y-4">
-                {nfeJaEmitida && !podeReemitirHomolog ? (
-                  <p className="text-sm text-muted-foreground">NF-e autorizada — veja os dados na barra de ações abaixo.</p>
-                ) : (
-                  <>
-                    <div className="space-y-1.5 max-w-xs">
-                      <Label>Valor da NF-e <span className="text-destructive">*</span></Label>
-                      <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-                        <Input
-                          className="pl-7"
-                          inputMode="numeric"
-                          value={nfeValor}
-                          onChange={(e) => setNfeValor(formatCurrencyInput(e.target.value))}
-                          placeholder="0,00"
-                          disabled={nfe.pendente}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Valor que sai na nota. O compromisso financeiro registra sempre o repasse ao cliente ({brl(repasseCliente)}).
-                      </p>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Observações na NF-e</Label>
-                      <Textarea
-                        rows={3}
-                        value={obsNfe}
-                        onChange={(e) => setObsNfe(e.target.value.toUpperCase())}
-                        placeholder="INFORMAÇÕES COMPLEMENTARES QUE SAIRÃO NA NOTA..."
-                        className="uppercase"
-                        disabled={nfe.pendente}
-                      />
-                    </div>
-                  </>
-                )}
+                <div className="space-y-1.5 max-w-xs">
+                  <Label>Valor da NF-e <span className="text-destructive">*</span></Label>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                    <Input
+                      className="pl-7"
+                      inputMode="numeric"
+                      value={nfeValor}
+                      onChange={(e) => setNfeValor(formatCurrencyInput(e.target.value))}
+                      placeholder="0,00"
+                      disabled={nfe.pendente}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Valor que sai na nota. O compromisso financeiro registra sempre o repasse ao cliente ({brl(repasseCliente)}).
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Observações na NF-e</Label>
+                  <Textarea
+                    rows={3}
+                    value={obsNfe}
+                    onChange={(e) => setObsNfe(e.target.value.toUpperCase())}
+                    placeholder="INFORMAÇÕES COMPLEMENTARES QUE SAIRÃO NA NOTA..."
+                    className="uppercase"
+                    disabled={nfe.pendente}
+                  />
+                </div>
               </CardContent>
             </Card>
           )}
