@@ -75,7 +75,7 @@ fica no disco depois da conversão.
 | `cliente` | `GET /api/cliente-autenticado` (diagnóstico) |
 | `pendentes` | `GET /api/veiculos-zero-km-pendentes-entrada-estoque?chassi=` |
 | `entrada` | `{ estoque_moto_nova_id, quilometragem_hodometro, data_entrada_estoque? }` → lê a NF-e de faturamento da montadora (`nfe_entradas` `operacao='compra'`, `xml_raw`), chama `POST /api/entradas-estoque-zero-km` (TEV), grava `renave_id_estoque / renavam / placa / numeroCrv` em `estoque_motos_novas`, e vincula a NF (`POST /api/notas-fiscais` COMPRA). |
-| `saida` | `{ estoque_moto_nova_id, atendimento_id }` → exige `renave_id_estoque` e a NF-e de venda 0km autorizada em produção. Resolve o município IBGE do comprador (`GET /api/municipios`), chama `POST /api/notas-fiscais` VENDA + `POST /api/saidas-estoque-veiculo-zero-km` (gera o ATPV-e), busca o PDF (`GET /api/pdf-atpv?chassi=`) e sobe em `moto-fotos/renave/atpv/<id>.pdf`. |
+| `saida` | `{ estoque_moto_nova_id, atendimento_id }` → exige `renave_id_estoque` e a NF-e de venda 0km autorizada em produção. Resolve o município IBGE do comprador (`GET /api/municipios`), chama `POST /api/notas-fiscais` VENDA + `POST /api/saidas-estoque-veiculo-zero-km` (gera o ATPV-e), busca o PDF (`GET /api/pdf-atpv?chassi=`) e sobe em `moto-fotos/renave/atpv/ATPVE - <chassi>.pdf`. |
 | `atpv-pdf` | `{ chassi }` → rebusca o PDF/XML do ATPV-e. |
 
 ## Log/auditoria — `renave_chamadas`

@@ -246,7 +246,9 @@ Deno.serve(async (req) => {
       const pdf = await pdfAtpvPorChassi(String(emn.chassi).toUpperCase(), ctx);
       if (pdf.status === 200 && pdf.body?.pdfAtpvBase64) {
         const bytes = Uint8Array.from(atob(pdf.body.pdfAtpvBase64), (c) => c.charCodeAt(0));
-        const path = `renave/atpv/${emnId}.pdf`;
+        // Nome do arquivo com o chassi (não o uuid do estoque) — facilita achar
+        // o PDF certo na hora do download.
+        const path = `renave/atpv/ATPVE - ${String(emn.chassi).toUpperCase()}.pdf`;
         const up = await admin.storage.from('moto-fotos').upload(path, bytes, { contentType: 'application/pdf', upsert: true });
         if (!up.error) {
           const { data: pub } = admin.storage.from('moto-fotos').getPublicUrl(path);
