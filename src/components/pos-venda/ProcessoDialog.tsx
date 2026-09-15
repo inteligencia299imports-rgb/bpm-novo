@@ -659,7 +659,7 @@ const ProcessoDialog: React.FC<Props> = ({
                     atpvEmitido ? (
                       <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
                         <Button
-                          size="sm" className="h-7 gap-1 text-white bg-emerald-600 hover:bg-emerald-700"
+                          size="sm" className="h-7 w-24 gap-1 justify-center text-white bg-emerald-600 hover:bg-emerald-700"
                           onClick={() => onEmitirAtpv?.()}
                         >
                           <FileText className="h-3.5 w-3.5" /> ATPV-e
@@ -745,7 +745,7 @@ const ProcessoDialog: React.FC<Props> = ({
                           (lá dentro tem o Baixar DANFE / cancelar / reemitir) —
                           não o DANFE direto aqui. */}
                       <Button
-                        size="sm" className={cn('h-7 gap-1', nfeBotaoClasse(nfeObj?.nfe))}
+                        size="sm" className={cn('h-7 w-24 gap-1 justify-center', nfeBotaoClasse(nfeObj?.nfe))}
                         onClick={() => (isNfTroca ? (trocaAvaliacaoId && onEmitirNfeTroca?.(trocaAvaliacaoId)) : onEmitirNfe?.())}
                       >
                         <FileText className="h-3.5 w-3.5" /> NF-e
