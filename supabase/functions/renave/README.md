@@ -212,3 +212,16 @@ digitação em paths/query params).
   entrada ou saída for aceita com dado errado, hoje não há como desfazer
   pelo nosso sistema — só via canal direto com a SERPRO/despachante.
 - **Assinatura do vendedor no ATPV** (catálogo acima, código 51 — `POST /api/atpv-assinatura-vendedor`): a doc do SERPRO lista esse passo separado da geração do ATPV-e (`saidas-estoque-veiculo-zero-km`, código 28). Hoje a ação `saida` não chama esse endpoint — precisa confirmar se ele é obrigatório no fluxo (a saída pode ficar pendente de assinatura antes do ATPV-e sair definitivo) antes de considerar a `saida` completa.
+- **Certificado do CNPJ 05.564.902/0001-74 (Florianópolis/Intercontinental
+  Motorsport, slot 2) recebe 401 "No message available" em produção**
+  (achado real 2026-09-15, chassi `95V1X00AASM000382`, endpoint
+  `/api/entradas-estoque-zero-km`) — cert/key conferidos (par bate,
+  configurados como `RENAVE_CERT_PEM_2`/`RENAVE_KEY_PEM_2`/`RENAVE_CNPJ_2`),
+  a chamada sai com mTLS (não é fallback sem certificado). 401 genérico sem
+  corpo de erro é característico de CNPJ ainda não credenciado pra esse
+  serviço no lado da SERPRO (diferente do cert do FAG, slot 1, que já
+  funciona). Resolução depende de confirmar com a SERPRO se esse e-CNPJ está
+  habilitado pro RENAVE-WS em produção. Adicionada a ação `cliente` com
+  `empresa_id` opcional (`GET /api/cliente-autenticado` testando o cert de
+  uma empresa específica) pra isolar esse tipo de problema sem depender do
+  payload real de entrada/saída.
