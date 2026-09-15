@@ -364,34 +364,39 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
-          {!nfLoading && !nfAutorizada && (
-            <span className="flex items-center gap-2 text-sm text-amber-600">
-              <AlertTriangle className="h-4 w-4" />
-              {!nfVenda ? 'Nenhuma NF-e de venda 0km encontrada — emita a NF-e antes do ATPV-e.' : 'A NF-e de venda precisa estar autorizada em produção para emitir o ATPV-e.'}
-            </span>
-          )}
-          {!funcionarioLoading && !funcionarioCpf && (
-            <div className="max-w-[200px]">
-              <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
-              <Input
-                className={cn('mt-1', cpfOperador.length === 11 && !cpfOperadorValido && 'border-destructive text-destructive focus-visible:ring-destructive')}
-                inputMode="numeric"
-                value={formatCpfCnpj(cpfOperador)}
-                onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                placeholder="000.000.000-00"
-              />
-            </div>
-          )}
-          <Button
-            className="w-full gap-2"
-            disabled={emitindo || funcionarioLoading || !nfAutorizada || !cpfEnviadoValido}
-            onClick={emitir}
-          >
-            {emitindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-            Emitir ATPV-e e concluir pós-venda
-          </Button>
-        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><FileText className="h-4 w-4 text-primary" /> Emitir ATPV-e</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!nfLoading && !nfAutorizada && (
+              <span className="flex items-center gap-2 text-sm text-amber-600">
+                <AlertTriangle className="h-4 w-4" />
+                {!nfVenda ? 'Nenhuma NF-e de venda 0km encontrada — emita a NF-e antes do ATPV-e.' : 'A NF-e de venda precisa estar autorizada em produção para emitir o ATPV-e.'}
+              </span>
+            )}
+            {!funcionarioLoading && !funcionarioCpf && (
+              <div className="max-w-[200px]">
+                <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
+                <Input
+                  className={cn('mt-1', cpfOperador.length === 11 && !cpfOperadorValido && 'border-destructive text-destructive focus-visible:ring-destructive')}
+                  inputMode="numeric"
+                  value={formatCpfCnpj(cpfOperador)}
+                  onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                  placeholder="000.000.000-00"
+                />
+              </div>
+            )}
+            <Button
+              className="w-full gap-2"
+              disabled={emitindo || funcionarioLoading || !nfAutorizada || !cpfEnviadoValido}
+              onClick={emitir}
+            >
+              {emitindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+              Emitir ATPV-e e concluir pós-venda
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       <Card>
