@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  ArrowLeft, Bike, User, FileText, Loader2, CheckCircle2, ExternalLink, AlertTriangle, History, PackagePlus,
+  ArrowLeft, Bike, User, FileText, Loader2, ExternalLink, AlertTriangle, History, PackagePlus,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -323,6 +323,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
             <Info label="Placa" value={estoque?.renave_placa || estoque?.placa} />
             <Info label="ID Estoque RENAVE" value={estoque?.renave_id_estoque} />
             <Info label="Estado RENAVE" value={estoque?.renave_estado} />
+            <Info label="Nº ATPV-e" value={estoque?.renave_atpv_numero} />
             <Info
               label="NF-e de Venda"
               value={
@@ -335,21 +336,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
         </Card>
       </div>
 
-      {atpvEmitido ? (
-        <Card className="border-emerald-200 bg-emerald-50/40">
-          <CardContent className="space-y-2 py-4 text-sm">
-            <div className="flex items-center gap-2 font-medium text-emerald-700">
-              <CheckCircle2 className="h-4 w-4" /> ATPV-e emitido — Nº {estoque?.renave_atpv_numero}
-            </div>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              <Info label="Termo de saída" value={estoque?.renave_num_termo_saida} />
-              <Info label="Estado RENAVE" value={estoque?.renave_estado} />
-              <Info label="Placa" value={estoque?.renave_placa} />
-            </div>
-            <p className="text-xs text-muted-foreground">O pós-venda foi concluído com a emissão do ATPV-e.</p>
-          </CardContent>
-        </Card>
-      ) : !renaveEntrouEstoque ? (
+      {atpvEmitido ? null : !renaveEntrouEstoque ? (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2"><PackagePlus className="h-4 w-4 text-primary" /> Entrada RENAVE</CardTitle>
