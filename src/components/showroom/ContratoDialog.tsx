@@ -1276,7 +1276,9 @@ const ContratoDialog: React.FC<Props> = ({
                   )}
 
                   {/* "Atendimento" e "Nº da Nota" só na emissão de NF-e (Atendimento é
-                      fixo, ver docs-fiscal-299 §2.5) — Vendedor aparece também na proposta. */}
+                      fixo, ver docs-fiscal-299 §2.5) — Vendedor e Data da Venda aparecem
+                      também na proposta (mesmo padrão de Avaliador/Data de Aquisição em
+                      compra/consignação). */}
                   {empresaSel && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       {ehNfe && <InfoDisplay label="Atendimento" value="Presencial" valueClassName="text-primary" />}
@@ -1284,6 +1286,7 @@ const ContratoDialog: React.FC<Props> = ({
                       {ehNfe && (
                         <InfoDisplay label="Nº da Nota" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
                       )}
+                      <InfoDisplay label="Data da Venda" value={dataSinal ? format(dataSinal, 'dd/MM/yyyy', { locale: ptBR }) : undefined} valueClassName="text-primary" />
                     </div>
                   )}
                 </CardContent>
