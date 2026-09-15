@@ -2,14 +2,13 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Ban, AlertTriangle, Loader2, ExternalLink, FileText } from 'lucide-react';
+import { CheckCircle2, Ban, AlertTriangle, Loader2, ExternalLink } from 'lucide-react';
 
 /**
- * Selo do status, tag do número (produção) e botão DANFE — todos na linha do
- * título: status e número logo após o título, DANFE alinhado à direita.
- * Homologação = laranja, produção = verde. Sem "Atualizar SEFAZ": a
- * reconsulta acontece via polling automático enquanto a NF-e está pendente
- * (ver useNfeCompra).
+ * Selo do status e botão DANFE — ambos na linha do título: status logo após
+ * o título, DANFE alinhado à direita. Homologação = laranja, produção =
+ * verde. Sem "Atualizar SEFAZ": a reconsulta acontece via polling automático
+ * enquanto a NF-e está pendente (ver useNfeCompra).
  */
 
 interface NfeLike {
@@ -52,16 +51,6 @@ export const NfeStatusBadge: React.FC<{ nfe: NfeLike }> = ({ nfe }) => {
     <Badge variant="outline" className={`gap-1.5 ${s.cls}`}>
       {s.icon}
       {s.label}
-    </Badge>
-  );
-};
-
-/** Tag "NF-e nº X • série Y" — só em produção autorizada. Colocar na linha do título, após o selo de status. */
-export const NfeNumeroBadge: React.FC<{ nfe: NfeLike }> = ({ nfe }) => {
-  if (nfe.nfe?.status !== 'processada' || nfe.nfe.ambiente !== 'producao') return null;
-  return (
-    <Badge className="bg-primary/10 text-primary gap-1.5">
-      <FileText className="h-3.5 w-3.5" /> NF-e nº {nfe.nfe.numero || '-'} • série {nfe.nfe.serie || '-'}
     </Badge>
   );
 };

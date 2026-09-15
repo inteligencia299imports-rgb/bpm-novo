@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { generateContratoConsignacaoPdf } from '@/lib/generateContratoConsignacaoPdf';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import ClienteForm from '@/components/clientes/ClienteForm';
@@ -24,7 +25,7 @@ import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } fro
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
-import { NfeStatusBadge, NfeNumeroBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
+import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 
 interface Props {
   open: boolean;
@@ -100,11 +101,11 @@ const CurrencyField = ({ label, value, onChange, disabled }: { label: string; va
   </div>
 );
 
-const InfoDisplay = ({ label, value }: { label: string; value: string | null | undefined }) => (
+const InfoDisplay = ({ label, value, valueClassName }: { label: string; value: string | null | undefined; valueClassName?: string }) => (
   value ? (
     <div>
       <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
-      <p className="text-sm font-semibold">{value}</p>
+      <p className={cn('text-sm font-semibold', valueClassName)}>{value}</p>
     </div>
   ) : null
 );
@@ -125,6 +126,22 @@ const snapshotFields = (v: {
 
 const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, modo = 'contrato' }) => {
   const { user, userName } = useAuth();
+  const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
+
+  // "Avaliador" exibido é o usuário registrado na avaliação (avaliador_id),
+  // não necessariamente quem está emitindo a NF-e agora.
+  useEffect(() => {
+    if (!open || !avaliacao?.avaliador_id) { setAvaliadorNome(null); return; }
+    let cancel = false;
+    (supabase as any)
+      .from('user_roles')
+      .select('nome')
+      .eq('user_id', avaliacao.avaliador_id)
+      .eq('projeto_id', BPM_PROJETO_ID)
+      .maybeSingle()
+      .then(({ data }: any) => { if (!cancel) setAvaliadorNome(data?.nome || null); });
+    return () => { cancel = true; };
+  }, [open, avaliacao?.avaliador_id]);
   const ehNfe = modo === 'nfe';
   // Após a NF-e autorizada, volta para a tela de Consignação.
   const nfe = useNfeCompra(avaliacao?.id, open, 'consignacao', 'avaliacao', () => {
@@ -574,7 +591,6 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         {ehNfe && (
           <>
             <NfeStatusBadge nfe={nfe} />
-            <NfeNumeroBadge nfe={nfe} />
             <span className="ml-auto">
               <NfeDanfeButton nfe={nfe} />
             </span>
@@ -625,6 +641,12 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    )}
+                    {empresaId && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+                        <InfoDisplay label="Avaliador" value={avaliadorNome || undefined} />
+                        <InfoDisplay label="Nº da Nota" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
                       </div>
                     )}
                   </CardContent>
@@ -767,6 +789,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                     <InfoDisplay label="RENAVAM" value={moto?.renavam} />
                     <InfoDisplay label="Nº CRV" value={moto?.numero_crv} />
                     <InfoDisplay label="UF" value={moto?.uf} />
+                    <InfoDisplay label="Avaliador" value={avaliadorNome || undefined} valueClassName="text-primary" />
                   </div>
                   {moto?.observacoes && <InfoDisplay label="Observações" value={moto.observacoes} />}
                   <MaintenanceBadges
