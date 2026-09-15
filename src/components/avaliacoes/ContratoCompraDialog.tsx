@@ -855,19 +855,19 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             <Card>
               <CardContent className="pt-4">
                 <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Abatimentos (Custos+Despesas)</span>
-                <p className="text-base font-bold text-primary">{brl(custosClienteTotal)}</p>
+                <p className="text-base font-bold">{brl(custosClienteTotal)}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
                 <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quitação</span>
-                <p className="text-base font-bold text-primary">{brl(quitacaoNum)}</p>
+                <p className="text-base font-bold">{brl(quitacaoNum)}</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4">
                 <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor de Fechamento</span>
-                <p className="text-base font-bold text-primary">{brl(fechamentoNum)}</p>
+                <p className="text-base font-bold">{brl(fechamentoNum)}</p>
               </CardContent>
             </Card>
             <Card>
