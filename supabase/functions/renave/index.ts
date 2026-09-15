@@ -9,6 +9,10 @@ import {
 } from './renave.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
+// E-mail do estabelecimento exigido pela SERPRO na saída (ATPV-e) — mesmo
+// e-mail pras 4 empresas do grupo (achado real 2026-09-15: rejeição [400]
+// "E-mail do estabelecimento é obrigatório", nunca era enviado).
+const EMAIL_ESTABELECIMENTO_PADRAO = 'financeiro@299imports.com.br';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -205,7 +209,7 @@ Deno.serve(async (req) => {
         valorVenda: Number(body.valor_venda ?? nfVenda.valor_total ?? 0),
         chaveNotaFiscal: chaveVenda,
         cpfOperadorResponsavel: body.cpf_operador ? String(body.cpf_operador).replace(/\D/g, '') : undefined,
-        emailEstabelecimento: body.email_estabelecimento || undefined,
+        emailEstabelecimento: body.email_estabelecimento || EMAIL_ESTABELECIMENTO_PADRAO,
         comprador: {
           tipoDocumento: docDigits.length > 11 ? 'CNPJ' : 'CPF',
           numeroDocumento: docDigits,
