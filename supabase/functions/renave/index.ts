@@ -100,10 +100,33 @@ Deno.serve(async (req) => {
       if (emn.renave_id_estoque) return json({ error: 'Este 0km já tem entrada no RENAVE (idEstoque ' + emn.renave_id_estoque + ')' }, 409);
 
       // NF-e de faturamento da montadora (operacao='compra', xml completo em xml_raw).
-      const { data: nfCompra } = await admin.from('nfe_entradas')
-        .select('chave_nfe, valor_total, xml_raw')
+      let { data: nfCompra } = await admin.from('nfe_entradas')
+        .select('id, chave_nfe, valor_total, xml_raw')
         .eq('estoque_moto_nova_id', emnId).eq('operacao', 'compra')
         .order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+      // Fallback por chassi — achado real 2026-09-15: várias NF de montadora
+      // chegam em nfe_entradas sem o vínculo estoque_moto_nova_id (o SisFin só
+      // grava isso ao "liberar estoque" da NF; muitas nunca passaram por lá).
+      // Casa pelo chassi exato no XML e só vincula se achar EXATAMENTE um
+      // candidato — ambíguo ou nenhum mantém o erro de sempre.
+      if (!nfCompra?.chave_nfe && emn.chassi) {
+        const chassiNorm = String(emn.chassi).trim().toUpperCase();
+        const { data: candidatos } = await admin.from('nfe_entradas')
+          .select('id, chave_nfe, valor_total, xml_raw')
+          .eq('operacao', 'compra').is('estoque_moto_nova_id', null)
+          .ilike('xml_raw', `%${chassiNorm}%`)
+          .order('created_at', { ascending: false });
+        const exatos = ((candidatos as any[]) || []).filter((c) => {
+          const ch = tag(String(c.xml_raw ?? ''), 'chassi') || tag(String(c.xml_raw ?? ''), 'cProd');
+          return ch && String(ch).trim().toUpperCase() === chassiNorm;
+        });
+        if (exatos.length === 1) {
+          nfCompra = exatos[0];
+          await admin.from('nfe_entradas').update({ estoque_moto_nova_id: emnId })
+            .eq('id', nfCompra.id).is('estoque_moto_nova_id', null);
+        }
+      }
       if (!nfCompra?.chave_nfe) return json({ error: 'NF-e de faturamento da montadora não encontrada para este 0km (nfe_entradas operacao=compra).' }, 409);
 
       const xml = String(nfCompra.xml_raw ?? '');
