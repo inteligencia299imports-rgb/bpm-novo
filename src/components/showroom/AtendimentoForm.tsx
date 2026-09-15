@@ -6,11 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save, Loader2, SendHorizonal, CheckCircle, Briefcase, User, ClipboardList } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { ArrowLeft, Save, Loader2, SendHorizonal, CheckCircle, Briefcase, User, ClipboardList, FileText } from 'lucide-react';
 import { LOJAS, INTERESSES, TEMPERATURAS, ORIGENS, UFS, TIPOS_ATENDIMENTO, SEXOS } from '@/types/crm';
 import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
 import MotoCompraSection from './MotoCompraSection';
+import AtendimentoObservacoes from './AtendimentoObservacoes';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 import { toast } from 'sonner';
@@ -53,6 +56,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [searchingPhone, setSearchingPhone] = useState(false);
   const [clientFound, setClientFound] = useState<boolean | null>(null);
   const [clienteId, setClienteId] = useState<string | null>(null);
+  // Observação do cadastro — só usado ao CRIAR (edição usa AtendimentoObservacoes,
+  // que já lista/edita o histórico direto na tabela observacoes).
+  const [novaObservacao, setNovaObservacao] = useState('');
 
   // form state
   const [loja, setLoja] = useState('');
@@ -519,6 +525,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         changed_by: user?.id,
         changed_by_name: userName || user?.email || null,
       });
+
+      // Observação inicial do cadastro (tabela genérica observacoes, sem coluna nova).
+      if (novaObservacao.trim()) {
+        await supabase.from('observacoes').insert({
+          id_operacao: atId,
+          observacao: novaObservacao.trim(),
+          created_by: user?.id || null,
+        });
+      }
     }
 
     if (interesse === 'comprar' || interesse === 'trocar') {
@@ -928,6 +943,30 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             </Card>
           )}
         </>
+      )}
+
+      {/* Card: Observações — por último. Edição reaproveita o histórico existente
+          (AtendimentoObservacoes, já grava em `observacoes`); criação usa um campo
+          simples, gravado como a 1ª observação assim que o atendimento é salvo. */}
+      {isEditing && atendimentoId ? (
+        <AtendimentoObservacoes idOperacao={atendimentoId} />
+      ) : (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" /> Observações
+            </CardTitle>
+            <Separator className="mt-2" />
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              rows={4}
+              value={novaObservacao}
+              onChange={(e) => setNovaObservacao(e.target.value)}
+              placeholder="Digite uma observação..."
+            />
+          </CardContent>
+        </Card>
       )}
 
       <div className="flex gap-3 justify-end pt-2 pb-8">
