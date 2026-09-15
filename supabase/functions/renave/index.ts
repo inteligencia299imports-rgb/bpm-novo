@@ -78,7 +78,13 @@ Deno.serve(async (req) => {
 
   try {
     if (acao === 'cliente') {
-      const ctx: RenaveLogCtx = { admin, operacao: acao, usuarioId: caller.id };
+      // empresa_id opcional -- testa o certificado daquele CNPJ especifico em
+      // vez do padrao (slot 1). Util pra diagnosticar 401 por CNPJ sem
+      // depender do payload real de entrada/saida.
+      const ctx: RenaveLogCtx = {
+        admin, operacao: acao, usuarioId: caller.id,
+        cnpjEstabelecimento: body.empresa_id ? await cnpjDaEmpresa(admin, body.empresa_id) : undefined,
+      };
       const r = await clienteAutenticado(ctx);
       return json({ status: r.status, cliente: r.body });
     }
