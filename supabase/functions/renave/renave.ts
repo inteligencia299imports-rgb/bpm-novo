@@ -66,10 +66,29 @@ export interface RenaveLogCtx {
 
 interface ParCertificado { cnpj: string; cert: string; key: string }
 
+// Achado 2026-09-15: gravar PEM (com quebras de linha) como secret via CLI é
+// frágil — tanto `--env-file` com "\n" escapado quanto passar o valor direto
+// como argumento (`NAME=$(cat arquivo)`) já geraram secret corrompido em
+// produção ("Unable to decode certificate"), mesmo com o PEM validado
+// localmente. Pra não depender de acertar a codificação de quebra de linha
+// pela CLI/shell, secrets novos podem ser gravados em **base64** do PEM
+// (sem quebra de linha nenhuma — imune a esse tipo de problema); aceita as
+// duas formas pra não quebrar os slots antigos já configurados como PEM cru.
+function decodeCertSecret(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('-----BEGIN')) return raw; // já é PEM
+  try {
+    const decoded = atob(trimmed);
+    return decoded.trim().startsWith('-----BEGIN') ? decoded : raw;
+  } catch {
+    return raw;
+  }
+}
+
 function candidatosCertificados(): ParCertificado[] {
   const out: ParCertificado[] = [];
   const push = (cnpjRaw: string | undefined, cert: string | undefined, key: string | undefined) => {
-    if (cnpjRaw && cert && key) out.push({ cnpj: cnpjRaw.replace(/\D/g, ''), cert, key });
+    if (cnpjRaw && cert && key) out.push({ cnpj: cnpjRaw.replace(/\D/g, ''), cert: decodeCertSecret(cert), key: decodeCertSecret(key) });
   };
   push(Deno.env.get('RENAVE_CNPJ'), Deno.env.get('RENAVE_CERT_PEM'), Deno.env.get('RENAVE_KEY_PEM'));
   for (let i = 2; i <= MAX_CNPJ_SLOTS; i++) {
