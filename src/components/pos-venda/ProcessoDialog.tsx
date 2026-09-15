@@ -582,6 +582,11 @@ const ProcessoDialog: React.FC<Props> = ({
                         Nº {nfeObj.nfe?.numero || '-'} / Série {nfeObj.nfe?.serie || '-'}
                       </p>
                     )}
+                    {isAtpvAuto && atpvEmitido && (estoqueMoto as any)?.renave_atpv_numero && (
+                      <p className="text-xs text-muted-foreground">
+                        Nº {(estoqueMoto as any).renave_atpv_numero}
+                      </p>
+                    )}
                     {isNfVenda && nfeVenda.erro && (
                       <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
                         <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
