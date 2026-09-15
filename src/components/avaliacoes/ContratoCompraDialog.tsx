@@ -847,26 +847,32 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             </CardContent>
           </Card>
 
-          {/* KPIs de Valores */}
-          <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
-              <div>
-                <span className="block text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Abatimentos (Custos+Despesas)</span>
+          {/* Resumo financeiro — um card por indicador (mesmo padrão da tela de venda) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card>
+              <CardContent className="pt-4">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Abatimentos (Custos+Despesas)</span>
                 <p className="text-base font-bold text-primary">{brl(custosClienteTotal)}</p>
-              </div>
-              <div>
-                <span className="block text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quitação</span>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Quitação</span>
                 <p className="text-base font-bold text-primary">{brl(quitacaoNum)}</p>
-              </div>
-              <div>
-                <span className="block text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor de Fechamento</span>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor de Fechamento</span>
                 <p className="text-base font-bold text-primary">{brl(fechamentoNum)}</p>
-              </div>
-              <div>
-                <span className="block text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse ao Cliente</span>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse ao Cliente</span>
                 <p className={`text-base font-bold ${repasseCliente >= 0 ? 'text-primary' : 'text-destructive'}`}>{brl(repasseCliente)}</p>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Card: Data do Contrato (só no fluxo de contrato editável) */}
