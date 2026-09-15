@@ -220,7 +220,10 @@ Deno.serve(async (req) => {
             cep: end.cep ? String(end.cep).replace(/\D/g, '') : undefined,
             logradouro: end.logradouro || undefined,
             numero: end.numero || undefined,
-            bairro: end.bairro || undefined,
+            // SERPRO rejeita bairro com mais de 20 caracteres ("Bairro deve
+            // conter no máximo 20 caracteres") — bairros do cadastro do
+            // cliente costumam vir mais longos que isso.
+            bairro: end.bairro ? String(end.bairro).slice(0, 20) : undefined,
             complemento: end.complemento || undefined,
           },
         },
