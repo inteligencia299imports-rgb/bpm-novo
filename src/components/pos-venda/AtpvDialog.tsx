@@ -165,7 +165,11 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
         ? query.eq('estoque_moto_nova_id', emnId)
         : query.eq('chassi', chassi);
     const { data } = await query;
-    const rows: any[] = data || [];
+    // Município e vínculo de nota fiscal são passos internos de apoio (rodam
+    // de novo a cada tentativa de saída, inclusive as que falharam depois em
+    // outro passo) — mostrar isso na timeline não é útil pro usuário e ainda
+    // parece duplicado. Fica só nos marcos reais do histórico da moto.
+    const rows: any[] = (data || []).filter((r: any) => r.endpoint !== '/api/municipios' && r.endpoint !== '/api/notas-fiscais');
     const usuarioIds = Array.from(new Set(rows.map((r) => r.usuario_id).filter(Boolean)));
     let nomes: Record<string, string> = {};
     if (usuarioIds.length > 0) {
