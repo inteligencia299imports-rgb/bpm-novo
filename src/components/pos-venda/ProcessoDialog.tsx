@@ -313,11 +313,9 @@ const ProcessoDialog: React.FC<Props> = ({
   // ATPV-e (só moto 0km, via RENAVE). "Emitido" = tem numeroAtpv gravado.
   const is0km = (estoqueMoto as any)?.fonte === '0km';
   const atpvEmitido = !!(estoqueMoto as any)?.renave_atpv_numero;
-  const renaveEntrouEstoque = !!(estoqueMoto as any)?.renave_id_estoque;
   const atpvErro = !atpvEmitido && !!(estoqueMoto as any)?.renave_ultimo_erro;
-  // A saída/ATPV-e no RENAVE exige a NF-e de venda autorizada em produção
-  // (o edge function 'renave' já bloqueia sem isso) — a opção só fica
-  // disponível aqui quando as duas condições estiverem ok.
+  // A saída/ATPV-e no RENAVE exige a NF-e de venda autorizada em produção —
+  // a opção fica travada (sem clicar, sem tooltip) até lá.
   const nfVendaProducao = nfeVenda.emitida && nfeVenda.nfe?.ambiente === 'producao';
 
   const nfEmitidaDe = (etapa: string) =>
@@ -685,12 +683,7 @@ const ProcessoDialog: React.FC<Props> = ({
                           'h-9 gap-2 text-sm',
                           atpvErro && 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive',
                         )}
-                        title={
-                          !renaveEntrouEstoque ? 'Faça a entrada da moto no estoque RENAVE'
-                            : !nfVendaProducao ? 'Emissão do ATPV-e liberada após a NF-e de venda autorizada em produção'
-                            : atpvErro ? (estoqueMoto as any)?.renave_ultimo_erro
-                            : undefined
-                        }
+                        disabled={!nfVendaProducao}
                         onClick={() => onEmitirAtpv?.()}
                       >
                         {atpvErro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
