@@ -899,6 +899,23 @@ const ContratoDialog: React.FC<Props> = ({
   const motoAv = motosAvaliacao[0];
   const avaliacaoData = motoAv ? avaliacoes[motoAv.id] : null;
 
+  const [avaliadorTrocaNome, setAvaliadorTrocaNome] = useState<string | null>(null);
+  // "Avaliador" exibido no card Moto do Cliente é o usuário registrado na
+  // avaliação da troca (avaliador_id), não quem está emitindo a NF-e agora.
+  useEffect(() => {
+    const avaliadorId = (avaliacaoData as any)?.avaliador_id;
+    if (!open || !avaliadorId) { setAvaliadorTrocaNome(null); return; }
+    let cancel = false;
+    (supabase as any)
+      .from('user_roles')
+      .select('nome')
+      .eq('user_id', avaliadorId)
+      .eq('projeto_id', BPM_PROJETO_ID)
+      .maybeSingle()
+      .then(({ data }: any) => { if (!cancel) setAvaliadorTrocaNome(data?.nome || null); });
+    return () => { cancel = true; };
+  }, [open, (avaliacaoData as any)?.avaliador_id]);
+
   const buildPdfData = (): ContratoPdfData | null => {
     const produtoMarca = estItem?.marca || motoInt?.marca || '';
     const produtoModelo = estItem?.modelo || motoInt?.modelo || '';
@@ -1562,6 +1579,7 @@ const ContratoDialog: React.FC<Props> = ({
                           <InfoDisplay label="Ano" value={[motoAv.ano_fabricacao, motoAv.ano_modelo].filter(Boolean).join('/') || undefined} />
                           <InfoDisplay label="Cor" value={motoAv.cor ? String(motoAv.cor).toUpperCase() : undefined} />
                           <InfoDisplay label="Placa" value={motoAv.placa ? motoAv.placa.replace(/-/g, '') : undefined} />
+                          <InfoDisplay label="Avaliador" value={avaliadorTrocaNome || undefined} valueClassName="text-primary" />
                         </div>
                         {avaliacaoData && (
                           <div className="space-y-2">

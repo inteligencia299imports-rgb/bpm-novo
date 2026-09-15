@@ -789,6 +789,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                     <InfoDisplay label="RENAVAM" value={moto?.renavam} />
                     <InfoDisplay label="Nº CRV" value={moto?.numero_crv} />
                     <InfoDisplay label="UF" value={moto?.uf} />
+                    <InfoDisplay label="Avaliador" value={avaliadorNome || undefined} valueClassName="text-primary" />
                   </div>
                   {moto?.observacoes && <InfoDisplay label="Observações" value={moto.observacoes} />}
                   <MaintenanceBadges
