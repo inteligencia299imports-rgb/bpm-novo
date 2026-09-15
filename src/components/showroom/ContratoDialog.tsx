@@ -1279,7 +1279,7 @@ const ContratoDialog: React.FC<Props> = ({
                   {empresaSel && ehNfe && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <InfoDisplay label="Atendimento" value="Presencial" valueClassName="text-primary" />
-                      <InfoDisplay label="Vendedor" value={vendedorNome || undefined} />
+                      <InfoDisplay label="Vendedor" value={vendedorNome || undefined} valueClassName="text-primary" />
                       <InfoDisplay label="Nº da Nota" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
                     </div>
                   )}
