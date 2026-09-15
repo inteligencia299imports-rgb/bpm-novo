@@ -61,7 +61,7 @@ Slots configurados hoje:
 |---|---|---|---|---|
 | 1 (principal) | FAG | 49.580.035/0001-36 | 18/03/2027 | ✅ funcionando |
 | 2 | Florianópolis (Intercontinental Motorsport) | 05.564.902/0001-74 | — | ❌ 401 "No message available" — CNPJ provavelmente não credenciado na SERPRO pro RENAVE-WS (ver Pendências) |
-| 3 | Porto Alegre (Intercontinental Motorsport) | 05.564.902/0002-55 | 26/11/2026 | não testado ainda contra a SERPRO — o secret levou 2 tentativas até gravar um PEM válido (ver achado abaixo), corrigido em 2026-09-15 |
+| 3 | Porto Alegre (Intercontinental Motorsport) | 05.564.902/0002-55 | 26/11/2026 | ✅ certificado funcionando (autenticação passa) — testado em 2026-09-15; a 1ª moto tentada bateu na mesma rejeição de pré-cadastro divergente da Ducati (ver Pendências), não é problema do certificado |
 
 **Pra adicionar um novo CNPJ:** conseguir o certificado e-CNPJ A1 (.pfx +
 senha de importação) daquele estabelecimento, converter pra PEM
@@ -231,13 +231,17 @@ digitação em paths/query params).
 ## Pendências
 
 - **Pré-cadastro da Ducati com CNPJ divergente** (achado real 2026-09-14,
-  produção): tentativa de entrada rejeitada com "CNPJ do estabelecimento
-  solicitante é divergente do CNPJ informado pela montadora no
-  pré-cadastro" — a NF-e de compra da Ducati já cita a FAG corretamente
-  como destinatária, então o problema é externo (pré-cadastro da Ducati no
-  RENAVE, não nosso código/dado). Resolução depende de contato
-  FAG↔Ducati/suporte SERPRO pra corrigir o CNPJ pré-cadastrado daquele
-  chassi.
+  produção, FAG; confirmado de novo em 2026-09-15 pra Porto Alegre — chassi
+  `95V1200AATM000057`): tentativa de entrada rejeitada com "CNPJ do
+  estabelecimento solicitante é divergente do CNPJ informado pela montadora
+  no pré-cadastro" — a NF-e de compra da Ducati já cita o CNPJ certo como
+  destinatário, então o problema é externo (pré-cadastro da Ducati no
+  RENAVE, não nosso código/dado). Acontecer também na Porto Alegre sugere
+  que não é um caso isolado de uma moto/CNPJ — pode ser um padrão de como a
+  Ducati faz o pré-cadastro no RENAVE pro grupo inteiro. Resolução depende
+  de contato Ducati↔suporte SERPRO pra corrigir o CNPJ pré-cadastrado de
+  cada chassi afetado (por CNPJ do estabelecimento: FAG e Porto Alegre
+  confirmados até agora).
 - Endpoints de **cancelamento** (entrada/saída 0km — códigos 24 e 50 no
   catálogo acima) ainda não implementados em `renave.ts`/`index.ts`. Se uma
   entrada ou saída for aceita com dado errado, hoje não há como desfazer
