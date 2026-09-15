@@ -219,8 +219,14 @@ export const enviarNotaFiscal = (chaveNotaFiscal: string, evento: 'COMPRA' | 'VE
 
 export const consultarEstoque = (id: number, ctx?: RenaveLogCtx) => call('GET', `/api/estoques/${id}`, { ctx });
 
+// Achado 2026-09-15: a busca por nome do SERPRO é sensível a acento — "BRASÍLIA"
+// devolve [] (vazio), só "BRASILIA" (sem acento) acha o município (confirmado
+// em renave_chamadas). Sem acento aqui na consulta, não só no match local da
+// resposta.
+const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+
 export const municipios = (nome: string, uf: string, ctx?: RenaveLogCtx) =>
-  call('GET', '/api/municipios', { query: { nome, uf }, ctx });
+  call('GET', '/api/municipios', { query: { nome: semAcento(nome), uf }, ctx });
 
 export interface SaidaZeroKm {
   idEstoque: number;
