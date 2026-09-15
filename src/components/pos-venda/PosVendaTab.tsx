@@ -110,7 +110,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       .filter(a => estoquePropria[a.id] || (!estoquePropria[a.id] && !estoqueConsignada.has(a.id)))
       .map(a => {
         const est = estoquePropria[a.id];
-        const _nfeTag = nfeTagFromRows(nfeRowsPorAtendimento[a.id]);
+        // 0km com ATPV-e já emitido: a tag do card vira "ATPV-e" (etapa mais
+        // recente que a NF-e de venda no pós-venda), não "NF-e".
+        const _nfeTag = est?.fonte === '0km' && est?.renave_atpv_numero
+          ? { label: 'ATPV-e', className: 'bg-emerald-600 hover:bg-emerald-700 text-white' }
+          : nfeTagFromRows(nfeRowsPorAtendimento[a.id]);
         if (est) return { ...a, _estoqueMoto: est, _nfeTag };
         // Fallback: use first moto_interesse info
         const mi = a.motos_interesse?.[0];
