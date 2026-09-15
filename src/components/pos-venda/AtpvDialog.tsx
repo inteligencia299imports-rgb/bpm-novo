@@ -54,6 +54,22 @@ const OPERACAO_LABEL: Record<string, string> = {
   'atpv-pdf': 'PDF do ATPV-e',
 };
 
+// Uma "operação" lógica (ex.: 'saida') pode fazer várias chamadas HTTP
+// diferentes (município, vínculo de NF, saída propriamente dita, PDF) — cada
+// uma vira uma linha em renave_chamadas com o mesmo `operacao`. Rotular só
+// pelo `operacao` fazia a linha do tempo mostrar "SAÍDA (ATPV-e)" repetido
+// várias vezes pra uma única ação bem-sucedida (achado 2026-09-15) — o
+// rótulo por endpoint mostra o que cada linha realmente fez.
+const ENDPOINT_LABEL: Record<string, string> = {
+  '/api/cliente-autenticado': 'Sessão RENAVE',
+  '/api/veiculos-zero-km-pendentes-entrada-estoque': 'Consulta de pendentes',
+  '/api/entradas-estoque-zero-km': 'Entrada em estoque',
+  '/api/municipios': 'Consulta de município',
+  '/api/notas-fiscais': 'Vínculo de nota fiscal',
+  '/api/saidas-estoque-veiculo-zero-km': 'Saída (ATPV-e)',
+  '/api/pdf-atpv': 'PDF do ATPV-e',
+};
+
 const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueMoto, onDone }) => {
   const { user } = useAuth();
   const [emitindo, setEmitindo] = useState(false);
@@ -158,7 +174,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
     }
     setHistorico(rows.map((r) => ({
       id: r.id,
-      status: OPERACAO_LABEL[r.operacao] || r.operacao,
+      status: ENDPOINT_LABEL[r.endpoint] || OPERACAO_LABEL[r.operacao] || r.operacao,
       created_at: r.created_at,
       changed_by_name: r.usuario_id ? nomes[r.usuario_id] : null,
     })));
