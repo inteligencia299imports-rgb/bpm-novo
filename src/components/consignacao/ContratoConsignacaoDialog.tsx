@@ -646,7 +646,8 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                     {empresaId && (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
                         <InfoDisplay label="Avaliador" value={avaliadorNome || undefined} valueClassName="text-primary" />
-                        <InfoDisplay label="Nº da Nota" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
+                        <InfoDisplay label="Nº NF" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
+                        <InfoDisplay label="Data NF" value={(nfe.nfe as any)?.data_emissao ? format(new Date((nfe.nfe as any).data_emissao), 'dd/MM/yyyy', { locale: ptBR }) : undefined} valueClassName="text-primary" />
                         <InfoDisplay label="Data de Entrada" value={dataContrato ? format(dataContrato, 'dd/MM/yyyy', { locale: ptBR }) : undefined} valueClassName="text-primary" />
                       </div>
                     )}
