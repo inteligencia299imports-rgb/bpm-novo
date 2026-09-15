@@ -341,29 +341,21 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
             <CardTitle className="text-sm flex items-center gap-2"><PackagePlus className="h-4 w-4 text-primary" /> Entrada RENAVE</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3 max-w-sm">
-              <div>
-                <Label className="text-xs text-muted-foreground">Data da entrada</Label>
-                <p className="mt-1 text-sm font-semibold">
-                  {dataEntrada ? dataEntrada.split('-').reverse().join('/') : '—'}
-                </p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
-                {funcionarioLoading ? (
-                  <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando…</p>
-                ) : funcionarioCpf ? (
-                  <p className="mt-1 text-sm font-semibold">{formatCpfCnpj(funcionarioCpf)}</p>
-                ) : (
-                  <Input
-                    className={cn('mt-1', cpfOperador.length === 11 && !cpfOperadorValido && 'border-destructive text-destructive focus-visible:ring-destructive')}
-                    inputMode="numeric"
-                    value={formatCpfCnpj(cpfOperador)}
-                    onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                    placeholder="000.000.000-00"
-                  />
-                )}
-              </div>
+            <div className="max-w-[200px]">
+              <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
+              {funcionarioLoading ? (
+                <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando…</p>
+              ) : funcionarioCpf ? (
+                <p className="mt-1 text-sm font-semibold">{formatCpfCnpj(funcionarioCpf)}</p>
+              ) : (
+                <Input
+                  className={cn('mt-1', cpfOperador.length === 11 && !cpfOperadorValido && 'border-destructive text-destructive focus-visible:ring-destructive')}
+                  inputMode="numeric"
+                  value={formatCpfCnpj(cpfOperador)}
+                  onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                  placeholder="000.000.000-00"
+                />
+              )}
             </div>
             <Button className="w-full gap-2" disabled={entrandoEstoque || funcionarioLoading || !cpfEnviadoValido} onClick={fazerEntrada}>
               {entrandoEstoque ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
