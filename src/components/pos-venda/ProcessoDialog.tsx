@@ -218,7 +218,7 @@ const ProcessoDialog: React.FC<Props> = ({
         if ((mi as any)?.estoque_moto_id) {
           const eh0km = (mi as any).estoque_tipo === '0km';
           const cols = eh0km
-            ? 'id, status, renave_id_estoque, renave_estado, renave_atpv_numero, renave_atpv_url'
+            ? 'id, status, renave_id_estoque, renave_estado, renave_atpv_numero, renave_atpv_url, renave_ultimo_erro, renave_atualizado_em'
             : 'id, status';
           const { data: em } = await (supabase as any)
             .from(eh0km ? 'estoque_motos_novas' : 'estoque_motos')
@@ -314,6 +314,7 @@ const ProcessoDialog: React.FC<Props> = ({
   const is0km = (estoqueMoto as any)?.fonte === '0km';
   const atpvEmitido = !!(estoqueMoto as any)?.renave_atpv_numero;
   const renaveEntrouEstoque = !!(estoqueMoto as any)?.renave_id_estoque;
+  const atpvErro = !atpvEmitido && !!(estoqueMoto as any)?.renave_ultimo_erro;
   // A saída/ATPV-e no RENAVE exige a NF-e de venda autorizada em produção
   // (o edge function 'renave' já bloqueia sem isso) — a opção só fica
   // disponível aqui quando as duas condições estiverem ok.
@@ -658,27 +659,32 @@ const ProcessoDialog: React.FC<Props> = ({
                     atpvEmitido ? (
                       <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
                         <Button
-                          size="sm" className="h-7 gap-1"
+                          size="sm" className="h-7 gap-1 text-white bg-emerald-600 hover:bg-emerald-700"
                           onClick={() => onEmitirAtpv?.()}
                         >
                           <FileText className="h-3.5 w-3.5" /> ATPV-e
                         </Button>
-                        {(estoqueMoto as any)?.renave_atpv_numero && (
-                          <span>Nº {(estoqueMoto as any).renave_atpv_numero}</span>
+                        {(estoqueMoto as any)?.renave_atualizado_em && (
+                          <span>{format(new Date((estoqueMoto as any).renave_atualizado_em), "dd/MM/yy", { locale: ptBR })}</span>
                         )}
                       </span>
                     ) : (
                       <Button
-                        variant="default" size="sm"
-                        className="h-9 gap-2 text-sm"
+                        variant={atpvErro ? 'outline' : 'default'} size="sm"
+                        className={cn(
+                          'h-9 gap-2 text-sm',
+                          atpvErro && 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive',
+                        )}
                         title={
                           !renaveEntrouEstoque ? 'Faça a entrada da moto no estoque RENAVE'
                             : !nfVendaProducao ? 'Emissão do ATPV-e liberada após a NF-e de venda autorizada em produção'
+                            : atpvErro ? (estoqueMoto as any)?.renave_ultimo_erro
                             : undefined
                         }
                         onClick={() => onEmitirAtpv?.()}
                       >
-                        <FileText className="h-4 w-4" /> Emitir ATPV-e
+                        {atpvErro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                        {atpvErro ? 'Tentar novamente' : 'Emitir ATPV-e'}
                       </Button>
                     )
                   ) : isConverterConsignacao ? (
