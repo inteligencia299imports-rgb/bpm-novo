@@ -276,22 +276,20 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
         <div className="flex-1 min-w-0">
           <h1 className="text-lg sm:text-xl font-bold truncate flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" /> Emissão do ATPV-e
+            {atpvEmitido && (
+              <Badge variant="outline" className="text-[10px] font-medium border-emerald-700 text-emerald-700">ATPV-e emitido</Badge>
+            )}
           </h1>
           <p className="text-xs text-muted-foreground">RENAVE / SERPRO — {motoLabel}</p>
         </div>
-        {atpvEmitido && (
-          <span className="ml-auto flex items-center gap-2 shrink-0">
-            <Badge className="text-[10px] bg-emerald-100 text-emerald-700">ATPV-e emitido</Badge>
-            {estoque?.renave_atpv_url && (
-              <Button
-                size="sm"
-                className="gap-1.5 text-white bg-emerald-600 hover:bg-emerald-700"
-                onClick={() => window.open(estoque.renave_atpv_url, '_blank', 'noopener')}
-              >
-                <ExternalLink className="h-3.5 w-3.5" /> ATPV-e
-              </Button>
-            )}
-          </span>
+        {atpvEmitido && estoque?.renave_atpv_url && (
+          <Button
+            size="sm"
+            className="gap-1.5 text-white bg-emerald-600 hover:bg-emerald-700 shrink-0"
+            onClick={() => window.open(estoque.renave_atpv_url, '_blank', 'noopener')}
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> ATPV-e
+          </Button>
         )}
       </div>
 
