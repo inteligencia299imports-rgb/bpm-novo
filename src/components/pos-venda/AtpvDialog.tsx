@@ -321,7 +321,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
             <Info label="Chassi" value={chassi || '—'} />
             <Info label="RENAVAM" value={estoque?.renave_renavam || estoque?.renavam} />
             <Info label="Placa" value={estoque?.renave_placa || estoque?.placa} />
-            <Info label="idEstoque RENAVE" value={estoque?.renave_id_estoque} />
+            <Info label="ID Estoque RENAVE" value={estoque?.renave_id_estoque} />
             <Info label="Estado RENAVE" value={estoque?.renave_estado} />
             <Info
               label="NF-e de Venda"
