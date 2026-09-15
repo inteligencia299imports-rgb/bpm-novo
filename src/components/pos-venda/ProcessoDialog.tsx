@@ -390,7 +390,9 @@ const ProcessoDialog: React.FC<Props> = ({
             ? (nfeTroca.nfe?.data_emissao ?? null)
             : e.etapa === CONVERTER_CONSIGNACAO
               ? (nfeCompraConv.nfe?.data_emissao ?? null)
-              : e.data_conclusao,
+              : e.etapa === ATPV_E
+                ? ((estoqueMoto as any)?.renave_atualizado_em ?? null)
+                : e.data_conclusao,
       }));
 
       const { error: persistError } = await persistChecklistRows({
