@@ -1255,10 +1255,17 @@ const ContratoDialog: React.FC<Props> = ({
                   {empresasLoja.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Nenhuma empresa vinculada à loja do atendimento.</p>
                   ) : soLeitura ? (
-                    <InfoDisplay
-                      label="Empresa"
-                      value={empresaSel ? `${empresaSel.razao_social || empresaSel.nome}${empresaSel.cnpj ? ` - ${empresaSel.cnpj}` : ''}` : undefined}
-                    />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="sm:col-span-2">
+                        <InfoDisplay
+                          label="Empresa"
+                          value={empresaSel ? `${empresaSel.razao_social || empresaSel.nome}${empresaSel.cnpj ? ` - ${empresaSel.cnpj}` : ''}` : undefined}
+                        />
+                      </div>
+                      {/* Fixo, ver docs-fiscal-299 §2.5. Empresa ocupa 2 colunas (texto
+                          longo) — Atendimento cai naturalmente na 3ª coluna. */}
+                      {ehNfe && <InfoDisplay label="Atendimento" value="Presencial" />}
+                    </div>
                   ) : (
                     <div className="max-w-sm space-y-1.5">
                       <Label>Empresa vendedora <span className="text-destructive">*</span></Label>
@@ -1275,18 +1282,19 @@ const ContratoDialog: React.FC<Props> = ({
                     </div>
                   )}
 
-                  {/* "Atendimento" e "Nº da Nota" só na emissão de NF-e (Atendimento é
-                      fixo, ver docs-fiscal-299 §2.5) — Vendedor e Data da Venda aparecem
-                      também na proposta (mesmo padrão de Avaliador/Data de Aquisição em
-                      compra/consignação). */}
+                  {/* "Nº NF"/"Data NF" só na emissão de NF-e — Vendedor e Data da Venda
+                      aparecem também na proposta (mesmo padrão de Avaliador/Data de
+                      Aquisição em compra/consignação). */}
                   {empresaSel && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {ehNfe && <InfoDisplay label="Atendimento" value="Presencial" valueClassName="text-primary" />}
                       <InfoDisplay label="Vendedor" value={vendedorNome || undefined} valueClassName="text-primary" />
+                      <InfoDisplay label="Data Venda" value={dataSinal ? format(dataSinal, 'dd/MM/yyyy', { locale: ptBR }) : undefined} valueClassName="text-primary" />
                       {ehNfe && (
-                        <InfoDisplay label="Nº da Nota" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
+                        <>
+                          <InfoDisplay label="Nº NF" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
+                          <InfoDisplay label="Data NF" value={nfe.nfe?.data_emissao ? format(new Date(nfe.nfe.data_emissao), 'dd/MM/yyyy', { locale: ptBR }) : undefined} valueClassName="text-primary" />
+                        </>
                       )}
-                      <InfoDisplay label="Data da Venda" value={dataSinal ? format(dataSinal, 'dd/MM/yyyy', { locale: ptBR }) : undefined} valueClassName="text-primary" />
                     </div>
                   )}
                 </CardContent>
@@ -1829,7 +1837,7 @@ const ContratoDialog: React.FC<Props> = ({
               </Card>
 
               {/* Resumo financeiro — KPIs abaixo das Formas de Pagamento (um por card) */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div className={cn('grid grid-cols-2 md:grid-cols-3 gap-3', nfeEmProducao ? 'lg:grid-cols-4' : 'lg:grid-cols-5')}>
                 <Card>
                   <CardContent className="pt-4">
                     <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Preço de Tabela</span>
@@ -1901,9 +1909,6 @@ const ContratoDialog: React.FC<Props> = ({
                       <div className="grid grid-cols-3 gap-4">
                         <InfoDisplay label="Data do Sinal" value={dataSinal ? format(dataSinal, "dd/MM/yyyy", { locale: ptBR }) : undefined} />
                         <InfoDisplay label="Data Vencimento do Sinal" value={dataVencimento ? format(dataVencimento, "dd/MM/yyyy", { locale: ptBR }) : undefined} />
-                        {estItem?.status === 'vendido' && estItem?.data_venda && (
-                          <InfoDisplay label="Data da Venda" value={format(new Date(estItem.data_venda), 'dd/MM/yyyy', { locale: ptBR })} />
-                        )}
                       </div>
                     </div>
                   ) : (
