@@ -963,7 +963,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               rows={4}
               value={novaObservacao}
               onChange={(e) => setNovaObservacao(e.target.value)}
-              placeholder="Digite uma observação..."
+              placeholder="OBSERVAÇÕES DO ATENDIMENTO..."
             />
           </CardContent>
         </Card>
