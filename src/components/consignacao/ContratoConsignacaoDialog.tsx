@@ -854,9 +854,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                   <Separator className="mt-2" />
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {ehNfe && nfeJaEmitida && !podeReemitirHomolog ? (
-                    <p className="text-sm text-muted-foreground">NF-e autorizada — veja os dados na barra de ações abaixo.</p>
-                  ) : ehNfe && (!nfeJaEmitida || podeReemitirHomolog) ? (
+                  {ehNfe && (!nfeJaEmitida || podeReemitirHomolog) ? (
                     <>
                       <div className="max-w-xs">
                         <CurrencyField
