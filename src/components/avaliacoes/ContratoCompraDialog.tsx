@@ -906,8 +906,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
           </Card>
           )}
 
-          {/* Card: Observações (do contrato) — escondido na tela de emissão de NF-e */}
-          {!ehNfe && (
+          {/* Card: Observações (do contrato) — sempre visível (soLeitura já cobre o modo NF-e) */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -936,7 +935,6 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               )}
             </CardContent>
           </Card>
-          )}
 
           {/* Ações — só quando todos os obrigatórios estão preenchidos */}
           {clienteId && !editandoCliente && (soLeitura || (cadastroCompleto && !!dataContrato)) && (
