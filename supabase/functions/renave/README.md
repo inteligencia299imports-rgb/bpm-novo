@@ -61,7 +61,7 @@ Slots configurados hoje:
 |---|---|---|---|---|
 | 1 (principal) | FAG | 49.580.035/0001-36 | 18/03/2027 | ✅ funcionando |
 | 2 | Florianópolis (Intercontinental Motorsport) | 05.564.902/0001-74 | — | ❌ 401 "No message available" — CNPJ provavelmente não credenciado na SERPRO pro RENAVE-WS (ver Pendências) |
-| 3 | Porto Alegre (Intercontinental Motorsport) | 05.564.902/0002-55 | 26/11/2026 | não testado ainda — configurado em 2026-09-15 |
+| 3 | Porto Alegre (Intercontinental Motorsport) | 05.564.902/0002-55 | 26/11/2026 | não testado ainda contra a SERPRO — o secret levou 2 tentativas até gravar um PEM válido (ver achado abaixo), corrigido em 2026-09-15 |
 
 **Pra adicionar um novo CNPJ:** conseguir o certificado e-CNPJ A1 (.pfx +
 senha de importação) daquele estabelecimento, converter pra PEM
@@ -72,6 +72,32 @@ dígitos; `RENAVE_CERT_PEM_N`/`RENAVE_KEY_PEM_N` os PEMs). O certificado
 `.pfx` e a senha de importação **nunca** vão pro código nem pra este
 repositório — só os secrets já convertidos, e nenhum arquivo temporário
 fica no disco depois da conversão.
+
+**Achado 2026-09-15 (slot 3, Porto Alegre) — como gravar o PEM sem
+quebrar:**
+1. **Sempre remover as linhas "Bag Attributes"/`subject=`/`issuer=` que o
+   `openssl pkcs12` imprime antes do bloco PEM** — `Deno.createHttpClient`
+   falha com `"No certificates found in certificate data"` se sobrar
+   qualquer coisa antes de `-----BEGIN CERTIFICATE-----`. Extrair assim
+   evita isso desde o início: `openssl pkcs12 -in cert.pfx -legacy
+   -clcerts -nokeys -passin env:PFX_PASS | sed -n
+   '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' >
+   cert.pem` (idem `-nocerts -nodes` + `PRIVATE KEY` pra `key.pem`). O
+   `-legacy` é necessário pra certificados ICP-Brasil mais antigos, que
+   usam RC2-40-CBC (OpenSSL 3.x não decodifica sem ele — erro *"digital
+   envelope routines: unsupported"*).
+2. **Nunca gravar o PEM via `--env-file` com quebras de linha escapadas
+   como `\n` literal** (ex.: `awk 'BEGIN{ORS="\\n"}1'` num arquivo
+   `.env`) — o secret grava o texto `\n` ao pé da letra em vez de quebra
+   de linha real, e o parser de certificado do Deno falha com `"Unable
+   to decode certificate"` (acha o `-----BEGIN...-----` mas não
+   consegue decodificar o base64 do meio, cheio de `\n` literais no
+   lugar das quebras). **O jeito que funciona**: passar o valor direto
+   como argumento `NAME=VALUE` do próprio `supabase secrets set`, usando
+   `$(cat arquivo.pem)` pra preservar as quebras de linha reais do
+   arquivo — ex.: `supabase secrets set --project-ref <ref>
+   "RENAVE_CERT_PEM_N=$(cat cert.pem)" "RENAVE_KEY_PEM_N=$(cat
+   key.pem)"` (sem `--env-file`).
 
 ## Ações (body JSON `{ acao: ... }`)
 
