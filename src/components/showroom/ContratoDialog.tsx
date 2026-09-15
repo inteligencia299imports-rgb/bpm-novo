@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { vendaLiberada } from '@/lib/aprovacaoVenda';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 import type { Atendimento, MotoInteresse, Avaliacao } from '@/types/crm';
 import { generateContratoPdf, type ContratoPdfData } from '@/lib/generateContratoPdf';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
@@ -24,7 +25,7 @@ import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
-import { NfeStatusBadge, NfeNumeroBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
+import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 import AgregadosContrato, { type Agregado, type AgregadoLinha } from '@/components/showroom/AgregadosContrato';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 
@@ -245,6 +246,22 @@ const ContratoDialog: React.FC<Props> = ({
   const [viewing, setViewing] = useState(false);
   const [contratoId, setContratoId] = useState<string | null>(null);
   const [jaGerado, setJaGerado] = useState(false);
+  const [vendedorNome, setVendedorNome] = useState<string | null>(null);
+
+  // "Vendedor" exibido é o usuário registrado no atendimento (vendedor_id),
+  // não necessariamente quem está emitindo a NF-e agora.
+  useEffect(() => {
+    if (!open || !atendimento?.vendedor_id) { setVendedorNome(null); return; }
+    let cancel = false;
+    (supabase as any)
+      .from('user_roles')
+      .select('nome')
+      .eq('user_id', atendimento.vendedor_id)
+      .eq('projeto_id', BPM_PROJETO_ID)
+      .maybeSingle()
+      .then(({ data }: any) => { if (!cancel) setVendedorNome(data?.nome || null); });
+    return () => { cancel = true; };
+  }, [open, atendimento?.vendedor_id]);
 
   // ---- NF-e de venda ----
   const motoIntNfe = motosInteresse[0];
@@ -1189,7 +1206,6 @@ const ContratoDialog: React.FC<Props> = ({
         {ehNfe && (
           <>
             <NfeStatusBadge nfe={nfe} />
-            <NfeNumeroBadge nfe={nfe} />
             <span className="ml-auto">
               <NfeDanfeButton nfe={nfe} />
             </span>
@@ -1246,6 +1262,8 @@ const ContratoDialog: React.FC<Props> = ({
                   {empresaSel && ehNfe && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <InfoDisplay label="Atendimento" value="Presencial" valueClassName="text-primary" />
+                      <InfoDisplay label="Vendedor" value={vendedorNome || undefined} />
+                      <InfoDisplay label="Nº da Nota" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
                     </div>
                   )}
                 </CardContent>

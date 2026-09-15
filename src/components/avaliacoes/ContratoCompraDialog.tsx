@@ -13,7 +13,7 @@ import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
-import { NfeStatusBadge, NfeNumeroBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
+import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 import { Badge } from '@/components/ui/badge';
 import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -22,6 +22,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { generateContratoCompraPdf } from '@/lib/generateContratoCompraPdf';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
@@ -91,11 +92,11 @@ const snapshotFields = (v: SnapshotVals) =>
     dataContrato: v.dataContrato ? format(v.dataContrato, 'yyyy-MM-dd') : null,
   });
 
-const InfoDisplay = ({ label, value }: { label: string; value: string | null | undefined }) => (
+const InfoDisplay = ({ label, value, valueClassName }: { label: string; value: string | null | undefined; valueClassName?: string }) => (
   value ? (
     <div>
       <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
-      <p className="text-sm font-semibold">{value}</p>
+      <p className={cn('text-sm font-semibold', valueClassName)}>{value}</p>
     </div>
   ) : null
 );
@@ -103,6 +104,22 @@ const InfoDisplay = ({ label, value }: { label: string; value: string | null | u
 const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, modo = 'contrato' }) => {
   const { user, userName } = useAuth();
   const ehNfe = modo === 'nfe';
+  const [avaliadorNome, setAvaliadorNome] = useState<string | null>(null);
+
+  // "Avaliador" exibido é o usuário registrado na avaliação (avaliador_id),
+  // não necessariamente quem está emitindo a NF-e agora.
+  useEffect(() => {
+    if (!open || !avaliacao?.avaliador_id) { setAvaliadorNome(null); return; }
+    let cancel = false;
+    (supabase as any)
+      .from('user_roles')
+      .select('nome')
+      .eq('user_id', avaliacao.avaliador_id)
+      .eq('projeto_id', BPM_PROJETO_ID)
+      .maybeSingle()
+      .then(({ data }: any) => { if (!cancel) setAvaliadorNome(data?.nome || null); });
+    return () => { cancel = true; };
+  }, [open, avaliacao?.avaliador_id]);
   // Após a NF-e autorizada, volta para a tela de Pós-Compra.
   const nfe = useNfeCompra(avaliacao?.id, open, 'compra', 'avaliacao', () => {
     if (modo === 'nfe') setTimeout(() => onOpenChange(false), 1200);
@@ -578,7 +595,6 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         {ehNfe && (
           <>
             <NfeStatusBadge nfe={nfe} />
-            <NfeNumeroBadge nfe={nfe} />
             <span className="ml-auto">
               <NfeDanfeButton nfe={nfe} />
             </span>
@@ -623,6 +639,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+              {empresaSel && ehNfe && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <InfoDisplay label="Avaliador" value={avaliadorNome || undefined} />
+                  <InfoDisplay label="Nº da Nota" value={nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : undefined} valueClassName="text-primary" />
                 </div>
               )}
             </CardContent>
