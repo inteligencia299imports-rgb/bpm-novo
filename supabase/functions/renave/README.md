@@ -267,6 +267,31 @@ digitação em paths/query params).
   `empresa_id` opcional (`GET /api/cliente-autenticado` testando o cert de
   uma empresa específica) pra isolar esse tipo de problema sem depender do
   payload real de entrada/saída.
+- **Resync de "estoque ativo" não tem como recuperar o `idEstoque` — nem
+  `pendentes` nem `/api/veiculos` devolvem isso (achados 2026-09-15, chassi
+  `95V4F00AAPM000003`).** O fix original do resync (quando a SERPRO recusa a
+  entrada com "possui um estoque ativo") consultava só `pendentesEntrada` pra
+  recuperar o `idEstoque` — mas essa lista, por definição, só tem quem
+  **ainda não** deu entrada; um chassi com estoque ativo nunca aparece lá, e
+  o resync sempre voltava vazio. Adicionada uma segunda tentativa com
+  `consultarVeiculoPorChassi` (catálogo #66, `GET /api/veiculos?chassi=`) —
+  **testada em produção contra esse chassi real: o endpoint existe e aceita
+  o filtro `chassi` (200 OK)**, mas a resposta não tem `id`/`idEstoque`
+  nenhum:
+  ```json
+  { "placa": "", "chassi": "95V4F00AAPM000003", "renavam": "00000000000",
+    "restricoes": [{ "tipo": "ESTOQUE_RENAVE_DE_VEICULO_ZERO", "codigoTipo": "86" }],
+    "veiculoAcabado": true, "dataPreCadastro": null }
+  ```
+  Confirma a restrição (estoque 0km ativo, `codigoTipo` 86) mas `placa` vem
+  vazia e `renavam` vem com placeholder (`00000000000`) — a SERPRO
+  simplesmente não expõe o `idEstoque` nessa consulta por chassi. **Nenhum
+  endpoint conhecido/testado até agora resolve esse resync automaticamente**
+  — não adianta tentar `consultarVeiculoPorChassi` de novo esperando achar o
+  id; os outros candidatos do catálogo (`/api/estoques?placa=`, `/api/aptidao-
+  veiculo-estoque?...`) também não servem aqui porque pedem `placa`/`renavam`
+  reais, que este endpoint não fornece. Único caminho hoje: contato manual
+  com SERPRO/despachante pra recuperar o `idEstoque` desse chassi.
 - **Nota (2026-09-15):** o campo `status` retornado pela ação `entrada`/
   `saida` pro front é sempre `422` (`index.ts` embrulha qualquer falha da
   SERPRO como 422, veja `return json({ error: erroRenave(r), status:

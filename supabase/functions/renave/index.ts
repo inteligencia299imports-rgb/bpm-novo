@@ -4,7 +4,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   clienteAutenticado, pendentesEntrada, entrarEstoqueZeroKm, enviarNotaFiscal,
-  consultarEstoque, municipios, sairEstoqueZeroKm, pdfAtpvPorChassi, erroRenave,
+  consultarEstoque, consultarVeiculoPorChassi, municipios, sairEstoqueZeroKm, pdfAtpvPorChassi, erroRenave,
   type RenaveLogCtx,
 } from './renave.ts';
 
@@ -167,10 +167,29 @@ Deno.serve(async (req) => {
         // chassi pra tentar recuperar o idEstoque já existente e resincroniza
         // em vez de só devolver o erro de novo.
         if (/possui um estoque ativo/i.test(msg)) {
-          const p = await pendentesEntrada(chassi.toUpperCase().replace(/\s/g, ''), ctx);
+          const chassiUp = chassi.toUpperCase().replace(/\s/g, '');
+          const p = await pendentesEntrada(chassiUp, ctx);
           const lista = Array.isArray(p.body) ? p.body : (Array.isArray(p.body?.content) ? p.body.content : []);
-          const achado = lista.find((v: any) => String(v?.chassi ?? '').toUpperCase() === chassi.toUpperCase())
+          let achado = lista.find((v: any) => String(v?.chassi ?? '').toUpperCase() === chassiUp)
             ?? (lista.length === 1 ? lista[0] : null);
+
+          // "pendentes" só lista quem AINDA NÃO deu entrada -- por definição
+          // nunca inclui um chassi com "estoque ativo" (achado real
+          // 2026-09-15, chassi 95V4F00AAPM000003: pendentes sempre voltou []
+          // nesse caso, o resync original nunca achava nada). Segunda
+          // tentativa: consulta direta de veículo por chassi (catálogo #66,
+          // não verificada -- só leitura, se falhar cai no erro de sempre).
+          if (!achado) {
+            try {
+              const v = await consultarVeiculoPorChassi(chassiUp, ctx);
+              const lv = Array.isArray(v.body) ? v.body
+                : Array.isArray(v.body?.content) ? v.body.content
+                : (v.body?.id || v.body?.idEstoque) ? [v.body] : [];
+              achado = lv.find((x: any) => String(x?.chassi ?? '').toUpperCase() === chassiUp)
+                ?? (lv.length === 1 ? lv[0] : null);
+            } catch { /* best-effort -- endpoint não verificado */ }
+          }
+
           const idRecuperado = achado?.id ?? achado?.idEstoque ?? null;
           if (idRecuperado) {
             await persistir(admin, emnId, {
@@ -182,6 +201,14 @@ Deno.serve(async (req) => {
             });
             return json({ ok: true, resincronizado: true, estoque: achado });
           }
+
+          // Nem pendentes nem a consulta de veículo acharam o idEstoque --
+          // não dá pra resincronizar sozinho. Mensagem diferente da genérica
+          // (que sugere "repita a operação", e vai falhar do mesmo jeito de
+          // novo) pra deixar claro que precisa de checagem manual.
+          const msgManual = `${msg} — resync automático não encontrou o idEstoque (nem em pendentes, nem na consulta de veículo); requer verificação manual junto à SERPRO/despachante.`;
+          await persistir(admin, emnId, { renave_ultimo_erro: msgManual });
+          return json({ error: msgManual, status: r.status, detalhe: r.body }, 422);
         }
         await persistir(admin, emnId, { renave_ultimo_erro: msg });
         return json({ error: msg, status: r.status, detalhe: r.body }, 422);

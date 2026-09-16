@@ -238,6 +238,21 @@ export const enviarNotaFiscal = (chaveNotaFiscal: string, evento: 'COMPRA' | 'VE
 
 export const consultarEstoque = (id: number, ctx?: RenaveLogCtx) => call('GET', `/api/estoques/${id}`, { ctx });
 
+// Achado 2026-09-15 (chassi 95V4F00AAPM000003): quando a SERPRO recusa a
+// entrada dizendo que o chassi "possui um estoque ativo", `pendentesEntrada`
+// NÃO ajuda a recuperar o idEstoque -- por definição, "pendentes" lista só
+// quem AINDA NÃO deu entrada, e um chassi com estoque ativo já passou dessa
+// fase (nunca aparece lá). Catálogo #66 "Consultar Veículo" (`GET
+// /api/veiculos`) foi testado em produção contra esse chassi real: o
+// endpoint existe e aceita `chassi` como filtro (200 OK), MAS a resposta não
+// tem `id`/`idEstoque` nenhum -- só confirma a restrição de estoque ativo
+// (`{ placa: "", renavam: "00000000000", restricoes: [{ codigoTipo: "86" }] }`).
+// Ou seja, não resolve o resync sozinho; mantido aqui só como diagnóstico
+// (confirma o estado) -- quem chama já sabe que pode não achar `idRecuperado`
+// e cai no fallback de erro pedindo verificação manual.
+export const consultarVeiculoPorChassi = (chassi: string, ctx?: RenaveLogCtx) =>
+  call('GET', '/api/veiculos', { query: { chassi }, ctx });
+
 // Achado 2026-09-15: a busca por nome do SERPRO é sensível a acento — "BRASÍLIA"
 // devolve [] (vazio), só "BRASILIA" (sem acento) acha o município (confirmado
 // em renave_chamadas). Sem acento aqui na consulta, não só no match local da
