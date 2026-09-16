@@ -596,9 +596,16 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                                 {item.cilindrada ? ` · ${item.cilindrada}cc` : ''}
                               </p>
                             </div>
-                            <Badge className={STATUS_MAP[item.status]?.color || 'bg-muted text-muted-foreground'}>
-                              {STATUS_MAP[item.status]?.label || item.status}
-                            </Badge>
+                            <div className="flex items-center gap-1.5">
+                              {item.tipo_unidade === 'test_ride' && (
+                                <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0 border-primary/50 text-primary">
+                                  <Bike className="h-3 w-3" /> Test-Ride
+                                </Badge>
+                              )}
+                              <Badge className={STATUS_MAP[item.status]?.color || 'bg-muted text-muted-foreground'}>
+                                {STATUS_MAP[item.status]?.label || item.status}
+                              </Badge>
+                            </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
