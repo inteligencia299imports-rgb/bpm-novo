@@ -57,7 +57,12 @@ const TransferenciaFagMmatosDialog: React.FC<TransferenciaFagMmatosDialogProps> 
           {nfeJaEmitida && (
             <div className="flex items-center justify-between rounded-lg border p-3 text-sm">
               <span className="text-muted-foreground">Nº NF</span>
-              <NfeDanfeButton nfe={nfe} />
+              <div className="flex items-center gap-3">
+                <span className={nfe.nfe?.ambiente === 'producao' ? 'font-medium text-emerald-600 dark:text-emerald-400' : 'font-medium text-orange-600 dark:text-orange-400'}>
+                  Nº {nfe.nfe?.numero || '-'} • Série {nfe.nfe?.serie || '-'}
+                </span>
+                <NfeDanfeButton nfe={nfe} />
+              </div>
             </div>
           )}
 
