@@ -37,9 +37,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
   ].filter(t => role && t.roles.includes(role));
 
   return (
-    <aside className={`hidden md:flex flex-col min-h-screen bg-sidebar text-sidebar-foreground shadow-card transition-all duration-300 ${collapsed ? 'w-16' : 'w-52'}`}>
+    <aside className={`hidden md:flex flex-col h-screen sticky top-0 bg-sidebar text-sidebar-foreground shadow-card transition-all duration-300 ${collapsed ? 'w-16' : 'w-52'}`}>
       {/* Logo + Toggle */}
-      <div className="flex items-center justify-between px-3 py-5 border-b border-sidebar-border">
+      <div className="shrink-0 flex items-center justify-between px-3 py-5 border-b border-sidebar-border">
         <div className={`flex items-center gap-3 ${collapsed ? 'justify-center w-full' : 'px-2'}`}>
           <div className="flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden shrink-0">
             <img src={logoImg} alt="BPM 299" className="h-9 w-9 object-contain" />
@@ -48,8 +48,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 flex flex-col gap-1 px-2 py-4">
+      {/* Navigation — rola por dentro se a lista de abas não couber; recolher
+          e usuário (abaixo) ficam sempre fixos, fora dessa área de scroll. */}
+      <nav className="flex-1 flex flex-col gap-1 px-2 py-4 overflow-y-auto">
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -70,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
       </nav>
 
       {/* Toggle button */}
-      <div className="px-2 py-2">
+      <div className="shrink-0 px-2 py-2">
         <button
           onClick={onToggle}
           className="flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-white/10 transition-colors justify-center"
@@ -82,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
       </div>
 
       {/* User info */}
-      <div className="border-t border-sidebar-border px-3 py-4">
+      <div className="shrink-0 border-t border-sidebar-border px-3 py-4">
         <div className={`flex items-center gap-2 mb-3 ${collapsed ? 'flex-col' : ''}`}>
           <div className={`flex items-center gap-2 ${collapsed ? 'justify-center' : 'flex-1 min-w-0'}`}>
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 shrink-0">
