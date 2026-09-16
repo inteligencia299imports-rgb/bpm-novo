@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { formatPersonName, cn } from '@/lib/utils';
+import { formatPersonName, cn, firstLastName } from '@/lib/utils';
 import { extrairErroFuncao } from '@/lib/edgeFunctionError';
 import { useAuth } from '@/contexts/AuthContext';
 import { validarCpf } from '@/lib/cpf';
@@ -186,7 +186,7 @@ const AtpvDialog: React.FC<Props> = ({ open, onOpenChange, atendimento, estoqueM
     let nomes: Record<string, string> = {};
     if (usuarioIds.length > 0) {
       const { data: users } = await (supabase as any).from('user_roles').select('user_id, nome').in('user_id', usuarioIds);
-      nomes = Object.fromEntries((users || []).map((u: any) => [u.user_id, u.nome]));
+      nomes = Object.fromEntries((users || []).map((u: any) => [u.user_id, firstLastName(u.nome)]));
     }
     setHistorico(rows.map((r) => ({
       id: r.id,

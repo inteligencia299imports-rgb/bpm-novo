@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, firstLastName } from '@/lib/utils';
 import { vendaLiberada } from '@/lib/aprovacaoVenda';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
 import type { Atendimento, MotoInteresse, Avaliacao } from '@/types/crm';
@@ -259,7 +259,7 @@ const ContratoDialog: React.FC<Props> = ({
       .eq('user_id', atendimento.vendedor_id)
       .eq('projeto_id', BPM_PROJETO_ID)
       .maybeSingle()
-      .then(({ data }: any) => { if (!cancel) setVendedorNome(data?.nome || null); });
+      .then(({ data }: any) => { if (!cancel) setVendedorNome(data?.nome ? firstLastName(data.nome) : null); });
     return () => { cancel = true; };
   }, [open, atendimento?.vendedor_id]);
 
@@ -912,7 +912,7 @@ const ContratoDialog: React.FC<Props> = ({
       .eq('user_id', avaliadorId)
       .eq('projeto_id', BPM_PROJETO_ID)
       .maybeSingle()
-      .then(({ data }: any) => { if (!cancel) setAvaliadorTrocaNome(data?.nome || null); });
+      .then(({ data }: any) => { if (!cancel) setAvaliadorTrocaNome(data?.nome ? firstLastName(data.nome) : null); });
     return () => { cancel = true; };
   }, [open, (avaliacaoData as any)?.avaliador_id]);
 
