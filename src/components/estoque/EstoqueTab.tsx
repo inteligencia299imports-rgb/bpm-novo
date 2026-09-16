@@ -596,16 +596,9 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                                 {item.cilindrada ? ` · ${item.cilindrada}cc` : ''}
                               </p>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              {item.tipo_unidade === 'test_ride' && (
-                                <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0 border-primary/50 text-primary">
-                                  <Bike className="h-3 w-3" /> Test-Ride
-                                </Badge>
-                              )}
-                              <Badge className={STATUS_MAP[item.status]?.color || 'bg-muted text-muted-foreground'}>
-                                {STATUS_MAP[item.status]?.label || item.status}
-                              </Badge>
-                            </div>
+                            <Badge className={STATUS_MAP[item.status]?.color || 'bg-muted text-muted-foreground'}>
+                              {STATUS_MAP[item.status]?.label || item.status}
+                            </Badge>
                           </div>
 
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -648,9 +641,14 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             )}
                             <span className="text-muted-foreground">Tipo</span>
                             <span className="text-foreground capitalize">
-                              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(item.displayTipo || item.tipo)}`}>
-                                {getTipoAquisicaoLabel(item.displayTipo || item.tipo) || item.tipo}
-                              </Badge>
+                              {(() => {
+                                const tipoExibido = item.tipo === '0km' && item.tipo_unidade === 'test_ride' ? 'test_ride' : (item.displayTipo || item.tipo);
+                                return (
+                                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(tipoExibido)}`}>
+                                    {getTipoAquisicaoLabel(tipoExibido) || tipoExibido}
+                                  </Badge>
+                                );
+                              })()}
                             </span>
                             {item.empresa && (
                               <>
