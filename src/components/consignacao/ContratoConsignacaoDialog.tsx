@@ -15,7 +15,7 @@ import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
+import { cn, firstLastName } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { generateContratoConsignacaoPdf } from '@/lib/generateContratoConsignacaoPdf';
@@ -139,7 +139,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       .eq('user_id', avaliacao.avaliador_id)
       .eq('projeto_id', BPM_PROJETO_ID)
       .maybeSingle()
-      .then(({ data }: any) => { if (!cancel) setAvaliadorNome(data?.nome || null); });
+      .then(({ data }: any) => { if (!cancel) setAvaliadorNome(data?.nome ? firstLastName(data.nome) : null); });
     return () => { cancel = true; };
   }, [open, avaliacao?.avaliador_id]);
   const ehNfe = modo === 'nfe';
