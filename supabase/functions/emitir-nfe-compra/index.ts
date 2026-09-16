@@ -695,8 +695,10 @@ Deno.serve(async (req) => {
     : 'compra';
   const cfg = CFG[tipo];
   const ehVenda = cfg.keyBy === 'atendimento';
-  // Compra/consignação/devolução simbólica de moto seminova entram no departamento "motos_seminovas".
-  const departamento = (tipo === 'compra' || tipo === 'consignacao' || tipo === 'devolucao_consignacao') ? 'motos_seminovas' : 'motos';
+  // Compra/consignação/devolução simbólica/transferência de moto seminova
+  // entram no departamento "motos_seminovas" (é sempre a mesma moto usada da
+  // compra — a transferência não vira "moto nova").
+  const departamento = (tipo === 'compra' || tipo === 'consignacao' || tipo === 'devolucao_consignacao' || tipo === 'transferencia') ? 'motos_seminovas' : 'motos';
 
   const avaliacaoId = typeof body.avaliacao_id === 'string' ? body.avaliacao_id : '';
   const atendimentoIdBody = typeof body.atendimento_id === 'string' ? body.atendimento_id : '';
@@ -1115,6 +1117,19 @@ Deno.serve(async (req) => {
       .eq('operacao', 'devolucao_consignacao').eq('status', 'processada').limit(1).maybeSingle();
     if (devolucaoJaOk) {
       return jsonResponse({ error: 'A devolução simbólica desta consignação já foi emitida.' }, 409);
+    }
+  } else if (tipo === 'transferencia') {
+    // Pré-requisito geral (vale pra homologação e produção): só existe algo
+    // pra transferir depois da compra dessa moto estar autorizada — o gate
+    // mais adiante (bloco ambiente === 'producao') cobre especificamente a
+    // exigência de a compra estar em PRODUÇÃO antes da transferência ir pra
+    // produção; aqui só garante que a compra já foi emitida (em qualquer
+    // ambiente), senão nem faz sentido tentar homologação.
+    const { data: compraOkTransf } = await admin
+      .from('nfe_entradas').select('id').eq('avaliacao_id', avaliacaoId)
+      .eq('operacao', 'compra').eq('status', 'processada').limit(1).maybeSingle();
+    if (!compraOkTransf) {
+      return jsonResponse({ error: 'A NF-e de compra desta moto ainda não foi emitida.' }, 409);
     }
   } else {
     // venda
