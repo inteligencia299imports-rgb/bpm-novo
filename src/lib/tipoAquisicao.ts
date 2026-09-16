@@ -47,6 +47,7 @@ export const getTipoAquisicaoLabel = (tipo: string | null | undefined): string |
     case 'convertida': return 'Convertida';
     case 'repasse': return 'Repasse';
     case '0km': return '0KM';
+    case 'test_ride': return 'Test-Ride';
     default: return tipo;
   }
 };
@@ -60,6 +61,7 @@ export const getTipoAquisicaoBadgeClass = (tipo: string | null | undefined): str
     case 'repasse': return 'border-gray-500 text-gray-600';
     case 'ducati': return 'border-red-500 text-red-600';
     case '0km': return 'border-primary text-primary';
+    case 'test_ride': return 'border-primary text-primary';
     default: return 'border-green-500 text-green-600'; // propria
   }
 };

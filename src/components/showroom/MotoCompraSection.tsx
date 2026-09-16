@@ -205,8 +205,11 @@ const MotoCompraSection: React.FC<Props> = ({
                   >
                     <Check className={cn("mr-2 h-4 w-4", estoqueMotoId === item.id ? "opacity-100" : "opacity-0")} />
                     {formatEstoqueLabel(item)}
-                    {item.is0km && <span className="ml-2 text-[10px] font-semibold text-primary">0KM</span>}
-                    {item.isTestRide && <span className="ml-1.5 text-[10px] font-semibold text-primary">TEST-RIDE</span>}
+                    {item.is0km && (
+                      <span className="ml-2 text-[10px] font-semibold text-primary">
+                        {item.isTestRide ? 'TEST-RIDE' : '0KM'}
+                      </span>
+                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>
