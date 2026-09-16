@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck, Wrench, Filter, Award } from 'lucide-react';
+import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck, Wrench, Filter, Award, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -87,6 +87,11 @@ const RelatoriosTab: React.FC = () => {
               </Button>
             </a>
           )}
+          <a href="https://buddy.299imports.com.br" target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" size="sm" className="rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap gap-2">
+              <ExternalLink className="h-4 w-4" /> BPM V1
+            </Button>
+          </a>
           {hasActiveFilters && (
             <Button
               variant="ghost"
