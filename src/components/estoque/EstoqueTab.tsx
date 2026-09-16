@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download, LogOut, DollarSign, Route } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download, LogOut, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -452,7 +452,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         });
         options.push({
           label: item.tipo_unidade === 'test_ride' ? 'Test-Ride ✓' : 'Test-Ride',
-          icon: <Route className="h-4 w-4" />,
+          icon: <Bike className="h-4 w-4" />,
           action: () => setTestRideItem(item),
         });
       }

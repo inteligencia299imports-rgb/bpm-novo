@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { Route, Loader2 } from 'lucide-react';
+import { Bike, Loader2 } from 'lucide-react';
 
 interface TestRideDialogProps {
   open: boolean;
@@ -46,7 +46,7 @@ const TestRideDialog: React.FC<TestRideDialogProps> = ({ open, onOpenChange, est
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Route className="h-5 w-5 text-primary" /> Test-Ride
+            <Bike className="h-5 w-5 text-primary" /> Test-Ride
           </DialogTitle>
         </DialogHeader>
 
