@@ -95,6 +95,10 @@ export function mapEstoqueMotoNova(row: any, lojaMap?: Map<string, LojaInfo>) {
   return {
     ...row,
     fonte: '0km' as EstoqueFonte,
+    // Coluna própria de estoque_motos_novas ('nova' | 'test_ride') — preservada
+    // à parte porque `tipo` abaixo é sobrescrito com o valor "categoria de
+    // estoque" ('0km') usado nas telas, não o tipo real da unidade.
+    tipo_unidade: row?.tipo ?? 'nova',
     marca: row?.marca?.nome ?? null,
     modelo: row?.modelo?.nome ?? null,
     categoria: row?.categoria ?? null,

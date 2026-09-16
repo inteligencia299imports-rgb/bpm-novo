@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download, LogOut } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download, LogOut, DollarSign, Route } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -22,6 +22,8 @@ import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
 import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import DadosFiscaisNovaDialog from '@/components/estoque/DadosFiscaisNovaDialog';
 import RenaveDialog from '@/components/estoque/RenaveDialog';
+import AlterarPrecoDialog from '@/components/estoque/AlterarPrecoDialog';
+import TestRideDialog from '@/components/estoque/TestRideDialog';
 import { pendenciasVeicProd } from '@/lib/veicProd';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -94,6 +96,8 @@ interface EstoqueItem {
   tipo_aquisicao?: string | null;
   pos_compra_status?: string | null;
   displayTipo?: string | null;
+  // estoque_motos_novas — coluna própria ('nova' | 'test_ride')
+  tipo_unidade?: string | null;
   // estoque_motos_novas — specs do grupo veicProd da NF-e (só 0km)
   potencia_motor?: string | number | null;
   peso_liquido?: string | number | null;
@@ -148,6 +152,9 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [consultaItem, setConsultaItem] = useState<EstoqueItem | null>(null);
   const [dadosFiscaisItem, setDadosFiscaisItem] = useState<EstoqueItem | null>(null);
   const [renaveItem, setRenaveItem] = useState<EstoqueItem | null>(null);
+  const [precoItem, setPrecoItem] = useState<EstoqueItem | null>(null);
+  const [testRideItem, setTestRideItem] = useState<EstoqueItem | null>(null);
+  const [idsWithNfeVenda0km, setIdsWithNfeVenda0km] = useState<Set<string>>(new Set());
 
   const handleOpenHistory = async (item: EstoqueItem) => {
     setHistoryItem(item);
@@ -218,6 +225,22 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       } else {
         setIdsWithHistory(new Set());
         setRetiradaDates({});
+      }
+
+      // Fetch which 0km items already têm NF-e de venda autorizada em produção
+      // — trava "Alterar Preço"/"Test-Ride" (mudar depois da venda faturada não faz sentido).
+      const zeroKmIds = mapped.filter((m: any) => m.fonte === '0km').map((m: any) => m.id);
+      if (zeroKmIds.length > 0) {
+        const { data: nfData } = await supabase
+          .from('nfe_entradas' as any)
+          .select('estoque_moto_nova_id')
+          .eq('operacao', 'venda_0km')
+          .eq('status', 'processada')
+          .eq('ambiente', 'producao')
+          .in('estoque_moto_nova_id', zeroKmIds);
+        setIdsWithNfeVenda0km(new Set((nfData || []).map((n: any) => n.estoque_moto_nova_id)));
+      } else {
+        setIdsWithNfeVenda0km(new Set());
       }
     } catch (err: any) {
       toast.error('Erro ao carregar estoque');
@@ -436,6 +459,20 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         icon: <FileText className="h-4 w-4" />,
         action: () => setRenaveItem(item),
       });
+
+      // Preço e Test-Ride só fazem sentido antes da NF-e de venda ser emitida.
+      if (!idsWithNfeVenda0km.has(item.id)) {
+        options.push({
+          label: 'Alterar Preço',
+          icon: <DollarSign className="h-4 w-4" />,
+          action: () => setPrecoItem(item),
+        });
+        options.push({
+          label: item.tipo_unidade === 'test_ride' ? 'Test-Ride ✓' : 'Test-Ride',
+          icon: <Route className="h-4 w-4" />,
+          action: () => setTestRideItem(item),
+        });
+      }
     }
 
     addConsultaOption();
@@ -805,6 +842,26 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         onOpenChange={(open) => { if (!open) setRenaveItem(null); }}
         item={renaveItem}
         onDone={() => { setRenaveItem(null); fetchEstoque(); }}
+      />
+
+      <AlterarPrecoDialog
+        open={!!precoItem}
+        onOpenChange={(open) => { if (!open) setPrecoItem(null); }}
+        estoqueItem={precoItem}
+        onSuccess={() => {
+          setPrecoItem(null);
+          fetchEstoque();
+        }}
+      />
+
+      <TestRideDialog
+        open={!!testRideItem}
+        onOpenChange={(open) => { if (!open) setTestRideItem(null); }}
+        estoqueItem={testRideItem}
+        onSuccess={() => {
+          setTestRideItem(null);
+          fetchEstoque();
+        }}
       />
 
       <Dialog open={!!historyItem} onOpenChange={(open) => { if (!open) setHistoryItem(null); }}>
