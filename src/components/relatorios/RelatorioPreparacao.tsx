@@ -17,6 +17,7 @@ import { PREPARACAO_COLUMNS } from '@/types/crm';
 import CidadeFilter, { CidadeFilterValue, matchesCidade } from '@/components/shared/CidadeFilter';
 import { getPreviousPeriod } from '@/lib/reportComparison';
 import { getCycleForDate, DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
+import { getXTickStyle } from '@/lib/chartAxis';
 import DeltaBadge from './DeltaBadge';
 
 interface Props {
@@ -92,11 +93,6 @@ function getCycleBuckets(): { label: string; start: Date; end: Date }[] {
 const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const isMobile = useIsMobile();
   const chartH = isMobile ? 220 : 280;
-  // Rótulo do eixo X sempre na diagonal (não só no mobile) — em telas
-  // largas, o Recharts oculta os rótulos que não couberem na horizontal;
-  // na diagonal, nunca precisa ocultar.
-  const xTickProps = { fontSize: isMobile ? 8 : 9, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 };
-  const chartMarginBottom = 40;
 
   const [loading, setLoading] = useState(true);
   const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
@@ -418,6 +414,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
 
+  const chartTick = getXTickStyle(chartData.length, isMobile);
+
   const tipoBtns: { value: TipoFilter; label: string }[] = [
     { value: 'todos', label: 'Todos' },
     { value: 'propria', label: 'Próprias' },
@@ -463,7 +461,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={chartH}>
-              <AreaChart data={chartData} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
+              <AreaChart data={chartData} margin={{ top: 16, right: 10, left: -10, bottom: chartTick.marginBottom }}>
                 <defs>
                   <linearGradient id="gradPrep" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#2F6F84" stopOpacity={0.55} />
@@ -471,7 +469,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={chartTick.tick} interval={0} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeOpacity: 0.3 }} />
                 <Area type="monotone" dataKey="diasPrep" name="Tempo de Preparação" stroke="#2F6F84" strokeWidth={2.5} fill="url(#gradPrep)" dot={{ r: 3, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 5 }} />
@@ -488,7 +486,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={chartH}>
-              <AreaChart data={chartData} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
+              <AreaChart data={chartData} margin={{ top: 16, right: 10, left: -10, bottom: chartTick.marginBottom }}>
                 <defs>
                   <linearGradient id="gradLib" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#3a8f6a" stopOpacity={0.55} />
@@ -496,7 +494,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={chartTick.tick} interval={0} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeOpacity: 0.3 }} />
                 <Area type="monotone" dataKey="diasLib" name="Tempo de Liberação" stroke="#3a8f6a" strokeWidth={2.5} fill="url(#gradLib)" dot={{ r: 3, fill: '#3a8f6a', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 5 }} />
