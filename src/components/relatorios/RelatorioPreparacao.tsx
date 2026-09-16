@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
 import CidadeFilter, { CidadeFilterValue, matchesCidade } from '@/components/shared/CidadeFilter';
 import { getPreviousPeriod } from '@/lib/reportComparison';
-import { getCycleForDate } from '@/lib/reportCycle';
+import { getCycleForDate, DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
 import DeltaBadge from './DeltaBadge';
 
 interface Props {
@@ -72,9 +72,10 @@ const STATUS_LABELS: Record<string, { label: string; hex: string }> = {
   estoque: { label: 'Em Estoque', hex: '#169d53' },
 };
 
+// Buckets do "Resultado do Ano" — meses fechados a partir de 01/09/2026
 function getCycleBuckets(): { label: string; start: Date; end: Date }[] {
   const buckets: { label: string; start: Date; end: Date }[] = [];
-  let cur = new Date(2026, 2, 21); // 21/03/2026
+  let cur = new Date(DATA_INICIO_RELATORIOS);
   const now = new Date();
   // Limite duro para evitar loop em caso de regressão
   let guard = 0;
@@ -300,7 +301,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     return computeKpis(prevFrom, prevTo);
   }, [rows, filterLoja, filterTipo, dateFrom, dateTo]);
 
-  // Charts: ciclos a partir de 21/03
+  // Charts: meses fechados a partir de 01/09/2026
   const chartData = useMemo(() => {
     // Use rows filtered by loja + tipo (not by period) for monthly chart
     const baseFiltered = rows.filter(r => matchesLoja(r.loja, filterLoja) && (filterTipo === 'todos' || r.tipoCat === filterTipo));

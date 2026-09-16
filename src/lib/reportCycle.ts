@@ -1,45 +1,24 @@
 /**
  * Lógica de ciclos de relatório.
  *
- * Histórico:
- * - Até 20/05/2026: ciclos do dia 21 ao dia 20 do mês seguinte
- *   (ex: 21/12-20/01, 21/01-20/02, ..., 21/04-20/05).
- * - Ciclo de transição: 21/05/2026 a 30/06/2026 (estendido).
- * - A partir de 01/07/2026: ciclos mensais normais (dia 01 ao último dia do mês).
+ * Relatórios só mostram dados a partir de 01/09/2026, em ciclos de mês
+ * calendário fechado (dia 01 ao último dia do mês) — sem os ciclos legados
+ * de 21 a 20 usados antes disso.
  */
 
-const TRANSITION_START = new Date(2026, 4, 21, 0, 0, 0, 0); // 21/05/2026
-const TRANSITION_END = new Date(2026, 5, 30, 23, 59, 59, 999); // 30/06/2026
-const MONTHLY_START = new Date(2026, 6, 1, 0, 0, 0, 0); // 01/07/2026
+export const DATA_INICIO_RELATORIOS = new Date(2026, 8, 1, 0, 0, 0, 0); // 01/09/2026
 
 export interface CycleRange {
   start: Date;
   end: Date;
 }
 
-/** Retorna o ciclo a que pertence a data informada. */
+/** Retorna o mês calendário (dia 01 ao último dia) a que a data informada pertence. */
 export function getCycleForDate(date: Date): CycleRange {
   const y = date.getFullYear();
   const m = date.getMonth();
-  const d = date.getDate();
-
-  // Ciclos mensais (a partir de 01/07/2026)
-  if (date >= MONTHLY_START) {
-    const start = new Date(y, m, 1, 0, 0, 0, 0);
-    const end = new Date(y, m + 1, 0, 23, 59, 59, 999);
-    return { start, end };
-  }
-
-  // Ciclo de transição
-  if (date >= TRANSITION_START && date <= TRANSITION_END) {
-    return { start: new Date(TRANSITION_START), end: new Date(TRANSITION_END) };
-  }
-
-  // Ciclos legados 21 → 20
-  const start = d >= 21
-    ? new Date(y, m, 21, 0, 0, 0, 0)
-    : new Date(y, m - 1, 21, 0, 0, 0, 0);
-  const end = new Date(start.getFullYear(), start.getMonth() + 1, 20, 23, 59, 59, 999);
+  const start = new Date(y, m, 1, 0, 0, 0, 0);
+  const end = new Date(y, m + 1, 0, 23, 59, 59, 999);
   return { start, end };
 }
 
@@ -48,13 +27,7 @@ export function getCurrentCycle(): CycleRange {
   return getCycleForDate(new Date());
 }
 
-/**
- * Data de início padrão para o filtro de "período em andamento".
- * - A partir de 01/07/2026: dia 01 do mês atual (ciclo mensal).
- * - Antes disso: dia 21 do mês atual (se hoje >= 21) ou do mês anterior.
- *   Mantém a âncora histórica do dia 21 mesmo dentro do ciclo de transição
- *   estendido, para o filtro default não retroceder demais.
- */
+/** Data de início padrão para o filtro de "período em andamento": dia 01 do mês atual. */
 export function getCurrentDefaultStart(): Date {
   return getCycleForDate(new Date()).start;
 }
