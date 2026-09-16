@@ -197,7 +197,13 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       }));
       // Filtros que dependem de campos derivados (não dá pra .eq no banco)
       if (filterMarca !== 'todas') mapped = mapped.filter((m: any) => m.marca === filterMarca);
-      if (filterTipo !== 'todos') mapped = mapped.filter((m: any) => m.tipo === filterTipo);
+      if (filterTipo !== 'todos') {
+        mapped = mapped.filter((m: any) => {
+          if (filterTipo === 'test_ride') return m.tipo_unidade === 'test_ride';
+          if (filterTipo === '0km') return m.tipo === '0km' && m.tipo_unidade !== 'test_ride';
+          return m.tipo === filterTipo;
+        });
+      }
       // Motos de repasse ficam ocultas do catálogo de estoque
       mapped = mapped.filter((m: any) => m.tipo_aquisicao !== 'repasse');
       setItems(mapped);
@@ -540,6 +546,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                 <SelectItem value="propria">Própria</SelectItem>
                 <SelectItem value="consignada">Consignada</SelectItem>
                 <SelectItem value="0km">0KM</SelectItem>
+                <SelectItem value="test_ride">Test-Ride</SelectItem>
               </SelectContent>
             </Select>
           </div>

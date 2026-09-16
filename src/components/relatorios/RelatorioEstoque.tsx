@@ -35,7 +35,7 @@ interface RelatorioEstoqueProps {
   showFilters?: boolean;
 }
 
-type TipoFilter = 'todos' | 'propria' | 'consignada';
+type TipoFilter = 'todos' | 'propria' | 'consignada' | '0km' | 'test_ride';
 
 const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const isMobile = useIsMobile();
@@ -97,7 +97,13 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       ...(estoqueRes.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)),
       ...(((estoqueNovasRes as any).data) || []).map((r: any) => mapEstoqueMotoNova(r, lojaMap)),
     ] as any[];
-    if (filterTipo !== 'todos') estoqueAll = estoqueAll.filter((m: any) => m.tipo === filterTipo);
+    if (filterTipo !== 'todos') {
+      estoqueAll = estoqueAll.filter((m: any) => {
+        if (filterTipo === 'test_ride') return m.tipo_unidade === 'test_ride';
+        if (filterTipo === '0km') return m.tipo === '0km' && m.tipo_unidade !== 'test_ride';
+        return m.tipo === filterTipo;
+      });
+    }
     // Filtro de loja (cidade) — mesma lógica do RPC
     const estoqueFiltrado = estoqueAll.filter((m: any) => {
       const loja = (m.loja || '').toString();
@@ -358,6 +364,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
             { value: 'todos', label: 'Todos' },
             { value: 'propria', label: 'Próprias' },
             { value: 'consignada', label: 'Consignadas' },
+            { value: '0km', label: '0KM' },
+            { value: 'test_ride', label: 'Test-Ride' },
           ] as { value: TipoFilter; label: string }[]).map(b => (
             <Button key={b.value} size="sm" variant={filterTipo === b.value ? 'default' : 'outline'}
               className={cn('rounded-full px-4 h-8 text-xs font-medium', filterTipo === b.value && 'shadow-sm')}
