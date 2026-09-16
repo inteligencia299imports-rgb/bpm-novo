@@ -21,6 +21,7 @@ interface EstoqueOption {
   chassi: string | null;
   marca: string;
   is0km: boolean;
+  isTestRide: boolean;
 }
 
 interface Props {
@@ -74,6 +75,7 @@ const MotoCompraSection: React.FC<Props> = ({
           placa: m.placa ?? null,
           chassi: m.chassi ?? null,
           is0km: m.fonte === '0km',
+          isTestRide: m.tipo_unidade === 'test_ride',
         });
 
         const disponiveis = await fetchEstoqueUnificado({ status: 'disponivel' });
@@ -204,6 +206,7 @@ const MotoCompraSection: React.FC<Props> = ({
                     <Check className={cn("mr-2 h-4 w-4", estoqueMotoId === item.id ? "opacity-100" : "opacity-0")} />
                     {formatEstoqueLabel(item)}
                     {item.is0km && <span className="ml-2 text-[10px] font-semibold text-primary">0KM</span>}
+                    {item.isTestRide && <span className="ml-1.5 text-[10px] font-semibold text-primary">TEST-RIDE</span>}
                   </CommandItem>
                 ))}
               </CommandGroup>

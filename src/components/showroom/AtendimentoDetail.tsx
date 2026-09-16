@@ -995,18 +995,25 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                               {estItem.cilindrada ? ` · ${estItem.cilindrada}cc` : ''}
                             </p>
                           </div>
-                          {!atendimento.loja?.toLowerCase().startsWith('ducati') && (
-                            <Badge variant="outline" className={`text-xs ${
-                              estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
-                              estItem.status === 'sinal' ? 'border-[#b376c4] text-[#b376c4]' :
-                              estItem.status === 'servico' ? 'border-orange-500 text-orange-600' :
-                              estItem.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
-                              estItem.status === 'bloqueio_juridico' ? 'border-muted-foreground text-muted-foreground' :
-                              ''
-                            }`}>
-                              {estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : estItem.status === 'servico' ? 'Serviço' : estItem.status === 'indisponivel_manual' ? 'Indisponível' : estItem.status === 'bloqueio_juridico' ? 'Bloqueio Jurídico' : 'Estoque'}
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {estItem.tipo_unidade === 'test_ride' && (
+                              <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0 border-primary/50 text-primary">
+                                <Bike className="h-3 w-3" /> Test-Ride
+                              </Badge>
+                            )}
+                            {!atendimento.loja?.toLowerCase().startsWith('ducati') && (
+                              <Badge variant="outline" className={`text-xs ${
+                                estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
+                                estItem.status === 'sinal' ? 'border-[#b376c4] text-[#b376c4]' :
+                                estItem.status === 'servico' ? 'border-orange-500 text-orange-600' :
+                                estItem.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
+                                estItem.status === 'bloqueio_juridico' ? 'border-muted-foreground text-muted-foreground' :
+                                ''
+                              }`}>
+                                {estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : estItem.status === 'servico' ? 'Serviço' : estItem.status === 'indisponivel_manual' ? 'Indisponível' : estItem.status === 'bloqueio_juridico' ? 'Bloqueio Jurídico' : 'Estoque'}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         {/* Estoque observation for special statuses */}
                         {estItem.observacoes && ['servico', 'indisponivel_manual', 'bloqueio_juridico'].includes(estItem.status) && (

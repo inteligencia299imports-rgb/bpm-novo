@@ -829,20 +829,27 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                                 {estItem.cilindrada ? ` · ${estItem.cilindrada}cc` : ''}
                               </p>
                             </div>
-                            {!item.loja?.toLowerCase().startsWith('ducati') && (
-                              <Badge variant="outline" className={`text-xs gap-1 ${
-                                estItem.status === 'servico' ? 'border-orange-500 text-orange-600' :
-                                estItem.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
-                                estItem.status === 'bloqueio_juridico' ? 'border-muted-foreground text-muted-foreground' :
-                                estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
-                                estItem.status === 'sinal' ? 'border-[#b376c4] text-[#b376c4]' :
-                                ''
-                              }`}>
-                                {estItem.status === 'indisponivel_manual' && <AlertTriangle className="h-3 w-3" />}
-                                {estItem.status === 'bloqueio_juridico' && <ShieldAlert className="h-3 w-3" />}
-                                {estItem.status === 'servico' ? 'Serviço' : estItem.status === 'indisponivel_manual' ? 'Indisponível' : estItem.status === 'bloqueio_juridico' ? 'Bloqueio Jurídico' : estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : 'Estoque'}
-                              </Badge>
-                            )}
+                            <div className="flex items-center gap-1.5">
+                              {estItem.tipo_unidade === 'test_ride' && (
+                                <Badge variant="outline" className="gap-1 text-[10px] px-1.5 py-0 border-primary/50 text-primary">
+                                  <Bike className="h-3 w-3" /> Test-Ride
+                                </Badge>
+                              )}
+                              {!item.loja?.toLowerCase().startsWith('ducati') && (
+                                <Badge variant="outline" className={`text-xs gap-1 ${
+                                  estItem.status === 'servico' ? 'border-orange-500 text-orange-600' :
+                                  estItem.status === 'indisponivel_manual' ? 'border-destructive text-destructive' :
+                                  estItem.status === 'bloqueio_juridico' ? 'border-muted-foreground text-muted-foreground' :
+                                  estItem.status === 'vendido' ? 'border-[#169d53] text-[#169d53]' :
+                                  estItem.status === 'sinal' ? 'border-[#b376c4] text-[#b376c4]' :
+                                  ''
+                                }`}>
+                                  {estItem.status === 'indisponivel_manual' && <AlertTriangle className="h-3 w-3" />}
+                                  {estItem.status === 'bloqueio_juridico' && <ShieldAlert className="h-3 w-3" />}
+                                  {estItem.status === 'servico' ? 'Serviço' : estItem.status === 'indisponivel_manual' ? 'Indisponível' : estItem.status === 'bloqueio_juridico' ? 'Bloqueio Jurídico' : estItem.status === 'vendido' ? 'Vendido' : estItem.status === 'sinal' ? 'Sinal' : 'Estoque'}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           {item.loja?.toLowerCase().startsWith('ducati') ? (
                             (mi.chassi || estItem.chassi) && (
