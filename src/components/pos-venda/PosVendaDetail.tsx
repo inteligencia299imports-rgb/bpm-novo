@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
+import { getTipoAquisicaoLabel, EMPRESAS_SO_MOTO_NOVA } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,7 @@ import AtpvDialog from './AtpvDialog';
 import ContratoDialog from '@/components/showroom/ContratoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
+import TransferenciaFagMmatosDialog from '@/components/showroom/TransferenciaFagMmatosDialog';
 import StatusTimeline, { defaultFormatStatusLabel } from '@/components/shared/StatusTimeline';
 import { formatPersonName, firstLastName, cn, formatDataNascimento } from '@/lib/utils';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
@@ -109,6 +110,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [nfeVendaOpen, setNfeVendaOpen] = useState(false);
   const [atpvOpen, setAtpvOpen] = useState(false);
   const [trocaNfeAval, setTrocaNfeAval] = useState<any | null>(null);
+  const [trocaTransferenciaAval, setTrocaTransferenciaAval] = useState<any | null>(null);
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
@@ -166,6 +168,32 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     const am = (data as any).atendimentos_motos;
     setProcessoOpen(false);
     setTrocaNfeAval({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja } });
+  };
+
+  // Ao fechar a NF-e de compra da moto da troca: se a empresa só revende 0km
+  // (FAG) e a compra já saiu em produção, encadeia a NF-e de transferência
+  // pra MMATOS antes de liberar a venda (ver bloqueio server-side em
+  // emitir-nfe-compra). Não bloqueia o fechamento se a checagem falhar.
+  const fecharNfeTroca = async () => {
+    const aval = trocaNfeAval;
+    setTrocaNfeAval(null);
+    const empresaId = aval?.atendimento?.empresa_id;
+    if (!aval?.id || !empresaId || !EMPRESAS_SO_MOTO_NOVA.has(empresaId)) return;
+    const { data: compraProd } = await supabase
+      .from('nfe_entradas' as any)
+      .select('id')
+      .eq('avaliacao_id', aval.id).eq('operacao', 'compra')
+      .eq('ambiente', 'producao').eq('status', 'processada')
+      .limit(1).maybeSingle();
+    if (!compraProd) return;
+    const { data: transferenciaProd } = await supabase
+      .from('nfe_entradas' as any)
+      .select('id')
+      .eq('avaliacao_id', aval.id).eq('operacao', 'transferencia')
+      .eq('ambiente', 'producao').eq('status', 'processada')
+      .limit(1).maybeSingle();
+    if (transferenciaProd) return;
+    setTrocaTransferenciaAval(aval);
   };
 
   const moto = item.avaliacoes?.[0];
@@ -530,9 +558,19 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     return (
       <ContratoCompraDialog
         open
-        onOpenChange={(o) => { if (!o) setTrocaNfeAval(null); }}
+        onOpenChange={(o) => { if (!o) fecharNfeTroca(); }}
         avaliacao={trocaNfeAval}
         modo="nfe"
+      />
+    );
+  }
+  if (!isIntermParte2 && trocaTransferenciaAval) {
+    return (
+      <TransferenciaFagMmatosDialog
+        open
+        onOpenChange={(o) => { if (!o) setTrocaTransferenciaAval(null); }}
+        avaliacaoId={trocaTransferenciaAval.id}
+        moto={trocaTransferenciaAval}
       />
     );
   }

@@ -28,6 +28,7 @@ import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
 import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 import AgregadosContrato, { type Agregado, type AgregadoLinha } from '@/components/showroom/AgregadosContrato';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
+import { EMPRESAS_SO_MOTO_NOVA } from '@/lib/tipoAquisicao';
 
 interface Props {
   open: boolean;
@@ -366,6 +367,9 @@ const ContratoDialog: React.FC<Props> = ({
   // Troca: a NF-e de venda em PRODUÇÃO só libera depois da NF-e de compra da moto
   // da troca ter sido emitida em produção.
   const [trocaCompraProdOk, setTrocaCompraProdOk] = useState(false);
+  // Troca na FAG (só revende 0km): também exige a NF-e de transferência da
+  // moto da troca pra MMATOS em produção — ver TransferenciaFagMmatosDialog.
+  const [trocaTransferenciaProdOk, setTrocaTransferenciaProdOk] = useState(false);
 
   // Load existing contract data
   useEffect(() => {
@@ -445,8 +449,18 @@ const ContratoDialog: React.FC<Props> = ({
           .eq('status', 'processada')
           .limit(1);
         setTrocaCompraProdOk(!!(cp && cp.length));
+        const { data: tp } = await supabase
+          .from('nfe_entradas' as any)
+          .select('id')
+          .in('avaliacao_id', motosAvaliacao.map((m) => m.id))
+          .eq('operacao', 'transferencia')
+          .eq('ambiente', 'producao')
+          .eq('status', 'processada')
+          .limit(1);
+        setTrocaTransferenciaProdOk(!!(tp && tp.length));
       } else {
         setTrocaCompraProdOk(false);
+        setTrocaTransferenciaProdOk(false);
       }
 
       type InstRow = {
@@ -2056,20 +2070,25 @@ const ContratoDialog: React.FC<Props> = ({
                         {nfe.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
                       </Button>
                     )}
-                    {podeReemitirHomolog && !nfe.pendente && (
-                      <Button
-                        className="gap-1.5"
-                        disabled={disabled || (hasTroca && !trocaCompraProdOk) || !stRetidoOk}
-                        title={!stRetidoOk
-                          ? 'Preencha os valores de ICMS-ST retido (da NF de entrada da moto) antes de emitir em produção'
-                          : hasTroca && !trocaCompraProdOk
-                            ? 'Emita a NF-e de compra da moto da troca em produção antes'
-                            : title}
-                        onClick={() => handleEmitirNf('producao')}
-                      >
-                        <FileText className="h-4 w-4" /> NF-e (Produção)
-                      </Button>
-                    )}
+                    {(() => {
+                      const precisaTransferenciaFag = hasTroca && EMPRESAS_SO_MOTO_NOVA.has(empresaId) && !trocaTransferenciaProdOk;
+                      return podeReemitirHomolog && !nfe.pendente && (
+                        <Button
+                          className="gap-1.5"
+                          disabled={disabled || (hasTroca && !trocaCompraProdOk) || precisaTransferenciaFag || !stRetidoOk}
+                          title={!stRetidoOk
+                            ? 'Preencha os valores de ICMS-ST retido (da NF de entrada da moto) antes de emitir em produção'
+                            : hasTroca && !trocaCompraProdOk
+                              ? 'Emita a NF-e de compra da moto da troca em produção antes'
+                              : precisaTransferenciaFag
+                                ? 'Emita a NF-e de transferência da moto da troca para a MMATOS em produção antes'
+                                : title}
+                          onClick={() => handleEmitirNf('producao')}
+                        >
+                          <FileText className="h-4 w-4" /> NF-e (Produção)
+                        </Button>
+                      );
+                    })()}
                   </>
                 );
               })()}
