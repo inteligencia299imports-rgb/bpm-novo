@@ -20,11 +20,8 @@ import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { firstLastName } from '@/lib/utils';
 import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
 import RetiradaDialog from '@/components/estoque/RetiradaDialog';
-import DadosFiscaisNovaDialog from '@/components/estoque/DadosFiscaisNovaDialog';
-import RenaveDialog from '@/components/estoque/RenaveDialog';
 import AlterarPrecoDialog from '@/components/estoque/AlterarPrecoDialog';
 import TestRideDialog from '@/components/estoque/TestRideDialog';
-import { pendenciasVeicProd } from '@/lib/veicProd';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -150,8 +147,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [retiradaItem, setRetiradaItem] = useState<EstoqueItem | null>(null);
   const [consultaItem, setConsultaItem] = useState<EstoqueItem | null>(null);
-  const [dadosFiscaisItem, setDadosFiscaisItem] = useState<EstoqueItem | null>(null);
-  const [renaveItem, setRenaveItem] = useState<EstoqueItem | null>(null);
   const [precoItem, setPrecoItem] = useState<EstoqueItem | null>(null);
   const [testRideItem, setTestRideItem] = useState<EstoqueItem | null>(null);
   const [idsWithNfeVenda0km, setIdsWithNfeVenda0km] = useState<Set<string>>(new Set());
@@ -429,7 +424,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     }
 
     // Option to change status (Retirada is now an option inside this dialog for consigned motos)
-    if (['disponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(item.status)) {
+    // — não se aplica a 0km (fica só "Alterar Preço"/"Test-Ride").
+    if (item.tipo !== '0km' && ['disponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(item.status)) {
       options.push({
         label: 'Alterar Status',
         icon: <RefreshCw className="h-4 w-4" />,
@@ -446,20 +442,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    // Specs fiscais do veículo (grupo veicProd da NF-e) — só moto 0km.
     if (item.tipo === '0km') {
-      const faltaVeic = pendenciasVeicProd(item).length;
-      options.push({
-        label: faltaVeic > 0 ? `Dados fiscais (NF-e) · ${faltaVeic} pend.` : 'Dados fiscais (NF-e)',
-        icon: <FileText className="h-4 w-4" />,
-        action: () => setDadosFiscaisItem(item),
-      });
-      options.push({
-        label: (item as any).renave_id_estoque ? 'RENAVE ✓' : 'RENAVE — entrada em estoque',
-        icon: <FileText className="h-4 w-4" />,
-        action: () => setRenaveItem(item),
-      });
-
       // Preço e Test-Ride só fazem sentido antes da NF-e de venda ser emitida.
       if (!idsWithNfeVenda0km.has(item.id)) {
         options.push({
@@ -825,23 +808,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           setRetiradaItem(null);
           fetchEstoque();
         }}
-      />
-
-      <DadosFiscaisNovaDialog
-        open={!!dadosFiscaisItem}
-        onOpenChange={(open) => { if (!open) setDadosFiscaisItem(null); }}
-        item={dadosFiscaisItem}
-        onSuccess={() => {
-          setDadosFiscaisItem(null);
-          fetchEstoque();
-        }}
-      />
-
-      <RenaveDialog
-        open={!!renaveItem}
-        onOpenChange={(open) => { if (!open) setRenaveItem(null); }}
-        item={renaveItem}
-        onDone={() => { setRenaveItem(null); fetchEstoque(); }}
       />
 
       <AlterarPrecoDialog
