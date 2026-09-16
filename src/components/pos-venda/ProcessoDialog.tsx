@@ -806,7 +806,11 @@ const ProcessoDialog: React.FC<Props> = ({
                           não o DANFE direto aqui. */}
                       <Button
                         size="sm" className={cn('h-7 w-24 gap-1 justify-center', nfeBotaoClasse(nfeObj?.nfe))}
-                        onClick={() => (isNfTroca ? (trocaAvaliacaoId && onEmitirNfeTroca?.(trocaAvaliacaoId)) : onEmitirNfe?.())}
+                        onClick={() => (
+                          isNfTroca ? (trocaAvaliacaoId && onEmitirNfeTroca?.(trocaAvaliacaoId))
+                          : isNfTransferencia ? (trocaAvaliacaoId && onEmitirNfeTransferencia?.(trocaAvaliacaoId))
+                          : onEmitirNfe?.()
+                        )}
                       >
                         <FileText className="h-3.5 w-3.5" /> NF-e
                       </Button>
