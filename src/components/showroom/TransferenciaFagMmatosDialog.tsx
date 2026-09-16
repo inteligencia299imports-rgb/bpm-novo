@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +25,15 @@ const TransferenciaFagMmatosDialog: React.FC<TransferenciaFagMmatosDialogProps> 
   open, onOpenChange, avaliacaoId, moto, onAutorizada,
 }) => {
   const nfe = useNfeCompra(avaliacaoId || '', open, 'transferencia', 'avaliacao', onAutorizada);
+
+  // useNfeCompra não carrega sozinho ao montar — sem isso, o diálogo sempre
+  // parte de "nada emitido ainda", mesmo com uma NF já autorizada (achado
+  // real: 3 NF-e's de homologação emitidas em sequência pro mesmo carro,
+  // porque cada reabertura "esquecia" a anterior).
+  useEffect(() => {
+    if (open && avaliacaoId) nfe.carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, avaliacaoId]);
 
   const nfeJaEmitida = nfe.emitida;
   const podeReemitirHomolog = nfeJaEmitida && nfe.nfe?.ambiente === 'homologacao';
