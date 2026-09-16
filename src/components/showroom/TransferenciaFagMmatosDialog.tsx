@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRightLeft, FileText, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
+import { NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 
 interface TransferenciaFagMmatosDialogProps {
   open: boolean;
@@ -26,12 +27,11 @@ const TransferenciaFagMmatosDialog: React.FC<TransferenciaFagMmatosDialogProps> 
   const nfe = useNfeCompra(avaliacaoId || '', open, 'transferencia', 'avaliacao', onAutorizada);
 
   const nfeJaEmitida = nfe.emitida;
-  const nfeEmProducao = nfeJaEmitida && nfe.nfe?.ambiente === 'producao';
   const podeReemitirHomolog = nfeJaEmitida && nfe.nfe?.ambiente === 'homologacao';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRightLeft className="h-5 w-5 text-primary" /> Transferência para MMATOS
@@ -57,13 +57,7 @@ const TransferenciaFagMmatosDialog: React.FC<TransferenciaFagMmatosDialogProps> 
           {nfeJaEmitida && (
             <div className="flex items-center justify-between rounded-lg border p-3 text-sm">
               <span className="text-muted-foreground">Nº NF</span>
-              <span className="font-medium text-primary">
-                {nfe.nfe?.numero ? `Nº ${nfe.nfe.numero} • Série ${nfe.nfe.serie || '-'}` : '-'}
-                {' '}
-                <Badge variant="outline" className={nfeEmProducao ? 'border-success text-success' : ''}>
-                  {nfeEmProducao ? 'Produção' : 'Homologação'}
-                </Badge>
-              </span>
+              <NfeDanfeButton nfe={nfe} />
             </div>
           )}
 
