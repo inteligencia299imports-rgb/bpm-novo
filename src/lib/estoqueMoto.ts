@@ -8,7 +8,7 @@ import { nomeMarcaModelo } from '@/lib/marcaModelo';
  */
 export const ESTOQUE_MOTO_SELECT =
   '*, avaliacao:avaliacao_id(id, marca:marca_id(nome), modelo:modelo_id(nome), categoria, cor, cilindrada, placa, ' +
-  'ano_fabricacao, ano_modelo, km, quanto_pede, classificacao, tipo_aquisicao, chassi, renavam, ' +
+  'ano_fabricacao, ano_modelo, km, quanto_pede, valor_fechamento, valor_nf_entrada, classificacao, tipo_aquisicao, chassi, renavam, ' +
   'tem_manual, tem_chave_reserva, manutencao_vencida, crlv_url, resultado_consulta, ' +
   'pos_compra_status, atendimento_id, atendimento:atendimento_id(loja_id)), ' +
   'atendimento_venda:atendimento_venda_id(vendedor_id)';
@@ -73,6 +73,10 @@ export function mapEstoqueMoto(row: any, lojaMap?: Map<string, LojaInfo>) {
     tipo_aquisicao: av.tipo_aquisicao ?? null,
     preco: av.quanto_pede ?? null,
     valor_custo: null,
+    // Custo de aquisição — mesma prioridade do `custo_aquisicao` em
+    // emitir-nfe-compra: NF-e de entrada (documento fiscal real) primeiro;
+    // cai no valor de fechamento interno quando a NF não foi registrada.
+    valor_compra: av.valor_nf_entrada ?? av.valor_fechamento ?? null,
     classificacao: av.classificacao ?? null,
     data_entrada: row?.created_at ?? null,
     tem_manual: av.tem_manual ?? null,
@@ -115,6 +119,9 @@ export function mapEstoqueMotoNova(row: any, lojaMap?: Map<string, LojaInfo>) {
     tipo_aquisicao: null,
     preco: row?.valor ?? null,
     valor_custo: row?.valor_custo ?? null,
+    // valor_custo já reflete o valor da NF-e de entrada da montadora (gravado
+    // pelo confirmar-motos-novas do SisFin).
+    valor_compra: row?.valor_custo ?? null,
     classificacao: null,
     data_entrada: row?.created_at ?? null,
     tem_manual: null,
