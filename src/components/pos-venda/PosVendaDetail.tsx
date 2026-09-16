@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getTipoAquisicaoLabel, EMPRESAS_SO_MOTO_NOVA } from '@/lib/tipoAquisicao';
+import { getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -170,30 +170,19 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     setTrocaNfeAval({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja } });
   };
 
-  // Ao fechar a NF-e de compra da moto da troca: se a empresa só revende 0km
-  // (FAG) e a compra já saiu em produção, encadeia a NF-e de transferência
-  // pra MMATOS antes de liberar a venda (ver bloqueio server-side em
-  // emitir-nfe-compra). Não bloqueia o fechamento se a checagem falhar.
-  const fecharNfeTroca = async () => {
-    const aval = trocaNfeAval;
-    setTrocaNfeAval(null);
-    const empresaId = aval?.atendimento?.empresa_id;
-    if (!aval?.id || !empresaId || !EMPRESAS_SO_MOTO_NOVA.has(empresaId)) return;
-    const { data: compraProd } = await supabase
-      .from('nfe_entradas' as any)
-      .select('id')
-      .eq('avaliacao_id', aval.id).eq('operacao', 'compra')
-      .eq('ambiente', 'producao').eq('status', 'processada')
-      .limit(1).maybeSingle();
-    if (!compraProd) return;
-    const { data: transferenciaProd } = await supabase
-      .from('nfe_entradas' as any)
-      .select('id')
-      .eq('avaliacao_id', aval.id).eq('operacao', 'transferencia')
-      .eq('ambiente', 'producao').eq('status', 'processada')
-      .limit(1).maybeSingle();
-    if (transferenciaProd) return;
-    setTrocaTransferenciaAval(aval);
+  // Troca na FAG (só revende 0km): emite a NF-e de transferência da moto pra
+  // MMATOS — mesma tela/padrão da NF de compra, etapa própria no checklist
+  // (NF-E DE TRANSFERÊNCIA (MMATOS)), entre a entrada e a venda.
+  const abrirNfeTransferencia = async (avaliacaoId: string) => {
+    const { data: raw } = await supabase
+      .from('avaliacoes')
+      .select(`*, ${MARCA_MODELO_SELECT}`)
+      .eq('id', avaliacaoId)
+      .maybeSingle();
+    if (!raw) return;
+    const data = flattenMarcaModelo(raw as any);
+    setProcessoOpen(false);
+    setTrocaTransferenciaAval(data);
   };
 
   const moto = item.avaliacoes?.[0];
@@ -558,7 +547,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     return (
       <ContratoCompraDialog
         open
-        onOpenChange={(o) => { if (!o) fecharNfeTroca(); }}
+        onOpenChange={(o) => { if (!o) setTrocaNfeAval(null); }}
         avaliacao={trocaNfeAval}
         modo="nfe"
       />
@@ -1189,6 +1178,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         onContratoSaved={refreshConsignada}
         onEmitirNfe={() => { setProcessoOpen(false); setNfeVendaOpen(true); }}
         onEmitirNfeTroca={abrirNfeTroca}
+        onEmitirNfeTransferencia={abrirNfeTransferencia}
         onEmitirAtpv={moto0km ? () => { setProcessoOpen(false); setAtpvOpen(true); } : undefined}
         onNavigateToPosCompra={onNavigateToPosCompra}
         vendaBloqueadaAprovacao={bloqueadoAprovacao}
