@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { getPreviousMonthDate } from '@/lib/reportComparison';
+import { getXTickStyle } from '@/lib/chartAxis';
 import DeltaBadge from './DeltaBadge';
 
 
@@ -39,11 +40,6 @@ type TipoFilter = 'todos' | 'propria' | 'consignada';
 const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const isMobile = useIsMobile();
   const chartH = isMobile ? 220 : 300;
-  // Rótulo do eixo X sempre na diagonal (não só no mobile) — em telas
-  // largas, o Recharts oculta os rótulos que não couberem na horizontal;
-  // na diagonal, nunca precisa ocultar.
-  const xTickProps = { fontSize: isMobile ? 8 : 9, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 };
-  const chartMarginBottom = 40;
 
   const [loading, setLoading] = useState(true);
   const [indicadores, setIndicadores] = useState<any>({});
@@ -339,6 +335,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
   }
 
+  const chartTick = getXTickStyle(filteredChart.length, isMobile);
+
   const d = indicadores.disponivel || {};
   const b = indicadores.bloqueio || {};
   const s = indicadores.servico || {};
@@ -403,7 +401,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
               </CardHeader>
               <CardContent className="px-4 pb-3 pt-0">
                 <ResponsiveContainer width="100%" height={isMobile ? 260 : 420}>
-                  <ComposedChart data={filteredChart} margin={{ top: 16, right: 10, left: -10, bottom: chartMarginBottom }}>
+                  <ComposedChart data={filteredChart} margin={{ top: 16, right: 10, left: -10, bottom: chartTick.marginBottom }}>
                     <defs>
                       <linearGradient id="dispGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#2F6F84" stopOpacity={0.45} />
@@ -411,7 +409,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="label" tick={chartTick.tick} interval={0} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
                     <Area type="monotone" dataKey="apenasDisponiveis" name="Disponíveis" stroke="#2F6F84" strokeWidth={2.5} fill="url(#dispGradient)" dot={{ r: 4, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6 }} />

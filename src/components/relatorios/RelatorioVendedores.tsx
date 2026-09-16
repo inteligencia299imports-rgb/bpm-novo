@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from '@/lib/reportDateRange';
 import { getPreviousPeriod, getPreviousPeriodIso, splitComparado } from '@/lib/reportComparison';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getXTickStyle } from '@/lib/chartAxis';
 import { LojaFilter } from './LojaFilter';
 import DeltaBadge from './DeltaBadge';
 
@@ -34,12 +35,6 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   const { user, role } = useAuth();
   const isMobile = useIsMobile();
   const chartH = isMobile ? 220 : 300;
-  // Rótulo do eixo X sempre na diagonal (não só no mobile) — em telas
-  // largas com muitos vendedores, o Recharts oculta os rótulos que não
-  // couberem na horizontal; na diagonal, nunca precisa ocultar.
-  const xTickProps = { fontSize: isMobile ? 8 : 9, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 };
-  const xTickPropsName = { fontSize: isMobile ? 8 : 10, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 };
-  const chartMarginBottom = 40;
 
   const [loading, setLoading] = useState(true);
   const [myIndicadores, setMyIndicadores] = useState<any>(null);
@@ -109,6 +104,10 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
   }
 
+  const conversaoData = [...chartByVendedor].filter(d => d.conversao > 0).sort((a, b) => b.conversao - a.conversao);
+  const conversaoTick = getXTickStyle(conversaoData.length, isMobile, 10);
+  const monthTick = getXTickStyle(chartByMonth.length, isMobile);
+
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
@@ -174,14 +173,14 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Atendimentos" data={[...chartByVendedor].filter(d => d.atendimentos > 0).sort((a, b) => b.atendimentos - a.atendimentos)} dataKey="atendimentos" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
-        <ChartCard title="Vendas" data={[...chartByVendedor].filter(d => d.vendas > 0).sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
-        <ChartCard title="Sinais" data={[...chartByVendedor].filter(d => d.sinais > 0).sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} fillColor="#7e6d9b" />
+        <ChartCard title="Atendimentos" data={[...chartByVendedor].filter(d => d.atendimentos > 0).sort((a, b) => b.atendimentos - a.atendimentos)} dataKey="atendimentos" chartH={chartH} />
+        <ChartCard title="Vendas" data={[...chartByVendedor].filter(d => d.vendas > 0).sort((a, b) => b.vendas - a.vendas)} dataKey="vendas" chartH={chartH} />
+        <ChartCard title="Sinais" data={[...chartByVendedor].filter(d => d.sinais > 0).sort((a, b) => b.sinais - a.sinais)} dataKey="sinais" chartH={chartH} fillColor="#7e6d9b" />
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Taxa de Conversão</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={chartH}>
-              <AreaChart data={[...chartByVendedor].filter(d => d.conversao > 0).sort((a, b) => b.conversao - a.conversao)} margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
+              <AreaChart data={conversaoData} margin={{ top: 16, right: 10, left: -20, bottom: conversaoTick.marginBottom }}>
                 <defs>
                   <linearGradient id="gradConversaoEquipe" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#E8913A" stopOpacity={0.3} />
@@ -189,7 +188,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="nome" tick={xTickPropsName} axisLine={false} tickLine={false} />
+                <XAxis dataKey="nome" tick={conversaoTick.tick} interval={0} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtPctInt(v)} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
                 <Area type="monotone" dataKey="conversao" name="Conversão (%)" stroke="#E8913A" strokeWidth={2.5} fill="url(#gradConversaoEquipe)" dot={{ r: 4, fill: '#E8913A', stroke: '#fff', strokeWidth: 2 }} />
@@ -204,12 +203,12 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <MonthChart title="Atendimentos" data={chartByMonth} dataKey="atendimentos" chartH={chartH} xTickProps={xTickProps} chartMarginBottom={chartMarginBottom} />
+        <MonthChart title="Atendimentos" data={chartByMonth} dataKey="atendimentos" chartH={chartH} />
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">Vendas / Taxa de Conversão</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={chartH}>
-              <ComposedChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
+              <ComposedChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: monthTick.marginBottom }}>
                 <defs>
                   <linearGradient id="gradConversaoAno" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#E8913A" stopOpacity={0.3} />
@@ -217,7 +216,7 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={monthTick.tick} interval={0} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtPctInt(v)} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
@@ -285,14 +284,17 @@ const renderBarLabel = (props: any) => {
   );
 };
 
-const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string; chartH?: number; xTickProps?: any; chartMarginBottom?: number; fillColor?: string }> = ({ title, data, dataKey, chartH = 300, xTickProps = { fontSize: 10, fill: 'hsl(var(--foreground))' }, chartMarginBottom = 0, fillColor = '#2F6F84' }) => (
+const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string; chartH?: number; fillColor?: string }> = ({ title, data, dataKey, chartH = 300, fillColor = '#2F6F84' }) => {
+  const isMobile = useIsMobile();
+  const { tick, marginBottom } = getXTickStyle(data.length, isMobile, 10);
+  return (
   <Card className="border shadow-sm rounded-xl">
     <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-3 pt-0">
       <ResponsiveContainer width="100%" height={chartH}>
-        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
+        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: marginBottom }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-          <XAxis dataKey="nome" tick={xTickProps} axisLine={false} tickLine={false} />
+          <XAxis dataKey="nome" tick={tick} interval={0} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
           <Bar dataKey={dataKey} fill={fillColor} radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
@@ -300,16 +302,20 @@ const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string; chartH?
       </ResponsiveContainer>
     </CardContent>
   </Card>
-);
+  );
+};
 
-const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; chartH?: number; xTickProps?: any; chartMarginBottom?: number }> = ({ title, data, dataKey, chartH = 300, xTickProps = { fontSize: 9, fill: 'hsl(var(--foreground))' }, chartMarginBottom = 0 }) => (
+const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; chartH?: number }> = ({ title, data, dataKey, chartH = 300 }) => {
+  const isMobile = useIsMobile();
+  const { tick, marginBottom } = getXTickStyle(data.length, isMobile);
+  return (
   <Card className="border shadow-sm rounded-xl">
     <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-3 pt-0">
       <ResponsiveContainer width="100%" height={chartH}>
-        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
+        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: marginBottom }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-          <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
+          <XAxis dataKey="label" tick={tick} interval={0} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
           <Bar dataKey={dataKey} fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
@@ -317,6 +323,7 @@ const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; chartH
       </ResponsiveContainer>
     </CardContent>
   </Card>
-);
+  );
+};
 
 export default RelatorioVendedores;

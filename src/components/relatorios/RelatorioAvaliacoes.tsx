@@ -15,6 +15,7 @@ import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { getPreviousPeriod } from '@/lib/reportComparison';
 import { getCycleForDate, DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getXTickStyle } from '@/lib/chartAxis';
 import { LojaFilter } from './LojaFilter';
 import DeltaBadge from './DeltaBadge';
 import { format } from 'date-fns';
@@ -158,12 +159,6 @@ function getYearBuckets(): { label: string; start: Date; end: Date }[] {
 const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const isMobile = useIsMobile();
   const chartH = isMobile ? 220 : 300;
-  // Rótulo do eixo X sempre na diagonal (não só no mobile) — em telas
-  // largas com muitos avaliadores, o Recharts oculta os rótulos que não
-  // couberem na horizontal; na diagonal, nunca precisa ocultar.
-  const xTickProps = { fontSize: isMobile ? 8 : 9, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 };
-  const xTickPropsName = { fontSize: isMobile ? 8 : 10, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 };
-  const chartMarginBottom = 40;
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<AvalRow[]>([]);
@@ -434,6 +429,19 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     return <div className="flex items-center justify-center h-64 text-muted-foreground">Carregando dados...</div>;
   }
 
+  const avaliacoesQtdData = [...chartByAvaliador].filter(v => (v.avaliacoes || 0) > 0).sort((a, b) => b.avaliacoes - a.avaliacoes);
+  const avaliacoesQtdTick = getXTickStyle(avaliacoesQtdData.length, isMobile, 10);
+  const aquisicoesData = [...chartByAvaliador]
+    .map((v: any) => {
+      const total = (v.aqTrocar || 0) + (v.aqVender || 0);
+      const taxa = v.avaliacoes > 0 ? Math.round((total / v.avaliacoes) * 100) : 0;
+      return { ...v, totalAquisicoes: total, taxaConversao: taxa };
+    })
+    .filter(v => v.totalAquisicoes > 0)
+    .sort((a, b) => b.totalAquisicoes - a.totalAquisicoes);
+  const aquisicoesTick = getXTickStyle(aquisicoesData.length, isMobile, 10);
+  const monthTick = getXTickStyle(chartByMonth.length, isMobile);
+
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
@@ -460,7 +468,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChartCard title="Qtd de Avaliações" data={[...chartByAvaliador].filter(v => (v.avaliacoes || 0) > 0).sort((a, b) => b.avaliacoes - a.avaliacoes)} dataKey="avaliacoes" chartH={chartH} xTickProps={xTickPropsName} chartMarginBottom={chartMarginBottom} />
+        <ChartCard title="Qtd de Avaliações" data={avaliacoesQtdData} dataKey="avaliacoes" chartH={chartH} />
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Qtd Aquisições</CardTitle>
@@ -472,19 +480,12 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={chartH}>
               <ComposedChart
-                data={[...chartByAvaliador]
-                  .map((v: any) => {
-                    const total = (v.aqTrocar || 0) + (v.aqVender || 0);
-                    const taxa = v.avaliacoes > 0 ? Math.round((total / v.avaliacoes) * 100) : 0;
-                    return { ...v, totalAquisicoes: total, taxaConversao: taxa };
-                  })
-                  .filter(v => v.totalAquisicoes > 0)
-                  .sort((a, b) => b.totalAquisicoes - a.totalAquisicoes)}
+                data={aquisicoesData}
                 barCategoryGap="25%"
-                margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}
+                margin={{ top: 16, right: 10, left: -20, bottom: aquisicoesTick.marginBottom }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="nome" tick={xTickPropsName} axisLine={false} tickLine={false} />
+                <XAxis dataKey="nome" tick={aquisicoesTick.tick} interval={0} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} unit="%" />
                 <Tooltip content={<AquisicoesAvaliadorTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
@@ -502,8 +503,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         <Separator />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <MonthChart title="Avaliações" data={chartByMonth} dataKey="avaliacoes" chartH={chartH} xTickProps={xTickProps} chartMarginBottom={chartMarginBottom} />
-        <MonthChart title="Aquisições" data={chartByMonth} dataKey="aquisicoes" chartH={chartH} xTickProps={xTickProps} chartMarginBottom={chartMarginBottom} />
+        <MonthChart title="Avaliações" data={chartByMonth} dataKey="avaliacoes" chartH={chartH} />
+        <MonthChart title="Aquisições" data={chartByMonth} dataKey="aquisicoes" chartH={chartH} />
         <Card className="border shadow-sm rounded-xl">
           <CardHeader className="pb-4 pt-4 px-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-sm font-semibold">Próprias e Consignadas</CardTitle>
@@ -514,9 +515,9 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={chartH}>
-              <LineChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
+              <LineChart data={chartByMonth} margin={{ top: 16, right: 10, left: -20, bottom: monthTick.marginBottom }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={monthTick.tick} interval={0} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--muted))', strokeWidth: 1 }} />
                 <Line type="monotone" dataKey="proprias" name="Próprias" stroke="#2F6F84" strokeWidth={2.5} dot={{ r: 4, fill: '#2F6F84', stroke: '#fff', strokeWidth: 2 }} label={{ position: 'top', fontSize: 10, fill: 'hsl(var(--foreground))', fontWeight: 600 }} />
@@ -535,9 +536,9 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           </CardHeader>
           <CardContent className="px-4 pb-3 pt-0">
             <ResponsiveContainer width="100%" height={chartH}>
-              <BarChart data={chartByMonth} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
+              <BarChart data={chartByMonth} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: monthTick.marginBottom }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={monthTick.tick} interval={0} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
                 <Bar dataKey="negTrocar" name="Trocar" fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
@@ -691,14 +692,17 @@ const renderBarLabel = (props: any) => {
   );
 };
 
-const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string; chartH?: number; xTickProps?: any; chartMarginBottom?: number }> = ({ title, data, dataKey, chartH = 300, xTickProps = { fontSize: 10, fill: 'hsl(var(--foreground))' }, chartMarginBottom = 0 }) => (
+const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string; chartH?: number }> = ({ title, data, dataKey, chartH = 300 }) => {
+  const isMobile = useIsMobile();
+  const { tick, marginBottom } = getXTickStyle(data.length, isMobile, 10);
+  return (
   <Card className="border shadow-sm rounded-xl">
     <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-3 pt-0">
       <ResponsiveContainer width="100%" height={chartH}>
-        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
+        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: marginBottom }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-          <XAxis dataKey="nome" tick={xTickProps} axisLine={false} tickLine={false} />
+          <XAxis dataKey="nome" tick={tick} interval={0} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
           <Bar dataKey={dataKey} fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
@@ -706,16 +710,20 @@ const ChartCard: React.FC<{ title: string; data: any[]; dataKey: string; chartH?
       </ResponsiveContainer>
     </CardContent>
   </Card>
-);
+  );
+};
 
-const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; chartH?: number; xTickProps?: any; chartMarginBottom?: number }> = ({ title, data, dataKey, chartH = 300, xTickProps = { fontSize: 9, fill: 'hsl(var(--foreground))' }, chartMarginBottom = 0 }) => (
+const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; chartH?: number }> = ({ title, data, dataKey, chartH = 300 }) => {
+  const isMobile = useIsMobile();
+  const { tick, marginBottom } = getXTickStyle(data.length, isMobile);
+  return (
   <Card className="border shadow-sm rounded-xl">
     <CardHeader className="pb-4 pt-4 px-4"><CardTitle className="text-sm font-semibold">{title}</CardTitle></CardHeader>
     <CardContent className="px-4 pb-3 pt-0">
       <ResponsiveContainer width="100%" height={chartH}>
-        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: chartMarginBottom }}>
+        <BarChart data={data} barCategoryGap="25%" margin={{ top: 16, right: 10, left: -20, bottom: marginBottom }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-          <XAxis dataKey="label" tick={xTickProps} axisLine={false} tickLine={false} />
+          <XAxis dataKey="label" tick={tick} interval={0} axisLine={false} tickLine={false} />
           <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} />
           <Bar dataKey={dataKey} fill="#2F6F84" radius={[8, 8, 0, 0]} label={(props: any) => renderBarLabel(props)} />
@@ -723,6 +731,7 @@ const MonthChart: React.FC<{ title: string; data: any[]; dataKey: string; chartH
       </ResponsiveContainer>
     </CardContent>
   </Card>
-);
+  );
+};
 
 export default RelatorioAvaliacoes;
