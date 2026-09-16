@@ -690,7 +690,7 @@ Deno.serve(async (req) => {
 
   const acao: 'consultar' | 'cancelar' | 'emitir' =
     body.acao === 'consultar' ? 'consultar' : body.acao === 'cancelar' ? 'cancelar' : 'emitir';
-  const tipo: Operacao = (['compra', 'consignacao', 'devolucao_consignacao', 'venda_seminova', 'venda_0km'] as const).includes(body.tipo as any)
+  const tipo: Operacao = (['compra', 'consignacao', 'devolucao_consignacao', 'venda_seminova', 'venda_0km', 'transferencia'] as const).includes(body.tipo as any)
     ? (body.tipo as Operacao)
     : 'compra';
   const cfg = CFG[tipo];
