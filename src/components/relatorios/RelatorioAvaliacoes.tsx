@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { getPreviousPeriod } from '@/lib/reportComparison';
-import { getCycleForDate } from '@/lib/reportCycle';
+import { getCycleForDate, DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
 import DeltaBadge from './DeltaBadge';
@@ -137,10 +137,10 @@ const computeKpis = (rows: AvalRow[], loja: string, from: Date | undefined, to: 
   return kpi;
 };
 
-// Ciclos "Resultado do Ano" — começam em 21/12/2025 até hoje
+// Ciclos "Resultado do Ano" — meses fechados a partir de 01/09/2026 até hoje
 function getYearBuckets(): { label: string; start: Date; end: Date }[] {
   const buckets: { label: string; start: Date; end: Date }[] = [];
-  let cursor = new Date(2025, 11, 21); // 21/12/2025
+  let cursor = new Date(DATA_INICIO_RELATORIOS);
   const now = new Date();
   let guard = 0;
   while (cursor <= now && guard++ < 120) {

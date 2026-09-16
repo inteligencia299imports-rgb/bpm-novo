@@ -18,7 +18,7 @@ import { getPreviousPeriod } from '@/lib/reportComparison';
 import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMotoNova, fetchLojaMap } from '@/lib/estoqueMoto';
 import { flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
-import { getCycleForDate } from '@/lib/reportCycle';
+import { getCycleForDate, DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LojaFilter } from './LojaFilter';
 import DeltaBadge from './DeltaBadge';
@@ -72,10 +72,10 @@ function aggregateKpis(vendidas: { m: ReturnType<typeof computeRowMetrics>; }[])
 }
 const round2 = (v: number) => Math.round(v * 100) / 100;
 
-// Buckets do "Resultado do Ano" — a partir de 21/12/2025
+// Buckets do "Resultado do Ano" — meses fechados a partir de 01/09/2026
 function getYearBuckets(): { label: string; start: Date; end: Date }[] {
   const buckets: { label: string; start: Date; end: Date }[] = [];
-  let cur = new Date(2025, 11, 21);
+  let cur = new Date(DATA_INICIO_RELATORIOS);
   const now = new Date();
   let guard = 0;
   while (cur <= now && guard++ < 120) {

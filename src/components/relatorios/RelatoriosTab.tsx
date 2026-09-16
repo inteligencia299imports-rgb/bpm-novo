@@ -10,7 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPreviousPeriod, getPreviousMonthDate } from '@/lib/reportComparison';
-import { getCurrentDefaultStart } from '@/lib/reportCycle';
+import { getCurrentDefaultStart, DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
 import RelatorioShowroom from './RelatorioShowroom';
 import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
@@ -37,20 +37,10 @@ const RelatoriosTab: React.FC = () => {
     }
   }, [role]);
 
-  // Preparação: bloquear seleção de datas antes de 21/03/2026
-  // Showroom/Avaliações: bloquear seleção antes de 21/12/2025
-  const PREP_MIN_DATE = new Date(2026, 2, 21, 0, 0, 0, 0);
-  const SHOWROOM_AVAL_MIN_DATE = new Date(2025, 11, 21, 0, 0, 0, 0);
-  const ESTOQUE_MIN_DATE = new Date(2026, 3, 6, 0, 0, 0, 0);
+  // Relatórios só mostram dados a partir de 01/09/2026 (ver reportCycle.ts).
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
-  const disabledFromDates = dept === 'preparacao'
-    ? (date: Date) => date < PREP_MIN_DATE || date > todayEnd
-    : dept === 'estoque'
-      ? (date: Date) => date < ESTOQUE_MIN_DATE || date > todayEnd
-      : (dept === 'showroom' || dept === 'avaliacoes')
-        ? (date: Date) => date < SHOWROOM_AVAL_MIN_DATE || date > todayEnd
-        : (date: Date) => date > todayEnd;
+  const disabledFromDates = (date: Date) => date < DATA_INICIO_RELATORIOS || date > todayEnd;
   const initFrom = getCurrentDefaultStart();
   initFrom.setHours(0, 0, 0, 0);
   const initTo = new Date();
@@ -184,7 +174,7 @@ const RelatoriosTab: React.FC = () => {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} disabled={disabledFromDates} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateFrom ?? new Date('2026-03-21T00:00:00')} />
+                      <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} disabled={disabledFromDates} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateFrom ?? DATA_INICIO_RELATORIOS} />
                     </PopoverContent>
                   </Popover>
                   <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
@@ -198,7 +188,7 @@ const RelatoriosTab: React.FC = () => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} disabled={(date: Date) => disabledFromDates(date) || (dateFrom ? date < dateFrom : false)} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateTo ?? new Date('2026-03-21T00:00:00')} />
+                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} disabled={(date: Date) => disabledFromDates(date) || (dateFrom ? date < dateFrom : false)} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateTo ?? DATA_INICIO_RELATORIOS} />
                 </PopoverContent>
               </Popover>
             </div>
