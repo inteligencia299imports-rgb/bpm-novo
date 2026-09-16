@@ -30,6 +30,7 @@ import AtpvDialog from './AtpvDialog';
 import ContratoDialog from '@/components/showroom/ContratoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
+import TransferenciaFagMmatosDialog from '@/components/showroom/TransferenciaFagMmatosDialog';
 import StatusTimeline, { defaultFormatStatusLabel } from '@/components/shared/StatusTimeline';
 import { formatPersonName, firstLastName, cn, formatDataNascimento } from '@/lib/utils';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
@@ -109,6 +110,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [nfeVendaOpen, setNfeVendaOpen] = useState(false);
   const [atpvOpen, setAtpvOpen] = useState(false);
   const [trocaNfeAval, setTrocaNfeAval] = useState<any | null>(null);
+  const [trocaTransferenciaAval, setTrocaTransferenciaAval] = useState<any | null>(null);
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
@@ -166,6 +168,21 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     const am = (data as any).atendimentos_motos;
     setProcessoOpen(false);
     setTrocaNfeAval({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja } });
+  };
+
+  // Troca na FAG (só revende 0km): emite a NF-e de transferência da moto pra
+  // MMATOS — mesma tela/padrão da NF de compra, etapa própria no checklist
+  // (NF-E DE TRANSFERÊNCIA (MMATOS)), entre a entrada e a venda.
+  const abrirNfeTransferencia = async (avaliacaoId: string) => {
+    const { data: raw } = await supabase
+      .from('avaliacoes')
+      .select(`*, ${MARCA_MODELO_SELECT}`)
+      .eq('id', avaliacaoId)
+      .maybeSingle();
+    if (!raw) return;
+    const data = flattenMarcaModelo(raw as any);
+    setProcessoOpen(false);
+    setTrocaTransferenciaAval(data);
   };
 
   const moto = item.avaliacoes?.[0];
@@ -533,6 +550,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         onOpenChange={(o) => { if (!o) setTrocaNfeAval(null); }}
         avaliacao={trocaNfeAval}
         modo="nfe"
+      />
+    );
+  }
+  if (!isIntermParte2 && trocaTransferenciaAval) {
+    return (
+      <TransferenciaFagMmatosDialog
+        open
+        onOpenChange={(o) => { if (!o) setTrocaTransferenciaAval(null); }}
+        avaliacaoId={trocaTransferenciaAval.id}
+        moto={trocaTransferenciaAval}
       />
     );
   }
@@ -1151,6 +1178,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         onContratoSaved={refreshConsignada}
         onEmitirNfe={() => { setProcessoOpen(false); setNfeVendaOpen(true); }}
         onEmitirNfeTroca={abrirNfeTroca}
+        onEmitirNfeTransferencia={abrirNfeTransferencia}
         onEmitirAtpv={moto0km ? () => { setProcessoOpen(false); setAtpvOpen(true); } : undefined}
         onNavigateToPosCompra={onNavigateToPosCompra}
         vendaBloqueadaAprovacao={bloqueadoAprovacao}

@@ -16,13 +16,15 @@ import { supabase } from '@/lib/supabase';
 import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { nfeBotaoClasse } from '@/lib/nfeTag';
-import { TIPOS_PROPRIA } from '@/lib/tipoAquisicao';
+import { TIPOS_PROPRIA, EMPRESAS_SO_MOTO_NOVA } from '@/lib/tipoAquisicao';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 const NF_VENDA = 'NF-E DE VENDA';
 const NF_TROCA = 'NF-E DE ENTRADA (TROCA)';
+// Só entra quando a empresa é "só 0km" (FAG) — ver EMPRESAS_SO_MOTO_NOVA.
+const NF_TRANSFERENCIA = 'NF-E DE TRANSFERÊNCIA (MMATOS)';
 // Última etapa do pós-venda: seminova encerra em "TRANSFERÊNCIA FINALIZADA"
 // (checkbox manual); moto 0km encerra em "ATPV-E" (emitido via RENAVE).
 const TRANSF_FINALIZADA = 'TRANSFERÊNCIA FINALIZADA';
@@ -69,6 +71,8 @@ interface Props {
   onEmitirNfe?: () => void;
   /** Abre a tela de emissão da NF-e de entrada da moto de troca (etapa NF-E DE ENTRADA (TROCA)). */
   onEmitirNfeTroca?: (avaliacaoId: string) => void;
+  /** Abre a tela de emissão da NF-e de transferência FAG->MMATOS (etapa NF-E DE TRANSFERÊNCIA (MMATOS)). */
+  onEmitirNfeTransferencia?: (avaliacaoId: string) => void;
   /** Abre a tela de emissão do ATPV-e (etapa ATPV-E) — só moto 0km (RENAVE). */
   onEmitirAtpv?: () => void;
   /** Navega para o Pós-Compra da avaliação da moto de troca. */
@@ -87,6 +91,7 @@ const ProcessoDialog: React.FC<Props> = ({
   onContratoSaved,
   onEmitirNfe,
   onEmitirNfeTroca,
+  onEmitirNfeTransferencia,
   onEmitirAtpv,
   onNavigateToPosCompra,
   vendaBloqueadaAprovacao,
@@ -126,6 +131,7 @@ const ProcessoDialog: React.FC<Props> = ({
   const [interesse, setInteresse] = useState<string | null>(null);
   const [contratoVendaGerado, setContratoVendaGerado] = useState(false);
   const [trocaAvaliacaoId, setTrocaAvaliacaoId] = useState<string>('');
+  const [atendimentoEmpresaId, setAtendimentoEmpresaId] = useState<string>('');
 
   const eh0km = estoqueMoto?.fonte === '0km';
   const tipoVenda = eh0km ? 'venda_0km' : 'venda_seminova';
@@ -133,9 +139,13 @@ const ProcessoDialog: React.FC<Props> = ({
   // (mesmo padrão do Pós-Venda) — precisa do mesmo contexto (estoque/contrato/
   // NF-e) mesmo fora do fluxo normal (customEtapas).
   const hasNfVendaEtapa = isPosVenda || (customEtapas || []).includes(NF_VENDA);
+  // Troca numa empresa "só 0km" (FAG) — a moto seminova que entra precisa ser
+  // transferida pra MMATOS antes da venda (ver TransferenciaFagMmatosDialog).
+  const precisaTransferenciaFag = interesse === 'trocar' && !!trocaAvaliacaoId && EMPRESAS_SO_MOTO_NOVA.has(atendimentoEmpresaId);
 
   const nfeVenda = useNfeCompra(hasNfVendaEtapa ? atendimentoId : '', open && hasNfVendaEtapa, tipoVenda, 'atendimento');
   const nfeTroca = useNfeCompra(trocaAvaliacaoId, open && !!trocaAvaliacaoId, 'compra', 'avaliacao');
+  const nfeTransferencia = useNfeCompra(trocaAvaliacaoId, open && precisaTransferenciaFag, 'transferencia', 'avaliacao');
 
   const podeEmitirNfeVenda =
     !!estoqueMoto && ['vendido', 'sinal'].includes(estoqueMoto.status) && contratoVendaGerado;
@@ -152,15 +162,16 @@ const ProcessoDialog: React.FC<Props> = ({
       names.splice(p >= 0 ? p : names.length, 0, ATPV_E);
     }
     if (estoqueMoto) {
-      // NF-e depois da VISTORIA. Quando há troca, a NF-e de entrada (troca) vem
-      // ANTES da NF-e de venda.
+      // NF-e depois da VISTORIA. Quando há troca, a NF-e de entrada (troca) —
+      // e, na FAG, a de transferência pra MMATOS — vêm ANTES da NF-e de venda.
       const anchor = names.indexOf('VISTORIA');
       const pos = anchor >= 0 ? anchor + 1 : names.length;
       names.splice(pos, 0, NF_VENDA);
+      if (precisaTransferenciaFag) names.splice(pos, 0, NF_TRANSFERENCIA);
       if (interesse === 'trocar' && trocaAvaliacaoId) names.splice(pos, 0, NF_TROCA);
     }
     return names;
-  }, [customEtapas, estoqueMoto, eh0km, interesse, trocaAvaliacaoId]);
+  }, [customEtapas, estoqueMoto, eh0km, interesse, trocaAvaliacaoId, precisaTransferenciaFag]);
 
   useEffect(() => {
     if (!open) return;
@@ -205,14 +216,16 @@ const ProcessoDialog: React.FC<Props> = ({
         }
       }
 
+      let empresaIdAt = '';
       if (isPosVenda || hasNfVendaEtapa) {
         const [{ data: at }, { data: mi }, { data: contratos }] = await Promise.all([
-          supabase.from('atendimentos_motos').select('interesse').eq('id', atendimentoId).maybeSingle(),
+          supabase.from('atendimentos_motos').select('interesse, empresa_id').eq('id', atendimentoId).maybeSingle(),
           supabase.from('motos_interesse').select('estoque_moto_id, estoque_tipo').eq('atendimento_id', atendimentoId)
             .not('estoque_moto_id', 'is', null).limit(1).maybeSingle(),
           supabase.from('contratos').select('id, ipva_tipo').eq('atendimento_id', atendimentoId),
         ]);
         inter = (at as any)?.interesse ?? null;
+        empresaIdAt = (at as any)?.empresa_id ?? '';
         contratoVenda = ((contratos as any[]) || []).some(c => (c.ipva_tipo ?? '') !== 'COMPRA');
 
         if ((mi as any)?.estoque_moto_id) {
@@ -258,6 +271,7 @@ const ProcessoDialog: React.FC<Props> = ({
             const anchor = names.indexOf('VISTORIA');
             const pos = anchor >= 0 ? anchor + 1 : names.length;
             names.splice(pos, 0, NF_VENDA);
+            if (inter === 'trocar' && trocaAvId && EMPRESAS_SO_MOTO_NOVA.has(empresaIdAt)) names.splice(pos, 0, NF_TRANSFERENCIA);
             if (inter === 'trocar' && trocaAvId) names.splice(pos, 0, NF_TROCA);
           }
         }
@@ -274,6 +288,7 @@ const ProcessoDialog: React.FC<Props> = ({
       setInteresse(inter);
       setContratoVendaGerado(contratoVenda);
       setTrocaAvaliacaoId(trocaAvId);
+      setAtendimentoEmpresaId(empresaIdAt);
       setAvaliacaoConsignadaId(avConsigId);
       setAvaliacaoConsignada(avConsig);
 
@@ -302,6 +317,10 @@ const ProcessoDialog: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, trocaAvaliacaoId]);
   useEffect(() => {
+    if (open && precisaTransferenciaFag) nfeTransferencia.carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, trocaAvaliacaoId, precisaTransferenciaFag]);
+  useEffect(() => {
     if (open && avaliacaoConsignadaId) {
       nfeConsignacaoConv.carregar();
       nfeDevolucaoConv.carregar();
@@ -321,12 +340,13 @@ const ProcessoDialog: React.FC<Props> = ({
   const nfEmitidaDe = (etapa: string) =>
     etapa === NF_VENDA ? nfeVenda.emitida
     : etapa === NF_TROCA ? nfeTroca.emitida
+    : etapa === NF_TRANSFERENCIA ? nfeTransferencia.emitida
     : (etapa === ATPV_E && is0km) ? atpvEmitido
     : etapa === CONVERTER_CONSIGNACAO ? converterConcluido
     : false;
   // Etapas "automáticas" (sem checkbox, marcadas por estado externo).
   const isNfEtapa = (etapa: string) =>
-    etapa === NF_VENDA || etapa === NF_TROCA || (etapa === ATPV_E && is0km) || etapa === CONVERTER_CONSIGNACAO;
+    etapa === NF_VENDA || etapa === NF_TROCA || etapa === NF_TRANSFERENCIA || (etapa === ATPV_E && is0km) || etapa === CONVERTER_CONSIGNACAO;
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     if (isNfEtapa(etapa)) return; // estado dirigido pela emissão da NF-e
@@ -386,11 +406,13 @@ const ProcessoDialog: React.FC<Props> = ({
           ? (nfeVenda.nfe?.data_emissao ?? null)
           : e.etapa === NF_TROCA
             ? (nfeTroca.nfe?.data_emissao ?? null)
-            : e.etapa === CONVERTER_CONSIGNACAO
-              ? (nfeCompraConv.nfe?.data_emissao ?? null)
-              : e.etapa === ATPV_E
-                ? ((estoqueMoto as any)?.renave_atualizado_em ?? null)
-                : e.data_conclusao,
+            : e.etapa === NF_TRANSFERENCIA
+              ? (nfeTransferencia.nfe?.data_emissao ?? null)
+              : e.etapa === CONVERTER_CONSIGNACAO
+                ? (nfeCompraConv.nfe?.data_emissao ?? null)
+                : e.etapa === ATPV_E
+                  ? ((estoqueMoto as any)?.renave_atualizado_em ?? null)
+                  : e.data_conclusao,
       }));
 
       const { error: persistError } = await persistChecklistRows({
@@ -540,17 +562,21 @@ const ProcessoDialog: React.FC<Props> = ({
               const isDateOnly = isPrevisaoPagamento || isEntregaMoto;
               const isNfVenda = e.etapa === NF_VENDA;
               const isNfTroca = e.etapa === NF_TROCA;
+              const isNfTransferencia = e.etapa === NF_TRANSFERENCIA;
               const isAtpv = e.etapa === ATPV_E;
               const isAtpvAuto = isAtpv && is0km;   // 0km: emitido via RENAVE (sem checkbox)
               const isConverterConsignacao = e.etapa === CONVERTER_CONSIGNACAO;
-              const isNf = isNfVenda || isNfTroca || isAtpvAuto || isConverterConsignacao;
+              const isNf = isNfVenda || isNfTroca || isNfTransferencia || isAtpvAuto || isConverterConsignacao;
               // Converter Consignação em Compra encadeia duas NF-e (devolução simbólica,
               // depois compra) — "a NF-e ativa" é a devolução enquanto ela não estiver
               // autorizada em produção, senão a compra (mesmo padrão de emissão/pendente/
               // erro das outras etapas de NF-e, ver isNfVenda/isNfTroca acima).
               const devolucaoConvProducaoOk = nfeDevolucaoConv.emitida && nfeDevolucaoConv.nfe?.ambiente === 'producao';
               const nfeConverterAtiva = devolucaoConvProducaoOk ? nfeCompraConv : nfeDevolucaoConv;
-              const nfeObj = isNfVenda ? nfeVenda : isNfTroca ? nfeTroca : isConverterConsignacao ? nfeConverterAtiva : null;
+              const nfeObj = isNfVenda ? nfeVenda : isNfTroca ? nfeTroca : isNfTransferencia ? nfeTransferencia : isConverterConsignacao ? nfeConverterAtiva : null;
+              // Transferência só pode ser emitida depois da compra da troca
+              // estar autorizada em produção (mesmo gate do servidor).
+              const trocaCompraProducaoOk = nfeTroca.emitida && nfeTroca.nfe?.ambiente === 'producao';
               const nfMarcada = isAtpvAuto
                 ? atpvEmitido
                 : isConverterConsignacao
@@ -595,6 +621,12 @@ const ProcessoDialog: React.FC<Props> = ({
                       <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
                         <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                         {nfeTroca.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
+                      </p>
+                    )}
+                    {isNfTransferencia && nfeTransferencia.erro && (
+                      <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                        {nfeTransferencia.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
                       </p>
                     )}
                     {isConverterConsignacao && nfeConverterAtiva.erro && (
@@ -658,6 +690,31 @@ const ProcessoDialog: React.FC<Props> = ({
                       >
                         {nfeTroca.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                         {nfeTroca.erro ? 'Tentar novamente' : nfeTroca.cancelada ? 'Reemitir NF-e' : 'Emitir NF-e'}
+                      </Button>
+                    )
+                  ) : isNfTransferencia && !nfeTransferencia.emitida ? (
+                    nfeTransferencia.pendente ? (
+                      <>
+                        <Badge variant="outline" className="gap-1.5 text-xs">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Emitindo NF-e…
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="h-9 gap-1.5" disabled={nfeTransferencia.loading} onClick={nfeTransferencia.consultar}>
+                          <RefreshCw className={`h-4 w-4 ${nfeTransferencia.loading ? 'animate-spin' : ''}`} /> Atualizar
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant={nfeTransferencia.erro ? 'outline' : 'default'} size="sm"
+                        className={cn(
+                          'h-9 gap-2 text-sm',
+                          nfeTransferencia.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : nfeBotaoClasse(nfeTransferencia.nfe),
+                        )}
+                        disabled={!trocaAvaliacaoId || !trocaCompraProducaoOk || nfeTransferencia.loading || vendaBloqueadaAprovacao}
+                        title={!trocaCompraProducaoOk ? 'Emita a NF-e de compra da moto da troca em produção antes' : undefined}
+                        onClick={() => trocaAvaliacaoId && onEmitirNfeTransferencia?.(trocaAvaliacaoId)}
+                      >
+                        {nfeTransferencia.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                        {nfeTransferencia.erro ? 'Tentar novamente' : nfeTransferencia.cancelada ? 'Reemitir NF-e' : 'Emitir NF-e'}
                       </Button>
                     )
                   ) : isAtpvAuto ? (

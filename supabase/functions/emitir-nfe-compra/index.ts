@@ -18,6 +18,13 @@ const FORMA_PAGAMENTO_BOLETO_ID = '7d0f2125-fedf-4a27-8ab0-be21fecaf642'; // Bol
 
 const DIAS_VENCIMENTO = 7;
 
+// Transferência FAG -> MMATOS na troca (moto seminova entrando como parte de
+// pagamento numa venda 0km da FAG, que só revende moto nova — ver
+// EMPRESAS_SO_MOTO_NOVA no bpm-novo frontend). Destino fixo hoje; se outra
+// empresa "só 0km" precisar do mesmo fluxo, generalizar para um mapa.
+const FAG_EMPRESA_ID = '30496c3b-721f-4795-98fd-2785d3821f3b';
+const MMATOS_FORNECEDOR_ID = '5e86c319-7bef-4508-8402-9ff12705f919'; // clientes_fornecedores (CNPJ 21.194.795/0001-96)
+
 /** marca/modelo agora vem do catalogo via embed `marca:marca_id(nome)`.
  * Aceita tambem string crua (janela em que a coluna-ponte ainda existe). */
 const nomeCat = (v: any): string | null =>
@@ -49,7 +56,7 @@ function stRetidoDoXmlEntrada(xml: string): { bc: number; subst: number; ret: nu
   return { bc, subst: subst ?? 0, ret };
 }
 
-type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km';
+type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia';
 
 interface OperacaoConfig {
   refPrefix: string;
@@ -108,6 +115,20 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     naturezaDescricao: 'Devolução Simbólica de Consignação',
     statusEntity: 'consignacao',
     statusHist: 'nfe_devolucao_consignacao_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'avaliacao',
+  },
+  // Transferência interna FAG -> MMATOS da moto seminova que entrou numa
+  // troca (a FAG só revende 0km, não pode ficar com ela em estoque próprio).
+  // Não é uma venda de verdade: sem etapa de checklist própria e sem
+  // compromisso financeiro (mesma forma de devolucao_consignacao).
+  transferencia: {
+    refPrefix: 'transferencia',
+    naturezaDescricao: 'TRANSFERÊNCIA ENTRE EMPRESAS',
+    statusEntity: 'pos_compra',
+    statusHist: 'nfe_transferencia_emitida',
     avStatusField: null,
     avStatusEmAndamento: '',
     criaCompromisso: false,
@@ -778,7 +799,7 @@ Deno.serve(async (req) => {
       .from('avaliacoes')
       .select(
         'id, atendimento_id, aprovacao_status, consulta_realizada, valor_fechamento, ' +
-          'avaliacao_consignacao, valor_consignacao_nota, consignacao_status, ' +
+          'avaliacao_consignacao, valor_consignacao_nota, consignacao_status, valor_nf_entrada, ' +
           'marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam, km',
       )
       .eq('id', avaliacaoId)
@@ -1153,8 +1174,21 @@ Deno.serve(async (req) => {
     if (!homologAutorizada && !dispensaHomologPrevia) {
       return jsonResponse({ error: 'Emita em homologação antes de emitir em produção.' }, 409);
     }
+    // Transferência (FAG -> MMATOS): só emite em produção depois da NF-e de
+    // COMPRA dessa mesma avaliação (a moto da troca) já estar em produção —
+    // não faz sentido "transferir" uma moto que ainda não foi comprada.
+    if (tipo === 'transferencia') {
+      const { data: compraProdTransf } = await admin
+        .from('nfe_entradas').select('id').eq('avaliacao_id', entityId).eq('operacao', 'compra')
+        .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
+      if (!compraProdTransf) {
+        return jsonResponse({ error: 'Emita a NF-e de compra da moto da troca em produção antes de emitir a transferência.' }, 409);
+      }
+    }
     // Troca: a NF-e de venda em produção só sai depois da NF-e de COMPRA da moto
-    // que está entrando como pagamento ter sido emitida em produção.
+    // que está entrando como pagamento ter sido emitida em produção — e, na FAG
+    // (só revende 0km), também depois da NF-e de TRANSFERÊNCIA dessa moto para
+    // a MMATOS (ver `transferencia` no CFG).
     if (ehVenda && atendimento.interesse === 'trocar') {
       const { data: avsTroca } = await admin
         .from('avaliacoes').select('id').eq('atendimento_id', atendimentoId);
@@ -1166,6 +1200,16 @@ Deno.serve(async (req) => {
         : { data: null };
       if (!compraProd) {
         return jsonResponse({ error: 'Emita a NF-e de compra da moto da troca em produção antes de emitir a venda.' }, 409);
+      }
+      if (empresaId === FAG_EMPRESA_ID) {
+        const { data: transferenciaProd } = trocaIds.length
+          ? await admin.from('nfe_entradas').select('id')
+              .in('avaliacao_id', trocaIds).eq('operacao', 'transferencia')
+              .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle()
+          : { data: null };
+        if (!transferenciaProd) {
+          return jsonResponse({ error: 'Emita a NF-e de transferência da moto da troca para a MMATOS em produção antes de emitir a venda.' }, 409);
+        }
       }
     }
   } else if (nfeExistente && nfeExistente.status === 'processada' && nfeExistente.ambiente === 'producao') {
@@ -1193,12 +1237,14 @@ Deno.serve(async (req) => {
     ? `${ref}-${Date.now()}`
     : ((nfeExistente?.ref_externa as string | undefined) || ref);
 
-  // Destinatario da NF: entrada = PF vendedora/consignante; venda = cliente comprador.
-  // Nos dois casos e o cliente_id do atendimento.
+  // Destinatario da NF: entrada = PF vendedora/consignante; venda = cliente
+  // comprador — nos dois casos e o cliente_id do atendimento. Transferência é
+  // a única exceção: destino fixo é a MMATOS (empresa do grupo), não o
+  // cliente do atendimento (que nem participa dessa operação).
   const { data: fornecedor } = await admin
     .from('clientes_fornecedores')
     .select('id, nome_razao_social, cpf_cnpj, tipo_pessoa, telefone, telefone_comercial, rg, contribuinte_icms, inscricao_estadual, isento_inscricao_estadual, clientes_fornecedores_enderecos(*)')
-    .eq('id', atendimento.cliente_id)
+    .eq('id', tipo === 'transferencia' ? MMATOS_FORNECEDOR_ID : atendimento.cliente_id)
     .maybeSingle();
   if (!fornecedor) return jsonResponse({ error: 'Cliente não encontrado' }, 409);
   // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma linha
@@ -1316,6 +1362,12 @@ Deno.serve(async (req) => {
     // consignação já autorizada — não é editável na tela (evita divergir do que
     // a SEFAZ já tem registrado como recebido).
     valor = Number(av.valor_consignacao_nota ?? av.avaliacao_consignacao ?? 0);
+  } else if (tipo === 'transferencia') {
+    // Transferência contábil pra MMATOS repassa o MESMO valor da NF de compra
+    // dessa moto (gravado em avaliacoes.valor_nf_entrada quando a compra foi
+    // autorizada, linha ~1353) — não é editável na tela, não é uma venda com
+    // margem nova.
+    valor = Number(av.valor_nf_entrada ?? 0);
   } else {
     // venda: preco de venda da moto (estoque_motos.valor_venda); 0km cai p/ tabela.
     valor = valorBody
@@ -1571,7 +1623,9 @@ Deno.serve(async (req) => {
     // PIS/COFINS pela margem (venda − custo de aquisição).
     bemMovelUsado: tipo === 'venda_seminova',
     notaReferenciada,
-    semPagamentoReal: tipo === 'devolucao_consignacao',
+    // Sem movimentação financeira real — devolução simbólica e transferência
+    // pra MMATOS são as duas "saídas" sem pagamento de verdade do cliente.
+    semPagamentoReal: tipo === 'devolucao_consignacao' || tipo === 'transferencia',
   });
 
   // FKs da nfe_entradas conforme a operacao.
