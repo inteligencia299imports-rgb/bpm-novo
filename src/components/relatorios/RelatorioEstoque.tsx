@@ -39,8 +39,11 @@ type TipoFilter = 'todos' | 'propria' | 'consignada';
 const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const isMobile = useIsMobile();
   const chartH = isMobile ? 220 : 300;
-  const xTickProps = isMobile ? { fontSize: 8, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 } : { fontSize: 9, fill: 'hsl(var(--foreground))' };
-  const chartMarginBottom = isMobile ? 40 : 0;
+  // Rótulo do eixo X sempre na diagonal (não só no mobile) — em telas
+  // largas, o Recharts oculta os rótulos que não couberem na horizontal;
+  // na diagonal, nunca precisa ocultar.
+  const xTickProps = { fontSize: isMobile ? 8 : 9, fill: 'hsl(var(--foreground))', angle: -35, textAnchor: 'end' as const, dy: 5 };
+  const chartMarginBottom = 40;
 
   const [loading, setLoading] = useState(true);
   const [indicadores, setIndicadores] = useState<any>({});
