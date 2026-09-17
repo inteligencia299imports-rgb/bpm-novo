@@ -47,15 +47,6 @@ interface ExtracaoResultado {
   ano_modelo: string | null;
   marca_documento: string | null;
   modelo_documento: string | null;
-  // A IA compara marca/modelo do documento com o que esta cadastrado na moto
-  // (tolerando abreviacoes e formatos diferentes do CRLV). Fica null quando
-  // nao ha marca/modelo cadastrados para comparar.
-  confere_com_moto: boolean | null;
-}
-
-interface MotoEsperada {
-  marca: string;
-  modelo: string;
 }
 
 const soAlfaNum = (v: string | null) => (v || '').toUpperCase().replace(/[^A-Z0-9]/g, '') || null;
@@ -78,21 +69,11 @@ async function extrairViaClaude(
   fileBase64: string,
   mediaType: string,
   apiKey: string,
-  moto: MotoEsperada,
 ): Promise<ExtracaoResultado> {
   const isPdf = mediaType === 'application/pdf';
   const contentBlock = isPdf
     ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: fileBase64 } }
     : { type: 'image', source: { type: 'base64', media_type: mediaType, data: fileBase64 } };
-
-  const temReferencia = !!(moto.marca && moto.modelo);
-  const instrucaoConferencia = temReferencia
-    ? `A moto cadastrada no sistema é: marca "${moto.marca}", modelo "${moto.modelo}". `
-      + `Compare a MARCA e o MODELO que aparecem no CRLV com essa moto. `
-      + `O CRLV costuma escrever de forma abreviada ou em outro formato (ex.: "HONDA/CG 160 FAN", "YAMAHA/YZF R3", "HOND/POP 110I") — `
-      + `considere que é a mesma moto quando marca e modelo correspondem por similaridade, mesmo com abreviações, barras ou ordem diferente. `
-      + `Defina confere_com_moto=true apenas se for claramente a mesma moto; caso contrário false.`
-    : `Não há marca/modelo cadastrados para comparar: defina confere_com_moto=null.`;
 
   const workspaceId = Deno.env.get('ANTHROPIC_WORKSPACE_ID');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -110,7 +91,7 @@ async function extrairViaClaude(
       tools: [
         {
           name: 'registrar_dados_crlv',
-          description: 'Registra os dados extraídos do documento CRLV (Certificado de Registro e Licenciamento de Veículo) e informa se ele corresponde à moto cadastrada.',
+          description: 'Registra os dados extraídos do documento CRLV (Certificado de Registro e Licenciamento de Veículo).',
           input_schema: {
             type: 'object',
             properties: {
@@ -128,10 +109,6 @@ async function extrairViaClaude(
               },
               marca_documento: { type: 'string', description: 'Marca do veículo exatamente como escrita no CRLV. String vazia "" se não estiver legível.' },
               modelo_documento: { type: 'string', description: 'Modelo/espécie do veículo exatamente como escrito no CRLV. String vazia "" se não estiver legível.' },
-              confere_com_moto: {
-                type: 'boolean',
-                description: 'true se a marca/modelo do CRLV correspondem (por similaridade) à moto cadastrada informada; false se claramente é outra moto. Se não houver moto de referência, o chamador ignora este campo.',
-              },
               ano_fabricacao: { type: 'string', description: 'Ano de fabricação (4 dígitos). String vazia "" se não estiver legível/presente — nunca invente.' },
               ano_modelo: { type: 'string', description: 'Ano do modelo (4 dígitos). String vazia "" se não estiver legível/presente — nunca invente.' },
               placa: { type: 'string', description: 'Placa do veículo (padrão antigo LLLNNNN, Mercosul carro LLLNLNN ou Mercosul moto LLLNNLN). String vazia "" se não estiver legível/presente — nunca invente.' },
@@ -139,7 +116,7 @@ async function extrairViaClaude(
               renavam: { type: 'string', description: 'Número do RENAVAM. String vazia "" se não estiver legível/presente — nunca invente.' },
               numero_crv: { type: 'string', description: 'Número do CRV (12 dígitos), no CRLV aparece como "Nº DO CRV" ou "NÚMERO DO CRV". String vazia "" se não estiver legível/presente — nunca invente.' },
             },
-            required: ['leitura', 'eh_crlv', 'tipo_documento', 'marca_documento', 'modelo_documento', 'confere_com_moto', 'ano_fabricacao', 'ano_modelo', 'placa', 'chassi', 'renavam', 'numero_crv'],
+            required: ['leitura', 'eh_crlv', 'tipo_documento', 'marca_documento', 'modelo_documento', 'ano_fabricacao', 'ano_modelo', 'placa', 'chassi', 'renavam', 'numero_crv'],
           },
         },
       ],
@@ -161,8 +138,7 @@ async function extrairViaClaude(
                 + `• marca/modelo — campo "MARCA / MODELO / VERSÃO".\n`
                 + `• numero_crv — campo "Nº DO CRV" / "CÓDIGO DE SEGURANÇA DO CRV" (12 dígitos).\n\n`
                 + `Regra de ouro: se qualquer valor não estiver claramente legível, retorne string vazia "" — nunca chute caracteres.\n`
-                + `Preencha primeiro o campo "leitura" (transcrição rótulo a rótulo) e só depois os demais.\n\n`
-                + instrucaoConferencia,
+                + `Preencha primeiro o campo "leitura" (transcrição rótulo a rótulo) e só depois os demais.`,
             },
           ],
         },
@@ -193,7 +169,6 @@ async function extrairViaClaude(
     ano_modelo: soAno((input.ano_modelo as string) ?? null),
     marca_documento: limpaTexto((input.marca_documento as string) ?? null),
     modelo_documento: limpaTexto((input.modelo_documento as string) ?? null),
-    confere_com_moto: temReferencia ? input.confere_com_moto === true : null,
   };
 }
 
@@ -254,10 +229,10 @@ Deno.serve(async (req) => {
       .eq('ativo', true)
       .maybeSingle(),
     // Confere que o chamador tem acesso a essa avaliacao (mesmo criterio do
-    // resto do sistema) e ja traz marca/modelo para a conferencia do CRLV.
+    // resto do sistema) e ja traz a placa cadastrada para a conferencia do CRLV.
     supabaseAdmin
       .from('avaliacoes')
-      .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, chassi, renavam, numero_crv, ano_fabricacao, ano_modelo, atendimentos_motos!inner(vendedor_id, loja_id)')
+      .select('id, placa, chassi, renavam, numero_crv, ano_fabricacao, ano_modelo, atendimentos_motos!inner(vendedor_id, loja_id)')
       .eq('id', avaliacao_id)
       .maybeSingle(),
   ]);
@@ -268,13 +243,6 @@ Deno.serve(async (req) => {
   }
 
   const acesso = acessoRes.data as any;
-  if (acesso) {
-    // marca/modelo agora sao FK -> achata o embed {nome} para string.
-    // Aceita string crua tambem (janela da coluna-ponte temporaria).
-    const _nome = (v: any) => (v && typeof v === 'object' ? (v.nome ?? '') : (v ?? ''));
-    acesso.marca = _nome(acesso.marca);
-    acesso.modelo = _nome(acesso.modelo);
-  }
   if (!acesso) {
     return jsonResponse({ error: 'Avaliação não encontrada' }, 404);
   }
@@ -315,8 +283,7 @@ Deno.serve(async (req) => {
     }
     const base64 = arrayBufferToBase64(buffer);
 
-    const moto: MotoEsperada = { marca: (acesso.marca || '').trim(), modelo: (acesso.modelo || '').trim() };
-    const extraido = await extrairViaClaude(base64, mediaType, apiKey, moto);
+    const extraido = await extrairViaClaude(base64, mediaType, apiKey);
 
     // O arquivo anexado não é um CRLV (CNH, RG, ATPV-e, comprovante...) -> rejeita e faz rollback.
     if (!extraido.eh_crlv) {
@@ -329,21 +296,26 @@ Deno.serve(async (req) => {
       }, 200);
     }
 
-    // Só grava se o CRLV for (por similaridade) da mesma moto cadastrada.
-    if (extraido.confere_com_moto === false) {
+    // Conferência só pela PLACA — marca/modelo do CRLV costumam vir abreviados
+    // ou em formato diferente do cadastro (ex.: "HOND/POP 110I") e geravam
+    // rejeição indevida quando usados pra bloquear o anexo.
+    const placaCad = soAlfaNum(acesso.placa);
+    const match: boolean | null = (extraido.placa && placaCad) ? (extraido.placa === placaCad) : null;
+
+    if (match === false) {
       return jsonResponse({
         ...extraido,
         extraido: false,
         match: false,
-        motivo: `O documento CRLV não é da mesma moto: o cadastro é "${moto.marca} ${moto.modelo}" e o documento indica `
-          + `"${extraido.marca_documento ?? '?'} ${extraido.modelo_documento ?? '?'}".`,
+        motivo: `O documento CRLV não é da mesma moto: a placa do cadastro é "${acesso.placa}" e a do documento é "${extraido.placa}".`,
       }, 200);
     }
 
-    // "Match forte" = a IA confirmou o CRLV contra uma moto de referência real
-    // (marca/modelo cadastrados). É o que autoriza SOBRESCREVER um campo já
-    // preenchido. Sem referência (confere_com_moto === null) só preenche vazios.
-    const matchForte = extraido.confere_com_moto === true;
+    // "Match forte" = a placa do documento bate com a cadastrada — autoriza
+    // SOBRESCREVER um campo já preenchido. Sem placa pra comparar (match ===
+    // null, ex.: 1º documento da avaliação, ainda sem placa cadastrada) só
+    // preenche os campos que estiverem vazios.
+    const matchForte = match === true;
 
     const updatePayload: Record<string, string> = {};
     const divergencias: string[] = [];
@@ -380,7 +352,7 @@ Deno.serve(async (req) => {
     return jsonResponse({
       ...extraido,
       extraido: true,
-      match: extraido.confere_com_moto === null ? null : true,
+      match,
       divergencias: divergencias.length ? divergencias : undefined,
       // Campos abaixo refletem o que foi de fato gravado (não o que foi só lido),
       // para o front aplicar apenas as mudanças efetivas.
