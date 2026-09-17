@@ -230,7 +230,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       empresa: m.empresa || '', tipo: getTipoAquisicaoLabel(displayTipo) || '',
       patio: m.loja || '', dias, marca: m.marca || '', modelo: m.modelo || '',
       cor: m.cor || '', fabMod: [m.ano_fabricacao, m.ano_modelo].filter(Boolean).join('/'),
-      placa: m.placa || '', entrada: entrada ? entrada.toLocaleDateString('pt-BR') : '',
+      // 0km e test-ride costumam ainda não ter placa (moto não emplacada) —
+      // mostra o chassi nesses casos, que é o identificador que já existe
+      // desde a entrada no estoque.
+      placa: (m.tipo === '0km' ? m.chassi : m.placa) || '', entrada: entrada ? entrada.toLocaleDateString('pt-BR') : '',
       situacao: statusLabel(m.status), preco, compra, margemAbs, margemPct,
     };
   });
@@ -254,7 +257,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const rows = buildRows();
     const t = computeTotals(rows);
     const aoa = [[
-      'Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa','Entrada','Situação','Preço','Compra','Margem (R$)','Margem (%)',
+      'Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa/Chassi','Entrada','Situação','Preço','Compra','Margem (R$)','Margem (%)',
     ], ...rows.map(r => [
       r.empresa, r.tipo, r.patio, r.dias, r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao,
       r.preco, r.compra || '', r.compra > 0 ? r.margemAbs : '', r.compra > 0 ? r.margemPct / 100 : '',
@@ -295,7 +298,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
     autoTable(doc, {
       startY: 64,
-      head: [['Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa','Entrada','Situação','Preço','Compra','Margem']],
+      head: [['Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa/Chassi','Entrada','Situação','Preço','Compra','Margem']],
       body: rows.map(r => [
         r.empresa, r.tipo, r.patio, String(r.dias), r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao,
         fmtBRL(r.preco), r.compra > 0 ? fmtBRL(r.compra) : '—',
@@ -459,7 +462,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                 <TableHead className="text-xs">Modelo</TableHead>
                 <TableHead className="text-xs">Cor</TableHead>
                 <TableHead className="text-xs">Fab/Mod</TableHead>
-                <TableHead className="text-xs">Placa</TableHead>
+                <TableHead className="text-xs">Placa/Chassi</TableHead>
                 <TableHead className="text-xs">Entrada</TableHead>
                 <TableHead className="text-xs">Situação</TableHead>
                 <TableHead className="text-xs text-right">Preço</TableHead>
@@ -503,7 +506,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                       <TableCell className="text-xs">{m.modelo || '—'}</TableCell>
                       <TableCell className="text-xs">{m.cor || '—'}</TableCell>
                       <TableCell className="text-xs">{anoFM || '—'}</TableCell>
-                      <TableCell className="text-xs font-mono">{m.placa || '—'}</TableCell>
+                      <TableCell className="text-xs font-mono">{(m.tipo === '0km' ? m.chassi : m.placa) || '—'}</TableCell>
                       <TableCell className="text-xs">{entrada ? entrada.toLocaleDateString('pt-BR') : '—'}</TableCell>
                       <TableCell className="text-xs">
                         {(() => {
