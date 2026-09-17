@@ -1,43 +1,50 @@
 import React from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle2, XCircle, AlertTriangle, HelpCircle, ShieldQuestion } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { ConsultaVeiculoResultado, IndicadorStatus } from '@/types/consultaVeicular';
+import type { ConsultaVeiculoResultado, IndicadorStatus, IndicadorRestricoes } from '@/types/consultaVeicular';
 
-const STATUS_LABEL: Record<IndicadorStatus, string> = {
-  NADA_CONSTA: 'Nada Consta',
-  REGULAR: 'Regular',
-  PENDENCIA: 'Pendência',
-  NAO_DISPONIVEL: 'Não Disponível',
-  NAO_CONSULTADO: 'Não Consultado',
-  INDETERMINADO: 'Indeterminado',
-  ERRO_FONTE: 'Erro na Consulta',
+// Emoji por status -- mesma linguagem visual do texto de consulta manual
+// (§ ConsultaDetail "CONSULTA - PLACA/UF\n..."), só que gerado a partir do
+// resultado estruturado em vez de digitado à mão.
+const STATUS_EMOJI: Record<IndicadorStatus, string> = {
+  NADA_CONSTA: '✅',
+  REGULAR: '✅',
+  PENDENCIA: '⚠️',
+  NAO_DISPONIVEL: '⏳',
+  NAO_CONSULTADO: '⏳',
+  INDETERMINADO: '⚠️',
+  ERRO_FONTE: '⚠️',
 };
 
-const STATUS_CLASS: Record<IndicadorStatus, string> = {
-  NADA_CONSTA: 'bg-success/15 text-success border-success/30',
-  REGULAR: 'bg-success/15 text-success border-success/30',
-  PENDENCIA: 'bg-destructive/15 text-destructive border-destructive/30',
-  NAO_DISPONIVEL: 'bg-muted text-muted-foreground border-border',
-  NAO_CONSULTADO: 'bg-muted text-muted-foreground border-border',
-  INDETERMINADO: 'bg-warning/15 text-warning border-warning/30',
-  ERRO_FONTE: 'bg-destructive/15 text-destructive border-destructive/30',
+const STATUS_TEXTO: Record<IndicadorStatus, string> = {
+  NADA_CONSTA: 'NADA CONSTA',
+  REGULAR: 'REGULAR',
+  PENDENCIA: 'PENDÊNCIA',
+  NAO_DISPONIVEL: 'NÃO DISPONIBILIZADO',
+  NAO_CONSULTADO: 'NÃO CONSULTADO',
+  INDETERMINADO: 'INDETERMINADO',
+  ERRO_FONTE: 'ERRO NA CONSULTA',
 };
 
-const IndicadorRow = ({ label, status, extra }: { label: string; status: IndicadorStatus; extra?: React.ReactNode }) => (
-  <div className="flex items-center justify-between gap-2 py-1.5">
-    <span className="text-sm font-medium">{label}</span>
-    <div className="flex items-center gap-2 shrink-0">
-      {extra}
-      <Badge variant="outline" className={`text-[10px] ${STATUS_CLASS[status]}`}>{STATUS_LABEL[status]}</Badge>
-    </div>
-  </div>
-);
+const RESTRICAO_LABEL: Record<keyof Omit<IndicadorRestricoes, 'status'>, string> = {
+  roubo_furto: 'ROUBO/FURTO',
+  renajud: 'RENAJUD',
+  rff: 'RFF',
+  leilao: 'LEILÃO',
+  circulacao: 'RESTRIÇÃO DE CIRCULAÇÃO',
+  alarme: 'ALARME',
+  comunicacao_venda: 'COMUNICAÇÃO DE VENDA',
+};
 
 const formatCurrency = (v: number | null | undefined) => v == null ? null : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const ListaLinha = ({ label, status, detalhe }: { label: string; status: IndicadorStatus; detalhe: string }) => (
+  <p className="text-sm leading-relaxed">
+    {STATUS_EMOJI[status]} {label} - {detalhe}
+  </p>
+);
 
 interface Props {
   resultado: ConsultaVeiculoResultado;
@@ -58,74 +65,97 @@ const ConsultaVeicularResultado: React.FC<Props> = ({ resultado }) => {
       </CardHeader>
       <CardContent className="space-y-1">
         {(() => {
-          // So mostra o que a fonte efetivamente consultou -- indicadores
-          // NAO_CONSULTADO (fonte nao habilitada, ex: SENATRAN ainda nao
-          // liberado) ficam escondidos em vez de poluir a tela com "Não
-          // Consultado" pra tudo que ainda nao esta disponivel.
-          const linhas: Array<{ label: string; status: IndicadorStatus; extra?: React.ReactNode }> = [
-            { label: 'IPVA', status: indicadores.ipva.status, extra: formatCurrency(indicadores.ipva.valor) && <span className="text-xs text-muted-foreground">{formatCurrency(indicadores.ipva.valor)}</span> },
-            { label: 'Licenciamento', status: indicadores.licenciamento.status, extra: indicadores.licenciamento.exercicio && <span className="text-xs text-muted-foreground">{indicadores.licenciamento.exercicio}</span> },
-            { label: 'Detran', status: indicadores.detran.status, extra: formatCurrency(indicadores.detran.valor) && <span className="text-xs text-muted-foreground">{formatCurrency(indicadores.detran.valor)}</span> },
-            { label: 'DER-DF', status: indicadores.der_df.status, extra: !!indicadores.der_df.quantidade && <span className="text-xs text-muted-foreground">{indicadores.der_df.quantidade}</span> },
-            { label: 'DNIT', status: indicadores.dnit.status, extra: !!indicadores.dnit.quantidade && <span className="text-xs text-muted-foreground">{indicadores.dnit.quantidade}</span> },
-            { label: 'PRF', status: indicadores.prf.status, extra: !!indicadores.prf.quantidade && <span className="text-xs text-muted-foreground">{indicadores.prf.quantidade}</span> },
-            { label: 'Autocorp', status: indicadores.autocorp.status },
-            { label: 'Gravame', status: indicadores.gravame.status, extra: indicadores.gravame.tipo && <span className="text-xs text-muted-foreground">{indicadores.gravame.tipo}</span> },
-            { label: 'Restrições', status: indicadores.restricoes.status },
-            { label: 'CPF', status: indicadores.cpf.status },
-          ].filter((l) => l.status !== 'NAO_CONSULTADO');
+          const orgaoDetalhe = (ind: { status: IndicadorStatus; quantidade?: number; valor?: number | null }) => {
+            if (ind.status === 'PENDENCIA') {
+              const qtd = ind.quantidade ?? 0;
+              const valorTxt = ind.valor ? ` - ${formatCurrency(ind.valor)}` : '';
+              return `${qtd} INFRAÇÃO${qtd === 1 ? '' : 'ÕES'}${valorTxt}`;
+            }
+            return STATUS_TEXTO[ind.status];
+          };
 
-          if (linhas.length === 0) {
-            return <p className="text-sm text-muted-foreground italic py-2">Nenhum indicador disponível para consulta no momento.</p>;
-          }
-          return linhas.map((l) => <IndicadorRow key={l.label} label={l.label} status={l.status} extra={l.extra} />);
+          const ativosRestricoes = (Object.keys(RESTRICAO_LABEL) as Array<keyof typeof RESTRICAO_LABEL>)
+            .filter((k) => indicadores.restricoes[k])
+            .map((k) => RESTRICAO_LABEL[k]);
+
+          const linhas: Array<{ label: string; status: IndicadorStatus; detalhe: string }> = [
+            {
+              label: 'IPVA',
+              status: indicadores.ipva.status,
+              detalhe: indicadores.ipva.valor != null ? formatCurrency(indicadores.ipva.valor)! : STATUS_TEXTO[indicadores.ipva.status],
+            },
+            {
+              label: 'Licenciamento',
+              status: indicadores.licenciamento.status,
+              detalhe: indicadores.licenciamento.status === 'REGULAR' && indicadores.licenciamento.exercicio
+                ? `CRLV ${indicadores.licenciamento.exercicio} EMITIDO`
+                : STATUS_TEXTO[indicadores.licenciamento.status],
+            },
+            {
+              label: 'Detran',
+              status: indicadores.detran.status,
+              detalhe: indicadores.detran.valor ? formatCurrency(indicadores.detran.valor)! : STATUS_TEXTO[indicadores.detran.status],
+            },
+            { label: 'DER-DF', status: indicadores.der_df.status, detalhe: orgaoDetalhe(indicadores.der_df) },
+            { label: 'DNIT', status: indicadores.dnit.status, detalhe: orgaoDetalhe(indicadores.dnit) },
+            { label: 'PRF', status: indicadores.prf.status, detalhe: orgaoDetalhe(indicadores.prf) },
+            {
+              label: 'Autocorp',
+              status: indicadores.autocorp.status,
+              detalhe: indicadores.autocorp.descricao?.toUpperCase() || STATUS_TEXTO[indicadores.autocorp.status],
+            },
+            {
+              label: 'Gravame',
+              status: indicadores.gravame.status,
+              detalhe: indicadores.gravame.status === 'PENDENCIA' && indicadores.gravame.tipo
+                ? `ATIVO - ${indicadores.gravame.tipo.toUpperCase()}`
+                : STATUS_TEXTO[indicadores.gravame.status],
+            },
+            {
+              label: 'Restrições',
+              status: indicadores.restricoes.status,
+              detalhe: indicadores.restricoes.status === 'PENDENCIA' && ativosRestricoes.length > 0
+                ? ativosRestricoes.join(' / ')
+                : STATUS_TEXTO[indicadores.restricoes.status],
+            },
+            { label: 'CPF', status: indicadores.cpf.status, detalhe: STATUS_TEXTO[indicadores.cpf.status] },
+          ];
+
+          return (
+            <div className="space-y-0.5">
+              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground mb-1">LISTAGEM</p>
+              {linhas.map((l) => <ListaLinha key={l.label} label={l.label.toUpperCase()} status={l.status} detalhe={l.detalhe} />)}
+            </div>
+          );
         })()}
 
         <Separator className="my-3" />
 
         {/* RENAVE */}
-        <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
-          <div className="flex items-center gap-2">
-            {renave.consultado ? (
-              renave.apto_estoque ? (
-                <CheckCircle2 className="h-4 w-4 text-success" />
-              ) : renave.apto_estoque === false ? (
-                <XCircle className="h-4 w-4 text-destructive" />
-              ) : (
-                <HelpCircle className="h-4 w-4 text-muted-foreground" />
-              )
-            ) : (
-              <ShieldQuestion className="h-4 w-4 text-muted-foreground" />
-            )}
-            <span className="text-sm font-semibold">
-              RENAVE — {!renave.consultado
-                ? (renave.erro ? 'erro na consulta' : 'não consultado')
-                : renave.apto_estoque === true
-                  ? 'Apto para entrada em estoque'
-                  : renave.apto_estoque === false
-                    ? 'Não apto para entrada em estoque'
-                    : 'Aptidão indeterminada'}
-            </span>
-          </div>
-          {renave.erro && (
-            <p className="text-xs text-destructive break-words">{renave.erro}</p>
-          )}
-          {renave.falha_comunicacao_detran && (
-            <p className="text-xs text-warning flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Falha de comunicação com o Detran</p>
-          )}
-          {renave.motivos_nao_aptidao.length > 0 && (
-            <ul className="text-xs text-muted-foreground list-disc list-inside">
-              {renave.motivos_nao_aptidao.map((m, i) => <li key={i}>{m}</li>)}
-            </ul>
-          )}
-          {renave.debitos_detran.length > 0 && (
-            <div className="text-xs text-muted-foreground">
-              {renave.debitos_detran.map((d, i) => (
-                <div key={i}>{d.tipo}: {formatCurrency(d.valor) || '-'}{d.descricao ? ` — ${d.descricao}` : ''}</div>
-              ))}
+        {(() => {
+          const renaveEmoji = !renave.consultado ? '⏳' : renave.apto_estoque === true ? '✅' : renave.apto_estoque === false ? '❌' : '⚠️';
+          const renaveTexto = !renave.consultado
+            ? (renave.erro ? 'ERRO NA CONSULTA' : 'NÃO CONSULTADO')
+            : renave.apto_estoque === true
+              ? 'APTO PARA ENTRADA EM ESTOQUE'
+              : renave.apto_estoque === false
+                ? 'NÃO APTO PARA ENTRADA EM ESTOQUE'
+                : 'APTIDÃO INDETERMINADA';
+
+          return (
+            <div className="space-y-0.5">
+              <p className="text-[11px] font-semibold tracking-wide text-muted-foreground mb-1">RESUMO</p>
+              <p className="text-sm leading-relaxed">{renaveEmoji} RENAVE - {renaveTexto}</p>
+              {renave.erro && <p className="text-sm leading-relaxed break-words">⚠️ ERRO: {renave.erro.toUpperCase()}</p>}
+              {renave.falha_comunicacao_detran && (
+                <p className="text-sm leading-relaxed">⚠️ FALHA DE COMUNICAÇÃO COM O DETRAN</p>
+              )}
+              {renave.motivos_nao_aptidao.length > 0 && (
+                <p className="text-sm leading-relaxed">❌ MOTIVOS: {renave.motivos_nao_aptidao.join('; ').toUpperCase()}</p>
+              )}
             </div>
-          )}
-        </div>
+          );
+        })()}
 
         {/* Infrações */}
         {infracoes.length > 0 && (

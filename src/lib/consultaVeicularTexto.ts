@@ -21,16 +21,19 @@ function statusTexto(status: IndicadorStatus): string {
   }
 }
 
-// ✅ quando não há pendência; ⚠️ para pendência / erro / indeterminado / não consultado
-const icone = (status: IndicadorStatus): '✅' | '⚠️' =>
-  status === 'NADA_CONSTA' || status === 'REGULAR' ? '✅' : '⚠️';
+// ✅ nada consta/regular; ⚠️ pendência/indeterminado/erro; ⏳ não consultado/não disponível
+const icone = (status: IndicadorStatus): '✅' | '⚠️' | '⏳' => {
+  if (status === 'NADA_CONSTA' || status === 'REGULAR') return '✅';
+  if (status === 'NAO_CONSULTADO' || status === 'NAO_DISPONIVEL') return '⏳';
+  return '⚠️';
+};
 
 /**
  * Converte o resultado estruturado da consulta SERPRO num único texto em
  * formato de lista ("RÓTULO - SITUAÇÃO"), pronto pra ser editado à mão.
  */
 export function formatarResultadoConsulta(r: ConsultaVeiculoResultado): string {
-  const linhas: string[] = [];
+  const linhas: string[] = ['LISTAGEM'];
   const add = (label: string, detalhe: string | null, status: IndicadorStatus) => {
     const d = detalhe || statusTexto(status);
     linhas.push(`${icone(status)} ${label} - ${d}`);
@@ -63,16 +66,19 @@ export function formatarResultadoConsulta(r: ConsultaVeiculoResultado): string {
     const txt = ap === true ? 'APTO PARA ENTRADA EM ESTOQUE'
       : ap === false ? 'NÃO APTO PARA ENTRADA EM ESTOQUE'
         : 'APTIDÃO INDETERMINADA';
+    const renaveIcone = ap === true ? '✅' : ap === false ? '❌' : '⚠️';
     linhas.push('');
-    linhas.push(`${ap === true ? '✅' : '⚠️'} RENAVE - ${txt}`);
+    linhas.push('RESUMO');
+    linhas.push(`${renaveIcone} RENAVE - ${txt}`);
     if (r.renave.motivos_nao_aptidao.length > 0) {
-      linhas.push(`⚠️ MOTIVOS: ${r.renave.motivos_nao_aptidao.join('; ').toUpperCase()}`);
+      linhas.push(`❌ MOTIVOS: ${r.renave.motivos_nao_aptidao.join('; ').toUpperCase()}`);
     }
     if (r.renave.falha_comunicacao_detran) {
       linhas.push('⚠️ FALHA DE COMUNICAÇÃO COM O DETRAN');
     }
   } else if (r.renave.erro) {
     linhas.push('');
+    linhas.push('RESUMO');
     linhas.push(`⚠️ RENAVE - ERRO NA CONSULTA: ${r.renave.erro.toUpperCase()}`);
   }
 
