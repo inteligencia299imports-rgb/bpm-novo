@@ -48,8 +48,9 @@ const formatKm = (km: string | null | undefined) => {
   return num.toLocaleString('pt-BR') + ' km';
 };
 
-// Consulta automática (SERPRO / RENAVE-SENATRAN) desativada por enquanto — só consulta manual.
-const SERPRO_HABILITADO = false;
+// Consulta automática via RENAVE (IPVA/licenciamento/multa agregada/DPVAT).
+// SENATRAN Consulta Online (infrações detalhadas) segue stub — ver providers/senatranVeiculo.ts.
+const SERPRO_HABILITADO = true;
 
 const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div>
