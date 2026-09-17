@@ -157,7 +157,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const { emitida: nfeEmitida, emitidaProducao: nfeEmitidaProducao, recarregar: recarregarNfe } = useNfeEmitida(avaliacao?.id, 'avaliacao');
   const [editClienteOpen, setEditClienteOpen] = useState(false);
   // Etapa de aprovação (contexto pos_compra)
-  const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar'; motivo: string } | null>(null);
+  const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar' | 'desaprovar'; motivo: string } | null>(null);
   const [savingAprovacao, setSavingAprovacao] = useState(false);
   const [processoPosCompraOpen, setProcessoPosCompraOpen] = useState(false);
   const [processoConsignacaoOpen, setProcessoConsignacaoOpen] = useState(false);
@@ -641,6 +641,39 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     const motivo = aprovacaoPopup.motivo.trim();
     if (!motivo) { toast.error('Informe o motivo'); return; }
     if (!podeAprovar(user?.id)) { toast.error('Você não tem permissão para aprovar/recusar'); return; }
+    // Desaprovar só trava na NF-e de PRODUÇÃO (homologação pode ser desfeita);
+    // aprovar/recusar seguem travando em qualquer NF-e já emitida.
+    if (aprovacaoPopup.modo === 'desaprovar') {
+      if (nfeEmitidaProducao) { toast.error('Não é possível desaprovar depois da NF-e emitida em produção.'); return; }
+      setSavingAprovacao(true);
+      try {
+        const { error } = await supabase.from('avaliacoes').update({
+          aprovacao_status: 'aguardando',
+          aprovacao_observacao: motivo,
+          aprovado_por: user?.id,
+          aprovado_em: new Date().toISOString(),
+        } as any).eq('id', avaliacao.id);
+        if (error) throw error;
+        await supabase.from('status_history').insert({
+          entity_type: 'pos_compra',
+          entity_id: avaliacao.id,
+          status: 'desaprovada',
+          changed_by: user?.id,
+          changed_by_name: userName || user?.email || null,
+          observacoes: motivo,
+        } as any);
+        setAvaliacao((prev: any) => ({ ...prev, aprovacao_status: 'aguardando', aprovacao_observacao: motivo }));
+        toast.success('Aprovação desfeita — voltou para aguardando aprovação');
+        setAprovacaoPopup(null);
+        refreshHistory();
+      } catch (e) {
+        console.error(e);
+        toast.error('Erro ao registrar a decisão');
+      } finally {
+        setSavingAprovacao(false);
+      }
+      return;
+    }
     if (nfeCompraEmitida) { toast.error('Não é possível recusar após a emissão da NF-e.'); return; }
     setSavingAprovacao(true);
     try {
@@ -1128,7 +1161,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
           </div>
           <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
             {/* Etapa de aprovação (Pós-Compra) */}
-            {precisaAprovacao && souAprovador && apSt !== 'recusada' && !nfeCompraEmitida && (
+            {precisaAprovacao && souAprovador && apSt !== 'recusada' && apSt !== 'aprovada' && !nfeCompraEmitida && (
               <>
                 {aguardandoAprovacao && (
                   <Button size="sm" onClick={() => setAprovacaoPopup({ modo: 'aprovar', motivo: '' })} className="gap-1.5 bg-green-600 hover:bg-green-700 text-white">
@@ -1139,6 +1172,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   <ThumbsDown className="h-4 w-4" /> Recusar
                 </Button>
               </>
+            )}
+            {/* Desaprovar: só depois de já aprovada, e só até a NF-e sair em produção. */}
+            {precisaAprovacao && souAprovador && apSt === 'aprovada' && !nfeEmitidaProducao && (
+              <Button size="sm" variant="outline" onClick={() => setAprovacaoPopup({ modo: 'desaprovar', motivo: '' })} className="gap-1.5 border-amber-500 text-amber-600 hover:bg-amber-500/10 hover:text-amber-600">
+                <RotateCw className="h-4 w-4" /> Desaprovar
+              </Button>
             )}
             {ehProcesso && aguardandoAprovacao && !souAprovador && (
               <Badge variant="outline" className="text-[10px] border-gray-400 text-gray-500 gap-1">
@@ -1558,7 +1597,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             </CardHeader>
             <CardContent>
               <StatusTimeline history={history} formatLabel={(raw) => {
-                const remap: Record<string, string> = { vendido: 'adquirida', aprovada: 'aprovada', recusada: 'recusada', contrato_compra_gerado: 'CONTRATO GERADO', 'Em Andamento': 'Pós-Compra em andamento', em_andamento: 'Pós-Compra em andamento' };
+                const remap: Record<string, string> = { vendido: 'adquirida', aprovada: 'aprovada', recusada: 'recusada', desaprovada: 'desaprovada', contrato_compra_gerado: 'CONTRATO GERADO', 'Em Andamento': 'Pós-Compra em andamento', em_andamento: 'Pós-Compra em andamento' };
                 return remap[raw] || defaultFormatStatusLabel(raw);
               }} renderPopupExtra={(h) => {
                 if (h.observacoes) {
@@ -1568,6 +1607,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                         {h.status === 'consulta_realizada' ? 'Resultado da Consulta'
                           : h.status === 'aprovada' ? 'Motivo da Aprovação'
                           : h.status === 'recusada' ? 'Motivo da Recusa'
+                          : h.status === 'desaprovada' ? 'Motivo da Desaprovação'
                           : (h.status === 'nfe_compra_emitida' || h.status === 'nfe_consignacao_emitida') ? 'Dados da NF-e'
                           : 'Observações'}
                       </span>
@@ -2006,11 +2046,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             <DialogTitle className="flex items-center gap-2">
               {aprovacaoPopup?.modo === 'recusar'
                 ? <><ThumbsDown className="h-5 w-5 text-destructive" /> Recusar Aquisição</>
+                : aprovacaoPopup?.modo === 'desaprovar'
+                ? <><RotateCw className="h-5 w-5 text-amber-600" /> Desaprovar Aquisição</>
                 : <><ThumbsUp className="h-5 w-5 text-green-600" /> Aprovar Aquisição</>}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <Label>{aprovacaoPopup?.modo === 'recusar' ? 'Motivo da recusa' : 'Observação da aprovação'} <span className="text-destructive">*</span></Label>
+            <Label>{aprovacaoPopup?.modo === 'recusar' ? 'Motivo da recusa' : aprovacaoPopup?.modo === 'desaprovar' ? 'Motivo da desaprovação' : 'Observação da aprovação'} <span className="text-destructive">*</span></Label>
             <Textarea
               value={aprovacaoPopup?.motivo || ''}
               onChange={(e) => setAprovacaoPopup(p => p ? { ...p, motivo: e.target.value } : p)}
@@ -2020,11 +2062,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             {aprovacaoPopup?.modo === 'recusar' && (
               <p className="text-xs text-muted-foreground">O atendimento e a avaliação serão marcados como <strong>perdido</strong>.</p>
             )}
+            {aprovacaoPopup?.modo === 'desaprovar' && (
+              <p className="text-xs text-muted-foreground">Volta para <strong>aguardando aprovação</strong>. O atendimento não é afetado.</p>
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setAprovacaoPopup(null)}>Cancelar</Button>
               <Button
                 variant={aprovacaoPopup?.modo === 'recusar' ? 'destructive' : 'default'}
-                className={aprovacaoPopup?.modo === 'aprovar' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}
+                className={aprovacaoPopup?.modo === 'aprovar' ? 'bg-green-600 hover:bg-green-700 text-white' : aprovacaoPopup?.modo === 'desaprovar' ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}
                 disabled={!aprovacaoPopup?.motivo.trim() || savingAprovacao}
                 onClick={confirmarAprovacao}
               >
