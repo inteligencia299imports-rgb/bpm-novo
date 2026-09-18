@@ -956,9 +956,6 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                   </div>
                 </div>
               </div>
-              {clientFound === true && (
-                <p className="text-xs text-primary font-medium">Cliente encontrado!</p>
-              )}
               {clientFound === false && (
                 <p className="text-xs text-muted-foreground">Cliente não encontrado. Preencha os dados.</p>
               )}
