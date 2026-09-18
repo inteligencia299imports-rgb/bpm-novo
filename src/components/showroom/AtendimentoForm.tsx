@@ -434,12 +434,13 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         setCpfBusca(formatCpf((data as any).cpf_cnpj || ''));
         setClientFound(true);
       } else {
+        // Não encontrado: zera só o que veio de um cadastro — o CPF é um campo
+        // de busca independente, não apaga o que o usuário já tiver digitado nele.
         setClienteId(null);
         setNomeCliente('');
         setSexo('');
         setTipoPessoa('fisica');
         setUf(ufPrincipal || '');
-        setCpfBusca('');
         setClientFound(false);
       }
     } catch (err) {
@@ -481,10 +482,12 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         setUf(data.clientes_fornecedores_enderecos?.[0]?.uf || ufPrincipal || '');
         setClientFound(true);
       } else {
+        // Não encontrado: zera só o que veio de um cadastro (nome/sexo/UF) — o
+        // telefone é um campo de busca independente, não faz sentido apagar o
+        // que o usuário já tiver digitado nele.
         setClienteId(null);
         setNomeCliente('');
         setSexo('');
-        setTelefone('');
         setUf(ufPrincipal || '');
         setClientFound(false);
       }
@@ -573,6 +576,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
   // 11 dígitos = celular; 10 = fixo (comum em telefone comercial de cliente PJ).
   const isPhoneValid = [10, 11].includes(unformatPhone(telefone).length);
+  const isCpfComplete = unformatPhone(cpfBusca).length === 11;
 
   const handleSave = async () => {
     if (nfeVendaEmitida) {
@@ -962,7 +966,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               {clientFound === false && (
                 <p className="text-xs text-muted-foreground">Cliente não encontrado. Preencha os dados.</p>
               )}
-              {(isEditing || isPhoneValid) && (
+              {(isEditing || isPhoneValid || isCpfComplete) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto] gap-4 items-start">
                   <div className="space-y-1.5">
                     <Label>Nome do Cliente *</Label>
