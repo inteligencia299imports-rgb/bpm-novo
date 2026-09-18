@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { FileText, CalendarIcon, Save, Download, Percent, Eye, ArrowLeft, Loader2, RefreshCw, AlertTriangle, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Building2 } from 'lucide-react';
+import { FileText, CalendarIcon, Save, Download, Percent, Eye, ArrowLeft, Loader2, RefreshCw, AlertTriangle, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Building2, ListChecks } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { toast } from 'sonner';
@@ -459,17 +459,25 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // Contrato já gerado e sem edições (ou NF-e já emitida em produção) -> só permite baixar/visualizar.
   const modoLeitura = (jaGerado && !editado) || nfeEmProducao;
 
-  const validateFields = (): boolean => {
-    if (!moto?.chassi?.trim()) { toast.error('Chassi da moto é obrigatório'); return false; }
-    if (!moto?.renavam?.trim()) { toast.error('RENAVAM da moto é obrigatório'); return false; }
-    if (!cpfCnpj?.trim()) { toast.error('CPF/CNPJ é obrigatório'); return false; }
-    if (!email?.trim()) { toast.error('E-mail é obrigatório'); return false; }
-    if (!endereco?.trim()) { toast.error('Endereço é obrigatório'); return false; }
-    if (!cep?.trim()) { toast.error('CEP é obrigatório'); return false; }
+  // Campos obrigatórios pendentes para gerar o contrato de consignação. Sem toast —
+  // usado tanto pelo aviso abaixo do título quanto pela validação (com toast) abaixo.
+  const errosGeracao: string[] = (() => {
+    const errors: string[] = [];
+    if (!moto?.chassi?.trim()) errors.push('Chassi da moto');
+    if (!moto?.renavam?.trim()) errors.push('RENAVAM da moto');
+    if (!cpfCnpj?.trim()) errors.push('CPF/CNPJ do cliente');
+    if (!email?.trim()) errors.push('E-mail');
+    if (!endereco?.trim()) errors.push('Endereço');
+    if (!cep?.trim()) errors.push('CEP');
     // Quitação é obrigatória — o usuário precisa informar, ainda que seja 0.
-    if (!valorQuitacao?.trim()) { toast.error('Valor de Quitação é obrigatório (informe 0 se não houver)'); return false; }
-    if (!valorFechamento?.trim() || parseCurrencyInput(valorFechamento) <= 0) { toast.error('Valor de Fechamento é obrigatório'); return false; }
-    if (!dataContrato) { toast.error('Data do Contrato é obrigatória'); return false; }
+    if (!valorQuitacao?.trim()) errors.push('Valor de Quitação');
+    if (!valorFechamento?.trim() || parseCurrencyInput(valorFechamento) <= 0) errors.push('Valor de Fechamento');
+    if (!dataContrato) errors.push('Data do Contrato');
+    return errors;
+  })();
+
+  const validateFields = (): boolean => {
+    if (errosGeracao.length > 0) { toast.error(`Preencha os campos obrigatórios: ${errosGeracao.join(', ')}`); return false; }
     return true;
   };
 
@@ -597,6 +605,12 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           </>
         )}
       </div>
+
+      {!soLeitura && !modoLeitura && errosGeracao.length > 0 && (
+        <div className="rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-700 flex items-start gap-1.5">
+          <ListChecks className="h-3.5 w-3.5 mt-0.5 shrink-0" /> Faltam para gerar o contrato: {errosGeracao.join(', ')}.
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12">

@@ -265,11 +265,27 @@ function ddiDropdownLabel(code: string) {
 
 export function ClienteForm({
   id, embedded, onSaved, onCancel, exigirBancarios = true,
-}: { id?: string; embedded?: boolean; onSaved?: (id: string) => void; onCancel?: () => void; exigirBancarios?: boolean }) {
+  defaultTipoPessoa, defaultTipoCadastro, requireFiscais = true, minimalCadastro = false,
+}: {
+  id?: string; embedded?: boolean; onSaved?: (id: string) => void; onCancel?: () => void; exigirBancarios?: boolean;
+  /** Cadastro rápido embutido (ex.: dentro de um Novo Atendimento) — abre o form
+   *  já no tipo certo em vez de nascer "física" e o usuário ter que trocar. */
+  defaultTipoPessoa?: "fisica" | "juridica"; defaultTipoCadastro?: string;
+  /** false pula a exigência de Inscrição Estadual/contribuinte ICMS (aba Fiscais)
+   *  — fica pra quando for emitir NF-e, igual o crm-novo faz no cadastro rápido. */
+  requireFiscais?: boolean;
+  /** Esconde as abas Fiscais/Bancário/Observações — só Principais/Contatos/
+   *  Endereço, pro cadastro rápido de cliente em pleno Atendimento. */
+  minimalCadastro?: boolean;
+}) {
   const qc = useQueryClient();
   const isEdit = !!id;
 
-  const [form, setForm] = useState<any>(emptyForm);
+  const [form, setForm] = useState<any>(() => ({
+    ...emptyForm,
+    ...(defaultTipoCadastro ? { tipo_cadastro: defaultTipoCadastro } : {}),
+    ...(defaultTipoPessoa ? { tipo_pessoa: defaultTipoPessoa } : {}),
+  }));
   const [endereco, setEndereco] = useState<Endereco>(emptyEndereco);
   const [enderecoAtpv, setEnderecoAtpv] = useState<Endereco>(emptyEnderecoAtpv);
   const [loading, setLoading] = useState(isEdit);
@@ -280,8 +296,9 @@ export function ClienteForm({
   const [cepConsultado, setCepConsultado] = useState("");
   // Último tipo_cadastro visto — usado para só forçar "física" quando o USUÁRIO
   // troca o tipo de cadastro para cliente/colaborador, nunca na carga de um
-  // cadastro existente (que pode ser PJ). Sincronizado no load a partir do banco.
-  const prevTipoCadastro = useRef<string>(emptyForm.tipo_cadastro);
+  // cadastro existente (que pode ser PJ), nem no default inicial (que já pode
+  // nascer "cliente" + "juridica" num cadastro rápido embutido).
+  const prevTipoCadastro = useRef<string>(defaultTipoCadastro || emptyForm.tipo_cadastro);
 
   const { data: ramos = [] } = useQuery({
     queryKey: ["ramos-atividade-ativos"],
@@ -571,12 +588,12 @@ export function ClienteForm({
   const isJuridica = form.tipo_pessoa === "juridica";
 
   const isCliente = form.tipo_cadastro === "cliente" || form.tipo_cadastro === "colaborador";
-  const TABS = useMemo<TabKey[]>(
-    () => (isFisica || isCliente
+  const TABS = useMemo<TabKey[]>(() => {
+    if (minimalCadastro) return ["principais", "contatos", "endereco"];
+    return isFisica || isCliente
       ? ["principais", "contatos", "endereco", "bancario", "obs"]
-      : ["principais", "fiscais", "contatos", "endereco", "bancario", "obs"]),
-    [isFisica, isCliente],
-  );
+      : ["principais", "fiscais", "contatos", "endereco", "bancario", "obs"];
+  }, [isFisica, isCliente, minimalCadastro]);
 
   const s = (v: unknown) => (typeof v === "string" ? v : "").trim();
 
@@ -614,8 +631,9 @@ export function ClienteForm({
 
   // PJ: campos fiscais obrigatórios para emissão de NF — contribuinte de ICMS
   // definido, Isento de IE definido, e Inscrição Estadual quando não isento.
+  // requireFiscais=false pula essa exigência (cadastro rápido embutido).
   const fiscaisOk =
-    !isJuridica ||
+    !isJuridica || !requireFiscais ||
     (typeof form.contribuinte_icms === "boolean" &&
       typeof form.isento_inscricao_estadual === "boolean" &&
       (form.isento_inscricao_estadual === true || !!s(form.inscricao_estadual)));
@@ -805,11 +823,11 @@ export function ClienteForm({
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
         <TabsList className="flex-wrap h-auto">
           <TabTrigger value="principais">Principais</TabTrigger>
-          {isJuridica && <TabTrigger value="fiscais">Fiscais</TabTrigger>}
+          {isJuridica && !minimalCadastro && <TabTrigger value="fiscais">Fiscais</TabTrigger>}
           <TabTrigger value="contatos">Contatos</TabTrigger>
           <TabTrigger value="endereco">Endereço</TabTrigger>
-          <TabTrigger value="bancario">Bancário</TabTrigger>
-          <TabTrigger value="obs">Observações</TabTrigger>
+          {!minimalCadastro && <TabTrigger value="bancario">Bancário</TabTrigger>}
+          {!minimalCadastro && <TabTrigger value="obs">Observações</TabTrigger>}
         </TabsList>
 
         <TabsContent value="principais" className="space-y-4 pt-4">

@@ -68,6 +68,10 @@ interface OperacaoConfig {
   etapa?: string;
   avStatusField: string | null;
   avStatusEmAndamento: string;
+  /** Status pra onde o processo volta se a NF for cancelada (só reverte se o
+   *  status atual ainda for `avStatusEmAndamento` — não mexe em status setado
+   *  manualmente por outro caminho, ex.: "pausado"). */
+  avStatusAoCancelar?: string;
   criaCompromisso: boolean;
   /** 'pagar' (compra/troca) ou 'receber' (venda). Só relevante se criaCompromisso. */
   compromissoTipo?: 'pagar' | 'receber';
@@ -102,6 +106,7 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     etapa: 'NF EMITIDA',
     avStatusField: 'consignacao_status',
     avStatusEmAndamento: 'concluido',
+    avStatusAoCancelar: 'em_aberto',
     criaCompromisso: false,
     keyBy: 'avaliacao',
   },
@@ -229,6 +234,20 @@ async function aplicarCancelamento(
     await admin.from(cfg.etapaTable)
       .update({ concluida: false, data_conclusao: null })
       .eq(fkCol, entityId).eq('etapa', cfg.etapa);
+  }
+
+  // Cancelar a NF desfaz o avanço de status que a emissão causou (ex.: consignação
+  // 'concluido' -> 'em_aberto') — só se o status ainda for o que a emissão setou,
+  // pra não sobrescrever um status alterado manualmente por outro caminho.
+  if (cfg.keyBy === 'avaliacao' && cfg.avStatusField && cfg.avStatusAoCancelar) {
+    const { data: avStatus } = await admin
+      .from('avaliacoes')
+      .select(cfg.avStatusField)
+      .eq('id', entityId)
+      .maybeSingle();
+    if ((avStatus?.[cfg.avStatusField] ?? null) === cfg.avStatusEmAndamento) {
+      await admin.from('avaliacoes').update({ [cfg.avStatusField]: cfg.avStatusAoCancelar }).eq('id', entityId);
+    }
   }
 
   // Cancela os compromissos financeiros dessa NF. Parcelas já pagas ficam como

@@ -15,7 +15,7 @@ import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
 import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 import { Badge } from '@/components/ui/badge';
-import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, Building2 } from 'lucide-react';
+import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, Building2, ListChecks } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -368,12 +368,20 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
     }
   };
 
-  const validateFields = (): boolean => {
-    if (!cpfCnpj?.trim()) { toast.error('CPF/CNPJ é obrigatório'); return false; }
+  // Campos obrigatórios pendentes para gerar o contrato de compra. Sem toast — usado
+  // tanto pelo aviso abaixo do título quanto pela validação (com toast) em validateFields.
+  const errosGeracao: string[] = (() => {
+    const errors: string[] = [];
+    if (!cpfCnpj?.trim()) errors.push('CPF/CNPJ do cliente');
     // Quitação é obrigatória — o usuário precisa informar, ainda que seja 0.
-    if (!valorQuitacao?.trim()) { toast.error('Valor de Quitação é obrigatório (informe 0 se não houver)'); return false; }
-    if (!valorFechamento?.trim() || parseCurrencyInput(valorFechamento) <= 0) { toast.error('Valor de Fechamento é obrigatório'); return false; }
-    if (!dataContrato) { toast.error('Data do Contrato é obrigatória'); return false; }
+    if (!valorQuitacao?.trim()) errors.push('Valor de Quitação');
+    if (!valorFechamento?.trim() || parseCurrencyInput(valorFechamento) <= 0) errors.push('Valor de Fechamento');
+    if (!dataContrato) errors.push('Data do Contrato');
+    return errors;
+  })();
+
+  const validateFields = (): boolean => {
+    if (errosGeracao.length > 0) { toast.error(`Preencha os campos obrigatórios: ${errosGeracao.join(', ')}`); return false; }
     if (dataContrato > new Date()) { toast.error('A Data do Contrato não pode ser maior que hoje'); return false; }
     return true;
   };
@@ -601,6 +609,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
           </>
         )}
       </div>
+
+      {!soLeitura && !modoLeitura && errosGeracao.length > 0 && (
+        <div className="rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-700 flex items-start gap-1.5">
+          <ListChecks className="h-3.5 w-3.5 mt-0.5 shrink-0" /> Faltam para gerar o contrato: {errosGeracao.join(', ')}.
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12">

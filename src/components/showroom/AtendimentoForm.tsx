@@ -8,12 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Save, Loader2, SendHorizonal, CheckCircle, Briefcase, User, ClipboardList, FileText } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { ArrowLeft, Save, Loader2, SendHorizonal, CheckCircle, Briefcase, User, Building2, Search, UserPlus, ClipboardList, FileText } from 'lucide-react';
 import { LOJAS, INTERESSES, TEMPERATURAS, ORIGENS, UFS, TIPOS_ATENDIMENTO, SEXOS } from '@/types/crm';
 import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
 import MotoCompraSection from './MotoCompraSection';
 import AtendimentoObservacoes from './AtendimentoObservacoes';
+import { ClienteForm } from '@/components/clientes/ClienteForm';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 import { toast } from 'sonner';
@@ -30,6 +33,30 @@ const formatPhone = (value: string): string => {
 };
 
 const unformatPhone = (value: string): string => value.replace(/\D/g, '');
+
+const formatCnpj = (value: string | null | undefined): string => {
+  const d = (value || '').replace(/\D/g, '').slice(0, 14);
+  if (d.length !== 14) return d;
+  return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+};
+
+// CPF mask utility — igual formatPhone, incremental conforme o usuário digita.
+const formatCpf = (value: string): string => {
+  const d = value.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+};
+
+// Normaliza qualquer variação já gravada (minúsculo, "M"/"F", etc.) pro formato
+// canônico usado pelos ToggleButton de Sexo ("Masculino"/"Feminino").
+const normalizeSexo = (v: unknown): string => {
+  const s = String(v ?? '').trim().toLowerCase();
+  if (s.startsWith('m')) return 'Masculino';
+  if (s.startsWith('f')) return 'Feminino';
+  return '';
+};
 
 const LOJA_GROUPS: Record<'299' | 'Ducati', string[]> = {
   '299': ['299i', '299s', '299f', '299p', 'Aventura'],
@@ -56,6 +83,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [searchingPhone, setSearchingPhone] = useState(false);
   const [clientFound, setClientFound] = useState<boolean | null>(null);
   const [clienteId, setClienteId] = useState<string | null>(null);
+  // Busca alternativa de Pessoa Física por CPF (além do telefone).
+  const [cpfBusca, setCpfBusca] = useState('');
+  const [searchingCpf, setSearchingCpf] = useState(false);
   // Observação do cadastro — só usado ao CRIAR (edição usa AtendimentoObservacoes,
   // que já lista/edita o histórico direto na tabela observacoes).
   const [novaObservacao, setNovaObservacao] = useState('');
@@ -70,6 +100,12 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [sexo, setSexo] = useState('');
   const [tipoPessoa, setTipoPessoa] = useState<'fisica' | 'juridica'>('fisica');
   const [uf, setUf] = useState('');
+  // Busca/cadastro de cliente Pessoa Jurídica (por nome/CNPJ, ao invés de telefone).
+  const [pjSearchOpen, setPjSearchOpen] = useState(false);
+  const [pjSearchTerm, setPjSearchTerm] = useState('');
+  const [pjSearchResults, setPjSearchResults] = useState<{ id: string; nome_razao_social: string; nome_fantasia: string | null; cpf_cnpj: string | null; telefone: string | null; clientes_fornecedores_enderecos?: { uf: string | null }[] }[]>([]);
+  const [pjSearching, setPjSearching] = useState(false);
+  const [showNovoClientePJ, setShowNovoClientePJ] = useState(false);
   const [tipoAtendimento, setTipoAtendimento] = useState('');
   const [origem, setOrigem] = useState('');
   const [temperatura, setTemperatura] = useState('');
@@ -306,8 +342,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setClienteId(at.cliente_id);
           setNomeCliente(at.cliente?.nome_razao_social || '');
           setTelefone(formatPhone(at.cliente?.telefone || ''));
-          setSexo(at.cliente?.sexo || '');
+          setSexo(normalizeSexo(at.cliente?.sexo));
           setTipoPessoa((at.cliente as any)?.tipo_pessoa === 'juridica' ? 'juridica' : 'fisica');
+          setCpfBusca(formatCpf((at.cliente as any)?.cpf_cnpj || ''));
           setUf(at.cliente?.clientes_fornecedores_enderecos?.[0]?.uf || 'DF');
           setTipoAtendimento(at.tipo_atendimento);
           setOrigem(at.origem || '');
@@ -377,10 +414,13 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
     setSearchingPhone(true);
     try {
+      // Pode haver mais de um cadastro com o mesmo telefone (duplicidade) — prioriza
+      // o que já tem CPF preenchido antes de desempatar pelo mais recente.
       const { data } = await supabase
         .from('clientes_fornecedores')
-        .select('id, nome_razao_social, sexo, tipo_pessoa, clientes_fornecedores_enderecos(uf)')
+        .select('id, nome_razao_social, sexo, tipo_pessoa, cpf_cnpj, clientes_fornecedores_enderecos(uf)')
         .eq('telefone', digits)
+        .order('cpf_cnpj', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -388,9 +428,10 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       if (data) {
         setClienteId(data.id);
         setNomeCliente(data.nome_razao_social);
-        setSexo(data.sexo || '');
+        setSexo(normalizeSexo(data.sexo));
         setTipoPessoa((data as any).tipo_pessoa === 'juridica' ? 'juridica' : 'fisica');
         setUf(data.clientes_fornecedores_enderecos?.[0]?.uf || ufPrincipal || '');
+        setCpfBusca(formatCpf((data as any).cpf_cnpj || ''));
         setClientFound(true);
       } else {
         setClienteId(null);
@@ -398,6 +439,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         setSexo('');
         setTipoPessoa('fisica');
         setUf(ufPrincipal || '');
+        setCpfBusca('');
         setClientFound(false);
       }
     } catch (err) {
@@ -407,6 +449,127 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     }
   }, [ufPrincipal]);
 
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCpf(e.target.value);
+    setCpfBusca(formatted);
+    setClientFound(null);
+    const digits = unformatPhone(formatted);
+    if (digits.length === 11 && !isEditing) {
+      setTimeout(() => searchClientByCpfDigits(digits), 100);
+    }
+  };
+
+  const searchClientByCpfDigits = useCallback(async (digits: string) => {
+    if (digits.length !== 11) return;
+
+    setSearchingCpf(true);
+    try {
+      const { data } = await supabase
+        .from('clientes_fornecedores')
+        .select('id, nome_razao_social, sexo, telefone, tipo_pessoa, cpf_cnpj, clientes_fornecedores_enderecos(uf)')
+        .eq('cpf_cnpj', digits)
+        .eq('tipo_pessoa', 'fisica')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        setClienteId(data.id);
+        setNomeCliente(data.nome_razao_social);
+        setSexo(normalizeSexo(data.sexo));
+        setTelefone(formatPhone(data.telefone || ''));
+        setUf(data.clientes_fornecedores_enderecos?.[0]?.uf || ufPrincipal || '');
+        setClientFound(true);
+      } else {
+        setClienteId(null);
+        setNomeCliente('');
+        setSexo('');
+        setTelefone('');
+        setUf(ufPrincipal || '');
+        setClientFound(false);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar cliente por CPF:', err);
+    } finally {
+      setSearchingCpf(false);
+    }
+  }, [ufPrincipal]);
+
+  // Troca de Tipo de Pessoa: zera toda a seleção/busca de cliente em andamento —
+  // nunca "gruda" dado de um tipo no outro. Funciona igual na criação e na
+  // edição (não é travado com cliente já vinculado).
+  const handleTipoPessoaChange = (novo: 'fisica' | 'juridica') => {
+    if (novo === tipoPessoa) return;
+    setTipoPessoa(novo);
+    setClienteId(null);
+    setTelefone('');
+    setNomeCliente('');
+    setSexo('');
+    setUf(ufPrincipal || '');
+    setClientFound(null);
+    setCpfBusca('');
+    setPjSearchTerm('');
+    setPjSearchResults([]);
+    setShowNovoClientePJ(false);
+  };
+
+  // Busca de cliente Jurídica por nome/fantasia/CNPJ (debounced) — telefone não
+  // serve pra distinguir empresas, então o critério aqui é diferente da Física.
+  useEffect(() => {
+    if (tipoPessoa !== 'juridica') return;
+    const termo = pjSearchTerm.trim();
+    if (termo.length < 2) { setPjSearchResults([]); return; }
+    setPjSearching(true);
+    const timer = setTimeout(async () => {
+      const digits = unformatPhone(termo);
+      const { data } = await supabase
+        .from('clientes_fornecedores')
+        .select('id, nome_razao_social, nome_fantasia, cpf_cnpj, telefone, clientes_fornecedores_enderecos(uf)')
+        .eq('tipo_pessoa', 'juridica')
+        .or(`nome_razao_social.ilike.%${termo}%,nome_fantasia.ilike.%${termo}%,cpf_cnpj.ilike.%${digits}%`)
+        .order('nome_razao_social')
+        .limit(10);
+      setPjSearchResults((data as any) || []);
+      setPjSearching(false);
+    }, 200);
+    return () => { clearTimeout(timer); setPjSearching(false); };
+  }, [pjSearchTerm, tipoPessoa]);
+
+  const handleSelectClientePJ = (c: { id: string; nome_razao_social: string; telefone: string | null; clientes_fornecedores_enderecos?: { uf: string | null }[] }) => {
+    setClienteId(c.id);
+    setNomeCliente(c.nome_razao_social);
+    setTelefone(formatPhone(c.telefone || ''));
+    setUf(c.clientes_fornecedores_enderecos?.[0]?.uf || ufPrincipal || '');
+    setClientFound(true);
+    setPjSearchOpen(false);
+    setPjSearchTerm('');
+  };
+
+  // Cliente PJ recém-cadastrado via ClienteForm embutido — busca os dados
+  // básicos pra preencher o restante do Atendimento e fechar o cadastro rápido.
+  const handlePjCadastrado = async (novoId: string) => {
+    setShowNovoClientePJ(false);
+    const { data } = await supabase
+      .from('clientes_fornecedores')
+      .select('id, nome_razao_social, telefone, clientes_fornecedores_enderecos(uf)')
+      .eq('id', novoId)
+      .maybeSingle();
+    setClienteId(novoId);
+    setNomeCliente(data?.nome_razao_social || '');
+    setTelefone(formatPhone(data?.telefone || ''));
+    setUf((data as any)?.clientes_fornecedores_enderecos?.[0]?.uf || ufPrincipal || '');
+    setClientFound(true);
+  };
+
+  const handleTrocarClientePJ = () => {
+    setClienteId(null);
+    setNomeCliente('');
+    setTelefone('');
+    setUf(ufPrincipal || '');
+    setClientFound(null);
+    setPjSearchTerm('');
+    setPjSearchResults([]);
+  };
 
   // 11 dígitos = celular; 10 = fixo (comum em telefone comercial de cliente PJ).
   const isPhoneValid = [10, 11].includes(unformatPhone(telefone).length);
@@ -417,7 +580,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       return;
     }
     const ehPJ = tipoPessoa === 'juridica';
-    if (!nomeCliente.trim() || !isPhoneValid || !empresaId || !loja || (!ehPJ && !sexo) || !uf || !tipoAtendimento || !origem || !temperatura) {
+    if (ehPJ && !clienteId) {
+      toast.error('Busque ou cadastre a empresa cliente');
+      return;
+    }
+    if (!ehPJ && (!nomeCliente.trim() || !isPhoneValid || !sexo || !uf)) {
+      toast.error('Preencha todos os campos obrigatórios');
+      return;
+    }
+    if (!empresaId || !loja || !tipoAtendimento || !origem || !temperatura) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -465,32 +636,38 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     // apenas destaca o campo em vermelho (ver PlacaInput / MotoVendaSection).
     setSaving(true);
 
-    // Cria ou atualiza o cliente antes de gravar o atendimento
+    // Cria ou atualiza o cliente antes de gravar o atendimento. PJ: o cliente já
+    // foi resolvido (busca por nome/CNPJ ou ClienteForm completo) — só
+    // reaproveita o id, sem sobrescrever nome/endereço (já cadastrados lá).
     let finalClienteId = clienteId;
-    if (finalClienteId) {
-      // Cliente existente: telefone é imutável — não vai no update.
-      const { error: clienteError } = await supabase.from('clientes_fornecedores')
-        .update({ nome_razao_social: formatPersonName(nomeCliente), sexo: ehPJ ? null : sexo, tipo_pessoa: tipoPessoa })
-        .eq('id', finalClienteId);
-      if (clienteError) { toast.error('Erro ao salvar dados do cliente'); setSaving(false); return; }
-    } else {
-      const clientePayload = {
-        nome_razao_social: formatPersonName(nomeCliente),
-        telefone: unformatPhone(telefone),
-        sexo: ehPJ ? null : sexo,
-        tipo_pessoa: tipoPessoa,
-      };
-      const { data: novoCliente, error: clienteError } = await supabase.from('clientes_fornecedores').insert(clientePayload).select('id').single();
-      if (clienteError || !novoCliente) { toast.error('Erro ao criar cliente'); setSaving(false); return; }
-      finalClienteId = novoCliente.id;
-      setClienteId(finalClienteId);
-    }
-    // Endereço mínimo (só UF, capturado neste formulário rápido)
-    const { data: enderecoExistente } = await supabase.from('clientes_fornecedores_enderecos').select('id').eq('cliente_fornecedor_id', finalClienteId).eq('tipo', 'fiscal').maybeSingle();
-    if (enderecoExistente) {
-      await supabase.from('clientes_fornecedores_enderecos').update({ uf }).eq('id', enderecoExistente.id);
-    } else {
-      await supabase.from('clientes_fornecedores_enderecos').insert({ cliente_fornecedor_id: finalClienteId, tipo: 'fiscal', uf });
+    if (!ehPJ) {
+      if (finalClienteId) {
+        // Cliente existente: telefone é imutável — não vai no update.
+        const { error: clienteError } = await supabase.from('clientes_fornecedores')
+          .update({ nome_razao_social: formatPersonName(nomeCliente), sexo, tipo_pessoa: tipoPessoa })
+          .eq('id', finalClienteId);
+        if (clienteError) { toast.error('Erro ao salvar dados do cliente'); setSaving(false); return; }
+      } else {
+        const cpfDigits = unformatPhone(cpfBusca);
+        const clientePayload = {
+          nome_razao_social: formatPersonName(nomeCliente),
+          telefone: unformatPhone(telefone),
+          sexo,
+          tipo_pessoa: tipoPessoa,
+          ...(cpfDigits.length === 11 ? { cpf_cnpj: cpfDigits } : {}),
+        };
+        const { data: novoCliente, error: clienteError } = await supabase.from('clientes_fornecedores').insert(clientePayload).select('id').single();
+        if (clienteError || !novoCliente) { toast.error('Erro ao criar cliente'); setSaving(false); return; }
+        finalClienteId = novoCliente.id;
+        setClienteId(finalClienteId);
+      }
+      // Endereço mínimo (só UF, capturado neste formulário rápido)
+      const { data: enderecoExistente } = await supabase.from('clientes_fornecedores_enderecos').select('id').eq('cliente_fornecedor_id', finalClienteId).eq('tipo', 'fiscal').maybeSingle();
+      if (enderecoExistente) {
+        await supabase.from('clientes_fornecedores_enderecos').update({ uf }).eq('id', enderecoExistente.id);
+      } else {
+        await supabase.from('clientes_fornecedores_enderecos').insert({ cliente_fornecedor_id: finalClienteId, tipo: 'fiscal', uf });
+      }
     }
 
     const lojaId = loja === lojaOriginal ? lojaIdOriginal : lojaIdMap.get(loja);
@@ -712,30 +889,72 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         </CardContent>
       </Card>
 
-      {/* Card: Dados do Cliente */}
+      {/* Card: Tipo de Pessoa — decidido antes de buscar/cadastrar o cliente,
+          igual ao crm-novo. Sempre editável, inclusive na edição do atendimento
+          (trocar zera a seleção de cliente em andamento). */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
-            <User className="h-4 w-4 text-primary" /> Dados do Cliente
+            <User className="h-4 w-4 text-primary" /> Tipo de Pessoa
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <ToggleButton label="Pessoa Física" value="fisica" selected={tipoPessoa} onSelect={(v) => handleTipoPessoaChange(v as 'fisica' | 'juridica')} />
+            <ToggleButton label="Pessoa Jurídica" value="juridica" selected={tipoPessoa} onSelect={(v) => handleTipoPessoaChange(v as 'fisica' | 'juridica')} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Card: Dados do Cliente — Física busca por telefone; Jurídica busca por
+          nome/CNPJ e, se não achar, cadastra completo (ClienteForm) na hora. */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            {tipoPessoa === 'juridica' ? <Building2 className="h-4 w-4 text-primary" /> : <User className="h-4 w-4 text-primary" />}
+            {tipoPessoa === 'juridica' ? 'Cliente (Pessoa Jurídica)' : 'Dados do Cliente'}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Linha 1: Telefone + Tipo de Pessoa */}
-          <div className="grid grid-cols-1 sm:grid-cols-[220px_1fr] gap-4 items-start">
-            <div className="space-y-1.5">
-              <Label>Telefone *</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={telefone}
-                  onChange={handlePhoneChange}
-                  disabled={isEditing}
-                  title={isEditing ? 'Telefone do cliente não pode ser alterado' : undefined}
-                  placeholder="(61) 90000-0000"
-                  maxLength={15}
-                  className="flex-1"
-                />
-                {searchingPhone && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                {!searchingPhone && clientFound === true && <CheckCircle className="h-5 w-5 text-primary" />}
+          {tipoPessoa === 'fisica' ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-4 sm:max-w-lg items-start">
+                <div className="space-y-1.5">
+                  <Label>Telefone *</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={telefone}
+                      onChange={handlePhoneChange}
+                      disabled={isEditing}
+                      title={isEditing ? 'Telefone do cliente não pode ser alterado' : undefined}
+                      placeholder="(61) 90000-0000"
+                      maxLength={15}
+                      className="flex-1"
+                    />
+                    {searchingPhone && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                    {!searchingPhone && clientFound === true && <CheckCircle className="h-5 w-5 text-primary" />}
+                  </div>
+                  {telefone && !isPhoneValid && (
+                    <p className="text-xs text-destructive">Telefone deve ter 10 ou 11 dígitos</p>
+                  )}
+                </div>
+                <div className="hidden sm:flex items-center justify-center pt-7 text-sm text-muted-foreground">Ou</div>
+                <div className="space-y-1.5">
+                  <Label>CPF</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={cpfBusca}
+                      onChange={handleCpfChange}
+                      disabled={isEditing || clientFound === true}
+                      title={(isEditing || clientFound === true) ? 'CPF do cliente não pode ser alterado' : undefined}
+                      placeholder="000.000.000-00"
+                      maxLength={14}
+                      className="flex-1"
+                    />
+                    {searchingCpf && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                    {!searchingCpf && clientFound === true && <CheckCircle className="h-5 w-5 text-primary" />}
+                  </div>
+                </div>
               </div>
               {clientFound === true && (
                 <p className="text-xs text-primary font-medium">Cliente encontrado!</p>
@@ -743,53 +962,91 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               {clientFound === false && (
                 <p className="text-xs text-muted-foreground">Cliente não encontrado. Preencha os dados.</p>
               )}
-              {telefone && !isPhoneValid && (
-                <p className="text-xs text-destructive">Telefone deve ter 10 ou 11 dígitos</p>
-              )}
-            </div>
-            {isPhoneValid && !isEditing && clientFound !== true && (
-              <div className="space-y-1.5">
-                <Label>Tipo de Pessoa *</Label>
-                <div className="flex flex-wrap gap-2">
-                  <ToggleButton label="Física" value="fisica" selected={tipoPessoa} onSelect={(v) => setTipoPessoa(v as 'fisica' | 'juridica')} />
-                  <ToggleButton label="Jurídica" value="juridica" selected={tipoPessoa} onSelect={(v) => setTipoPessoa(v as 'fisica' | 'juridica')} />
-                </div>
-              </div>
-            )}
-          </div>
-          {/* Linha 2: Nome + UF + Sexo (só física) */}
-          {(isEditing || isPhoneValid) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto] gap-4 items-start">
-              <div className="space-y-1.5">
-                <Label>{tipoPessoa === 'juridica' ? 'Razão Social *' : 'Nome do Cliente *'}</Label>
-                <Input
-                  placeholder={tipoPessoa === 'juridica' ? 'Razão Social' : 'Nome Sobrenome'}
-                  value={nomeCliente}
-                  onChange={e => {
-                    const formatted = e.target.value
-                      .toLowerCase()
-                      .replace(/(?:^|\s)\S/g, match => match.toUpperCase());
-                    setNomeCliente(formatted);
-                  }}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>UF *</Label>
-                <Select value={uf} onValueChange={setUf}>
-                  <SelectTrigger className="w-20"><SelectValue placeholder="UF" /></SelectTrigger>
-                  <SelectContent>{UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              {tipoPessoa !== 'juridica' && (
-                <div className="space-y-1.5">
-                  <Label>Sexo *</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {SEXOS.map(s => (
-                      <ToggleButton key={s} label={s} value={s} selected={sexo} onSelect={setSexo} />
-                    ))}
+              {(isEditing || isPhoneValid) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto] gap-4 items-start">
+                  <div className="space-y-1.5">
+                    <Label>Nome do Cliente *</Label>
+                    <Input
+                      placeholder="Nome Sobrenome"
+                      value={nomeCliente}
+                      onChange={e => {
+                        const formatted = e.target.value
+                          .toLowerCase()
+                          .replace(/(?:^|\s)\S/g, match => match.toUpperCase());
+                        setNomeCliente(formatted);
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>UF *</Label>
+                    <Select value={uf} onValueChange={setUf}>
+                      <SelectTrigger className="w-20"><SelectValue placeholder="UF" /></SelectTrigger>
+                      <SelectContent>{UFS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Sexo *</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {SEXOS.map(s => (
+                        <ToggleButton key={s} label={s} value={s} selected={sexo} onSelect={setSexo} />
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
+            </>
+          ) : showNovoClientePJ ? (
+            <ClienteForm
+              embedded
+              defaultTipoCadastro="cliente"
+              defaultTipoPessoa="juridica"
+              requireFiscais={false}
+              exigirBancarios={false}
+              minimalCadastro
+              onSaved={handlePjCadastrado}
+              onCancel={() => setShowNovoClientePJ(false)}
+            />
+          ) : clienteId ? (
+            <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+              <div>
+                <p className="text-sm font-medium">{nomeCliente}</p>
+                {telefone && <p className="text-xs text-muted-foreground">{telefone}</p>}
+              </div>
+              <Button variant="outline" size="sm" onClick={handleTrocarClientePJ}>Trocar</Button>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <div className="flex gap-2">
+                <Popover open={pjSearchOpen} onOpenChange={setPjSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="flex-1 justify-start font-normal text-muted-foreground">
+                      <Search className="mr-2 h-4 w-4" /> Digite o nome / CNPJ...
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command shouldFilter={false}>
+                      <CommandInput value={pjSearchTerm} onValueChange={setPjSearchTerm} placeholder="Digite o nome / CNPJ..." />
+                      <CommandList>
+                        {pjSearching ? (
+                          <div className="py-4 text-center text-sm text-muted-foreground">Buscando...</div>
+                        ) : (
+                          <CommandEmpty>Nenhuma empresa encontrada.</CommandEmpty>
+                        )}
+                        <CommandGroup>
+                          {pjSearchResults.map((c) => (
+                            <CommandItem key={c.id} value={c.id} onSelect={() => handleSelectClientePJ(c)}>
+                              {c.nome_razao_social.toUpperCase()}{c.cpf_cnpj ? ` - ${formatCnpj(c.cpf_cnpj)}` : ''}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Button type="button" variant="outline" size="icon" onClick={() => setShowNovoClientePJ(true)} title="Cadastrar novo cliente">
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

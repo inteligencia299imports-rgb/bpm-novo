@@ -1035,34 +1035,6 @@ const ContratoDialog: React.FC<Props> = ({
     return pdfData;
   };
 
-  // Campos obrigatórios pendentes para gerar o contrato (sinal/venda). Sem toast — usado
-  // tanto para bloquear/ocultar os botões quanto pela validação abaixo (com toast).
-  const errosGeracao: string[] = (() => {
-    const errors: string[] = [];
-    if (!empresaId) errors.push('Empresa vendedora');
-    if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
-    if (!valorSinal) errors.push('Valor do Sinal');
-    if (!valorVenda) errors.push('Valor da Venda');
-    if (!dataSinal) errors.push('Data do Sinal');
-    if (!dataVencimento) errors.push('Data de Vencimento do Sinal');
-
-    if (!motoInt && !estItem) errors.push('Moto de Interesse');
-    if (!transferenciaTipo) errors.push(transferenciaLabel);
-    if (transferenciaTipo === 'cliente' && !transferenciaValor) errors.push(transferenciaValorLabel);
-    const isDucati = atendimento.loja?.toLowerCase().startsWith('ducati');
-    if (!isDucati && !ipvaTipo) errors.push('IPVA');
-    if (!isDucati && ipvaTipo === 'ambos' && !ipvaCotas) errors.push('Número de Cotas do IPVA');
-    if (!isDucati && (ipvaTipo === 'loja' || ipvaTipo === 'ambos') && !ipvaValor) errors.push('Valor do IPVA');
-    if (!obsContrato && !obsContrato.trim()) errors.push('Observações do Contrato');
-    return errors;
-  })();
-  // Quitação da moto do cliente (troca) só é exigida pra fechar a Proposta de
-  // VENDA (é o que alimenta o repasse/compromisso financeiro definitivo) — no
-  // sinal ainda pode não estar confirmada com o cliente/financeira.
-  const errosGeracaoVenda: string[] = hasTroca && !valorQuitacao?.trim()
-    ? [...errosGeracao, 'Valor de Quitação da moto do cliente (defina na avaliação — 0 se não houver)']
-    : errosGeracao;
-
   const validateForGeneration = (variant: 'sinal' | 'venda'): boolean => {
     const erros = variant === 'venda' ? errosGeracaoVenda : errosGeracao;
     if (erros.length > 0) {
@@ -1210,6 +1182,46 @@ const ContratoDialog: React.FC<Props> = ({
   const somaPagamentos = somaFormasPagamento + abatimentoTroca;
   const valorFaltante = valorTotalContrato - somaPagamentos;
 
+  // Campos obrigatórios pendentes para gerar o contrato (sinal/venda), na mesma
+  // ordem em que os cards aparecem na tela. Sem toast — usado tanto pelo aviso
+  // abaixo do título quanto pela validação (com toast) em validateForGeneration.
+  const isDucati = atendimento.loja?.toLowerCase().startsWith('ducati');
+  const buildErrosGeracao = (variant: 'sinal' | 'venda'): string[] => {
+    const errors: string[] = [];
+    if (!empresaId) errors.push('Empresa vendedora');
+    if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
+    // Cadastro completo do cliente (e-mails, telefone comercial, endereço, dados
+    // bancários quando há troca) só é exigido pra fechar a Proposta de VENDA —
+    // é o que a NF-e vai precisar depois. O sinal não exige.
+    if (variant === 'venda') {
+      if (pendenciasNf.cliente.includes('E-mail')) errors.push('E-mail para contato');
+      if (pendenciasNf.cliente.includes('E-mail para NF')) errors.push('E-mail para NF');
+      if (pendenciasNf.cliente.includes('Telefone comercial')) errors.push('Telefone comercial');
+      if (pendenciasNf.endereco.length > 0) errors.push('CEP + Endereço');
+      if (exigirBancarios && pendenciasNf.bancario.length > 0) errors.push('Bancário');
+    }
+    if (!motoInt && !estItem) errors.push('Moto de Interesse');
+    if (!valorSinal) errors.push('Valor do Sinal');
+    if (!valorVenda) errors.push('Valor da Venda');
+    if (!isDucati && !ipvaTipo) errors.push('IPVA');
+    if (!isDucati && ipvaTipo === 'ambos' && !ipvaCotas) errors.push('Número de Cotas do IPVA');
+    if (!isDucati && (ipvaTipo === 'loja' || ipvaTipo === 'ambos') && !ipvaValor) errors.push('Valor do IPVA');
+    if (!transferenciaTipo) errors.push(transferenciaLabel);
+    if (transferenciaTipo === 'cliente' && !transferenciaValor) errors.push(transferenciaValorLabel);
+    // Quitação da troca e cobertura das formas de pagamento também só fecham na
+    // Proposta de VENDA — no sinal ainda pode não estar tudo acertado.
+    if (variant === 'venda' && hasTroca && !valorQuitacao?.trim()) {
+      errors.push('Valor de Quitação da moto do cliente (defina na avaliação — 0 se não houver)');
+    }
+    if (variant === 'venda' && valorFaltante > 0.005) errors.push('Formas de Pagamento');
+    if (!obsContrato || !obsContrato.trim()) errors.push('Observações do Contrato');
+    if (!dataSinal) errors.push('Data do Sinal');
+    if (!dataVencimento) errors.push('Data de Vencimento do Sinal');
+    return errors;
+  };
+  const errosGeracao = buildErrosGeracao('sinal');
+  const errosGeracaoVenda = buildErrosGeracao('venda');
+
   // Só libera gerar contrato quando não há campo obrigatório pendente E as formas
   // de pagamento cobrem 100% do Valor Total (valor faltante zerado).
   const vendaBloqueadaAprovacao = !vendaLiberada(atendimento as any);
@@ -1247,6 +1259,17 @@ const ContratoDialog: React.FC<Props> = ({
       {!ehNfe && vendaBloqueadaAprovacao && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 flex items-center gap-1.5">
           <AlertTriangle className="h-3.5 w-3.5" /> Proposta aguardando aprovação — o contrato de sinal já pode ser gerado; a proposta de venda libera após a aprovação do seu Gestor.
+        </div>
+      )}
+
+      {!soLeitura && errosGeracaoVenda.length > 0 && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700">
+          <div className="flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5" /> Informações pendentes para geração de proposta:
+          </div>
+          <ul className="mt-3 list-disc pl-6 space-y-0.5">
+            {errosGeracaoVenda.map((erro) => <li key={erro}>{erro}</li>)}
+          </ul>
         </div>
       )}
 
@@ -1295,17 +1318,16 @@ const ContratoDialog: React.FC<Props> = ({
                           </SelectContent>
                         </Select>
                       </div>
-                      {empresaSel && <InfoDisplay label="Vendedor" value={vendedorNome || undefined} valueClassName="text-primary" />}
                     </div>
                   )}
 
                   {/* "Nº NF"/"Data NF" só na emissão de NF-e — Data da Venda aparece
                       também na proposta (mesmo padrão de Data de Aquisição em compra/
-                      consignação). Vendedor já sai na mesma linha da Empresa na
-                      proposta (acima); na NF-e (soLeitura) continua aqui. */}
+                      consignação). Vendedor sai nesta linha, abaixo da Empresa, tanto
+                      na proposta quanto na NF-e (soLeitura). */}
                   {empresaSel && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      {soLeitura && <InfoDisplay label="Vendedor" value={vendedorNome || undefined} valueClassName="text-primary" />}
+                      <InfoDisplay label="Vendedor" value={vendedorNome || undefined} valueClassName="text-primary" />
                       <InfoDisplay label="Data Venda" value={dataSinal ? format(dataSinal, 'dd/MM/yyyy', { locale: ptBR }) : undefined} valueClassName="text-primary" />
                       {ehNfe && (
                         <>
@@ -1632,7 +1654,11 @@ const ContratoDialog: React.FC<Props> = ({
                       </>
                     )}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <InfoDisplay label="Valor de Quitação" value={valorQuitacao ? `R$ ${valorQuitacao}` : '—'} />
+                      {soLeitura ? (
+                        <InfoDisplay label="Valor de Quitação" value={valorQuitacao ? `R$ ${valorQuitacao}` : '—'} />
+                      ) : (
+                        <CurrencyField label="Valor de Quitação" value={valorQuitacao} onChange={setValorQuitacao} required />
+                      )}
                       <InfoDisplay label="Valor de Fechamento" value={valorFechamento ? `R$ ${valorFechamento}` : '—'} />
                       <InfoDisplay label="Avaliador" value={avaliadorTrocaNome || undefined} valueClassName="text-primary" />
                     </div>
