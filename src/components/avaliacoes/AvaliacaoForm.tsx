@@ -1890,6 +1890,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   </>
                 )}
               </div>
+              {!isConvertendo && !permiteConsignar && (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 mt-2.5 text-xs font-medium text-amber-700 flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Esta empresa não recebe moto em consignação — só é possível dar entrada como aquisição própria.
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
