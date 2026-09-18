@@ -1171,13 +1171,17 @@ const ContratoDialog: React.FC<Props> = ({
   const valorRepasseTroca = hasTroca && avaliacaoData?.avaliacao_compra != null
     ? Math.max(Number(avaliacaoData.avaliacao_compra) - Number(avaliacaoData.previsao_custos_loja ?? 0), 0)
     : 0;
-  // O quanto a moto da troca abate do Valor Faltante — a moto do cliente entra
-  // como pagamento pelo seu valor cheio:
+  // O quanto a moto da troca abate do Valor Faltante — a base é:
   //  - com Valor de Fechamento preenchido: o próprio Valor de Fechamento;
   //  - sem Valor de Fechamento: o repasse de compra (Avaliação − Custos Loja).
+  // O Valor de Quitação (financiamento/dívida da moto do cliente) sai dessa base
+  // antes — o saldo líquido é o que de fato entra como pagamento (mesma conta já
+  // usada em ContratoCompraDialog/ContratoConsignacaoDialog: fechamento − quitação).
   const fechamentoTrocaNum = parseCurrencyInput(valorFechamento);
+  const valorQuitacaoNum = valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : 0;
+  const baseAbatimentoTroca = fechamentoTrocaNum > 0 ? fechamentoTrocaNum : valorRepasseTroca;
   const abatimentoTroca = hasTroca
-    ? (fechamentoTrocaNum > 0 ? fechamentoTrocaNum : valorRepasseTroca)
+    ? Math.max(baseAbatimentoTroca - valorQuitacaoNum, 0)
     : 0;
   const somaPagamentos = somaFormasPagamento + abatimentoTroca;
   const valorFaltante = valorTotalContrato - somaPagamentos;
@@ -1211,7 +1215,7 @@ const ContratoDialog: React.FC<Props> = ({
     // Quitação da troca e cobertura das formas de pagamento também só fecham na
     // Proposta de VENDA — no sinal ainda pode não estar tudo acertado.
     if (variant === 'venda' && hasTroca && !valorQuitacao?.trim()) {
-      errors.push('Valor de Quitação da moto do cliente (defina na avaliação — 0 se não houver)');
+      errors.push('Valor de Quitação da moto do cliente');
     }
     if (variant === 'venda' && valorFaltante > 0.005) errors.push('Formas de Pagamento');
     if (!obsContrato || !obsContrato.trim()) errors.push('Observações do Contrato');
@@ -1625,42 +1629,33 @@ const ContratoDialog: React.FC<Props> = ({
                     <Separator className="mt-2" />
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {motoAv && (
-                      <>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                          <InfoDisplay label="Marca" value={motoAv.marca} />
-                          <InfoDisplay label="Modelo" value={motoAv.modelo ? String(motoAv.modelo).toUpperCase() : undefined} />
-                          <InfoDisplay label="Ano" value={[motoAv.ano_fabricacao, motoAv.ano_modelo].filter(Boolean).join('/') || undefined} />
-                          <InfoDisplay label="Cor" value={motoAv.cor ? String(motoAv.cor).toUpperCase() : undefined} />
-                          <InfoDisplay label="Placa" value={motoAv.placa ? motoAv.placa.replace(/-/g, '') : undefined} />
-                        </div>
-                        {avaliacaoData && (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                              <InfoDisplay label="Avaliação Compra" value={formatCurrency(avaliacaoData.avaliacao_compra)} />
-                              <InfoDisplay label="Custos Loja" value={formatCurrency(avaliacaoData.previsao_custos_loja)} />
-                              <div>
-                                <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Repasse Cliente</span>
-                                <p className="text-sm font-bold text-primary">
-                                  {avaliacaoData.avaliacao_compra != null
-                                    ? formatCurrency(Math.max(avaliacaoData.avaliacao_compra - (avaliacaoData.previsao_custos_loja ?? 0), 0))
-                                    : '-'}
-                                </p>
-                              </div>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground italic">REPASSE = AVALIAÇÃO - CUSTOS LOJA</p>
-                          </div>
-                        )}
-                      </>
-                    )}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <InfoDisplay label="Avaliador" value={avaliadorTrocaNome || undefined} valueClassName="text-primary" />
+                    </div>
+                    {motoAv && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <InfoDisplay label="Marca" value={motoAv.marca} />
+                        <InfoDisplay label="Modelo" value={motoAv.modelo ? String(motoAv.modelo).toUpperCase() : undefined} />
+                        <InfoDisplay label="Ano" value={[motoAv.ano_fabricacao, motoAv.ano_modelo].filter(Boolean).join('/') || undefined} />
+                        <InfoDisplay label="Cor" value={motoAv.cor ? String(motoAv.cor).toUpperCase() : undefined} />
+                        <InfoDisplay label="Placa" value={motoAv.placa ? motoAv.placa.replace(/-/g, '') : undefined} />
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                      {avaliacaoData && (
+                        <>
+                          <InfoDisplay label="Avaliação Compra" value={formatCurrency(avaliacaoData.avaliacao_compra)} />
+                          <InfoDisplay label="Custos Loja" value={formatCurrency(avaliacaoData.previsao_custos_loja)} />
+                        </>
+                      )}
                       {soLeitura ? (
                         <InfoDisplay label="Valor de Quitação" value={valorQuitacao ? `R$ ${valorQuitacao}` : '—'} />
                       ) : (
                         <CurrencyField label="Valor de Quitação" value={valorQuitacao} onChange={setValorQuitacao} required />
                       )}
-                      <InfoDisplay label="Valor de Fechamento" value={valorFechamento ? `R$ ${valorFechamento}` : '—'} />
-                      <InfoDisplay label="Avaliador" value={avaliadorTrocaNome || undefined} valueClassName="text-primary" />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <InfoDisplay label="Valor Total (Líquido)" value={formatCurrency(abatimentoTroca)} valueClassName="text-primary" />
                     </div>
                   </CardContent>
                 </Card>
@@ -2079,7 +2074,7 @@ const ContratoDialog: React.FC<Props> = ({
                 const title = !empresaId
                   ? 'Nenhuma empresa vinculada à loja do atendimento'
                   : hasTroca && !valorQuitacao?.trim()
-                    ? 'Valor de Quitação da moto do cliente é obrigatório — defina na avaliação (0 se não houver)'
+                    ? 'Valor de Quitação da moto do cliente é obrigatório'
                     : !nfSemPendencias
                       ? 'Cadastro do cliente incompleto — resolva as pendências marcadas nos cards acima'
                       : undefined;
