@@ -366,6 +366,15 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
             action: () => nav({ tab: 'pos_venda', atendimentoId: item.atendimento_venda_id! }),
           });
         }
+        // Preço ainda pode ser alterado com sinal/venda em aberto — só trava
+        // depois que a NF-e de venda é emitida em produção.
+        if (!idsWithNfeVenda0km.has(item.id)) {
+          options.push({
+            label: 'Alterar Preço',
+            icon: <DollarSign className="h-4 w-4" />,
+            action: () => setPrecoItem(item),
+          });
+        }
         return options;
       }
     }
