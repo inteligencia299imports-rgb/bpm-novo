@@ -21,7 +21,7 @@ import AtendimentoDetail from './AtendimentoDetail';
 import AtendimentoForm from './AtendimentoForm';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
-import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import CidadeFilter, { matchesCidade, CIDADE_LOJAS, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 
 const KANBAN_COLUMNS = SITUACOES_SHOWROOM;
 
@@ -85,11 +85,27 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     const isSearching = search.trim().length > 0;
     const statuses = KANBAN_COLUMNS.map(c => c.value);
 
+    // Filtro de cidade precisa entrar na query (não só depois, em memória) —
+    // senão o .limit(50) por status corta atendimentos de outras lojas ANTES
+    // do filtro de cidade rodar, escondendo registros que deveriam aparecer
+    // (achado real: atendimento "em_aberto" de Porto Alegre sumia do kanban
+    // porque havia mais de 50 outros mais recentes de todas as lojas juntas).
+    let lojaIdsCidade: string[] | null = null;
+    if (filterCidade !== 'todos') {
+      const { data: lojaRows } = await supabase
+        .from('loja_empresas')
+        .select('id')
+        .eq('sistema', 'motos')
+        .in('loja', CIDADE_LOJAS[filterCidade]);
+      lojaIdsCidade = (lojaRows || []).map((r: any) => r.id);
+    }
+
     const buildQuery = (status?: string) => {
       let q = supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`);
       if (status) q = q.eq('situacao', status);
       if (filterInteresse !== 'todos') q = q.eq('interesse', filterInteresse);
       if (filterTemperatura !== 'todos') q = q.eq('temperatura', filterTemperatura);
+      if (lojaIdsCidade) q = q.in('loja_id', lojaIdsCidade);
       q = q.order('created_at', { ascending: false });
       if (!isSearching && status) q = q.limit(PER_STATUS_LIMIT);
       // Vendedores sempre veem apenas seus próprios atendimentos
