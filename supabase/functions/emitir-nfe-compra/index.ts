@@ -1094,6 +1094,37 @@ Deno.serve(async (req) => {
   // =====================================================================
 
   // Guards
+
+  // Moto de outra empresa (CNPJ): a moto vendida precisa pertencer à MESMA
+  // empresa do atendimento que está emitindo a NF-e de venda. Reservar/vender
+  // (sinal) uma moto de outra loja/CNPJ é permitido — só a NF-e de venda é
+  // bloqueada, porque fiscalmente a moto está no estoque do CNPJ dela, não no
+  // do CNPJ que está tentando emitir. Corrigir exige transferir a moto pra
+  // empresa do atendimento via NF-e de transferência antes (fluxo hoje só
+  // existe hardcoded pra FAG->MMATOS, tipo 'transferencia' — ainda não
+  // parametrizado de forma genérica).
+  if (ehVenda) {
+    let empresaMoto: string | null = null;
+    if (ehVenda0km) {
+      empresaMoto = (estoqueMoto as any)?.empresa_id ?? null;
+    } else {
+      const motoLojaId = (estoqueMoto as any)?.loja_id as string | null;
+      if (motoLojaId) {
+        const { data: lojaMoto } = await admin
+          .from('loja_empresas')
+          .select('empresa_id')
+          .eq('id', motoLojaId)
+          .maybeSingle();
+        empresaMoto = lojaMoto?.empresa_id ?? null;
+      }
+    }
+    if (empresaMoto && empresaMoto !== empresaId) {
+      return jsonResponse({
+        error: 'Esta moto pertence a outra empresa (CNPJ diferente do atendimento). É necessário transferir a moto para a empresa do atendimento antes de emitir a NF-e de venda.',
+      }, 409);
+    }
+  }
+
   let contratoVendaId: string | null = null;
   // Ambiente da NF de consignação referenciada (só setado quando tipo ===
   // 'devolucao_consignacao', abaixo) — usado no guard de produção mais
