@@ -420,15 +420,15 @@ async function registrarPosAutorizacao(
   venc.setDate(venc.getDate() + DIAS_VENCIMENTO);
   const vencStr = venc.toISOString().slice(0, 10);
 
-  type ParcelaDesejada = { numero_parcela: number; valor: number; tipo: string; forma_pagamento_id: string; pago?: boolean; data_vencimento?: string };
+  type ParcelaDesejada = { numero_parcela: number; valor: number; tipo: string; forma_pagamento_id: string; data_vencimento?: string; pago?: boolean };
   const compromissoNatureza = cfg.compromissoTipo === 'receber' ? 'receita' : 'despesa';
   let parcelasDesejadas: ParcelaDesejada[] = [];
   let obsCompromisso: string | null = null;
   // Vínculo do compromisso criado na PROPOSTA (gerar-compromissos-proposta), p/ reconciliar.
   let contratoVendaId: string | null = null;
-  // Troca sem quitação: o repasse ao cliente já foi liquidado pela própria moto
-  // dada em pagamento — a despesa nasce quitada. Com parcela de quitação, fica em aberto.
-  let compromissoJaPago = false;
+  // Header do compromisso: 'pago' só quando TODAS as parcelas nascem pagas (troca sem sobra em aberto).
+  let statusCompromissoTroca: 'pago' | 'em_aberto' | null = null;
+  let ehTrocaCompromisso = false;
   const dataPagamento = new Date(nfeRow.data_emissao || dataEmissao || Date.now()).toISOString().slice(0, 10);
 
   const obsMoto = (marca?: string | null, modelo?: string | null, placa?: string | null) => {
@@ -527,7 +527,7 @@ async function registrarPosAutorizacao(
     const { data: atTroca } = avFin?.atendimento_id
       ? await admin.from('atendimentos_motos').select('interesse').eq('id', avFin.atendimento_id).maybeSingle()
       : { data: null };
-    const ehTrocaCompromisso = (atTroca as any)?.interesse === 'trocar';
+    ehTrocaCompromisso = (atTroca as any)?.interesse === 'trocar';
     const { data: custosCli } = await admin
       .from('custos_oficina')
       .select('responsavel, valor_previsto, valor_executado')
@@ -541,20 +541,58 @@ async function registrarPosAutorizacao(
     const custosClientePrev = Number(avFin?.previsao_custos_cliente ?? 0);
     const valorRepasse = Math.max(fechamento - quitacao - custosClientePrev - custosClienteOficina, 0);
 
-    // Com quitação (financiamento a quitar): parcela à parte por BOLETO; o repasse fica no Pix.
-    parcelasDesejadas = quitacao > 0
-      ? [
-          { numero_parcela: 1, valor: quitacao, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID },
-          { numero_parcela: 2, valor: valorRepasse, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_ID },
-        ]
-      : [
-          { numero_parcela: 1, valor: valorRepasse, tipo: 'unico', forma_pagamento_id: FORMA_PAGAMENTO_ID },
-        ];
-    // Troca SEM parcela de quitação: a despesa do repasse nasce quitada (a própria
-    // moto dada em pagamento liquidou). Com quitação, fica em aberto (há pagamento real).
-    if (ehTrocaCompromisso && quitacao <= 0) {
-      compromissoJaPago = true;
-      parcelasDesejadas = parcelasDesejadas.map((p) => ({ ...p, pago: true }));
+    if (ehTrocaCompromisso) {
+      // Troca (moto entra como parte de pagamento): quitação do financiamento
+      // (se houver) sempre em aberto. Repasse de equity nasce PAGO até o limite
+      // do valor de venda da moto comprada; só a sobra que exceder esse valor
+      // vira parcela em aberto (dinheiro real ainda devido ao cliente).
+      const { data: contratosAtVenda } = avFin?.atendimento_id
+        ? await admin
+            .from('contratos')
+            .select('id, ipva_tipo')
+            .eq('atendimento_id', avFin.atendimento_id)
+            .order('created_at', { ascending: false })
+        : { data: [] };
+      const contratoVendaTroca = ((contratosAtVenda || []) as any[]).find((c) => c.ipva_tipo !== 'COMPRA') ?? null;
+      const { data: formasVenda } = contratoVendaTroca?.id
+        ? await admin
+            .from('formas_pagamento_contrato')
+            .select('tipo, valor_total, valor_entrada, valor_financiado')
+            .eq('contrato_id', contratoVendaTroca.id)
+        : { data: [] };
+      const valorVenda = ((formasVenda || []) as any[]).reduce((s, f) => {
+        if (String(f.tipo ?? '').toLowerCase().includes('financiamento')) {
+          return s + Number(f.valor_entrada ?? 0) + Number(f.valor_financiado ?? 0);
+        }
+        return s + Number(f.valor_total ?? 0);
+      }, 0);
+
+      const diferenca = Math.min(Math.max(fechamento - valorVenda, 0), valorRepasse);
+      const restante = valorRepasse - diferenca;
+      const itens: { valor: number; forma_pagamento_id: string; pago: boolean }[] = [];
+      if (quitacao > 0) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, pago: false });
+      if (diferenca > 0) itens.push({ valor: diferenca, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: false });
+      if (restante > 0) itens.push({ valor: restante, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: true });
+      if (itens.length === 0) return;
+      const tipoTroca = itens.length > 1 ? 'parcelado' : 'unico';
+      parcelasDesejadas = itens.map((it, i) => ({
+        numero_parcela: i + 1,
+        valor: it.valor,
+        tipo: tipoTroca,
+        forma_pagamento_id: it.forma_pagamento_id,
+        pago: it.pago,
+      }));
+      statusCompromissoTroca = itens.every((it) => it.pago) ? 'pago' : 'em_aberto';
+    } else {
+      // Com quitação (financiamento a quitar): parcela à parte por BOLETO; o repasse fica no Pix.
+      parcelasDesejadas = quitacao > 0
+        ? [
+            { numero_parcela: 1, valor: quitacao, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID },
+            { numero_parcela: 2, valor: valorRepasse, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_ID },
+          ]
+        : [
+            { numero_parcela: 1, valor: valorRepasse, tipo: 'unico', forma_pagamento_id: FORMA_PAGAMENTO_ID },
+          ];
     }
     obsCompromisso = obsMoto(avFin?.marca, avFin?.modelo, avFin?.placa);
   }
@@ -593,7 +631,7 @@ async function registrarPosAutorizacao(
         numero_documento: nfeRow.numero ? `NF-${nfeRow.numero}` : null,
         observacoes: obsCompromisso,
         updated_by: callerId,
-        ...(compromissoJaPago ? { status_compromisso: 'pago' } : {}),
+        ...(statusCompromissoTroca ? { status_compromisso: statusCompromissoTroca } : {}),
       })
       .eq('id', compId)
       .neq('status_compromisso', 'cancelada');
@@ -613,9 +651,9 @@ async function registrarPosAutorizacao(
         plano_conta_id: cfg.planoContaId,
         centro_custo_id: cfg.centroCustoId,
         observacoes: obsCompromisso,
-        status_compromisso: compromissoJaPago ? 'pago' : 'em_aberto',
+        status_compromisso: statusCompromissoTroca ?? 'em_aberto',
         nfe_entrada_id: nfeRow.id,
-        origem: porAvaliacao ? 'compra' : 'venda',
+        origem: porAvaliacao ? (ehTrocaCompromisso ? 'troca' : 'compra') : 'venda',
         ...(porAvaliacao ? { avaliacao_id: entityId } : (contratoVendaId ? { contrato_id: contratoVendaId } : {})),
         numero_compromisso: (numeroCompromisso as string | null) ?? null,
         numero_documento: nfeRow.numero ? `NF-${nfeRow.numero}` : null,
@@ -658,15 +696,6 @@ async function registrarPosAutorizacao(
 
   if (parcelasAInserir.length > 0) {
     await admin.from('compromissos_parcelas').insert(parcelasAInserir);
-  }
-
-  // Troca sem quitação: garante o compromisso quitado mesmo em reprocessamento
-  // (não mexe se já foi cancelado).
-  if (compromissoJaPago) {
-    await admin.from('compromissos')
-      .update({ status_compromisso: 'pago' })
-      .eq('id', compId)
-      .neq('status_compromisso', 'cancelada');
   }
 }
 
