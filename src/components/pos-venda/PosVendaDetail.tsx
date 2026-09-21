@@ -31,6 +31,7 @@ import ContratoDialog from '@/components/showroom/ContratoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import TransferenciaFagMmatosDialog from '@/components/showroom/TransferenciaFagMmatosDialog';
+import TransferenciaEntreEmpresasDialog from '@/components/showroom/TransferenciaEntreEmpresasDialog';
 import StatusTimeline, { defaultFormatStatusLabel } from '@/components/shared/StatusTimeline';
 import { formatPersonName, firstLastName, cn, formatDataNascimento } from '@/lib/utils';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
@@ -111,6 +112,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [atpvOpen, setAtpvOpen] = useState(false);
   const [trocaNfeAval, setTrocaNfeAval] = useState<any | null>(null);
   const [trocaTransferenciaAval, setTrocaTransferenciaAval] = useState<any | null>(null);
+  const [cnpjTransferenciaAval, setCnpjTransferenciaAval] = useState<any | null>(null);
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [vendedorNome, setVendedorNome] = useState<string | null>(null);
@@ -183,6 +185,26 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     const data = flattenMarcaModelo(raw as any);
     setProcessoOpen(false);
     setTrocaTransferenciaAval(data);
+  };
+
+  // Moto seminova de outra empresa (CNPJ diferente do atendimento vendendo):
+  // emite a NF-e de transferência entre as duas empresas do grupo — mesma
+  // tela/padrão da transferência FAG->MMATOS, mas origem/destino dinâmicos.
+  const abrirNfeTransferenciaCnpj = async (avaliacaoId: string) => {
+    const { data: raw } = await supabase
+      .from('avaliacoes')
+      .select(`*, ${MARCA_MODELO_SELECT}`)
+      .eq('id', avaliacaoId)
+      .maybeSingle();
+    if (!raw) return;
+    const data = flattenMarcaModelo(raw as any);
+    const { data: estOrigem } = await supabase
+      .from('estoque_motos').select('loja_id').eq('avaliacao_id', avaliacaoId).maybeSingle();
+    const { data: lojaOrigem } = estOrigem?.loja_id
+      ? await supabase.from('loja_empresas').select('loja').eq('id', estOrigem.loja_id).maybeSingle()
+      : { data: null };
+    setProcessoOpen(false);
+    setCnpjTransferenciaAval({ ...data, _origemLoja: lojaOrigem?.loja ?? null, _destinoLoja: (item as any).loja ?? null });
   };
 
   const moto = item.avaliacoes?.[0];
@@ -562,6 +584,18 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         onOpenChange={(o) => { if (!o) setTrocaTransferenciaAval(null); }}
         avaliacaoId={trocaTransferenciaAval.id}
         moto={trocaTransferenciaAval}
+      />
+    );
+  }
+  if (!isIntermParte2 && cnpjTransferenciaAval) {
+    return (
+      <TransferenciaEntreEmpresasDialog
+        open
+        onOpenChange={(o) => { if (!o) setCnpjTransferenciaAval(null); }}
+        avaliacaoId={cnpjTransferenciaAval.id}
+        moto={cnpjTransferenciaAval}
+        origemNome={cnpjTransferenciaAval._origemLoja}
+        destinoNome={cnpjTransferenciaAval._destinoLoja}
       />
     );
   }
@@ -1187,6 +1221,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         onEmitirNfe={() => { setProcessoOpen(false); setNfeVendaOpen(true); }}
         onEmitirNfeTroca={abrirNfeTroca}
         onEmitirNfeTransferencia={abrirNfeTransferencia}
+        onEmitirNfeTransferenciaCnpj={abrirNfeTransferenciaCnpj}
         onEmitirAtpv={moto0km ? () => { setProcessoOpen(false); setAtpvOpen(true); } : undefined}
         onNavigateToPosCompra={onNavigateToPosCompra}
         vendaBloqueadaAprovacao={bloqueadoAprovacao}

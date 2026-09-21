@@ -25,6 +25,15 @@ const DIAS_VENCIMENTO = 7;
 const FAG_EMPRESA_ID = '30496c3b-721f-4795-98fd-2785d3821f3b';
 const MMATOS_FORNECEDOR_ID = '5e86c319-7bef-4508-8402-9ff12705f919'; // clientes_fornecedores (CNPJ 21.194.795/0001-96)
 
+// Transferência genérica entre empresas do grupo (qualquer origem -> qualquer
+// destino), usada quando uma moto é vendida por uma empresa diferente da dona
+// do estoque (CNPJ diferente) — ver guard em "acao: emitir" (ehVenda). Cada
+// empresa cadastra sua própria natureza de "saída por transferência" com o
+// nome que já usa hoje (achado: FAG e Porto Alegre usam nomes diferentes para
+// o mesmo tipo de natureza) — por isso a busca aceita qualquer um dos nomes
+// já em uso, em vez de uma string fixa única.
+const TRANSFERENCIA_CNPJ_NATUREZA_DESCRICOES = ['TRANSFERÊNCIA ENTRE EMPRESAS', 'TRANSFERENCIA DE MERCADORIA'];
+
 /** marca/modelo agora vem do catalogo via embed `marca:marca_id(nome)`.
  * Aceita tambem string crua (janela em que a coluna-ponte ainda existe). */
 const nomeCat = (v: any): string | null =>
@@ -56,7 +65,7 @@ function stRetidoDoXmlEntrada(xml: string): { bc: number; subst: number; ret: nu
   return { bc, subst: subst ?? 0, ret };
 }
 
-type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia';
+type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_cnpj';
 
 interface OperacaoConfig {
   refPrefix: string;
@@ -134,6 +143,20 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     naturezaDescricao: 'TRANSFERÊNCIA ENTRE EMPRESAS',
     statusEntity: 'pos_compra',
     statusHist: 'nfe_transferencia_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'avaliacao',
+  },
+  // Transferência genérica entre empresas do grupo (CNPJ diferente do
+  // atendimento que vai vender a moto) — mesma ideia da transferência FAG ->
+  // MMATOS acima, mas com origem/destino resolvidos dinamicamente em vez de
+  // fixos. Também sem etapa de checklist própria e sem compromisso financeiro.
+  transferencia_cnpj: {
+    refPrefix: 'transferencia-cnpj',
+    naturezaDescricao: 'TRANSFERÊNCIA ENTRE EMPRESAS', // não usado direto — ver TRANSFERENCIA_CNPJ_NATUREZA_DESCRICOES
+    statusEntity: 'pos_compra',
+    statusHist: 'nfe_transferencia_cnpj_emitida',
     avStatusField: null,
     avStatusEmAndamento: '',
     criaCompromisso: false,
@@ -367,6 +390,24 @@ async function registrarPosAutorizacao(
       changed_by_name: callerName,
       observacoes: `NF-e nº ${numero ?? '-'} série ${serie ?? '-'}`,
     });
+  }
+
+  // Transferência entre CNPJ autorizada: a moto passa a pertencer, dali em
+  // diante, à loja/empresa que recebeu (a mesma que reservou a venda) — sem
+  // isso, o guard de "moto de outra empresa" na venda nunca liberaria mesmo
+  // depois da transferência. Recalcula o destino aqui (em vez de receber por
+  // parâmetro) pra funcionar também quando a autorização chega via "consultar"
+  // (polling), não só na própria chamada de "emitir".
+  if (operacao === 'transferencia_cnpj') {
+    const { data: estoqueOrigemPos } = await admin
+      .from('estoque_motos').select('atendimento_venda_id').eq('avaliacao_id', entityId).maybeSingle();
+    const atendimentoVendaIdPos = estoqueOrigemPos?.atendimento_venda_id as string | null;
+    const { data: atendimentoVendaPos } = atendimentoVendaIdPos
+      ? await admin.from('atendimentos_motos').select('loja_id').eq('id', atendimentoVendaIdPos).maybeSingle()
+      : { data: null };
+    if (atendimentoVendaPos?.loja_id) {
+      await admin.from('estoque_motos').update({ loja_id: atendimentoVendaPos.loja_id }).eq('avaliacao_id', entityId);
+    }
   }
 
   // Marca a etapa do checklist como concluida (operações sem etapa própria,
@@ -709,7 +750,7 @@ Deno.serve(async (req) => {
 
   const acao: 'consultar' | 'cancelar' | 'emitir' =
     body.acao === 'consultar' ? 'consultar' : body.acao === 'cancelar' ? 'cancelar' : 'emitir';
-  const tipo: Operacao = (['compra', 'consignacao', 'devolucao_consignacao', 'venda_seminova', 'venda_0km', 'transferencia'] as const).includes(body.tipo as any)
+  const tipo: Operacao = (['compra', 'consignacao', 'devolucao_consignacao', 'venda_seminova', 'venda_0km', 'transferencia', 'transferencia_cnpj'] as const).includes(body.tipo as any)
     ? (body.tipo as Operacao)
     : 'compra';
   const cfg = CFG[tipo];
@@ -717,7 +758,7 @@ Deno.serve(async (req) => {
   // Compra/consignação/devolução simbólica/transferência de moto seminova
   // entram no departamento "motos_seminovas" (é sempre a mesma moto usada da
   // compra — a transferência não vira "moto nova").
-  const departamento = (tipo === 'compra' || tipo === 'consignacao' || tipo === 'devolucao_consignacao' || tipo === 'transferencia') ? 'motos_seminovas' : 'motos';
+  const departamento = (tipo === 'compra' || tipo === 'consignacao' || tipo === 'devolucao_consignacao' || tipo === 'transferencia' || tipo === 'transferencia_cnpj') ? 'motos_seminovas' : 'motos';
 
   const avaliacaoId = typeof body.avaliacao_id === 'string' ? body.avaliacao_id : '';
   const atendimentoIdBody = typeof body.atendimento_id === 'string' ? body.atendimento_id : '';
@@ -1096,6 +1137,50 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Transferência entre CNPJ (genérica): origem é sempre a empresa do
+  // atendimento DONO da moto (`empresaId`, já resolvido acima a partir da
+  // própria avaliação — ver bloco `else` de carregamento). Destino é a
+  // empresa do atendimento que RESERVOU essa moto pra vender (sinal/venda em
+  // outra loja/CNPJ) — resolvido via estoque_motos.atendimento_venda_id, não
+  // um parâmetro do front. Sem compromisso financeiro (mesma forma da
+  // transferência FAG->MMATOS).
+  let destinatarioIdCnpj: string | null = null;
+  let destinoLojaIdCnpj: string | null = null;
+  if (tipo === 'transferencia_cnpj') {
+    const { data: estoqueOrigem } = await admin
+      .from('estoque_motos')
+      .select('atendimento_venda_id')
+      .eq('avaliacao_id', avaliacaoId)
+      .maybeSingle();
+    const atendimentoVendaId = estoqueOrigem?.atendimento_venda_id as string | null;
+    if (!atendimentoVendaId) {
+      return jsonResponse({ error: 'Esta moto ainda não está reservada (sinal/venda) para nenhum atendimento — não há para onde transferir.' }, 409);
+    }
+    const { data: atendimentoVenda } = await admin
+      .from('atendimentos_motos')
+      .select('loja_id')
+      .eq('id', atendimentoVendaId)
+      .maybeSingle();
+    const { data: lojaVenda } = atendimentoVenda?.loja_id
+      ? await admin.from('loja_empresas').select('empresa_id').eq('id', atendimentoVenda.loja_id).maybeSingle()
+      : { data: null };
+    const empresaDestinoId = lojaVenda?.empresa_id as string | null;
+    if (!empresaDestinoId) return jsonResponse({ error: 'Loja da venda sem empresa vinculada.' }, 400);
+    if (empresaDestinoId === empresaId) {
+      return jsonResponse({ error: 'Esta moto já pertence à mesma empresa do atendimento de venda — transferência não é necessária.' }, 409);
+    }
+    const { data: empresaDestino } = await admin.from('empresas').select('cnpj').eq('id', empresaDestinoId).maybeSingle();
+    const cnpjDestinoDigits = String(empresaDestino?.cnpj ?? '').replace(/\D/g, '');
+    const { data: fornecedorDestino } = cnpjDestinoDigits
+      ? await admin.from('clientes_fornecedores').select('id').eq('cpf_cnpj', cnpjDestinoDigits).maybeSingle()
+      : { data: null };
+    if (!fornecedorDestino?.id) {
+      return jsonResponse({ error: 'Empresa de destino não tem cadastro de cliente/fornecedor pelo CNPJ dela — cadastre antes de transferir.' }, 409);
+    }
+    destinatarioIdCnpj = fornecedorDestino.id;
+    destinoLojaIdCnpj = atendimentoVenda?.loja_id ?? null;
+  }
+
   let contratoVendaId: string | null = null;
   // Ambiente da NF de consignação referenciada (só setado quando tipo ===
   // 'devolucao_consignacao', abaixo) — usado no guard de produção mais
@@ -1181,6 +1266,16 @@ Deno.serve(async (req) => {
     if (!compraOkTransf) {
       return jsonResponse({ error: 'A NF-e de compra desta moto ainda não foi emitida.' }, 409);
     }
+  } else if (tipo === 'transferencia_cnpj') {
+    // Mesmo pré-requisito da transferência FAG->MMATOS: só existe algo pra
+    // transferir depois da compra dessa moto estar autorizada (em qualquer
+    // ambiente) — a exigência de PRODUÇÃO fica no bloco `ambiente==='producao'` abaixo.
+    const { data: compraOkTransfCnpj } = await admin
+      .from('nfe_entradas').select('id').eq('avaliacao_id', avaliacaoId)
+      .eq('operacao', 'compra').eq('status', 'processada').limit(1).maybeSingle();
+    if (!compraOkTransfCnpj) {
+      return jsonResponse({ error: 'A NF-e de compra desta moto ainda não foi emitida.' }, 409);
+    }
   } else {
     // venda
     // Moto ainda "em consignação" (tipo_aquisicao='consignada' pra sempre — não
@@ -1242,12 +1337,12 @@ Deno.serve(async (req) => {
     // Transferência (FAG -> MMATOS): só emite em produção depois da NF-e de
     // COMPRA dessa mesma avaliação (a moto da troca) já estar em produção —
     // não faz sentido "transferir" uma moto que ainda não foi comprada.
-    if (tipo === 'transferencia') {
+    if (tipo === 'transferencia' || tipo === 'transferencia_cnpj') {
       const { data: compraProdTransf } = await admin
         .from('nfe_entradas').select('id').eq('avaliacao_id', entityId).eq('operacao', 'compra')
         .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
       if (!compraProdTransf) {
-        return jsonResponse({ error: 'Emita a NF-e de compra da moto da troca em produção antes de emitir a transferência.' }, 409);
+        return jsonResponse({ error: 'Emita a NF-e de compra desta moto em produção antes de emitir a transferência.' }, 409);
       }
     }
     // Troca: a NF-e de venda em produção só sai depois da NF-e de COMPRA da moto
@@ -1303,13 +1398,19 @@ Deno.serve(async (req) => {
     : ((nfeExistente?.ref_externa as string | undefined) || ref);
 
   // Destinatario da NF: entrada = PF vendedora/consignante; venda = cliente
-  // comprador — nos dois casos e o cliente_id do atendimento. Transferência é
-  // a única exceção: destino fixo é a MMATOS (empresa do grupo), não o
-  // cliente do atendimento (que nem participa dessa operação).
+  // comprador — nos dois casos e o cliente_id do atendimento. Transferência
+  // (FAG->MMATOS ou entre CNPJ genérica) é a exceção: destino é uma empresa do
+  // grupo (MMATOS fixo, ou resolvido dinamicamente em destinatarioIdCnpj),
+  // não o cliente do atendimento (que nem participa dessa operação).
+  const destinatarioId = tipo === 'transferencia'
+    ? MMATOS_FORNECEDOR_ID
+    : tipo === 'transferencia_cnpj'
+      ? destinatarioIdCnpj
+      : atendimento.cliente_id;
   const { data: fornecedor } = await admin
     .from('clientes_fornecedores')
     .select('id, nome_razao_social, cpf_cnpj, tipo_pessoa, telefone, telefone_comercial, rg, contribuinte_icms, inscricao_estadual, isento_inscricao_estadual, clientes_fornecedores_enderecos(*)')
-    .eq('id', tipo === 'transferencia' ? MMATOS_FORNECEDOR_ID : atendimento.cliente_id)
+    .eq('id', destinatarioId)
     .maybeSingle();
   if (!fornecedor) return jsonResponse({ error: 'Cliente não encontrado' }, 409);
   // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma linha
@@ -1427,11 +1528,11 @@ Deno.serve(async (req) => {
     // consignação já autorizada — não é editável na tela (evita divergir do que
     // a SEFAZ já tem registrado como recebido).
     valor = Number(av.valor_consignacao_nota ?? av.avaliacao_consignacao ?? 0);
-  } else if (tipo === 'transferencia') {
-    // Transferência contábil pra MMATOS repassa o MESMO valor da NF de compra
-    // dessa moto (gravado em avaliacoes.valor_nf_entrada quando a compra foi
-    // autorizada, linha ~1353) — não é editável na tela, não é uma venda com
-    // margem nova.
+  } else if (tipo === 'transferencia' || tipo === 'transferencia_cnpj') {
+    // Transferência contábil (pra MMATOS ou entre CNPJ genérica) repassa o
+    // MESMO valor da NF de compra dessa moto (gravado em
+    // avaliacoes.valor_nf_entrada quando a compra foi autorizada) — não é
+    // editável na tela, não é uma venda com margem nova.
     valor = Number(av.valor_nf_entrada ?? 0);
   } else {
     // venda: preco de venda da moto (estoque_motos.valor_venda); 0km cai p/ tabela.
@@ -1462,22 +1563,29 @@ Deno.serve(async (req) => {
     : viaVendaPosConsignacao
       ? 'Venda de Mercadoria Recebida Anteriormente Em Consignacao'
       : cfg.naturezaDescricao;
-  const { data: natureza } = await admin
-    .from('naturezas_operacao')
-    .select(
-      'id, descricao, serie, tipo, indicador_presenca, consumidor_final, operacao_devolucao, ' +
-        'informacoes_complementares, informacoes_adicionais_fisco, ' +
-        'naturezas_operacao_regras(imposto, cfop, situacao_tributaria, aliquota, reducao_base_calculo, ' +
-        'aliquota_fcp, aliquota_interna_destino, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem, ' +
-        'natureza_operacao_descricao, indicador_presenca, tipo_atendimento, codigo_beneficio_fiscal, ' +
-        'classificacao_tributaria, cbs_aliquota, ibs_uf_aliquota, ibs_mun_aliquota, percentual_reducao, ' +
-        'aliquota_icms_efetiva, reducao_base_calculo_efetiva, aliquota_suportada_consumidor_final)',
-    )
-    .eq('empresa_id', empresaId)
-    .eq('descricao', naturezaDescricaoEfetiva)
-    .eq('ativo', true)
-    .maybeSingle();
-  if (!natureza) return jsonResponse({ error: `Natureza de operação "${naturezaDescricaoEfetiva}" não configurada ou inativa.` }, 409);
+  const naturezaSelectCols =
+    'id, descricao, serie, tipo, indicador_presenca, consumidor_final, operacao_devolucao, ' +
+    'informacoes_complementares, informacoes_adicionais_fisco, ' +
+    'naturezas_operacao_regras(imposto, cfop, situacao_tributaria, aliquota, reducao_base_calculo, ' +
+    'aliquota_fcp, aliquota_interna_destino, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem, ' +
+    'natureza_operacao_descricao, indicador_presenca, tipo_atendimento, codigo_beneficio_fiscal, ' +
+    'classificacao_tributaria, cbs_aliquota, ibs_uf_aliquota, ibs_mun_aliquota, percentual_reducao, ' +
+    'aliquota_icms_efetiva, reducao_base_calculo_efetiva, aliquota_suportada_consumidor_final)';
+  // Transferência entre CNPJ: cada empresa já cadastrou sua natureza de saída
+  // por transferência com um nome próprio (não convergido ainda) — aceita
+  // qualquer um dos nomes conhecidos em vez de um único fixo.
+  const { data: natureza } = tipo === 'transferencia_cnpj'
+    ? await admin.from('naturezas_operacao').select(naturezaSelectCols)
+        .eq('empresa_id', empresaId).in('descricao', TRANSFERENCIA_CNPJ_NATUREZA_DESCRICOES).eq('ativo', true).maybeSingle()
+    : await admin.from('naturezas_operacao').select(naturezaSelectCols)
+        .eq('empresa_id', empresaId).eq('descricao', naturezaDescricaoEfetiva).eq('ativo', true).maybeSingle();
+  if (!natureza) {
+    return jsonResponse({
+      error: tipo === 'transferencia_cnpj'
+        ? 'Esta empresa ainda não tem uma natureza de operação de "transferência entre empresas" cadastrada — cadastre antes de transferir.'
+        : `Natureza de operação "${naturezaDescricaoEfetiva}" não configurada ou inativa.`,
+    }, 409);
+  }
 
   const regrasTodas = (natureza.naturezas_operacao_regras || []) as Array<
     RegraFiscal & { destino_ufs: string[] | null; ordem: number | null; tipo_atendimento: string | null }
@@ -1690,7 +1798,7 @@ Deno.serve(async (req) => {
     notaReferenciada,
     // Sem movimentação financeira real — devolução simbólica e transferência
     // pra MMATOS são as duas "saídas" sem pagamento de verdade do cliente.
-    semPagamentoReal: tipo === 'devolucao_consignacao' || tipo === 'transferencia',
+    semPagamentoReal: tipo === 'devolucao_consignacao' || tipo === 'transferencia' || tipo === 'transferencia_cnpj',
   });
 
   // FKs da nfe_entradas conforme a operacao.
@@ -1742,7 +1850,7 @@ Deno.serve(async (req) => {
     const linhaErro = {
       empresa_id: empresaId,
       ...nfeFks,
-      fornecedor_id: atendimento.cliente_id,
+      fornecedor_id: destinatarioId,
       natureza_operacao_id: natureza.id,
       ref_externa: refEmissao,
       ambiente,
@@ -1766,7 +1874,7 @@ Deno.serve(async (req) => {
   const linha: Record<string, unknown> = {
     empresa_id: empresaId,
     ...nfeFks,
-    fornecedor_id: atendimento.cliente_id,
+    fornecedor_id: destinatarioId,
     natureza_operacao_id: natureza.id,
     ref_externa: refEmissao,
     ambiente,
