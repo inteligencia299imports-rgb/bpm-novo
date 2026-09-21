@@ -31,7 +31,7 @@ interface EstoqueRow {
   id: string; atendimento_venda_id: string | null; avaliacao_id: string | null;
   tipo: string | null; marca: string | null; modelo: string | null; placa: string | null;
   preco: number | null; preco_acao: number | null; valor_venda: number | null; data_venda: string | null;
-  valor_custo?: number | null;
+  valor_custo?: number | null; chassi?: string | null; icms_st_valor_retido?: number | null;
   updated_at: string | null; created_at: string | null;
 }
 interface AvaliacaoRow {
@@ -199,12 +199,18 @@ export function computeRowMetrics(atend: AtendimentoRow, idx: ShowroomIndexes, m
   const tipo = estoque?.tipo || tipoDefault(atend.loja);
   const modelo = [estoque?.marca, estoque?.modelo].filter(Boolean).join(' ')
     || [interesse?.marca, interesse?.modelo].filter(Boolean).join(' ') || '-';
-  const placa = estoque?.placa || '-';
+  // 0km não tem placa própria ainda — mostra o chassi no lugar.
+  const placa = estoque?.placa || estoque?.chassi || '-';
 
   const costs = avaliacao ? (idx.costsByAvaliacao.get(avaliacao.id) || emptyCosts()) : emptyCosts();
   const opLoja = idx.opLojaByAtend.get(atend.id) || 0;
   const contratoV = idx.contratoByAtend.get(atend.id);
   const consignanteV = idx.consignanteByAtend.get(atend.id);
+  // Custo do produto pra moto 0km: estoque_motos_novas.valor_custo é só o
+  // vProd do item na NF-e da montadora — não inclui o ICMS-ST retido, que é
+  // parte do custo real pago (confirmado batendo com o vNF da nota real).
+  // Seminova não tem essa coluna, então soma 0 e não muda nada pra ela.
+  const custoProdutoEstoque = Number(estoque?.valor_custo || 0) + Number(estoque?.icms_st_valor_retido || 0);
 
   let quantoVende: number;
   let valorFechamento: number;
@@ -212,13 +218,13 @@ export function computeRowMetrics(atend: AtendimentoRow, idx: ShowroomIndexes, m
 
   if (mode === 'venda') {
     quantoVende = Number(avaliacao?.quanto_vende || 0) || Number(estoque?.preco || 0);
-    valorFechamento = Number(avaliacao?.valor_fechamento || 0) || Number(estoque?.valor_custo || 0);
+    valorFechamento = Number(avaliacao?.valor_fechamento || 0) || custoProdutoEstoque;
     valorVendaReal = Number(estoque?.valor_venda ?? estoque?.preco ?? 0);
   } else {
     quantoVende = nz(avaliacao?.quanto_vende) ?? nz(estoque?.preco_acao) ?? nz(estoque?.preco) ?? nz(estoque?.valor_venda) ?? 0;
     valorFechamento = nz(avaliacao?.valor_fechamento) ?? nz(consignanteV) ?? nz(contratoV)
       ?? (tipo === 'consignada' ? nz(avaliacao?.avaliacao_consignacao) : nz(avaliacao?.avaliacao_compra))
-      ?? nz(estoque?.valor_custo) ?? 0;
+      ?? nz(custoProdutoEstoque) ?? 0;
     valorVendaReal = Number(estoque?.valor_venda ?? estoque?.preco_acao ?? estoque?.preco ?? 0);
   }
 
