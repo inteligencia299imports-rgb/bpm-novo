@@ -123,7 +123,15 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
 
     if (search.trim()) {
       const s = search.trim().toLowerCase();
-      filtered = filtered.filter((a: any) => [a.cliente?.nome_razao_social, a.cliente?.telefone, a.loja].some(f => f && String(f).toLowerCase().includes(s)));
+      const sAlfanum = s.replace(/[^a-z0-9]/g, '');
+      filtered = filtered.filter((a: any) => {
+        if ([a.cliente?.nome_razao_social, a.cliente?.telefone, a.loja].some(f => f && String(f).toLowerCase().includes(s))) return true;
+        if (!sAlfanum) return false;
+        const moto = a._estoqueMoto;
+        const placa = String(moto?.placa ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const chassi = String(moto?.chassi ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return (!!placa && placa.includes(sAlfanum)) || (!!chassi && chassi.includes(sAlfanum));
+      });
     }
     if (filterCidade !== 'todos') {
       filtered = filtered.filter((a: any) => matchesCidade(a.loja, filterCidade));

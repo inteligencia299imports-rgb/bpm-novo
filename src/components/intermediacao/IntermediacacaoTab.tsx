@@ -112,7 +112,19 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
       }
     }
 
-    if (search.trim()) { const s = search.trim().toLowerCase(); filtered = filtered.filter((a: any) => { const owner = a._proprietario; return [a.cliente?.nome_razao_social, a.cliente?.telefone, a.loja, owner?.cliente?.nome_razao_social, owner?.cliente?.telefone].some(f => f && String(f).toLowerCase().includes(s)); }); }
+    if (search.trim()) {
+      const s = search.trim().toLowerCase();
+      const sAlfanum = s.replace(/[^a-z0-9]/g, '');
+      filtered = filtered.filter((a: any) => {
+        const owner = a._proprietario;
+        if ([a.cliente?.nome_razao_social, a.cliente?.telefone, a.loja, owner?.cliente?.nome_razao_social, owner?.cliente?.telefone].some(f => f && String(f).toLowerCase().includes(s))) return true;
+        if (!sAlfanum) return false;
+        const moto = a._estoqueMoto;
+        const placa = String(moto?.placa ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const chassi = String(moto?.chassi ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return (!!placa && placa.includes(sAlfanum)) || (!!chassi && chassi.includes(sAlfanum));
+      });
+    }
 
     // Auto-transition: check autorizacao_pagamento items whose previsão date is > 1 day past
     const autoTransitionIds = filtered
