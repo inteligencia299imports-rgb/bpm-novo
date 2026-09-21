@@ -880,12 +880,20 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                             )}
                           </div>
                           {item.loja?.toLowerCase().startsWith('ducati') ? (
-                            (mi.chassi || estItem.chassi) && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <span className="text-muted-foreground">Chassi</span>
-                                <span className="font-medium text-foreground">{mi.chassi || estItem.chassi}</span>
-                              </div>
-                            )
+                            <div className="space-y-1">
+                              {(mi.chassi || estItem.chassi) && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span className="text-muted-foreground">Chassi</span>
+                                  <span className="font-medium text-foreground">{mi.chassi || estItem.chassi}</span>
+                                </div>
+                              )}
+                              {estItem.empresa && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span className="text-muted-foreground">Empresa</span>
+                                  <span className="text-foreground">{estItem.empresa}</span>
+                                </div>
+                              )}
+                            </div>
                           ) : (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                             {estItem.fonte === '0km' ? (
