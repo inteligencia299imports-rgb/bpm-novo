@@ -31,7 +31,7 @@ interface EstoqueRow {
   id: string; atendimento_venda_id: string | null; avaliacao_id: string | null;
   tipo: string | null; marca: string | null; modelo: string | null; placa: string | null;
   preco: number | null; preco_acao: number | null; valor_venda: number | null; data_venda: string | null;
-  valor_custo?: number | null;
+  valor_custo?: number | null; chassi?: string | null;
   updated_at: string | null; created_at: string | null;
 }
 interface AvaliacaoRow {
@@ -199,7 +199,8 @@ export function computeRowMetrics(atend: AtendimentoRow, idx: ShowroomIndexes, m
   const tipo = estoque?.tipo || tipoDefault(atend.loja);
   const modelo = [estoque?.marca, estoque?.modelo].filter(Boolean).join(' ')
     || [interesse?.marca, interesse?.modelo].filter(Boolean).join(' ') || '-';
-  const placa = estoque?.placa || '-';
+  // 0km não tem placa própria ainda — mostra o chassi no lugar.
+  const placa = estoque?.placa || estoque?.chassi || '-';
 
   const costs = avaliacao ? (idx.costsByAvaliacao.get(avaliacao.id) || emptyCosts()) : emptyCosts();
   const opLoja = idx.opLojaByAtend.get(atend.id) || 0;
