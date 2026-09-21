@@ -55,6 +55,7 @@ type Parcela = {
   tipo: string;
   forma_pagamento_id: string;
   data_vencimento: string;
+  pago?: boolean;
 };
 
 type Origem = 'venda' | 'compra' | 'troca' | 'consignante';
@@ -89,6 +90,8 @@ interface UpsertArgs {
 async function upsertCompromisso(admin: any, a: UpsertArgs): Promise<Record<string, unknown>> {
   const parcelasValidas = a.parcelas.filter((p) => p.valor > 0.005);
   if (parcelasValidas.length === 0) return { origem: a.origem, status: 'sem_valor' };
+  const statusHeader = parcelasValidas.every((p) => p.pago) ? 'pago' : 'em_aberto';
+  const dataPagamento = new Date().toISOString().slice(0, 10);
 
   const { data: exist } = await admin
     .from('compromissos')
@@ -116,7 +119,7 @@ async function upsertCompromisso(admin: any, a: UpsertArgs): Promise<Record<stri
         plano_conta_id: a.planoContaId,
         centro_custo_id: a.centroCustoId,
         observacoes: a.observacoes,
-        status_compromisso: 'em_aberto',
+        status_compromisso: statusHeader,
         origem: a.origem,
         [a.linkField]: a.linkId,
         numero_compromisso: numero,
@@ -136,9 +139,11 @@ async function upsertCompromisso(admin: any, a: UpsertArgs): Promise<Record<stri
         observacoes: a.observacoes,
         fornecedor_id: a.fornecedorId,
         empresa_id: a.empresaId,
+        status_compromisso: statusHeader,
         updated_by: a.callerId,
       })
-      .eq('id', compId);
+      .eq('id', compId)
+      .neq('status_compromisso', 'cancelada');
   }
 
   const { data: parcExist } = await admin
@@ -163,7 +168,8 @@ async function upsertCompromisso(admin: any, a: UpsertArgs): Promise<Record<stri
       data_vencimento: p.data_vencimento,
       tipo: p.tipo,
       forma_pagamento_id: p.forma_pagamento_id,
-      status_pagamento: 'em_aberto',
+      status_pagamento: p.pago ? 'pago' : 'em_aberto',
+      ...(p.pago ? { data_pagamento: dataPagamento } : {}),
     }));
   if (aInserir.length > 0) {
     const { error } = await admin.from('compromissos_parcelas').insert(aInserir);
@@ -194,9 +200,14 @@ async function obsMotoVendida(admin: any, atendimentoId: string): Promise<string
 }
 
 /**
- * Repasse ao cliente (compra de seminova / moto na troca): a PAGAR.
+ * Repasse ao cliente (compra de seminova): a PAGAR.
  * repasse = fechamento - quitação - custos do cliente (previsão + oficina).
  * Com quitação -> 2 parcelas (boleto da quitação + pix do repasse).
+ *
+ * Troca (moto que entra como parte de pagamento): a quitação do financiamento
+ * (se houver) sempre vira parcela em aberto. O repasse de equity nasce PAGO
+ * (foi absorvido no próprio negócio) até o limite do valor de venda da moto
+ * comprada; só a parte que exceder o valor de venda vira parcela em aberto.
  */
 async function construirRepasse(
   admin: any,
@@ -204,6 +215,7 @@ async function construirRepasse(
   origem: 'compra' | 'troca',
   vencimentoOverride: string | null,
   callerId: string,
+  valorVendaTroca?: number,
 ): Promise<Record<string, unknown>> {
   const { data: av } = await admin
     .from('avaliacoes')
@@ -241,12 +253,36 @@ async function construirRepasse(
   const repasse = Math.max(fechamento - quitacao - custosPrev - custosClienteOficina, 0);
 
   const venc = vencimentoOverride || addDias(contratoCompra?.data_sinal, DIAS_VENCIMENTO);
-  const parcelas: Parcela[] = quitacao > 0
-    ? [
-        { numero_parcela: 1, valor: quitacao, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, data_vencimento: venc },
-        { numero_parcela: 2, valor: repasse, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: venc },
-      ]
-    : [{ numero_parcela: 1, valor: repasse, tipo: 'unico', forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: venc }];
+
+  let parcelas: Parcela[];
+  if (origem === 'troca') {
+    // Quitação: sempre em aberto. Repasse: pago até o limite do valor de venda
+    // da moto comprada; a parte que exceder esse valor fica em aberto.
+    const valorVenda = nz(valorVendaTroca);
+    const diferenca = Math.min(Math.max(fechamento - valorVenda, 0), repasse);
+    const restante = repasse - diferenca;
+    const itens: { valor: number; forma_pagamento_id: string; pago: boolean }[] = [];
+    if (quitacao > 0) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, pago: false });
+    if (diferenca > 0) itens.push({ valor: diferenca, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: false });
+    if (restante > 0) itens.push({ valor: restante, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: true });
+    if (itens.length === 0) return { origem, status: 'sem_valor' };
+    const tipo = itens.length > 1 ? 'parcelado' : 'unico';
+    parcelas = itens.map((it, i) => ({
+      numero_parcela: i + 1,
+      valor: it.valor,
+      tipo,
+      forma_pagamento_id: it.forma_pagamento_id,
+      data_vencimento: venc,
+      pago: it.pago,
+    }));
+  } else {
+    parcelas = quitacao > 0
+      ? [
+          { numero_parcela: 1, valor: quitacao, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, data_vencimento: venc },
+          { numero_parcela: 2, valor: repasse, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: venc },
+        ]
+      : [{ numero_parcela: 1, valor: repasse, tipo: 'unico', forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: venc }];
+  }
 
   const empresaId = contratoCompra?.empresa_id || at?.empresa_id;
   if (!empresaId) return { origem, status: 'sem_empresa' };
@@ -339,9 +375,10 @@ async function acaoVenda(admin: any, atendimentoId: string, callerId: string): P
   if (at?.interesse === 'trocar') {
     const { data: avs } = await admin.from('avaliacoes').select('id').eq('atendimento_id', atendimentoId);
     const vencTroca = addDias(contratoVenda.data_sinal, DIAS_VENCIMENTO);
+    const valorVenda = parcelas.reduce((s, p) => s + p.valor, 0);
     out.troca = [];
     for (const avRow of ((avs as any[]) || [])) {
-      (out.troca as unknown[]).push(await construirRepasse(admin, avRow.id, 'troca', vencTroca, callerId));
+      (out.troca as unknown[]).push(await construirRepasse(admin, avRow.id, 'troca', vencTroca, callerId, valorVenda));
     }
   }
 
