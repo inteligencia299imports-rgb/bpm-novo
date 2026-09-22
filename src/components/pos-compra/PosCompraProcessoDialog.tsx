@@ -571,10 +571,10 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                       {nfeEmitida && (
                         <Button
                           size="sm"
-                          className={cn('h-8 gap-1.5', nfeBotaoClasse(nfeCompra))}
+                          className={cn('h-7 w-24 gap-1 justify-center', nfeBotaoClasse(nfeCompra))}
                           onClick={() => onEmitirNfe?.()}
                         >
-                          <FileText className="h-4 w-4" /> NF-e
+                          <FileText className="h-3.5 w-3.5" /> NF-e
                         </Button>
                       )}
                       <CalendarIcon className="h-4 w-4 shrink-0" />
@@ -587,7 +587,13 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                     </span>
                   ) : isRenave ? (
                     renaveEntrouEstoque ? (
+                      // Entrada confirmada, mas os passos seguintes (assinatura, CRLV-e)
+                      // ainda dependem de reabrir a mesma tela -- mantém o botão pra
+                      // voltar, igual ao padrão já usado pra NF-e (linha ~571 acima).
                       <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                        <Button size="sm" className="h-7 w-24 gap-1 justify-center" onClick={() => onAbrirEntradaRenave?.()}>
+                          <PackagePlus className="h-3.5 w-3.5" /> Entrada
+                        </Button>
                         <CalendarIcon className="h-4 w-4 shrink-0" />
                         {renaveAtualizadoEm ? format(new Date(renaveAtualizadoEm), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '—'}
                       </span>
@@ -595,7 +601,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                       <Button
                         variant={renaveUltimoErro ? 'outline' : 'default'}
                         size="sm"
-                        className={cn('h-9 w-[150px] justify-center gap-2 text-sm', renaveUltimoErro && 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive')}
+                        className={cn('h-9 px-3 gap-2 text-sm', renaveUltimoErro && 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive')}
                         onClick={() => onAbrirEntradaRenave?.()}
                       >
                         <PackagePlus className="h-4 w-4" /> {renaveUltimoErro ? 'Tentar novamente' : 'Entrada'}
@@ -612,7 +618,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                   ) : (
                     <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 w-[150px] justify-center gap-2 text-sm">
+                        <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
                           <CalendarIcon className="h-4 w-4" />
                           {e.data_conclusao ? format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR }) : 'Data/Hora'}
                         </Button>
