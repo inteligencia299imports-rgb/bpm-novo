@@ -58,6 +58,8 @@ export interface RenaveLogCtx {
   admin?: any;
   chassi?: string | null;
   estoqueMotoNovaId?: string | null;
+  /** Moto seminova (entrada de veículo próprio) — mutuamente exclusivo com estoqueMotoNovaId. */
+  avaliacaoId?: string | null;
   operacao: string;
   usuarioId?: string | null;
   /** CNPJ (só dígitos) do estabelecimento dono da moto — escolhe o certificado certo em buildClient(). */
@@ -132,13 +134,15 @@ async function registrarChamada(
     if (!sucesso) {
       let del = ctx.admin.from('renave_chamadas').delete().eq('operacao', ctx.operacao).eq('sucesso', false);
       del = ctx.estoqueMotoNovaId ? del.eq('estoque_moto_nova_id', ctx.estoqueMotoNovaId)
+        : ctx.avaliacaoId ? del.eq('avaliacao_id', ctx.avaliacaoId)
         : ctx.chassi ? del.eq('chassi', ctx.chassi)
-        : del.is('estoque_moto_nova_id', null).is('chassi', null);
+        : del.is('estoque_moto_nova_id', null).is('avaliacao_id', null).is('chassi', null);
       await del;
     }
     await ctx.admin.from('renave_chamadas').insert({
       chassi: ctx.chassi ? String(ctx.chassi).toUpperCase().replace(/\s/g, '') : null,
       estoque_moto_nova_id: ctx.estoqueMotoNovaId || null,
+      avaliacao_id: ctx.avaliacaoId || null,
       operacao: ctx.operacao,
       endpoint: info.endpoint,
       metodo: info.metodo,
@@ -232,6 +236,31 @@ export interface EntradaZeroKm {
 }
 export const entrarEstoqueZeroKm = (e: EntradaZeroKm, ctx?: RenaveLogCtx) =>
   call('POST', '/api/entradas-estoque-zero-km', { body: e, ctx });
+
+// Entrada de moto SEMINOVA (usada) em estoque — grupo "veículo próprio",
+// endpoint separado do zero km. Achado 2026-09-22: schema confirmado direto
+// no OpenAPI da SERPRO (GET /renave-ws/v2/api-docs?group=Estabelecimento...,
+// definição SolicitacaoEntradaEstoqueVeiculoProprio) e validado batendo o
+// payload real em homologação (retornou 422 de negócio "veículo não
+// encontrado" — ou seja, passou toda a validação de schema). Diferente do
+// zero km: não usa chassi/chaveNotaFiscal/valorCompra no payload — usa dados
+// do CRLV (código de segurança + tipo). `dataEntradaEstoque` é `date` puro
+// (YYYY-MM-DD), não date-time.
+export interface EntradaVeiculoProprio {
+  cpfOperadorResponsavel: string;
+  dataEntradaEstoque: string; // YYYY-MM-DD
+  veiculo: {
+    codigoSegurancaCrv: string;       // 11 dígitos — "código de segurança do CLA/CRV"
+    dataHoraMedicaoHodometro: string; // ISO date-time
+    quilometragemHodometro: number;
+    tipoCrv: 'AZUL' | 'VERDE' | 'BRANCO' | 'DIGITAL';
+    numeroCrv?: string;   // 12 dígitos
+    placa?: string;
+    renavam?: string;     // 11 dígitos
+  };
+}
+export const entrarEstoqueVeiculoProprio = (e: EntradaVeiculoProprio, ctx?: RenaveLogCtx) =>
+  call('POST', '/api/solicitacoes-entrada-estoque-veiculo-proprio', { body: e, ctx });
 
 export const enviarNotaFiscal = (chaveNotaFiscal: string, evento: 'COMPRA' | 'VENDA', idEstoque: number, ctx?: RenaveLogCtx) =>
   call('POST', '/api/notas-fiscais', { body: { chaveNotaFiscal, evento, idEstoque }, ctx });

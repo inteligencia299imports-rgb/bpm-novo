@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, Building2, User, Plus, Trash2, FileText, RefreshCw, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, Building2, User, Plus, Trash2, FileText, RefreshCw, AlertTriangle, PackagePlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
@@ -37,6 +37,7 @@ const ETAPAS = [
   'DOCUMENTAÇÃO COM DESPACHANTE',
   'VISTORIA/CADEIA DOMINIAL',
   'NF EMITIDA',
+  'ENTRADA RENAVE',
   'PROCESSO PAUSADO',
   'TRANSFERÊNCIA CONCLUÍDA',
 ];
@@ -55,9 +56,13 @@ interface Props {
   avaliacaoId: string;
   onStatusChanged?: (newStatus: string) => void;
   onEmitirNfe?: () => void;
+  // Entrada RENAVE abre como página própria (fora deste pop-up, no nível do
+  // AvaliacaoForm — mesmo padrão do ATPV-e do pós-venda) em vez de um
+  // segundo pop-up por cima deste. O pai é quem decide onde renderizar.
+  onAbrirEntradaRenave?: () => void;
 }
 
-const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, onStatusChanged, onEmitirNfe }) => {
+const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, onStatusChanged, onEmitirNfe, onAbrirEntradaRenave }) => {
   const { userName } = useAuth();
   const [etapas, setEtapas] = useState<EtapaData[]>(
     ETAPAS.map(e => ({ etapa: e, concluida: false, data_conclusao: null, destino_transferencia: null }))
@@ -94,6 +99,11 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   const [contratoGerado, setContratoGerado] = useState(false);
   const [consultaRealizada, setConsultaRealizada] = useState(false);
 
+  // ---- Entrada RENAVE (seminova) ----
+  const [renaveEntrouEstoque, setRenaveEntrouEstoque] = useState(false);
+  const [renaveAtualizadoEm, setRenaveAtualizadoEm] = useState<string | null>(null);
+  const [renaveUltimoErro, setRenaveUltimoErro] = useState<string | null>(null);
+
   useEffect(() => {
     if (!open) return;
     setAba('processo');
@@ -107,7 +117,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('atendimento_id, pos_compra_status, tipo_aquisicao, consulta_realizada, valor_fechamento, aprovacao_status')
+          .select('atendimento_id, pos_compra_status, tipo_aquisicao, consulta_realizada, valor_fechamento, aprovacao_status, renave_id_estoque, renave_atualizado_em, renave_ultimo_erro')
           .eq('id', avaliacaoId)
           .maybeSingle(),
         supabase.from('custos_oficina').select('*').eq('avaliacao_id', avaliacaoId).order('created_at'),
@@ -129,6 +139,9 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       setCustosOficina(custosData || []);
       setNfeCompra((nfeData as any[])?.[0] || null);
       setAprovacaoStatus((avData as any)?.aprovacao_status ?? null);
+      setRenaveEntrouEstoque(!!(avData as any)?.renave_id_estoque);
+      setRenaveAtualizadoEm((avData as any)?.renave_atualizado_em ?? null);
+      setRenaveUltimoErro((avData as any)?.renave_ultimo_erro ?? null);
       setContratoGerado(((contratoHist as any[]) || []).length > 0);
       setValorFechamento(
         (avData as any)?.valor_fechamento
@@ -322,8 +335,12 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         // A etapa NF-E e dirigida pela emissao da NF-e, nao pelo estado manual —
         // mas preserva concluida=true já salvo (NF emitida fora do sistema/
         // importada) em vez de reverter pra false só por faltar nfe_entradas.
-        concluida: e.etapa === 'NF EMITIDA' ? (nfeEmitida || e.concluida) : e.concluida,
-        data_conclusao: e.etapa === 'NF EMITIDA' ? (nfeCompra?.data_emissao ?? e.data_conclusao ?? null) : e.data_conclusao,
+        concluida: e.etapa === 'NF EMITIDA' ? (nfeEmitida || e.concluida)
+          : e.etapa === 'ENTRADA RENAVE' ? (renaveEntrouEstoque || e.concluida)
+          : e.concluida,
+        data_conclusao: e.etapa === 'NF EMITIDA' ? (nfeCompra?.data_emissao ?? e.data_conclusao ?? null)
+          : e.etapa === 'ENTRADA RENAVE' ? (renaveAtualizadoEm ?? e.data_conclusao ?? null)
+          : e.data_conclusao,
         destino_transferencia: e.etapa === 'TRANSFERÊNCIA CONCLUÍDA' ? (e.destino_transferencia ?? null) : null,
       }));
 
@@ -342,7 +359,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       let newStatus = 'aprovada';
       // CONSULTA REALIZADA vem preenchida automaticamente da consulta veicular;
       // por si so (ou so com observacao) nao coloca o processo "em andamento".
-      const anyConcluida = etapas.some(e => e.etapa !== 'CONSULTA REALIZADA' && e.concluida) || nfeEmitida;
+      const anyConcluida = etapas.some(e => e.etapa !== 'CONSULTA REALIZADA' && e.concluida) || nfeEmitida || renaveEntrouEstoque;
       const transferenciaConcluida = etapas.find(e => e.etapa === 'TRANSFERÊNCIA CONCLUÍDA')?.concluida;
       const processoPausado = etapas.find(e => e.etapa === 'PROCESSO PAUSADO')?.concluida;
       const docDespachante = etapas.find(e => e.etapa === 'DOCUMENTAÇÃO COM DESPACHANTE')?.concluida;
@@ -401,7 +418,11 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
     }
   };
 
-  const concluidas = etapas.filter(e => (e.etapa === 'NF EMITIDA' ? (nfeEmitida || e.concluida) : e.concluida)).length;
+  const concluidas = etapas.filter(e =>
+    e.etapa === 'NF EMITIDA' ? (nfeEmitida || e.concluida)
+      : e.etapa === 'ENTRADA RENAVE' ? (renaveEntrouEstoque || e.concluida)
+      : e.concluida
+  ).length;
   const statusLabel = concluidas === ETAPAS.length ? 'CONCLUÍDO' : 'APROVADA';
 
   return (
@@ -447,14 +468,15 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
             {etapas.map((e, idx) => {
               const isNf = e.etapa === 'NF EMITIDA';
               const isConsulta = e.etapa === 'CONSULTA REALIZADA';
+              const isRenave = e.etapa === 'ENTRADA RENAVE';
               // "Emitida" cobre tanto a NF rastreada pelo bpm-novo (nfeEmitida)
               // quanto uma já registrada como concluída sem nfe_entradas (emitida
               // fora do sistema, ou avaliação importada) — nesse caso trava do
               // mesmo jeito, só sem o botão de abrir a tela de emissão.
               const nfConcluidaSemRegistro = isNf && !nfeEmitida && e.concluida;
-              const marcada = isNf ? (nfeEmitida || e.concluida) : e.concluida;
+              const marcada = isNf ? (nfeEmitida || e.concluida) : isRenave ? (renaveEntrouEstoque || e.concluida) : e.concluida;
               // Etapa ja salva com data -> travada (so o X libera).
-              const dataBloqueada = !isNf && !isConsulta && !!e.data_conclusao && e.data_conclusao === datasSalvas[e.etapa];
+              const dataBloqueada = !isNf && !isConsulta && !isRenave && !!e.data_conclusao && e.data_conclusao === datasSalvas[e.etapa];
               return (
               <React.Fragment key={e.etapa}>
                 {idx > 0 && <Separator />}
@@ -462,7 +484,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                   {/* col 1: check */}
                   <Checkbox
                     checked={marcada}
-                    disabled={isNf || isConsulta || dataBloqueada}
+                    disabled={isNf || isConsulta || isRenave || dataBloqueada}
                     onCheckedChange={(checked) => toggleEtapa(e.etapa, !!checked)}
                   />
 
@@ -480,6 +502,12 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                       <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
                         <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                         {nfeCompra?.erro_mensagem || 'Falha na emissão da NF-e'}
+                      </p>
+                    )}
+                    {isRenave && !renaveEntrouEstoque && renaveUltimoErro && (
+                      <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                        {renaveUltimoErro}
                       </p>
                     )}
                     {e.etapa === 'TRANSFERÊNCIA CONCLUÍDA' && e.concluida && e.destino_transferencia && (
@@ -557,6 +585,22 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                       <CalendarIcon className="h-4 w-4 shrink-0" />
                       {e.data_conclusao ? format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '—'}
                     </span>
+                  ) : isRenave ? (
+                    renaveEntrouEstoque ? (
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                        <CalendarIcon className="h-4 w-4 shrink-0" />
+                        {renaveAtualizadoEm ? format(new Date(renaveAtualizadoEm), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '—'}
+                      </span>
+                    ) : (
+                      <Button
+                        variant={renaveUltimoErro ? 'outline' : 'default'}
+                        size="sm"
+                        className={cn('h-9 w-[150px] justify-center gap-2 text-sm', renaveUltimoErro && 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive')}
+                        onClick={() => onAbrirEntradaRenave?.()}
+                      >
+                        <PackagePlus className="h-4 w-4" /> {renaveUltimoErro ? 'Tentar novamente' : 'Entrada'}
+                      </Button>
+                    )
                   ) : dataBloqueada ? (
                     <span
                       className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap"
@@ -568,7 +612,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                   ) : (
                     <Popover open={calendarOpen === e.etapa} onOpenChange={(o) => setCalendarOpen(o ? e.etapa : null)}>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 px-3 gap-2 text-sm">
+                        <Button variant="outline" size="sm" className="h-9 w-[150px] justify-center gap-2 text-sm">
                           <CalendarIcon className="h-4 w-4" />
                           {e.data_conclusao ? format(new Date(e.data_conclusao), "dd/MM/yyyy HH:mm", { locale: ptBR }) : 'Data/Hora'}
                         </Button>
@@ -738,7 +782,6 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </Dialog>
   );
 };

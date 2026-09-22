@@ -1,9 +1,10 @@
 // deno-lint-ignore-file no-explicit-any
-// RENAVE (SERPRO) — entrada/saída de veículo 0km em estoque + ATPV-e.
-// Ações: cliente | pendentes | entrada | saida | atpv-pdf
+// RENAVE (SERPRO) — entrada/saída de veículo 0km em estoque + ATPV-e, e
+// entrada de veículo próprio (seminova) em estoque.
+// Ações: cliente | pendentes | entrada | entrada-usado | saida | atpv-pdf
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
-  clienteAutenticado, pendentesEntrada, entrarEstoqueZeroKm, enviarNotaFiscal,
+  clienteAutenticado, pendentesEntrada, entrarEstoqueZeroKm, entrarEstoqueVeiculoProprio, enviarNotaFiscal,
   consultarEstoque, consultarVeiculoPorChassi, municipios, sairEstoqueZeroKm, pdfAtpvPorChassi, erroRenave,
   type RenaveLogCtx,
 } from './renave.ts';
@@ -48,11 +49,30 @@ async function persistir(admin: any, id: string, patch: Record<string, unknown>)
     .eq('id', id);
 }
 
+async function persistirAvaliacao(admin: any, id: string, patch: Record<string, unknown>) {
+  await admin.from('avaliacoes')
+    .update({ ...patch, renave_atualizado_em: new Date().toISOString() })
+    .eq('id', id);
+}
+
 /** CNPJ (só dígitos) da empresa dona da moto — escolhe qual certificado a chamada usa. */
 async function cnpjDaEmpresa(admin: any, empresaId: string | null | undefined): Promise<string | null> {
   if (!empresaId) return null;
   const { data } = await admin.from('empresas').select('cnpj').eq('id', empresaId).maybeSingle();
   return data?.cnpj ? String(data.cnpj).replace(/\D/g, '') : null;
+}
+
+// Seminova não tem empresa_id direto (diferente de estoque_motos_novas) --
+// resolve pela mesma cadeia que emitir-nfe-compra já usa pra achar o CNPJ
+// emitente: avaliacao -> atendimento -> loja -> empresa.
+async function cnpjDaEmpresaPorAvaliacao(admin: any, avaliacaoId: string): Promise<string | null> {
+  const { data: av } = await admin.from('avaliacoes').select('atendimento_id').eq('id', avaliacaoId).maybeSingle();
+  if (!av?.atendimento_id) return null;
+  const { data: at } = await admin.from('atendimentos_motos').select('loja_id').eq('id', av.atendimento_id).maybeSingle();
+  if (!at?.loja_id) return null;
+  const { data: lojaEmpresa } = await admin.from('loja_empresas').select('empresa_id').eq('id', at.loja_id).maybeSingle();
+  if (!lojaEmpresa?.empresa_id) return null;
+  return cnpjDaEmpresa(admin, lojaEmpresa.empresa_id);
 }
 
 Deno.serve(async (req) => {
@@ -230,6 +250,83 @@ Deno.serve(async (req) => {
       if (est.id) {
         const nf = await enviarNotaFiscal(soChave(nfCompra.chave_nfe), 'COMPRA', est.id, ctx);
         if (nf.status >= 400) console.warn('renave notas-fiscais COMPRA:', erroRenave(nf));
+      }
+
+      return json({ ok: true, estoque: est });
+    }
+
+    // ------ ENTRADA EM ESTOQUE — MOTO SEMINOVA (veículo próprio) ------
+    // Schema confirmado 2026-09-22 direto no OpenAPI da SERPRO (grupo
+    // "Estabelecimento") e validado batendo o payload real em homologação —
+    // ver renave.ts (EntradaVeiculoProprio). Diferente do 0km: não usa
+    // chassi/chaveNotaFiscal/valorCompra no payload, usa dados do CRLV
+    // (código de segurança + tipo). Ação separada da 'entrada' 0km porque a
+    // resolução de CNPJ, a fonte de dados (avaliacoes, não
+    // estoque_motos_novas) e o payload são todos diferentes.
+    if (acao === 'entrada-usado') {
+      const avaliacaoId: string = body.avaliacao_id;
+      if (!avaliacaoId) return json({ error: 'avaliacao_id é obrigatório' }, 400);
+
+      const { data: av } = await admin.from('avaliacoes')
+        .select('id, chassi, renavam, placa, numero_crv, codigo_seguranca_crv, tipo_crv, km, renave_id_estoque')
+        .eq('id', avaliacaoId).maybeSingle();
+      if (!av) return json({ error: 'Avaliação não encontrada' }, 404);
+      if (av.renave_id_estoque) return json({ error: 'Esta moto já tem entrada no RENAVE (idEstoque ' + av.renave_id_estoque + ')' }, 409);
+      if (!av.codigo_seguranca_crv || !av.tipo_crv) {
+        return json({ error: 'Código de segurança do CRV e/ou tipo do CRV não cadastrados nesta avaliação.' }, 409);
+      }
+
+      const cpfOperador = body.cpf_operador ? String(body.cpf_operador).replace(/\D/g, '') : '';
+      if (!cpfOperador) return json({ error: 'cpf_operador é obrigatório' }, 400);
+
+      const quilometragem = Number.isFinite(Number(body.quilometragem_hodometro))
+        ? Number(body.quilometragem_hodometro)
+        : Number.isFinite(Number(av.km)) ? Number(av.km) : 0;
+
+      const ctx: RenaveLogCtx = {
+        admin, operacao: acao, chassi: av.chassi, avaliacaoId, usuarioId: caller.id,
+        cnpjEstabelecimento: await cnpjDaEmpresaPorAvaliacao(admin, avaliacaoId),
+      };
+
+      const r = await entrarEstoqueVeiculoProprio({
+        cpfOperadorResponsavel: cpfOperador,
+        dataEntradaEstoque: brasiliaNaiveIso(body.data_entrada_estoque).slice(0, 10),
+        veiculo: {
+          codigoSegurancaCrv: String(av.codigo_seguranca_crv).replace(/\D/g, ''),
+          dataHoraMedicaoHodometro: brasiliaNaiveIso(body.data_hora_medicao_hodometro),
+          quilometragemHodometro: quilometragem,
+          tipoCrv: av.tipo_crv,
+          numeroCrv: av.numero_crv ? String(av.numero_crv).replace(/\D/g, '') : undefined,
+          placa: av.placa ? String(av.placa).toUpperCase().replace(/\s|-/g, '') : undefined,
+          renavam: av.renavam ? String(av.renavam).replace(/\D/g, '') : undefined,
+        },
+      }, ctx);
+
+      if (r.status !== 201 && r.status !== 200) {
+        const msg = erroRenave(r);
+        await persistirAvaliacao(admin, avaliacaoId, { renave_ultimo_erro: msg });
+        return json({ error: msg, status: r.status, detalhe: r.body }, 422);
+      }
+
+      const est = r.body || {};
+      await persistirAvaliacao(admin, avaliacaoId, {
+        renave_id_estoque: est.id ?? null,
+        renave_estado: est.estado ?? null,
+        renave_num_termo_entrada: est.entradaEstoque?.numeroTermoEntradaEstoque ?? null,
+        renave_ultimo_erro: null,
+      });
+
+      // Vincula a NF-e de compra ao estoque (best-effort — a SERPRO não exige
+      // isso no payload de entrada de veículo próprio, mas o endpoint
+      // genérico de notas-fiscais serve pra qualquer origem de estoque).
+      if (est.id) {
+        const { data: nfCompra } = await admin.from('nfe_entradas')
+          .select('chave_nfe').eq('avaliacao_id', avaliacaoId).eq('operacao', 'compra')
+          .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (nfCompra?.chave_nfe) {
+          const nf = await enviarNotaFiscal(soChave(nfCompra.chave_nfe), 'COMPRA', est.id, ctx);
+          if (nf.status >= 400) console.warn('renave notas-fiscais COMPRA (seminova):', erroRenave(nf));
+        }
       }
 
       return json({ ok: true, estoque: est });

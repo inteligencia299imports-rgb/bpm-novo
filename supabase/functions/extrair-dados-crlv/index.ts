@@ -43,6 +43,8 @@ interface ExtracaoResultado {
   renavam: string | null;
   placa: string | null;
   numero_crv: string | null;
+  codigo_seguranca_crv: string | null;
+  tipo_crv: string | null;
   ano_fabricacao: string | null;
   ano_modelo: string | null;
   marca_documento: string | null;
@@ -55,6 +57,19 @@ const soDigitos = (v: string | null) => (v || '').replace(/\D/g, '') || null;
 const soNumeroCrv = (v: string | null) => {
   const d = (v || '').replace(/\D/g, '');
   return d.length === 12 ? d : null;
+};
+// Codigo de seguranca do CRV/CLA tem exatamente 11 digitos -- campo DIFERENTE
+// do numero do CRV (12 digitos). Achado 2026-09-22: sao dois campos distintos
+// no CRLV (ex.: "NÚMERO DO CRV" vs "CÓDIGO DE SEGURANÇA DO CLA"), exigido pela
+// SERPRO pra entrada RENAVE de veiculo proprio (seminova).
+const soCodigoSegurancaCrv = (v: string | null) => {
+  const d = (v || '').replace(/\D/g, '');
+  return d.length === 11 ? d : null;
+};
+const TIPOS_CRV = ['AZUL', 'VERDE', 'BRANCO', 'DIGITAL'];
+const soTipoCrv = (v: string | null) => {
+  const t = (v || '').toUpperCase().trim();
+  return TIPOS_CRV.includes(t) ? t : null;
 };
 const soAno = (v: string | null) => {
   const d = (v || '').replace(/\D/g, '');
@@ -114,9 +129,11 @@ async function extrairViaClaude(
               placa: { type: 'string', description: 'Placa do veículo (padrão antigo LLLNNNN, Mercosul carro LLLNLNN ou Mercosul moto LLLNNLN). String vazia "" se não estiver legível/presente — nunca invente.' },
               chassi: { type: 'string', description: 'Número do chassi (17 caracteres alfanuméricos). String vazia "" se não estiver legível/presente — nunca invente.' },
               renavam: { type: 'string', description: 'Número do RENAVAM. String vazia "" se não estiver legível/presente — nunca invente.' },
-              numero_crv: { type: 'string', description: 'Número do CRV (12 dígitos), no CRLV aparece como "Nº DO CRV" ou "NÚMERO DO CRV". String vazia "" se não estiver legível/presente — nunca invente.' },
+              numero_crv: { type: 'string', description: 'Número do CRV (12 dígitos), no CRLV aparece como "Nº DO CRV" ou "NÚMERO DO CRV". É um campo DIFERENTE do código de segurança abaixo — não confunda os dois. String vazia "" se não estiver legível/presente — nunca invente.' },
+              codigo_seguranca_crv: { type: 'string', description: 'Código de segurança do CRV/CLA (11 dígitos) — no CRLV aparece como "CÓDIGO DE SEGURANÇA DO CLA" ou "CÓDIGO DE SEGURANÇA DO CRV" ou "CAT". É DIFERENTE do número do CRV (aquele tem 12 dígitos, este tem 11). String vazia "" se não estiver legível/presente — nunca invente.' },
+              tipo_crv: { type: 'string', description: 'Tipo do CRV: "DIGITAL" se o título do documento disser algo como "CERTIFICADO DE REGISTRO E LICENCIAMENTO DE VEÍCULO - DIGITAL" ou "CRLV-e"; caso contrário, a cor impressa no CRLV físico: "AZUL", "VERDE" ou "BRANCO". String vazia "" se não for possível determinar.' },
             },
-            required: ['leitura', 'eh_crlv', 'tipo_documento', 'marca_documento', 'modelo_documento', 'ano_fabricacao', 'ano_modelo', 'placa', 'chassi', 'renavam', 'numero_crv'],
+            required: ['leitura', 'eh_crlv', 'tipo_documento', 'marca_documento', 'modelo_documento', 'ano_fabricacao', 'ano_modelo', 'placa', 'chassi', 'renavam', 'numero_crv', 'codigo_seguranca_crv', 'tipo_crv'],
           },
         },
       ],
@@ -136,7 +153,9 @@ async function extrairViaClaude(
                 + `• renavam — campo "CÓDIGO RENAVAM" (11 dígitos).\n`
                 + `• ano_fabricacao / ano_modelo — campo "ANO FABRICAÇÃO / ANO MODELO" (dois anos de 4 dígitos, ex.: "2019/2020").\n`
                 + `• marca/modelo — campo "MARCA / MODELO / VERSÃO".\n`
-                + `• numero_crv — campo "Nº DO CRV" / "CÓDIGO DE SEGURANÇA DO CRV" (12 dígitos).\n\n`
+                + `• numero_crv — campo "Nº DO CRV" / "NÚMERO DO CRV" (12 dígitos).\n`
+                + `• codigo_seguranca_crv — campo "CÓDIGO DE SEGURANÇA DO CLA" / "CÓDIGO DE SEGURANÇA DO CRV" (11 dígitos — NÃO é o mesmo campo do número do CRV acima).\n`
+                + `• tipo_crv — "DIGITAL" se o título do documento disser "...VEÍCULO - DIGITAL"/"CRLV-e"; senão a cor impressa (AZUL/VERDE/BRANCO).\n\n`
                 + `Regra de ouro: se qualquer valor não estiver claramente legível, retorne string vazia "" — nunca chute caracteres.\n`
                 + `Preencha primeiro o campo "leitura" (transcrição rótulo a rótulo) e só depois os demais.`,
             },
@@ -165,6 +184,8 @@ async function extrairViaClaude(
     renavam: soDigitos((input.renavam as string) ?? null),
     placa: soAlfaNum((input.placa as string) ?? null),
     numero_crv: soNumeroCrv((input.numero_crv as string) ?? null),
+    codigo_seguranca_crv: soCodigoSegurancaCrv((input.codigo_seguranca_crv as string) ?? null),
+    tipo_crv: soTipoCrv((input.tipo_crv as string) ?? null),
     ano_fabricacao: soAno((input.ano_fabricacao as string) ?? null),
     ano_modelo: soAno((input.ano_modelo as string) ?? null),
     marca_documento: limpaTexto((input.marca_documento as string) ?? null),
@@ -232,7 +253,7 @@ Deno.serve(async (req) => {
     // resto do sistema) e ja traz a placa cadastrada para a conferencia do CRLV.
     supabaseAdmin
       .from('avaliacoes')
-      .select('id, placa, chassi, renavam, numero_crv, ano_fabricacao, ano_modelo, atendimentos_motos!inner(vendedor_id, loja_id)')
+      .select('id, placa, chassi, renavam, numero_crv, codigo_seguranca_crv, tipo_crv, ano_fabricacao, ano_modelo, atendimentos_motos!inner(vendedor_id, loja_id)')
       .eq('id', avaliacao_id)
       .maybeSingle(),
   ]);
@@ -262,8 +283,8 @@ Deno.serve(async (req) => {
   }
 
   const vazio = {
-    chassi: null, renavam: null, placa: null, numero_crv: null, ano_fabricacao: null, ano_modelo: null,
-    marca_documento: null, modelo_documento: null,
+    chassi: null, renavam: null, placa: null, numero_crv: null, codigo_seguranca_crv: null, tipo_crv: null,
+    ano_fabricacao: null, ano_modelo: null, marca_documento: null, modelo_documento: null,
   };
 
   if (!apiKey) {
@@ -342,6 +363,8 @@ Deno.serve(async (req) => {
     aplica('chassi', extraido.chassi, acesso.chassi, soAlfaNum, 'chassi');
     aplica('renavam', extraido.renavam, acesso.renavam, soDigitos, 'RENAVAM');
     aplica('numero_crv', extraido.numero_crv, acesso.numero_crv, soDigitos, 'nº do CRV');
+    aplica('codigo_seguranca_crv', extraido.codigo_seguranca_crv, acesso.codigo_seguranca_crv, soDigitos, 'código de segurança do CRV');
+    aplica('tipo_crv', extraido.tipo_crv, acesso.tipo_crv, (v) => (v || '').toUpperCase().trim() || null, 'tipo do CRV');
 
     console.log('extrair-dados-crlv update:', JSON.stringify(updatePayload), 'matchForte:', matchForte, 'divergencias:', divergencias);
 
@@ -362,12 +385,15 @@ Deno.serve(async (req) => {
       chassi: updatePayload.chassi ?? null,
       renavam: updatePayload.renavam ?? null,
       numero_crv: updatePayload.numero_crv ?? null,
+      codigo_seguranca_crv: updatePayload.codigo_seguranca_crv ?? null,
+      tipo_crv: updatePayload.tipo_crv ?? null,
       // Valores lidos do documento (para telas que queiram exibir/depurar).
       lido: {
         marca: extraido.marca_documento, modelo: extraido.modelo_documento,
         ano_fabricacao: extraido.ano_fabricacao, ano_modelo: extraido.ano_modelo,
         placa: extraido.placa, chassi: extraido.chassi,
         renavam: extraido.renavam, numero_crv: extraido.numero_crv,
+        codigo_seguranca_crv: extraido.codigo_seguranca_crv, tipo_crv: extraido.tipo_crv,
       },
     }, 200);
   } catch (err) {
