@@ -6,6 +6,7 @@ import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import ContratoDialog from '@/components/showroom/ContratoDialog';
 import { fetchEstoqueUnificado } from '@/lib/estoqueMoto';
 import PosCompraProcessoDialog from '@/components/pos-compra/PosCompraProcessoDialog';
+import RenaveEntradaUsadoDialog from '@/components/pos-compra/RenaveEntradaUsadoDialog';
 import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProcessoDialog';
 import { podeAprovar } from '@/lib/aprovacao';
 import { marcarAtendimentoPerdido } from '@/lib/atendimentoCascata';
@@ -174,6 +175,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [savingAprovacao, setSavingAprovacao] = useState(false);
   const [processoPosCompraOpen, setProcessoPosCompraOpen] = useState(false);
   const [processoConsignacaoOpen, setProcessoConsignacaoOpen] = useState(false);
+  // Entrada RENAVE (pós-compra, seminova) abre como página própria — fora do
+  // pop-up do Processo, mesmo padrão do ATPV-e do pós-venda (AtpvDialog).
+  const [renaveEntradaOpen, setRenaveEntradaOpen] = useState(false);
 
   // Moto edit state
   const [editMotoOpen, setEditMotoOpen] = useState(false);
@@ -1154,6 +1158,20 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     .filter(b => !(b.value === 'dispensada' && avaliacao?.situacao === 'estoque'));
 
 
+  // Entrada RENAVE abre como página própria (substitui todo o conteúdo
+  // daqui, inclusive fechando o pop-up do Processo por trás) — igual ao
+  // ATPV-e do pós-venda. Fica fora do PosCompraProcessoDialog de propósito:
+  // se ficasse dentro, herdaria o modal/backdrop do próprio Processo.
+  if (context === 'pos_compra' && renaveEntradaOpen) {
+    return (
+      <RenaveEntradaUsadoDialog
+        open
+        onOpenChange={setRenaveEntradaOpen}
+        avaliacaoId={avaliacaoId}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -1980,6 +1998,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             avaliacaoId={avaliacaoId}
             onStatusChanged={() => { loadAvaliacao(); }}
             onEmitirNfe={() => { setProcessoPosCompraOpen(false); setNfeCompraOpen(true); }}
+            onAbrirEntradaRenave={() => setRenaveEntradaOpen(true)}
           />
         </>
       )}
