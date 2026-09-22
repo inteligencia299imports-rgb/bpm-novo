@@ -237,15 +237,22 @@ export interface EntradaZeroKm {
 export const entrarEstoqueZeroKm = (e: EntradaZeroKm, ctx?: RenaveLogCtx) =>
   call('POST', '/api/entradas-estoque-zero-km', { body: e, ctx });
 
-// Entrada de moto SEMINOVA (usada) em estoque — grupo "veículo próprio",
-// endpoint separado do zero km. Achado 2026-09-22: schema confirmado direto
-// no OpenAPI da SERPRO (GET /renave-ws/v2/api-docs?group=Estabelecimento...,
-// definição SolicitacaoEntradaEstoqueVeiculoProprio) e validado batendo o
-// payload real em homologação (retornou 422 de negócio "veículo não
-// encontrado" — ou seja, passou toda a validação de schema). Diferente do
-// zero km: não usa chassi/chaveNotaFiscal/valorCompra no payload — usa dados
-// do CRLV (código de segurança + tipo). `dataEntradaEstoque` é `date` puro
-// (YYYY-MM-DD), não date-time.
+// Entrada de moto SEMINOVA (usada) em estoque. Achado 2026-09-23, confirmado
+// no manual oficial da SERPRO (renave.estaleiro.serpro.gov.br/renave-ws/
+// manual/solicitar-entrada-estoque): existem DOIS endpoints de entrada, pra
+// cenários diferentes —
+//   • /api/solicitacoes-entrada-estoque-veiculo-proprio (EntradaVeiculoProprio,
+//     abaixo): SÓ quando o estabelecimento JÁ é o proprietário registrado no
+//     CRV (ex.: moto de outra filial). "Caso seja um estoque de veículo
+//     próprio, não é necessário enviar assinatura de ATPV" — não serve pra
+//     comprar de particular, rejeita com "Proprietário deve ser um CNPJ"
+//     (achado real 2026-09-23, essa mesma moto).
+//   • /api/solicitacoes-entrada-estoque (EntradaEstoque, logo abaixo): o
+//     CERTO pra comprar de particular — exige que o vendedor NÃO seja o
+//     estabelecimento ("Vendedor deve ser o proprietário do veículo... /
+//     Estabelecimento não pode ser o proprietário"). A propriedade só
+//     transfere DEPOIS, quando a assinatura do ATPV é enviada em sequência
+//     (ver enviarAssinaturaAtpv) — é esse o fluxo que a Pós-Compra usa.
 export interface EntradaVeiculoProprio {
   cpfOperadorResponsavel: string;
   dataEntradaEstoque: string; // YYYY-MM-DD
@@ -262,10 +269,82 @@ export interface EntradaVeiculoProprio {
 export const entrarEstoqueVeiculoProprio = (e: EntradaVeiculoProprio, ctx?: RenaveLogCtx) =>
   call('POST', '/api/solicitacoes-entrada-estoque-veiculo-proprio', { body: e, ctx });
 
+// Schema confirmado no OpenAPI oficial (definição SolicitacaoEntradaEstoque /
+// VeiculoEntradaEstoque). `dataCompra` é date puro (YYYY-MM-DD);
+// `documentoProprietarioAtual` é o CPF/CNPJ de quem vende a moto pro
+// estabelecimento — NUNCA o CNPJ do próprio estabelecimento (é rejeitado).
+export interface EntradaEstoque {
+  cpfOperadorResponsavel?: string;
+  dataCompra: string;     // YYYY-MM-DD
+  valorCompra: number;
+  emailEstabelecimento?: string;
+  // Opcional no schema do OpenAPI, mas a SERPRO rejeita em produção sem ele
+  // ("E-mail do vendedor é obrigatório" — achado real 2026-09-23). Na
+  // prática, sempre enviar.
+  emailVendedor?: string;
+  veiculo: {
+    codigoSegurancaCrv: string;       // 11 dígitos
+    dataHoraMedicaoHodometro: string; // ISO date-time
+    quilometragemHodometro: number;
+    tipoCrv: 'AZUL' | 'VERDE' | 'BRANCO' | 'DIGITAL';
+    documentoProprietarioAtual: string;      // CPF (11) ou CNPJ (14) do vendedor
+    tipoDocumentoProprietarioAtual: 'CPF' | 'CNPJ';
+    numeroCrv?: string;   // 12 dígitos
+    placa?: string;
+    renavam?: string;     // 11 dígitos
+  };
+}
+export const entrarEstoque = (e: EntradaEstoque, ctx?: RenaveLogCtx) =>
+  call('POST', '/api/solicitacoes-entrada-estoque', { body: e, ctx });
+
+// Achado real 2026-09-22 (chassi 95VHA00AAHM000135): uma entrada pode ficar
+// "órfã" em estoque SOLICITADO com a intenção de venda associada cancelada
+// do lado da SERPRO (ver diagrama oficial "Ciclo de vida da intenção de
+// venda" -- só ATPV-e disponível nos estados 1-Registrada/2-Venda comunicada;
+// fora disso, mesmo com o estoque ainda SOLICITADO, o download falha com
+// "Não existe intenção de venda disponível..."). Esse endpoint (schema
+// SolicitacaoCancelamentoEstoque, confirmado no OpenAPI oficial) cancela o
+// estoque travado pra permitir refazer a entrada do zero (o que gera uma
+// intenção de venda nova).
+export interface CancelamentoEstoque {
+  dataCancelamentoEstoque: string; // YYYY-MM-DD
+  // Opcional no schema do OpenAPI, mas a SERPRO rejeita em produção sem ele
+  // ("CPF do operador responsável é obrigatório" — achado real 2026-09-22).
+  // Na prática, sempre enviar.
+  cpfOperadorResponsavel?: string;
+  // codigoSegurancaCrv NÃO aparece no schema oficial do OpenAPI (só
+  // chassi/placa/renavam/numeroCrv documentados), mas a SERPRO rejeita com
+  // 400 "Código de segurança do CRV é obrigatório" sem ele (achado real
+  // 2026-09-22) -- na prática, sempre enviar.
+  veiculo?: { chassi?: string; placa?: string; renavam?: string; numeroCrv?: string; codigoSegurancaCrv?: string };
+}
+export const cancelarEstoque = (c: CancelamentoEstoque, ctx?: RenaveLogCtx) =>
+  call('POST', '/api/solicitacoes-cancelamento-estoque', { body: c, ctx });
+
 export const enviarNotaFiscal = (chaveNotaFiscal: string, evento: 'COMPRA' | 'VENDA', idEstoque: number, ctx?: RenaveLogCtx) =>
   call('POST', '/api/notas-fiscais', { body: { chaveNotaFiscal, evento, idEstoque }, ctx });
 
 export const consultarEstoque = (id: number, ctx?: RenaveLogCtx) => call('GET', `/api/estoques/${id}`, { ctx });
+
+// Achado real 2026-09-22 (chassi 95VHA00AAHM000135): `consultarVeiculoPorChassi`
+// (/api/veiculos) exige que o estoque já esteja CONFIRMADO -- rejeita com
+// "Estoque do veículo encontra-se no estado de Solicitado... Veículo deve
+// estar em estoque (CONFIRMADO)" pra estoque ainda em SOLICITADO/TRANSFERIDO.
+// Esse endpoint (confirmado no OpenAPI oficial) é o certo pra recuperar o
+// idEstoque nesses estados -- lista o estoque do PRÓPRIO estabelecimento
+// (não exige CONFIRMADO), filtrando por chassi/placa/estadoEstoque.
+export const listarEstoques = (
+  params: { chassi?: string; placa?: string; estadoEstoque?: 'SOLICITADO' | 'TRANSFERIDO' | 'CONFIRMADO' | 'FINALIZADO' },
+  ctx?: RenaveLogCtx,
+) => call('GET', '/api/estoques', { query: params, ctx });
+
+// Achado 2026-09-22: o retorno da entrada em estoque (entrarEstoque acima)
+// só traz `numeroTermoEntradaEstoque` -- um número de protocolo, sem PDF. O
+// documento em si vem de um endpoint separado (confirmado no OpenAPI oficial,
+// operação "Consultar Termo de Entrada em Estoque"), que devolve JSON com o
+// PDF em base64.
+export const termoEntradaEstoque = (idEstoque: number, ctx?: RenaveLogCtx) =>
+  call('GET', `/api/estoques/${idEstoque}/termo-entrada-estoque`, { ctx });
 
 // Achado 2026-09-15 (chassi 95V4F00AAPM000003): quando a SERPRO recusa a
 // entrada dizendo que o chassi "possui um estoque ativo", `pendentesEntrada`
@@ -318,3 +397,28 @@ export const sairEstoqueZeroKm = (s: SaidaZeroKm, ctx?: RenaveLogCtx) =>
 
 export const pdfAtpvPorChassi = (chassi: string, ctx?: RenaveLogCtx) =>
   call('GET', '/api/pdf-atpv', { query: { chassi }, ctx });
+
+// Entrada de seminova (veículo próprio) — passo 2 da sequência real da
+// SERPRO: enviar a assinatura do VENDEDOR sobre o ATPV-e, confirmado no
+// OpenAPI oficial (schema EnvioAssinaturaAtvp). É essa chamada que efetiva a
+// transferência de propriedade no RENAVAM pro CNPJ do estabelecimento —
+// sem ela, o "Termo de entrada do estoque" (passo 3) é rejeitado com
+// "Proprietário do veículo deve ser um CNPJ ... diferente do estabelecimento
+// solicitante" (achado real 2026-09-23). 4 formatos aceitos pela SERPRO,
+// mutuamente exclusivos -- o caller manda só um.
+export interface EnvioAssinaturaAtpv {
+  idEstoque?: number;
+  envioAssinaturaProprioPunhoAtpvPapelMoeda?: { fotoAtpvPapelMoedaAssinadoBase64: string };
+  envioAssinaturaProprioPunhoAtpve?: { fotoAtpveAssinadoDeProprioPunhoBase64: string };
+  envioAssinaturaQualificadaP7sSobreFotoAtpvPapelMoeda?: { assinaturaQualificadaP7sBase64: string };
+  envioAssinaturaQualificadaP7sSobreXmlAtpve?: { assinaturaQualificadaP7sBase64: string };
+}
+export const enviarAssinaturaAtpv = (e: EnvioAssinaturaAtpv, ctx?: RenaveLogCtx) =>
+  call('POST', '/api/atpv-assinatura-vendedor', { body: e, ctx });
+
+// Passo 5 — Download do CRLV-e (documento já com a empresa como
+// proprietária). Resposta (CrlveJson) já traz também
+// `pdfCodigoSegurancaCrvBase64` — o PDF só com o código de segurança do CRV,
+// fonte mais confiável que o OCR do documento anexado pelo usuário.
+export const consultarCrlve = (placa: string, renavam: string, ctx?: RenaveLogCtx) =>
+  call('GET', `/api/crlve/${placa}/${renavam}`, { ctx });
