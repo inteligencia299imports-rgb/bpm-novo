@@ -418,7 +418,7 @@ Deno.serve(async (req) => {
         cnpjEstabelecimento: await cnpjDaEmpresaPorAvaliacao(admin, avaliacaoId),
       };
 
-      const r = await entrarEstoque({
+      const payloadEntrada = {
         cpfOperadorResponsavel: cpfOperador,
         dataCompra: brasiliaNaiveIso(nfCompra.data_emissao).slice(0, 10),
         valorCompra: Number(nfCompra.valor_total),
@@ -435,7 +435,23 @@ Deno.serve(async (req) => {
           placa: av.placa ? String(av.placa).toUpperCase().replace(/\s|-/g, '') : undefined,
           renavam: av.renavam ? String(av.renavam).replace(/\D/g, '') : undefined,
         },
-      }, ctx);
+      };
+      let r = await entrarEstoque(payloadEntrada, ctx);
+
+      // Achado real 2026-09-23 (placa JCC6E84): a SERPRO rejeita dataCompra
+      // anterior à emissão do último CRV ("...do último CRV (16/07/2026)") --
+      // acontece quando a NF de compra saiu antes do vendedor concluir a
+      // transferência pra ele. Não temos a data do CRV guardada, então usa a
+      // que a própria SERPRO devolve e repete a chamada uma vez.
+      if (r.status !== 201 && r.status !== 200) {
+        const m = erroRenave(r).match(/anterior à data de emissão do último CRV \((\d{2})\/(\d{2})\/(\d{4})\)/i);
+        if (m) {
+          const dataCrv = `${m[3]}-${m[2]}-${m[1]}`;
+          if (dataCrv > payloadEntrada.dataCompra) {
+            r = await entrarEstoque({ ...payloadEntrada, dataCompra: dataCrv }, ctx);
+          }
+        }
+      }
 
       if (r.status !== 201 && r.status !== 200) {
         const msg = erroRenave(r);
