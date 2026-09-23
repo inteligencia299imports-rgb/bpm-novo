@@ -27,6 +27,7 @@ import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import ProcessoDialog from './ProcessoDialog';
 import AtpvDialog from './AtpvDialog';
+import RenaveSaidaUsadoDialog from './RenaveSaidaUsadoDialog';
 import ContratoDialog from '@/components/showroom/ContratoDialog';
 import ContratoCompraDialog from '@/components/avaliacoes/ContratoCompraDialog';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
@@ -109,6 +110,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [entregaDataConclusao, setEntregaDataConclusao] = useState<string | null>(null);
   const [nfeVendaOpen, setNfeVendaOpen] = useState(false);
   const [atpvOpen, setAtpvOpen] = useState(false);
+  const [saidaRenaveOpen, setSaidaRenaveOpen] = useState(false);
   const [trocaNfeAval, setTrocaNfeAval] = useState<any | null>(null);
   const [trocaTransferenciaAval, setTrocaTransferenciaAval] = useState<any | null>(null);
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
@@ -210,6 +212,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
   // Moto 0km da venda (para o ATPV-e / RENAVE na última etapa do pós-venda).
   const moto0km = Object.values(estoqueData).find((e: any) => e?.fonte === '0km') as any | undefined;
+  // Seminova da venda (para a SAÍDA RENAVE) — o estoque RENAVE vive na avaliação dela.
+  const motoSeminova = Object.values(estoqueData).find((e: any) => e?.fonte === 'seminova') as any | undefined;
+  const avaliacaoSaidaRenaveId: string | undefined = motoSeminova?.avaliacao_id || motoSeminova?.avaliacao?.id;
 
   const confirmarAprovacaoVenda = async () => {
     if (!aprovacaoPopup) return;
@@ -542,6 +547,16 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         atendimento={item}
         estoqueMoto={moto0km}
         onDone={() => onStatusChanged?.(item.id, 'concluido', processoProps?.statusField || statusField)}
+      />
+    );
+  }
+  if (!isIntermParte2 && saidaRenaveOpen && avaliacaoSaidaRenaveId) {
+    return (
+      <RenaveSaidaUsadoDialog
+        open
+        onOpenChange={setSaidaRenaveOpen}
+        atendimento={item}
+        avaliacaoId={avaliacaoSaidaRenaveId}
       />
     );
   }
@@ -1188,6 +1203,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         onEmitirNfeTroca={abrirNfeTroca}
         onEmitirNfeTransferencia={abrirNfeTransferencia}
         onEmitirAtpv={moto0km ? () => { setProcessoOpen(false); setAtpvOpen(true); } : undefined}
+        onAbrirSaidaRenave={avaliacaoSaidaRenaveId ? () => { setProcessoOpen(false); setSaidaRenaveOpen(true); } : undefined}
         onNavigateToPosCompra={onNavigateToPosCompra}
         vendaBloqueadaAprovacao={bloqueadoAprovacao}
       />

@@ -3,7 +3,9 @@
 // entrada de veículo próprio (seminova) em estoque.
 // Ações: cliente | pendentes | entrada | entrada-usado | saida | atpv-pdf |
 //        atpv-pdf-usado | atpv-assinatura | estoque-status | vincular-nf |
-//        termo-entrada-pdf | cancelar-estoque | crlve
+//        termo-entrada-pdf | cancelar-estoque | crlve |
+//        saida-usado | saida-usado-atpv | saida-usado-nf | saida-usado-termo |
+//        saida-usado-cancelar (saída de seminova vendida, ver bloco próprio)
 // Sequência real da entrada de seminova comprada de particular — CORRIGIDA
 // 2026-09-23 contra o manual oficial da SERPRO (renave.estaleiro.serpro.gov.br/
 // renave-ws/manual/) e RECONFIRMADA 2026-09-22 (achado real, chassi
@@ -24,7 +26,8 @@ import {
   clienteAutenticado, pendentesEntrada, entrarEstoqueZeroKm, entrarEstoque, enviarNotaFiscal,
   consultarEstoque, consultarVeiculoPorChassi, listarEstoques, municipios, sairEstoqueZeroKm, pdfAtpvPorChassi,
   enviarAssinaturaAtpv, consultarCrlve, termoEntradaEstoque, cancelarEstoque, erroRenave,
-  type RenaveLogCtx, type EnvioAssinaturaAtpv,
+  sairEstoque, termoSaidaEstoque, cancelarSaidaEstoque,
+  type RenaveLogCtx, type EnvioAssinaturaAtpv, type EntradaEstoque,
 } from './renave.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
@@ -121,7 +124,14 @@ async function cnpjDaEmpresaPorAvaliacao(admin: any, avaliacaoId: string): Promi
 // -- por isso é a fonte usada pra entrada em estoque, não o CRLV anexado
 // pelo usuário. Best-effort: se a extração falhar, mantém o que já estava
 // em avaliacoes (não derruba o download do ATPV-e por isso).
-async function extrairCodigoSegurancaDoAtpv(pdfBase64: string): Promise<{ codigoSegurancaCrv: string | null; numeroCrv: string | null }> {
+// Também usada na saída de seminova (tipoDoc 'crv'): depois da entrada
+// CONFIRMADA o Detran reemite o CRV no nome do estabelecimento, com código de
+// segurança NOVO -- a saída exige esse código atual, que só vem no PDF
+// `pdfCodigoSegurancaCrvBase64` do CRLV-e (a SERPRO não devolve em campo).
+async function extrairCodigoSegurancaDoAtpv(pdfBase64: string, tipoDoc: 'atpv' | 'crv' = 'atpv'): Promise<{ codigoSegurancaCrv: string | null; numeroCrv: string | null }> {
+  const instrucao = tipoDoc === 'crv'
+    ? 'Este é o PDF do código de segurança do CRV (Certificado de Registro de Veículo) emitido pela SERPRO/Detran. Leia exatamente o "CÓDIGO DE SEGURANÇA" do CRV (11 dígitos) e, se aparecer, o "NÚMERO DO CRV" (12 dígitos), e registre-os. Nunca invente — se algum não estiver legível ou não existir no documento, devolva string vazia "".'
+    : 'Este é um ATPV-e (Autorização para Transferência de Propriedade de Veículo digital) da SERPRO. Leia exatamente os campos "CÓDIGO DE SEGURANÇA CRV" (11 dígitos) e "NÚMERO CRV" (12 dígitos) e registre-os. Nunca invente — se algum não estiver legível, devolva string vazia "".';
   const vazio = { codigoSegurancaCrv: null, numeroCrv: null };
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
   if (!apiKey) return vazio;
@@ -140,7 +150,7 @@ async function extrairCodigoSegurancaDoAtpv(pdfBase64: string): Promise<{ codigo
         max_tokens: 600,
         tools: [{
           name: 'registrar_codigo_seguranca',
-          description: 'Registra o código de segurança do CRV lido do ATPV-e.',
+          description: 'Registra o código de segurança do CRV lido do documento.',
           input_schema: {
             type: 'object',
             properties: {
@@ -155,7 +165,7 @@ async function extrairCodigoSegurancaDoAtpv(pdfBase64: string): Promise<{ codigo
           role: 'user',
           content: [
             { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
-            { type: 'text', text: 'Este é um ATPV-e (Autorização para Transferência de Propriedade de Veículo digital) da SERPRO. Leia exatamente os campos "CÓDIGO DE SEGURANÇA CRV" (11 dígitos) e "NÚMERO CRV" (12 dígitos) e registre-os. Nunca invente — se algum não estiver legível, devolva string vazia "".' },
+            { type: 'text', text: instrucao },
           ],
         }],
       }),
@@ -174,6 +184,70 @@ async function extrairCodigoSegurancaDoAtpv(pdfBase64: string): Promise<{ codigo
     console.warn('extrairCodigoSegurancaDoAtpv falhou:', e);
     return vazio;
   }
+}
+
+/**
+ * Comprador da saída de estoque (0km e seminova usam o mesmo formato) a partir
+ * do cliente do atendimento da venda. Resolve o município IBGE pela API da
+ * SERPRO quando não vem `codigoMunicipioInformado`.
+ */
+async function montarComprador(
+  admin: any, atendimentoId: string, ctx: RenaveLogCtx, codigoMunicipioInformado?: number,
+): Promise<{ comprador?: any; error?: string }> {
+  const { data: at } = await admin.from('atendimentos_motos')
+    .select('id, cliente:clientes_fornecedores(nome_razao_social, cpf_cnpj, tipo_pessoa, email, clientes_fornecedores_enderecos(tipo, cep, logradouro, numero, bairro, complemento, cidade, uf))')
+    .eq('id', atendimentoId).maybeSingle();
+  const cli = (at as any)?.cliente;
+  if (!cli?.cpf_cnpj) return { error: 'Comprador sem CPF/CNPJ no cadastro.' };
+  // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma
+  // linha em clientes_fornecedores_enderecos; nunca confiar "na primeira".
+  const enderecosCli = (cli.clientes_fornecedores_enderecos || []) as Array<{ tipo?: string }>;
+  const end: any = enderecosCli.find((e) => e.tipo === 'fiscal') || enderecosCli[0] || {};
+
+  let codigoMunicipio: number | undefined = codigoMunicipioInformado || undefined;
+  if (!codigoMunicipio && end.cidade && end.uf) {
+    const mun = await municipios(end.cidade, end.uf, ctx);
+    const norm = (s: string) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    const hit = Array.isArray(mun.body) ? mun.body.find((m: any) => norm(m.nome) === norm(end.cidade)) || mun.body[0] : null;
+    if (hit?.id) codigoMunicipio = Number(hit.id);
+  }
+  if (!codigoMunicipio) return { error: 'Código IBGE do município do comprador não resolvido — informe codigo_municipio.' };
+
+  const docDigits = String(cli.cpf_cnpj).replace(/\D/g, '');
+  return {
+    comprador: {
+      tipoDocumento: docDigits.length > 11 ? 'CNPJ' : 'CPF',
+      numeroDocumento: docDigits,
+      nome: cli.nome_razao_social || undefined,
+      email: cli.email || undefined,
+      endereco: {
+        codigoMunicipio,
+        cep: end.cep ? String(end.cep).replace(/\D/g, '') : undefined,
+        logradouro: end.logradouro || undefined,
+        numero: end.numero || undefined,
+        // SERPRO rejeita bairro com mais de 20 caracteres ("Bairro deve
+        // conter no máximo 20 caracteres") — bairros do cadastro do
+        // cliente costumam vir mais longos que isso.
+        bairro: end.bairro ? String(end.bairro).slice(0, 20) : undefined,
+        complemento: end.complemento || undefined,
+      },
+    },
+  };
+}
+
+/**
+ * Avaliação da moto SEMINOVA vendida num atendimento — mesmo caminho do
+ * pós-venda: motos_interesse (estoque_moto_id, não 0km) -> estoque_motos.avaliacao_id.
+ * É na avaliação que vive o estoque RENAVE da seminova (renave_id_estoque).
+ */
+async function avaliacaoDaVenda(admin: any, atendimentoId: string): Promise<string | null> {
+  const { data: mi } = await admin.from('motos_interesse')
+    .select('estoque_moto_id, estoque_tipo').eq('atendimento_id', atendimentoId)
+    // `neq` sozinho descartaria estoque_tipo NULL (linhas antigas de seminova).
+    .not('estoque_moto_id', 'is', null).or('estoque_tipo.is.null,estoque_tipo.neq.0km').limit(1).maybeSingle();
+  if (!mi?.estoque_moto_id) return null;
+  const { data: em } = await admin.from('estoque_motos').select('avaliacao_id').eq('id', mi.estoque_moto_id).maybeSingle();
+  return em?.avaliacao_id ?? null;
 }
 
 Deno.serve(async (req) => {
@@ -418,7 +492,7 @@ Deno.serve(async (req) => {
         cnpjEstabelecimento: await cnpjDaEmpresaPorAvaliacao(admin, avaliacaoId),
       };
 
-      const payloadEntrada = {
+      const payloadEntrada: EntradaEstoque = {
         cpfOperadorResponsavel: cpfOperador,
         dataCompra: brasiliaNaiveIso(nfCompra.data_emissao).slice(0, 10),
         valorCompra: Number(nfCompra.valor_total),
@@ -882,26 +956,11 @@ Deno.serve(async (req) => {
         .order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (!nfVenda?.chave_nfe) return json({ error: 'NF-e de venda 0km autorizada em produção não encontrada.' }, 409);
 
-      const { data: at } = await admin.from('atendimentos_motos')
-        .select('id, cliente:clientes_fornecedores(nome_razao_social, cpf_cnpj, tipo_pessoa, email, clientes_fornecedores_enderecos(tipo, cep, logradouro, numero, bairro, complemento, cidade, uf))')
-        .eq('id', atendimentoId).maybeSingle();
-      const cli = (at as any)?.cliente;
-      if (!cli?.cpf_cnpj) return json({ error: 'Comprador sem CPF/CNPJ no cadastro.' }, 409);
-      // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma
-      // linha em clientes_fornecedores_enderecos; nunca confiar "na primeira".
-      const enderecosCli = (cli.clientes_fornecedores_enderecos || []) as Array<{ tipo?: string }>;
-      const end = enderecosCli.find((e) => e.tipo === 'fiscal') || enderecosCli[0] || {};
+      const { comprador, error: erroComprador } = await montarComprador(
+        admin, atendimentoId, ctx, body.codigo_municipio ? Number(body.codigo_municipio) : undefined,
+      );
+      if (!comprador) return json({ error: erroComprador }, 409);
 
-      let codigoMunicipio: number | undefined = body.codigo_municipio ? Number(body.codigo_municipio) : undefined;
-      if (!codigoMunicipio && end.cidade && end.uf) {
-        const mun = await municipios(end.cidade, end.uf, ctx);
-        const norm = (s: string) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-        const hit = Array.isArray(mun.body) ? mun.body.find((m: any) => norm(m.nome) === norm(end.cidade)) || mun.body[0] : null;
-        if (hit?.id) codigoMunicipio = Number(hit.id);
-      }
-      if (!codigoMunicipio) return json({ error: 'Código IBGE do município do comprador não resolvido — informe codigo_municipio.' }, 409);
-
-      const docDigits = String(cli.cpf_cnpj).replace(/\D/g, '');
       const chaveVenda = soChave(nfVenda.chave_nfe);
 
       // Vincula a NF de venda ao estoque.
@@ -915,23 +974,7 @@ Deno.serve(async (req) => {
         chaveNotaFiscal: chaveVenda,
         cpfOperadorResponsavel: body.cpf_operador ? String(body.cpf_operador).replace(/\D/g, '') : undefined,
         emailEstabelecimento: body.email_estabelecimento || EMAIL_ESTABELECIMENTO_PADRAO,
-        comprador: {
-          tipoDocumento: docDigits.length > 11 ? 'CNPJ' : 'CPF',
-          numeroDocumento: docDigits,
-          nome: cli.nome_razao_social || undefined,
-          email: cli.email || undefined,
-          endereco: {
-            codigoMunicipio,
-            cep: end.cep ? String(end.cep).replace(/\D/g, '') : undefined,
-            logradouro: end.logradouro || undefined,
-            numero: end.numero || undefined,
-            // SERPRO rejeita bairro com mais de 20 caracteres ("Bairro deve
-            // conter no máximo 20 caracteres") — bairros do cadastro do
-            // cliente costumam vir mais longos que isso.
-            bairro: end.bairro ? String(end.bairro).slice(0, 20) : undefined,
-            complemento: end.complemento || undefined,
-          },
-        },
+        comprador,
       }, ctx);
       if (r.status !== 200 && r.status !== 201) {
         await persistir(admin, emnId, { renave_ultimo_erro: erroRenave(r) });
@@ -964,6 +1007,254 @@ Deno.serve(async (req) => {
       await persistir(admin, emnId, patch);
 
       return json({ ok: true, estoque: est, atpv_numero: patch.renave_atpv_numero ?? null });
+    }
+
+    // ------ SAÍDA DE SEMINOVA (venda) — etapa "SAÍDA RENAVE" do Pós-Venda ------
+    // Sequência (manual oficial, renave-ws/manual/solicitar-saida-estoque e
+    // enviar-nota-fiscal-saida): 1 saída (/api/solicitacoes-saida-estoque,
+    // exige estoque CONFIRMADO + NF de entrada + assinatura do ATPV da
+    // entrada) -> 2 NF-e de venda (evento VENDA, "deve ser feito após a saída")
+    // -> 3 ATPV-e da venda (intenção de venda sistêmica, dispensa assinaturas)
+    // -> 4 termo de saída (opcional, em extinção). Todas recebem
+    // `atendimento_id` (da venda) e acham a avaliação da moto por ele.
+    if (String(acao || '').startsWith('saida-usado')) {
+      const atendimentoId: string = body.atendimento_id;
+      if (!atendimentoId) return json({ error: 'atendimento_id é obrigatório' }, 400);
+      const avaliacaoId = await avaliacaoDaVenda(admin, atendimentoId);
+      if (!avaliacaoId) return json({ error: 'Moto seminova desta venda não encontrada (sem avaliação vinculada ao estoque).' }, 404);
+
+      const { data: av } = await admin.from('avaliacoes')
+        .select('id, chassi, placa, renavam, renave_id_estoque, renave_estado, renave_nf_vinculada_em, renave_atpv_assinatura_enviada_em, renave_crlve_url, renave_saida_em, renave_saida_atendimento_id')
+        .eq('id', avaliacaoId).maybeSingle();
+      if (!av) return json({ error: 'Avaliação não encontrada' }, 404);
+      if (!av.renave_id_estoque) {
+        return json({ error: 'Esta moto não tem entrada no RENAVE — faça a entrada no Pós-Compra antes da saída.' }, 409);
+      }
+
+      const ctx: RenaveLogCtx = {
+        admin, operacao: acao, chassi: av.chassi, avaliacaoId, usuarioId: caller.id,
+        cnpjEstabelecimento: await cnpjDaEmpresaPorAvaliacao(admin, avaliacaoId),
+      };
+      // Consultas de apoio (estado/CRLV-e) não entram no Histórico -- mesmo
+      // critério do estoque-status (ctx sem `admin` não loga).
+      const ctxSemLog: RenaveLogCtx = { ...ctx, admin: undefined };
+      const placa = av.placa ? String(av.placa).toUpperCase().replace(/\s|-/g, '') : '';
+      const renavam = av.renavam ? String(av.renavam).replace(/\D/g, '') : '';
+
+      const nfVendaProducao = async () => {
+        const { data } = await admin.from('nfe_entradas')
+          .select('chave_nfe, valor_total, data_emissao')
+          .eq('atendimento_id', atendimentoId).eq('operacao', 'venda_seminova')
+          .eq('status', 'processada').eq('ambiente', 'producao')
+          .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        return data;
+      };
+
+      // ATPV-e da venda — gerado pela intenção de venda sistêmica da saída.
+      // Arquivo separado do ATPV-e da entrada (mesma moto, documentos diferentes).
+      const baixarAtpvVenda = async (): Promise<{ patch: Record<string, unknown>; error?: string }> => {
+        const pdf = await pdfAtpvPorChassi(String(av.chassi).toUpperCase(), ctx);
+        if (pdf.status !== 200) return { patch: {}, error: erroRenave(pdf) };
+        const patch: Record<string, unknown> = { renave_saida_atpv_numero: pdf.body?.numeroAtpv ?? null };
+        if (pdf.body?.pdfAtpvBase64) {
+          const bytes = Uint8Array.from(atob(pdf.body.pdfAtpvBase64), (c: string) => c.charCodeAt(0));
+          const path = `renave/atpv/ATPVE VENDA - ${String(av.chassi).toUpperCase()}.pdf`;
+          const up = await admin.storage.from('moto-fotos').upload(path, bytes, { contentType: 'application/pdf', upsert: true });
+          if (!up.error) {
+            const { data: pub } = admin.storage.from('moto-fotos').getPublicUrl(path);
+            patch.renave_saida_atpv_url = pub?.publicUrl ?? null;
+          }
+        }
+        return { patch };
+      };
+
+      if (acao === 'saida-usado') {
+        if (av.renave_saida_em) return json({ error: 'A saída desta moto já foi registrada no RENAVE.' }, 409);
+        if (!placa || !renavam) return json({ error: 'Placa e/ou RENAVAM não cadastrados na avaliação.' }, 409);
+        const cpfOperador = body.cpf_operador ? String(body.cpf_operador).replace(/\D/g, '') : '';
+        if (!cpfOperador) return json({ error: 'cpf_operador é obrigatório' }, 400);
+
+        // Pré-requisitos da SERPRO (manual): NF de entrada e assinatura do ATPV
+        // da entrada já enviadas, e estoque CONFIRMADO pelo Detran.
+        if (!av.renave_nf_vinculada_em) return json({ error: 'A NF-e de compra ainda não foi vinculada à entrada no RENAVE — conclua a entrada no Pós-Compra.' }, 409);
+        if (!av.renave_atpv_assinatura_enviada_em) return json({ error: 'A assinatura do ATPV da entrada ainda não foi enviada — conclua a entrada no Pós-Compra.' }, 409);
+        let estado: string | null = av.renave_estado ?? null;
+        try {
+          const est = await consultarEstoque(av.renave_id_estoque, ctxSemLog);
+          if (est.status === 200 && est.body?.estado) estado = est.body.estado;
+        } catch { /* best-effort -- fica o estado salvo */ }
+        if (estado && estado !== av.renave_estado) await persistirAvaliacao(admin, avaliacaoId, { renave_estado: estado });
+        if (String(estado ?? '').toUpperCase() !== 'CONFIRMADO') {
+          return json({ error: `A SERPRO só aceita a saída com o estoque CONFIRMADO pelo Detran (estado atual: ${estado || 'desconhecido'}).` }, 409);
+        }
+
+        const nfVenda = await nfVendaProducao();
+        if (!nfVenda?.chave_nfe || !nfVenda.valor_total || !nfVenda.data_emissao) {
+          return json({ error: 'NF-e de venda autorizada em produção não encontrada — emita a NF-e de venda antes da saída.' }, 409);
+        }
+
+        const { comprador, error: erroComprador } = await montarComprador(
+          admin, atendimentoId, ctx, body.codigo_municipio ? Number(body.codigo_municipio) : undefined,
+        );
+        if (!comprador) return json({ error: erroComprador }, 409);
+
+        // Código de segurança do CRV ATUAL: com o estoque CONFIRMADO o Detran
+        // reemitiu o CRV no nome do estabelecimento -- o código salvo na
+        // avaliação (do CRV do vendedor, usado na entrada) já não vale. A
+        // SERPRO só devolve o código novo dentro do PDF pdfCodigoSegurancaCrvBase64
+        // do CRLV-e; lê de lá (mesmo leitor usado no ATPV-e da entrada).
+        const crlve = await consultarCrlve(placa, renavam, ctxSemLog);
+        if (crlve.status !== 200) {
+          const msg = `Falha ao consultar o CRLV-e atual (necessário pro código de segurança do CRV): ${erroRenave(crlve)}`;
+          await persistirAvaliacao(admin, avaliacaoId, { renave_saida_ultimo_erro: msg });
+          return json({ error: msg, status: crlve.status, detalhe: crlve.body }, 422);
+        }
+        const patchCrlve: Record<string, unknown> = {};
+        if (crlve.body?.pdfBase64 && !av.renave_crlve_url) {
+          const bytes = Uint8Array.from(atob(crlve.body.pdfBase64), (c: string) => c.charCodeAt(0));
+          const path = `renave/crlve/CRLVe - ${String(av.chassi || placa).toUpperCase()}.pdf`;
+          const up = await admin.storage.from('moto-fotos').upload(path, bytes, { contentType: 'application/pdf', upsert: true });
+          if (!up.error) patchCrlve.renave_crlve_url = admin.storage.from('moto-fotos').getPublicUrl(path).data?.publicUrl ?? null;
+        }
+        const lido = crlve.body?.pdfCodigoSegurancaCrvBase64
+          ? await extrairCodigoSegurancaDoAtpv(crlve.body.pdfCodigoSegurancaCrvBase64, 'crv')
+          : { codigoSegurancaCrv: null, numeroCrv: null };
+        if (!lido.codigoSegurancaCrv) {
+          const msg = 'Não foi possível ler o código de segurança do CRV atual no documento da SERPRO — tente novamente em instantes.';
+          await persistirAvaliacao(admin, avaliacaoId, { ...patchCrlve, renave_saida_ultimo_erro: msg });
+          return json({ error: msg }, 422);
+        }
+
+        const r = await sairEstoque({
+          dataVenda: brasiliaNaiveIso(nfVenda.data_emissao).slice(0, 10),
+          valorVenda: Number(nfVenda.valor_total),
+          cpfOperadorResponsavel: cpfOperador,
+          emailEstabelecimento: EMAIL_ESTABELECIMENTO_PADRAO,
+          comprador,
+          veiculo: {
+            codigoSegurancaCrv: lido.codigoSegurancaCrv,
+            // Só o número lido do CRV novo -- o da avaliação é do CRV do vendedor.
+            numeroCrv: lido.numeroCrv ?? undefined,
+            placa,
+            renavam,
+          },
+        }, ctx);
+        if (r.status !== 201 && r.status !== 200) {
+          const msg = erroRenave(r);
+          await persistirAvaliacao(admin, avaliacaoId, { ...patchCrlve, renave_saida_ultimo_erro: msg });
+          return json({ error: msg, status: r.status, detalhe: r.body }, 422);
+        }
+
+        const est = r.body || {};
+        const patch: Record<string, unknown> = {
+          ...patchCrlve,
+          renave_saida_em: new Date().toISOString(),
+          renave_saida_atendimento_id: atendimentoId,
+          renave_estado: est.estado ?? estado,
+          renave_num_termo_saida: est.saidaEstoque?.numeroTermoSaidaEstoque ?? null,
+          renave_saida_ultimo_erro: null,
+        };
+
+        // NF-e de venda (evento VENDA) — best-effort, a tela tem retry.
+        const nf = await enviarNotaFiscal(soChave(nfVenda.chave_nfe), 'VENDA', av.renave_id_estoque, ctx);
+        if (nf.status < 400) patch.renave_nf_venda_vinculada_em = new Date().toISOString();
+        else console.warn('renave notas-fiscais VENDA (seminova):', erroRenave(nf));
+
+        // ATPV-e da venda — best-effort, a tela tem retry.
+        const atpv = await baixarAtpvVenda();
+        Object.assign(patch, atpv.patch);
+        if (atpv.error) console.warn('renave pdf-atpv (saída seminova):', atpv.error);
+
+        await persistirAvaliacao(admin, avaliacaoId, patch);
+        return json({ ok: true, estoque: est, atpv_numero: patch.renave_saida_atpv_numero ?? null });
+      }
+
+      // Daqui pra baixo: passos depois da saída (retry/documentos/cancelamento).
+      if (!av.renave_saida_em) return json({ error: 'A saída desta moto ainda não foi registrada no RENAVE.' }, 409);
+
+      if (acao === 'saida-usado-atpv') {
+        const atpv = await baixarAtpvVenda();
+        if (atpv.error) return json({ error: atpv.error }, 422);
+        await persistirAvaliacao(admin, avaliacaoId, atpv.patch);
+        return json({ ok: true, ...atpv.patch });
+      }
+
+      if (acao === 'saida-usado-nf') {
+        const nfVenda = await nfVendaProducao();
+        if (!nfVenda?.chave_nfe) return json({ error: 'NF-e de venda autorizada em produção não encontrada.' }, 409);
+        const nf = await enviarNotaFiscal(soChave(nfVenda.chave_nfe), 'VENDA', av.renave_id_estoque, ctx);
+        if (nf.status >= 400) {
+          const msg = erroRenave(nf);
+          await persistirAvaliacao(admin, avaliacaoId, { renave_saida_ultimo_erro: `Vínculo da NF-e de venda falhou: ${msg}` });
+          return json({ error: msg, status: nf.status, detalhe: nf.body }, 422);
+        }
+        await persistirAvaliacao(admin, avaliacaoId, { renave_nf_venda_vinculada_em: new Date().toISOString(), renave_saida_ultimo_erro: null });
+        return json({ ok: true });
+      }
+
+      if (acao === 'saida-usado-termo') {
+        const r = await termoSaidaEstoque(av.renave_id_estoque, ctx);
+        if (r.status !== 200) return json({ error: erroRenave(r), status: r.status, detalhe: r.body }, 422);
+        const b64 = r.body?.pdfBase64 || achaPdfBase64(r.body);
+        if (!b64) return json({ error: 'A SERPRO não devolveu o PDF do termo de saída nessa consulta.', detalhe: r.body }, 422);
+        const bytes = Uint8Array.from(atob(b64), (c: string) => c.charCodeAt(0));
+        const path = `renave/termo-saida/TERMO SAIDA - ${String(av.chassi || av.renave_id_estoque).toUpperCase()}.pdf`;
+        const up = await admin.storage.from('moto-fotos').upload(path, bytes, { contentType: 'application/pdf', upsert: true });
+        if (up.error) return json({ error: `Falha ao salvar o PDF: ${up.error.message}` }, 500);
+        const patch: Record<string, unknown> = {
+          renave_termo_saida_url: admin.storage.from('moto-fotos').getPublicUrl(path).data?.publicUrl ?? null,
+          ...(r.body?.numeroTermoSaidaEstoque ? { renave_num_termo_saida: r.body.numeroTermoSaidaEstoque } : {}),
+        };
+        await persistirAvaliacao(admin, avaliacaoId, patch);
+        return json({ ok: true, ...patch });
+      }
+
+      // Cancelamento de saída (recuperação de saída indevida). Só enquanto o
+      // Detran não transferiu pro comprador. A SERPRO gera um NOVO estoque
+      // CONFIRMADO (novo idEstoque) -- troca o id salvo pra moto voltar a
+      // ficar disponível pra uma saída nova.
+      if (acao === 'saida-usado-cancelar') {
+        const cpfOperador = body.cpf_operador ? String(body.cpf_operador).replace(/\D/g, '') : '';
+        if (!cpfOperador) return json({ error: 'cpf_operador é obrigatório' }, 400);
+        const r = await cancelarSaidaEstoque({
+          idEstoque: av.renave_id_estoque,
+          dataCancelamentoSaidaEstoque: brasiliaNaiveIso().slice(0, 10),
+          cpfOperadorResponsavel: cpfOperador,
+        }, ctx);
+        if (r.status !== 201 && r.status !== 200) {
+          const msg = erroRenave(r);
+          await persistirAvaliacao(admin, avaliacaoId, { renave_saida_ultimo_erro: `Cancelamento da saída falhou: ${msg}` });
+          return json({ error: msg, status: r.status, detalhe: r.body }, 422);
+        }
+
+        const b = r.body || {};
+        let novoId: number | null = b.saidaEstoque?.cancelamentoSaidaEstoque?.idEstoqueGeradoNoCancelamentoSaida
+          ?? (b.id && b.id !== av.renave_id_estoque ? b.id : null);
+        if (!novoId && av.chassi) {
+          // Resposta sem o id novo -- procura o estoque CONFIRMADO da moto.
+          try {
+            const le = await listarEstoques({ chassi: String(av.chassi).toUpperCase(), estadoEstoque: 'CONFIRMADO' }, ctxSemLog);
+            const lista = Array.isArray(le.body) ? le.body : (Array.isArray(le.body?.content) ? le.body.content : []);
+            novoId = lista.find((x: any) => x?.id && x.id !== av.renave_id_estoque)?.id ?? null;
+          } catch { /* best-effort */ }
+        }
+
+        await persistirAvaliacao(admin, avaliacaoId, {
+          renave_id_estoque: novoId ?? av.renave_id_estoque,
+          renave_estado: 'CONFIRMADO',
+          renave_saida_em: null,
+          renave_saida_atendimento_id: null,
+          renave_num_termo_saida: null,
+          renave_termo_saida_url: null,
+          renave_saida_atpv_numero: null,
+          renave_saida_atpv_url: null,
+          renave_nf_venda_vinculada_em: null,
+          renave_saida_ultimo_erro: novoId ? null : 'Saída cancelada, mas o novo idEstoque gerado pela SERPRO não foi identificado — confira antes de uma nova saída.',
+        });
+        return json({ ok: true, novo_id_estoque: novoId, estoque: b });
+      }
+
+      return json({ error: `ação desconhecida: ${acao}` }, 400);
     }
 
     if (acao === 'atpv-pdf') {

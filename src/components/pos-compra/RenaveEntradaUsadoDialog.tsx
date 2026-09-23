@@ -196,6 +196,8 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       .eq('avaliacao_id', avaliacaoId)
       .eq('sucesso', true)
       .neq('endpoint', '/api/notas-fiscais')
+      // Saída (Pós-Venda) grava na mesma avaliação — tem histórico próprio lá.
+      .not('operacao', 'like', 'saida-usado%')
       .order('created_at', { ascending: false })
       .limit(50);
     const rows: any[] = data || [];

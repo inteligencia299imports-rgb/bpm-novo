@@ -395,6 +395,49 @@ export interface SaidaZeroKm {
 export const sairEstoqueZeroKm = (s: SaidaZeroKm, ctx?: RenaveLogCtx) =>
   call('POST', '/api/saidas-estoque-veiculo-zero-km', { body: s, ctx });
 
+// Saída de moto SEMINOVA (emplacada) do estoque, na venda. Schema confirmado
+// 2026-09-23 no OpenAPI oficial (SolicitacaoSaidaEstoque) e no manual
+// (renave-ws/manual/solicitar-saida-estoque): diferente do 0km, não leva
+// idEstoque -- o veículo é identificado pelo CRV (placa/renavam/numeroCrv +
+// codigoSegurancaCrv obrigatório). Pré-requisitos da SERPRO: estoque
+// CONFIRMADO pelo Detran, NF de entrada e assinatura do ATPV do vendedor já
+// enviadas. A saída gera uma intenção de venda sistêmica com o ATPV-e
+// "Documento gerado pelo RENAVE" -- dispensa assinaturas (Contran 797/2020).
+// `dataVenda` é date puro (YYYY-MM-DD) e vira a data de transferência da
+// responsabilidade pro comprador.
+export interface SaidaEstoque {
+  dataVenda: string; // YYYY-MM-DD
+  valorVenda: number;
+  cpfOperadorResponsavel?: string;
+  emailEstabelecimento?: string;
+  comprador: SaidaZeroKm['comprador'];
+  veiculo: {
+    codigoSegurancaCrv: string; // 11 dígitos -- do CRV ATUAL (já no nome do estabelecimento)
+    numeroCrv?: string;
+    placa?: string;
+    renavam?: string;
+  };
+}
+export const sairEstoque = (s: SaidaEstoque, ctx?: RenaveLogCtx) =>
+  call('POST', '/api/solicitacoes-saida-estoque', { body: s, ctx });
+
+// Termo de Saída (TermoSaidaEstoqueJson: numeroTermoSaidaEstoque + pdfBase64).
+// O manual avisa que o documento "deve ser extinto em breve, estando ainda
+// disponível apenas em caráter de transição" -- por isso é opcional na tela.
+export const termoSaidaEstoque = (idEstoque: number, ctx?: RenaveLogCtx) =>
+  call('GET', `/api/estoques/${idEstoque}/termo-saida-estoque`, { ctx });
+
+// Cancelamento de saída (SolicitacaoCancelamentoDeSaida). Só enquanto o Detran
+// não transferiu pro comprador. A SERPRO gera um NOVO estoque CONFIRMADO com
+// os mesmos dados (novo idEstoque) -- quem chama precisa trocar o id salvo.
+export interface CancelamentoSaida {
+  idEstoque: number;
+  dataCancelamentoSaidaEstoque: string; // YYYY-MM-DD
+  cpfOperadorResponsavel?: string;
+}
+export const cancelarSaidaEstoque = (c: CancelamentoSaida, ctx?: RenaveLogCtx) =>
+  call('POST', '/api/solicitacoes-cancelamento-saida-estoque', { body: c, ctx });
+
 export const pdfAtpvPorChassi = (chassi: string, ctx?: RenaveLogCtx) =>
   call('GET', '/api/pdf-atpv', { query: { chassi }, ctx });
 

@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, AlertTriangle, ArrowLeftRight } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, AlertTriangle, ArrowLeftRight, PackageMinus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import ContratoConsignanteDialog from '@/components/intermediacao/ContratoConsignanteDialog';
 import ConverterConsignacaoDialog from '@/components/avaliacoes/ConverterConsignacaoDialog';
@@ -29,6 +29,9 @@ const NF_TRANSFERENCIA = 'NF-E DE TRANSFERÊNCIA (MMATOS)';
 // (checkbox manual); moto 0km encerra em "ATPV-E" (emitido via RENAVE).
 const TRANSF_FINALIZADA = 'TRANSFERÊNCIA FINALIZADA';
 const ATPV_E = 'ATPV-E';
+// Seminova própria com entrada no RENAVE: a saída de estoque (SERPRO) entra
+// antes da TRANSFERÊNCIA FINALIZADA — ver RenaveSaidaUsadoDialog.
+const SAIDA_RENAVE = 'SAÍDA RENAVE';
 // Intermediação Parte 1 (moto consignada vendida) — devolução simbólica ao
 // consignante + compra, antes de liberar o resto do processo de transferência.
 // Reaparece aqui (era um botão solto na avaliação) porque é literalmente uma
@@ -75,6 +78,8 @@ interface Props {
   onEmitirNfeTransferencia?: (avaliacaoId: string) => void;
   /** Abre a tela de emissão do ATPV-e (etapa ATPV-E) — só moto 0km (RENAVE). */
   onEmitirAtpv?: () => void;
+  /** Abre a tela da saída RENAVE (etapa SAÍDA RENAVE) — só seminova própria. */
+  onAbrirSaidaRenave?: () => void;
   /** Navega para o Pós-Compra da avaliação da moto de troca. */
   onNavigateToPosCompra?: (avaliacaoId: string) => void;
   /** Venda aguardando/recusada na aprovação do master — bloqueia salvar e emitir NF-e. */
@@ -93,6 +98,7 @@ const ProcessoDialog: React.FC<Props> = ({
   onEmitirNfeTroca,
   onEmitirNfeTransferencia,
   onEmitirAtpv,
+  onAbrirSaidaRenave,
   onNavigateToPosCompra,
   vendaBloqueadaAprovacao,
 }) => {
@@ -134,6 +140,10 @@ const ProcessoDialog: React.FC<Props> = ({
   const [atendimentoEmpresaId, setAtendimentoEmpresaId] = useState<string>('');
 
   const eh0km = estoqueMoto?.fonte === '0km';
+  // Saída RENAVE: seminova própria (não consignada) — a avaliação da moto é
+  // onde vive o estoque RENAVE (ver load abaixo).
+  const saidaRenaveAv = estoqueMoto?.fonte === 'seminova' ? estoqueMoto?.avaliacao : null;
+  const temSaidaRenave = !!saidaRenaveAv && TIPOS_PROPRIA.includes(saidaRenaveAv.tipo_aquisicao);
   const tipoVenda = eh0km ? 'venda_0km' : 'venda_seminova';
   // Intermediação Parte 1 também tem a etapa NF-E DE VENDA no checklist
   // (mesmo padrão do Pós-Venda) — precisa do mesmo contexto (estoque/contrato/
@@ -161,6 +171,10 @@ const ProcessoDialog: React.FC<Props> = ({
       const p = names.indexOf('PENDENTE (BOLETO)');
       names.splice(p >= 0 ? p : names.length, 0, ATPV_E);
     }
+    if (temSaidaRenave) {
+      const t = names.indexOf(TRANSF_FINALIZADA);
+      names.splice(t >= 0 ? t : names.length, 0, SAIDA_RENAVE);
+    }
     if (estoqueMoto) {
       // NF-e depois da VISTORIA. Quando há troca, a NF-e de entrada (troca) —
       // e, na FAG, a de transferência pra MMATOS — vêm ANTES da NF-e de venda.
@@ -171,7 +185,7 @@ const ProcessoDialog: React.FC<Props> = ({
       if (interesse === 'trocar' && trocaAvaliacaoId) names.splice(pos, 0, NF_TROCA);
     }
     return names;
-  }, [customEtapas, estoqueMoto, eh0km, interesse, trocaAvaliacaoId, precisaTransferenciaFag]);
+  }, [customEtapas, estoqueMoto, eh0km, temSaidaRenave, interesse, trocaAvaliacaoId, precisaTransferenciaFag]);
 
   useEffect(() => {
     if (!open) return;
@@ -232,7 +246,7 @@ const ProcessoDialog: React.FC<Props> = ({
           const eh0km = (mi as any).estoque_tipo === '0km';
           const cols = eh0km
             ? 'id, status, renave_id_estoque, renave_estado, renave_atpv_numero, renave_atpv_url, renave_ultimo_erro, renave_atualizado_em'
-            : 'id, status';
+            : 'id, status, avaliacao:avaliacao_id(id, tipo_aquisicao, renave_id_estoque, renave_saida_em, renave_saida_ultimo_erro, renave_saida_atpv_numero)';
           const { data: em } = await (supabase as any)
             .from(eh0km ? 'estoque_motos_novas' : 'estoque_motos')
             .select(cols)
@@ -265,6 +279,11 @@ const ProcessoDialog: React.FC<Props> = ({
             if (i >= 0) names.splice(i, 1);
             const p = names.indexOf('PENDENTE (BOLETO)');
             names.splice(p >= 0 ? p : names.length, 0, ATPV_E);
+          }
+
+          if (estMoto?.fonte === 'seminova' && estMoto.avaliacao && TIPOS_PROPRIA.includes(estMoto.avaliacao.tipo_aquisicao)) {
+            const t = names.indexOf(TRANSF_FINALIZADA);
+            names.splice(t >= 0 ? t : names.length, 0, SAIDA_RENAVE);
           }
 
           if (estMoto) {
@@ -333,6 +352,8 @@ const ProcessoDialog: React.FC<Props> = ({
   const is0km = (estoqueMoto as any)?.fonte === '0km';
   const atpvEmitido = !!(estoqueMoto as any)?.renave_atpv_numero;
   const atpvErro = !atpvEmitido && !!(estoqueMoto as any)?.renave_ultimo_erro;
+  const saidaRenaveFeita = !!saidaRenaveAv?.renave_saida_em;
+  const saidaRenaveErro = !saidaRenaveFeita && !!saidaRenaveAv?.renave_saida_ultimo_erro;
   // A saída/ATPV-e no RENAVE exige a NF-e de venda autorizada em produção —
   // a opção fica travada (sem clicar, sem tooltip) até lá.
   const nfVendaProducao = nfeVenda.emitida && nfeVenda.nfe?.ambiente === 'producao';
@@ -342,11 +363,12 @@ const ProcessoDialog: React.FC<Props> = ({
     : etapa === NF_TROCA ? nfeTroca.emitida
     : etapa === NF_TRANSFERENCIA ? nfeTransferencia.emitida
     : (etapa === ATPV_E && is0km) ? atpvEmitido
+    : etapa === SAIDA_RENAVE ? saidaRenaveFeita
     : etapa === CONVERTER_CONSIGNACAO ? converterConcluido
     : false;
   // Etapas "automáticas" (sem checkbox, marcadas por estado externo).
   const isNfEtapa = (etapa: string) =>
-    etapa === NF_VENDA || etapa === NF_TROCA || etapa === NF_TRANSFERENCIA || (etapa === ATPV_E && is0km) || etapa === CONVERTER_CONSIGNACAO;
+    etapa === NF_VENDA || etapa === NF_TROCA || etapa === NF_TRANSFERENCIA || (etapa === ATPV_E && is0km) || etapa === SAIDA_RENAVE || etapa === CONVERTER_CONSIGNACAO;
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     if (isNfEtapa(etapa)) return; // estado dirigido pela emissão da NF-e
@@ -412,7 +434,9 @@ const ProcessoDialog: React.FC<Props> = ({
                 ? (nfeCompraConv.nfe?.data_emissao ?? null)
                 : e.etapa === ATPV_E
                   ? ((estoqueMoto as any)?.renave_atualizado_em ?? null)
-                  : e.data_conclusao,
+                  : e.etapa === SAIDA_RENAVE
+                    ? (saidaRenaveAv?.renave_saida_em ?? null)
+                    : e.data_conclusao,
       }));
 
       const { error: persistError } = await persistChecklistRows({
@@ -566,7 +590,8 @@ const ProcessoDialog: React.FC<Props> = ({
               const isAtpv = e.etapa === ATPV_E;
               const isAtpvAuto = isAtpv && is0km;   // 0km: emitido via RENAVE (sem checkbox)
               const isConverterConsignacao = e.etapa === CONVERTER_CONSIGNACAO;
-              const isNf = isNfVenda || isNfTroca || isNfTransferencia || isAtpvAuto || isConverterConsignacao;
+              const isSaidaRenave = e.etapa === SAIDA_RENAVE;
+              const isNf = isNfVenda || isNfTroca || isNfTransferencia || isAtpvAuto || isSaidaRenave || isConverterConsignacao;
               // Converter Consignação em Compra encadeia duas NF-e (devolução simbólica,
               // depois compra) — "a NF-e ativa" é a devolução enquanto ela não estiver
               // autorizada em produção, senão a compra (mesmo padrão de emissão/pendente/
@@ -579,6 +604,8 @@ const ProcessoDialog: React.FC<Props> = ({
               const trocaCompraProducaoOk = nfeTroca.emitida && nfeTroca.nfe?.ambiente === 'producao';
               const nfMarcada = isAtpvAuto
                 ? atpvEmitido
+                : isSaidaRenave
+                  ? saidaRenaveFeita
                 : isConverterConsignacao
                   ? converterConcluido
                   : (isNf ? !!nfeObj?.emitida : false);
@@ -609,6 +636,17 @@ const ProcessoDialog: React.FC<Props> = ({
                     {isAtpvAuto && atpvEmitido && (estoqueMoto as any)?.renave_atpv_numero && (
                       <p className="text-xs text-muted-foreground">
                         Nº {(estoqueMoto as any).renave_atpv_numero}
+                      </p>
+                    )}
+                    {isSaidaRenave && saidaRenaveFeita && saidaRenaveAv?.renave_saida_atpv_numero && (
+                      <p className="text-xs text-muted-foreground">
+                        ATPV-e Nº {saidaRenaveAv.renave_saida_atpv_numero}
+                      </p>
+                    )}
+                    {isSaidaRenave && saidaRenaveErro && (
+                      <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                        {saidaRenaveAv.renave_saida_ultimo_erro}
                       </p>
                     )}
                     {isNfVenda && nfeVenda.erro && (
@@ -745,6 +783,41 @@ const ProcessoDialog: React.FC<Props> = ({
                       >
                         {atpvErro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                         {atpvErro ? 'Tentar novamente' : 'Emitir ATPV-e'}
+                      </Button>
+                    )
+                  ) : isSaidaRenave ? (
+                    saidaRenaveFeita ? (
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                        <Button
+                          size="sm" className="h-7 w-24 gap-1 justify-center text-white bg-emerald-600 hover:bg-emerald-700"
+                          onClick={() => onAbrirSaidaRenave?.()}
+                        >
+                          <PackageMinus className="h-3.5 w-3.5" /> Saída
+                        </Button>
+                        <CalendarIcon className="h-4 w-4 shrink-0" />
+                        {format(new Date(saidaRenaveAv.renave_saida_em), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                      </span>
+                    ) : !saidaRenaveAv?.renave_id_estoque ? (
+                      <span
+                        className="text-sm text-muted-foreground text-right"
+                        title="A saída só é possível depois da entrada no RENAVE (Pós-Compra da moto)"
+                      >
+                        Moto sem entrada no RENAVE
+                      </span>
+                    ) : (
+                      // Pré-requisitos (estoque CONFIRMADO, NF-e de venda em produção
+                      // etc.) ficam listados na própria tela da saída.
+                      <Button
+                        variant={saidaRenaveErro ? 'outline' : 'default'} size="sm"
+                        className={cn(
+                          'h-9 gap-2 text-sm',
+                          saidaRenaveErro && 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive',
+                        )}
+                        disabled={vendaBloqueadaAprovacao}
+                        onClick={() => onAbrirSaidaRenave?.()}
+                      >
+                        {saidaRenaveErro ? <RefreshCw className="h-4 w-4" /> : <PackageMinus className="h-4 w-4" />}
+                        {saidaRenaveErro ? 'Tentar novamente' : 'Saída'}
                       </Button>
                     )
                   ) : isConverterConsignacao ? (
