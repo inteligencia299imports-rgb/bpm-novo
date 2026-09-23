@@ -36,7 +36,7 @@ export async function gerarPdfContratoCompra(avaliacaoId: string, modo: 'downloa
     .select(`
       id, marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, placa, km,
       valor_fechamento, valor_quitacao, atendimento_id,
-      atendimentos_motos ( id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj) )
+      atendimentos_motos!avaliacoes_atendimento_id_fkey( id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj) )
     `)
     .eq('id', avaliacaoId)
     .maybeSingle();

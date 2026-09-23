@@ -253,7 +253,7 @@ Deno.serve(async (req) => {
     // resto do sistema) e ja traz a placa cadastrada para a conferencia do CRLV.
     supabaseAdmin
       .from('avaliacoes')
-      .select('id, placa, chassi, renavam, numero_crv, codigo_seguranca_crv, tipo_crv, ano_fabricacao, ano_modelo, atendimentos_motos!inner(vendedor_id, loja_id)')
+      .select('id, placa, chassi, renavam, numero_crv, codigo_seguranca_crv, tipo_crv, ano_fabricacao, ano_modelo, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(vendedor_id, loja_id)')
       .eq('id', avaliacao_id)
       .maybeSingle(),
   ]);

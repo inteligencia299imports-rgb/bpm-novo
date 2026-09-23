@@ -145,7 +145,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     if (consignadaEstoque?.avaliacao_id) {
       const { data: avalRaw } = await supabase
         .from('avaliacoes')
-        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, tipo_pessoa, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))`)
+        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, tipo_pessoa, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))`)
         .eq('id', consignadaEstoque.avaliacao_id)
         .single();
       const avalData = avalRaw ? flattenMarcaModelo(avalRaw as any) : avalRaw;
@@ -162,7 +162,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const abrirNfeTroca = async (avaliacaoId: string) => {
     const { data: raw } = await supabase
       .from('avaliacoes')
-      .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!inner(id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, cliente_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)))`)
+      .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, cliente_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)))`)
       .eq('id', avaliacaoId)
       .maybeSingle();
     if (!raw) return;
@@ -442,7 +442,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         if (consignadaEstoque?.avaliacao_id) {
           const { data: avalData } = await supabase
             .from('avaliacoes')
-            .select('*, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, tipo_pessoa, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))')
+            .select('*, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, tipo_pessoa, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))')
             .eq('id', consignadaEstoque.avaliacao_id)
             .single();
           if (avalData) {

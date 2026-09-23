@@ -117,7 +117,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     // Fetch avaliacoes that reached preparation flow (situacao adquirida or estoque)
     const avalRes = await fetchAllRange<any>(() => supabase
       .from('avaliacoes')
-      .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, atendimento_id, tipo_aquisicao, situacao, preparacao_status, atendimentos_motos!inner(id, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
+      .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, atendimento_id, tipo_aquisicao, situacao, preparacao_status, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
       .in('situacao', ['adquirida', 'estoque', 'perdido'])
     );
     const avals = flattenMarcaModeloList(avalRes.data);

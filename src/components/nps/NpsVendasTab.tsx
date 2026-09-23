@@ -46,7 +46,7 @@ const NpsVendasTab = ({ onNavigateToTab }: NpsVendasTabProps) => {
     const buildQuery = (status?: SituacaoNps) => {
       let q = supabase
         .from('atendimentos_motos')
-        .select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes(*, ${MARCA_MODELO_SELECT})`)
+        .select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes!avaliacoes_atendimento_id_fkey(*, ${MARCA_MODELO_SELECT})`)
         .eq('situacao', 'vendido')
         .in('interesse', ['comprar', 'trocar']);
 
