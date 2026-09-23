@@ -12,10 +12,18 @@
 --   renave_saida_ultimo_erro     -> última falha da saída (não mistura com renave_ultimo_erro da entrada)
 alter table avaliacoes
   add column if not exists renave_saida_em timestamptz,
-  add column if not exists renave_saida_atendimento_id uuid references atendimentos_motos(id) on delete set null,
+  add column if not exists renave_saida_atendimento_id uuid,
   add column if not exists renave_num_termo_saida bigint,
   add column if not exists renave_termo_saida_url text,
   add column if not exists renave_saida_atpv_numero text,
   add column if not exists renave_saida_atpv_url text,
   add column if not exists renave_nf_venda_vinculada_em timestamptz,
   add column if not exists renave_saida_ultimo_erro text;
+
+-- SEM foreign key em renave_saida_atendimento_id de propósito: uma 2ª FK
+-- avaliacoes -> atendimentos_motos deixa ambíguo todo embed PostgREST entre as
+-- duas tabelas (PGRST201 "more than one relationship was found") e quebrou
+-- telas em produção em 2026-09-23. A versão inicial desta migration criou a
+-- FK; remove caso já exista.
+alter table avaliacoes drop constraint if exists avaliacoes_renave_saida_atendimento_id_fkey;
+notify pgrst, 'reload schema';
