@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
   const [roleRes, acessoRes] = await Promise.all([
     supabaseAdmin.from('user_roles').select('app_role').eq('user_id', caller.id).eq('projeto_id', BPM_PROJETO_ID).eq('ativo', true).maybeSingle(),
     supabaseAdmin.from('avaliacoes')
-      .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, chassi, renavam, atendimentos_motos!inner(vendedor_id, loja_id)')
+      .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, chassi, renavam, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(vendedor_id, loja_id)')
       .eq('id', avaliacao_id).maybeSingle(),
   ]);
 

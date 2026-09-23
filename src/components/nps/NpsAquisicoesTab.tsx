@@ -41,7 +41,7 @@ const NpsAquisicoesTab = ({ onNavigateToTab }: NpsAquisicoesTabProps) => {
       .from('avaliacoes')
       .select(`
         *, ${MARCA_MODELO_SELECT},
-        atendimentos_motos!inner (id, loja_id, loja_empresas:loja_id(loja), interesse, situacao, temperatura, created_at, updated_at, nps_status, tipo_atendimento, vendedor_id, origem, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, clientes_fornecedores_enderecos(uf)))
+        atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), interesse, situacao, temperatura, created_at, updated_at, nps_status, tipo_atendimento, vendedor_id, origem, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, clientes_fornecedores_enderecos(uf)))
       `)
       .in('tipo_aquisicao', TODOS_TIPOS_AQUISICAO)
       .order('updated_at', { ascending: false });

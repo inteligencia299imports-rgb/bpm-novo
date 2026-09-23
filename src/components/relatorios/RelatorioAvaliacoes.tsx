@@ -180,7 +180,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     const [avalRes, histRes, rolesRes, coRes] = await Promise.all([
       fetchAllRange<any>(() => supabase
         .from('avaliacoes')
-        .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, avaliador_id, tipo_aquisicao, situacao, quanto_vende, valor_fechamento, trade_in, created_at, updated_at, atendimentos_motos!inner(interesse, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
+        .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, avaliador_id, tipo_aquisicao, situacao, quanto_vende, valor_fechamento, trade_in, created_at, updated_at, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(interesse, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
         .neq('situacao', 'sem_avaliar')
         .in('atendimentos.interesse', ['trocar', 'vender'])
       ),

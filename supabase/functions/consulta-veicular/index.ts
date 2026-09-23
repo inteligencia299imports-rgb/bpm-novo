@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   if (avaliacao_id) {
     const { data: acesso } = await supabaseAdmin
       .from('avaliacoes')
-      .select('id, atendimento_id, atendimentos_motos!inner(vendedor_id, loja_id)')
+      .select('id, atendimento_id, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(vendedor_id, loja_id)')
       .eq('id', avaliacao_id)
       .maybeSingle();
 

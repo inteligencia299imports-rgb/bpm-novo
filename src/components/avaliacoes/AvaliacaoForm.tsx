@@ -373,7 +373,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       .from('avaliacoes')
       .select(`
         *, ${MARCA_MODELO_SELECT},
-        atendimentos_motos (id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, interesse, tipo_atendimento, origem, temperatura, created_at, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, data_nascimento, cpf_cnpj, tipo_pessoa, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))
+        atendimentos_motos!avaliacoes_atendimento_id_fkey(id, loja_id, empresa_id, loja_empresas:loja_id(loja), vendedor_id, interesse, tipo_atendimento, origem, temperatura, created_at, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, data_nascimento, cpf_cnpj, tipo_pessoa, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))
       `)
       .eq('id', avaliacaoId)
       .single();
