@@ -108,6 +108,20 @@ quebrar:**
 | `entrada` | `{ estoque_moto_nova_id, quilometragem_hodometro, data_entrada_estoque? }` → lê a NF-e de faturamento da montadora (`nfe_entradas` `operacao='compra'`, `xml_raw`), chama `POST /api/entradas-estoque-zero-km` (TEV), grava `renave_id_estoque / renavam / placa / numeroCrv` em `estoque_motos_novas`, e vincula a NF (`POST /api/notas-fiscais` COMPRA). |
 | `saida` | `{ estoque_moto_nova_id, atendimento_id }` → exige `renave_id_estoque` e a NF-e de venda 0km autorizada em produção. Resolve o município IBGE do comprador (`GET /api/municipios`), chama `POST /api/notas-fiscais` VENDA + `POST /api/saidas-estoque-veiculo-zero-km` (gera o ATPV-e), busca o PDF (`GET /api/pdf-atpv?chassi=`) e sobe em `moto-fotos/renave/atpv/ATPVE - <chassi>.pdf`. |
 | `atpv-pdf` | `{ chassi }` → rebusca o PDF/XML do ATPV-e. |
+| `saida-usado` | `{ atendimento_id, cpf_operador }` → saída de **seminova** vendida (etapa SAÍDA RENAVE do Pós-Venda). Acha a avaliação da moto (`motos_interesse` → `estoque_motos.avaliacao_id`), exige estoque `CONFIRMADO`, NF de compra vinculada, assinatura do ATPV da entrada enviada e NF-e `venda_seminova` autorizada em produção. Lê o código de segurança do CRV **atual** (já no nome da loja) do `pdfCodigoSegurancaCrvBase64` do CRLV-e, chama `POST /api/solicitacoes-saida-estoque`, depois `POST /api/notas-fiscais` VENDA e baixa o ATPV-e da venda (`moto-fotos/renave/atpv/ATPVE VENDA - <chassi>.pdf`). Grava em `avaliacoes.renave_saida_*`. |
+| `saida-usado-nf` / `saida-usado-atpv` / `saida-usado-termo` | `{ atendimento_id }` → retry do vínculo da NF-e de venda, do ATPV-e da venda e download do termo de saída (`GET /api/estoques/{id}/termo-saida-estoque`). |
+| `saida-usado-cancelar` | `{ atendimento_id, cpf_operador }` → `POST /api/solicitacoes-cancelamento-saida-estoque` (só antes do Detran transferir pro comprador). A SERPRO gera um estoque novo `CONFIRMADO` — troca `renave_id_estoque` pelo id novo e limpa `renave_saida_*`. |
+
+### Saída de seminova — o que ainda não foi testado em produção
+
+Implementado em 2026-09-23 a partir do OpenAPI oficial (`SolicitacaoSaidaEstoque`,
+`SolicitacaoCancelamentoDeSaida`, `TermoSaidaEstoqueJson`) e do manual
+(`solicitar-saida-estoque`, `enviar-nota-fiscal-saida`,
+`solicitar-cancelamento-saida-estoque`). Nenhuma moto tinha estoque
+`CONFIRMADO` na data, então a primeira saída real vai confirmar dois pontos:
+(1) se o código de segurança lido do PDF do CRV é o que a SERPRO espera; e
+(2) no cancelamento, se o id novo vem em `saidaEstoque.cancelamentoSaidaEstoque.idEstoqueGeradoNoCancelamentoSaida`
+(há fallback via `GET /api/estoques?chassi=&estadoEstoque=CONFIRMADO`).
 
 ## Log/auditoria — `renave_chamadas`
 
