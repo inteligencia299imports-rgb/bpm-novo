@@ -452,9 +452,6 @@ Deno.serve(async (req) => {
         .eq('id', avaliacaoId).maybeSingle();
       if (!av) return json({ error: 'Avaliação não encontrada' }, 404);
       if (av.renave_id_estoque) return json({ error: 'Esta moto já tem entrada no RENAVE (idEstoque ' + av.renave_id_estoque + ')' }, 409);
-      if (!av.codigo_seguranca_crv || !av.tipo_crv) {
-        return json({ error: 'Código de segurança do CRV e/ou tipo do CRV não cadastrados nesta avaliação.' }, 409);
-      }
 
       // Documento do VENDEDOR (proprietário atual, ainda no CRV) — vem do
       // cliente do atendimento (quem está vendendo a moto pro estabelecimento).
@@ -497,6 +494,44 @@ Deno.serve(async (req) => {
         cnpjEstabelecimento: await cnpjDaEmpresaPorAvaliacao(admin, avaliacaoId),
       };
 
+      // Achado real 2026-09-22/24 (chassi 95VHA00AAHM000135 / placa QJC6989):
+      // o código de segurança do CRV "roda" quando o Detran reemite o
+      // documento (ex.: depois de uma entrada RENAVE anterior ser cancelada
+      // — ver "cancelar-estoque" acima, mesmo achado) — o valor salvo na
+      // avaliação fica desatualizado e a SERPRO rejeita a entrada com "não
+      // corresponde ao código de segurança do último CRV emitido". Busca
+      // sempre o CRLV-e atual antes de tentar a entrada (mesmo padrão já
+      // usado na saída/venda, endpoint #6) em vez de confiar cegamente no
+      // valor salvo; só cai pro valor salvo se a consulta falhar.
+      let codigoSegurancaCrv = av.codigo_seguranca_crv ? String(av.codigo_seguranca_crv).replace(/\D/g, '') : null;
+      let tipoCrv: 'AZUL' | 'VERDE' | 'BRANCO' | 'DIGITAL' | null = av.tipo_crv ?? null;
+      let numeroCrvAtual = av.numero_crv ?? null;
+      if (av.placa && av.renavam) {
+        try {
+          const crlve = await consultarCrlve(String(av.placa).toUpperCase().replace(/\s|-/g, ''), String(av.renavam).replace(/\D/g, ''), ctx);
+          if (crlve.status === 200 && crlve.body?.pdfCodigoSegurancaCrvBase64) {
+            const lido = await extrairCodigoSegurancaDoAtpv(crlve.body.pdfCodigoSegurancaCrvBase64, 'crv');
+            if (lido.codigoSegurancaCrv) {
+              codigoSegurancaCrv = lido.codigoSegurancaCrv;
+              tipoCrv = 'DIGITAL'; // consultarCrlve só devolve CRLV eletrônico
+              if (lido.numeroCrv) numeroCrvAtual = lido.numeroCrv;
+            }
+          }
+        } catch { /* best-effort -- cai pro valor salvo (pode já estar certo) */ }
+      }
+      if (!codigoSegurancaCrv || !tipoCrv) {
+        return json({ error: 'Código de segurança do CRV e/ou tipo do CRV não cadastrados nesta avaliação, e não foi possível obtê-los da SERPRO agora.' }, 409);
+      }
+      // Persiste o valor atualizado (se mudou) pra não repetir a consulta à
+      // toa da próxima vez e pra tela mostrar o dado certo.
+      if (codigoSegurancaCrv !== av.codigo_seguranca_crv || numeroCrvAtual !== av.numero_crv || tipoCrv !== av.tipo_crv) {
+        await persistirAvaliacao(admin, avaliacaoId, {
+          codigo_seguranca_crv: codigoSegurancaCrv,
+          numero_crv: numeroCrvAtual,
+          tipo_crv: tipoCrv,
+        });
+      }
+
       const payloadEntrada: EntradaEstoque = {
         cpfOperadorResponsavel: cpfOperador,
         dataCompra: brasiliaNaiveIso(nfCompra.data_emissao).slice(0, 10),
@@ -504,13 +539,13 @@ Deno.serve(async (req) => {
         emailVendedor: vendedor.email,
         emailEstabelecimento: EMAIL_ESTABELECIMENTO_PADRAO,
         veiculo: {
-          codigoSegurancaCrv: String(av.codigo_seguranca_crv).replace(/\D/g, ''),
+          codigoSegurancaCrv,
           dataHoraMedicaoHodometro: brasiliaNaiveIso(body.data_hora_medicao_hodometro),
           quilometragemHodometro: quilometragem,
-          tipoCrv: av.tipo_crv,
+          tipoCrv,
           documentoProprietarioAtual: String(vendedor.cpf_cnpj).replace(/\D/g, ''),
           tipoDocumentoProprietarioAtual: vendedor.tipo_pessoa === 'juridica' ? 'CNPJ' : 'CPF',
-          numeroCrv: av.numero_crv ? String(av.numero_crv).replace(/\D/g, '') : undefined,
+          numeroCrv: numeroCrvAtual ? String(numeroCrvAtual).replace(/\D/g, '') : undefined,
           placa: av.placa ? String(av.placa).toUpperCase().replace(/\s|-/g, '') : undefined,
           renavam: av.renavam ? String(av.renavam).replace(/\D/g, '') : undefined,
         },

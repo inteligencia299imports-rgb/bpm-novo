@@ -15,6 +15,9 @@ dist-ssr
 # Supabase CLI local cache
 supabase/.temp
 
+# Gerado por `deno check` (só usado localmente pra validar as edge functions)
+deno.lock
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
