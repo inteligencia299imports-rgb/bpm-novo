@@ -5,14 +5,15 @@
 //
 // Modelo (desde 2026-09-24):
 //   naturezas_operacao                 1 natureza por CFOP por empresa (`cfop`; texto da nota em
-//                                      `natop`; série e indicador de presença do cabeçalho). O
+//                                      `natop`; indicador de presença do cabeçalho). O
 //                                      emissor acha as naturezas pela família de CFOPs da operação
 //                                      (OPERACOES). O CFOP já diz se a operação é interna (1/5),
 //                                      interestadual (2/6) ou exterior (3/7).
 //   naturezas_operacao_regras_fiscais  O que varia DENTRO de um CFOP: UFs, NCM (prefixo), categoria,
 //                                      origem e bem usado -> CST, se destaca ICMS, redução da base e
 //                                      cBenef do ICMS,
-//                                      PIS/COFINS, IPI, IBS/CBS, ISSQN (e série, se diferente).
+//                                      PIS/COFINS, IPI, IBS/CBS, ISSQN. A série da NF-e não é do
+//                                      SisFin: a Focus usa a série configurada pra empresa.
 //                                      A regra mais específica entre as naturezas da família decide.
 //   icms_uf / icms_uf_ncm              TODAS as alíquotas de ICMS: interna + FCP por UF, com exceção
 //                                      por NCM/prefixo (e bem usado) e a dispensa de DIFAL. A
@@ -45,7 +46,6 @@ export interface NaturezaCfop {
   cfop: string;
   descricao: string;
   natop: string | null;
-  serie: string | null;
   tipo: string;
   regime_tributario: string | null;
   indicador_presenca: number | null;
@@ -64,7 +64,6 @@ export interface RegraFiscal {
   produto_categorias: string[];
   origem_mercadoria: string | null;
   bem_usado: boolean | null;
-  serie: string | null;
   ordem: number;
   cfop: string | null;
   icms_cst: string | null;
@@ -138,7 +137,7 @@ export async function carregarOperacao(
 ): Promise<OperacaoCarregada | { erro: string }> {
   let q = supabase
     .from("naturezas_operacao")
-    .select("id, empresa_id, cfop, descricao, natop, serie, tipo, regime_tributario, indicador_presenca, faturada, consumidor_final, operacao_devolucao, informacoes_complementares, informacoes_adicionais_fisco")
+    .select("id, empresa_id, cfop, descricao, natop, tipo, regime_tributario, indicador_presenca, faturada, consumidor_final, operacao_devolucao, informacoes_complementares, informacoes_adicionais_fisco")
     .eq("empresa_id", p.empresaId)
     .eq("ativo", true)
     .in("cfop", [...OPERACOES[p.operacao]]);
@@ -253,7 +252,6 @@ export function aliquotaInterestadual(ufOrigem: string, ufDestino: string, icmsO
 }
 
 export const natOpDe = (e: RegraEscolhida) => (e.natureza.natop || e.natureza.descricao).slice(0, 60);
-export const serieDe = (e: RegraEscolhida) => e.regra.serie ?? e.natureza.serie;
 export const cfopDe = (e: RegraEscolhida) => e.regra.cfop ?? e.natureza.cfop;
 
 // Converte a regra escolhida para o formato antigo de naturezas_operacao_regras (uma linha por

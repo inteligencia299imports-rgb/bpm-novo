@@ -77,7 +77,6 @@ export interface DadosMoto {
 /** Espelha naturezas_operacao. */
 export interface DadosNatureza {
   descricao: string;
-  serie: string | null;
   tipo: string; // 'entrada' | 'saida'
   indicador_presenca: number | null;
   consumidor_final: boolean;
@@ -725,7 +724,6 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     // uma mesma natureza pode ter CFOPs com semântica fiscal diferente (ex.: venda
     // comum x sujeita a ST). Cai no texto fixo da natureza se a regra não tiver.
     natureza_operacao: regraIcms.natureza_operacao_descricao?.trim() || natureza.descricao,
-    serie: natureza.serie ?? undefined,
     data_emissao: agora,
     data_entrada_saida: agora,
     tipo_documento: entrada ? 0 : 1,

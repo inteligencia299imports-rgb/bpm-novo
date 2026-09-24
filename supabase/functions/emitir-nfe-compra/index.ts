@@ -2,7 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { cancelarNfe, consultarNfe, emitirNfe, focusBaseUrl, mensagemErroFocus, type FocusAmbiente } from './focus.ts';
 import { montarPayloadNfeCompra, brl, indicadorIeDestinatario, difalAplicavel, type RegraFiscal } from './payload.ts';
-import { carregarOperacao, escolherRegra, comoRegrasPorImposto, natOpDe, serieDe, type Operacao as OperacaoFiscal } from '../_shared/regras-fiscais.ts';
+import { carregarOperacao, escolherRegra, comoRegrasPorImposto, natOpDe, type Operacao as OperacaoFiscal } from '../_shared/regras-fiscais.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
@@ -1534,7 +1534,6 @@ Deno.serve(async (req) => {
   const natureza = {
     ...escolhida.natureza,
     descricao: natOpDe(escolhida),
-    serie: serieDe(escolhida),
   };
   const regraIcms = linhas.icms as unknown as RegraFiscal | null;
   const regraPis = linhas.pis as unknown as RegraFiscal | null;
@@ -1673,7 +1672,6 @@ Deno.serve(async (req) => {
   const payload = montarPayloadNfeCompra({
     natureza: {
       descricao: natureza.descricao,
-      serie: natureza.serie ?? null,
       tipo: natureza.tipo,
       // Fallback de cabeçalho — a resolução efetiva (regra de ICMS > regra de IPI >
       // este valor) acontece em montarPayloadNfeCompra, usando o tipo_atendimento
