@@ -70,6 +70,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
     (supabase as any)
       .from('loja_empresas')
       .select('id, loja, empresa_id, empresas:empresa_id(nome)')
+      .eq('sistema', 'motos')
       .then(({ data }: any) => {
         if (cancel) return;
         const opts = ((data as any[]) || [])
