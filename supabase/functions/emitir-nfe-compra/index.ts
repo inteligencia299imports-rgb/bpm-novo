@@ -1432,11 +1432,15 @@ Deno.serve(async (req) => {
     }
   } else if (tipo === 'transferencia_saida_0km') {
     // Mesmo pré-requisito — a moto 0km já entrou no estoque via NF-e de
-    // compra da fábrica antes de poder ser transferida entre empresas.
-    const { data: compraOkTransf } = await admin
-      .from('nfe_entradas').select('id').eq('estoque_moto_nova_id', estoqueMotoNovaIdBody)
-      .eq('operacao', 'compra').eq('status', 'processada').limit(1).maybeSingle();
-    if (!compraOkTransf) {
+    // compra da fábrica antes de poder ser transferida entre empresas. Mas,
+    // diferente da compra seminova (emitida por este mesmo arquivo, com
+    // status final 'processada'), a "compra" 0km é importada pelo SisFin
+    // (confirmar-motos-novas) a partir da XML real da fábrica — nunca passa
+    // por esse ciclo, fica sempre com status 'recebida' (confirmado: as 25
+    // linhas hoje no banco são todas assim). O sinal real de "moto já
+    // confirmada no estoque" pra 0km é o próprio numero_nf_entrada gravado
+    // direto em estoque_motos_novas por aquele fluxo.
+    if (!emn0km?.numero_nf_entrada) {
       return jsonResponse({ error: 'A NF-e de compra desta moto ainda não foi emitida.' }, 409);
     }
   } else if (tipo === 'transferencia_entrada_0km') {
@@ -1535,11 +1539,14 @@ Deno.serve(async (req) => {
       }
     }
     if (tipo === 'transferencia_saida_0km') {
-      const { data: compraProdTransf } = await admin
-        .from('nfe_entradas').select('id').eq('estoque_moto_nova_id', entityId).eq('operacao', 'compra')
-        .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
-      if (!compraProdTransf) {
-        return jsonResponse({ error: 'Emita a NF-e de compra desta moto em produção antes de emitir a saída da transferência.' }, 409);
+      // A "compra" 0km nunca passa por este arquivo (é importada pelo SisFin
+      // direto da XML da fábrica, sempre com ambiente/status
+      // 'homologacao'/'recebida' — não existe um ciclo de produção pra ela
+      // como o de compra/venda de seminova). O sinal de "moto confirmada" é
+      // numero_nf_entrada em estoque_motos_novas, não uma linha de
+      // nfe_entradas em produção.
+      if (!emn0km?.numero_nf_entrada) {
+        return jsonResponse({ error: 'A NF-e de compra desta moto ainda não foi emitida.' }, 409);
       }
     }
     if (tipo === 'transferencia_entrada_0km') {
