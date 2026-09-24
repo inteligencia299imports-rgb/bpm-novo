@@ -2,6 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { cancelarNfe, consultarNfe, emitirNfe, focusBaseUrl, mensagemErroFocus, type FocusAmbiente } from './focus.ts';
 import { montarPayloadNfeCompra, brl, indicadorIeDestinatario, difalAplicavel, type RegraFiscal } from './payload.ts';
+import { carregarOperacao, escolherRegra, comoRegrasPorImposto, natOpDe, serieDe, type Operacao as OperacaoFiscal } from '../_shared/regras-fiscais.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
@@ -60,7 +61,12 @@ type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_semi
 
 interface OperacaoConfig {
   refPrefix: string;
+  /** Rótulo da operação nas mensagens (a natureza fiscal vem de operacaoFiscal). */
   naturezaDescricao: string;
+  /** Família de CFOPs no SisFin (1 natureza por CFOP) — ver _shared/regras-fiscais.ts. */
+  operacaoFiscal: OperacaoFiscal;
+  /** Venda: moto usada (seminova) x nova — separa as regras do mesmo CFOP. */
+  bemUsado?: boolean;
   statusEntity: string;
   statusHist: string;
   /** Sem etapaTable/etapa (ex.: devolução simbólica) — pula o upsert de checklist. */
@@ -85,6 +91,7 @@ const CFG: Record<Operacao, OperacaoConfig> = {
   compra: {
     refPrefix: 'compra',
     naturezaDescricao: 'Compra de moto seminova',
+    operacaoFiscal: 'compra',
     statusEntity: 'pos_compra',
     statusHist: 'nfe_compra_emitida',
     etapaTable: 'pos_compra_processos',
@@ -100,6 +107,7 @@ const CFG: Record<Operacao, OperacaoConfig> = {
   consignacao: {
     refPrefix: 'consignacao',
     naturezaDescricao: 'Entrada em consignação',
+    operacaoFiscal: 'entrada_consignacao',
     statusEntity: 'consignacao',
     statusHist: 'nfe_consignacao_emitida',
     etapaTable: 'consignacao_processos',
@@ -118,6 +126,7 @@ const CFG: Record<Operacao, OperacaoConfig> = {
   devolucao_consignacao: {
     refPrefix: 'devolucao',
     naturezaDescricao: 'Devolução Simbólica de Consignação',
+    operacaoFiscal: 'devolucao_consignacao',
     statusEntity: 'consignacao',
     statusHist: 'nfe_devolucao_consignacao_emitida',
     avStatusField: null,
@@ -132,6 +141,7 @@ const CFG: Record<Operacao, OperacaoConfig> = {
   transferencia: {
     refPrefix: 'transferencia',
     naturezaDescricao: 'TRANSFERÊNCIA ENTRE EMPRESAS',
+    operacaoFiscal: 'outra_saida',
     statusEntity: 'pos_compra',
     statusHist: 'nfe_transferencia_emitida',
     avStatusField: null,
@@ -142,6 +152,8 @@ const CFG: Record<Operacao, OperacaoConfig> = {
   venda_seminova: {
     refPrefix: 'venda',
     naturezaDescricao: 'Venda de moto seminova',
+    operacaoFiscal: 'venda',
+    bemUsado: true,
     statusEntity: 'pos_venda',
     statusHist: 'nfe_venda_emitida',
     etapaTable: 'pos_venda_processos',
@@ -157,6 +169,8 @@ const CFG: Record<Operacao, OperacaoConfig> = {
   venda_0km: {
     refPrefix: 'venda',
     naturezaDescricao: 'Venda de moto 0km',
+    operacaoFiscal: 'venda',
+    bemUsado: false,
     statusEntity: 'pos_venda',
     statusHist: 'nfe_venda_emitida',
     etapaTable: 'pos_venda_processos',
@@ -1491,55 +1505,43 @@ Deno.serve(async (req) => {
     : viaVendaPosConsignacao
       ? 'Venda de Mercadoria Recebida Anteriormente Em Consignacao'
       : cfg.naturezaDescricao;
-  const { data: natureza } = await admin
-    .from('naturezas_operacao')
-    .select(
-      'id, descricao, serie, tipo, indicador_presenca, consumidor_final, operacao_devolucao, ' +
-        'informacoes_complementares, informacoes_adicionais_fisco, ' +
-        'naturezas_operacao_regras(imposto, cfop, situacao_tributaria, aliquota, reducao_base_calculo, ' +
-        'aliquota_fcp, aliquota_interna_destino, tipo_tributacao, informacoes_complementares, informacoes_adicionais_fisco, destino_ufs, ordem, ' +
-        'natureza_operacao_descricao, indicador_presenca, tipo_atendimento, codigo_beneficio_fiscal, ' +
-        'classificacao_tributaria, cbs_aliquota, ibs_uf_aliquota, ibs_mun_aliquota, percentual_reducao, ' +
-        'aliquota_icms_efetiva, reducao_base_calculo_efetiva, aliquota_suportada_consumidor_final)',
-    )
-    .eq('empresa_id', empresaId)
-    .eq('descricao', naturezaDescricaoEfetiva)
-    .eq('ativo', true)
-    .maybeSingle();
-  if (!natureza) return jsonResponse({ error: `Natureza de operação "${naturezaDescricaoEfetiva}" não configurada ou inativa.` }, 409);
-
-  const regrasTodas = (natureza.naturezas_operacao_regras || []) as Array<
-    RegraFiscal & { destino_ufs: string[] | null; ordem: number | null; tipo_atendimento: string | null }
-  >;
-  // Venda: toda venda passa a ser tratada como 'presencial' pra fim de CFOP/CST
-  // — não referencia mais atendimentos_motos.tipo_atendimento (decisão fiscal
-  // 2026-09-11, ver docs-fiscal-299/pendencias.md §2.19b). Regra com
-  // tipo_atendimento='ambos' (default) casa igual; regra 'online' simplesmente
-  // deixa de ser escolhida. Compra/consignação não filtra (tipoAtendNorm null).
-  const tipoAtendNorm = ehVenda ? 'presencial' : null;
-  const regras = tipoAtendNorm
-    ? regrasTodas.filter((r) => !r.tipo_atendimento || r.tipo_atendimento === 'ambos' || r.tipo_atendimento === tipoAtendNorm)
-    : regrasTodas;
+  // Desde 2026-09-24 a natureza é UMA por CFOP no SisFin: a operação define a
+  // família de CFOPs e a regra mais específica (UF, NCM da moto, bem usado)
+  // decide o CFOP — ver _shared/regras-fiscais.ts.
+  const operacaoFiscal: OperacaoFiscal = (tipo === 'compra' && viaConversaoConsignacao)
+    ? 'compra_consignada'
+    : viaVendaPosConsignacao ? 'venda_consignada' : cfg.operacaoFiscal;
+  const operacaoCarregada = await carregarOperacao(admin, { empresaId, ufEmitente: empresa.uf, operacao: operacaoFiscal });
+  if ('erro' in operacaoCarregada) {
+    return jsonResponse({ error: `Natureza de operação "${naturezaDescricaoEfetiva}": ${operacaoCarregada.erro}` }, 409);
+  }
   const ufDestino = (end.uf ?? '').trim().toUpperCase();
-  // Escolhe a regra do imposto: prioridade p/ a que lista a UF de destino;
-  // senao a "curinga" (destino_ufs vazio); senao a de menor ordem.
-  const regraDe = (imp: string): RegraFiscal | null => {
-    const doImposto = regras
-      .filter((r) => r.imposto === imp)
-      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
-    if (doImposto.length === 0) return null;
-    return (
-      doImposto.find((r) => (r.destino_ufs ?? []).map((u) => u.toUpperCase()).includes(ufDestino)) ??
-      doImposto.find((r) => !(r.destino_ufs ?? []).length) ??
-      doImposto[0]
-    );
+  // Venda: toda venda é tratada como 'presencial' pra fim de CFOP/CST (decisão
+  // fiscal 2026-09-11, docs-fiscal-299/pendencias.md §2.19b). Compra/consignação
+  // não filtram por atendimento. Moto é sempre NCM do capítulo 8711 e a NF sai
+  // com origem 0 (ver payload.ts).
+  const itemFiscal = {
+    ufDestino,
+    ncm: '8711',
+    icmsOrigem: 0,
+    bemUsado: viaVendaPosConsignacao ? null : cfg.bemUsado ?? null,
+    atendimento: ehVenda ? ('presencial' as const) : null,
   };
-
-  const regraIcms = regraDe('icms');
-  const regraPis = regraDe('pis');
-  const regraCofins = regraDe('cofins');
-  const regraIpi = regraDe('ipi');
-  const regraIbsCbs = regraDe('ibscbs');
+  const escolhida = escolherRegra(operacaoCarregada, itemFiscal);
+  if (!escolhida) {
+    return jsonResponse({ error: `Natureza de operação "${naturezaDescricaoEfetiva}": nenhuma regra fiscal ativa pra UF ${ufDestino || '?'} no SisFin.` }, 409);
+  }
+  const linhas = comoRegrasPorImposto(operacaoCarregada, escolhida, itemFiscal);
+  const natureza = {
+    ...escolhida.natureza,
+    descricao: natOpDe(escolhida),
+    serie: serieDe(escolhida),
+  };
+  const regraIcms = linhas.icms as unknown as RegraFiscal | null;
+  const regraPis = linhas.pis as unknown as RegraFiscal | null;
+  const regraCofins = linhas.cofins as unknown as RegraFiscal | null;
+  const regraIpi = linhas.ipi as unknown as RegraFiscal | null;
+  const regraIbsCbs = linhas.ibscbs as unknown as RegraFiscal | null;
   const faltando: string[] = [];
   if (!regraIcms?.cfop || !regraIcms?.situacao_tributaria) faltando.push('ICMS (CFOP/CST)');
   if (!regraPis?.situacao_tributaria) faltando.push('PIS');
