@@ -386,12 +386,19 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           });
         }
         // Preço ainda pode ser alterado com sinal/venda em aberto — só trava
-        // depois que a NF-e de venda é emitida em produção.
+        // depois que a NF-e de venda é emitida em produção. Mesmo NF-e de
+        // venda também trava a transferência (venda já fiscalmente fechada
+        // com essa empresa).
         if (!idsWithNfeVenda0km.has(item.id)) {
           options.push({
             label: 'Alterar Preço',
             icon: <DollarSign className="h-4 w-4" />,
             action: () => setPrecoItem(item),
+          });
+          options.push({
+            label: 'Transferir',
+            icon: <ArrowRightLeft className="h-4 w-4" />,
+            action: () => setTransferenciaItem(item),
           });
         }
         return options;
