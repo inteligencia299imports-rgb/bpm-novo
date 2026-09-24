@@ -459,7 +459,12 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     item.icms_modalidade_base_calculo = modalidadeBc;
     item.icms_aliquota = Number(regraIcms.aliquota ?? 0);
     if (regraIcms.reducao_base_calculo != null) item.icms_reducao_base_calculo = Number(regraIcms.reducao_base_calculo);
-    if (regraIcms.aliquota_fcp != null) item.fcp_aliquota = Number(regraIcms.aliquota_fcp);
+    // FCP da operação própria só em operação interna. Em interestadual o
+    // aliquota_fcp da regra é o FCP da UF de DESTINO (vem da tabela icms_uf
+    // desde as regras fiscais unificadas do sisfin) e vai no grupo do DIFAL
+    // (pFCPUFDest, abaixo) — nunca no grupo do ICMS próprio.
+    const operacaoInterna = (empresa.uf || '').trim().toUpperCase() === (fornecedor.uf || '').trim().toUpperCase();
+    if (regraIcms.aliquota_fcp != null && operacaoInterna) item.fcp_aliquota = Number(regraIcms.aliquota_fcp);
     // vBC/vICMS reais do ICMS próprio (base já reduzida, se houver redução).
     //
     // BUG (achado 2026-09-14, comparando com XML real autorizado nº7221 —
