@@ -523,7 +523,10 @@ const ContratoDialog: React.FC<Props> = ({
         setTransferenciaTipo(contrato.transferencia_tipo || '');
         setTransferenciaValor(contrato.transferencia_valor != null ? formatCurrencyInput(String(Math.round(contrato.transferencia_valor * 100))) : '');
         setValorQuitacao(contrato.valor_quitacao != null ? fmtCur(contrato.valor_quitacao) : (avQuitacao != null ? fmtCur(avQuitacao) : ''));
-        setValorFechamento(contrato.valor_fechamento != null ? fmtCur(contrato.valor_fechamento) : (avFechamento != null ? fmtCur(avFechamento) : ''));
+        // Fechamento tem origem única na avaliação — nunca usa o valor já
+        // salvo no contrato (ficaria divergente se a avaliação for
+        // atualizada depois de o contrato já ter sido gerado uma vez).
+        setValorFechamento(avFechamento != null ? fmtCur(avFechamento) : (contrato.valor_fechamento != null ? fmtCur(contrato.valor_fechamento) : ''));
         setObsInternas(contrato.observacoes_internas || '');
         setObsContrato(contrato.observacoes_contrato || '');
         setDataSinal(contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined);

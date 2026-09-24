@@ -247,8 +247,11 @@ async function construirRepasse(
     .filter((c) => (c.responsavel || '').toLowerCase() === 'cliente')
     .reduce((s, c) => s + nz(c.valor_executado ?? c.valor_previsto), 0);
 
-  const fechamento = nz(contratoCompra?.valor_fechamento ?? av.valor_fechamento);
-  const quitacao = nz(contratoCompra?.valor_quitacao ?? av.valor_quitacao);
+  // Fechamento e quitação têm origem única na avaliação — nunca usam o valor
+  // já salvo no contrato (ficaria divergente se a avaliação for atualizada
+  // depois de o contrato já ter sido gerado uma vez).
+  const fechamento = nz(av.valor_fechamento ?? contratoCompra?.valor_fechamento);
+  const quitacao = nz(av.valor_quitacao ?? contratoCompra?.valor_quitacao);
   const custosPrev = nz(av.previsao_custos_cliente);
   const repasse = Math.max(fechamento - quitacao - custosPrev - custosClienteOficina, 0);
 
