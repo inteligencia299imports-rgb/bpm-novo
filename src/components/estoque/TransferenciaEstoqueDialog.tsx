@@ -38,30 +38,36 @@ interface LojaOpcao {
 }
 
 /**
- * Transferência de estoque de uma moto seminova entre empresas do grupo,
- * aberta a partir do menu "Acessar" do Estoque. Duas NF-e's espelhadas: a
- * origem emite a SAÍDA (CFOP 5152/6152) e, só depois dela autorizar em
- * produção, o destino emite a ENTRADA (CFOP 1152/2152) — cada uma com seu
- * próprio ciclo homologação → produção, mesmo padrão do
- * TransferenciaFagMmatosDialog (que é a mesma ideia, só que com destino
- * fixo/natureza dedicada em vez do CFOP comum de transferência).
+ * Transferência de estoque (seminova ou 0km) entre empresas do grupo, aberta
+ * a partir do menu "Acessar" do Estoque. Duas NF-e's espelhadas: a origem
+ * emite a SAÍDA (CFOP 5152/6152) e, só depois dela autorizar em produção, o
+ * destino emite a ENTRADA (CFOP 1152/2152) — cada uma com seu próprio ciclo
+ * homologação → produção, mesmo padrão do TransferenciaFagMmatosDialog (que é
+ * a mesma ideia, só que com destino fixo/natureza dedicada em vez do CFOP
+ * comum de transferência). Seminova chaveia por avaliacao_id; 0km chaveia
+ * pelo próprio id de estoque_motos_novas (não tem avaliação).
+ *
+ * Por ora só POA↔FLN: seminova entre as lojas "299f"/"299p", 0km entre
+ * "Ducati FLN"/"Ducati POA" — as demais lojas do grupo (MMATOS) ficam de fora
+ * da lista de destino até esse escopo ser ampliado.
  */
 const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoqueItem, onSuccess }) => {
-  const avaliacaoId = estoqueItem?.avaliacao_id || '';
+  const eh0km = !!estoqueItem && !estoqueItem.avaliacao_id;
+  const entityId = eh0km ? (estoqueItem?.id || '') : (estoqueItem?.avaliacao_id || '');
   const [lojas, setLojas] = useState<LojaOpcao[]>([]);
   const [lojasLoading, setLojasLoading] = useState(true);
   const [destinoLojaId, setDestinoLojaId] = useState('');
 
-  const saida = useNfeCompra(avaliacaoId, open, 'transferencia_saida', 'avaliacao');
-  const entrada = useNfeCompra(avaliacaoId, open, 'transferencia_entrada', 'avaliacao', onSuccess);
+  const saida = useNfeCompra(entityId, open, eh0km ? 'transferencia_saida_0km' : 'transferencia_saida', eh0km ? 'estoque_moto_nova' : 'avaliacao');
+  const entrada = useNfeCompra(entityId, open, eh0km ? 'transferencia_entrada_0km' : 'transferencia_entrada', eh0km ? 'estoque_moto_nova' : 'avaliacao', onSuccess);
 
   // useNfeCompra não carrega sozinho ao montar (mesmo achado do
   // TransferenciaFagMmatosDialog) — sem isso o diálogo sempre parte de "nada
   // emitido ainda", mesmo reabrindo sobre uma transferência já em andamento.
   useEffect(() => {
-    if (open && avaliacaoId) { saida.carregar(); entrada.carregar(); }
+    if (open && entityId) { saida.carregar(); entrada.carregar(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, avaliacaoId]);
+  }, [open, entityId]);
 
   // Restaura a loja de destino ao reabrir sobre uma transferência já em
   // andamento — sem isso, o Select (já travado depois da saída emitida)
@@ -72,6 +78,10 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
     if (destinoSalvo && !destinoLojaId) setDestinoLojaId(destinoSalvo);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saida.nfe, entrada.nfe]);
+
+  // Por ora só POA↔FLN, e a loja específica depende do tipo da moto: seminova
+  // usa as lojas "normais" (299f/299p), 0km usa as lojas "Ducati" dedicadas.
+  const lojasPermitidas = eh0km ? ['Ducati FLN', 'Ducati POA'] : ['299f', '299p'];
 
   useEffect(() => {
     if (!open) return;
@@ -84,14 +94,15 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
       .then(({ data }: any) => {
         if (cancel) return;
         const opts = ((data as any[]) || [])
-          .filter((l) => l.id !== estoqueItem?.loja_id)
+          .filter((l) => l.id !== estoqueItem?.loja_id && lojasPermitidas.includes(l.loja))
           .map((l) => ({ id: l.id, loja: l.loja, empresa_id: l.empresa_id, empresa_nome: l.empresas?.nome || '' }))
           .sort((a, b) => (a.empresa_nome + a.loja).localeCompare(b.empresa_nome + b.loja));
         setLojas(opts);
         setLojasLoading(false);
       });
     return () => { cancel = true; };
-  }, [open, estoqueItem?.loja_id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, estoqueItem?.loja_id, eh0km]);
 
   const motoLabel = [estoqueItem?.marca, estoqueItem?.modelo].filter(Boolean).join(' ') || 'Moto';
   const saidaEmitida = saida.emitida;

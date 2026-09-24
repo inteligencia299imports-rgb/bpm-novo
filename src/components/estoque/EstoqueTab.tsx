@@ -467,13 +467,15 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    // Transferência entre empresas do grupo — só seminova (0km ainda não tem
-    // mecanismo de troca de dono no estoque). Disponível também se a moto já
-    // estiver vendida/com sinal, contanto que a NF-e de venda ainda não tenha
-    // sido emitida em produção — depois disso a venda já está fiscalmente
-    // fechada com aquela empresa, não faz mais sentido transferir.
-    const vendidaSemNfe = (item.status === 'vendido' || item.status === 'sinal') && !idsWithNfeVendaSeminova.has(item.id);
-    if (item.tipo !== '0km' && item.avaliacao_id && (item.status === 'disponivel' || vendidaSemNfe)) {
+    // Transferência entre empresas do grupo — seminova e 0km (cada um com seu
+    // próprio par de NF-e's e chave: avaliacao_id x id de estoque_motos_novas,
+    // ver TransferenciaEstoqueDialog). Disponível também se a moto já estiver
+    // vendida/com sinal, contanto que a NF-e de venda ainda não tenha sido
+    // emitida em produção — depois disso a venda já está fiscalmente fechada
+    // com aquela empresa, não faz mais sentido transferir.
+    const vendidaSemNfe = (item.status === 'vendido' || item.status === 'sinal')
+      && !(item.tipo === '0km' ? idsWithNfeVenda0km : idsWithNfeVendaSeminova).has(item.id);
+    if (item.status === 'disponivel' || vendidaSemNfe) {
       options.push({
         label: 'Transferir',
         icon: <ArrowRightLeft className="h-4 w-4" />,
