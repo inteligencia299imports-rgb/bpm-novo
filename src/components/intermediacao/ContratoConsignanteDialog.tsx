@@ -253,7 +253,10 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       setCpfCnpj(formatCpfCnpj(contrato.cpf_cnpj || ''));
       setDadosBancarios(contrato.dados_bancarios || '');
       setTitularConta(contrato.titular_conta || '');
-      setValorFechamento((contrato.valor_fechamento ?? avaliacao?.valor_fechamento) != null ? formatCurrencyInput(String(Math.round((contrato.valor_fechamento ?? avaliacao?.valor_fechamento) * 100))) : '');
+      // Valor de Fechamento tem origem única na avaliação — nunca usa o
+      // valor já salvo no contrato (ficaria divergente se a avaliação for
+      // atualizada depois de o contrato já ter sido gerado uma vez).
+      setValorFechamento((avaliacao?.valor_fechamento ?? contrato.valor_fechamento) != null ? formatCurrencyInput(String(Math.round((avaliacao?.valor_fechamento ?? contrato.valor_fechamento) * 100))) : '');
       setValorRepasse(contrato.valor_repasse ? formatCurrencyInput(String(Math.round(contrato.valor_repasse * 100))) : '');
       setObsContrato(contrato.observacoes_contrato || '');
       setObsInternas(contrato.observacoes_internas || '');

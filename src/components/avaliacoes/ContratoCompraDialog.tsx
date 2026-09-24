@@ -234,7 +234,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       // valor_venda mora no estoque, não no contrato; o fechamento da troca vem do
       // contrato de venda ou da própria avaliação.
       const valorVendaMoto = Number((estNova as any)?.valor_venda ?? (estSemi as any)?.valor_venda ?? 0);
-      const valorFechamentoTroca = Number(contratoVenda?.valor_fechamento ?? (avaliacao as any).valor_fechamento ?? 0);
+      const valorFechamentoTroca = Number((avaliacao as any).valor_fechamento ?? contratoVenda?.valor_fechamento ?? 0);
       setVendaValorInfo(
         valorVendaMoto > 0 ? { valor_venda: valorVendaMoto, valor_fechamento: valorFechamentoTroca } : null,
       );
@@ -263,8 +263,11 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         setContratoId(contrato.id);
         vals = {
           cpfCnpj: contrato.cpf_cnpj || atFreshCpf || '',
-          valorQuitacao: (contrato.valor_quitacao ?? quitacaoAval) != null ? formatCurrencyInput(String(Math.round((contrato.valor_quitacao ?? quitacaoAval) * 100))) : '',
-          valorFechamento: (contrato.valor_fechamento ?? avaliacao.valor_fechamento) != null ? formatCurrencyInput(String(Math.round((contrato.valor_fechamento ?? avaliacao.valor_fechamento) * 100))) : '',
+          // Quitação e Fechamento têm origem única na avaliação — nunca usam o
+          // valor já salvo no contrato (ficaria divergente se a avaliação for
+          // atualizada depois de o contrato já ter sido gerado uma vez).
+          valorQuitacao: (quitacaoAval ?? contrato.valor_quitacao) != null ? formatCurrencyInput(String(Math.round((quitacaoAval ?? contrato.valor_quitacao) * 100))) : '',
+          valorFechamento: (avaliacao.valor_fechamento ?? contrato.valor_fechamento) != null ? formatCurrencyInput(String(Math.round((avaliacao.valor_fechamento ?? contrato.valor_fechamento) * 100))) : '',
           obsInternas: contrato.observacoes_internas || '',
           obsContrato: contrato.observacoes_contrato || '',
           dataContrato: contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined,

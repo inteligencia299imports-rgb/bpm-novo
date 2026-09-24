@@ -55,8 +55,11 @@ export async function gerarPdfContratoCompra(avaliacaoId: string, modo: 'downloa
     .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
     .reduce((s: number, c: any) => s + (c.valor_executado || c.valor_previsto || 0), 0);
 
-  const fechamento = (contrato as any)?.valor_fechamento ?? (aval as any).valor_fechamento ?? 0;
-  const quitacao = (contrato as any)?.valor_quitacao ?? (aval as any).valor_quitacao ?? 0;
+  // Fechamento e quitação têm origem única na avaliação — nunca usam o valor
+  // já salvo no contrato (ficaria divergente se a avaliação for atualizada
+  // depois de o contrato já ter sido gerado uma vez).
+  const fechamento = (aval as any).valor_fechamento ?? (contrato as any)?.valor_fechamento ?? 0;
+  const quitacao = (aval as any).valor_quitacao ?? (contrato as any)?.valor_quitacao ?? 0;
   const ano = [(aval as any).ano_fabricacao, (aval as any).ano_modelo].filter(Boolean).join('/');
 
   await generateContratoCompraPdf({

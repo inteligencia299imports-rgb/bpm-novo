@@ -550,8 +550,11 @@ async function registrarPosAutorizacao(
     const custosClienteOficina = (custosCli || [])
       .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
       .reduce((s: number, c: any) => s + Number(c.valor_executado ?? c.valor_previsto ?? 0), 0);
-    const fechamento = Number(contratoFin?.valor_fechamento ?? avFin?.valor_fechamento ?? nfeRow.valor_total ?? 0);
-    const quitacao = Number(contratoFin?.valor_quitacao ?? avFin?.valor_quitacao ?? 0);
+    // Fechamento e quitação têm origem única na avaliação — nunca usam o
+    // valor já salvo no contrato (ficaria divergente se a avaliação for
+    // atualizada depois de o contrato já ter sido gerado uma vez).
+    const fechamento = Number(avFin?.valor_fechamento ?? contratoFin?.valor_fechamento ?? nfeRow.valor_total ?? 0);
+    const quitacao = Number(avFin?.valor_quitacao ?? contratoFin?.valor_quitacao ?? 0);
     const custosClientePrev = Number(avFin?.previsao_custos_cliente ?? 0);
     const valorRepasse = Math.max(fechamento - quitacao - custosClientePrev - custosClienteOficina, 0);
 
@@ -1454,7 +1457,10 @@ Deno.serve(async (req) => {
       .from('contratos').select('valor_fechamento')
       .eq('atendimento_id', av.atendimento_id).eq('ipva_tipo', 'COMPRA')
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
-    valor = valorBody ?? Number(contrato?.valor_fechamento ?? av.valor_fechamento ?? 0);
+    // Fechamento tem origem única na avaliação — nunca usa o valor já salvo
+    // no contrato (ficaria divergente se a avaliação for atualizada depois
+    // de o contrato já ter sido gerado uma vez).
+    valor = valorBody ?? Number(av.valor_fechamento ?? contrato?.valor_fechamento ?? 0);
     // Registra o valor da NF-e de compra como custo de aquisição fiscal da moto
     // — base da margem de PIS/COFINS quando ela for revendida (Lei 9.716/98).
     if (valor > 0) {

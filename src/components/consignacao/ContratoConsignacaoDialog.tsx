@@ -306,8 +306,11 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         setEmail(contrato.email || atendimentoFresh?.email || '');
         setEndereco(contrato.endereco || atendimentoFresh?.endereco || '');
         setCep(contrato.cep || atendimentoFresh?.cep || '');
-        setValorQuitacao((contrato.valor_quitacao ?? quitacaoAval) != null ? formatCurrencyInput(String(Math.round((contrato.valor_quitacao ?? quitacaoAval) * 100))) : '');
-        setValorFechamento((contrato.valor_fechamento ?? fechamentoAval) != null ? formatCurrencyInput(String(Math.round((contrato.valor_fechamento ?? fechamentoAval) * 100))) : '');
+        // Quitação e Fechamento têm origem única na avaliação — nunca usam o
+        // valor já salvo no contrato (ficaria divergente se a avaliação for
+        // atualizada depois de o contrato já ter sido gerado uma vez).
+        setValorQuitacao((quitacaoAval ?? contrato.valor_quitacao) != null ? formatCurrencyInput(String(Math.round((quitacaoAval ?? contrato.valor_quitacao) * 100))) : '');
+        setValorFechamento((fechamentoAval ?? contrato.valor_fechamento) != null ? formatCurrencyInput(String(Math.round((fechamentoAval ?? contrato.valor_fechamento) * 100))) : '');
         setObsInternas(contrato.observacoes_internas || '');
         setObsContrato(contrato.observacoes_contrato || '');
         setDataContrato(contrato.data_contrato ? new Date(contrato.data_contrato + 'T12:00:00') : undefined);
