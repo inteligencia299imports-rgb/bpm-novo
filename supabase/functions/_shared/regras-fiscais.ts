@@ -7,7 +7,7 @@
 //   naturezas_operacao                 1 natureza por CFOP por empresa (`cfop`; texto da nota em
 //                                      `natop`; indicador de presença do cabeçalho). O
 //                                      emissor acha as naturezas pela família de CFOPs da operação
-//                                      (OPERACOES). O CFOP já diz se a operação é interna (1/5),
+//                                      (tabelas cfops / operacoes_fiscais). O CFOP diz se é interna (1/5),
 //                                      interestadual (2/6) ou exterior (3/7).
 //   naturezas_operacao_regras_fiscais  O que varia DENTRO de um CFOP: UFs, NCM (prefixo), categoria,
 //                                      origem e bem usado -> CST, se destaca ICMS, redução da base e
@@ -23,22 +23,9 @@
 // deno-lint-ignore no-explicit-any
 type ClienteSupabase = { from: (tabela: string) => any };
 
-// Família de CFOPs de cada operação. A ordem não importa: quem decide é a regra.
-export const OPERACOES = {
-  venda: ["5102", "6102", "6108", "5403", "6403", "5405", "6404"],
-  venda_consignada: ["5115", "6115"],
-  devolucao_compra: ["5202", "6202", "5411", "6411"],
-  garantia: ["5915", "6915"],
-  transferencia: ["5152", "6152", "5409", "6409"],
-  outra_saida: ["5949"],
-  bonificacao: ["5910", "6910"],
-  servico: ["5933", "6933"],
-  compra: ["1102", "2102", "3102", "1403", "2403"],
-  compra_consignada: ["1113", "2113"],
-  entrada_consignacao: ["1917", "2917"],
-  devolucao_consignacao: ["5918", "6918", "5919", "6919"],
-} as const;
-export type Operacao = keyof typeof OPERACOES;
+// Operação = o que o emissor pede ("venda", "compra", "devolucao_compra"...). A família de CFOPs de
+// cada operação vem do banco: cfops.operacao (catálogo) -> operacoes_fiscais.codigo.
+export type Operacao = string;
 
 export interface NaturezaCfop {
   id: string;
@@ -111,6 +98,7 @@ interface ExcecaoNcm {
 
 export interface OperacaoCarregada {
   operacao: Operacao;
+  cfops: string[];          // família da operação (catálogo cfops), em ordem de código
   ufEmitente: string;
   naturezas: NaturezaCfop[];
   regras: RegraFiscal[];
@@ -135,12 +123,17 @@ export async function carregarOperacao(
   supabase: ClienteSupabase,
   p: { empresaId: string; ufEmitente: string | null; operacao: Operacao; naturezaId?: string | null },
 ): Promise<OperacaoCarregada | { erro: string }> {
+  const { data: familia, error: e0 } = await supabase
+    .from("cfops").select("codigo").eq("operacao", p.operacao).eq("ativo", true).order("codigo");
+  if (e0) return { erro: `Erro ao ler o catálogo de CFOPs: ${e0.message}` };
+  const cfops = ((familia ?? []) as { codigo: string }[]).map((c) => c.codigo);
+  if (!cfops.length) return { erro: `Operação "${p.operacao}" sem CFOPs no catálogo (tabela cfops).` };
   let q = supabase
     .from("naturezas_operacao")
     .select("id, empresa_id, cfop, descricao, natop, tipo, regime_tributario, indicador_presenca, faturada, consumidor_final, operacao_devolucao, informacoes_complementares, informacoes_adicionais_fisco")
     .eq("empresa_id", p.empresaId)
     .eq("ativo", true)
-    .in("cfop", [...OPERACOES[p.operacao]]);
+    .in("cfop", cfops);
   if (p.naturezaId) q = q.eq("id", p.naturezaId);
   const { data: naturezas, error } = await q;
   if (error) return { erro: `Erro ao ler naturezas de operação: ${error.message}` };
@@ -148,8 +141,8 @@ export async function carregarOperacao(
   if (!lista.length) {
     return {
       erro: p.naturezaId
-        ? `A natureza escolhida não está ativa ou não é de ${p.operacao.replace(/_/g, " ")} (CFOPs ${OPERACOES[p.operacao].join(", ")}).`
-        : `Nenhuma natureza ativa de ${p.operacao.replace(/_/g, " ")} (CFOPs ${OPERACOES[p.operacao].join(", ")}) cadastrada pra essa empresa no SisFin.`,
+        ? `A natureza escolhida não está ativa ou não é de ${p.operacao.replace(/_/g, " ")} (CFOPs ${cfops.join(", ")}).`
+        : `Nenhuma natureza ativa de ${p.operacao.replace(/_/g, " ")} (CFOPs ${cfops.join(", ")}) cadastrada pra essa empresa no SisFin.`,
     };
   }
   const [{ data: regras, error: e2 }, { data: ufs, error: e3 }, { data: excecoes, error: e4 }] = await Promise.all([
@@ -161,6 +154,7 @@ export async function carregarOperacao(
   if (erro) return { erro: `Erro ao ler regras fiscais: ${erro.message}` };
   return {
     operacao: p.operacao,
+    cfops,
     ufEmitente: (p.ufEmitente || "").toUpperCase(),
     naturezas: lista,
     regras: (regras ?? []) as RegraFiscal[],
@@ -398,4 +392,16 @@ export function simularItem(op: OperacaoCarregada, c: Cenario, produto: { ncm?: 
     ipi: linhas.ipi && { cst: linhas.ipi.situacao_tributaria, aliquota: linhas.ipi.aliquota },
     ibscbs: linhas.ibscbs && { cst: linhas.ibscbs.situacao_tributaria, cclasstrib: linhas.ibscbs.classificacao_tributaria },
   };
+}
+
+// Operações do catálogo (pra telas): código, nome e CFOPs de cada uma.
+export async function listarOperacoes(supabase: ClienteSupabase) {
+  const [{ data: ops, error: e1 }, { data: cfops, error: e2 }] = await Promise.all([
+    supabase.from("operacoes_fiscais").select("codigo, nome, ordem").order("ordem"),
+    supabase.from("cfops").select("codigo, operacao").not("operacao", "is", null).eq("ativo", true).order("codigo"),
+  ]);
+  if (e1 || e2) throw e1 ?? e2;
+  const porOp = new Map<string, string[]>();
+  for (const c of (cfops ?? []) as { codigo: string; operacao: string }[]) porOp.set(c.operacao, [...(porOp.get(c.operacao) ?? []), c.codigo]);
+  return ((ops ?? []) as { codigo: string; nome: string }[]).map((o) => ({ codigo: o.codigo, nome: o.nome, cfops: porOp.get(o.codigo) ?? [] }));
 }
