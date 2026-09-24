@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 export const NFE_PENDENTE = ['recebida', 'validando', 'processando_itens', 'gerando_contas'];
 
-type NfeTipo = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia';
+type NfeTipo = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_saida' | 'transferencia_entrada';
 
 /**
  * Estado + acoes da NF-e (emitir / consultar / polling).
@@ -77,7 +77,7 @@ export function useNfeCompra(
     setNfe((data as any[])?.[0] || null);
   }, [avaliacaoId, keyCol, by, tipo]);
 
-  const emitir = useCallback(async (opts?: { observacoes?: string; valor?: number; empresa_id?: string; ambiente?: 'homologacao' | 'producao' }) => {
+  const emitir = useCallback(async (opts?: { observacoes?: string; valor?: number; empresa_id?: string; ambiente?: 'homologacao' | 'producao'; destino_loja_id?: string }) => {
     setLoading(true);
     try {
       const extra: Record<string, unknown> = {};
@@ -85,6 +85,9 @@ export function useNfeCompra(
       if (typeof opts?.valor === 'number' && opts.valor > 0) extra.valor = opts.valor;
       if (opts?.empresa_id) extra.empresa_id = opts.empresa_id;
       if (opts?.ambiente) extra.ambiente = opts.ambiente;
+      // Transferência de estoque entre empresas (saída/entrada) — loja de
+      // destino escolhida no popup, o backend resolve a empresa a partir dela.
+      if (opts?.destino_loja_id) extra.destino_loja_id = opts.destino_loja_id;
       const res = await invoke('emitir', Object.keys(extra).length ? extra : undefined);
       setNfe(res.nfe);
       toast.success(res.nfe?.status === 'processada' ? 'NF-e autorizada!' : 'NF-e enviada para autorização.');

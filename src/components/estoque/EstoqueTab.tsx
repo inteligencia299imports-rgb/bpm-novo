@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download, LogOut, DollarSign } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download, LogOut, DollarSign, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -20,6 +20,7 @@ import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { firstLastName } from '@/lib/utils';
 import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
 import RetiradaDialog from '@/components/estoque/RetiradaDialog';
+import TransferenciaEstoqueDialog from '@/components/estoque/TransferenciaEstoqueDialog';
 import AlterarPrecoDialog from '@/components/estoque/AlterarPrecoDialog';
 import TestRideDialog from '@/components/estoque/TestRideDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -148,6 +149,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [retiradaItem, setRetiradaItem] = useState<EstoqueItem | null>(null);
   const [consultaItem, setConsultaItem] = useState<EstoqueItem | null>(null);
   const [precoItem, setPrecoItem] = useState<EstoqueItem | null>(null);
+  const [transferenciaItem, setTransferenciaItem] = useState<EstoqueItem | null>(null);
   const [testRideItem, setTestRideItem] = useState<EstoqueItem | null>(null);
   const [idsWithNfeVenda0km, setIdsWithNfeVenda0km] = useState<Set<string>>(new Set());
 
@@ -445,6 +447,16 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         label: 'Alterar Status',
         icon: <RefreshCw className="h-4 w-4" />,
         action: () => setStatusChangeItem(item),
+      });
+    }
+
+    // Transferência entre empresas do grupo — só seminova disponível (0km
+    // ainda não tem mecanismo de troca de dono no estoque).
+    if (item.tipo !== '0km' && item.avaliacao_id && item.status === 'disponivel') {
+      options.push({
+        label: 'Transferir',
+        icon: <ArrowRightLeft className="h-4 w-4" />,
+        action: () => setTransferenciaItem(item),
       });
     }
 
@@ -827,6 +839,16 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         estoqueItem={retiradaItem}
         onSuccess={() => {
           setRetiradaItem(null);
+          fetchEstoque();
+        }}
+      />
+
+      <TransferenciaEstoqueDialog
+        open={!!transferenciaItem}
+        onOpenChange={(open) => { if (!open) setTransferenciaItem(null); }}
+        estoqueItem={transferenciaItem}
+        onSuccess={() => {
+          setTransferenciaItem(null);
           fetchEstoque();
         }}
       />
