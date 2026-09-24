@@ -1,6 +1,6 @@
 // Regras fiscais do SisFin — resolução compartilhada pelos emissores (crm-novo, ofc, bpm-novo).
 //
-// FONTE: sisfin/scripts/regras-fiscais/regras-fiscais.ts. Os emissores têm uma cópia em
+// FONTE: sisfin/src/lib/fiscal/regras-fiscais.ts (também usada pelo Simulador fiscal do SisFin). Os emissores têm uma cópia em
 // supabase/functions/_shared/regras-fiscais.ts — altere aqui e copie para os três.
 //
 // Modelo (desde 2026-09-24):
@@ -297,5 +297,105 @@ export function comoRegrasPorImposto(op: OperacaoCarregada, e: RegraEscolhida, i
       base_percentual: num(r.issqn_base_percentual), codigo_servico_issqn: r.issqn_codigo_servico, reter_iss: !!r.issqn_reter,
       descontar_iss_total: !!r.issqn_descontar_total, codigo_cnae: r.codigo_cnae, codigo_tributario_municipio: r.codigo_tributario_municipio, codigo_nbs: r.codigo_nbs,
     } : null,
+  };
+}
+
+// ============================================================================
+// MOTOR — cenário da operação. Tudo aqui é dedução pela regra legal a partir dos dados da
+// venda (empresa, cliente, entrega); nada é configurado. Decisões confirmadas pelo fiscal em
+// 2026-09-24:
+//   - retirada presencial = operação INTERNA (UF fiscal = a do emitente, CFOP 5xxx, sem DIFAL,
+//     sem frete); o endereço do destinatário na nota continua o real;
+//   - destinatário isento de IE = não contribuinte (indIEDest 9 — o 2 é rejeitado por quase
+//     toda SEFAZ em interestadual, rejeição 805), consumidor final, COM DIFAL na interestadual.
+// ============================================================================
+
+export interface DestinatarioFiscal {
+  contribuinteIcms: boolean | null | undefined;
+  inscricaoEstadual: string | null | undefined;
+  // Marcado no cadastro do cliente (ex.: PJ contribuinte comprando pra uso/consumo).
+  consumidorFinal?: boolean | null;
+}
+
+export interface EntradaCenario {
+  regimeEmitente: string | null | undefined;
+  ufEmitente: string | null | undefined;
+  ufDestinatario: string | null | undefined; // UF do endereço do cliente
+  retiradaPresencial?: boolean | null;
+  destinatario: DestinatarioFiscal;
+  valorFrete?: number | null;
+}
+
+export interface Cenario {
+  ufFiscal: string;          // UF que decide CFOP/alíquota/DIFAL (a do emitente na retirada)
+  interna: boolean;
+  idDest: 1 | 2;             // local_destino da NF-e
+  indIEDest: 1 | 9;          // 1 = contribuinte com IE; 9 = não contribuinte / isento
+  consumidorFinal: 0 | 1;    // indFinal
+  regimeNormal: boolean;     // Simples/MEI não recolhe DIFAL (STF ADI 5464)
+  difal: boolean;            // DIFAL da operação (por item ainda depende do CST — difalNoItem)
+  modalidadeFrete: 0 | 9;    // 9 = sem frete (retirada ou frete zero)
+  retiradaPresencial: boolean;
+}
+
+const up = (v: string | null | undefined) => (v || "").trim().toUpperCase();
+
+export function montarCenario(e: EntradaCenario): Cenario {
+  const ufEmitente = up(e.ufEmitente);
+  const retiradaPresencial = e.retiradaPresencial === true;
+  const ufFiscal = retiradaPresencial ? ufEmitente : up(e.ufDestinatario) || ufEmitente;
+  const interna = ufFiscal === ufEmitente;
+  // indIEDest 1 só com IE real (dígitos): contribuinte sem IE ou com "ISENTO" vira 9 (rejeição 728).
+  const ie = (e.destinatario.inscricaoEstadual || "").replace(/\D/g, "");
+  const indIEDest: 1 | 9 = e.destinatario.contribuinteIcms === true && ie ? 1 : 9;
+  const consumidorFinal: 0 | 1 = indIEDest === 9 || e.destinatario.consumidorFinal === true ? 1 : 0;
+  const regime = up(e.regimeEmitente);
+  const regimeNormal = !!regime && !regime.includes("SIMPLES") && regime !== "MEI";
+  const difal = regimeNormal && !interna && indIEDest === 9 && consumidorFinal === 1;
+  const modalidadeFrete: 0 | 9 = retiradaPresencial || !(Number(e.valorFrete) > 0) ? 9 : 0;
+  return { ufFiscal, interna, idDest: interna ? 1 : 2, indIEDest, consumidorFinal, regimeNormal, difal, modalidadeFrete, retiradaPresencial };
+}
+
+// DIFAL no item: o da operação, menos CST sem ICMS na operação (40/41/50) e ST com MVA ajustada
+// (dispensa cadastrada na exceção por NCM).
+export const difalNoItem = (c: Cenario, cst: string | null | undefined, dispensado?: boolean) =>
+  c.difal && !["40", "41", "50"].includes(String(cst ?? "")) && !dispensado;
+
+// 6102 -> 6108 (venda interestadual a não contribuinte). Só existe na família interestadual.
+export const cfopDoCenario = (c: Cenario, cfop: string) => (c.indIEDest === 9 && !c.interna && cfop === "6102" ? "6108" : cfop);
+
+// Monta um item inteiro (o que a tela "Simulador fiscal" mostra): cenário + regra escolhida +
+// alíquotas da tabela.
+export function simularItem(op: OperacaoCarregada, c: Cenario, produto: { ncm?: string | null; categoria?: string | null; icmsOrigem?: number | null; bemUsado?: boolean | null }) {
+  const item: ItemFiscal = { ufDestino: c.ufFiscal, ...produto };
+  const escolhida = escolherRegra(op, item);
+  if (!escolhida) return { erro: `Nenhuma regra fiscal casa com este cenário (UF ${c.ufFiscal}, NCM ${produto.ncm || "—"}).` };
+  const linhas = comoRegrasPorImposto(op, escolhida, item);
+  const icms = linhas.icms;
+  const cfop = cfopDoCenario(c, cfopDe(escolhida));
+  const difal = !!icms && difalNoItem(c, icms.situacao_tributaria, icms.difal_dispensado_st);
+  return {
+    natureza: escolhida.natureza,
+    regra: escolhida.regra,
+    cfop,
+    natOp: cfop !== cfopDe(escolhida) ? (op.naturezas.find((n) => n.cfop === cfop)?.natop ?? natOpDe(escolhida)) : natOpDe(escolhida),
+    icms: icms && {
+      cst: icms.situacao_tributaria,
+      destaca: escolhida.regra.icms_destaca !== false,
+      aliquota: icms.aliquota,
+      reducaoBase: icms.reducao_base_calculo,
+      cBenef: icms.codigo_beneficio_fiscal,
+      efetivo: ["60", "500"].includes(String(icms.situacao_tributaria)) ? icms.aliquota_icms_efetiva : null,
+      stRetida: ["60", "500"].includes(String(icms.situacao_tributaria)) ? icms.aliquota_suportada_consumidor_final : null,
+    },
+    difal: difal ? {
+      aliquotaInternaDestino: icms!.aliquota_interna_destino,
+      aliquotaInterestadual: aliquotaInterestadual(op.ufEmitente, c.ufFiscal, produto.icmsOrigem),
+      fcp: icms!.aliquota_fcp ?? 0,
+    } : null,
+    pis: linhas.pis && { cst: linhas.pis.situacao_tributaria, aliquota: linhas.pis.aliquota },
+    cofins: linhas.cofins && { cst: linhas.cofins.situacao_tributaria, aliquota: linhas.cofins.aliquota },
+    ipi: linhas.ipi && { cst: linhas.ipi.situacao_tributaria, aliquota: linhas.ipi.aliquota },
+    ibscbs: linhas.ibscbs && { cst: linhas.ibscbs.situacao_tributaria, cclasstrib: linhas.ibscbs.classificacao_tributaria },
   };
 }

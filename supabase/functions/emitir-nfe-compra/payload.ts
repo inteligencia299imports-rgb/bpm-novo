@@ -2,6 +2,8 @@
 // Todos os codigos/regras fiscais vem de naturezas_operacao + naturezas_operacao_regras;
 // aqui nao ha default de CFOP/CST/aliquota.
 
+import { montarCenario, difalNoItem } from '../_shared/regras-fiscais.ts';
+
 export interface DadosEmpresa {
   cnpj: string;
   regime_tributario: string | null;
@@ -335,9 +337,11 @@ export function indicadorIeDestinatario(
   contribuinteIcms: boolean | null | undefined,
   inscricaoEstadual: string | null | undefined,
 ): number {
-  const ie = onlyDigits(inscricaoEstadual);
-  const destContribuinteComIe = !pf && contribuinteIcms === true && ie.length > 0;
-  return destContribuinteComIe ? 1 : 9;
+  // Regra única no motor fiscal (_shared/regras-fiscais.ts): 1 só com IE real; isento/sem IE = 9.
+  return montarCenario({
+    regimeEmitente: null, ufEmitente: null, ufDestinatario: null,
+    destinatario: { contribuinteIcms: !pf && contribuinteIcms === true, inscricaoEstadual },
+  }).indIEDest;
 }
 
 /**
@@ -361,12 +365,15 @@ export function difalAplicavel(p: {
   consumidorFinal: boolean;
   cstIcms?: string | null;
 }): boolean {
-  const emitenteRegimeNormal = !(p.regimeTributarioEmitente || '').toUpperCase().includes('SIMPLES');
-  const ufO = (p.ufEmitente || '').trim().toUpperCase();
-  const ufD = (p.ufDestino || '').trim().toUpperCase();
-  const mesmaUf = !!ufO && ufO === ufD;
-  const icmsNaoIncidente = ['40', '41', '50'].includes(String(p.cstIcms ?? ''));
-  return emitenteRegimeNormal && !mesmaUf && p.indIeDest === 9 && p.consumidorFinal && !icmsNaoIncidente;
+  // Regra única no motor fiscal (_shared/regras-fiscais.ts). A venda de moto não tem retirada
+  // presencial no bpm: vale a UF real do cliente. consumidorFinal vem da natureza.
+  const cenario = montarCenario({
+    regimeEmitente: p.regimeTributarioEmitente,
+    ufEmitente: p.ufEmitente,
+    ufDestinatario: p.ufDestino,
+    destinatario: { contribuinteIcms: p.indIeDest === 1, inscricaoEstadual: p.indIeDest === 1 ? '1' : null },
+  });
+  return p.consumidorFinal && difalNoItem(cenario, p.cstIcms);
 }
 
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
