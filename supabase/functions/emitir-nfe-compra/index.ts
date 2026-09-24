@@ -2,7 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { cancelarNfe, consultarNfe, emitirNfe, focusBaseUrl, mensagemErroFocus, type FocusAmbiente } from './focus.ts';
 import { montarPayloadNfeCompra, brl, indicadorIeDestinatario, difalAplicavel, type RegraFiscal } from './payload.ts';
-import { carregarOperacao, escolherRegra, comoRegrasPorImposto, natOpDe, type Operacao as OperacaoFiscal } from '../_shared/regras-fiscais.ts';
+import { carregarOperacao, montarCenario, escolherRegra, comoRegrasPorImposto, natOpDe, type Operacao as OperacaoFiscal } from '../_shared/regras-fiscais.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
@@ -1531,9 +1531,21 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: `Natureza de operação "${naturezaDescricaoEfetiva}": nenhuma regra fiscal ativa pra UF ${ufDestino || '?'} no SisFin.` }, 409);
   }
   const linhas = comoRegrasPorImposto(operacaoCarregada, escolhida, itemFiscal);
+  // Consumidor final e devolução não são mais configurados na natureza (desde 2026-09-24):
+  // consumidor final sai do destinatário pela regra do motor (sem IE real = não contribuinte =
+  // consumidor final), e devolução sai do CFOP (descrição do catálogo "Devolução ...").
+  const pfDestinatario = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
+  const cenarioDestinatario = montarCenario({
+    regimeEmitente: empresa.regime_tributario,
+    ufEmitente: empresa.uf,
+    ufDestinatario: end.uf ?? null,
+    destinatario: { contribuinteIcms: !pfDestinatario && fornecedor.contribuinte_icms === true, inscricaoEstadual: fornecedor.inscricao_estadual },
+  });
   const natureza = {
     ...escolhida.natureza,
     descricao: natOpDe(escolhida),
+    consumidor_final: cenarioDestinatario.consumidorFinal === 1,
+    operacao_devolucao: /^devolu/i.test(escolhida.natureza.descricao) || operacaoFiscal.startsWith('devolucao'),
   };
   const regraIcms = linhas.icms as unknown as RegraFiscal | null;
   const regraPis = linhas.pis as unknown as RegraFiscal | null;
