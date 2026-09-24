@@ -1516,16 +1516,15 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: `Natureza de operação "${naturezaDescricaoEfetiva}": ${operacaoCarregada.erro}` }, 409);
   }
   const ufDestino = (end.uf ?? '').trim().toUpperCase();
-  // Venda: toda venda é tratada como 'presencial' pra fim de CFOP/CST (decisão
-  // fiscal 2026-09-11, docs-fiscal-299/pendencias.md §2.19b). Compra/consignação
-  // não filtram por atendimento. Moto é sempre NCM do capítulo 8711 e a NF sai
-  // com origem 0 (ver payload.ts).
+  // Moto é sempre NCM do capítulo 8711 e a NF sai com origem 0 (ver payload.ts).
+  // Bem usado: seminova e a venda de moto que veio de consignação (também usada)
+  // — separa as regras do mesmo CFOP e pega a alíquota de veículo usado da
+  // tabela de alíquotas (exceção por NCM).
   const itemFiscal = {
     ufDestino,
     ncm: '8711',
     icmsOrigem: 0,
-    bemUsado: viaVendaPosConsignacao ? null : cfg.bemUsado ?? null,
-    atendimento: ehVenda ? ('presencial' as const) : null,
+    bemUsado: viaVendaPosConsignacao ? true : cfg.bemUsado ?? null,
   };
   const escolhida = escolherRegra(operacaoCarregada, itemFiscal);
   if (!escolhida) {

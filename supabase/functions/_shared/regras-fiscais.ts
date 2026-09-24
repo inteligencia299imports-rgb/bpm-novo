@@ -4,15 +4,20 @@
 // supabase/functions/_shared/regras-fiscais.ts — altere aqui e copie para os três.
 //
 // Modelo (desde 2026-09-24):
-//   naturezas_operacao                 1 natureza por CFOP por empresa (coluna `cfop`, texto da
-//                                      nota em `natop`). O emissor acha a natureza por
-//                                      empresa + família de CFOPs da operação (OPERACOES).
-//   naturezas_operacao_regras_fiscais  1 linha por cenário (UF/destino, NCM por prefixo,
-//                                      categoria, origem, atendimento, bem usado) com todos os
-//                                      impostos. A regra mais específica entre as naturezas da
-//                                      família decide — e com ela o CFOP (natureza da regra).
-//   icms_uf / icms_uf_ncm              alíquota interna + FCP por UF (exceção por NCM/prefixo):
-//                                      DIFAL e venda interna sem alíquota na regra.
+//   naturezas_operacao                 1 natureza por CFOP por empresa (`cfop`; texto da nota em
+//                                      `natop`; série e indicador de presença do cabeçalho). O
+//                                      emissor acha as naturezas pela família de CFOPs da operação
+//                                      (OPERACOES). O CFOP já diz se a operação é interna (1/5),
+//                                      interestadual (2/6) ou exterior (3/7).
+//   naturezas_operacao_regras_fiscais  O que varia DENTRO de um CFOP: UFs, NCM (prefixo), categoria,
+//                                      origem e bem usado -> CST, se destaca ICMS, redução da base e
+//                                      cBenef do ICMS,
+//                                      PIS/COFINS, IPI, IBS/CBS, ISSQN (e série, se diferente).
+//                                      A regra mais específica entre as naturezas da família decide.
+//   icms_uf / icms_uf_ncm              TODAS as alíquotas de ICMS: interna + FCP por UF, com exceção
+//                                      por NCM/prefixo (e bem usado) e a dispensa de DIFAL. A
+//                                      interestadual (4/7/12%) é a das Resoluções do Senado.
+
 // Tipo mínimo do cliente: serve pro supabase-js via npm: (crm-novo, ofc) e via esm.sh (bpm-novo).
 // deno-lint-ignore no-explicit-any
 type ClienteSupabase = { from: (tabela: string) => any };
@@ -54,27 +59,21 @@ export interface NaturezaCfop {
 export interface RegraFiscal {
   id: string;
   natureza_operacao_id: string;
-  destino: number | null;
   destino_ufs: string[];
   produto_ncms: string[];
   produto_categorias: string[];
   origem_mercadoria: string | null;
-  tipo_atendimento: string;
   bem_usado: boolean | null;
   serie: string | null;
   ordem: number;
   cfop: string | null;
-  natop: string | null;
-  indicador_presenca: number | null;
   icms_cst: string | null;
+  // false = operação sem destaque de ICMS (pICMS 0) mesmo com CST que destacaria (ex.: moto 0km
+  // CST 00 interestadual, consignação CST 90). true = alíquota da tabela.
+  icms_destaca: boolean;
   icms_tipo_tributacao: string | null;
-  icms_aliquota: number | null;
   icms_reducao_bc: number | null;
-  icms_aliquota_efetiva: number | null;
-  icms_reducao_bc_efetiva: number | null;
-  icms_aliquota_st_consumidor: number | null;
   codigo_beneficio_fiscal: string | null;
-  difal_dispensado_st: boolean;
   ipi_cst: string | null;
   ipi_enquadramento: string | null;
   ipi_aliquota: number | null;
@@ -102,7 +101,14 @@ export interface RegraFiscal {
 }
 
 interface AliquotaUf { uf: string; aliquota_interna: number; aliquota_fcp: number }
-interface ExcecaoNcm { uf: string; ncm: string; aliquota_interna: number | null; aliquota_fcp: number | null }
+interface ExcecaoNcm {
+  uf: string;
+  ncm: string;
+  bem_usado: boolean | null;
+  aliquota_interna: number | null;
+  aliquota_fcp: number | null;
+  difal_dispensado_st: boolean;
+}
 
 export interface OperacaoCarregada {
   operacao: Operacao;
@@ -119,7 +125,6 @@ export interface ItemFiscal {
   categoria?: string | null;          // produto_categorias (ex.: itens_equipamentos.id)
   icmsOrigem?: number | null;         // 0–8
   bemUsado?: boolean | null;          // moto seminova = true; ausente = novo
-  atendimento?: "presencial" | "online" | null; // só venda; ausente = não filtra
 }
 
 export interface RegraEscolhida { regra: RegraFiscal; natureza: NaturezaCfop }
@@ -151,7 +156,7 @@ export async function carregarOperacao(
   const [{ data: regras, error: e2 }, { data: ufs, error: e3 }, { data: excecoes, error: e4 }] = await Promise.all([
     supabase.from("naturezas_operacao_regras_fiscais").select("*").in("natureza_operacao_id", lista.map((n) => n.id)).eq("ativo", true).order("ordem"),
     supabase.from("icms_uf").select("uf, aliquota_interna, aliquota_fcp"),
-    supabase.from("icms_uf_ncm").select("uf, ncm, aliquota_interna, aliquota_fcp"),
+    supabase.from("icms_uf_ncm").select("uf, ncm, bem_usado, aliquota_interna, aliquota_fcp, difal_dispensado_st"),
   ]);
   const erro = e2 ?? e3 ?? e4;
   if (erro) return { erro: `Erro ao ler regras fiscais: ${erro.message}` };
@@ -168,16 +173,26 @@ export async function carregarOperacao(
 // Origem do ICMS (0–8) -> bucket da regra. Importada: 1, 2, 6, 7.
 export const bucketOrigem = (o: number | null | undefined) => ([1, 2, 6, 7].includes(Number(o) || 0) ? "importada" : "nacional");
 
+// O CFOP diz o destino: 1/5 = mesma UF, 2/6 = outra UF, 3/7 = exterior.
+function cfopCasaComUf(cfop: string, uf: string, ufEmitente: string): boolean {
+  const d = cfop[0];
+  if (d === "1" || d === "5") return uf === ufEmitente;
+  if (d === "2" || d === "6") return !!uf && uf !== ufEmitente && uf !== "EX";
+  return uf === "EX";
+}
+
 // Escolhe a regra mais específica que casa com o item, entre todas as naturezas da operação.
-// Pesos: UF listada / destino (interna × interestadual) > NCM (prefixo mais longo) / categoria
-// > bem usado > origem > atendimento; empate -> menor `ordem`.
+// Pesos: NCM (prefixo mais longo) / categoria > UF listada > bem usado > origem; empate -> menor
+// `ordem`. Produto vem antes da UF: dentro de um CFOP a lista de UFs é exceção de estado, e uma
+// regra de produto (ex.: moto 0km, NCM 8711) não pode perder pra regra genérica que lista UFs.
+// Naturezas cujo CFOP não bate com o destino (5xxx x 6xxx) ficam de fora.
 export function escolherRegra(op: OperacaoCarregada, item: ItemFiscal): RegraEscolhida | null {
   const uf = (item.ufDestino || "").toUpperCase();
   const ncm = (item.ncm || "").replace(/\D/g, "");
   const categoria = (item.categoria || "").trim();
   const origem = bucketOrigem(item.icmsOrigem);
   const bemUsado = item.bemUsado === true;
-  const porId = new Map(op.naturezas.map((n) => [n.id, n]));
+  const porId = new Map(op.naturezas.filter((n) => cfopCasaComUf(n.cfop, uf, op.ufEmitente)).map((n) => [n.id, n]));
   let melhor: RegraEscolhida | null = null;
   let melhorScore = -1;
   let melhorOrdem = Infinity;
@@ -187,21 +202,16 @@ export function escolherRegra(op: OperacaoCarregada, item: ItemFiscal): RegraEsc
     let score = 0;
     const ufs = (r.destino_ufs || []).map((x) => x.toUpperCase());
     if (ufs.length) { if (!ufs.includes(uf)) continue; score += 20; }
-    if (r.destino != null) { if ((r.destino === 1) !== (uf === op.ufEmitente)) continue; score += 20; }
     const ncms = r.produto_ncms || [];
     if (ncms.length) {
       const casou = ncms.filter((p) => ncm && ncm.startsWith(p)).sort((a, b) => b.length - a.length)[0];
       if (!casou) continue;
-      score += 10 + casou.length / 100;
+      score += 40 + casou.length / 100;
     }
     const cats = r.produto_categorias || [];
-    if (cats.length) { if (!categoria || !cats.includes(categoria)) continue; score += 10; }
-    if (r.bem_usado != null) { if (r.bem_usado !== bemUsado) continue; score += 2; }
+    if (cats.length) { if (!categoria || !cats.includes(categoria)) continue; score += 40; }
+    if (r.bem_usado != null) { if (r.bem_usado !== bemUsado) continue; score += 10; }
     if (r.origem_mercadoria) { if (r.origem_mercadoria !== origem) continue; score += 1; }
-    if (r.tipo_atendimento && r.tipo_atendimento !== "ambos" && item.atendimento) {
-      if (r.tipo_atendimento !== item.atendimento) continue;
-      score += 0.5;
-    }
     if (score > melhorScore || (score === melhorScore && r.ordem < melhorOrdem)) {
       melhor = { regra: r, natureza };
       melhorScore = score;
@@ -211,44 +221,66 @@ export function escolherRegra(op: OperacaoCarregada, item: ItemFiscal): RegraEsc
   return melhor;
 }
 
-// Alíquota interna e FCP da UF, com exceção por NCM (prefixo mais longo).
-export function aliquotasUf(op: OperacaoCarregada, uf: string, ncm?: string | null) {
-  const base = op.icmsUf[(uf || "").toUpperCase()];
+// Alíquota interna, FCP e dispensa de DIFAL da UF, com exceção por NCM (prefixo mais longo; a
+// exceção de bem usado específico vence a genérica).
+export function aliquotasUf(op: OperacaoCarregada, uf: string, ncm?: string | null, bemUsado?: boolean | null) {
+  const u = (uf || "").toUpperCase();
+  const base = op.icmsUf[u];
   const n = (ncm || "").replace(/\D/g, "");
   const exc = op.excecoes
-    .filter((x) => x.uf === (uf || "").toUpperCase() && n && n.startsWith(x.ncm))
-    .sort((a, b) => b.ncm.length - a.ncm.length)[0];
+    .filter((x) => x.uf === u && n && n.startsWith(x.ncm) && (x.bem_usado == null || x.bem_usado === (bemUsado === true)))
+    .sort((a, b) => b.ncm.length - a.ncm.length || (a.bem_usado == null ? 1 : 0) - (b.bem_usado == null ? 1 : 0))[0];
   return {
     interna: num(exc?.aliquota_interna) ?? base?.aliquota_interna ?? null,
     fcp: num(exc?.aliquota_fcp) ?? base?.aliquota_fcp ?? 0,
+    difalDispensado: !!exc?.difal_dispensado_st,
   };
 }
 
-export const natOpDe = (e: RegraEscolhida) => (e.regra.natop || e.natureza.natop || e.natureza.descricao).slice(0, 60);
+// Alíquota interestadual (Res. SF 22/1989 e 13/2012): importado (origem 1, 2, 3, 8) = 4%;
+// Sul/Sudeste (exceto ES) para Norte/Nordeste/Centro-Oeste/ES = 7%; demais = 12%.
+const REGIAO_UF: Record<string, string> = {
+  AC: "N", AP: "N", AM: "N", PA: "N", RO: "N", RR: "N", TO: "N",
+  AL: "NE", BA: "NE", CE: "NE", MA: "NE", PB: "NE", PE: "NE", PI: "NE", RN: "NE", SE: "NE",
+  DF: "CO", GO: "CO", MT: "CO", MS: "CO", ES: "SE", MG: "SE", RJ: "SE", SP: "SE", PR: "S", RS: "S", SC: "S",
+};
+export function aliquotaInterestadual(ufOrigem: string, ufDestino: string, icmsOrigem?: number | null): number {
+  const o = (ufOrigem || "").toUpperCase(), d = (ufDestino || "").toUpperCase();
+  if ([1, 2, 3, 8].includes(Number(icmsOrigem) || 0)) return 4;
+  const sulSudeste = REGIAO_UF[o] === "S" || (REGIAO_UF[o] === "SE" && o !== "ES");
+  const beneficiado = ["N", "NE", "CO"].includes(REGIAO_UF[d]) || d === "ES";
+  return sulSudeste && beneficiado ? 7 : 12;
+}
+
+export const natOpDe = (e: RegraEscolhida) => (e.natureza.natop || e.natureza.descricao).slice(0, 60);
 export const serieDe = (e: RegraEscolhida) => e.regra.serie ?? e.natureza.serie;
 export const cfopDe = (e: RegraEscolhida) => e.regra.cfop ?? e.natureza.cfop;
 
 // Converte a regra escolhida para o formato antigo de naturezas_operacao_regras (uma linha por
-// imposto) — o que o resto de cada emissor já sabe consumir. Mesma semântica da view
-// naturezas_operacao_regras_v2: aliquota_interna_destino = alíquota interna real da UF (DIFAL);
-// na UF do emitente, a alíquota da regra se houver.
+// imposto) — o que o resto de cada emissor já sabe consumir. Alíquotas de ICMS vêm da tabela:
+//   aliquota (pICMS) = interna da UF (operação interna) ou 4/7/12 — 0 se a regra não destaca ICMS;
+//   aliquota_icms_efetiva = a mesma alíquota, sem ST (grupo ICMS Efetivo, CST 60/500);
+//   aliquota_interna_destino (DIFAL) = interna da UF de destino; aliquota_fcp = FCP dela;
+//   aliquota_suportada_consumidor_final (pST, CST 60) = interna da UF do emitente.
 export function comoRegrasPorImposto(op: OperacaoCarregada, e: RegraEscolhida, item: ItemFiscal) {
   const r = e.regra;
   const uf = (item.ufDestino || "").toUpperCase();
-  const { interna, fcp } = aliquotasUf(op, uf, item.ncm);
+  const destino = aliquotasUf(op, uf, item.ncm, item.bemUsado);
+  const emitente = aliquotasUf(op, op.ufEmitente, item.ncm, item.bemUsado);
+  const pICMS = uf === op.ufEmitente ? destino.interna : aliquotaInterestadual(op.ufEmitente, uf, item.icmsOrigem);
   const comum = {
-    destino_ufs: [uf], tipo_atendimento: r.tipo_atendimento, origem_mercadoria: r.origem_mercadoria,
+    destino_ufs: [uf], tipo_atendimento: "ambos", origem_mercadoria: r.origem_mercadoria,
     produto_tipo: r.produto_ncms.length ? "ncm" : "todos", produto_ncms: r.produto_ncms, produto_categorias: r.produto_categorias,
     ordem: r.ordem, informacoes_complementares: null as string | null, informacoes_adicionais_fisco: null as string | null,
   };
   const icms = r.icms_cst ? {
     ...comum, imposto: "icms", cfop: cfopDe(e), situacao_tributaria: r.icms_cst,
-    aliquota: num(r.icms_aliquota), reducao_base_calculo: num(r.icms_reducao_bc), base_calculo: null,
-    aliquota_interna_destino: uf === op.ufEmitente ? (num(r.icms_aliquota) ?? interna) : interna,
-    aliquota_fcp: fcp ? fcp : null, tipo_tributacao: r.icms_tipo_tributacao,
-    aliquota_icms_efetiva: num(r.icms_aliquota_efetiva), reducao_base_calculo_efetiva: num(r.icms_reducao_bc_efetiva),
-    aliquota_suportada_consumidor_final: num(r.icms_aliquota_st_consumidor), codigo_beneficio_fiscal: r.codigo_beneficio_fiscal,
-    difal_dispensado_st: !!r.difal_dispensado_st, indicador_presenca: r.indicador_presenca, natureza_operacao_descricao: natOpDe(e),
+    aliquota: r.icms_destaca === false ? 0 : pICMS, reducao_base_calculo: num(r.icms_reducao_bc), base_calculo: null,
+    aliquota_interna_destino: destino.interna, aliquota_fcp: destino.fcp ? destino.fcp : null,
+    tipo_tributacao: r.icms_tipo_tributacao,
+    aliquota_icms_efetiva: pICMS, reducao_base_calculo_efetiva: null,
+    aliquota_suportada_consumidor_final: emitente.interna, codigo_beneficio_fiscal: r.codigo_beneficio_fiscal,
+    difal_dispensado_st: destino.difalDispensado, indicador_presenca: e.natureza.indicador_presenca, natureza_operacao_descricao: natOpDe(e),
     informacoes_complementares: r.informacoes_complementares, informacoes_adicionais_fisco: r.informacoes_adicionais_fisco,
   } : null;
   const simples = (imposto: string, cst: string | null, aliquota: unknown) =>
@@ -257,7 +289,7 @@ export function comoRegrasPorImposto(op: OperacaoCarregada, e: RegraEscolhida, i
     icms,
     pis: simples("pis", r.pis_cst, r.pis_aliquota),
     cofins: simples("cofins", r.cofins_cst, r.cofins_aliquota),
-    ipi: r.ipi_cst ? { ...simples("ipi", r.ipi_cst, r.ipi_aliquota)!, codigo_enquadramento_ipi: r.ipi_enquadramento, indicador_presenca: r.indicador_presenca } : null,
+    ipi: r.ipi_cst ? { ...simples("ipi", r.ipi_cst, r.ipi_aliquota)!, codigo_enquadramento_ipi: r.ipi_enquadramento, indicador_presenca: e.natureza.indicador_presenca } : null,
     ibscbs: r.ibscbs_cst ? {
       ...simples("ibscbs", r.ibscbs_cst, null)!, classificacao_tributaria: r.cclasstrib,
       cbs_aliquota: num(r.cbs_aliquota), ibs_uf_aliquota: num(r.ibs_uf_aliquota), ibs_mun_aliquota: num(r.ibs_mun_aliquota), percentual_reducao: num(r.ibscbs_reducao),
