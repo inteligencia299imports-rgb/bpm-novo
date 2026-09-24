@@ -223,7 +223,12 @@ async function montarComprador(
       endereco: {
         codigoMunicipio,
         cep: end.cep ? String(end.cep).replace(/\D/g, '') : undefined,
-        logradouro: end.logradouro || undefined,
+        // SERPRO rejeita logradouro com mais de 30 caracteres ("Logradouro
+        // deve conter no máximo 30 caracteres", achado real 2026-09-24,
+        // venda 0km cliente Henrique Ismael da Costa) — mesmo problema do
+        // bairro abaixo, endereços do cadastro do cliente costumam vir mais
+        // longos que isso.
+        logradouro: end.logradouro ? String(end.logradouro).slice(0, 30) : undefined,
         numero: end.numero || undefined,
         // SERPRO rejeita bairro com mais de 20 caracteres ("Bairro deve
         // conter no máximo 20 caracteres") — bairros do cadastro do
