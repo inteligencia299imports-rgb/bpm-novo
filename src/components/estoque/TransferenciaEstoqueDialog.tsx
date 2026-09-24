@@ -63,6 +63,16 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, avaliacaoId]);
 
+  // Restaura a loja de destino ao reabrir sobre uma transferência já em
+  // andamento — sem isso, o Select (já travado depois da saída emitida)
+  // ficava vazio pra sempre e o botão de reemitir/produção falhava com
+  // "destino_loja_id é obrigatório".
+  useEffect(() => {
+    const destinoSalvo = saida.nfe?.transferencia_destino_loja_id || entrada.nfe?.transferencia_destino_loja_id;
+    if (destinoSalvo && !destinoLojaId) setDestinoLojaId(destinoSalvo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saida.nfe, entrada.nfe]);
+
   useEffect(() => {
     if (!open) return;
     let cancel = false;
@@ -179,7 +189,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                   <Button
                     size="sm"
                     className="gap-1.5"
-                    disabled={saida.loading}
+                    disabled={saida.loading || !destinoLojaId}
                     onClick={() => saida.emitir({ ambiente: 'producao', destino_loja_id: destinoLojaId })}
                   >
                     <FileText className="h-4 w-4" /> NF-e (Produção)
@@ -246,7 +256,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                   <Button
                     size="sm"
                     className="gap-1.5"
-                    disabled={entrada.loading}
+                    disabled={entrada.loading || !destinoLojaId}
                     onClick={() => entrada.emitir({ ambiente: 'producao', destino_loja_id: destinoLojaId })}
                   >
                     <FileText className="h-4 w-4" /> NF-e (Produção)

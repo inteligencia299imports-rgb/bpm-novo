@@ -979,7 +979,20 @@ Deno.serve(async (req) => {
   // nfe_entradas.transferencia_par_id + grupo NFref no XML da entrada).
   let saidaNfIdParaEntrada: string | null = null;
   let saidaChaveParaEntrada: string | null = null;
-  if (ehTransferenciaEstoque) {
+  if (ehTransferenciaEstoque && acao !== 'emitir') {
+    // 'consultar'/'cancelar' (inclusive o polling automático do front, que
+    // NUNCA manda destino_loja_id) não podem exigir esse body — a empresa
+    // certa já está gravada na própria linha da NF-e desta operação. Achado
+    // real 2026-09-24: sem esse desvio, o polling de uma saída em
+    // homologação falhava pra sempre com "destino_loja_id é obrigatório" e a
+    // nota nunca saía de "processando".
+    const { data: nfeAtual } = await admin
+      .from('nfe_entradas').select('empresa_id')
+      .eq('avaliacao_id', avaliacaoId).eq('operacao', tipo)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (!nfeAtual?.empresa_id) return jsonResponse({ error: 'Nenhuma NF-e desta transferência encontrada.' }, 404);
+    empresaId = nfeAtual.empresa_id;
+  } else if (ehTransferenciaEstoque) {
     if (!destinoLojaIdBody) return jsonResponse({ error: 'destino_loja_id é obrigatório.' }, 400);
     const { data: emAtual } = await admin.from('estoque_motos').select('loja_id').eq('avaliacao_id', avaliacaoId).maybeSingle();
     if (!emAtual?.loja_id) return jsonResponse({ error: 'Moto não encontrada no estoque (sem loja_id).' }, 409);
@@ -1111,6 +1124,14 @@ Deno.serve(async (req) => {
         callerId: caller.id,
         callerName,
       });
+      // Mesmo efeito do caminho "emitir" (linha ~2059) — a autorização em
+      // produção de uma transferência pode chegar por aqui (polling), não só
+      // na resposta síncrona do emitir. Usa a loja gravada na própria linha
+      // (transferencia_destino_loja_id), não um body que o polling não manda.
+      if (tipo === 'transferencia_entrada') {
+        const destinoLoja = (updated?.transferencia_destino_loja_id as string) || (nfeRow.transferencia_destino_loja_id as string);
+        if (destinoLoja) await admin.from('estoque_motos').update({ loja_id: destinoLoja }).eq('avaliacao_id', avaliacaoId);
+      }
     }
     return jsonResponse({ nfe: updated ?? nfeRow }, 200);
   }
@@ -1962,6 +1983,7 @@ Deno.serve(async (req) => {
       focus_status: fStatus ?? `http_${r.httpStatus}`,
       erro_mensagem: errMsg,
       ...(tipo === 'transferencia_entrada' ? { transferencia_par_id: saidaNfIdParaEntrada } : {}),
+      ...(ehTransferenciaEstoque ? { transferencia_destino_loja_id: destinoLojaIdBody || null } : {}),
     };
     if (atualizaExistente) {
       await admin.from('nfe_entradas').update(linhaErro).eq('id', nfeExistente.id);
@@ -1983,6 +2005,7 @@ Deno.serve(async (req) => {
     valor_total: valor,
     departamento,
     ...(tipo === 'transferencia_entrada' ? { transferencia_par_id: saidaNfIdParaEntrada } : {}),
+    ...(ehTransferenciaEstoque ? { transferencia_destino_loja_id: destinoLojaIdBody || null } : {}),
     observacoes: observacoesNf,
     data_emissao: dataEmissao,
     data_entrada: dataEmissao,
