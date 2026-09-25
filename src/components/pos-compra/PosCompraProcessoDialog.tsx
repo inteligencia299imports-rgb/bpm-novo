@@ -142,7 +142,32 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       setRenaveEntrouEstoque(!!(avData as any)?.renave_id_estoque);
       setRenaveAtualizadoEm((avData as any)?.renave_atualizado_em ?? null);
       setRenaveUltimoErro((avData as any)?.renave_ultimo_erro ?? null);
-      setContratoGerado(((contratoHist as any[]) || []).length > 0);
+
+      // Troca: o contrato de VENDA (da moto que o cliente está levando) já
+      // engloba a compra da moto que entra — nunca existe um "contrato de
+      // compra" separado pra ela (mesma exceção já tratada no
+      // ContratoCompraDialog). Sem isso, o gate de emitir NF-e ficava preso
+      // esperando um contrato de compra que a troca nunca gera.
+      let contratoGeradoFinal = ((contratoHist as any[]) || []).length > 0;
+      const atendIdTroca = (avData as any)?.atendimento_id || null;
+      if (!contratoGeradoFinal && atendIdTroca) {
+        const [{ data: estNova }, { data: estSemi }] = await Promise.all([
+          supabase.from('estoque_motos_novas').select('valor_venda').eq('atendimento_venda_id', atendIdTroca).maybeSingle(),
+          supabase.from('estoque_motos').select('valor_venda').eq('atendimento_venda_id', atendIdTroca).maybeSingle(),
+        ]);
+        const ehTroca = Number((estNova as any)?.valor_venda ?? (estSemi as any)?.valor_venda ?? 0) > 0;
+        if (ehTroca) {
+          const { data: histVenda } = await supabase
+            .from('status_history')
+            .select('id')
+            .eq('entity_type', 'showroom')
+            .eq('entity_id', atendIdTroca)
+            .in('status', ['contrato_de_venda', 'contrato_de_sinal'])
+            .limit(1);
+          contratoGeradoFinal = !!(histVenda && histVenda.length > 0);
+        }
+      }
+      setContratoGerado(contratoGeradoFinal);
       setValorFechamento(
         (avData as any)?.valor_fechamento
           ? formatCurrencyInput(String(Math.round((avData as any).valor_fechamento * 100)))
