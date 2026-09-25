@@ -194,7 +194,14 @@ export function escolherRegra(op: OperacaoCarregada, item: ItemFiscal): RegraEsc
     if (!natureza) continue;
     let score = 0;
     const ufs = (r.destino_ufs || []).map((x) => x.toUpperCase());
+    // Interestadual (CFOP 2/6xxx) sem UF marcada não é "coringa" pra qualquer estado — exige a
+    // UF de destino explícita na regra. Sem isso, um estado nunca verificado de verdade (nem
+    // cadastrado por engano) casava silenciosamente numa regra genérica de outro estado, com
+    // CST/alíquota que ninguém conferiu pra esse destino (achado real: venda pra MA emitida sem
+    // ninguém ter configurado MA, absorvida por uma regra "qualquer UF"). Interna (1/5xxx) não
+    // tem essa ambiguidade — só existe uma UF possível (a do emitente) — então coringa continua ok.
     if (ufs.length) { if (!ufs.includes(uf)) continue; score += 20; }
+    else if (natureza.cfop[0] === "2" || natureza.cfop[0] === "6") continue;
     const ncms = r.produto_ncms || [];
     if (ncms.length) {
       const casou = ncms.filter((p) => ncm && ncm.startsWith(p)).sort((a, b) => b.length - a.length)[0];
