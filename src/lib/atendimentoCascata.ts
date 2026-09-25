@@ -61,7 +61,15 @@ export const marcarAtendimentoPerdido = async (params: {
 
   const promises: PromiseLike<unknown>[] = [
     supabase.from('atendimentos_motos').update({ situacao: 'perdido' }).eq('id', atendimentoId).then((r) => r),
-    supabase.from('avaliacoes').update({ situacao: 'perdido' }).eq('atendimento_id', atendimentoId).then((r) => r),
+    // Além da situação geral, os status dos processos em andamento (pós-compra/
+    // consignação/preparação) também viram "perdido" — sem isso ficavam presos
+    // em 'em_aberto'/'aprovada'/etc. pra sempre, mesmo com o negócio morto.
+    supabase.from('avaliacoes').update({
+      situacao: 'perdido',
+      pos_compra_status: 'perdido',
+      consignacao_status: 'perdido',
+      preparacao_status: 'perdido',
+    } as never).eq('atendimento_id', atendimentoId).then((r) => r),
     // Remove do estoque eventuais motos de troca que entraram por este atendimento.
     ...(avaliacoesData || []).map((av) =>
       supabase.from('estoque_motos').delete().eq('avaliacao_id', av.id).then((r) => r),
