@@ -1635,8 +1635,13 @@ Deno.serve(async (req) => {
     // testar em homologação é impossível por definição (a chave de produção
     // não existe na base da SEFAZ homologação — Rejeição 321, ver
     // docs-fiscal-299 §2.26/§2.27). Dispensa a exigência de homolog prévia
-    // só nesse caso.
-    const dispensaHomologPrevia = tipo === 'devolucao_consignacao' && consignacaoRefAmbiente === 'producao';
+    // nesse caso. Mesma coisa pras devoluções pós-24h — por definição, elas
+    // SEMPRE referenciam uma NF original já em produção (validarOrigemDevolucao
+    // exige isso), então testar em homologação é sempre impossível, não só
+    // condicionalmente.
+    const dispensaHomologPrevia = (tipo === 'devolucao_consignacao' && consignacaoRefAmbiente === 'producao')
+      || tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km'
+      || tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km';
     if (!homologAutorizada && !dispensaHomologPrevia) {
       return jsonResponse({ error: 'Emita em homologação antes de emitir em produção.' }, 409);
     }
