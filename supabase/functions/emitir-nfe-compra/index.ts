@@ -71,7 +71,7 @@ function stRetidoDoXmlEntrada(xml: string): { bc: number; subst: number; ret: nu
   return { bc, subst: subst ?? 0, ret };
 }
 
-type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_saida' | 'transferencia_entrada' | 'transferencia_saida_0km' | 'transferencia_entrada_0km';
+type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_saida' | 'transferencia_entrada' | 'transferencia_saida_0km' | 'transferencia_entrada_0km' | 'devolucao_compra' | 'devolucao_venda_seminova' | 'devolucao_venda_0km' | 'devolucao_transferencia' | 'devolucao_transferencia_0km';
 
 interface OperacaoConfig {
   refPrefix: string;
@@ -253,6 +253,76 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     planoContaId: PLANO_VENDA_NOVA,
     centroCustoId: CC_MOTOS_NOVAS,
     keyBy: 'atendimento',
+  },
+  // Devolução pós-24h: a SEFAZ só aceita cancelamento até 24h da autorização
+  // (janela nacional, Ajuste SINIEF) — depois disso, desfazer uma operação só
+  // com uma NF-e de devolução nova, referenciando a original via NFref. Sem
+  // compromisso financeiro automático (mesmo aviso já mostrado no cancelamento
+  // — ajuste manual se necessário). CFOP/natureza ainda incompletos no
+  // cadastro fiscal (ver docs-fiscal-299/pendencias.md §2.61) — a validação de
+  // regras incompletas já existente bloqueia a emissão real até isso ser
+  // corrigido; o código abaixo já fica pronto pra funcionar assim que o
+  // cadastro for revisado.
+  devolucao_compra: {
+    refPrefix: 'devolucao-compra',
+    naturezaDescricao: 'Devolução de compra p/ comercialização',
+    operacaoFiscal: 'devolucao_compra',
+    statusEntity: 'pos_compra',
+    statusHist: 'nfe_devolucao_compra_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'avaliacao',
+  },
+  devolucao_venda_seminova: {
+    refPrefix: 'devolucao-venda',
+    naturezaDescricao: 'Devolução de venda de mercadoria adquirida ou recebida de terceiros',
+    operacaoFiscal: 'devolucao_venda',
+    bemUsado: true,
+    statusEntity: 'pos_venda',
+    statusHist: 'nfe_devolucao_venda_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'atendimento',
+  },
+  devolucao_venda_0km: {
+    refPrefix: 'devolucao-venda',
+    naturezaDescricao: 'Devolução de venda de mercadoria adquirida ou recebida de terceiros em operação com mercadoria sujeita a ST',
+    operacaoFiscal: 'devolucao_venda',
+    bemUsado: false,
+    statusEntity: 'pos_venda',
+    statusHist: 'nfe_devolucao_venda_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'atendimento',
+  },
+  // Devolução de transferência entre empresas: do ponto de vista fiscal,
+  // desfazer uma transferência-entrada já registrada é equivalente a devolver
+  // uma compra (mesmo CFOP 5202/6202, mesma natureza "devolucao_compra") — o
+  // destino devolve pra origem o que "recebeu" dela.
+  devolucao_transferencia: {
+    refPrefix: 'devolucao-transferencia',
+    naturezaDescricao: 'Devolução de compra p/ comercialização',
+    operacaoFiscal: 'devolucao_compra',
+    statusEntity: 'pos_compra',
+    statusHist: 'nfe_devolucao_transferencia_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'avaliacao',
+  },
+  devolucao_transferencia_0km: {
+    refPrefix: 'devolucao-transferencia',
+    naturezaDescricao: 'Devolução de compra p/ comercialização',
+    operacaoFiscal: 'devolucao_compra',
+    statusEntity: 'estoque_0km',
+    statusHist: 'nfe_devolucao_transferencia_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'estoque_moto_nova',
   },
 };
 
@@ -826,7 +896,7 @@ Deno.serve(async (req) => {
 
   const acao: 'consultar' | 'cancelar' | 'emitir' =
     body.acao === 'consultar' ? 'consultar' : body.acao === 'cancelar' ? 'cancelar' : 'emitir';
-  const tipo: Operacao = (['compra', 'consignacao', 'devolucao_consignacao', 'venda_seminova', 'venda_0km', 'transferencia', 'transferencia_saida', 'transferencia_entrada', 'transferencia_saida_0km', 'transferencia_entrada_0km'] as const).includes(body.tipo as any)
+  const tipo: Operacao = Object.prototype.hasOwnProperty.call(CFG, body.tipo as string)
     ? (body.tipo as Operacao)
     : 'compra';
   const cfg = CFG[tipo];
@@ -837,7 +907,8 @@ Deno.serve(async (req) => {
   // Compra/consignação/devolução simbólica/transferência de moto seminova
   // entram no departamento "motos_seminovas" (é sempre a mesma moto usada da
   // compra — a transferência não vira "moto nova"); a de 0km fica em "motos".
-  const departamento = (tipo === 'compra' || tipo === 'consignacao' || tipo === 'devolucao_consignacao' || tipo === 'transferencia' || ehTransferenciaEstoque) ? 'motos_seminovas' : 'motos';
+  const departamento = (tipo === 'compra' || tipo === 'consignacao' || tipo === 'devolucao_consignacao' || tipo === 'transferencia' || ehTransferenciaEstoque
+    || tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_transferencia') ? 'motos_seminovas' : 'motos';
 
   const avaliacaoId = typeof body.avaliacao_id === 'string' ? body.avaliacao_id : '';
   const atendimentoIdBody = typeof body.atendimento_id === 'string' ? body.atendimento_id : '';
@@ -1085,6 +1156,18 @@ Deno.serve(async (req) => {
     destinoEmpresaIdTransf = lojaDestino.empresa_id;
     origemEmpresaIdTransf = emn0km.empresa_id;
     empresaId = tipo === 'transferencia_saida_0km' ? emn0km.empresa_id : lojaDestino.empresa_id;
+  } else if (tipo === 'devolucao_transferencia') {
+    // Emitente é quem hoje é dona da moto no estoque (o destino da
+    // transferência original, não o atendimento/loja de origem, que já
+    // mudou) — mesmo raciocínio da empresa dinâmica da transferência.
+    const { data: emAtual } = await admin.from('estoque_motos').select('loja_id').eq('avaliacao_id', avaliacaoId).maybeSingle();
+    if (!emAtual?.loja_id) return jsonResponse({ error: 'Moto não encontrada no estoque (sem loja_id).' }, 409);
+    const { data: lojaAtual } = await admin.from('loja_empresas').select('empresa_id').eq('id', emAtual.loja_id).maybeSingle();
+    if (!lojaAtual?.empresa_id) return jsonResponse({ error: 'Loja atual da moto sem empresa vinculada.' }, 400);
+    empresaId = lojaAtual.empresa_id;
+  } else if (tipo === 'devolucao_transferencia_0km') {
+    if (!emn0km?.empresa_id) return jsonResponse({ error: 'Moto 0km sem empresa vinculada.' }, 409);
+    empresaId = emn0km.empresa_id;
   } else {
     const { data: lojaEmpresa } = await admin
       .from('loja_empresas')
@@ -1334,6 +1417,39 @@ Deno.serve(async (req) => {
   // consignação já é produção (nesse caso a devolução NUNCA passa em
   // homologação — Rejeição 321, ver docs-fiscal-299 §2.26).
   let consignacaoRefAmbiente: string | null = null;
+  // Devolução pós-24h: NF-e original que está sendo devolvida (a que a SEFAZ
+  // não deixa mais cancelar) — guardada aqui pra reaproveitar chave/valor mais
+  // adiante (NFref, valor da devolução).
+  let devolucaoOrigemNf: any = null;
+  // Resolve e valida a NF original de uma devolução: precisa existir, estar
+  // autorizada em PRODUÇÃO, e já ter passado da janela de 24h que a SEFAZ dá
+  // pra cancelamento (Ajuste SINIEF) — antes disso o caminho certo é
+  // Cancelar, não Devolver. Também barra devolução duplicada da mesma NF.
+  const validarOrigemDevolucao = async (
+    fkCol: string, fkVal: string, operacaoOriginal: string, operacaoDevolucao: string, rotuloOriginal: string,
+  ): Promise<{ error: string } | null> => {
+    const { data: origem } = await admin
+      .from('nfe_entradas').select('id, chave_nfe, valor_total, data_emissao, ambiente, status, fornecedor_id')
+      .eq(fkCol, fkVal).eq('operacao', operacaoOriginal).eq('status', 'processada').eq('ambiente', 'producao')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (!origem) return { error: `${rotuloOriginal} em produção não encontrada — só é possível devolver uma NF-e já autorizada em produção.` };
+    const emitidaEm = new Date((origem as any).data_emissao).getTime();
+    const HORAS_24 = 24 * 60 * 60 * 1000;
+    if (Number.isFinite(emitidaEm) && Date.now() - emitidaEm < HORAS_24) {
+      return { error: `Ainda dentro da janela de 24h da SEFAZ para cancelamento — use Cancelar em vez de Devolver (${rotuloOriginal.toLowerCase()} emitida há menos de 24h).` };
+    }
+    const { data: jaDevolvida } = await admin
+      .from('nfe_entradas').select('id').eq(fkCol, fkVal).eq('operacao', operacaoDevolucao).eq('status', 'processada')
+      .limit(1).maybeSingle();
+    if (jaDevolvida) return { error: `${rotuloOriginal} já foi devolvida.` };
+    devolucaoOrigemNf = {
+      id: (origem as any).id,
+      chave_nfe: (origem as any).chave_nfe ?? null,
+      valor_total: (origem as any).valor_total ?? null,
+      fornecedor_id: (origem as any).fornecedor_id ?? null,
+    };
+    return null;
+  };
   // Compra que sucede uma devolução simbólica (transformação de consignação em
   // compra): dispensa a aprovação de aquisição e o contrato de compra separados
   // — a moto já tem contrato de consignação + NF de consignação + NF de
@@ -1399,6 +1515,21 @@ Deno.serve(async (req) => {
     if (devolucaoJaOk) {
       return jsonResponse({ error: 'A devolução simbólica desta consignação já foi emitida.' }, 409);
     }
+  } else if (tipo === 'devolucao_compra') {
+    const erroDevolucao = await validarOrigemDevolucao('avaliacao_id', avaliacaoId, 'compra', 'devolucao_compra', 'A NF-e de compra');
+    if (erroDevolucao) return jsonResponse(erroDevolucao, 409);
+  } else if (tipo === 'devolucao_venda_seminova') {
+    const erroDevolucao = await validarOrigemDevolucao('atendimento_id', atendimentoId, 'venda_seminova', 'devolucao_venda_seminova', 'A NF-e de venda');
+    if (erroDevolucao) return jsonResponse(erroDevolucao, 409);
+  } else if (tipo === 'devolucao_venda_0km') {
+    const erroDevolucao = await validarOrigemDevolucao('atendimento_id', atendimentoId, 'venda_0km', 'devolucao_venda_0km', 'A NF-e de venda');
+    if (erroDevolucao) return jsonResponse(erroDevolucao, 409);
+  } else if (tipo === 'devolucao_transferencia') {
+    const erroDevolucao = await validarOrigemDevolucao('avaliacao_id', avaliacaoId, 'transferencia_entrada', 'devolucao_transferencia', 'A NF-e de entrada da transferência');
+    if (erroDevolucao) return jsonResponse(erroDevolucao, 409);
+  } else if (tipo === 'devolucao_transferencia_0km') {
+    const erroDevolucao = await validarOrigemDevolucao('estoque_moto_nova_id', estoqueMotoNovaIdBody, 'transferencia_entrada_0km', 'devolucao_transferencia_0km', 'A NF-e de entrada da transferência');
+    if (erroDevolucao) return jsonResponse(erroDevolucao, 409);
   } else if (tipo === 'transferencia') {
     // Pré-requisito geral (vale pra homologação e produção): só existe algo
     // pra transferir depois da compra dessa moto estar autorizada — o gate
@@ -1633,6 +1764,12 @@ Deno.serve(async (req) => {
   } else if (tipo === 'transferencia_entrada_0km') {
     fornecedorIdAlvo = await fornecedorPorEmpresaId(admin, origemEmpresaIdTransf!);
     if (!fornecedorIdAlvo) return jsonResponse({ error: 'A empresa de origem não está cadastrada como cliente/fornecedor (CNPJ).' }, 409);
+  } else if (tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km') {
+    // Mesma contraparte da NF de entrada original (a empresa de origem, já
+    // resolvida quando aquela entrada foi emitida) — devolver é reenviar pra
+    // quem mandou.
+    fornecedorIdAlvo = devolucaoOrigemNf?.fornecedor_id ?? null;
+    if (!fornecedorIdAlvo) return jsonResponse({ error: 'Fornecedor da NF de entrada original não encontrado.' }, 409);
   } else {
     fornecedorIdAlvo = atendimento.cliente_id;
   }
@@ -1792,6 +1929,12 @@ Deno.serve(async (req) => {
     saidaNfIdParaEntrada = saidaValorRow?.id ?? null;
     saidaChaveParaEntrada = saidaValorRow?.chave_nfe ?? null;
     valor = Number(saidaValorRow?.valor_total ?? 0);
+  } else if (tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km'
+    || tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km') {
+    // Devolução sempre espelha o MESMO valor da NF original (validarOrigemDevolucao
+    // já garantiu que ela existe, está em produção e passou da janela de 24h) —
+    // nunca é editável, evita divergir do que a SEFAZ já tem registrado.
+    valor = Number(devolucaoOrigemNf?.valor_total ?? 0);
   } else {
     // venda: preco de venda da moto (estoque_motos.valor_venda); 0km cai p/ tabela.
     valor = valorBody
@@ -2038,6 +2181,10 @@ Deno.serve(async (req) => {
     // Entrada referencia a chave da própria NF de saída da transferência
     // (grupo NFref) — mesmo padrão da devolução simbólica de consignação.
     notaReferenciada = saidaChaveParaEntrada;
+  } else if (tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km'
+    || tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km') {
+    // Devolução pós-24h referencia a NF-e original (mesmo grupo NFref).
+    notaReferenciada = devolucaoOrigemNf?.chave_nfe ?? null;
   }
 
   const payload = montarPayloadNfeCompra({
@@ -2089,7 +2236,9 @@ Deno.serve(async (req) => {
     notaReferenciada,
     // Sem movimentação financeira real — devolução simbólica e transferência
     // pra MMATOS são as duas "saídas" sem pagamento de verdade do cliente.
-    semPagamentoReal: tipo === 'devolucao_consignacao' || tipo === 'transferencia',
+    semPagamentoReal: tipo === 'devolucao_consignacao' || tipo === 'transferencia'
+      || tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km'
+      || tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km',
   });
 
   // FKs da nfe_entradas conforme a operacao.
@@ -2245,6 +2394,52 @@ Deno.serve(async (req) => {
       await admin.from('estoque_motos_novas')
         .update({ loja_id: destinoLojaIdBody, empresa_id: destinoEmpresaIdTransf })
         .eq('id', entityId);
+    }
+    // Devolução de venda: a moto some da venda e volta a ficar disponível no
+    // estoque de quem a vendeu (mesmo efeito de "perder a venda" já usado em
+    // marcarAtendimentoPerdido/reverterEstoqueVenda no frontend).
+    if (tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km') {
+      const tabelaEstoque = ehVenda0km ? 'estoque_motos_novas' : 'estoque_motos';
+      const idEstoque = ehVenda0km ? estoqueMoto?.moto_nova_id : estoqueMoto?.id;
+      if (idEstoque) {
+        await admin.from(tabelaEstoque).update({
+          status: 'disponivel',
+          atendimento_venda_id: null,
+          data_venda: null,
+          valor_venda: null,
+          valor_sinal: null,
+        }).eq('id', idEstoque);
+      }
+    }
+    // Devolução de compra: a moto sai do estoque de vez (está voltando pro
+    // vendedor original — não faz mais sentido continuar aparecendo como
+    // disponível pra venda). Mesmo efeito já usado em marcarAtendimentoPerdido.
+    if (tipo === 'devolucao_compra') {
+      await admin.from('estoque_motos').delete().eq('avaliacao_id', avaliacaoId);
+    }
+    // Devolução de transferência: a moto volta pra loja/empresa de ORIGEM da
+    // transferência original (achada pela NF de saída correspondente) — efeito
+    // inverso do que a entrada fez.
+    if (tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km') {
+      const operacaoSaidaOriginal = tipo === 'devolucao_transferencia' ? 'transferencia_saida' : 'transferencia_saida_0km';
+      const fkColOriginal = tipo === 'devolucao_transferencia' ? 'avaliacao_id' : 'estoque_moto_nova_id';
+      const fkValOriginal = tipo === 'devolucao_transferencia' ? avaliacaoId : entityId;
+      const { data: saidaOriginal } = await admin.from('nfe_entradas').select('empresa_id')
+        .eq(fkColOriginal, fkValOriginal).eq('operacao', operacaoSaidaOriginal).eq('status', 'processada')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const empresaOrigem = (saidaOriginal as any)?.empresa_id ?? null;
+      const lojasCandidatas = tipo === 'devolucao_transferencia' ? ['299f', '299p'] : ['Ducati FLN', 'Ducati POA'];
+      const { data: lojaOrigemRow } = empresaOrigem
+        ? await admin.from('loja_empresas').select('id').eq('empresa_id', empresaOrigem).eq('sistema', 'motos')
+            .in('loja', lojasCandidatas).limit(1).maybeSingle()
+        : { data: null };
+      if (empresaOrigem && lojaOrigemRow?.id) {
+        if (tipo === 'devolucao_transferencia') {
+          await admin.from('estoque_motos').update({ loja_id: lojaOrigemRow.id }).eq('avaliacao_id', avaliacaoId);
+        } else {
+          await admin.from('estoque_motos_novas').update({ loja_id: lojaOrigemRow.id, empresa_id: empresaOrigem }).eq('id', entityId);
+        }
+      }
     }
   }
 
