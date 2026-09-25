@@ -592,17 +592,27 @@ const ContratoDialog: React.FC<Props> = ({
     setNfeValor((prev) => prev || valorVenda);
   }, [open, valorVenda]);
 
+  // Observações na NF-e é só estado local (nunca lido de volta do banco) —
+  // achado real: sem isso, ao reabrir/recarregar a tela depois de emitir em
+  // homologação, o campo voltava vazio e a emissão em PRODUÇÃO saía sem a
+  // observação que já tinha sido gravada na linha de homologação.
+  useEffect(() => {
+    if (nfe.nfe?.observacoes && !nfeObs) setNfeObs(nfe.nfe.observacoes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nfe.nfe?.observacoes]);
+
   // Observações da NF-e: copia automaticamente as observações das formas de pagamento
   // vinculadas a instituição (Financiamento / Consórcio) — só preenche se ainda estiver
-  // vazio, pra não sobrescrever edição manual do usuário.
+  // vazio E não houver NF-e já emitida (mesmo homologação) pra essa entidade, senão o
+  // valor já gravado na nota (rehydratado acima) tem prioridade sobre este default.
   useEffect(() => {
-    if (!open || !ehNfe || nfeObs) return;
+    if (!open || !ehNfe || nfeObs || nfe.nfe) return;
     const dasFormas = formasPagamento
       .filter(fp => ehFinInstituicao(fp.tipo) && fp.observacoes?.trim())
       .map(fp => fp.observacoes!.trim())
       .join(' ');
     if (dasFormas) setNfeObs(dasFormas.toUpperCase());
-  }, [open, ehNfe, formasPagamento, nfeObs]);
+  }, [open, ehNfe, formasPagamento, nfeObs, nfe.nfe]);
 
   const handleEmitirNf = (ambiente: 'homologacao' | 'producao') =>
     nfe.emitir({
