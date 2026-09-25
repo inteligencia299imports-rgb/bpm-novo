@@ -4,22 +4,23 @@ import { toast } from 'sonner';
 
 export const NFE_PENDENTE = ['recebida', 'validando', 'processando_itens', 'gerando_contas'];
 
-type NfeTipo = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia';
+type NfeTipo = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_saida' | 'transferencia_entrada' | 'transferencia_saida_0km' | 'transferencia_entrada_0km';
 
 /**
  * Estado + acoes da NF-e (emitir / consultar / polling).
- * `by='avaliacao'` (entrada) chaveia por avaliacao_id; `by='atendimento'` (venda) por atendimento_id.
+ * `by='avaliacao'` (entrada) chaveia por avaliacao_id; `by='atendimento'` (venda) por atendimento_id;
+ * `by='estoque_moto_nova'` (transferência de moto 0km) por estoque_moto_nova_id.
  */
 export function useNfeCompra(
   entityId: string,
   ativo: boolean,
   tipo: NfeTipo = 'compra',
-  by: 'avaliacao' | 'atendimento' = 'avaliacao',
+  by: 'avaliacao' | 'atendimento' | 'estoque_moto_nova' = 'avaliacao',
   /** Chamado quando uma emissão/consulta resulta em NF-e autorizada (transição para 'processada'). */
   onAutorizada?: () => void,
 ) {
   const avaliacaoId = entityId;
-  const keyCol = by === 'atendimento' ? 'atendimento_id' : 'avaliacao_id';
+  const keyCol = by === 'atendimento' ? 'atendimento_id' : by === 'estoque_moto_nova' ? 'estoque_moto_nova_id' : 'avaliacao_id';
   const [nfe, setNfe] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const onAutorizadaRef = useRef(onAutorizada);
@@ -77,7 +78,7 @@ export function useNfeCompra(
     setNfe((data as any[])?.[0] || null);
   }, [avaliacaoId, keyCol, by, tipo]);
 
-  const emitir = useCallback(async (opts?: { observacoes?: string; valor?: number; empresa_id?: string; ambiente?: 'homologacao' | 'producao' }) => {
+  const emitir = useCallback(async (opts?: { observacoes?: string; valor?: number; empresa_id?: string; ambiente?: 'homologacao' | 'producao'; destino_loja_id?: string }) => {
     setLoading(true);
     try {
       const extra: Record<string, unknown> = {};
@@ -85,6 +86,9 @@ export function useNfeCompra(
       if (typeof opts?.valor === 'number' && opts.valor > 0) extra.valor = opts.valor;
       if (opts?.empresa_id) extra.empresa_id = opts.empresa_id;
       if (opts?.ambiente) extra.ambiente = opts.ambiente;
+      // Transferência de estoque entre empresas (saída/entrada) — loja de
+      // destino escolhida no popup, o backend resolve a empresa a partir dela.
+      if (opts?.destino_loja_id) extra.destino_loja_id = opts.destino_loja_id;
       const res = await invoke('emitir', Object.keys(extra).length ? extra : undefined);
       setNfe(res.nfe);
       toast.success(res.nfe?.status === 'processada' ? 'NF-e autorizada!' : 'NF-e enviada para autorização.');

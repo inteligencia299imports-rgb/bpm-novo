@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download, LogOut, DollarSign } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download, LogOut, DollarSign, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -20,6 +20,7 @@ import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { firstLastName } from '@/lib/utils';
 import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
 import RetiradaDialog from '@/components/estoque/RetiradaDialog';
+import TransferenciaEstoqueDialog from '@/components/estoque/TransferenciaEstoqueDialog';
 import AlterarPrecoDialog from '@/components/estoque/AlterarPrecoDialog';
 import TestRideDialog from '@/components/estoque/TestRideDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
@@ -148,8 +149,10 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [retiradaItem, setRetiradaItem] = useState<EstoqueItem | null>(null);
   const [consultaItem, setConsultaItem] = useState<EstoqueItem | null>(null);
   const [precoItem, setPrecoItem] = useState<EstoqueItem | null>(null);
+  const [transferenciaItem, setTransferenciaItem] = useState<EstoqueItem | null>(null);
   const [testRideItem, setTestRideItem] = useState<EstoqueItem | null>(null);
   const [idsWithNfeVenda0km, setIdsWithNfeVenda0km] = useState<Set<string>>(new Set());
+  const [idsWithNfeVendaSeminova, setIdsWithNfeVendaSeminova] = useState<Set<string>>(new Set());
 
   const handleOpenHistory = async (item: EstoqueItem) => {
     setHistoryItem(item);
@@ -242,6 +245,22 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         setIdsWithNfeVenda0km(new Set((nfData || []).map((n: any) => n.estoque_moto_nova_id)));
       } else {
         setIdsWithNfeVenda0km(new Set());
+      }
+
+      // Mesma checagem pra seminova — moto vendida sem NF de venda ainda
+      // emitida em produção ainda pode ser transferida entre empresas.
+      const seminovaIds = mapped.filter((m: any) => m.fonte !== '0km').map((m: any) => m.id);
+      if (seminovaIds.length > 0) {
+        const { data: nfSeminovaData } = await supabase
+          .from('nfe_entradas' as any)
+          .select('estoque_moto_id')
+          .eq('operacao', 'venda_seminova')
+          .eq('status', 'processada')
+          .eq('ambiente', 'producao')
+          .in('estoque_moto_id', seminovaIds);
+        setIdsWithNfeVendaSeminova(new Set((nfSeminovaData || []).map((n: any) => n.estoque_moto_id)));
+      } else {
+        setIdsWithNfeVendaSeminova(new Set());
       }
     } catch (err: any) {
       toast.error('Erro ao carregar estoque');
@@ -367,12 +386,19 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           });
         }
         // Preço ainda pode ser alterado com sinal/venda em aberto — só trava
-        // depois que a NF-e de venda é emitida em produção.
+        // depois que a NF-e de venda é emitida em produção. Mesmo NF-e de
+        // venda também trava a transferência (venda já fiscalmente fechada
+        // com essa empresa).
         if (!idsWithNfeVenda0km.has(item.id)) {
           options.push({
             label: 'Alterar Preço',
             icon: <DollarSign className="h-4 w-4" />,
             action: () => setPrecoItem(item),
+          });
+          options.push({
+            label: 'Transferir',
+            icon: <ArrowRightLeft className="h-4 w-4" />,
+            action: () => setTransferenciaItem(item),
           });
         }
         return options;
@@ -445,6 +471,22 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         label: 'Alterar Status',
         icon: <RefreshCw className="h-4 w-4" />,
         action: () => setStatusChangeItem(item),
+      });
+    }
+
+    // Transferência entre empresas do grupo — seminova e 0km (cada um com seu
+    // próprio par de NF-e's e chave: avaliacao_id x id de estoque_motos_novas,
+    // ver TransferenciaEstoqueDialog). Disponível também se a moto já estiver
+    // vendida/com sinal, contanto que a NF-e de venda ainda não tenha sido
+    // emitida em produção — depois disso a venda já está fiscalmente fechada
+    // com aquela empresa, não faz mais sentido transferir.
+    const vendidaSemNfe = (item.status === 'vendido' || item.status === 'sinal')
+      && !(item.tipo === '0km' ? idsWithNfeVenda0km : idsWithNfeVendaSeminova).has(item.id);
+    if (item.status === 'disponivel' || vendidaSemNfe) {
+      options.push({
+        label: 'Transferir',
+        icon: <ArrowRightLeft className="h-4 w-4" />,
+        action: () => setTransferenciaItem(item),
       });
     }
 
@@ -827,6 +869,16 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         estoqueItem={retiradaItem}
         onSuccess={() => {
           setRetiradaItem(null);
+          fetchEstoque();
+        }}
+      />
+
+      <TransferenciaEstoqueDialog
+        open={!!transferenciaItem}
+        onOpenChange={(open) => { if (!open) setTransferenciaItem(null); }}
+        estoqueItem={transferenciaItem}
+        onSuccess={() => {
+          setTransferenciaItem(null);
           fetchEstoque();
         }}
       />

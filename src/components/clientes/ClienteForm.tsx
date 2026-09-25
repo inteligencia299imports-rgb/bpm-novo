@@ -487,6 +487,17 @@ export function ClienteForm({
     }
   }, [form.tipo_pessoa, form.regime_tributario]);
 
+  // Pessoa física nunca é contribuinte de ICMS (CPF não tem Inscrição Estadual de
+  // contribuinte) — banco trava isso com CHECK chk_pf_nao_contribuinte_icms. Sem isso,
+  // trocar de Jurídica pra Física mantinha o `true` que o efeito acima tinha setado e o
+  // save quebrava com "violates check constraint" (achado real: cliente Sandro Lima
+  // Moreira, PF vindo de um cadastro que passou por Jurídica antes).
+  useEffect(() => {
+    if (form.tipo_pessoa === "fisica" && form.contribuinte_icms !== false) {
+      setForm((f: any) => ({ ...f, contribuinte_icms: false }));
+    }
+  }, [form.tipo_pessoa, form.contribuinte_icms]);
+
   // Validação de CPF/CNPJ (dígitos verificadores) — de acordo com o tipo de pessoa
   const pessoaFisica = form.tipo_pessoa === "fisica";
   const cpfDigits = onlyDigits(form.cpf_cnpj);
@@ -696,7 +707,9 @@ export function ClienteForm({
       Object.keys(payload).forEach((k) => { if (payload[k] === "") payload[k] = null; });
       const toBool = (v: any) => typeof v === "boolean" ? v : v === "sim" ? true : v === "nao" ? false : null;
       payload.isento_inscricao_estadual = toBool(payload.isento_inscricao_estadual);
-      payload.contribuinte_icms = toBool(payload.contribuinte_icms) ?? false;
+      // Reforço além do useEffect: PF nunca é contribuinte (chk_pf_nao_contribuinte_icms) —
+      // não confia só no efeito ter rodado antes do submit.
+      payload.contribuinte_icms = payload.tipo_pessoa === "fisica" ? false : (toBool(payload.contribuinte_icms) ?? false);
       payload.consumidor_final = true; // sempre consumidor final
       payload.aceite_politica_privacidade = payload.aceite_politica_privacidade === true;
       payload.autoriza_contato = payload.autoriza_contato === true;

@@ -32,6 +32,20 @@ const nomeCat = (v: any): string | null =>
   (v && typeof v === 'object' ? (v.nome ?? null) : (v ?? null));
 
 /**
+ * Acha o clientes_fornecedores cujo CPF/CNPJ (sempre gravado só com dígitos)
+ * bate com o CNPJ (com máscara) de uma empresa do grupo — usado pra achar o
+ * "fornecedor"/destinatário certo numa transferência entre empresas (cada
+ * lado do grupo já está cadastrado como cliente/fornecedor do outro).
+ */
+async function fornecedorPorEmpresaId(admin: any, empresaId: string): Promise<string | null> {
+  const { data: emp } = await admin.from('empresas').select('cnpj').eq('id', empresaId).maybeSingle();
+  const cnpjDigits = String(emp?.cnpj ?? '').replace(/\D/g, '');
+  if (!cnpjDigits) return null;
+  const { data: forn } = await admin.from('clientes_fornecedores').select('id').eq('cpf_cnpj', cnpjDigits).maybeSingle();
+  return forn?.id ?? null;
+}
+
+/**
  * Extrai os valores de ICMS-ST retido anteriormente da NF-e de ENTRADA da moto
  * 0km (grupo de ICMS do 1º item), para transcrever no `<ICMS60>` da NF de venda.
  * Cobre CST 60 (subgrupo "ST retido" explícito: vBCSTRet / vICMSSubstituto /
@@ -57,7 +71,7 @@ function stRetidoDoXmlEntrada(xml: string): { bc: number; subst: number; ret: nu
   return { bc, subst: subst ?? 0, ret };
 }
 
-type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia';
+type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_saida' | 'transferencia_entrada' | 'transferencia_saida_0km' | 'transferencia_entrada_0km';
 
 interface OperacaoConfig {
   refPrefix: string;
@@ -84,7 +98,7 @@ interface OperacaoConfig {
   planoContaId?: string;
   centroCustoId?: string;
   /** 'avaliacao' (entrada) ou 'atendimento' (venda) */
-  keyBy: 'avaliacao' | 'atendimento';
+  keyBy: 'avaliacao' | 'atendimento' | 'estoque_moto_nova';
 }
 
 const CFG: Record<Operacao, OperacaoConfig> = {
@@ -92,6 +106,7 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     refPrefix: 'compra',
     naturezaDescricao: 'Compra de moto seminova',
     operacaoFiscal: 'compra',
+    bemUsado: true,
     statusEntity: 'pos_compra',
     statusHist: 'nfe_compra_emitida',
     etapaTable: 'pos_compra_processos',
@@ -148,6 +163,62 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     avStatusEmAndamento: '',
     criaCompromisso: false,
     keyBy: 'avaliacao',
+  },
+  // Transferência de estoque entre empresas do grupo (ação da tela de Estoque,
+  // não do pós-venda) — sempre 2 NF-e's espelhadas: a origem emite a SAÍDA
+  // (natureza "transferência de mercadoria", CFOP 5152/6152) e, só depois dela
+  // autorizar em produção, o DESTINO emite a ENTRADA (CFOP 1152/2152) pra
+  // formalizar o recebimento. Nenhuma das duas é venda de verdade: sem etapa
+  // de checklist própria e sem compromisso financeiro (mesmo padrão de
+  // devolucao_consignacao/transferencia). Diferente de `transferencia` (FAG->
+  // MMATOS, natureza dedicada por fora do CFOP padrão): aqui é o CFOP comum de
+  // transferência entre filiais do mesmo grupo (mesma raiz de CNPJ).
+  transferencia_saida: {
+    refPrefix: 'transferencia-saida',
+    naturezaDescricao: 'TRANSFERÊNCIA DE MERCADORIA ADQ. OU REC. DE TERCEIROS',
+    operacaoFiscal: 'transferencia',
+    statusEntity: 'pos_compra',
+    statusHist: 'nfe_transferencia_saida_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'avaliacao',
+  },
+  transferencia_entrada: {
+    refPrefix: 'transferencia-entrada',
+    naturezaDescricao: 'TRANSFERÊNCIA P/ COMERCIALIZAÇÃO',
+    operacaoFiscal: 'transferencia',
+    statusEntity: 'pos_compra',
+    statusHist: 'nfe_transferencia_entrada_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'avaliacao',
+  },
+  // Mesma ideia de transferencia_saida/transferencia_entrada, mas pra moto
+  // 0km (estoque_motos_novas, chaveada por estoque_moto_nova_id — não tem
+  // avaliacao nem atendimento próprio enquanto está só em estoque).
+  transferencia_saida_0km: {
+    refPrefix: 'transferencia-saida-0km',
+    naturezaDescricao: 'TRANSFERÊNCIA DE MERCADORIA ADQ. OU REC. DE TERCEIROS',
+    operacaoFiscal: 'transferencia',
+    statusEntity: 'estoque_0km',
+    statusHist: 'nfe_transferencia_saida_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'estoque_moto_nova',
+  },
+  transferencia_entrada_0km: {
+    refPrefix: 'transferencia-entrada-0km',
+    naturezaDescricao: 'TRANSFERÊNCIA P/ COMERCIALIZAÇÃO',
+    operacaoFiscal: 'transferencia',
+    statusEntity: 'estoque_0km',
+    statusHist: 'nfe_transferencia_entrada_emitida',
+    avStatusField: null,
+    avStatusEmAndamento: '',
+    criaCompromisso: false,
+    keyBy: 'estoque_moto_nova',
   },
   venda_seminova: {
     refPrefix: 'venda',
@@ -319,7 +390,7 @@ async function limparNfeHomologacao(
   keepNfeId: string,
   operacao: Operacao,
 ): Promise<number> {
-  const fkCol = cfg.keyBy === 'avaliacao' ? 'avaliacao_id' : 'atendimento_id';
+  const fkCol = cfg.keyBy === 'avaliacao' ? 'avaliacao_id' : cfg.keyBy === 'estoque_moto_nova' ? 'estoque_moto_nova_id' : 'atendimento_id';
   // Escopado por `operacao`: uma mesma avaliação pode acumular várias operações
   // em sequência (consignação -> devolução simbólica -> compra) — cada uma com
   // seu próprio ciclo de homologação/produção, sem interferir nas outras.
@@ -755,29 +826,54 @@ Deno.serve(async (req) => {
 
   const acao: 'consultar' | 'cancelar' | 'emitir' =
     body.acao === 'consultar' ? 'consultar' : body.acao === 'cancelar' ? 'cancelar' : 'emitir';
-  const tipo: Operacao = (['compra', 'consignacao', 'devolucao_consignacao', 'venda_seminova', 'venda_0km', 'transferencia'] as const).includes(body.tipo as any)
+  const tipo: Operacao = (['compra', 'consignacao', 'devolucao_consignacao', 'venda_seminova', 'venda_0km', 'transferencia', 'transferencia_saida', 'transferencia_entrada', 'transferencia_saida_0km', 'transferencia_entrada_0km'] as const).includes(body.tipo as any)
     ? (body.tipo as Operacao)
     : 'compra';
   const cfg = CFG[tipo];
   const ehVenda = cfg.keyBy === 'atendimento';
+  const ehPor0km = cfg.keyBy === 'estoque_moto_nova';
+  const ehTransferenciaEstoque = tipo === 'transferencia_saida' || tipo === 'transferencia_entrada';
+  const ehTransferenciaEstoque0km = tipo === 'transferencia_saida_0km' || tipo === 'transferencia_entrada_0km';
   // Compra/consignação/devolução simbólica/transferência de moto seminova
   // entram no departamento "motos_seminovas" (é sempre a mesma moto usada da
-  // compra — a transferência não vira "moto nova").
-  const departamento = (tipo === 'compra' || tipo === 'consignacao' || tipo === 'devolucao_consignacao' || tipo === 'transferencia') ? 'motos_seminovas' : 'motos';
+  // compra — a transferência não vira "moto nova"); a de 0km fica em "motos".
+  const departamento = (tipo === 'compra' || tipo === 'consignacao' || tipo === 'devolucao_consignacao' || tipo === 'transferencia' || ehTransferenciaEstoque) ? 'motos_seminovas' : 'motos';
 
   const avaliacaoId = typeof body.avaliacao_id === 'string' ? body.avaliacao_id : '';
   const atendimentoIdBody = typeof body.atendimento_id === 'string' ? body.atendimento_id : '';
   const empresaIdBody = typeof body.empresa_id === 'string' ? body.empresa_id : '';
+  const estoqueMotoNovaIdBody = typeof body.estoque_moto_nova_id === 'string' ? body.estoque_moto_nova_id : '';
+  // Loja de destino da transferência de estoque — mesma pros dois passos
+  // (saída e entrada); o backend resolve a empresa a partir dela (loja_empresas).
+  const destinoLojaIdBody = typeof body.destino_loja_id === 'string' ? body.destino_loja_id : '';
   if (ehVenda && !atendimentoIdBody) return jsonResponse({ error: 'atendimento_id é obrigatório' }, 400);
-  if (!ehVenda && !avaliacaoId) return jsonResponse({ error: 'avaliacao_id é obrigatório' }, 400);
+  if (ehPor0km && !estoqueMotoNovaIdBody) return jsonResponse({ error: 'estoque_moto_nova_id é obrigatório' }, 400);
+  if (!ehVenda && !ehPor0km && !avaliacaoId) return jsonResponse({ error: 'avaliacao_id é obrigatório' }, 400);
 
   // ---- Carrega contexto (avaliacao p/ entrada, estoque_motos p/ venda) + atendimento + acesso ----
   let av: any = null;
   let estoqueMoto: any = null;
   let atendimentoId = '';
+  // Moto 0km em estoque — só preenchido pra transferencia_saida_0km/
+  // transferencia_entrada_0km, que não têm avaliacao nem atendimento
+  // próprios (a moto pode nunca ter sido atendida, só recebida da fábrica).
+  let emn0km: any = null;
 
   let ehVenda0km = false;
-  if (ehVenda) {
+  if (ehPor0km) {
+    const { data: en } = await admin
+      .from('estoque_motos_novas')
+      .select(
+        'id, empresa_id, loja_id, chassi, placa, renavam, ncm, valor, valor_custo, numero_nf_entrada, ' +
+          'ano_fabricacao, ano_modelo, cilindrada, cor, marca:marca_id(nome), modelo:modelo_id(nome), ' +
+          'potencia_motor, peso_liquido, peso_bruto, numero_motor, codigo_cor_fabricante, codigo_cor_denatran, ' +
+          'codigo_marca_modelo_denatran, icms_st_bc_retido, icms_st_valor_substituto, icms_st_valor_retido',
+      )
+      .eq('id', estoqueMotoNovaIdBody)
+      .maybeSingle();
+    if (!en) return jsonResponse({ error: 'Moto 0km não encontrada.' }, 404);
+    emn0km = { ...en, marca: nomeCat((en as any).marca), modelo: nomeCat((en as any).modelo) };
+  } else if (ehVenda) {
     atendimentoId = atendimentoIdBody;
     const { data: mi } = await admin
       .from('motos_interesse')
@@ -876,25 +972,41 @@ Deno.serve(async (req) => {
     atendimentoId = avRow.atendimento_id;
   }
 
-  const { data: atendimento } = await admin
-    .from('atendimentos_motos')
-    .select('id, cliente_id, loja_id, vendedor_id, interesse')
-    .eq('id', atendimentoId)
-    .maybeSingle();
-  if (!atendimento) return jsonResponse({ error: 'Atendimento não encontrado' }, 404);
+  // Moto 0km em estoque não tem atendimento próprio — acesso é por cargo
+  // (master sempre; gerente só se tiver acesso à loja ATUAL da moto).
+  let atendimento: any = null;
+  if (ehPor0km) {
+    let temAcesso = roleData.app_role === 'master';
+    if (!temAcesso && emn0km?.loja_id) {
+      const { data: ok } = await admin.rpc('has_master_or_gerente_empresa', {
+        _user_id: caller.id,
+        _loja_id: emn0km.loja_id,
+      });
+      temAcesso = !!ok;
+    }
+    if (!temAcesso) return jsonResponse({ error: 'Forbidden: sem acesso a esta moto' }, 403);
+  } else {
+    const { data: atendimentoRow } = await admin
+      .from('atendimentos_motos')
+      .select('id, cliente_id, loja_id, vendedor_id, interesse')
+      .eq('id', atendimentoId)
+      .maybeSingle();
+    if (!atendimentoRow) return jsonResponse({ error: 'Atendimento não encontrado' }, 404);
+    atendimento = atendimentoRow;
 
-  const isVendedor = atendimento.vendedor_id === caller.id;
-  let temAcesso = isVendedor || roleData.app_role === 'master';
-  if (!temAcesso && atendimento.loja_id) {
-    const { data: ok } = await admin.rpc('has_master_or_gerente_empresa', {
-      _user_id: caller.id,
-      _loja_id: atendimento.loja_id,
-    });
-    temAcesso = !!ok;
+    const isVendedor = atendimento.vendedor_id === caller.id;
+    let temAcesso = isVendedor || roleData.app_role === 'master';
+    if (!temAcesso && atendimento.loja_id) {
+      const { data: ok } = await admin.rpc('has_master_or_gerente_empresa', {
+        _user_id: caller.id,
+        _loja_id: atendimento.loja_id,
+      });
+      temAcesso = !!ok;
+    }
+    if (!temAcesso) return jsonResponse({ error: 'Forbidden: sem acesso a este atendimento' }, 403);
   }
-  if (!temAcesso) return jsonResponse({ error: 'Forbidden: sem acesso a este atendimento' }, 403);
 
-  const entityId = ehVenda ? atendimentoId : avaliacaoId;
+  const entityId = ehVenda ? atendimentoId : (ehPor0km ? estoqueMotoNovaIdBody : avaliacaoId);
 
   // Nome exibido no historico segue o padrao do sistema: user_roles.nome.
   const callerName =
@@ -917,25 +1029,83 @@ Deno.serve(async (req) => {
   const ref = `${cfg.refPrefix}-${entityId}`;
 
   // ---- Empresa + token Focus ----
-  const { data: lojaEmpresa } = await admin
-    .from('loja_empresas')
-    .select('empresa_id')
-    .eq('id', atendimento.loja_id)
-    .maybeSingle();
-  const empresaVinculada = lojaEmpresa?.empresa_id;
-  if (!empresaVinculada) return jsonResponse({ error: 'Loja sem empresa vinculada' }, 400);
-
-  // Empresa emitente: se o front enviou uma escolha, ela precisa ser a empresa
-  // vinculada à loja do atendimento (loja_empresas.id = atendimento.loja_id).
-  let empresaId = empresaVinculada;
-  if (empresaIdBody) {
-    if (empresaIdBody !== empresaVinculada) {
-      return jsonResponse(
-        { error: 'Empresa selecionada não está vinculada à loja do atendimento.' },
-        400,
-      );
+  // Transferência de estoque: o emitente NÃO vem do atendimento original (que
+  // é só o da avaliação/compra) — vem de quem hoje é dona da moto no estoque
+  // (saída) ou de quem vai passar a ser dona (entrada, empresa escolhida no
+  // popup). Uma moto pode já ter sido transferida antes, então a empresa do
+  // atendimento original pode não ser mais a dona atual.
+  let empresaId: string;
+  let destinoEmpresaIdTransf: string | null = null;
+  let origemEmpresaIdTransf: string | null = null;
+  // Id/chave da NF de saída correspondente — só preenchidos/usados pra
+  // transferencia_entrada (linka as duas notas via
+  // nfe_entradas.transferencia_par_id + grupo NFref no XML da entrada).
+  let saidaNfIdParaEntrada: string | null = null;
+  let saidaChaveParaEntrada: string | null = null;
+  if ((ehTransferenciaEstoque || ehTransferenciaEstoque0km) && acao !== 'emitir') {
+    // 'consultar'/'cancelar' (inclusive o polling automático do front, que
+    // NUNCA manda destino_loja_id) não podem exigir esse body — a empresa
+    // certa já está gravada na própria linha da NF-e desta operação. Achado
+    // real 2026-09-24: sem esse desvio, o polling de uma saída em
+    // homologação falhava pra sempre com "destino_loja_id é obrigatório" e a
+    // nota nunca saía de "processando".
+    const chaveNfe = ehTransferenciaEstoque0km ? 'estoque_moto_nova_id' : 'avaliacao_id';
+    const { data: nfeAtual } = await admin
+      .from('nfe_entradas').select('empresa_id')
+      .eq(chaveNfe, entityId).eq('operacao', tipo)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (!nfeAtual?.empresa_id) return jsonResponse({ error: 'Nenhuma NF-e desta transferência encontrada.' }, 404);
+    empresaId = nfeAtual.empresa_id;
+  } else if (ehTransferenciaEstoque) {
+    if (!destinoLojaIdBody) return jsonResponse({ error: 'destino_loja_id é obrigatório.' }, 400);
+    const { data: emAtual } = await admin.from('estoque_motos').select('loja_id').eq('avaliacao_id', avaliacaoId).maybeSingle();
+    if (!emAtual?.loja_id) return jsonResponse({ error: 'Moto não encontrada no estoque (sem loja_id).' }, 409);
+    const [{ data: lojaOrigem }, { data: lojaDestino }] = await Promise.all([
+      admin.from('loja_empresas').select('empresa_id').eq('id', emAtual.loja_id).maybeSingle(),
+      admin.from('loja_empresas').select('empresa_id').eq('id', destinoLojaIdBody).maybeSingle(),
+    ]);
+    if (!lojaOrigem?.empresa_id) return jsonResponse({ error: 'Loja atual da moto sem empresa vinculada.' }, 400);
+    if (!lojaDestino?.empresa_id) return jsonResponse({ error: 'Loja de destino sem empresa vinculada.' }, 400);
+    if (lojaOrigem.empresa_id === lojaDestino.empresa_id) {
+      return jsonResponse({ error: 'A loja de destino pertence à mesma empresa da origem.' }, 400);
     }
-    empresaId = empresaIdBody;
+    destinoEmpresaIdTransf = lojaDestino.empresa_id;
+    origemEmpresaIdTransf = lojaOrigem.empresa_id;
+    empresaId = tipo === 'transferencia_saida' ? lojaOrigem.empresa_id : lojaDestino.empresa_id;
+  } else if (ehTransferenciaEstoque0km) {
+    if (!destinoLojaIdBody) return jsonResponse({ error: 'destino_loja_id é obrigatório.' }, 400);
+    // estoque_motos_novas já tem empresa_id direto (não precisa passar por
+    // loja_empresas pra achar a origem, diferente da seminova).
+    if (!emn0km?.empresa_id) return jsonResponse({ error: 'Moto 0km sem empresa vinculada.' }, 409);
+    const { data: lojaDestino } = await admin.from('loja_empresas').select('empresa_id').eq('id', destinoLojaIdBody).maybeSingle();
+    if (!lojaDestino?.empresa_id) return jsonResponse({ error: 'Loja de destino sem empresa vinculada.' }, 400);
+    if (emn0km.empresa_id === lojaDestino.empresa_id) {
+      return jsonResponse({ error: 'A loja de destino pertence à mesma empresa da origem.' }, 400);
+    }
+    destinoEmpresaIdTransf = lojaDestino.empresa_id;
+    origemEmpresaIdTransf = emn0km.empresa_id;
+    empresaId = tipo === 'transferencia_saida_0km' ? emn0km.empresa_id : lojaDestino.empresa_id;
+  } else {
+    const { data: lojaEmpresa } = await admin
+      .from('loja_empresas')
+      .select('empresa_id')
+      .eq('id', atendimento.loja_id)
+      .maybeSingle();
+    const empresaVinculada = lojaEmpresa?.empresa_id;
+    if (!empresaVinculada) return jsonResponse({ error: 'Loja sem empresa vinculada' }, 400);
+
+    // Empresa emitente: se o front enviou uma escolha, ela precisa ser a empresa
+    // vinculada à loja do atendimento (loja_empresas.id = atendimento.loja_id).
+    empresaId = empresaVinculada;
+    if (empresaIdBody) {
+      if (empresaIdBody !== empresaVinculada) {
+        return jsonResponse(
+          { error: 'Empresa selecionada não está vinculada à loja do atendimento.' },
+          400,
+        );
+      }
+      empresaId = empresaIdBody;
+    }
   }
 
   const { data: empresa } = await admin
@@ -952,7 +1122,7 @@ Deno.serve(async (req) => {
 
   const token = ambiente === 'producao' ? focusCfg?.token_producao : focusCfg?.token_homologacao;
 
-  const nfeKey = ehVenda ? 'atendimento_id' : 'avaliacao_id';
+  const nfeKey = ehVenda ? 'atendimento_id' : (ehPor0km ? 'estoque_moto_nova_id' : 'avaliacao_id');
   // Escopado por `tipo`: uma mesma avaliação pode ter várias operações em
   // sequência (consignação -> devolução simbólica -> compra), cada uma com seu
   // próprio ciclo de NF-e — nunca pegar a "última linha" de outra operação.
@@ -1031,6 +1201,21 @@ Deno.serve(async (req) => {
         callerId: caller.id,
         callerName,
       });
+      // Mesmo efeito do caminho "emitir" (linha ~2059) — a autorização em
+      // produção de uma transferência pode chegar por aqui (polling), não só
+      // na resposta síncrona do emitir. Usa a loja gravada na própria linha
+      // (transferencia_destino_loja_id), não um body que o polling não manda.
+      if (tipo === 'transferencia_entrada') {
+        const destinoLoja = (updated?.transferencia_destino_loja_id as string) || (nfeRow.transferencia_destino_loja_id as string);
+        if (destinoLoja) await admin.from('estoque_motos').update({ loja_id: destinoLoja }).eq('avaliacao_id', avaliacaoId);
+      }
+      if (tipo === 'transferencia_entrada_0km') {
+        const destinoLoja = (updated?.transferencia_destino_loja_id as string) || (nfeRow.transferencia_destino_loja_id as string);
+        const destinoEmpresa = destinoLoja ? (await admin.from('loja_empresas').select('empresa_id').eq('id', destinoLoja).maybeSingle()).data?.empresa_id : null;
+        if (destinoLoja && destinoEmpresa) {
+          await admin.from('estoque_motos_novas').update({ loja_id: destinoLoja, empresa_id: destinoEmpresa }).eq('id', entityId);
+        }
+      }
     }
     return jsonResponse({ nfe: updated ?? nfeRow }, 200);
   }
@@ -1227,6 +1412,45 @@ Deno.serve(async (req) => {
     if (!compraOkTransf) {
       return jsonResponse({ error: 'A NF-e de compra desta moto ainda não foi emitida.' }, 409);
     }
+  } else if (tipo === 'transferencia_saida') {
+    // Mesmo pré-requisito da transferência FAG->MMATOS: só existe algo pra
+    // transferir depois da compra dessa moto estar autorizada.
+    const { data: compraOkTransf } = await admin
+      .from('nfe_entradas').select('id').eq('avaliacao_id', avaliacaoId)
+      .eq('operacao', 'compra').eq('status', 'processada').limit(1).maybeSingle();
+    if (!compraOkTransf) {
+      return jsonResponse({ error: 'A NF-e de compra desta moto ainda não foi emitida.' }, 409);
+    }
+  } else if (tipo === 'transferencia_entrada') {
+    // A entrada só existe depois da saída (empresa de origem) já ter sido
+    // emitida — nem que seja em homologação, pra poder testar os dois lados
+    // antes de ir pra produção.
+    const { data: saidaOk } = await admin
+      .from('nfe_entradas').select('id').eq('avaliacao_id', avaliacaoId)
+      .eq('operacao', 'transferencia_saida').eq('status', 'processada').limit(1).maybeSingle();
+    if (!saidaOk) {
+      return jsonResponse({ error: 'A NF-e de saída da transferência ainda não foi emitida.' }, 409);
+    }
+  } else if (tipo === 'transferencia_saida_0km') {
+    // Mesmo pré-requisito — a moto 0km já entrou no estoque via NF-e de
+    // compra da fábrica antes de poder ser transferida entre empresas. Mas,
+    // diferente da compra seminova (emitida por este mesmo arquivo, com
+    // status final 'processada'), a "compra" 0km é importada pelo SisFin
+    // (confirmar-motos-novas) a partir da XML real da fábrica — nunca passa
+    // por esse ciclo, fica sempre com status 'recebida' (confirmado: as 25
+    // linhas hoje no banco são todas assim). O sinal real de "moto já
+    // confirmada no estoque" pra 0km é o próprio numero_nf_entrada gravado
+    // direto em estoque_motos_novas por aquele fluxo.
+    if (!emn0km?.numero_nf_entrada) {
+      return jsonResponse({ error: 'A NF-e de compra desta moto ainda não foi emitida.' }, 409);
+    }
+  } else if (tipo === 'transferencia_entrada_0km') {
+    const { data: saidaOk } = await admin
+      .from('nfe_entradas').select('id').eq('estoque_moto_nova_id', estoqueMotoNovaIdBody)
+      .eq('operacao', 'transferencia_saida_0km').eq('status', 'processada').limit(1).maybeSingle();
+    if (!saidaOk) {
+      return jsonResponse({ error: 'A NF-e de saída da transferência ainda não foi emitida.' }, 409);
+    }
   } else {
     // venda
     // Moto ainda "em consignação" (tipo_aquisicao='consignada' pra sempre — não
@@ -1296,6 +1520,44 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: 'Emita a NF-e de compra da moto da troca em produção antes de emitir a transferência.' }, 409);
       }
     }
+    // Transferência de estoque entre empresas: mesma disciplina — a saída só
+    // vai pra produção depois da compra em produção, e a entrada só vai pra
+    // produção depois da saída (empresa de origem) já estar em produção.
+    if (tipo === 'transferencia_saida') {
+      const { data: compraProdTransf } = await admin
+        .from('nfe_entradas').select('id').eq('avaliacao_id', entityId).eq('operacao', 'compra')
+        .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
+      if (!compraProdTransf) {
+        return jsonResponse({ error: 'Emita a NF-e de compra desta moto em produção antes de emitir a saída da transferência.' }, 409);
+      }
+    }
+    if (tipo === 'transferencia_entrada') {
+      const { data: saidaProdTransf } = await admin
+        .from('nfe_entradas').select('id').eq('avaliacao_id', entityId).eq('operacao', 'transferencia_saida')
+        .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
+      if (!saidaProdTransf) {
+        return jsonResponse({ error: 'Emita a NF-e de saída da transferência em produção antes de emitir a entrada.' }, 409);
+      }
+    }
+    if (tipo === 'transferencia_saida_0km') {
+      // A "compra" 0km nunca passa por este arquivo (é importada pelo SisFin
+      // direto da XML da fábrica, sempre com ambiente/status
+      // 'homologacao'/'recebida' — não existe um ciclo de produção pra ela
+      // como o de compra/venda de seminova). O sinal de "moto confirmada" é
+      // numero_nf_entrada em estoque_motos_novas, não uma linha de
+      // nfe_entradas em produção.
+      if (!emn0km?.numero_nf_entrada) {
+        return jsonResponse({ error: 'A NF-e de compra desta moto ainda não foi emitida.' }, 409);
+      }
+    }
+    if (tipo === 'transferencia_entrada_0km') {
+      const { data: saidaProdTransf } = await admin
+        .from('nfe_entradas').select('id').eq('estoque_moto_nova_id', entityId).eq('operacao', 'transferencia_saida_0km')
+        .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
+      if (!saidaProdTransf) {
+        return jsonResponse({ error: 'Emita a NF-e de saída da transferência em produção antes de emitir a entrada.' }, 409);
+      }
+    }
     // Troca: a NF-e de venda em produção só sai depois da NF-e de COMPRA da moto
     // que está entrando como pagamento ter sido emitida em produção — e, na FAG
     // (só revende 0km), também depois da NF-e de TRANSFERÊNCIA dessa moto para
@@ -1349,13 +1611,35 @@ Deno.serve(async (req) => {
     : ((nfeExistente?.ref_externa as string | undefined) || ref);
 
   // Destinatario da NF: entrada = PF vendedora/consignante; venda = cliente
-  // comprador — nos dois casos e o cliente_id do atendimento. Transferência é
-  // a única exceção: destino fixo é a MMATOS (empresa do grupo), não o
-  // cliente do atendimento (que nem participa dessa operação).
+  // comprador — nos dois casos e o cliente_id do atendimento. Transferência
+  // (FAG->MMATOS) e' a excecao classica: destino fixo e' a MMATOS. Transferencia
+  // de estoque (saida/entrada entre empresas do grupo) e' dinamica: a saida
+  // tem a empresa de DESTINO como destinatario; a entrada tem a empresa de
+  // ORIGEM (quem esta "vendendo"/remetendo, do ponto de vista do CFOP de
+  // entrada) — cada uma resolvida pelo CNPJ (já cadastradas uma como
+  // cliente/fornecedor da outra).
+  let fornecedorIdAlvo: string | null;
+  if (tipo === 'transferencia') {
+    fornecedorIdAlvo = MMATOS_FORNECEDOR_ID;
+  } else if (tipo === 'transferencia_saida') {
+    fornecedorIdAlvo = await fornecedorPorEmpresaId(admin, destinoEmpresaIdTransf!);
+    if (!fornecedorIdAlvo) return jsonResponse({ error: 'A empresa de destino não está cadastrada como cliente/fornecedor (CNPJ).' }, 409);
+  } else if (tipo === 'transferencia_entrada') {
+    fornecedorIdAlvo = await fornecedorPorEmpresaId(admin, origemEmpresaIdTransf!);
+    if (!fornecedorIdAlvo) return jsonResponse({ error: 'A empresa de origem não está cadastrada como cliente/fornecedor (CNPJ).' }, 409);
+  } else if (tipo === 'transferencia_saida_0km') {
+    fornecedorIdAlvo = await fornecedorPorEmpresaId(admin, destinoEmpresaIdTransf!);
+    if (!fornecedorIdAlvo) return jsonResponse({ error: 'A empresa de destino não está cadastrada como cliente/fornecedor (CNPJ).' }, 409);
+  } else if (tipo === 'transferencia_entrada_0km') {
+    fornecedorIdAlvo = await fornecedorPorEmpresaId(admin, origemEmpresaIdTransf!);
+    if (!fornecedorIdAlvo) return jsonResponse({ error: 'A empresa de origem não está cadastrada como cliente/fornecedor (CNPJ).' }, 409);
+  } else {
+    fornecedorIdAlvo = atendimento.cliente_id;
+  }
   const { data: fornecedor } = await admin
     .from('clientes_fornecedores')
     .select('id, nome_razao_social, cpf_cnpj, tipo_pessoa, telefone, telefone_comercial, rg, contribuinte_icms, inscricao_estadual, isento_inscricao_estadual, clientes_fornecedores_enderecos(*)')
-    .eq('id', tipo === 'transferencia' ? MMATOS_FORNECEDOR_ID : atendimento.cliente_id)
+    .eq('id', fornecedorIdAlvo)
     .maybeSingle();
   if (!fornecedor) return jsonResponse({ error: 'Cliente não encontrado' }, 409);
   // Endereço COMERCIAL (tipo='fiscal') — o cliente pode ter mais de uma linha
@@ -1482,6 +1766,32 @@ Deno.serve(async (req) => {
     // autorizada, linha ~1353) — não é editável na tela, não é uma venda com
     // margem nova.
     valor = Number(av.valor_nf_entrada ?? 0);
+  } else if (tipo === 'transferencia_saida') {
+    // Mesmo critério da transferência FAG->MMATOS: valor de custo (NF de
+    // compra), não é venda com margem.
+    valor = Number(av.valor_nf_entrada ?? 0);
+  } else if (tipo === 'transferencia_entrada') {
+    // Espelha exatamente o valor já autorizado na NF de saída — a entrada não
+    // recalcula nada, só formaliza o recebimento do mesmo valor.
+    const { data: saidaValorRow } = await admin
+      .from('nfe_entradas').select('id, valor_total, chave_nfe')
+      .eq('avaliacao_id', avaliacaoId).eq('operacao', 'transferencia_saida').eq('status', 'processada')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    saidaNfIdParaEntrada = saidaValorRow?.id ?? null;
+    saidaChaveParaEntrada = saidaValorRow?.chave_nfe ?? null;
+    valor = Number(saidaValorRow?.valor_total ?? 0);
+  } else if (tipo === 'transferencia_saida_0km') {
+    // Valor de custo da moto 0km (o que a fábrica cobrou) — mesmo critério
+    // da transferência de seminova, nunca o preço de venda/tabela.
+    valor = Number(emn0km?.valor_custo ?? emn0km?.valor ?? 0);
+  } else if (tipo === 'transferencia_entrada_0km') {
+    const { data: saidaValorRow } = await admin
+      .from('nfe_entradas').select('id, valor_total, chave_nfe')
+      .eq('estoque_moto_nova_id', estoqueMotoNovaIdBody).eq('operacao', 'transferencia_saida_0km').eq('status', 'processada')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    saidaNfIdParaEntrada = saidaValorRow?.id ?? null;
+    saidaChaveParaEntrada = saidaValorRow?.chave_nfe ?? null;
+    valor = Number(saidaValorRow?.valor_total ?? 0);
   } else {
     // venda: preco de venda da moto (estoque_motos.valor_venda); 0km cai p/ tabela.
     valor = valorBody
@@ -1517,9 +1827,17 @@ Deno.serve(async (req) => {
   const operacaoFiscal: OperacaoFiscal = (tipo === 'compra' && viaConversaoConsignacao)
     ? 'compra_consignada'
     : viaVendaPosConsignacao ? 'venda_consignada' : cfg.operacaoFiscal;
-  const operacaoCarregada = await carregarOperacao(admin, { empresaId, ufEmitente: empresa.uf, operacao: operacaoFiscal });
+  let operacaoCarregada = await carregarOperacao(admin, { empresaId, ufEmitente: empresa.uf, operacao: operacaoFiscal });
   if ('erro' in operacaoCarregada) {
     return jsonResponse({ error: `Natureza de operação "${naturezaDescricaoEfetiva}": ${operacaoCarregada.erro}` }, 409);
+  }
+  // A família de CFOPs "transferencia" tem naturezas de ENTRADA (1152/2152) e
+  // de SAÍDA (5152/6152) cadastradas juntas pra mesma empresa — sem filtrar
+  // por tipo aqui, escolherRegra poderia casar com o lado errado (o CFOP
+  // 2152/6152 "casam" com a mesma UF de destino independente do tipo).
+  if (ehTransferenciaEstoque || ehTransferenciaEstoque0km) {
+    const tipoNatureza = (tipo === 'transferencia_saida' || tipo === 'transferencia_saida_0km') ? 'saida' : 'entrada';
+    operacaoCarregada = { ...operacaoCarregada, naturezas: operacaoCarregada.naturezas.filter((n) => n.tipo === tipoNatureza) };
   }
   const ufDestino = (end.uf ?? '').trim().toUpperCase();
   // Moto é sempre NCM do capítulo 8711 e a NF sai com origem 0 (ver payload.ts).
@@ -1616,7 +1934,38 @@ Deno.serve(async (req) => {
 
   // Specs da moto: entrada vem da avaliacao; venda vem do estoque (avaliacao ou moto_nova).
   let motoData: any;
-  if (ehVenda) {
+  if (ehPor0km) {
+    // Transferência de moto 0km entre empresas: specs vêm direto do estoque
+    // 0km (emn0km), mesmo shape usado na venda 0km acima.
+    motoData = {
+      marca: emn0km.marca ?? null,
+      modelo: emn0km.modelo ?? null,
+      ano_fabricacao: emn0km.ano_fabricacao ?? null,
+      ano_modelo: emn0km.ano_modelo ?? null,
+      cilindrada: emn0km.cilindrada ?? null,
+      cor: emn0km.cor ?? null,
+      placa: emn0km.placa ?? null,
+      chassi: emn0km.chassi ?? null,
+      renavam: emn0km.renavam ?? null,
+      km: null,
+      custo_aquisicao: emn0km.valor_custo != null
+        ? Number(emn0km.valor_custo)
+        : (emn0km.valor != null ? Number(emn0km.valor) : null),
+      ncm: emn0km.ncm ?? null,
+      numero_nf_entrada: emn0km.numero_nf_entrada ?? null,
+      zero_km: true,
+      potencia_motor: emn0km.potencia_motor ?? null,
+      peso_liquido: emn0km.peso_liquido ?? null,
+      peso_bruto: emn0km.peso_bruto ?? null,
+      numero_motor: emn0km.numero_motor ?? null,
+      codigo_cor_fabricante: emn0km.codigo_cor_fabricante ?? null,
+      codigo_cor_denatran: emn0km.codigo_cor_denatran ?? null,
+      codigo_marca_modelo_denatran: emn0km.codigo_marca_modelo_denatran ?? null,
+      icms_st_bc_retido: emn0km.icms_st_bc_retido ?? null,
+      icms_st_valor_substituto: emn0km.icms_st_valor_substituto ?? null,
+      icms_st_valor_retido: emn0km.icms_st_valor_retido ?? null,
+    };
+  } else if (ehVenda) {
     const mn = estoqueMoto?.moto_nova ?? null;
     const eh0km = !!estoqueMoto?.moto_nova_id && !!mn;
     const mSrc = eh0km ? mn : (estoqueMoto?.avaliacao ?? {});
@@ -1685,6 +2034,10 @@ Deno.serve(async (req) => {
       .eq('avaliacao_id', avaliacaoId).eq('operacao', 'consignacao').eq('status', 'processada')
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     notaReferenciada = (nfConsignacao as any)?.chave_nfe ?? null;
+  } else if (tipo === 'transferencia_entrada' || tipo === 'transferencia_entrada_0km') {
+    // Entrada referencia a chave da própria NF de saída da transferência
+    // (grupo NFref) — mesmo padrão da devolução simbólica de consignação.
+    notaReferenciada = saidaChaveParaEntrada;
   }
 
   const payload = montarPayloadNfeCompra({
@@ -1740,7 +2093,9 @@ Deno.serve(async (req) => {
   });
 
   // FKs da nfe_entradas conforme a operacao.
-  const nfeFks: Record<string, unknown> = ehVenda
+  const nfeFks: Record<string, unknown> = ehPor0km
+    ? { avaliacao_id: null, atendimento_id: null, estoque_moto_id: null, estoque_moto_nova_id: estoqueMotoNovaIdBody }
+    : ehVenda
     ? {
         avaliacao_id: null,
         atendimento_id: atendimentoId,
@@ -1788,7 +2143,9 @@ Deno.serve(async (req) => {
     const linhaErro = {
       empresa_id: empresaId,
       ...nfeFks,
-      fornecedor_id: atendimento.cliente_id,
+      // fornecedorIdAlvo já é o destinatário real resolvido acima (cliente do
+      // atendimento p/ compra/venda, empresa de origem/destino p/ transferência).
+      fornecedor_id: fornecedorIdAlvo,
       natureza_operacao_id: natureza.id,
       ref_externa: refEmissao,
       ambiente,
@@ -1799,6 +2156,8 @@ Deno.serve(async (req) => {
       status: 'erro',
       focus_status: fStatus ?? `http_${r.httpStatus}`,
       erro_mensagem: errMsg,
+      ...((tipo === 'transferencia_entrada' || tipo === 'transferencia_entrada_0km') ? { transferencia_par_id: saidaNfIdParaEntrada } : {}),
+      ...((ehTransferenciaEstoque || ehTransferenciaEstoque0km) ? { transferencia_destino_loja_id: destinoLojaIdBody || null } : {}),
     };
     if (atualizaExistente) {
       await admin.from('nfe_entradas').update(linhaErro).eq('id', nfeExistente.id);
@@ -1812,13 +2171,15 @@ Deno.serve(async (req) => {
   const linha: Record<string, unknown> = {
     empresa_id: empresaId,
     ...nfeFks,
-    fornecedor_id: atendimento.cliente_id,
+    fornecedor_id: fornecedorIdAlvo,
     natureza_operacao_id: natureza.id,
     ref_externa: refEmissao,
     ambiente,
     operacao: tipo,
     valor_total: valor,
     departamento,
+    ...((tipo === 'transferencia_entrada' || tipo === 'transferencia_entrada_0km') ? { transferencia_par_id: saidaNfIdParaEntrada } : {}),
+    ...((ehTransferenciaEstoque || ehTransferenciaEstoque0km) ? { transferencia_destino_loja_id: destinoLojaIdBody || null } : {}),
     observacoes: observacoesNf,
     data_emissao: dataEmissao,
     data_entrada: dataEmissao,
@@ -1873,6 +2234,18 @@ Deno.serve(async (req) => {
       callerId: caller.id,
       callerName,
     });
+    // Efeito de negócio da transferência de estoque: só a ENTRADA (empresa de
+    // destino) autorizada em produção reatribui a moto pra loja de destino —
+    // a saída sozinha não move nada (a moto continua "fisicamente" da origem
+    // até o destino confirmar o recebimento com a própria NF-e dela).
+    if (tipo === 'transferencia_entrada' && destinoLojaIdBody) {
+      await admin.from('estoque_motos').update({ loja_id: destinoLojaIdBody }).eq('avaliacao_id', avaliacaoId);
+    }
+    if (tipo === 'transferencia_entrada_0km' && destinoLojaIdBody) {
+      await admin.from('estoque_motos_novas')
+        .update({ loja_id: destinoLojaIdBody, empresa_id: destinoEmpresaIdTransf })
+        .eq('id', entityId);
+    }
   }
 
   return jsonResponse({ nfe: nfeRow }, 200);
