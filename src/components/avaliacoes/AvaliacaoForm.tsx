@@ -171,7 +171,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   }, [ehConsignadaLock, avaliacao?.id]);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
   // Etapa de aprovação (contexto pos_compra)
-  const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar' | 'desaprovar'; motivo: string } | null>(null);
+  const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar' | 'desaprovar' | 'perdido'; motivo: string } | null>(null);
   const [savingAprovacao, setSavingAprovacao] = useState(false);
   const [processoPosCompraOpen, setProcessoPosCompraOpen] = useState(false);
   const [processoConsignacaoOpen, setProcessoConsignacaoOpen] = useState(false);
@@ -686,6 +686,30 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       } catch (e) {
         console.error(e);
         toast.error('Erro ao registrar a decisão');
+      } finally {
+        setSavingAprovacao(false);
+      }
+      return;
+    }
+    if (aprovacaoPopup.modo === 'perdido') {
+      // Disponível em qualquer etapa até a NF-e de compra sair em PRODUÇÃO —
+      // diferente do gate de "recusar" (que trava em qualquer NF-e, mesmo de
+      // homologação), aqui só a autorização real em produção fecha a porta.
+      if (nfeEmitidaProducao) { toast.error('Não é possível marcar como perdido após a NF-e emitida em produção.'); return; }
+      setSavingAprovacao(true);
+      try {
+        if (avaliacao.atendimento_id) {
+          await marcarAtendimentoPerdido({ atendimentoId: avaliacao.atendimento_id, motivo, user, userName });
+        } else {
+          // Avaliação sem atendimento (caso raro) — marca só ela, sem cascata.
+          await supabase.from('avaliacoes').update({ situacao: 'perdido' } as any).eq('id', avaliacao.id);
+        }
+        toast.success('Avaliação marcada como perdida');
+        setAprovacaoPopup(null);
+        onClose();
+      } catch (e) {
+        console.error(e);
+        toast.error('Erro ao marcar como perdido');
       } finally {
         setSavingAprovacao(false);
       }
@@ -1212,6 +1236,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             {precisaAprovacao && souAprovador && apSt === 'aprovada' && !nfeEmitidaProducao && (
               <Button size="sm" variant="outline" onClick={() => setAprovacaoPopup({ modo: 'desaprovar', motivo: '' })} className="gap-1.5 border-amber-500 text-amber-600 hover:bg-amber-500/10 hover:text-amber-600">
                 <RotateCw className="h-4 w-4" /> Desaprovar
+              </Button>
+            )}
+            {/* Marcar como perdido: em qualquer etapa (aguardando ou já aprovada),
+                até a NF-e de compra sair em PRODUÇÃO — depois disso a aquisição já
+                está fiscalmente fechada, não faz mais sentido desistir. */}
+            {precisaAprovacao && souAprovador && avaliacao?.situacao !== 'perdido' && avaliacao?.situacao !== 'dispensada' && !nfeEmitidaProducao && (
+              <Button size="sm" variant="outline" onClick={() => setAprovacaoPopup({ modo: 'perdido', motivo: '' })} className="gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive">
+                <XCircle className="h-4 w-4" /> Marcar como Perdido
               </Button>
             )}
             {ehProcesso && aguardandoAprovacao && !souAprovador && (
@@ -2089,11 +2121,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 ? <><ThumbsDown className="h-5 w-5 text-destructive" /> Recusar Aquisição</>
                 : aprovacaoPopup?.modo === 'desaprovar'
                 ? <><RotateCw className="h-5 w-5 text-amber-600" /> Desaprovar Aquisição</>
+                : aprovacaoPopup?.modo === 'perdido'
+                ? <><XCircle className="h-5 w-5 text-destructive" /> Marcar como Perdido</>
                 : <><ThumbsUp className="h-5 w-5 text-green-600" /> Aprovar Aquisição</>}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <Label>{aprovacaoPopup?.modo === 'recusar' ? 'Motivo da recusa' : aprovacaoPopup?.modo === 'desaprovar' ? 'Motivo da desaprovação' : 'Observação da aprovação'} <span className="text-destructive">*</span></Label>
+            <Label>{aprovacaoPopup?.modo === 'recusar' ? 'Motivo da recusa' : aprovacaoPopup?.modo === 'desaprovar' ? 'Motivo da desaprovação' : aprovacaoPopup?.modo === 'perdido' ? 'Motivo da perda' : 'Observação da aprovação'} <span className="text-destructive">*</span></Label>
             <Textarea
               value={aprovacaoPopup?.motivo || ''}
               onChange={(e) => setAprovacaoPopup(p => p ? { ...p, motivo: e.target.value } : p)}
@@ -2106,10 +2140,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             {aprovacaoPopup?.modo === 'desaprovar' && (
               <p className="text-xs text-muted-foreground">Volta para <strong>aguardando aprovação</strong>. O atendimento não é afetado.</p>
             )}
+            {aprovacaoPopup?.modo === 'perdido' && (
+              <p className="text-xs text-muted-foreground">O atendimento, a avaliação e os processos em andamento (pós-compra/consignação/preparação) serão marcados como <strong>perdido</strong>. Não é possível desfazer.</p>
+            )}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setAprovacaoPopup(null)}>Cancelar</Button>
               <Button
-                variant={aprovacaoPopup?.modo === 'recusar' ? 'destructive' : 'default'}
+                variant={aprovacaoPopup?.modo === 'recusar' || aprovacaoPopup?.modo === 'perdido' ? 'destructive' : 'default'}
                 className={aprovacaoPopup?.modo === 'aprovar' ? 'bg-green-600 hover:bg-green-700 text-white' : aprovacaoPopup?.modo === 'desaprovar' ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}
                 disabled={!aprovacaoPopup?.motivo.trim() || savingAprovacao}
                 onClick={confirmarAprovacao}
