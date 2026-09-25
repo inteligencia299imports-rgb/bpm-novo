@@ -159,6 +159,16 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   const [obsNfe, setObsNfe] = useState('');
   // Modo NF-e: valor que vai para a nota (default = valor de fechamento). O compromisso continua sendo o repasse.
   const [nfeValor, setNfeValor] = useState('');
+  // Observações na NF-e é só estado local (nunca lido de volta do banco) —
+  // achado real: sem isso, ao reabrir/recarregar a tela depois de emitir em
+  // homologação, o campo voltava vazio e a emissão em PRODUÇÃO saía sem a
+  // observação que já tinha sido gravada na linha de homologação. Só
+  // preenche se o campo ainda estiver vazio, pra não sobrescrever o que o
+  // usuário está digitando.
+  useEffect(() => {
+    if (nfe.nfe?.observacoes && !obsNfe) setObsNfe(nfe.nfe.observacoes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nfe.nfe?.observacoes]);
 
   // Empresa emitente da NF-e (restrita às empresas vinculadas à loja do atendimento).
   const [empresasLoja, setEmpresasLoja] = useState<any[]>([]);
