@@ -50,7 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
 
       {/* Navigation — rola por dentro se a lista de abas não couber; recolher
           e usuário (abaixo) ficam sempre fixos, fora dessa área de scroll. */}
-      <nav className="flex-1 flex flex-col gap-1 px-2 py-4 overflow-y-auto">
+      <nav className="flex-1 flex flex-col gap-1 px-2 py-4 overflow-y-auto scrollbar-hide">
         {tabs.map(tab => (
           <button
             key={tab.id}
