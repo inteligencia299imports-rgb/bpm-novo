@@ -412,9 +412,11 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
         ? 'Emplacamento: A taxa de emplacamento será paga pela 299 Imports.'
         : 'Transferência: A taxa de transferência será paga pela 299 Imports.';
     } else if (data.transferenciaTipo === 'outra_uf') {
+      // "Externa": o cliente resolve por fora, com meios próprios — não há
+      // cobrança da 299 Imports nem valor a lançar (ver totalTaxasCliente).
       transferenciaText = is0km
-        ? 'Emplacamento: O cliente realizará o emplacamento no seu estado de origem.'
-        : 'Transferência: O cliente realizará a transferência de propriedade no seu estado de origem.';
+        ? 'Emplacamento: O cliente realizará o emplacamento por fora, com seus próprios meios.'
+        : 'Transferência: O cliente realizará a transferência de propriedade por fora, com seus próprios meios.';
     }
     if (transferenciaText) {
       y = drawJustifiedText(doc, transferenciaText, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
