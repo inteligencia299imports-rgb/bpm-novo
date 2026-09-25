@@ -434,12 +434,13 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         setCpfBusca(formatCpf((data as any).cpf_cnpj || ''));
         setClientFound(true);
       } else {
+        // Não encontrado: zera só o que veio de um cadastro — o CPF é um campo
+        // de busca independente, não apaga o que o usuário já tiver digitado nele.
         setClienteId(null);
         setNomeCliente('');
         setSexo('');
         setTipoPessoa('fisica');
         setUf(ufPrincipal || '');
-        setCpfBusca('');
         setClientFound(false);
       }
     } catch (err) {
@@ -481,10 +482,12 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         setUf(data.clientes_fornecedores_enderecos?.[0]?.uf || ufPrincipal || '');
         setClientFound(true);
       } else {
+        // Não encontrado: zera só o que veio de um cadastro (nome/sexo/UF) — o
+        // telefone é um campo de busca independente, não faz sentido apagar o
+        // que o usuário já tiver digitado nele.
         setClienteId(null);
         setNomeCliente('');
         setSexo('');
-        setTelefone('');
         setUf(ufPrincipal || '');
         setClientFound(false);
       }
@@ -573,6 +576,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
   // 11 dígitos = celular; 10 = fixo (comum em telefone comercial de cliente PJ).
   const isPhoneValid = [10, 11].includes(unformatPhone(telefone).length);
+  const isCpfComplete = unformatPhone(cpfBusca).length === 11;
 
   const handleSave = async () => {
     if (nfeVendaEmitida) {
@@ -959,7 +963,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               {clientFound === false && (
                 <p className="text-xs text-muted-foreground">Cliente não encontrado. Preencha os dados.</p>
               )}
-              {(isEditing || isPhoneValid) && (
+              {(isEditing || isPhoneValid || isCpfComplete) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto] gap-4 items-start">
                   <div className="space-y-1.5">
                     <Label>Nome do Cliente *</Label>
@@ -1070,8 +1074,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
               </Select>
             </div>
           )}
-          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[auto_1fr_auto] lg:items-start">
-            <div className="space-y-1.5 lg:col-start-1">
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[auto_1fr_auto] lg:items-start lg:gap-y-6">
+            <div className="space-y-1.5 lg:col-start-1 lg:row-start-1">
               <Label>Loja *</Label>
               <div className="flex flex-wrap gap-2 [&>button]:min-w-[90px]">
                 {gruposDisponiveis.map(g => (
@@ -1094,7 +1098,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             </div>
             {lojaDisplayGroup && (
               <div
-                className="space-y-1.5 lg:col-start-2 lg:mx-auto max-w-full overflow-x-auto lg:overflow-hidden lg:transition-[width] lg:duration-300 lg:ease-in-out"
+                className="space-y-1.5 lg:col-start-2 lg:row-start-1 lg:justify-self-center max-w-full overflow-x-auto lg:overflow-hidden lg:transition-[width] lg:duration-300 lg:ease-in-out"
                 style={{ width: unidadeWidth || undefined }}
               >
                 <Label>Unidade *</Label>
@@ -1105,16 +1109,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 </div>
               </div>
             )}
-            <div className="space-y-1.5 w-full lg:w-[220px] lg:col-start-3">
+            <div className="space-y-1.5 w-full lg:w-[220px] lg:col-start-3 lg:row-start-1">
               <Label>Origem *</Label>
               <Select value={origem} onValueChange={setOrigem}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>{ORIGENS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-          </div>
-          <div className="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:justify-between">
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 lg:col-start-1 lg:row-start-2">
               <Label>Tipo de Atendimento *</Label>
               <div className="flex flex-wrap gap-2 [&>button]:min-w-[90px]">
                 {TIPOS_ATENDIMENTO.map(t => (
@@ -1122,7 +1124,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 ))}
               </div>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 lg:col-start-2 lg:row-start-2 lg:justify-self-center">
               <Label>Temperatura *</Label>
               <div className="flex flex-wrap gap-2 [&>button]:min-w-[90px]">
                 {TEMPERATURAS.map(t => (
@@ -1130,7 +1132,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 ))}
               </div>
             </div>
-            <div className="space-y-1.5 w-full lg:w-[220px]">
+            <div className="space-y-1.5 w-full lg:w-[220px] lg:col-start-3 lg:row-start-2">
               <Label>Interesse *</Label>
               <Select value={interesse} onValueChange={v => setInteresse(v as Interesse)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
