@@ -802,6 +802,19 @@ const ContratoDialog: React.FC<Props> = ({
       await supabase.from('clientes_fornecedores').update({ cpf_cnpj: cpfCnpj }).eq('id', atendimento.cliente_id);
     }
 
+    // Troca: este é o ÚNICO contrato gerado (não existe um "contrato de compra"
+    // separado pra moto que entra) — o Valor de Quitação daqui precisa
+    // propagar pra avaliacoes.valor_quitacao, que é o campo que o Pós-Compra/
+    // ContratoCompraDialog lê pra liberar a emissão da NF-e de compra. Sem
+    // isso, ficava só na linha do contrato de venda e nunca satisfazia aquele
+    // gate — achado real: moto BDC9J54, quitação 0 salva aqui mas NF-e de
+    // compra continuava bloqueada.
+    if (hasTroca && motoAv?.id) {
+      await supabase.from('avaliacoes').update({
+        valor_quitacao: valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : null,
+      } as any).eq('id', motoAv.id);
+    }
+
     // Agregados: substitui a lista inteira do contrato (delete + insert).
     const syncAgregados = async (cId: string) => {
       await supabase.from('contratos_agregados').delete().eq('contrato_id', cId);
