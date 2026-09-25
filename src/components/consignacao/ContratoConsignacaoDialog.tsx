@@ -169,6 +169,14 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // Modo NF-e: valor editável antes de emitir + obs da nota.
   const [valorConsigNota, setValorConsigNota] = useState('');
   const [obsNfe, setObsNfe] = useState('');
+  // Observações na NF-e é só estado local (nunca lido de volta do banco) —
+  // mesmo achado do ContratoCompraDialog: sem isso, ao reabrir/recarregar a
+  // tela depois de emitir em homologação, o campo voltava vazio e a emissão
+  // em PRODUÇÃO saía sem a observação já gravada na linha de homologação.
+  useEffect(() => {
+    if (nfe.nfe?.observacoes && !obsNfe) setObsNfe(nfe.nfe.observacoes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nfe.nfe?.observacoes]);
   // Empresa emitente da NF-e (restrita às empresas vinculadas à loja do atendimento).
   const [empresasLoja, setEmpresasLoja] = useState<any[]>([]);
   const [empresaId, setEmpresaId] = useState<string>('');
