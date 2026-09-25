@@ -619,10 +619,28 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       <ExternalLink className="h-3.5 w-3.5" /> ATPV-e
                     </Button>
                   ) : (
-                    <Button size="sm" variant="outline" className="gap-1.5" disabled={baixandoAtpv} onClick={handleBaixarAtpv}>
-                      {baixandoAtpv ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                      ATPV-e
-                    </Button>
+                    <div className="flex items-center gap-1.5">
+                      {/* A SERPRO só libera o ATPV-e quando a intenção de venda criada
+                          pela entrada (passo 1) sai de SOLICITADO -- pode demorar.
+                          Deixa o estado visível aqui (sem precisar chegar no passo 6
+                          pra ter esse refresh) pra não ficar tentando às cegas. */}
+                      <span className="text-xs text-muted-foreground">
+                        Estado: {avaliacao?.renave_estado || 'SOLICITADO'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleAtualizarEstado}
+                        disabled={atualizandoEstado}
+                        title="Consultar estado atual no RENAVE"
+                        className="text-muted-foreground hover:text-primary disabled:opacity-50 shrink-0"
+                      >
+                        <RefreshCw className={cn('h-3.5 w-3.5', atualizandoEstado && 'animate-spin')} />
+                      </button>
+                      <Button size="sm" variant="outline" className="gap-1.5" disabled={baixandoAtpv} onClick={handleBaixarAtpv}>
+                        {baixandoAtpv ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                        ATPV-e
+                      </Button>
+                    </div>
                   )}
                 </StepRow>
 
