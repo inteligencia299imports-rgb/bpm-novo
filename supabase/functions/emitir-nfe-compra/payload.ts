@@ -219,12 +219,18 @@ export function nowBrasiliaIso(d: Date = new Date()): string {
   return brt.toISOString().replace(/\.\d{3}Z$/, '').replace(/Z$/, '') + '-03:00';
 }
 
-/** NCM da motocicleta pela cilindrada (posicao 8711). */
+/**
+ * NCM da motocicleta pela cilindrada (posição 8711). "87112000" não existe na tabela oficial —
+ * a subposição 8711.20 (>50cc a 250cc) só tem os itens 10/20/90, nunca um genérico ".00" (achado
+ * real: rejeição SEFAZ [778] "Informado NCM inexistente" numa Yamaha XMAX 250, consignação).
+ * Fonte: tabela NCM vigente (Receita Federal), capítulo 87.11.
+ */
 export function ncmPorCilindrada(cc: string | number | null | undefined): string {
   const n = typeof cc === 'number' ? cc : parseInt(String(cc ?? '').replace(/\D/g, ''), 10);
   if (!n || Number.isNaN(n)) return '87119000';
   if (n <= 50) return '87111000';
-  if (n <= 250) return '87112000';
+  if (n <= 125) return '87112010';
+  if (n <= 250) return '87112020';
   if (n <= 500) return '87113000';
   if (n <= 800) return '87114000';
   return '87115000';
