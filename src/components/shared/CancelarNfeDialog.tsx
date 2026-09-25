@@ -71,7 +71,6 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
   const devolucaoPendente = DEVOLUCAO_PENDENTE.includes(devolucaoStatus || '');
   const devolucaoErro = devolucaoStatus === 'erro';
   const devolucaoAutorizada = devolucaoStatus === 'processada';
-  const podeReemitirHomologDevolucao = devolucaoAutorizada && devolucaoNfe?.ambiente === 'homologacao';
 
   const carregarDevolucao = async () => {
     if (!devolucaoCfg || !entityId) return;
@@ -199,28 +198,23 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
                   <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" /> {devolucaoNfe?.erro_mensagem || 'Falha na emissão da devolução'}
                 </p>
               )}
+              <p className="text-xs text-muted-foreground italic">
+                Sem etapa de homologação aqui: a devolução sempre referencia a NF original, que já está em
+                produção — a SEFAZ de homologação não teria como validar essa referência (Rejeição 321).
+              </p>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDevolucaoOpen(false)} disabled={devolucaoLoading}>
                 Fechar
               </Button>
-              {(!devolucaoAutorizada || podeReemitirHomologDevolucao) && !devolucaoPendente && (
+              {!devolucaoAutorizada && !devolucaoPendente && (
                 <Button
                   className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white"
                   disabled={devolucaoLoading}
-                  onClick={() => emitirDevolucao('homologacao')}
-                >
-                  {devolucaoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : devolucaoErro ? <Undo2 className="h-4 w-4" /> : <Undo2 className="h-4 w-4" />}
-                  {devolucaoErro ? 'Tentar novamente' : 'Devolver (Homologação)'}
-                </Button>
-              )}
-              {podeReemitirHomologDevolucao && !devolucaoPendente && (
-                <Button
-                  className="gap-1.5"
-                  disabled={devolucaoLoading}
                   onClick={() => emitirDevolucao('producao')}
                 >
-                  <Undo2 className="h-4 w-4" /> Devolver (Produção)
+                  {devolucaoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Undo2 className="h-4 w-4" />}
+                  {devolucaoErro ? 'Tentar novamente' : 'Confirmar Devolução (Produção)'}
                 </Button>
               )}
             </DialogFooter>
