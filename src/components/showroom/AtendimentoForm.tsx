@@ -106,6 +106,12 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [pjSearchResults, setPjSearchResults] = useState<{ id: string; nome_razao_social: string; nome_fantasia: string | null; cpf_cnpj: string | null; telefone: string | null; clientes_fornecedores_enderecos?: { uf: string | null }[] }[]>([]);
   const [pjSearching, setPjSearching] = useState(false);
   const [showNovoClientePJ, setShowNovoClientePJ] = useState(false);
+  // Busca por nome de Pessoa Física — alternativa ao telefone/CPF quando quem
+  // atende não tem esses dados de cabeça mas sabe o nome do cliente já cadastrado.
+  const [pfSearchOpen, setPfSearchOpen] = useState(false);
+  const [pfSearchTerm, setPfSearchTerm] = useState('');
+  const [pfSearchResults, setPfSearchResults] = useState<{ id: string; nome_razao_social: string; cpf_cnpj: string | null; telefone: string | null; sexo: string | null; clientes_fornecedores_enderecos?: { uf: string | null }[] }[]>([]);
+  const [pfSearching, setPfSearching] = useState(false);
   const [tipoAtendimento, setTipoAtendimento] = useState('');
   const [origem, setOrigem] = useState('');
   const [temperatura, setTemperatura] = useState('');
@@ -535,6 +541,40 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     return () => { clearTimeout(timer); setPjSearching(false); };
   }, [pjSearchTerm, tipoPessoa]);
 
+  // Busca de cliente Física por nome/CPF (debounced) — mesmo padrão da busca PJ
+  // acima, usada como alternativa quando telefone/CPF não acham o cliente.
+  useEffect(() => {
+    if (tipoPessoa !== 'fisica') return;
+    const termo = pfSearchTerm.trim();
+    if (termo.length < 2) { setPfSearchResults([]); return; }
+    setPfSearching(true);
+    const timer = setTimeout(async () => {
+      const digits = unformatPhone(termo);
+      const { data } = await supabase
+        .from('clientes_fornecedores')
+        .select('id, nome_razao_social, cpf_cnpj, telefone, sexo, clientes_fornecedores_enderecos(uf)')
+        .eq('tipo_pessoa', 'fisica')
+        .or(`nome_razao_social.ilike.%${termo}%,cpf_cnpj.ilike.%${digits}%`)
+        .order('nome_razao_social')
+        .limit(10);
+      setPfSearchResults((data as any) || []);
+      setPfSearching(false);
+    }, 200);
+    return () => { clearTimeout(timer); setPfSearching(false); };
+  }, [pfSearchTerm, tipoPessoa]);
+
+  const handleSelectClientePF = (c: { id: string; nome_razao_social: string; cpf_cnpj: string | null; telefone: string | null; sexo: string | null; clientes_fornecedores_enderecos?: { uf: string | null }[] }) => {
+    setClienteId(c.id);
+    setNomeCliente(c.nome_razao_social);
+    setTelefone(formatPhone(c.telefone || ''));
+    setCpfBusca(formatCpf(c.cpf_cnpj || ''));
+    setSexo(normalizeSexo(c.sexo));
+    setUf(c.clientes_fornecedores_enderecos?.[0]?.uf || ufPrincipal || '');
+    setClientFound(true);
+    setPfSearchOpen(false);
+    setPfSearchTerm('');
+  };
+
   const handleSelectClientePJ = (c: { id: string; nome_razao_social: string; telefone: string | null; clientes_fornecedores_enderecos?: { uf: string | null }[] }) => {
     setClienteId(c.id);
     setNomeCliente(c.nome_razao_social);
@@ -957,7 +997,35 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                 </div>
               </div>
               {clientFound === false && (
-                <p className="text-xs text-muted-foreground">Cliente não encontrado. Preencha os dados.</p>
+                <div className="space-y-1.5 sm:max-w-lg">
+                  <p className="text-xs text-muted-foreground">Cliente não encontrado por telefone/CPF. Preencha os dados ou busque por nome:</p>
+                  <Popover open={pfSearchOpen} onOpenChange={setPfSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" role="combobox" className="w-full justify-start font-normal text-muted-foreground">
+                        <Search className="mr-2 h-4 w-4" /> Buscar por nome...
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command shouldFilter={false}>
+                        <CommandInput value={pfSearchTerm} onValueChange={setPfSearchTerm} placeholder="Digite o nome / CPF..." />
+                        <CommandList>
+                          {pfSearching ? (
+                            <div className="py-4 text-center text-sm text-muted-foreground">Buscando...</div>
+                          ) : (
+                            <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                          )}
+                          <CommandGroup>
+                            {pfSearchResults.map((c) => (
+                              <CommandItem key={c.id} value={c.id} onSelect={() => handleSelectClientePF(c)}>
+                                {c.nome_razao_social.toUpperCase()}{c.cpf_cnpj ? ` - ${formatCpf(c.cpf_cnpj)}` : ''}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               )}
               {(isEditing || isPhoneValid) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto] gap-4 items-start">
