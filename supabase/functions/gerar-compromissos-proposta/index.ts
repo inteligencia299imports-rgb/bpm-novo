@@ -5,6 +5,9 @@
 //   origem 'venda'       -> compromissos.contrato_id  (a receber, VND-R)
 //   origem 'compra'|'troca' -> compromissos.avaliacao_id (a pagar, CPR-D)
 //   origem 'consignante'    -> compromissos.atendimento_id (a pagar, CPR-D)
+//   origem 'troco'          -> compromissos.contrato_id  (a pagar, TRC-D) —
+//     agregado marcado como troco no contrato de venda; não cobrado do
+//     cliente, gera conta a pagar do mesmo valor.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
@@ -15,6 +18,11 @@ const PLANO_VENDA_USADA = 'c4f76d4e-bfd9-4ade-987e-4a0798603416';
 const PLANO_VENDA_NOVA = 'c155d12c-4f49-4592-be1c-63f515ff97d3';
 const CC_MOTOS_USADAS = '7fe3888a-fd17-4c31-b78b-82a0af680ff3';
 const CC_MOTOS_NOVAS = '30f457e2-d6b9-48c3-aca7-e45bbf0200df';
+// Troco ao cliente (agregado marcado como troco no contrato de venda) — plano
+// de contas próprio, diferente do de venda normal (não é receita de venda,
+// é devolução de dinheiro). Centro de custo é o mesmo de venda usada/nova.
+const PLANO_TROCO_USADA = '31b50885-ffba-469a-8454-95eab010ca0f';
+const PLANO_TROCO_NOVA = '1299f5d9-d3b4-4fae-a601-4fa9c3e6bb58';
 const FORMA_PAGAMENTO_ID = '63e1fff5-14d7-476c-b2da-e1ea173279a1'; // Pix
 const FORMA_PAGAMENTO_BOLETO_ID = '7d0f2125-fedf-4a27-8ab0-be21fecaf642'; // Boleto
 const DIAS_VENCIMENTO = 7;
@@ -58,7 +66,7 @@ type Parcela = {
   pago?: boolean;
 };
 
-type Origem = 'venda' | 'compra' | 'troca' | 'consignante';
+type Origem = 'venda' | 'compra' | 'troca' | 'consignante' | 'troco';
 
 async function gerarNumero(admin: any, prefix: string): Promise<string | null> {
   const { data, error } = await admin.rpc('gerar_numero_compromisso', { _prefix: prefix });
@@ -383,6 +391,37 @@ async function acaoVenda(admin: any, atendimentoId: string, callerId: string): P
     for (const avRow of ((avs as any[]) || [])) {
       (out.troca as unknown[]).push(await construirRepasse(admin, avRow.id, 'troca', vencTroca, callerId, valorVenda));
     }
+  }
+
+  // Agregado marcado como troco: não é cobrado do cliente nem entra no total
+  // (ver AgregadosContrato) — em vez disso, gera um compromisso de conta a
+  // PAGAR ao cliente com o mesmo valor. Soma todos os agregados de troco do
+  // contrato num único compromisso (não é um serviço, é dinheiro devido).
+  const { data: agsTroco } = await admin
+    .from('contratos_agregados')
+    .select('valor, descricao, observacoes')
+    .eq('contrato_id', contratoVenda.id)
+    .eq('troco', true);
+  const valorTroco = ((agsTroco as any[]) || []).reduce((s, a) => s + nz(a.valor), 0);
+  if (valorTroco > 0.005) {
+    const obsTroco = ((agsTroco as any[]) || [])
+      .map((a) => (a.observacoes || '').trim())
+      .filter(Boolean)
+      .join(' | ') || null;
+    out.troco = await upsertCompromisso(admin, {
+      origem: 'troco',
+      linkField: 'contrato_id',
+      linkId: contratoVenda.id,
+      empresaId,
+      fornecedorId: at?.cliente_id ?? null,
+      natureza: 'despesa',
+      planoContaId: eh0km ? PLANO_TROCO_NOVA : PLANO_TROCO_USADA,
+      centroCustoId: eh0km ? CC_MOTOS_NOVAS : CC_MOTOS_USADAS,
+      observacoes: obsTroco,
+      numeroPrefix: 'TRC-D',
+      parcelas: [{ numero_parcela: 1, valor: valorTroco, tipo: 'unico', forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: vencPadrao }],
+      callerId,
+    });
   }
 
   return out;
