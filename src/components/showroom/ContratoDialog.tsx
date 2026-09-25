@@ -550,7 +550,7 @@ const ContratoDialog: React.FC<Props> = ({
 
         const { data: ags } = await supabase
           .from('contratos_agregados')
-          .select('agregado_id, descricao, valor, observacoes, cortesia')
+          .select('agregado_id, descricao, valor, observacoes, cortesia, troco')
           .eq('contrato_id', contrato.id)
           .order('created_at', { ascending: true });
         setAgregados(((ags as any[]) || []).map((a) => ({
@@ -559,6 +559,7 @@ const ContratoDialog: React.FC<Props> = ({
           valor: Number(a.valor) || 0,
           observacoes: a.observacoes ?? null,
           cortesia: !!a.cortesia,
+          troco: !!a.troco,
         })));
       } else {
         // Reset
@@ -835,6 +836,7 @@ const ContratoDialog: React.FC<Props> = ({
             valor: Number(a.valor) || 0,
             observacoes: (a.observacoes ?? '').trim() || null,
             cortesia: !!a.cortesia,
+            troco: !!a.troco,
           })),
         );
       }
@@ -1028,6 +1030,8 @@ const ContratoDialog: React.FC<Props> = ({
         descricao: a.descricao,
         valor: `R$ ${(Number(a.valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         cortesia: !!a.cortesia,
+        troco: !!a.troco,
+        observacoes: a.observacoes || '',
       })),
     };
 
@@ -1167,8 +1171,8 @@ const ContratoDialog: React.FC<Props> = ({
   const vendaVarPctInt = vendaVarPct != null ? Math.round(vendaVarPct) : null;
 
   // --- KPIs do resumo (abaixo do card Formas de Pagamento) ---
-  // Agregado marcado como cortesia não é cobrado do cliente — fora de todo cálculo.
-  const totalAgregados = agregados.reduce((s, a) => s + (a.cortesia ? 0 : Number(a.valor) || 0), 0);
+  // Agregado marcado como cortesia ou troco não é cobrado do cliente — fora de todo cálculo.
+  const totalAgregados = agregados.reduce((s, a) => s + (a.cortesia || a.troco ? 0 : Number(a.valor) || 0), 0);
   const totalTaxasEAgregados = totalAgregados + totalTaxasCliente;
   // O que o cliente deve: venda + agregados + taxas administrativas cobradas do cliente.
   const valorTotalContrato = vendaNum + totalTaxasEAgregados;

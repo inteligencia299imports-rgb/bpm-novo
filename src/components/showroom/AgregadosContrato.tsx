@@ -22,6 +22,10 @@ export interface AgregadoLinha {
   observacoes?: string | null;
   /** Cortesia: item não cobrado do cliente. Nunca entra no total nem em cálculos. */
   cortesia?: boolean;
+  /** Troco: dinheiro devido ao cliente (não um serviço) — também não cobrado
+   * nem contado no total, mas ao contrário de cortesia, gera compromisso
+   * financeiro de conta a pagar (ver gerar-compromissos-proposta). */
+  troco?: boolean;
 }
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -54,13 +58,14 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
   const [fValor, setFValor] = useState('');
   const [fObs, setFObs] = useState('');
   const [fCortesia, setFCortesia] = useState(false);
+  const [fTroco, setFTroco] = useState(false);
 
   const disponiveis = useMemo(
     () => catalogo.filter((c) => !value.some((l) => l.agregado_id === c.id)),
     [catalogo, value],
   );
-  // Cortesia nunca entra no total.
-  const total = value.reduce((s, l) => s + (l.cortesia ? 0 : Number(l.valor) || 0), 0);
+  // Cortesia e troco nunca entram no total (nem são cobrados do cliente).
+  const total = value.reduce((s, l) => s + (l.cortesia || l.troco ? 0 : Number(l.valor) || 0), 0);
 
   const editando = editIdx !== null;
   const agSel = catalogo.find((c) => c.id === selId);
@@ -73,6 +78,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setFValor('');
     setFObs('');
     setFCortesia(false);
+    setFTroco(false);
   };
 
   // Selecionar um agregado do catálogo (novo) — já traz o valor padrão.
@@ -83,6 +89,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setFValor(ag ? toInput(Number(ag.valor) || 0) : '');
     setFObs('');
     setFCortesia(false);
+    setFTroco(false);
   };
 
   const editar = (i: number) => {
@@ -92,6 +99,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setFValor(toInput(Number(l.valor) || 0));
     setFObs(l.observacoes ?? '');
     setFCortesia(!!l.cortesia);
+    setFTroco(!!l.troco);
   };
 
   const salvar = () => {
@@ -104,6 +112,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         valor: parseInput(fValor),
         observacoes: obs,
         cortesia: fCortesia,
+        troco: fTroco,
       };
       onChange(next);
     } else {
@@ -115,6 +124,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         valor: fValor.trim() ? parseInput(fValor) : (Number(ag.valor) || 0),
         observacoes: obs,
         cortesia: fCortesia,
+        troco: fTroco,
       }]);
     }
     resetForm();
@@ -136,11 +146,16 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
               {l.cortesia && (
                 <span className="ml-2 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">Cortesia</span>
               )}
+              {l.troco && (
+                <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">Troco</span>
+              )}
             </span>
             <p className="text-xs text-muted-foreground">
               {l.cortesia
                 ? `Cortesia — não cobrado do cliente${(Number(l.valor) || 0) > 0 ? ` (valor de referência: ${brl(Number(l.valor) || 0)})` : ''}`
-                : `Valor: ${brl(Number(l.valor) || 0)}`}
+                : l.troco
+                  ? `Troco ao cliente — não cobrado, gera conta a pagar de ${brl(Number(l.valor) || 0)}`
+                  : `Valor: ${brl(Number(l.valor) || 0)}`}
             </p>
             {l.observacoes?.trim() && (
               <p className="text-xs text-muted-foreground italic whitespace-pre-wrap">{l.observacoes}</p>
@@ -219,8 +234,12 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
             </div>
 
             <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
-              <Checkbox checked={fCortesia} onCheckedChange={(c) => setFCortesia(c === true)} />
+              <Checkbox checked={fCortesia} onCheckedChange={(c) => { setFCortesia(c === true); if (c === true) setFTroco(false); }} />
               Cortesia — não cobrar do cliente (não soma no total nem nos cálculos)
+            </label>
+            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
+              <Checkbox checked={fTroco} onCheckedChange={(c) => { setFTroco(c === true); if (c === true) setFCortesia(false); }} />
+              Troco ao cliente — não cobrar (gera conta a pagar deste valor)
             </label>
 
             <div className="flex justify-center gap-2 pt-1">

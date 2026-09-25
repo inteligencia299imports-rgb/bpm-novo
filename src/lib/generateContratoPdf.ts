@@ -66,7 +66,7 @@ interface ContratoPdfData {
   }[];
   
   // Agregados (serviços cobrados à parte do cliente)
-  agregados?: { descricao: string; valor: string; cortesia?: boolean }[];
+  agregados?: { descricao: string; valor: string; cortesia?: boolean; troco?: boolean; observacoes?: string }[];
 
   // Observações
   observacoes: string;
@@ -448,9 +448,14 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
     setNormal();
     for (const ag of data.agregados) {
       checkPageBreak(lineHeight);
-      const linha = ag.cortesia
-        ? `${ag.descricao}: ${ag.valor} (Cortesia)`
-        : `${ag.descricao}: ${ag.valor}`;
+      // Troco: não é um serviço cobrado — é dinheiro devido ao cliente, só
+      // informado aqui pra constar no contrato (o compromisso financeiro de
+      // conta a pagar é gerado à parte, ver gerar-compromissos-proposta).
+      const linha = ag.troco
+        ? `Troco ao cliente: ${ag.valor}${ag.observacoes ? ` — ${ag.observacoes}` : ''}`
+        : ag.cortesia
+          ? `${ag.descricao}: ${ag.valor} (Cortesia)`
+          : `${ag.descricao}: ${ag.valor}`;
       doc.text(linha, marginLeft + 5, y); y += lineHeight;
     }
     y += sectionGap;
