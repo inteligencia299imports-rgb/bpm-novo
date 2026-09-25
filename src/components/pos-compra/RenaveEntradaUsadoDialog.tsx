@@ -266,6 +266,21 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   // visualizar/baixar/remover (mesmo padrão da CNH). `deferPreview` mantém o
   // botão em estado de carregando até a SERPRO confirmar o envio.
   const [tipoAssinatura, setTipoAssinatura] = useState<string>(TIPOS_ASSINATURA[0].value);
+  // CRV digital: a SERPRO rejeita as opções "próprio punho" (foto assinada à
+  // mão / papel-moeda) — achado real, chassi 95VHA00AAHM000135, estoque
+  // 203832487: "Não é permitido, nem necessário, enviar assinatura de
+  // próprio punho para ATPVe [...]" (422). Sem papel físico envolvido no
+  // fluxo digital, só a assinatura qualificada sobre o XML do ATPV-e serve.
+  const crvDigital = avaliacao?.tipo_crv === 'DIGITAL';
+  const opcoesAssinatura = crvDigital
+    ? TIPOS_ASSINATURA.filter((t) => t.value === 'qualificada_xml_atpve')
+    : TIPOS_ASSINATURA;
+  useEffect(() => {
+    if (!opcoesAssinatura.some((t) => t.value === tipoAssinatura)) {
+      setTipoAssinatura(opcoesAssinatura[0]?.value ?? TIPOS_ASSINATURA[0].value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [crvDigital]);
   const handleAssinaturaAnexada = async (url: string) => {
     // Grava a URL já aqui -- assim o popup de visualizar/baixar funciona
     // mesmo se o envio à SERPRO falhar (dá pra conferir o arquivo sem
@@ -663,7 +678,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       <Select value={tipoAssinatura} onValueChange={setTipoAssinatura}>
                         <SelectTrigger className="h-9 text-xs flex-1"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {TIPOS_ASSINATURA.map((t) => <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>)}
+                          {opcoesAssinatura.map((t) => <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       <DocumentUpload
