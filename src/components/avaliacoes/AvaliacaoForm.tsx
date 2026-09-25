@@ -657,7 +657,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     if (!aprovacaoPopup || !avaliacao?.id) return;
     const motivo = aprovacaoPopup.motivo.trim();
     if (!motivo) { toast.error('Informe o motivo'); return; }
-    if (!podeAprovar(user?.id)) { toast.error('Você não tem permissão para aprovar/recusar'); return; }
+    if (aprovacaoPopup.modo === 'perdido') {
+      if (!podeMarcarPerdido) { toast.error('Você não tem permissão para marcar como perdido'); return; }
+    } else if (!podeAprovar(user?.id)) {
+      toast.error('Você não tem permissão para aprovar/recusar');
+      return;
+    }
     // Desaprovar só trava na NF-e de PRODUÇÃO (homologação pode ser desfeita);
     // aprovar/recusar seguem travando em qualquer NF-e já emitida.
     if (aprovacaoPopup.modo === 'desaprovar') {
@@ -990,6 +995,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   // junto com a venda) OU NF-e em produção. Anexar documento ausente segue liberado.
   const docRemocaoTravada = apSt === 'aprovada' || nfeEmitidaProducao;
   const souAprovador = podeAprovar(user?.id);
+  // "Marcar como perdido" é uma ação operacional (desistência do negócio), não
+  // uma decisão financeira de compra — não precisa ficar restrita ao mesmo
+  // usuário único que aprova/recusa aquisições. Qualquer gerente/master que
+  // acessa o Pós-Compra pode usar.
+  const podeMarcarPerdido = role === 'master' || role === 'gerente';
   // Após aprovação (ou emissão da NF-e): nada pode ser editado nem arquivo removido.
   const travado = aprovado || nfeCompraEmitida;
   // Exceção: mesmo após a NF-e, os valores da avaliação comercial continuam editáveis
@@ -1241,7 +1251,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             {/* Marcar como perdido: em qualquer etapa (aguardando ou já aprovada),
                 até a NF-e de compra sair em PRODUÇÃO — depois disso a aquisição já
                 está fiscalmente fechada, não faz mais sentido desistir. */}
-            {precisaAprovacao && souAprovador && avaliacao?.situacao !== 'perdido' && avaliacao?.situacao !== 'dispensada' && !nfeEmitidaProducao && (
+            {precisaAprovacao && podeMarcarPerdido && avaliacao?.situacao !== 'perdido' && avaliacao?.situacao !== 'dispensada' && !nfeEmitidaProducao && (
               <Button size="sm" variant="outline" onClick={() => setAprovacaoPopup({ modo: 'perdido', motivo: '' })} className="gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive">
                 <XCircle className="h-4 w-4" /> Marcar como Perdido
               </Button>
