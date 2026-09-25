@@ -106,6 +106,7 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     refPrefix: 'compra',
     naturezaDescricao: 'Compra de moto seminova',
     operacaoFiscal: 'compra',
+    bemUsado: true,
     statusEntity: 'pos_compra',
     statusHist: 'nfe_compra_emitida',
     etapaTable: 'pos_compra_processos',
