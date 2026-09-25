@@ -246,7 +246,7 @@ export function descricaoItemMoto(m: DadosMoto): string {
  * Combustível é sempre GASOLINA (não há moto elétrica no catálogo hoje). */
 export function informacoesAdicionaisItemMoto(m: DadosMoto): string {
   const linhas: Array<string | null> = [
-    [m.marca?.toUpperCase(), m.modelo?.toUpperCase()].filter(Boolean).join(' ') || null,
+    ['MOTOCICLETA MARCA', m.marca?.toUpperCase(), m.modelo?.toUpperCase()].filter(Boolean).join(' '),
     m.cilindrada ? `CILINDRADA: ${m.cilindrada} CC` : null,
     // Só 0km tem esses dois campos preenchidos (vêm do veicProd da NF-e de
     // entrada da fábrica) — em seminova ficam null e somem da linha.
