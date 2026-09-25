@@ -1549,7 +1549,7 @@ const ContratoDialog: React.FC<Props> = ({
                         {(ipvaTipo === 'loja' || ipvaTipo === 'ambos') && <InfoDisplay label="Valor do IPVA" value={ipvaValor ? `R$ ${ipvaValor}` : undefined} />}
                       </>
                     )}
-                    <InfoDisplay label={transferenciaLabel} value={transferenciaTipo === 'cliente' ? 'Cliente' : transferenciaTipo === 'loja' ? 'Loja' : transferenciaTipo === 'outra_uf' ? 'Outra UF' : undefined} />
+                    <InfoDisplay label={transferenciaLabel} value={transferenciaTipo === 'cliente' ? 'Cliente' : transferenciaTipo === 'loja' ? 'Loja' : transferenciaTipo === 'outra_uf' ? 'Externa' : undefined} />
                     {transferenciaTipo === 'cliente' && <InfoDisplay label={transferenciaValorLabel} value={transferenciaValor ? `R$ ${transferenciaValor}` : undefined} />}
                   </div>
                 ) : (
@@ -1603,7 +1603,7 @@ const ContratoDialog: React.FC<Props> = ({
                             onClick={() => setTransferenciaTipo(opt)}
                             className="w-24"
                           >
-                            {opt === 'cliente' ? 'Cliente' : opt === 'loja' ? 'Loja' : 'Outra UF'}
+                            {opt === 'cliente' ? 'Cliente' : opt === 'loja' ? 'Loja' : 'Externa'}
                           </Button>
                         ))}
                       </div>
