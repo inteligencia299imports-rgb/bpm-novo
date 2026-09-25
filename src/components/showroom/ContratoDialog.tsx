@@ -504,10 +504,14 @@ const ContratoDialog: React.FC<Props> = ({
 
       const atSinal = freshEstoque?.valor_sinal ?? (atendimento as any).valor_sinal;
       const atVenda = freshEstoque?.valor_venda ?? (atendimento as any).valor_venda;
-      // Quitação e Fechamento da moto do cliente vêm da avaliação (origem) — não são editados no contrato.
+      // Quitação e Fechamento da moto do cliente têm a avaliação como origem —
+      // editados aqui no contrato (sinal ou venda), o valor sempre propaga de
+      // volta pra lá (ver saveContrato). Sem Valor de Fechamento ainda
+      // definido, começa com a própria Avaliação de Compra como sugestão
+      // (editável — o negociado pode divergir do avaliado).
       const avTroca = motosAvaliacao[0] ? avaliacoes[motosAvaliacao[0].id] : null;
       const avQuitacao = avTroca?.valor_quitacao;
-      const avFechamento = avTroca?.valor_fechamento;
+      const avFechamento = avTroca?.valor_fechamento ?? avTroca?.avaliacao_compra ?? null;
       const fmtCur = (v: number) => formatCurrencyInput(String(Math.round(v * 100)));
       const atCpf = (freshAtendimento as any)?.cliente?.cpf_cnpj ?? atendimento.cliente?.cpf_cnpj;
       setClienteCpfOriginal(atCpf ? String(atCpf) : '');
@@ -803,15 +807,19 @@ const ContratoDialog: React.FC<Props> = ({
     }
 
     // Troca: este é o ÚNICO contrato gerado (não existe um "contrato de compra"
-    // separado pra moto que entra) — o Valor de Quitação daqui precisa
-    // propagar pra avaliacoes.valor_quitacao, que é o campo que o Pós-Compra/
-    // ContratoCompraDialog lê pra liberar a emissão da NF-e de compra. Sem
+    // separado pra moto que entra) — Valor de Quitação e Valor de Fechamento
+    // daqui precisam propagar pra avaliacoes, que é de onde o Pós-Compra/
+    // ContratoCompraDialog leem pra liberar a emissão da NF-e de compra. Sem
     // isso, ficava só na linha do contrato de venda e nunca satisfazia aquele
     // gate — achado real: moto BDC9J54, quitação 0 salva aqui mas NF-e de
-    // compra continuava bloqueada.
+    // compra continuava bloqueada. Roda em Gerar Proposta (sinal) e em Gerar
+    // Venda igual — o sinal costuma ser o primeiro save da negociação, então
+    // não pode esperar a venda pra propagar.
     if (hasTroca && motoAv?.id) {
+      const parsedFechamento = parseCurrencyInput(valorFechamento);
       await supabase.from('avaliacoes').update({
         valor_quitacao: valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : null,
+        ...(parsedFechamento && parsedFechamento > 0 ? { valor_fechamento: parsedFechamento } : {}),
       } as any).eq('id', motoAv.id);
     }
 
@@ -838,14 +846,6 @@ const ContratoDialog: React.FC<Props> = ({
         toast.error('Erro ao salvar contrato');
         setSaving(false);
         return null;
-      }
-      // Sync valor_fechamento to avaliacoes
-      const parsedFechamento = parseCurrencyInput(valorFechamento);
-      if (parsedFechamento && parsedFechamento > 0 && hasTroca) {
-        const { data: avs } = await supabase.from('avaliacoes').select('id').eq('atendimento_id', atendimento.id);
-        if (avs && avs.length > 0) {
-          await Promise.all(avs.map(av => supabase.from('avaliacoes').update({ valor_fechamento: parsedFechamento }).eq('id', av.id)));
-        }
       }
       await syncAgregados(contratoId);
       setSaving(false);
@@ -1228,9 +1228,15 @@ const ContratoDialog: React.FC<Props> = ({
     if (!isDucati && (ipvaTipo === 'loja' || ipvaTipo === 'ambos') && !ipvaValor) errors.push('Valor do IPVA');
     if (!transferenciaTipo) errors.push(transferenciaLabel);
     if (transferenciaTipo === 'cliente' && !transferenciaValor) errors.push(transferenciaValorLabel);
-    // Quitação da troca e cobertura das formas de pagamento também só fecham na
-    // Proposta de VENDA — no sinal ainda pode não estar tudo acertado.
-    if (variant === 'venda' && hasTroca && !valorQuitacao?.trim()) {
+    // Fechamento e Quitação da moto do cliente já valem pro Sinal também —
+    // precisam estar certos cedo porque o Pós-Compra da moto que entra pode
+    // andar em paralelo, antes da Venda ser fechada. Só a cobertura das
+    // formas de pagamento continua exclusiva da Proposta de VENDA (no sinal
+    // ainda pode não estar tudo acertado).
+    if (hasTroca && !valorFechamento?.trim()) {
+      errors.push('Valor de Fechamento da moto do cliente');
+    }
+    if (hasTroca && !valorQuitacao?.trim()) {
       errors.push('Valor de Quitação da moto do cliente');
     }
     if (variant === 'venda' && valorFaltante > 0.005) errors.push('Formas de Pagamento');
@@ -1663,6 +1669,11 @@ const ContratoDialog: React.FC<Props> = ({
                           <InfoDisplay label="Avaliação Compra" value={formatCurrency(avaliacaoData.avaliacao_compra)} />
                           <InfoDisplay label="Custos Loja" value={formatCurrency(avaliacaoData.previsao_custos_loja)} />
                         </>
+                      )}
+                      {soLeitura ? (
+                        <InfoDisplay label="Valor de Fechamento" value={valorFechamento ? `R$ ${valorFechamento}` : '—'} />
+                      ) : (
+                        <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} required />
                       )}
                       {soLeitura ? (
                         <InfoDisplay label="Valor de Quitação" value={valorQuitacao ? `R$ ${valorQuitacao}` : '—'} />
