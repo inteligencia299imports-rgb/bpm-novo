@@ -248,6 +248,14 @@ export function informacoesAdicionaisItemMoto(m: DadosMoto): string {
   const linhas: Array<string | null> = [
     [m.marca?.toUpperCase(), m.modelo?.toUpperCase()].filter(Boolean).join(' ') || null,
     m.cilindrada ? `CILINDRADA: ${m.cilindrada} CC` : null,
+    // Só 0km tem esses dois campos preenchidos (vêm do veicProd da NF-e de
+    // entrada da fábrica) — em seminova ficam null e somem da linha.
+    m.potencia_motor != null && String(m.potencia_motor).trim() !== '' ? `POTÊNCIA: ${m.potencia_motor} CV` : null,
+    m.numero_motor ? `Nº MOTOR: ${String(m.numero_motor).toUpperCase()}` : null,
+    // Lotação (nº de passageiros): fixo em 2 (condutor + garupa) pra toda
+    // motocicleta — mesmo valor constante já usado no grupo veicProd
+    // (veiculo_lotacao). Só 0km, mesmo critério dos dois campos acima.
+    m.zero_km ? 'LOTAÇÃO: 2' : null,
     (m.ano_fabricacao || m.ano_modelo) ? `FAB./MOD.: ${m.ano_fabricacao ?? m.ano_modelo} / ${m.ano_modelo ?? m.ano_fabricacao}` : null,
     m.chassi ? `CHASSI: ${m.chassi.toUpperCase()}` : null,
     m.placa ? `PLACA: ${m.placa.toUpperCase()}` : null,
