@@ -1075,7 +1075,13 @@ const ContratoDialog: React.FC<Props> = ({
   };
 
   const handleGerar = async (variant: 'sinal' | 'venda' = 'sinal') => {
-    if (!validateForGeneration(variant)) return;
+    // Somente leitura (NF-e já em produção): isso é uma REIMPRESSÃO do contrato
+    // já fechado, não uma proposta nova — não faz sentido barrar por "campos
+    // obrigatórios" que fazem sentido pra gerar, não pra reabrir um PDF já
+    // fiscalmente concluído. Achado real: contrato de 9 dias (venda 0km já
+    // com NF-e em produção) travando com "Preencha os campos obrigatórios"
+    // ao tentar só reimprimir.
+    if (!soLeitura && !validateForGeneration(variant)) return;
     // Venda de moto nova (Ducati): exige a moto do estoque de novas selecionada.
     if (variant === 'venda' && !soLeitura && exigeMotoNovaParaVenda) {
       toast.error('Selecione a moto do estoque de novas na Moto de Interesse para gerar a venda. Sem ela, só é possível gerar o sinal.');
