@@ -590,7 +590,7 @@ Deno.serve(async (req) => {
         cnpjEstabelecimento: cnpjDestino,
       };
       const t = await transferirEntreEstabelecimentosZeroKm({
-        chassi: chassiUp, idAutorizacaoTransferencia: idAutorizacao,
+        chassi: chassiUp, idAutorizacao,
         chaveNotaFiscal: soChave(nfEntrada.chave_nfe), dataTransferencia,
         dataEntradaEstoque: dataTransferencia,
         dataHoraMedicaoHodometro: dataTransferencia,

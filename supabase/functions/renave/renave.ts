@@ -450,9 +450,13 @@ export const consultarAutorizacoesTransferencia = (params: { chassi?: string }, 
 // mesmos nomes de campo já usados em EntradaZeroKm, faz sentido já que esse
 // passo cria o novo registro de estoque no destino. 0km sem hodômetro
 // rodado, mesmo padrão do `entrada` normal (RenaveDialog): quilometragem 0.
+// Achado real 2026-09-28: `idAutorizacaoTransferencia` também não foi
+// reconhecido ("Id da autorização de transferência é obrigatória" mesmo
+// preenchido) — troca pra `idAutorizacao`, nome curto (mesmo padrão de
+// `idEstoque` em vez de `idEstoqueOrigem`/algo mais descritivo).
 export interface TransferenciaEntreEstabelecimentosZeroKm {
   chassi: string;
-  idAutorizacaoTransferencia: number;
+  idAutorizacao: number;
   chaveNotaFiscal: string;
   dataTransferencia: string; // ISO
   dataEntradaEstoque: string; // ISO
