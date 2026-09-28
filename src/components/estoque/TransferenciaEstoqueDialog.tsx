@@ -6,8 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ArrowRightLeft, FileText, Loader2, RefreshCw, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ArrowRightLeft, FileText, Loader2, RefreshCw, AlertTriangle, CheckCircle2, ArrowRight, Radio } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
+import { extrairErroFuncao } from '@/lib/edgeFunctionError';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
 import { NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
@@ -47,9 +49,11 @@ interface LojaOpcao {
  * comum de transferência). Seminova chaveia por avaliacao_id; 0km chaveia
  * pelo próprio id de estoque_motos_novas (não tem avaliação).
  *
- * Por ora só POA↔FLN: seminova entre as lojas "299f"/"299p", 0km entre
- * "Ducati FLN"/"Ducati POA" — as demais lojas do grupo (MMATOS) ficam de fora
- * da lista de destino até esse escopo ser ampliado.
+ * Seminova só POA↔FLN por ora ("299f"/"299p"). 0km também inclui a FAG
+ * ("Ducati BSB"), além de "Ducati FLN"/"Ducati POA" — o backend decide
+ * sozinho a família de CFOP certa (152 = mesma raiz de CNPJ/filial;
+ * 949 = raiz de CNPJ diferente) comparando o CNPJ real das duas empresas,
+ * nunca por nome fixo.
  */
 const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoqueItem, onSuccess }) => {
   const eh0km = !!estoqueItem && !estoqueItem.avaliacao_id;
@@ -57,6 +61,8 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
   const [lojas, setLojas] = useState<LojaOpcao[]>([]);
   const [lojasLoading, setLojasLoading] = useState(true);
   const [destinoLojaId, setDestinoLojaId] = useState('');
+  const [renaveInfo, setRenaveInfo] = useState<{ id_estoque: string | null; estado: string | null; ultimo_erro: string | null } | null>(null);
+  const [renaveLoading, setRenaveLoading] = useState(false);
 
   const saida = useNfeCompra(entityId, open, eh0km ? 'transferencia_saida_0km' : 'transferencia_saida', eh0km ? 'estoque_moto_nova' : 'avaliacao');
   const entrada = useNfeCompra(entityId, open, eh0km ? 'transferencia_entrada_0km' : 'transferencia_entrada', eh0km ? 'estoque_moto_nova' : 'avaliacao', onSuccess);
@@ -79,9 +85,42 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saida.nfe, entrada.nfe]);
 
-  // Por ora só POA↔FLN, e a loja específica depende do tipo da moto: seminova
-  // usa as lojas "normais" (299f/299p), 0km usa as lojas "Ducati" dedicadas.
-  const lojasPermitidas = eh0km ? ['Ducati FLN', 'Ducati POA'] : ['299f', '299p'];
+  // Seminova só POA↔FLN por ora. 0km também inclui a FAG (Ducati BSB) — CFOP
+  // 6949/2949 (raiz de CNPJ diferente), resolvido automaticamente no backend.
+  const lojasPermitidas = eh0km ? ['Ducati FLN', 'Ducati POA', 'Ducati BSB'] : ['299f', '299p'];
+
+  const carregarRenaveInfo = React.useCallback(() => {
+    if (!eh0km || !entityId) return;
+    (supabase as any)
+      .from('estoque_motos_novas')
+      .select('renave_id_estoque, renave_estado, renave_ultimo_erro')
+      .eq('id', entityId)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        setRenaveInfo(data ? { id_estoque: data.renave_id_estoque, estado: data.renave_estado, ultimo_erro: data.renave_ultimo_erro } : null);
+      });
+  }, [eh0km, entityId]);
+
+  useEffect(() => { if (open) carregarRenaveInfo(); }, [open, carregarRenaveInfo]);
+
+  const sincronizarRenave = async () => {
+    setRenaveLoading(true);
+    try {
+      const { data: res, error } = await supabase.functions.invoke('renave', {
+        body: { acao: 'transferencia-entre-estabelecimentos', estoque_moto_nova_id: entityId },
+      });
+      if (error || (res && res.error)) {
+        toast.error(res?.error || await extrairErroFuncao(error, 'Falha ao sincronizar com o RENAVE'));
+        return;
+      }
+      toast.success('Transferência sincronizada com o RENAVE.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao chamar o RENAVE');
+    } finally {
+      setRenaveLoading(false);
+      carregarRenaveInfo();
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -276,6 +315,45 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
               </div>
             </CardContent>
           </Card>
+
+          {/* Passo 3 (só 0km): sincronizar a transferência com o RENAVE, depois
+              das duas NF-e's autorizadas em produção. Best-effort — payload da
+              SERPRO ainda não validado em produção, ver renave/index.ts. */}
+          {eh0km && saidaProducao && entradaEmitida && entrada.nfe?.ambiente === 'producao' && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Radio className="h-4 w-4 text-primary" /> 3. Sincronizar RENAVE
+                  {renaveInfo?.id_estoque && (
+                    <Badge variant="outline" className="gap-1.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Sincronizado
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {renaveInfo?.id_estoque ? (
+                  <p className="text-xs text-muted-foreground">
+                    idEstoque RENAVE {renaveInfo.id_estoque} {renaveInfo.estado ? `— ${renaveInfo.estado}` : ''}
+                  </p>
+                ) : (
+                  <>
+                    {renaveInfo?.ultimo_erro && (
+                      <p className="text-sm text-destructive flex items-start gap-1.5">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" /> {renaveInfo.ultimo_erro}
+                      </p>
+                    )}
+                    <div className="flex justify-end">
+                      <Button size="sm" className="gap-1.5" disabled={renaveLoading} onClick={sincronizarRenave}>
+                        {renaveLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radio className="h-4 w-4" />}
+                        Sincronizar RENAVE
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="flex justify-end pt-2">
