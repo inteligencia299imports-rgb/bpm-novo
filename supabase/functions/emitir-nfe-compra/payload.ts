@@ -287,6 +287,13 @@ export function informacoesAdicionaisItemMoto(m: DadosMoto): string {
     m.placa ? `PLACA: ${m.placa.toUpperCase()}` : null,
     m.renavam ? `RENAVAM: ${onlyDigits(m.renavam)}` : null,
     m.cor ? `COR: ${m.cor.toUpperCase()}` : null,
+    // Códigos do grupo veicProd (só 0km, mesmo critério de potência/nº motor
+    // acima) — a DANFE já traz o texto descritivo (cor, marca/modelo), mas os
+    // códigos DENATRAN também vão na descrição pra conferência visual (ex.:
+    // DETRAN cruzando a nota impressa) além do grupo estruturado da NF-e.
+    m.codigo_cor_fabricante ? `CÓD. COR: ${m.codigo_cor_fabricante}` : null,
+    m.codigo_cor_denatran ? `CÓD. COR DENATRAN: ${m.codigo_cor_denatran}` : null,
+    m.codigo_marca_modelo_denatran ? `CÓD. MARCA/MODELO: ${m.codigo_marca_modelo_denatran}` : null,
     'COMB.: GASOLINA',
     (m.km != null && String(m.km).trim() !== '') ? `KM: ${onlyDigits(String(m.km)) || m.km}` : null,
     m.numero_nf_entrada ? `NF ENTRADA: ${Number(m.numero_nf_entrada) || m.numero_nf_entrada}` : null,
