@@ -1606,6 +1606,12 @@ Deno.serve(async (req) => {
     }
   } else {
     // venda
+    // Empresa "só moto nova" (FAG): não pode vender moto seminova — só teria
+    // uma via troca, e essa já é obrigada a ir pra MMATOS antes da venda (ver
+    // bloco de troca abaixo). Mesma regra aplicada no frontend (ContratoDialog).
+    if (!ehVenda0km && empresaId === FAG_EMPRESA_ID) {
+      return jsonResponse({ error: 'Esta empresa só vende motos 0km — moto seminova não pode ser vendida por ela.' }, 409);
+    }
     // Moto ainda "em consignação" (tipo_aquisicao='consignada' pra sempre — não
     // vira mais 'convertida'): a venda como estoque próprio só é permitida
     // depois da devolução simbólica + compra, verificado pelo histórico de NF-e

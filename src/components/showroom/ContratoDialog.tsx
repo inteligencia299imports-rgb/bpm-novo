@@ -1234,8 +1234,14 @@ const ContratoDialog: React.FC<Props> = ({
   // ordem em que os cards aparecem na tela. Sem toast — usado tanto pelo aviso
   // abaixo do título quanto pela validação (com toast) em validateForGeneration.
   const isDucati = atendimento.loja?.toLowerCase().startsWith('ducati');
+  // Empresas "só moto nova" (ex.: FAG) não fazem compra/consignação direta de
+  // seminova (EMPRESAS_SO_MOTO_NOVA) — pela mesma razão, também não podem
+  // VENDER uma moto seminova (só teriam uma via troca, e essa já é obrigada a
+  // ser transferida pra MMATOS antes da venda concluir).
+  const motoSeminovaBloqueadaEmpresa = EMPRESAS_SO_MOTO_NOVA.has(empresaId) && !!(motoInt || estItem) && !eh0kmVenda;
   const buildErrosGeracao = (variant: 'sinal' | 'venda'): string[] => {
     const errors: string[] = [];
+    if (motoSeminovaBloqueadaEmpresa) errors.push('Moto seminova não pode ser vendida por esta empresa (só vende 0km)');
     if (!empresaId) errors.push('Empresa vendedora');
     if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
     // Cadastro completo do cliente (e-mails, telefone comercial, endereço, dados
@@ -1313,6 +1319,12 @@ const ContratoDialog: React.FC<Props> = ({
       {!ehNfe && vendaBloqueadaAprovacao && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 flex items-center gap-1.5">
           <AlertTriangle className="h-3.5 w-3.5" /> Proposta aguardando aprovação — o contrato de sinal já pode ser gerado; a proposta de venda libera após a aprovação do seu Gestor.
+        </div>
+      )}
+
+      {motoSeminovaBloqueadaEmpresa && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive flex items-center gap-1.5">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Esta empresa só vende motos 0km — a moto seminova selecionada não pode ser vendida por ela. Escolha uma moto 0km ou transfira/venda esta moto por outra empresa.
         </div>
       )}
 
@@ -2119,7 +2131,7 @@ const ContratoDialog: React.FC<Props> = ({
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
               {(() => {
-                const disabled = nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim()) || !nfSemPendencias;
+                const disabled = nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim()) || !nfSemPendencias || motoSeminovaBloqueadaEmpresa;
                 // Moto 0km: produção exige os valores de ICMS-ST retido (da NF de entrada).
                 const stRetidoOk = !eh0kmVenda || (
                   parseCurrencyInput(stBcRetido) > 0 &&
@@ -2128,11 +2140,13 @@ const ContratoDialog: React.FC<Props> = ({
                 );
                 const title = !empresaId
                   ? 'Nenhuma empresa vinculada à loja do atendimento'
-                  : hasTroca && !valorQuitacao?.trim()
-                    ? 'Valor de Quitação da moto do cliente é obrigatório'
-                    : !nfSemPendencias
-                      ? 'Cadastro do cliente incompleto — resolva as pendências marcadas nos cards acima'
-                      : undefined;
+                  : motoSeminovaBloqueadaEmpresa
+                    ? 'Esta empresa só vende motos 0km — moto seminova não pode ser vendida por ela'
+                    : hasTroca && !valorQuitacao?.trim()
+                      ? 'Valor de Quitação da moto do cliente é obrigatório'
+                      : !nfSemPendencias
+                        ? 'Cadastro do cliente incompleto — resolva as pendências marcadas nos cards acima'
+                        : undefined;
                 return (
                   <>
                     {(podeEmitirNova || podeReemitirHomolog) && !nfe.pendente && (
