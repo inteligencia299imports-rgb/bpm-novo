@@ -377,8 +377,22 @@ Deno.serve(async (req) => {
           // nunca inclui um chassi com "estoque ativo" (achado real
           // 2026-09-15, chassi 95V4F00AAPM000003: pendentes sempre voltou []
           // nesse caso, o resync original nunca achava nada). Segunda
-          // tentativa: consulta direta de veículo por chassi (catálogo #66,
-          // não verificada -- só leitura, se falhar cai no erro de sempre).
+          // tentativa: `listarEstoques` (/api/estoques) -- mesmo achado já
+          // aplicado no resync do usado (2026-09-22, ver bloco entrada-usado
+          // abaixo): lista o estoque do PRÓPRIO estabelecimento em QUALQUER
+          // estado (SOLICITADO/TRANSFERIDO/CONFIRMADO), diferente de
+          // `consultarVeiculoPorChassi` (só serve se já CONFIRMADO -- é por
+          // isso que o chassi 95V5D00AATM000086 não foi encontrado antes).
+          if (!achado) {
+            try {
+              const le = await listarEstoques({ chassi: chassiUp }, ctx);
+              const listaLe = Array.isArray(le.body) ? le.body : (Array.isArray(le.body?.content) ? le.body.content : []);
+              achado = listaLe.find((x: any) => String(x?.chassi ?? '').toUpperCase() === chassiUp)
+                ?? (listaLe.length === 1 ? listaLe[0] : null);
+            } catch { /* best-effort */ }
+          }
+          // Terceira tentativa: consulta direta de veículo por chassi
+          // (catálogo #66, não verificada -- só serve se já CONFIRMADO).
           if (!achado) {
             try {
               const v = await consultarVeiculoPorChassi(chassiUp, ctx);
@@ -402,11 +416,12 @@ Deno.serve(async (req) => {
             return json({ ok: true, resincronizado: true, estoque: achado });
           }
 
-          // Nem pendentes nem a consulta de veículo acharam o idEstoque --
-          // não dá pra resincronizar sozinho. Mensagem diferente da genérica
-          // (que sugere "repita a operação", e vai falhar do mesmo jeito de
-          // novo) pra deixar claro que precisa de checagem manual.
-          const msgManual = `${msg} — resync automático não encontrou o idEstoque (nem em pendentes, nem na consulta de veículo); requer verificação manual junto à SERPRO/despachante.`;
+          // Nem pendentes, nem listarEstoques, nem a consulta de veículo
+          // acharam o idEstoque -- não dá pra resincronizar sozinho. Mensagem
+          // diferente da genérica (que sugere "repita a operação", e vai
+          // falhar do mesmo jeito de novo) pra deixar claro que precisa de
+          // checagem manual.
+          const msgManual = `${msg} — resync automático não encontrou o idEstoque (nem em pendentes, nem em listarEstoques, nem na consulta de veículo); requer verificação manual junto à SERPRO/despachante.`;
           await persistir(admin, emnId, { renave_ultimo_erro: msgManual });
           return json({ error: msgManual, status: r.status, detalhe: r.body }, 422);
         }
