@@ -524,6 +524,23 @@ export async function generateContratoConsignacaoPdf(
     y += sectionGap;
   }
 
+  // DAS CONSULTAS, RESTRIÇÕES E RESPONSABILIDADES DO CONSIGNANTE
+  sectionHeader('DAS CONSULTAS, RESTRIÇÕES E RESPONSABILIDADES DO CONSIGNANTE');
+  setNormal();
+  const consultasRestricoes = [
+    'Serão realizadas consultas administrativas e jurídicas acerca do veículo até o momento da concretização da venda e, posteriormente, durante o procedimento de transferência de propriedade, com a finalidade de verificar a existência de eventuais restrições, impedimentos, gravames, bloqueios, débitos, ônus ou quaisquer outras pendências que possam obstar, retardar ou dificultar a venda ou a efetiva transferência do veículo.',
+    'Na hipótese de ser constatada, a qualquer tempo, qualquer restrição, impedimento, gravame, bloqueio, débito, ônus ou pendência de responsabilidade do CONSIGNANTE, que inviabilize, impeça ou dificulte a venda ou a transferência do veículo, o CONSIGNANTE será imediatamente comunicado e ficará integralmente responsável pela regularização da respectiva pendência, independentemente de quando esta tenha sido constituída ou identificada.',
+    'O CONSIGNANTE responderá integralmente por todos os prejuízos, ônus e despesas decorrentes de tais pendências, incluindo, mas não se limitando a, multas, taxas, tributos, despesas administrativas, despesas cartorárias, custos de regularização, despesas de deslocamento, transporte e armazenamento do veículo, honorários advocatícios, custas e despesas judiciais ou extrajudiciais, valores eventualmente restituídos ao adquirente, bem como quaisquer outros danos e prejuízos financeiros suportados pela CONSIGNATÁRIA ou pelo adquirente em razão da restrição ou pendência de responsabilidade do CONSIGNANTE.',
+    'Caso a existência da restrição ou pendência resulte no cancelamento ou desfazimento da negociação, o CONSIGNANTE ficará igualmente responsável pela restituição e pelo ressarcimento de todos os valores e despesas decorrentes do negócio, inclusive eventuais perdas e danos, sem prejuízo da apuração de outros prejuízos comprovadamente suportados pela CONSIGNATÁRIA.',
+    'A responsabilidade do CONSIGNANTE permanecerá vigente até a efetiva regularização e baixa de toda e qualquer pendência de sua responsabilidade, inclusive aquelas identificadas somente após a venda ou durante o procedimento de transferência do veículo.',
+    'A realização das consultas pela CONSIGNATÁRIA não implica assunção de responsabilidade por eventuais restrições ou pendências de titularidade ou responsabilidade do CONSIGNANTE, tampouco constitui garantia de inexistência de impedimentos supervenientes ou não disponibilizados nos sistemas oficiais no momento da consulta.',
+  ];
+  for (const par of consultasRestricoes) {
+    checkPageBreak(lineHeight);
+    y = drawJustifiedText(doc, par, marginLeft, contentWidth, y, lineHeight, undefined, lineCheckPageBreak);
+    y += sectionGap;
+  }
+
   // DOS VÍCIOS OCULTOS
   sectionHeader('DOS VÍCIOS OCULTOS');
   setNormal();
