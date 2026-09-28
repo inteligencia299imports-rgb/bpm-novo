@@ -383,13 +383,22 @@ Deno.serve(async (req) => {
           // estado (SOLICITADO/TRANSFERIDO/CONFIRMADO), diferente de
           // `consultarVeiculoPorChassi` (só serve se já CONFIRMADO -- é por
           // isso que o chassi 95V5D00AATM000086 não foi encontrado antes).
+          // Diagnóstico temporário: se qualquer uma dessas chamadas falhar
+          // ANTES de logar em renave_chamadas (ex.: exceção na montagem do
+          // client mTLS), o catch silencioso escondia isso por completo --
+          // sem nem aparecer no log. Guarda a mensagem pra entrar na resposta
+          // final e dar visibilidade de qual delas (se alguma) quebrou.
+          const diagnostico: string[] = [];
           if (!achado) {
             try {
               const le = await listarEstoques({ chassi: chassiUp }, ctx);
               const listaLe = Array.isArray(le.body) ? le.body : (Array.isArray(le.body?.content) ? le.body.content : []);
               achado = listaLe.find((x: any) => String(x?.chassi ?? '').toUpperCase() === chassiUp)
                 ?? (listaLe.length === 1 ? listaLe[0] : null);
-            } catch { /* best-effort */ }
+            } catch (e) {
+              diagnostico.push(`listarEstoques: ${e instanceof Error ? e.message : String(e)}`);
+              console.error('renave resync 0km — listarEstoques falhou:', e);
+            }
           }
           // Terceira tentativa: consulta direta de veículo por chassi
           // (catálogo #66, não verificada -- só serve se já CONFIRMADO).
@@ -401,7 +410,10 @@ Deno.serve(async (req) => {
                 : (v.body?.id || v.body?.idEstoque) ? [v.body] : [];
               achado = lv.find((x: any) => String(x?.chassi ?? '').toUpperCase() === chassiUp)
                 ?? (lv.length === 1 ? lv[0] : null);
-            } catch { /* best-effort -- endpoint não verificado */ }
+            } catch (e) {
+              diagnostico.push(`consultarVeiculoPorChassi: ${e instanceof Error ? e.message : String(e)}`);
+              console.error('renave resync 0km — consultarVeiculoPorChassi falhou:', e);
+            }
           }
 
           const idRecuperado = achado?.id ?? achado?.idEstoque ?? null;
@@ -421,7 +433,8 @@ Deno.serve(async (req) => {
           // diferente da genérica (que sugere "repita a operação", e vai
           // falhar do mesmo jeito de novo) pra deixar claro que precisa de
           // checagem manual.
-          const msgManual = `${msg} — resync automático não encontrou o idEstoque (nem em pendentes, nem em listarEstoques, nem na consulta de veículo); requer verificação manual junto à SERPRO/despachante.`;
+          const msgManual = `${msg} — resync automático não encontrou o idEstoque (nem em pendentes, nem em listarEstoques, nem na consulta de veículo); requer verificação manual junto à SERPRO/despachante.`
+            + (diagnostico.length ? ` [diagnóstico: ${diagnostico.join(' | ')}]` : '');
           await persistir(admin, emnId, { renave_ultimo_erro: msgManual });
           return json({ error: msgManual, status: r.status, detalhe: r.body }, 422);
         }
