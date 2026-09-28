@@ -339,34 +339,37 @@ export function veiculoProdMoto(m: DadosMoto): Record<string, unknown> | null {
   const anoFab = m.ano_fabricacao ?? m.ano_modelo ?? null;
   const anoMod = m.ano_modelo ?? m.ano_fabricacao ?? null;
 
-  // Cadastrados por unidade quando o default não serve pra essa moto (ex.:
-  // DETRAN rejeitando transferência) — ver estoque_motos_novas / DadosFiscaisNovaDialog.
+  // ATENÇÃO: o XSD da SEFAZ (TVeicProd) é uma <sequence> posicional — os campos
+  // têm que sair NESTA ordem exata (a mesma do grupo <veicProd> na NF-e real),
+  // senão a SEFAZ rejeita com "Element 'X' not expected. Expected 'Y'." Os
+  // campos condicionais (chassi/cor/cilindrada/ano) entram via spread NA
+  // POSIÇÃO CERTA — nunca acrescentados depois do objeto pronto.
   const v: Record<string, unknown> = {
     veiculo_tipo_operacao: m.tipo_operacao ? Number(m.tipo_operacao) : 1,        // tpOp — venda de 0km por concessionária
-    veiculo_condicao: m.condicao_veiculo ? Number(m.condicao_veiculo) : 1,       // condVeic — acabado
-    veiculo_tipo_combustivel: m.tipo_combustivel || '02',                       // tpComb — gasolina (catálogo só tem moto a combustão)
-    veiculo_especie: m.especie_veiculo ? Number(m.especie_veiculo) : 1,          // espVeic — passageiro
-    veiculo_tipo: m.tipo_veiculo || '04',                                       // tpVeic — motocicleta (tabela RENAVAM)
-    veiculo_lotacao: 2,                     // lota — condutor + 1
-    veiculo_codigo_vin: m.codigo_vin || 'N',                                     // VIN — chassi não remarcado
-    veiculo_restricao: m.restricao_veiculo ? Number(m.restricao_veiculo) : 0,    // tpRest — sem restrição
-    veiculo_tipo_pintura: m.tipo_pintura || 'A',                                 // tpPint
-    veiculo_distancia_eixos: '0',           // dist — moto (eixo único)
-    veiculo_cmt: '0',                       // CMT — não se aplica a moto
+    ...(m.chassi ? { veiculo_chassi: m.chassi.toUpperCase() } : {}),             // chassi
+    veiculo_codigo_cor: cCor,                                                    // cCor
+    ...(m.cor ? { veiculo_descricao_cor: m.cor.toUpperCase() } : {}),            // xCor
+    veiculo_potencia_motor: potencia,                                            // pot
+    ...(cc ? { veiculo_cm3: cc } : {}),                                          // cilin
+    veiculo_peso_liquido: pesoL,                                                 // pesoL
+    veiculo_peso_bruto: pesoB,                                                   // pesoB
     veiculo_serie: '1',                     // nSerie — não controlado; issuers usam "1"
-    veiculo_potencia_motor: potencia,
-    veiculo_peso_liquido: pesoL,
-    veiculo_peso_bruto: pesoB,
-    veiculo_numero_motor: nMotor,
-    veiculo_codigo_cor: cCor,
-    veiculo_codigo_cor_denatran: cCorDenatran,
-    veiculo_codigo_marca_modelo: cMod,
+    veiculo_tipo_combustivel: m.tipo_combustivel || '02',                       // tpComb — gasolina (catálogo só tem moto a combustão)
+    veiculo_numero_motor: nMotor,                                                // nMotor
+    veiculo_cmt: '0',                       // CMT — não se aplica a moto
+    veiculo_distancia_eixos: '0',           // dist — moto (eixo único)
+    ...(anoMod ? { veiculo_ano_modelo: Number(anoMod) || anoMod } : {}),         // anoMod
+    ...(anoFab ? { veiculo_ano_fabricacao: Number(anoFab) || anoFab } : {}),     // anoFab
+    veiculo_tipo_pintura: m.tipo_pintura || 'A',                                 // tpPint
+    veiculo_tipo: m.tipo_veiculo || '04',                                       // tpVeic — motocicleta (tabela RENAVAM)
+    veiculo_especie: m.especie_veiculo ? Number(m.especie_veiculo) : 1,          // espVeic — passageiro
+    veiculo_codigo_vin: m.codigo_vin || 'N',                                     // VIN — chassi não remarcado
+    veiculo_condicao: m.condicao_veiculo ? Number(m.condicao_veiculo) : 1,       // condVeic — acabado
+    veiculo_codigo_marca_modelo: cMod,                                           // cMod
+    veiculo_codigo_cor_denatran: cCorDenatran,                                   // cCorDENATRAN
+    veiculo_lotacao: 2,                     // lota — condutor + 1
+    veiculo_restricao: m.restricao_veiculo ? Number(m.restricao_veiculo) : 0,    // tpRest — sem restrição
   };
-  if (m.chassi) v.veiculo_chassi = m.chassi.toUpperCase();
-  if (m.cor) v.veiculo_descricao_cor = m.cor.toUpperCase();
-  if (cc) v.veiculo_cm3 = cc;
-  if (anoFab) v.veiculo_ano_fabricacao = Number(anoFab) || anoFab;
-  if (anoMod) v.veiculo_ano_modelo = Number(anoMod) || anoMod;
   return v;
 }
 
