@@ -52,8 +52,13 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
     setLoading(true);
     const selectStr = `*, ${MARCA_MODELO_SELECT}, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`;
 
-    const estResult = await fetchAllRange(() => supabase.from('estoque_motos').select('avaliacao_id, status, observacoes, created_at').not('avaliacao_id', 'is', null));
+    const estResult = await fetchAllRange(() => supabase.from('estoque_motos').select('avaliacao_id, status, observacoes, created_at, atendimento_venda_id').not('avaliacao_id', 'is', null));
     const nfeResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('avaliacao_id, status, ambiente, created_at').not('avaliacao_id', 'is', null));
+    // NF que realmente trava a edição da proposta de consignação: a NF DE
+    // VENDA dessa moto (não a NF de consignação/devolução/compra da cadeia
+    // interna, que é só formalidade de entrada) — mesma regra do
+    // ContratoConsignacaoDialog.
+    const nfeVendaResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('atendimento_id, status, ambiente').in('operacao', ['venda_seminova', 'venda_0km']).eq('status', 'processada').eq('ambiente', 'producao'));
     // Etapa "NF EMITIDA" concluída sem nfe_entradas (emitida fora do bpm-novo,
     // ou avaliação importada) — cai no fallback cinza (NFE_TAG_SEM_REGISTRO).
     const etapaNfResult = await fetchAllRange(() => supabase.from('consignacao_processos').select('avaliacao_id').eq('etapa', 'NF EMITIDA').eq('concluida', true));
@@ -69,10 +74,11 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
       if (!n.avaliacao_id) return;
       (nfeRowsPorAvaliacao[n.avaliacao_id] ??= []).push(n);
     });
+    const atendimentosComNfeVenda = new Set(((nfeVendaResult.data as any[]) || []).map((n: any) => n.atendimento_id));
     const etapaNfConcluidaSet = new Set(((etapaNfResult.data as any[]) || []).map((e: any) => e.avaliacao_id));
     if (error) { toast.error('Erro ao carregar consignações'); } else {
-      const estoqueMap: Record<string, { status: string; observacoes: string | null; data_entrada: string | null }> = {};
-      (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes, data_entrada: e.created_at }; });
+      const estoqueMap: Record<string, { status: string; observacoes: string | null; data_entrada: string | null; atendimento_venda_id: string | null }> = {};
+      (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes, data_entrada: e.created_at, atendimento_venda_id: e.atendimento_venda_id || null }; });
       const histResult = await fetchAllRange(() => supabase.from('status_history').select('entity_id, created_at').eq('entity_type', 'avaliacao').eq('status', 'adquirida'));
       const histByEntity: Record<string, string> = {};
       (histResult.data || []).forEach((h: any) => {
@@ -85,7 +91,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
         if (picked) acquDateMap[d.id] = picked;
       });
       let mapped = (data || [])
-        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeTag: nfeTagFromRows(nfeRowsPorAvaliacao[d.id]) ?? (etapaNfConcluidaSet.has(d.id) ? NFE_TAG_SEM_REGISTRO : undefined), _temNfeProducao: (nfeRowsPorAvaliacao[d.id] || []).some((n: any) => n.status === 'processada' && n.ambiente === 'producao') }));
+        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeTag: nfeTagFromRows(nfeRowsPorAvaliacao[d.id]) ?? (etapaNfConcluidaSet.has(d.id) ? NFE_TAG_SEM_REGISTRO : undefined), _temNfeProducao: !!estoqueMap[d.id]?.atendimento_venda_id && atendimentosComNfeVenda.has(estoqueMap[d.id]!.atendimento_venda_id) }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       if (filterCidade !== 'todos') { mapped = mapped.filter((a: any) => matchesCidade(a.atendimento?.loja, filterCidade)); }
       setItems(mapped);
@@ -97,9 +103,10 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
   const getColumnItems = (status: ConsignacaoStatus) => items.filter((a: any) => {
     const s = (a.consignacao_status || 'em_aberto') as ConsignacaoStatus;
     if (s !== status) return false;
-    // Concluída com NF-e de produção já emitida e vinculada: processo
-    // realmente encerrado, sai do quadro. Sem NF-e vinculada (ex.: emitida
-    // no sistema antigo), continua visível pra permitir editar valores/proposta.
+    // Concluída com NF-e DE VENDA dessa moto já emitida em produção: processo
+    // realmente encerrado, sai do quadro (a NF de consignação/devolução/
+    // compra da cadeia interna não conta — é só formalidade de entrada).
+    // Sem a NF de venda vinculada, continua visível pra editar valores/proposta.
     if (status === 'concluido' && a._temNfeProducao) return false;
     return true;
   });

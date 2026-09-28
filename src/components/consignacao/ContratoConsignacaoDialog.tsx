@@ -160,7 +160,30 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // Não trava no nfeEmProducao daqui: o botão de cancelar já checa isso na
   // renderização — aqui só entra a restrição extra da cadeia.
   const podeCancelarNfe = !(nfeDevolucaoCheck.emitida && nfeDevolucaoCheck.nfe?.ambiente === 'producao');
-  const soLeitura = ehNfe || nfeEmProducao;
+  // Consignada: a NF de consignação é só a formalidade de entrada — o
+  // contrato com o consignante pode ser ajustado livremente até a moto ser
+  // efetivamente vendida. Só a NF DE VENDA dessa moto (emitida em produção)
+  // trava a edição da proposta/valores (não a NF de consignação/devolução/
+  // compra da cadeia interna).
+  const [nfeVendaProducao, setNfeVendaProducao] = useState(false);
+  useEffect(() => {
+    if (!open || !avaliacao?.id) { setNfeVendaProducao(false); return; }
+    let cancel = false;
+    (async () => {
+      const { data: estoqueRow } = await supabase.from('estoque_motos').select('atendimento_venda_id').eq('avaliacao_id', avaliacao.id).maybeSingle();
+      if (!estoqueRow?.atendimento_venda_id) { if (!cancel) setNfeVendaProducao(false); return; }
+      const { data: nfeVenda } = await (supabase.from('nfe_entradas' as any) as any)
+        .select('id')
+        .eq('atendimento_id', estoqueRow.atendimento_venda_id)
+        .in('operacao', ['venda_seminova', 'venda_0km'])
+        .eq('status', 'processada')
+        .eq('ambiente', 'producao')
+        .limit(1).maybeSingle();
+      if (!cancel) setNfeVendaProducao(!!nfeVenda);
+    })();
+    return () => { cancel = true; };
+  }, [open, avaliacao?.id]);
+  const soLeitura = ehNfe || nfeVendaProducao;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -349,8 +372,8 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   }, [loading]);
 
   const saveContrato = async (): Promise<string | null> => {
-    if (nfeEmProducao) {
-      toast.error('Contrato bloqueado: NF-e de consignação já emitida em produção.');
+    if (nfeVendaProducao) {
+      toast.error('Contrato bloqueado: NF-e de venda desta moto já emitida em produção.');
       return null;
     }
     setSaving(true);
@@ -468,7 +491,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const currentSnapshot = snapshotFields({ cpfCnpj, email, endereco, cep, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato, percentualComissao });
   const editado = currentSnapshot !== baseline || clienteTocado;
   // Contrato já gerado e sem edições (ou NF-e já emitida em produção) -> só permite baixar/visualizar.
-  const modoLeitura = (jaGerado && !editado) || nfeEmProducao;
+  const modoLeitura = (jaGerado && !editado) || nfeVendaProducao;
 
   // Campos obrigatórios pendentes para gerar o contrato de consignação. Sem toast —
   // usado tanto pelo aviso abaixo do título quanto pela validação (com toast) abaixo.
