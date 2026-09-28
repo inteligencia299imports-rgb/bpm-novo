@@ -367,7 +367,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
               <CardContent className="space-y-3">
                 {renaveInfo?.id_estoque ? (
                   <p className="text-xs text-muted-foreground">
-                    idEstoque RENAVE {renaveInfo.id_estoque} {renaveInfo.estado ? `— ${renaveInfo.estado}` : ''}
+                    RENAVE {renaveInfo.id_estoque}{renaveInfo.estado ? ` - ${renaveInfo.estado}` : ''}
                   </p>
                 ) : (
                   <>
