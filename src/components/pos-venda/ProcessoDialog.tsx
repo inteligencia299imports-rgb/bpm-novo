@@ -159,8 +159,8 @@ const ProcessoDialog: React.FC<Props> = ({
   const nfeTransferencia = useNfeCompra(trocaAvaliacaoId, open && precisaTransferenciaFag, 'transferencia', 'avaliacao');
   // NF devolvida (pós-24h): o botão do checklist deve ficar vermelho igual à
   // cancelada, mesmo com a NF original ainda 'processada' (ver useNfeDevolvida).
-  const nfeVendaDevolvida = useNfeDevolvida(tipoVenda, atendimentoId, open && hasNfVendaEtapa && nfeVenda.emitida && nfeVenda.nfe?.ambiente === 'producao');
-  const nfeTrocaDevolvida = useNfeDevolvida('compra', trocaAvaliacaoId, open && !!trocaAvaliacaoId && nfeTroca.emitida && nfeTroca.nfe?.ambiente === 'producao');
+  const nfeVendaDevolvida = useNfeDevolvida(tipoVenda, atendimentoId, nfeVenda.nfe?.created_at, open && hasNfVendaEtapa && nfeVenda.emitida && nfeVenda.nfe?.ambiente === 'producao');
+  const nfeTrocaDevolvida = useNfeDevolvida('compra', trocaAvaliacaoId, nfeTroca.nfe?.created_at, open && !!trocaAvaliacaoId && nfeTroca.emitida && nfeTroca.nfe?.ambiente === 'producao');
 
   const podeEmitirNfeVenda =
     !!estoqueMoto && ['vendido', 'sinal'].includes(estoqueMoto.status) && contratoVendaGerado;

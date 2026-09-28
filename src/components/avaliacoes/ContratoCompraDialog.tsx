@@ -130,7 +130,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   const nfeEmProducaoBruta = nfeJaEmitida && nfe.nfe?.ambiente === 'producao';
   // NF de compra devolvida (pós-24h): o negócio foi desfeito, libera uma nova
   // proposta/emissão como se não houvesse NF-e vinculada.
-  const nfeDevolvida = useNfeDevolvida('compra', avaliacao?.id, open && nfeEmProducaoBruta);
+  const nfeDevolvida = useNfeDevolvida('compra', avaliacao?.id, nfe.nfe?.created_at, open && nfeEmProducaoBruta);
   // Contrato só trava depois de NF-e emitida em PRODUÇÃO — homologação é teste,
   // não deve bloquear edição/geração do contrato (mesma regra do fluxo de venda).
   const nfeEmProducao = nfeEmProducaoBruta && !nfeDevolvida;

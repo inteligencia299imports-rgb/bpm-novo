@@ -166,7 +166,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // efetivamente vendida. Só a NF DE VENDA dessa moto (emitida em produção)
   // trava a edição da proposta/valores (não a NF de consignação/devolução/
   // compra da cadeia interna).
-  const [vendaNfeInfo, setVendaNfeInfo] = useState<{ atendimentoId: string; operacao: string } | null>(null);
+  const [vendaNfeInfo, setVendaNfeInfo] = useState<{ atendimentoId: string; operacao: string; createdAt: string } | null>(null);
   useEffect(() => {
     if (!open || !avaliacao?.id) { setVendaNfeInfo(null); return; }
     let cancel = false;
@@ -174,19 +174,20 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       const { data: estoqueRow } = await supabase.from('estoque_motos').select('atendimento_venda_id').eq('avaliacao_id', avaliacao.id).maybeSingle();
       if (!estoqueRow?.atendimento_venda_id) { if (!cancel) setVendaNfeInfo(null); return; }
       const { data: nfeVenda } = await (supabase.from('nfe_entradas' as any) as any)
-        .select('operacao')
+        .select('operacao, created_at')
         .eq('atendimento_id', estoqueRow.atendimento_venda_id)
         .in('operacao', ['venda_seminova', 'venda_0km'])
         .eq('status', 'processada')
         .eq('ambiente', 'producao')
+        .order('created_at', { ascending: false })
         .limit(1).maybeSingle();
-      if (!cancel) setVendaNfeInfo(nfeVenda ? { atendimentoId: estoqueRow.atendimento_venda_id, operacao: nfeVenda.operacao } : null);
+      if (!cancel) setVendaNfeInfo(nfeVenda ? { atendimentoId: estoqueRow.atendimento_venda_id, operacao: nfeVenda.operacao, createdAt: nfeVenda.created_at } : null);
     })();
     return () => { cancel = true; };
   }, [open, avaliacao?.id]);
   // NF de venda devolvida (pós-24h): o negócio foi desfeito, libera o contrato
   // de consignação de novo (mesma regra do fluxo de compra/venda).
-  const nfeVendaDevolvida = useNfeDevolvida(vendaNfeInfo?.operacao, vendaNfeInfo?.atendimentoId, !!vendaNfeInfo);
+  const nfeVendaDevolvida = useNfeDevolvida(vendaNfeInfo?.operacao, vendaNfeInfo?.atendimentoId, vendaNfeInfo?.createdAt, !!vendaNfeInfo);
   const nfeVendaProducao = !!vendaNfeInfo && !nfeVendaDevolvida;
   const soLeitura = ehNfe || nfeVendaProducao;
   const [loading, setLoading] = useState(false);

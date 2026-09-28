@@ -29,6 +29,7 @@ interface NfeLike {
     operacao?: string | null;
     ambiente?: string | null;
     data_emissao?: string | null;
+    created_at?: string | null;
     avaliacao_id?: string | null;
     atendimento_id?: string | null;
     estoque_moto_nova_id?: string | null;
@@ -81,7 +82,13 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
       .eq('operacao', devolucaoCfg.tipo)
       .order('created_at', { ascending: false })
       .limit(1);
-    setDevolucaoNfe((data as any[])?.[0] || null);
+    const found = (data as any[])?.[0] || null;
+    // Só vale se a devolução for POSTERIOR a esta NF-e — senão uma devolução
+    // de um ciclo anterior (venda1 -> devolvida -> venda2) ficaria mostrando
+    // "devolvida" pra uma venda2 nova e válida que nunca foi devolvida.
+    const referenciaEm = nfe.nfe?.created_at ? new Date(nfe.nfe.created_at).getTime() : null;
+    const valeParaEstaNf = !!found && referenciaEm != null && new Date(found.created_at).getTime() > referenciaEm;
+    setDevolucaoNfe(valeParaEstaNf ? found : null);
   };
 
   useEffect(() => {

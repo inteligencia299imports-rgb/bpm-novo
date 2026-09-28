@@ -1237,12 +1237,17 @@ Deno.serve(async (req) => {
     admin.from('nfe_entradas').select('*').eq(nfeKey, entityId).eq('operacao', tipo)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
 
-  const foiDevolvida = async () => {
+  // Só conta como devolvida se a devolução for POSTERIOR à própria NF de
+  // produção em questão — senão uma devolução antiga (de um ciclo anterior:
+  // venda1 -> devolvida -> venda2) ficaria liberando reemissão pra sempre,
+  // mesmo com uma venda2 nova e válida (nunca devolvida) já em produção.
+  const foiDevolvida = async (nfProducaoCreatedAt: string | null | undefined) => {
     const devolucaoTipo = DEVOLUCAO_DE[tipo];
-    if (!devolucaoTipo) return false;
-    const { data } = await admin.from('nfe_entradas').select('id').eq(nfeKey, entityId).eq('operacao', devolucaoTipo)
-      .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
-    return !!data;
+    if (!devolucaoTipo || !nfProducaoCreatedAt) return false;
+    const { data } = await admin.from('nfe_entradas').select('created_at').eq(nfeKey, entityId).eq('operacao', devolucaoTipo)
+      .eq('ambiente', 'producao').eq('status', 'processada')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    return !!data && new Date(data.created_at).getTime() > new Date(nfProducaoCreatedAt).getTime();
   };
 
   // =====================================================================
@@ -1661,10 +1666,11 @@ Deno.serve(async (req) => {
     // cancelamento) e só libera depois de pelo menos uma homologação autorizada
     // pra essa mesma operação — nunca emite direto em produção sem testar antes.
     const { data: producaoAutorizada } = await admin
-      .from('nfe_entradas').select('id').eq(nfeKey, entityId).eq('operacao', tipo)
-      .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
+      .from('nfe_entradas').select('id, created_at').eq(nfeKey, entityId).eq('operacao', tipo)
+      .eq('ambiente', 'producao').eq('status', 'processada')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
     // NF original devolvida: o negócio foi desfeito, libera uma nova emissão.
-    if (producaoAutorizada && !(await foiDevolvida())) {
+    if (producaoAutorizada && !(await foiDevolvida(producaoAutorizada.created_at))) {
       return jsonResponse({ error: 'Já existe uma NF-e emitida em produção para esta moto.' }, 409);
     }
     const { data: homologAutorizada } = await admin
@@ -1760,7 +1766,7 @@ Deno.serve(async (req) => {
         }
       }
     }
-  } else if (nfeExistente && nfeExistente.status === 'processada' && nfeExistente.ambiente === 'producao' && !(await foiDevolvida())) {
+  } else if (nfeExistente && nfeExistente.status === 'processada' && nfeExistente.ambiente === 'producao' && !(await foiDevolvida(nfeExistente.created_at))) {
     // Depois de produção autorizada, não reemite mais nem em homologação —
     // a menos que essa NF tenha sido devolvida (negócio desfeito, libera nova emissão).
     return jsonResponse({ error: 'Já existe uma NF-e emitida em produção para esta moto — contrato bloqueado.' }, 409);

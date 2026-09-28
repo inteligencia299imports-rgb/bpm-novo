@@ -93,7 +93,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   const nfeEmitida = nfe.emitida;
   const nfePendente = nfe.pendente;
   const nfeErro = nfe.erro;
-  const nfeCompraDevolvida = useNfeDevolvida('compra', avaliacaoId, open && nfeCompra?.status === 'processada' && nfeCompra?.ambiente === 'producao');
+  const nfeCompraDevolvida = useNfeDevolvida('compra', avaliacaoId, nfeCompra?.created_at, open && nfeCompra?.status === 'processada' && nfeCompra?.ambiente === 'producao');
   const emitindoNfe = nfe.loading;
   const consultarNfe = nfe.consultar;
   const setNfeCompra = nfe.setNfe;
