@@ -14,6 +14,7 @@ import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import FiltersPanel from '@/components/shared/FiltersPanel';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
+import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
 
 
 // "Adquirida" sai do board: motos adquiridas passam a viver em Pós-Compra / Consignação.
@@ -32,6 +33,8 @@ const AvaliacoesTab = ({ initialAvaliacaoId, onInitialHandled }: AvaliacoesTabPr
   const [search, setSearch] = useState('');
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
   const [showFilters, setShowFilters] = useState(false);
+
+  useAtendimentoUrlSync('avaliacoes', selectedId ? (avaliacoes.find((a) => a.id === selectedId) as any)?.atendimento?.id : null);
 
   useEffect(() => {
     if (initialAvaliacaoId) {

@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 import FiltersPanel from '@/components/shared/FiltersPanel';
+import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
 
 
 interface PreparacaoTabProps {
@@ -34,6 +35,8 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
   const [filterCidade, setFilterCidade] = useState<'todos' | 'Brasília' | 'Florianópolis' | 'Porto Alegre'>('todos');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+
+  useAtendimentoUrlSync('preparacao', selectedItem?.atendimento?.id);
 
   useEffect(() => {
     if (initialAvaliacaoId) {

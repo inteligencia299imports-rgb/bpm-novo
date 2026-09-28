@@ -22,6 +22,7 @@ import AtendimentoForm from './AtendimentoForm';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, CIDADE_LOJAS, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
+import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
 
 const KANBAN_COLUMNS = SITUACOES_SHOWROOM;
 
@@ -43,6 +44,8 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   const [filterInteresse, setFilterInteresse] = useState('todos');
   const [filterTemperatura, setFilterTemperatura] = useState('todos');
   const [filterVendedor, setFilterVendedor] = useState('todos');
+
+  useAtendimentoUrlSync('showroom', detailOpen ? selectedAtendimento?.id : null);
   const [vendedores, setVendedores] = useState<{ user_id: string; nome: string }[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');

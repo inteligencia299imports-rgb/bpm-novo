@@ -15,6 +15,7 @@ import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMot
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import CidadeFilter, { matchesCidade, getSiglaFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import FiltersPanel from '@/components/shared/FiltersPanel';
+import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
 
 
 interface PosVendaTabProps {
@@ -30,6 +31,8 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
   const [showFilters, setShowFilters] = useState(false);
+
+  useAtendimentoUrlSync('pos_venda', selectedItem?.id);
 
   useEffect(() => {
     if (initialAtendimentoId) {

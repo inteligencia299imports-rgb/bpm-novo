@@ -68,12 +68,18 @@ export const POS_COMPRA_COLUMNS: { value: PosCompraStatus; label: string; hex: s
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#b376c4' },
   { value: 'pausado', label: 'Pausado', hex: '#FF8C00' },
+  // Concluídas sem NF-e emitida no bpm-novo (ex.: importadas de outro sistema)
+  // continuam aqui pra permitir edição de valores/proposta — ver PosCompraTab.
+  { value: 'concluido', label: 'Concluída (sem NF)', hex: '#9CA3AF' },
 ];
 
 export const CONSIGNACAO_COLUMNS: { value: ConsignacaoStatus; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'contrato_assinado', label: 'Contrato Assinado', hex: '#169d53' },
   { value: 'pausado', label: 'Pausado', hex: '#FF8C00' },
+  // Concluídas sem NF-e emitida no bpm-novo (ex.: importadas de outro sistema)
+  // continuam aqui pra permitir edição de valores/proposta — ver ConsignacaoTab.
+  { value: 'concluido', label: 'Concluída (sem NF)', hex: '#9CA3AF' },
 ];
 
 export const PREPARACAO_COLUMNS: { value: PreparacaoStatus; label: string; hex: string }[] = [

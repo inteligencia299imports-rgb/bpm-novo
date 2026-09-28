@@ -14,6 +14,7 @@ import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { Button } from '@/components/ui/button';
 import CidadeFilter, { matchesCidade, getSiglaFromLoja, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import FiltersPanel from '@/components/shared/FiltersPanel';
+import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
 
 
 type Parte = 'parte1' | 'parte2';
@@ -54,6 +55,8 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
   const [parte, setParte] = useState<Parte>(initialParte || 'parte1');
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
   const [showFilters, setShowFilters] = useState(false);
+
+  useAtendimentoUrlSync('intermediacao', selectedItem?.id, { parte });
 
   useEffect(() => {
     if (initialParte) setParte(initialParte);

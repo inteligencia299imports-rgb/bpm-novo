@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import FiltersPanel from '@/components/shared/FiltersPanel';
+import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
 
 
 interface ConsignacaoTabProps {
@@ -28,6 +29,8 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
   const [showFilters, setShowFilters] = useState(false);
+
+  useAtendimentoUrlSync('consignacao', selectedItem?.atendimento?.id);
 
 
   useEffect(() => {
@@ -82,7 +85,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
         if (picked) acquDateMap[d.id] = picked;
       });
       let mapped = (data || [])
-        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeTag: nfeTagFromRows(nfeRowsPorAvaliacao[d.id]) ?? (etapaNfConcluidaSet.has(d.id) ? NFE_TAG_SEM_REGISTRO : undefined) }));
+        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeTag: nfeTagFromRows(nfeRowsPorAvaliacao[d.id]) ?? (etapaNfConcluidaSet.has(d.id) ? NFE_TAG_SEM_REGISTRO : undefined), _temNfeProducao: (nfeRowsPorAvaliacao[d.id] || []).some((n: any) => n.status === 'processada' && n.ambiente === 'producao') }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       if (filterCidade !== 'todos') { mapped = mapped.filter((a: any) => matchesCidade(a.atendimento?.loja, filterCidade)); }
       setItems(mapped);
@@ -91,7 +94,15 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
   }, [search, filterCidade]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
-  const getColumnItems = (status: ConsignacaoStatus) => items.filter((a: any) => (a.consignacao_status || 'em_aberto') === status);
+  const getColumnItems = (status: ConsignacaoStatus) => items.filter((a: any) => {
+    const s = (a.consignacao_status || 'em_aberto') as ConsignacaoStatus;
+    if (s !== status) return false;
+    // Concluída com NF-e de produção já emitida e vinculada: processo
+    // realmente encerrado, sai do quadro. Sem NF-e vinculada (ex.: emitida
+    // no sistema antigo), continua visível pra permitir editar valores/proposta.
+    if (status === 'concluido' && a._temNfeProducao) return false;
+    return true;
+  });
 
   if (selectedItem) return <AvaliacaoForm avaliacaoId={selectedItem.id} context="consignacao" onClose={() => { setSelectedItem(null); fetchItems(); }} />;
 
@@ -116,10 +127,10 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
       </FiltersPanel>
 
       {loading ? (
-        <KanbanSkeleton columns={4} />
+        <KanbanSkeleton columns={5} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-4">
+          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-5">
             {CONSIGNACAO_COLUMNS.map(col => {
               const colItems = getColumnItems(col.value);
               return (
