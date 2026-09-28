@@ -331,13 +331,16 @@ export function veiculoProdMoto(m: DadosMoto): Record<string, unknown> | null {
   const cCor = String(m.codigo_cor_fabricante ?? '').trim();
   const cCorDenatran = String(m.codigo_cor_denatran ?? '').trim();
   const cMod = String(m.codigo_marca_modelo_denatran ?? '').trim();
-  // Todos obrigatórios pelo XSD quando o grupo é enviado — sem qualquer um, não
-  // manda o grupo (mantém o texto livre atual e evita rejeição por incompleto).
-  if (!potencia || !pesoL || !pesoB || !nMotor || !cCor || !cCorDenatran || !cMod) return null;
-
   const cc = onlyDigits(String(m.cilindrada ?? ""));
   const anoFab = m.ano_fabricacao ?? m.ano_modelo ?? null;
   const anoMod = m.ano_modelo ?? m.ano_fabricacao ?? null;
+  // Todos obrigatórios pelo XSD quando o grupo é enviado (é uma <sequence>
+  // posicional — faltar um no meio desloca todo o resto e a SEFAZ rejeita com
+  // "Element 'X' not expected"). Sem qualquer um, não manda o grupo (mantém o
+  // texto livre atual e evita rejeição por incompleto/deslocado). Achado real:
+  // cilindrada nula numa moto 0km fez faltar <cilin>, deslocando <pesoL> pra
+  // posição dele e caindo exatamente nesse erro.
+  if (!potencia || !pesoL || !pesoB || !nMotor || !cCor || !cCorDenatran || !cMod || !cc || !anoFab || !anoMod) return null;
 
   // ATENÇÃO: o XSD da SEFAZ (TVeicProd) é uma <sequence> posicional — os campos
   // têm que sair NESTA ordem exata (a mesma do grupo <veicProd> na NF-e real),
