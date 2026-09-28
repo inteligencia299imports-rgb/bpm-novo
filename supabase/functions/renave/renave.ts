@@ -400,6 +400,44 @@ export interface SaidaZeroKm {
 export const sairEstoqueZeroKm = (s: SaidaZeroKm, ctx?: RenaveLogCtx) =>
   call('POST', '/api/saidas-estoque-veiculo-zero-km', { body: s, ctx });
 
+// Transferência de 0km ENTRE ESTABELECIMENTOS DO MESMO GRUPO (catálogo #22 +
+// #29) — achado 2026-09-28 (chassi 95V5D00AATM000086): diferente de
+// sairEstoqueZeroKm (que é uma VENDA de verdade pra um comprador final,
+// exige CPF/CNPJ+endereço do comprador), esse é o par certo pra mover
+// estoque 0km entre duas empresas do grupo sem fingir uma venda pra elas
+// mesmas. Fluxo em 2 passos, confirmado no manual oficial
+// (renave.estaleiro.serpro.gov.br/renave-ws/manual/):
+//   1. `autorizarTransferenciaZeroKm` — invocada pelo ESTABELECIMENTO DE
+//      ORIGEM (dono atual do veículo). Cria uma "autorização" com estado
+//      inicial "Criada".
+//   2. `transferirEntreEstabelecimentosZeroKm` — invocada pelo
+//      ESTABELECIMENTO DE DESTINO (quem vai receber). Exige a autorização
+//      already "Criada" e a chave de uma NF-e válida (a NF-e de
+//      transferência que o emitir-nfe-compra já emite, CFOP 152/949) —
+//      resultado: "o veículo sairá do estoque da origem e entrará no
+//      estoque do estabelecimento solicitante".
+// NÃO VERIFICADO em produção ainda — nomes de campo são um best-effort
+// (mesma convenção de EntradaZeroKm/SaidaZeroKm já confirmados) pra faltar o
+// mínimo possível; ajustar conforme a rejeição real da SERPRO no primeiro
+// teste (mesma disciplina de todo o resto deste arquivo).
+export interface AutorizacaoTransferenciaZeroKm {
+  chassi: string;
+  cnpjEstabelecimentoDestino: string;
+  valorVenda: number;
+  dataTransferencia: string; // ISO
+}
+export const autorizarTransferenciaZeroKm = (a: AutorizacaoTransferenciaZeroKm, ctx?: RenaveLogCtx) =>
+  call('POST', '/api/autorizacoes-transferencias-veiculo-zero-km', { body: a, ctx });
+
+export interface TransferenciaEntreEstabelecimentosZeroKm {
+  chassi: string;
+  idAutorizacaoTransferencia: number;
+  chaveNotaFiscal: string;
+  dataTransferencia: string; // ISO
+}
+export const transferirEntreEstabelecimentosZeroKm = (t: TransferenciaEntreEstabelecimentosZeroKm, ctx?: RenaveLogCtx) =>
+  call('POST', '/api/transferencias-entre-estabelecimentos-veiculo-zero-km', { body: t, ctx });
+
 // Saída de moto SEMINOVA (emplacada) do estoque, na venda. Schema confirmado
 // 2026-09-23 no OpenAPI oficial (SolicitacaoSaidaEstoque) e no manual
 // (renave-ws/manual/solicitar-saida-estoque): diferente do 0km, não leva

@@ -5,7 +5,9 @@
 //        atpv-pdf-usado | atpv-assinatura | estoque-status | vincular-nf |
 //        termo-entrada-pdf | cancelar-estoque | crlve |
 //        saida-usado | saida-usado-atpv | saida-usado-nf | saida-usado-termo |
-//        saida-usado-cancelar (saída de seminova vendida, ver bloco próprio)
+//        saida-usado-cancelar (saída de seminova vendida, ver bloco próprio) |
+//        transferencia-entre-estabelecimentos (0km entre empresas do grupo,
+//        espelha a NF-e de transferência já emitida — ver bloco próprio)
 // Sequência real da entrada de seminova comprada de particular — CORRIGIDA
 // 2026-09-23 contra o manual oficial da SERPRO (renave.estaleiro.serpro.gov.br/
 // renave-ws/manual/) e RECONFIRMADA 2026-09-22 (achado real, chassi
@@ -27,6 +29,7 @@ import {
   consultarEstoque, consultarVeiculoPorChassi, listarEstoques, municipios, sairEstoqueZeroKm, pdfAtpvPorChassi,
   enviarAssinaturaAtpv, consultarCrlve, termoEntradaEstoque, cancelarEstoque, erroRenave,
   sairEstoque, termoSaidaEstoque, cancelarSaidaEstoque,
+  autorizarTransferenciaZeroKm, transferirEntreEstabelecimentosZeroKm,
   type RenaveLogCtx, type EnvioAssinaturaAtpv, type EntradaEstoque,
 } from './renave.ts';
 
@@ -470,6 +473,101 @@ Deno.serve(async (req) => {
       }
 
       return json({ ok: true, estoque: est });
+    }
+
+    // ------ TRANSFERÊNCIA DE ESTOQUE 0KM ENTRE ESTABELECIMENTOS DO GRUPO ------
+    // Espelha no RENAVE a transferência fiscal já feita via NF-e (CFOP
+    // 152/949, emitir-nfe-compra: transferencia_saida_0km/
+    // transferencia_entrada_0km). Achado real 2026-09-28 (chassi
+    // 95V5D00AATM000086): sem isso, o veículo fica preso pra sempre no
+    // estoque RENAVE do estabelecimento de ORIGEM, mesmo com a NF-e de
+    // transferência já autorizada em produção — porque esse fluxo nunca
+    // "vende" a moto pra ninguém (não é sairEstoqueZeroKm, que exige um
+    // comprador de verdade com CPF/CNPJ), então uma nova tentativa de
+    // "entrada" no destino é recusada com "possui um estoque ativo".
+    // Fluxo em 2 passos confirmado no manual oficial
+    // (renave.estaleiro.serpro.gov.br/renave-ws/manual/):
+    //   1. Autorização — invocada pela ORIGEM (dono atual).
+    //   2. Transferência efetiva — invocada pelo DESTINO, referenciando a
+    //      autorização (precisa estar "Criada") + a chave de uma NF-e válida.
+    // Origem/destino resolvidos automaticamente pelas duas NF-e's de
+    // transferência (0km) já emitidas — não depende do usuário informar nada.
+    // NÃO VERIFICADO em produção ainda: nomes de campo do payload (ver
+    // renave.ts) são best-effort a partir do manual + convenção já usada em
+    // EntradaZeroKm/SaidaZeroKm — é bem provável que a primeira tentativa
+    // real volte um erro pedindo ajuste de algum nome de campo (mesma
+    // disciplina de todo o resto deste arquivo: lê o erro real da SERPRO e
+    // corrige).
+    if (acao === 'transferencia-entre-estabelecimentos') {
+      const emnId: string = body.estoque_moto_nova_id;
+      if (!emnId) return json({ error: 'estoque_moto_nova_id é obrigatório' }, 400);
+
+      const { data: emn } = await admin.from('estoque_motos_novas')
+        .select('id, chassi, empresa_id, valor_custo, valor').eq('id', emnId).maybeSingle();
+      if (!emn) return json({ error: 'Moto 0km não encontrada' }, 404);
+      if (!emn.chassi) return json({ error: 'Moto sem chassi cadastrado' }, 409);
+
+      const { data: nfSaida } = await admin.from('nfe_entradas')
+        .select('id, empresa_id, chave_nfe').eq('estoque_moto_nova_id', emnId)
+        .eq('operacao', 'transferencia_saida_0km').eq('status', 'processada').eq('ambiente', 'producao')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const { data: nfEntrada } = await admin.from('nfe_entradas')
+        .select('id, empresa_id, chave_nfe').eq('estoque_moto_nova_id', emnId)
+        .eq('operacao', 'transferencia_entrada_0km').eq('status', 'processada').eq('ambiente', 'producao')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (!nfSaida?.empresa_id || !nfEntrada?.empresa_id) {
+        return json({ error: 'NF-e de transferência (saída e entrada) em produção não encontrada pra essa moto.' }, 409);
+      }
+
+      const cnpjOrigem = await cnpjDaEmpresa(admin, nfSaida.empresa_id);
+      const cnpjDestino = await cnpjDaEmpresa(admin, nfEntrada.empresa_id);
+      if (!cnpjOrigem || !cnpjDestino) return json({ error: 'CNPJ da empresa de origem ou destino não encontrado.' }, 409);
+
+      const chassiUp = String(emn.chassi).toUpperCase().replace(/\s/g, '');
+      const valorVenda = Number(emn.valor_custo ?? emn.valor ?? 0);
+      if (!valorVenda) return json({ error: 'Valor de custo da moto não determinado.' }, 409);
+      const dataTransferencia = brasiliaNaiveIso(body.data_transferencia);
+
+      // Passo 1: autorização, invocada PELA ORIGEM.
+      const ctxOrigem: RenaveLogCtx = {
+        admin, operacao: acao, chassi: chassiUp, estoqueMotoNovaId: emnId, usuarioId: caller.id,
+        cnpjEstabelecimento: cnpjOrigem,
+      };
+      const auth = await autorizarTransferenciaZeroKm({
+        chassi: chassiUp, cnpjEstabelecimentoDestino: cnpjDestino, valorVenda, dataTransferencia,
+      }, ctxOrigem);
+      if (auth.status !== 201 && auth.status !== 200) {
+        const msg = `Autorização (origem): ${erroRenave(auth)}`;
+        await persistir(admin, emnId, { renave_ultimo_erro: msg });
+        return json({ error: msg, status: auth.status, detalhe: auth.body }, 422);
+      }
+      const idAutorizacao = auth.body?.id ?? auth.body?.idAutorizacao ?? null;
+      if (!idAutorizacao) {
+        return json({ error: 'Autorização criada mas sem id reconhecível na resposta da SERPRO.', detalhe: auth.body }, 422);
+      }
+
+      // Passo 2: transferência efetiva, invocada PELO DESTINO.
+      const ctxDestino: RenaveLogCtx = {
+        admin, operacao: acao, chassi: chassiUp, estoqueMotoNovaId: emnId, usuarioId: caller.id,
+        cnpjEstabelecimento: cnpjDestino,
+      };
+      const t = await transferirEntreEstabelecimentosZeroKm({
+        chassi: chassiUp, idAutorizacaoTransferencia: idAutorizacao,
+        chaveNotaFiscal: soChave(nfEntrada.chave_nfe), dataTransferencia,
+      }, ctxDestino);
+      if (t.status !== 201 && t.status !== 200) {
+        const msg = `Transferência (destino): ${erroRenave(t)}`;
+        await persistir(admin, emnId, { renave_ultimo_erro: msg });
+        return json({ error: msg, status: t.status, detalhe: t.body, autorizacao: auth.body }, 422);
+      }
+
+      const est = t.body || {};
+      await persistir(admin, emnId, {
+        renave_id_estoque: est.id ?? est.idEstoque ?? null,
+        renave_estado: est.estado ?? null,
+        renave_ultimo_erro: null,
+      });
+      return json({ ok: true, autorizacao: auth.body, transferencia: est });
     }
 
     // ------ ENTRADA EM ESTOQUE — MOTO SEMINOVA (veículo próprio) ------
