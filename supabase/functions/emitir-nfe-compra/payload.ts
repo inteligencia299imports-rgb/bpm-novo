@@ -65,6 +65,26 @@ export interface DadosMoto {
   codigo_cor_denatran?: string | null;
   /** cMod — código Marca/Modelo da tabela DENATRAN. */
   codigo_marca_modelo_denatran?: string | null;
+  // --- Demais códigos do grupo veicProd — antes fixos no código (mesmo valor
+  // pra toda moto 0km); passaram a ser cadastráveis por unidade porque o
+  // DETRAN estava rejeitando transferência em alguns casos. Sem valor
+  // cadastrado, veiculoProdMoto() usa o mesmo default de sempre. ---
+  /** tpOp — tipo de operação. */
+  tipo_operacao?: string | null;
+  /** condVeic — condição do veículo. */
+  condicao_veiculo?: string | null;
+  /** tpComb — tipo de combustível. */
+  tipo_combustivel?: string | null;
+  /** espVeic — espécie do veículo. */
+  especie_veiculo?: string | null;
+  /** tpVeic — tipo do veículo (tabela RENAVAM). */
+  tipo_veiculo?: string | null;
+  /** VIN — indicador de chassi remarcado (N/R). */
+  codigo_vin?: string | null;
+  /** tpRest — restrição do veículo. */
+  restricao_veiculo?: string | null;
+  /** tpPint — tipo de pintura. */
+  tipo_pintura?: string | null;
   // --- ICMS-ST retido anteriormente (grupo <ICMS60> da NF de venda 0km) ---
   // Transcritos da NF-e de ENTRADA da moto; sem eles o payload calcula um valor
   // aproximado sobre o preço de venda. ---
@@ -309,16 +329,18 @@ export function veiculoProdMoto(m: DadosMoto): Record<string, unknown> | null {
   const anoFab = m.ano_fabricacao ?? m.ano_modelo ?? null;
   const anoMod = m.ano_modelo ?? m.ano_fabricacao ?? null;
 
+  // Cadastrados por unidade quando o default não serve pra essa moto (ex.:
+  // DETRAN rejeitando transferência) — ver estoque_motos_novas / DadosFiscaisNovaDialog.
   const v: Record<string, unknown> = {
-    veiculo_tipo_operacao: 1,               // tpOp — venda de 0km por concessionária
-    veiculo_condicao: 1,                    // condVeic — acabado
-    veiculo_tipo_combustivel: '02',         // tpComb — gasolina (catálogo só tem moto a combustão)
-    veiculo_especie: 1,                     // espVeic — passageiro
-    veiculo_tipo: '04',                     // tpVeic — motocicleta (tabela RENAVAM)
+    veiculo_tipo_operacao: m.tipo_operacao ? Number(m.tipo_operacao) : 1,        // tpOp — venda de 0km por concessionária
+    veiculo_condicao: m.condicao_veiculo ? Number(m.condicao_veiculo) : 1,       // condVeic — acabado
+    veiculo_tipo_combustivel: m.tipo_combustivel || '02',                       // tpComb — gasolina (catálogo só tem moto a combustão)
+    veiculo_especie: m.especie_veiculo ? Number(m.especie_veiculo) : 1,          // espVeic — passageiro
+    veiculo_tipo: m.tipo_veiculo || '04',                                       // tpVeic — motocicleta (tabela RENAVAM)
     veiculo_lotacao: 2,                     // lota — condutor + 1
-    veiculo_codigo_vin: 'N',                // VIN — chassi não remarcado
-    veiculo_restricao: 0,                   // tpRest — sem restrição
-    veiculo_tipo_pintura: 'A',
+    veiculo_codigo_vin: m.codigo_vin || 'N',                                     // VIN — chassi não remarcado
+    veiculo_restricao: m.restricao_veiculo ? Number(m.restricao_veiculo) : 0,    // tpRest — sem restrição
+    veiculo_tipo_pintura: m.tipo_pintura || 'A',                                 // tpPint
     veiculo_distancia_eixos: '0',           // dist — moto (eixo único)
     veiculo_cmt: '0',                       // CMT — não se aplica a moto
     veiculo_serie: '1',                     // nSerie — não controlado; issuers usam "1"

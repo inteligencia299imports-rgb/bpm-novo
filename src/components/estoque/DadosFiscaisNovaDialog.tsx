@@ -20,7 +20,7 @@ interface Props {
   item:
     | {
         id: string;
-        modelo: string;
+        modelo: string | null;
         potencia_motor?: string | number | null;
         peso_liquido?: string | number | null;
         peso_bruto?: string | number | null;
@@ -31,6 +31,14 @@ interface Props {
         icms_st_bc_retido?: string | number | null;
         icms_st_valor_substituto?: string | number | null;
         icms_st_valor_retido?: string | number | null;
+        tipo_operacao?: string | null;
+        condicao_veiculo?: string | null;
+        tipo_combustivel?: string | null;
+        especie_veiculo?: string | null;
+        tipo_veiculo?: string | null;
+        codigo_vin?: string | null;
+        restricao_veiculo?: string | null;
+        tipo_pintura?: string | null;
       }
     | null;
   onSuccess: () => void;
@@ -47,8 +55,18 @@ type FormState = {
   icms_st_bc_retido: string;
   icms_st_valor_substituto: string;
   icms_st_valor_retido: string;
+  tipo_operacao: string;
+  condicao_veiculo: string;
+  tipo_combustivel: string;
+  especie_veiculo: string;
+  tipo_veiculo: string;
+  codigo_vin: string;
+  restricao_veiculo: string;
+  tipo_pintura: string;
 };
 
+// Defaults = mesmo valor que já estava fixo no código antes de virar campo
+// por unidade (ver emitir-nfe-compra/payload.ts, veiculoProdMoto).
 const vazio: FormState = {
   potencia_motor: '',
   peso_liquido: '',
@@ -60,6 +78,14 @@ const vazio: FormState = {
   icms_st_bc_retido: '',
   icms_st_valor_substituto: '',
   icms_st_valor_retido: '',
+  tipo_operacao: '1',
+  condicao_veiculo: '1',
+  tipo_combustivel: '02',
+  especie_veiculo: '1',
+  tipo_veiculo: '04',
+  codigo_vin: 'N',
+  restricao_veiculo: '0',
+  tipo_pintura: 'A',
 };
 
 const DadosFiscaisNovaDialog: React.FC<Props> = ({ open, onOpenChange, item, onSuccess }) => {
@@ -79,6 +105,14 @@ const DadosFiscaisNovaDialog: React.FC<Props> = ({ open, onOpenChange, item, onS
       icms_st_bc_retido: item.icms_st_bc_retido != null ? String(item.icms_st_bc_retido) : '',
       icms_st_valor_substituto: item.icms_st_valor_substituto != null ? String(item.icms_st_valor_substituto) : '',
       icms_st_valor_retido: item.icms_st_valor_retido != null ? String(item.icms_st_valor_retido) : '',
+      tipo_operacao: item.tipo_operacao ?? vazio.tipo_operacao,
+      condicao_veiculo: item.condicao_veiculo ?? vazio.condicao_veiculo,
+      tipo_combustivel: item.tipo_combustivel ?? vazio.tipo_combustivel,
+      especie_veiculo: item.especie_veiculo ?? vazio.especie_veiculo,
+      tipo_veiculo: item.tipo_veiculo ?? vazio.tipo_veiculo,
+      codigo_vin: item.codigo_vin ?? vazio.codigo_vin,
+      restricao_veiculo: item.restricao_veiculo ?? vazio.restricao_veiculo,
+      tipo_pintura: item.tipo_pintura ?? vazio.tipo_pintura,
     });
   }, [item]);
 
@@ -107,6 +141,14 @@ const DadosFiscaisNovaDialog: React.FC<Props> = ({ open, onOpenChange, item, onS
           icms_st_bc_retido: numOrNull(form.icms_st_bc_retido),
           icms_st_valor_substituto: numOrNull(form.icms_st_valor_substituto),
           icms_st_valor_retido: numOrNull(form.icms_st_valor_retido),
+          tipo_operacao: strOrNull(form.tipo_operacao) ?? vazio.tipo_operacao,
+          condicao_veiculo: strOrNull(form.condicao_veiculo) ?? vazio.condicao_veiculo,
+          tipo_combustivel: strOrNull(form.tipo_combustivel) ?? vazio.tipo_combustivel,
+          especie_veiculo: strOrNull(form.especie_veiculo) ?? vazio.especie_veiculo,
+          tipo_veiculo: strOrNull(form.tipo_veiculo) ?? vazio.tipo_veiculo,
+          codigo_vin: strOrNull(form.codigo_vin) ?? vazio.codigo_vin,
+          restricao_veiculo: strOrNull(form.restricao_veiculo) ?? vazio.restricao_veiculo,
+          tipo_pintura: strOrNull(form.tipo_pintura) ?? vazio.tipo_pintura,
         })
         .eq('id', item.id);
       if (error) throw error;
@@ -174,6 +216,45 @@ const DadosFiscaisNovaDialog: React.FC<Props> = ({ open, onOpenChange, item, onS
             <div className="space-y-1.5 col-span-2">
               <Label>Código Marca/Modelo DENATRAN</Label>
               <Input value={form.codigo_marca_modelo_denatran} onChange={set('codigo_marca_modelo_denatran')} placeholder="Ex.: 000496" />
+            </div>
+          </div>
+
+          <p className="pt-1 text-xs text-muted-foreground">
+            Demais códigos do <code>veicProd</code> — o mesmo valor serve pra quase toda moto, então já
+            vem preenchido. Só ajuste se o DETRAN estiver rejeitando a transferência desta moto específica.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Tipo de operação</Label>
+              <Input value={form.tipo_operacao} onChange={set('tipo_operacao')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Condição do veículo</Label>
+              <Input value={form.condicao_veiculo} onChange={set('condicao_veiculo')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tipo de combustível</Label>
+              <Input value={form.tipo_combustivel} onChange={set('tipo_combustivel')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Espécie do veículo</Label>
+              <Input value={form.especie_veiculo} onChange={set('especie_veiculo')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tipo do veículo</Label>
+              <Input value={form.tipo_veiculo} onChange={set('tipo_veiculo')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Restrição do veículo</Label>
+              <Input value={form.restricao_veiculo} onChange={set('restricao_veiculo')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Indicador VIN (N/R)</Label>
+              <Input value={form.codigo_vin} onChange={set('codigo_vin')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tipo de pintura</Label>
+              <Input value={form.tipo_pintura} onChange={set('tipo_pintura')} />
             </div>
           </div>
 

@@ -952,7 +952,9 @@ Deno.serve(async (req) => {
         'id, empresa_id, loja_id, chassi, placa, renavam, ncm, valor, valor_custo, numero_nf_entrada, ' +
           'ano_fabricacao, ano_modelo, cilindrada, cor, marca:marca_id(nome), modelo:modelo_id(nome), ' +
           'potencia_motor, peso_liquido, peso_bruto, numero_motor, codigo_cor_fabricante, codigo_cor_denatran, ' +
-          'codigo_marca_modelo_denatran, icms_st_bc_retido, icms_st_valor_substituto, icms_st_valor_retido',
+          'codigo_marca_modelo_denatran, icms_st_bc_retido, icms_st_valor_substituto, icms_st_valor_retido, ' +
+          'tipo_operacao, condicao_veiculo, tipo_combustivel, especie_veiculo, tipo_veiculo, codigo_vin, ' +
+          'restricao_veiculo, tipo_pintura',
       )
       .eq('id', estoqueMotoNovaIdBody)
       .maybeSingle();
@@ -995,6 +997,14 @@ Deno.serve(async (req) => {
           codigo_cor_fabricante: en.codigo_cor_fabricante ?? null,
           codigo_cor_denatran: en.codigo_cor_denatran ?? null,
           codigo_marca_modelo_denatran: en.codigo_marca_modelo_denatran ?? null,
+          tipo_operacao: en.tipo_operacao ?? null,
+          condicao_veiculo: en.condicao_veiculo ?? null,
+          tipo_combustivel: en.tipo_combustivel ?? null,
+          especie_veiculo: en.especie_veiculo ?? null,
+          tipo_veiculo: en.tipo_veiculo ?? null,
+          codigo_vin: en.codigo_vin ?? null,
+          restricao_veiculo: en.restricao_veiculo ?? null,
+          tipo_pintura: en.tipo_pintura ?? null,
           // ICMS-ST retido anteriormente (grupo <ICMS60> — transcrito da NF de entrada).
           icms_st_bc_retido: en.icms_st_bc_retido ?? null,
           icms_st_valor_substituto: en.icms_st_valor_substituto ?? null,
@@ -2156,6 +2166,14 @@ Deno.serve(async (req) => {
       codigo_cor_fabricante: emn0km.codigo_cor_fabricante ?? null,
       codigo_cor_denatran: emn0km.codigo_cor_denatran ?? null,
       codigo_marca_modelo_denatran: emn0km.codigo_marca_modelo_denatran ?? null,
+      tipo_operacao: emn0km.tipo_operacao ?? null,
+      condicao_veiculo: emn0km.condicao_veiculo ?? null,
+      tipo_combustivel: emn0km.tipo_combustivel ?? null,
+      especie_veiculo: emn0km.especie_veiculo ?? null,
+      tipo_veiculo: emn0km.tipo_veiculo ?? null,
+      codigo_vin: emn0km.codigo_vin ?? null,
+      restricao_veiculo: emn0km.restricao_veiculo ?? null,
+      tipo_pintura: emn0km.tipo_pintura ?? null,
       icms_st_bc_retido: emn0km.icms_st_bc_retido ?? null,
       icms_st_valor_substituto: emn0km.icms_st_valor_substituto ?? null,
       icms_st_valor_retido: emn0km.icms_st_valor_retido ?? null,
@@ -2199,6 +2217,14 @@ Deno.serve(async (req) => {
       codigo_cor_fabricante: eh0km ? ((mn as any).codigo_cor_fabricante ?? null) : null,
       codigo_cor_denatran: eh0km ? ((mn as any).codigo_cor_denatran ?? null) : null,
       codigo_marca_modelo_denatran: eh0km ? ((mn as any).codigo_marca_modelo_denatran ?? null) : null,
+      tipo_operacao: eh0km ? ((mn as any).tipo_operacao ?? null) : null,
+      condicao_veiculo: eh0km ? ((mn as any).condicao_veiculo ?? null) : null,
+      tipo_combustivel: eh0km ? ((mn as any).tipo_combustivel ?? null) : null,
+      especie_veiculo: eh0km ? ((mn as any).especie_veiculo ?? null) : null,
+      tipo_veiculo: eh0km ? ((mn as any).tipo_veiculo ?? null) : null,
+      codigo_vin: eh0km ? ((mn as any).codigo_vin ?? null) : null,
+      restricao_veiculo: eh0km ? ((mn as any).restricao_veiculo ?? null) : null,
+      tipo_pintura: eh0km ? ((mn as any).tipo_pintura ?? null) : null,
       // ICMS-ST retido anteriormente (grupo <ICMS60>) — transcrito da NF de
       // entrada; sem isso o payload calcula um valor aproximado sobre a venda.
       icms_st_bc_retido: eh0km ? ((mn as any).icms_st_bc_retido ?? null) : null,

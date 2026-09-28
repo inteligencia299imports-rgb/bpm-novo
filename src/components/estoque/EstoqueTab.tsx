@@ -22,6 +22,7 @@ import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
 import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import TransferenciaEstoqueDialog from '@/components/estoque/TransferenciaEstoqueDialog';
 import AlterarPrecoDialog from '@/components/estoque/AlterarPrecoDialog';
+import DadosFiscaisNovaDialog from '@/components/estoque/DadosFiscaisNovaDialog';
 import TestRideDialog from '@/components/estoque/TestRideDialog';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -104,6 +105,17 @@ interface EstoqueItem {
   codigo_cor_fabricante?: string | null;
   codigo_cor_denatran?: string | null;
   codigo_marca_modelo_denatran?: string | null;
+  icms_st_bc_retido?: string | number | null;
+  icms_st_valor_substituto?: string | number | null;
+  icms_st_valor_retido?: string | number | null;
+  tipo_operacao?: string | null;
+  condicao_veiculo?: string | null;
+  tipo_combustivel?: string | null;
+  especie_veiculo?: string | null;
+  tipo_veiculo?: string | null;
+  codigo_vin?: string | null;
+  restricao_veiculo?: string | null;
+  tipo_pintura?: string | null;
 }
 
 // Navigation target type removed - using EstoqueNavTarget from props
@@ -151,6 +163,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [precoItem, setPrecoItem] = useState<EstoqueItem | null>(null);
   const [transferenciaItem, setTransferenciaItem] = useState<EstoqueItem | null>(null);
   const [testRideItem, setTestRideItem] = useState<EstoqueItem | null>(null);
+  const [dadosFiscaisItem, setDadosFiscaisItem] = useState<EstoqueItem | null>(null);
   const [idsWithNfeVenda0km, setIdsWithNfeVenda0km] = useState<Set<string>>(new Set());
   const [idsWithNfeVendaSeminova, setIdsWithNfeVendaSeminova] = useState<Set<string>>(new Set());
 
@@ -400,6 +413,11 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
             icon: <ArrowRightLeft className="h-4 w-4" />,
             action: () => setTransferenciaItem(item),
           });
+          options.push({
+            label: 'Dados Fiscais (NF-e)',
+            icon: <FileText className="h-4 w-4" />,
+            action: () => setDadosFiscaisItem(item),
+          });
         }
         return options;
       }
@@ -500,7 +518,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     }
 
     if (item.tipo === '0km') {
-      // Preço e Test-Ride só fazem sentido antes da NF-e de venda ser emitida.
+      // Preço, Test-Ride e Dados Fiscais só fazem sentido antes da NF-e de venda ser emitida.
       if (!idsWithNfeVenda0km.has(item.id)) {
         options.push({
           label: 'Alterar Preço',
@@ -511,6 +529,11 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           label: item.tipo_unidade === 'test_ride' ? 'Test-Ride ✓' : 'Test-Ride',
           icon: <Bike className="h-4 w-4" />,
           action: () => setTestRideItem(item),
+        });
+        options.push({
+          label: 'Dados Fiscais (NF-e)',
+          icon: <FileText className="h-4 w-4" />,
+          action: () => setDadosFiscaisItem(item),
         });
       }
     }
@@ -899,6 +922,16 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         estoqueItem={testRideItem}
         onSuccess={() => {
           setTestRideItem(null);
+          fetchEstoque();
+        }}
+      />
+
+      <DadosFiscaisNovaDialog
+        open={!!dadosFiscaisItem}
+        onOpenChange={(open) => { if (!open) setDadosFiscaisItem(null); }}
+        item={dadosFiscaisItem}
+        onSuccess={() => {
+          setDadosFiscaisItem(null);
           fetchEstoque();
         }}
       />

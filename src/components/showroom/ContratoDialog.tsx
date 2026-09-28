@@ -30,6 +30,7 @@ import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalho
 import AgregadosContrato, { type Agregado, type AgregadoLinha } from '@/components/showroom/AgregadosContrato';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 import { EMPRESAS_SO_MOTO_NOVA } from '@/lib/tipoAquisicao';
+import { pendenciasVeicProd } from '@/lib/veicProd';
 
 interface Props {
   open: boolean;
@@ -275,6 +276,11 @@ const ContratoDialog: React.FC<Props> = ({
   const transferenciaValorLabel = eh0kmVenda ? 'Valor do Emplacamento' : 'Valor da Transferência';
   const estoqueTabela = eh0kmVenda ? 'estoque_motos_novas' : 'estoque_motos';
   const tipoVenda = eh0kmVenda ? 'venda_0km' : 'venda_seminova';
+  // Specs do grupo veicProd (0km) incompletas: a NF sai sem o grupo estruturado
+  // do veículo, e o DETRAN rejeita a transferência depois — trava a emissão
+  // até os dados estarem completos (ver estoque > "Dados Fiscais (NF-e)").
+  const veicProdFaltando = eh0kmVenda ? pendenciasVeicProd(estItemNfe) : [];
+  const veicProdBloqueado = eh0kmVenda && veicProdFaltando.length > 0;
   // Após a NF-e de venda autorizada, volta para a tela de Pós-Venda.
   const nfe = useNfeCompra(atendimento.id, open, tipoVenda, 'atendimento', () => {
     if (ehNfe) setTimeout(() => onOpenChange(false), 1200);
@@ -1242,6 +1248,7 @@ const ContratoDialog: React.FC<Props> = ({
   const buildErrosGeracao = (variant: 'sinal' | 'venda'): string[] => {
     const errors: string[] = [];
     if (motoSeminovaBloqueadaEmpresa) errors.push('Moto seminova não pode ser vendida por esta empresa (só vende 0km)');
+    if (veicProdBloqueado) errors.push(`Specs da moto 0km pendentes (${veicProdFaltando.join(', ')})`);
     if (!empresaId) errors.push('Empresa vendedora');
     if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
     // Cadastro completo do cliente (e-mails, telefone comercial, endereço, dados
@@ -1325,6 +1332,13 @@ const ContratoDialog: React.FC<Props> = ({
       {motoSeminovaBloqueadaEmpresa && (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive flex items-center gap-1.5">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> Esta empresa só vende motos 0km — a moto seminova selecionada não pode ser vendida por ela. Escolha uma moto 0km ou transfira/venda esta moto por outra empresa.
+        </div>
+      )}
+
+      {veicProdBloqueado && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive flex items-center gap-1.5">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          Emissão bloqueada: faltam dados fiscais do veículo ({veicProdFaltando.join(', ')}) — sem eles a NF-e sai sem o grupo estruturado do veículo e o DETRAN rejeita a transferência. Preencha em Estoque → menu da moto → "Dados Fiscais (NF-e)".
         </div>
       )}
 
@@ -2131,7 +2145,7 @@ const ContratoDialog: React.FC<Props> = ({
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
               {(() => {
-                const disabled = nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim()) || !nfSemPendencias || motoSeminovaBloqueadaEmpresa;
+                const disabled = nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim()) || !nfSemPendencias || motoSeminovaBloqueadaEmpresa || veicProdBloqueado;
                 // Moto 0km: produção exige os valores de ICMS-ST retido (da NF de entrada).
                 const stRetidoOk = !eh0kmVenda || (
                   parseCurrencyInput(stBcRetido) > 0 &&
@@ -2142,11 +2156,13 @@ const ContratoDialog: React.FC<Props> = ({
                   ? 'Nenhuma empresa vinculada à loja do atendimento'
                   : motoSeminovaBloqueadaEmpresa
                     ? 'Esta empresa só vende motos 0km — moto seminova não pode ser vendida por ela'
-                    : hasTroca && !valorQuitacao?.trim()
-                      ? 'Valor de Quitação da moto do cliente é obrigatório'
-                      : !nfSemPendencias
-                        ? 'Cadastro do cliente incompleto — resolva as pendências marcadas nos cards acima'
-                        : undefined;
+                    : veicProdBloqueado
+                      ? `Faltam dados fiscais do veículo (${veicProdFaltando.join(', ')}) — preencha em Estoque → "Dados Fiscais (NF-e)"`
+                      : hasTroca && !valorQuitacao?.trim()
+                        ? 'Valor de Quitação da moto do cliente é obrigatório'
+                        : !nfSemPendencias
+                          ? 'Cadastro do cliente incompleto — resolva as pendências marcadas nos cards acima'
+                          : undefined;
                 return (
                   <>
                     {(podeEmitirNova || podeReemitirHomolog) && !nfe.pendente && (
