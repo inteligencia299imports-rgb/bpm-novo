@@ -93,7 +93,6 @@ interface ExcecaoNcm {
   bem_usado: boolean | null;
   aliquota_interna: number | null;
   aliquota_fcp: number | null;
-  difal_dispensado_st: boolean;
 }
 
 export interface OperacaoCarregada {
@@ -148,7 +147,7 @@ export async function carregarOperacao(
   const [{ data: regras, error: e2 }, { data: ufs, error: e3 }, { data: excecoes, error: e4 }] = await Promise.all([
     supabase.from("naturezas_operacao_regras_fiscais").select("*").in("natureza_operacao_id", lista.map((n) => n.id)).eq("ativo", true).order("ordem"),
     supabase.from("icms_uf").select("uf, aliquota_interna, aliquota_fcp"),
-    supabase.from("icms_uf_ncm").select("uf, ncm, bem_usado, aliquota_interna, aliquota_fcp, difal_dispensado_st"),
+    supabase.from("icms_uf_ncm").select("uf, ncm, bem_usado, aliquota_interna, aliquota_fcp"),
   ]);
   const erro = e2 ?? e3 ?? e4;
   if (erro) return { erro: `Erro ao ler regras fiscais: ${erro.message}` };
@@ -233,7 +232,6 @@ export function aliquotasUf(op: OperacaoCarregada, uf: string, ncm?: string | nu
   return {
     interna: num(exc?.aliquota_interna) ?? base?.aliquota_interna ?? null,
     fcp: num(exc?.aliquota_fcp) ?? base?.aliquota_fcp ?? 0,
-    difalDispensado: !!exc?.difal_dispensado_st,
   };
 }
 
@@ -279,7 +277,7 @@ export function comoRegrasPorImposto(op: OperacaoCarregada, e: RegraEscolhida, i
     tipo_tributacao: r.icms_tipo_tributacao,
     aliquota_icms_efetiva: pICMS, reducao_base_calculo_efetiva: null,
     aliquota_suportada_consumidor_final: emitente.interna, codigo_beneficio_fiscal: r.codigo_beneficio_fiscal,
-    difal_dispensado_st: destino.difalDispensado, indicador_presenca: e.natureza.indicador_presenca, natureza_operacao_descricao: natOpDe(e),
+    indicador_presenca: e.natureza.indicador_presenca, natureza_operacao_descricao: natOpDe(e),
     informacoes_complementares: r.informacoes_complementares, informacoes_adicionais_fisco: r.informacoes_adicionais_fisco,
   } : null;
   const simples = (imposto: string, cst: string | null, aliquota: unknown) =>
@@ -357,10 +355,9 @@ export function montarCenario(e: EntradaCenario): Cenario {
   return { ufFiscal, interna, idDest: interna ? 1 : 2, indIEDest, consumidorFinal, regimeNormal, difal, modalidadeFrete, retiradaPresencial };
 }
 
-// DIFAL no item: o da operação, menos CST sem ICMS na operação (40/41/50) e ST com MVA ajustada
-// (dispensa cadastrada na exceção por NCM).
-export const difalNoItem = (c: Cenario, cst: string | null | undefined, dispensado?: boolean) =>
-  c.difal && !["40", "41", "50"].includes(String(cst ?? "")) && !dispensado;
+// DIFAL no item: o da operação, menos CST sem ICMS na operação (40/41/50).
+export const difalNoItem = (c: Cenario, cst: string | null | undefined) =>
+  c.difal && !["40", "41", "50"].includes(String(cst ?? ""));
 
 // 6102 -> 6108 (venda interestadual a não contribuinte). Só existe na família interestadual.
 export const cfopDoCenario = (c: Cenario, cfop: string) => (c.indIEDest === 9 && !c.interna && cfop === "6102" ? "6108" : cfop);
@@ -374,7 +371,7 @@ export function simularItem(op: OperacaoCarregada, c: Cenario, produto: { ncm?: 
   const linhas = comoRegrasPorImposto(op, escolhida, item);
   const icms = linhas.icms;
   const cfop = cfopDoCenario(c, cfopDe(escolhida));
-  const difal = !!icms && difalNoItem(c, icms.situacao_tributaria, icms.difal_dispensado_st);
+  const difal = !!icms && difalNoItem(c, icms.situacao_tributaria);
   return {
     natureza: escolhida.natureza,
     regra: escolhida.regra,
