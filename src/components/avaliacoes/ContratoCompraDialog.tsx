@@ -26,6 +26,7 @@ import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { generateContratoCompraPdf } from '@/lib/generateContratoCompraPdf';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
+import { useNfeDevolvida } from '@/hooks/useNfeDevolvida';
 
 interface Props {
   open: boolean;
@@ -126,10 +127,17 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   });
   // NF-e autorizada -> contrato e cliente 100% travados (nenhum campo editável).
   const nfeJaEmitida = nfe.emitida;
+  const nfeEmProducaoBruta = nfeJaEmitida && nfe.nfe?.ambiente === 'producao';
+  // NF de compra devolvida (pós-24h): o negócio foi desfeito, libera uma nova
+  // proposta/emissão como se não houvesse NF-e vinculada.
+  const nfeDevolvida = useNfeDevolvida('compra', avaliacao?.id, open && nfeEmProducaoBruta);
   // Contrato só trava depois de NF-e emitida em PRODUÇÃO — homologação é teste,
   // não deve bloquear edição/geração do contrato (mesma regra do fluxo de venda).
-  const nfeEmProducao = nfeJaEmitida && nfe.nfe?.ambiente === 'producao';
+  const nfeEmProducao = nfeEmProducaoBruta && !nfeDevolvida;
   const podeReemitirHomolog = nfeJaEmitida && nfe.nfe?.ambiente === 'homologacao';
+  // Devolvida: trata como se não houvesse NF-e emitida pra fins de uma NOVA
+  // emissão — o CancelarNfeDialog continua mostrando o histórico da original.
+  const podeEmitirNova = !nfeJaEmitida || nfeDevolvida;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -310,11 +318,11 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   // Se já houve uma emissão (ex.: em erro), repõe o valor da NF que foi tentado.
   useEffect(() => {
     const vt = (nfe.nfe as any)?.valor_total;
-    if (ehNfe && (!nfeJaEmitida || podeReemitirHomolog) && typeof vt === 'number' && vt > 0) {
+    if (ehNfe && (podeEmitirNova || podeReemitirHomolog) && typeof vt === 'number' && vt > 0) {
       setNfeValor(formatCurrencyInput(String(Math.round(vt * 100))));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [(nfe.nfe as any)?.valor_total, ehNfe, nfeJaEmitida, podeReemitirHomolog]);
+  }, [(nfe.nfe as any)?.valor_total, ehNfe, podeEmitirNova, podeReemitirHomolog]);
 
   const saveContrato = async (): Promise<string | null> => {
     if (nfeEmProducao) {
@@ -685,7 +693,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
 
           {/* Card: NF-e de Compra (valor + observações da nota) — some inteiro uma
               vez autorizada e não reemitível (os dados já ficam no título + barra de ações). */}
-          {ehNfe && !(nfeJaEmitida && !podeReemitirHomolog) && (
+          {ehNfe && (podeEmitirNova || podeReemitirHomolog) && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -1012,7 +1020,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                                 : 'Disponível após aprovação, contrato gerado e consulta realizada';
                     return (
                       <>
-                        {(!nfeJaEmitida || podeReemitirHomolog) && !nfe.pendente && (
+                        {(podeEmitirNova || podeReemitirHomolog) && !nfe.pendente && (
                           <Button
                             className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
                             disabled={disabled}

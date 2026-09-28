@@ -24,6 +24,9 @@ export const POS_VENDA_COLUMNS: { value: PosVendaStatus; label: string; hex: str
   { value: 'em_aberto', label: 'Em Aberto', hex: '#2EC5FF' },
   { value: 'em_andamento', label: 'Em Andamento', hex: '#F2C94C' },
   { value: 'doc_despachante', label: 'Doc. com Despachante', hex: '#b376c4' },
+  // Concluídas sem NF-e de venda emitida no bpm-novo (ex.: importadas de outro
+  // sistema) continuam aqui pra permitir acesso/edição — ver PosVendaTab.
+  { value: 'concluido', label: 'Concluída (sem NF)', hex: '#9CA3AF' },
 ];
 
 // Parte 2 (relação com o consignante) não passa pela aprovação de venda do

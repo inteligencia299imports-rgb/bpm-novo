@@ -15,6 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
+import { useNfeDevolvida } from '@/hooks/useNfeDevolvida';
 import { nfeBotaoClasse } from '@/lib/nfeTag';
 import { TIPOS_PROPRIA, EMPRESAS_SO_MOTO_NOVA } from '@/lib/tipoAquisicao';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
@@ -156,6 +157,10 @@ const ProcessoDialog: React.FC<Props> = ({
   const nfeVenda = useNfeCompra(hasNfVendaEtapa ? atendimentoId : '', open && hasNfVendaEtapa, tipoVenda, 'atendimento');
   const nfeTroca = useNfeCompra(trocaAvaliacaoId, open && !!trocaAvaliacaoId, 'compra', 'avaliacao');
   const nfeTransferencia = useNfeCompra(trocaAvaliacaoId, open && precisaTransferenciaFag, 'transferencia', 'avaliacao');
+  // NF devolvida (pós-24h): o botão do checklist deve ficar vermelho igual à
+  // cancelada, mesmo com a NF original ainda 'processada' (ver useNfeDevolvida).
+  const nfeVendaDevolvida = useNfeDevolvida(tipoVenda, atendimentoId, open && hasNfVendaEtapa && nfeVenda.emitida && nfeVenda.nfe?.ambiente === 'producao');
+  const nfeTrocaDevolvida = useNfeDevolvida('compra', trocaAvaliacaoId, open && !!trocaAvaliacaoId && nfeTroca.emitida && nfeTroca.nfe?.ambiente === 'producao');
 
   const podeEmitirNfeVenda =
     !!estoqueMoto && ['vendido', 'sinal'].includes(estoqueMoto.status) && contratoVendaGerado;
@@ -599,6 +604,7 @@ const ProcessoDialog: React.FC<Props> = ({
               const devolucaoConvProducaoOk = nfeDevolucaoConv.emitida && nfeDevolucaoConv.nfe?.ambiente === 'producao';
               const nfeConverterAtiva = devolucaoConvProducaoOk ? nfeCompraConv : nfeDevolucaoConv;
               const nfeObj = isNfVenda ? nfeVenda : isNfTroca ? nfeTroca : isNfTransferencia ? nfeTransferencia : isConverterConsignacao ? nfeConverterAtiva : null;
+              const nfeObjDevolvida = isNfVenda ? nfeVendaDevolvida : isNfTroca ? nfeTrocaDevolvida : false;
               // Transferência só pode ser emitida depois da compra da troca
               // estar autorizada em produção (mesmo gate do servidor).
               const trocaCompraProducaoOk = nfeTroca.emitida && nfeTroca.nfe?.ambiente === 'producao';
@@ -878,7 +884,7 @@ const ProcessoDialog: React.FC<Props> = ({
                           (lá dentro tem o Baixar DANFE / cancelar / reemitir) —
                           não o DANFE direto aqui. */}
                       <Button
-                        size="sm" className={cn('h-7 w-24 gap-1 justify-center', nfeBotaoClasse(nfeObj?.nfe))}
+                        size="sm" className={cn('h-7 w-24 gap-1 justify-center', nfeBotaoClasse(nfeObj?.nfe, nfeObjDevolvida))}
                         onClick={() => (
                           isNfTroca ? (trocaAvaliacaoId && onEmitirNfeTroca?.(trocaAvaliacaoId))
                           : isNfTransferencia ? (trocaAvaliacaoId && onEmitirNfeTransferencia?.(trocaAvaliacaoId))

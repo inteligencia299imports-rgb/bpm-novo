@@ -20,6 +20,7 @@ import { BPM_PROJETO_ID } from '@/lib/projeto';
 import type { Atendimento, MotoInteresse, Avaliacao } from '@/types/crm';
 import { generateContratoPdf, type ContratoPdfData } from '@/lib/generateContratoPdf';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
+import { useNfeDevolvida } from '@/hooks/useNfeDevolvida';
 import { useAuth } from '@/contexts/AuthContext';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
@@ -279,14 +280,21 @@ const ContratoDialog: React.FC<Props> = ({
     if (ehNfe) setTimeout(() => onOpenChange(false), 1200);
   });
   const nfeJaEmitida = nfe.emitida;
+  const nfeEmProducaoBruta = nfeJaEmitida && nfe.nfe?.ambiente === 'producao';
+  // NF de venda devolvida (pós-24h): o negócio foi desfeito, libera uma nova
+  // proposta/emissão como se não houvesse NF-e vinculada.
+  const nfeDevolvida = useNfeDevolvida(tipoVenda, atendimento.id, open && nfeEmProducaoBruta);
   // Contrato só trava depois de NF-e emitida em PRODUÇÃO — homologação é teste,
   // não deve bloquear edição/geração do contrato. O ambiente é fixo no servidor
   // (env var), então o da última emissão já indica o de qualquer emissão nova.
-  const nfeEmProducao = nfeJaEmitida && nfe.nfe?.ambiente === 'producao';
+  const nfeEmProducao = nfeEmProducaoBruta && !nfeDevolvida;
   const soLeitura = ehNfe || nfeEmProducao;
   // Homologação permite reemitir mesmo com uma NF-e já autorizada (sempre com os
   // dados atuais do sistema) — em produção uma NF-e autorizada é definitiva, não reemite.
   const podeReemitirHomolog = nfeJaEmitida && nfe.nfe?.ambiente === 'homologacao';
+  // Devolvida: trata como se não houvesse NF-e emitida pra fins de uma NOVA
+  // emissão — o CancelarNfeDialog continua mostrando o histórico da original.
+  const podeEmitirNova = !nfeJaEmitida || nfeDevolvida;
   const [nfeValor, setNfeValor] = useState('');
   const [nfeObs, setNfeObs] = useState('');
   // ICMS-ST retido anteriormente (grupo <ICMS60> da NF de venda 0km) — transcrito
@@ -2050,7 +2058,7 @@ const ContratoDialog: React.FC<Props> = ({
 
               {/* Card: NF-e de Venda — só na tela de emissão de NF-e, e só antes de emitida
                   (uma vez autorizada, os dados já ficam na linha do título + barra de ações). */}
-              {ehNfe && !(nfeJaEmitida && !podeReemitirHomolog) && (
+              {ehNfe && (podeEmitirNova || podeReemitirHomolog) && (
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
@@ -2127,7 +2135,7 @@ const ContratoDialog: React.FC<Props> = ({
                       : undefined;
                 return (
                   <>
-                    {(!nfeJaEmitida || podeReemitirHomolog) && !nfe.pendente && (
+                    {(podeEmitirNova || podeReemitirHomolog) && !nfe.pendente && (
                       <Button
                         className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
                         disabled={disabled}

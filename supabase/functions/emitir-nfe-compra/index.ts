@@ -73,6 +73,20 @@ function stRetidoDoXmlEntrada(xml: string): { bc: number; subst: number; ret: nu
 
 type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_saida' | 'transferencia_entrada' | 'transferencia_saida_0km' | 'transferencia_entrada_0km' | 'devolucao_compra' | 'devolucao_venda_seminova' | 'devolucao_venda_0km' | 'devolucao_transferencia' | 'devolucao_transferencia_0km';
 
+// Operação original -> operação de devolução (undo pós-24h, ver CancelarNfeDialog
+// no frontend). Uma NF original devolvida não conta mais como "já emitida em
+// produção" pra bloquear uma nova emissão — o negócio foi desfeito.
+// NÃO inclui 'consignacao' -> 'devolucao_consignacao': essa é a devolução
+// simbólica do fluxo antigo (etapa normal da cadeia consignação -> devolução
+// -> compra -> venda, não um "desfazer" pós-24h) — não deve liberar reemissão.
+const DEVOLUCAO_DE: Partial<Record<Operacao, Operacao>> = {
+  compra: 'devolucao_compra',
+  venda_seminova: 'devolucao_venda_seminova',
+  venda_0km: 'devolucao_venda_0km',
+  transferencia_entrada: 'devolucao_transferencia',
+  transferencia_entrada_0km: 'devolucao_transferencia_0km',
+};
+
 interface OperacaoConfig {
   refPrefix: string;
   /** Rótulo da operação nas mensagens (a natureza fiscal vem de operacaoFiscal). */
@@ -1213,6 +1227,14 @@ Deno.serve(async (req) => {
     admin.from('nfe_entradas').select('*').eq(nfeKey, entityId).eq('operacao', tipo)
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
 
+  const foiDevolvida = async () => {
+    const devolucaoTipo = DEVOLUCAO_DE[tipo];
+    if (!devolucaoTipo) return false;
+    const { data } = await admin.from('nfe_entradas').select('id').eq(nfeKey, entityId).eq('operacao', devolucaoTipo)
+      .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
+    return !!data;
+  };
+
   // =====================================================================
   // acao: consultar
   // =====================================================================
@@ -1625,7 +1647,8 @@ Deno.serve(async (req) => {
     const { data: producaoAutorizada } = await admin
       .from('nfe_entradas').select('id').eq(nfeKey, entityId).eq('operacao', tipo)
       .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
-    if (producaoAutorizada) {
+    // NF original devolvida: o negócio foi desfeito, libera uma nova emissão.
+    if (producaoAutorizada && !(await foiDevolvida())) {
       return jsonResponse({ error: 'Já existe uma NF-e emitida em produção para esta moto.' }, 409);
     }
     const { data: homologAutorizada } = await admin
@@ -1721,8 +1744,9 @@ Deno.serve(async (req) => {
         }
       }
     }
-  } else if (nfeExistente && nfeExistente.status === 'processada' && nfeExistente.ambiente === 'producao') {
-    // Depois de produção autorizada, não reemite mais nem em homologação.
+  } else if (nfeExistente && nfeExistente.status === 'processada' && nfeExistente.ambiente === 'producao' && !(await foiDevolvida())) {
+    // Depois de produção autorizada, não reemite mais nem em homologação —
+    // a menos que essa NF tenha sido devolvida (negócio desfeito, libera nova emissão).
     return jsonResponse({ error: 'Já existe uma NF-e emitida em produção para esta moto — contrato bloqueado.' }, 409);
   }
 

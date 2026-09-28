@@ -16,6 +16,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
+import { useNfeDevolvida } from '@/hooks/useNfeDevolvida';
 import { nfeBotaoClasse } from '@/lib/nfeTag';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -92,6 +93,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   const nfeEmitida = nfe.emitida;
   const nfePendente = nfe.pendente;
   const nfeErro = nfe.erro;
+  const nfeCompraDevolvida = useNfeDevolvida('compra', avaliacaoId, open && nfeCompra?.status === 'processada' && nfeCompra?.ambiente === 'producao');
   const emitindoNfe = nfe.loading;
   const consultarNfe = nfe.consultar;
   const setNfeCompra = nfe.setNfe;
@@ -596,7 +598,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                       {nfeEmitida && (
                         <Button
                           size="sm"
-                          className={cn('h-7 w-24 gap-1 justify-center', nfeBotaoClasse(nfeCompra))}
+                          className={cn('h-7 w-24 gap-1 justify-center', nfeBotaoClasse(nfeCompra, nfeCompraDevolvida))}
                           onClick={() => onEmitirNfe?.()}
                         >
                           <FileText className="h-3.5 w-3.5" /> NF-e

@@ -61,14 +61,18 @@ export const NFE_TAG_SEM_REGISTRO: NfeTag = { label: 'NF-e', className: 'bg-gray
 
 /**
  * Classe de cor para BOTÕES de NF-e (processo de venda), conforme a última
- * geração da nota: homologação = laranja, cancelada = vermelho, produção
- * autorizada = verde. Sem status conhecido -> '' (mantém o estilo padrão).
+ * geração da nota: homologação = laranja, cancelada/devolvida = vermelho,
+ * produção autorizada = verde. Sem status conhecido -> '' (mantém o estilo
+ * padrão). `devolvida` vem de `useNfeDevolvida` — uma NF ainda 'processada'
+ * mas já desfeita por uma NF de devolução (pós-24h) conta como devolvida,
+ * não como autorizada.
  */
 export function nfeBotaoClasse(
   nfe: { status?: string | null; ambiente?: string | null } | null | undefined,
+  devolvida?: boolean,
 ): string {
   const s = nfe?.status;
-  if (s === 'cancelada') return 'bg-red-600 hover:bg-red-700 text-white';
+  if (s === 'cancelada' || devolvida) return 'bg-red-600 hover:bg-red-700 text-white';
   if (s === 'processada' || s === 'processada_com_pendencias') {
     return nfe?.ambiente === 'producao'
       ? 'bg-emerald-600 hover:bg-emerald-700 text-white'

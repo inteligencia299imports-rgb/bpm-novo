@@ -161,7 +161,7 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
       return (
         <Badge
           variant="outline"
-          className={`gap-1.5 border-amber-500/40 text-amber-600 ${className ?? ''}`}
+          className={`gap-1.5 border-destructive/40 text-destructive ${className ?? ''}`}
           title={`NF-e de devolução nº ${devolucaoNfe?.numero ?? '-'}`}
         >
           <Undo2 className="h-3.5 w-3.5" /> NF-e devolvida
@@ -209,7 +209,7 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
               </Button>
               {!devolucaoAutorizada && !devolucaoPendente && (
                 <Button
-                  className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white"
+                  className="gap-1.5 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                   disabled={devolucaoLoading}
                   onClick={() => emitirDevolucao('producao')}
                 >
@@ -222,7 +222,7 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
         </Dialog>
         <Button
           variant="outline"
-          className={`gap-1.5 border-amber-500/40 text-amber-600 hover:bg-amber-500/10 hover:text-amber-600 ${className ?? ''}`}
+          className={`gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive ${className ?? ''}`}
           onClick={() => setDevolucaoOpen(true)}
         >
           <Undo2 className="h-4 w-4" /> Devolver NF-e

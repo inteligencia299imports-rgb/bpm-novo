@@ -59,6 +59,9 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
     // interna, que é só formalidade de entrada) — mesma regra do
     // ContratoConsignacaoDialog.
     const nfeVendaResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('atendimento_id, status, ambiente').in('operacao', ['venda_seminova', 'venda_0km']).eq('status', 'processada').eq('ambiente', 'producao'));
+    // NF de venda devolvida (pós-24h): o negócio foi desfeito, não conta mais
+    // como "tem NF de venda" pra reaparecer no quadro.
+    const nfeDevolucaoVendaResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('atendimento_id').in('operacao', ['devolucao_venda_seminova', 'devolucao_venda_0km']).eq('status', 'processada').eq('ambiente', 'producao'));
     // Etapa "NF EMITIDA" concluída sem nfe_entradas (emitida fora do bpm-novo,
     // ou avaliação importada) — cai no fallback cinza (NFE_TAG_SEM_REGISTRO).
     const etapaNfResult = await fetchAllRange(() => supabase.from('consignacao_processos').select('avaliacao_id').eq('etapa', 'NF EMITIDA').eq('concluida', true));
@@ -74,7 +77,12 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
       if (!n.avaliacao_id) return;
       (nfeRowsPorAvaliacao[n.avaliacao_id] ??= []).push(n);
     });
-    const atendimentosComNfeVenda = new Set(((nfeVendaResult.data as any[]) || []).map((n: any) => n.atendimento_id));
+    const atendimentosComDevolucaoVenda = new Set(((nfeDevolucaoVendaResult.data as any[]) || []).map((n: any) => n.atendimento_id));
+    const atendimentosComNfeVenda = new Set(
+      ((nfeVendaResult.data as any[]) || [])
+        .map((n: any) => n.atendimento_id)
+        .filter((id: string) => !atendimentosComDevolucaoVenda.has(id)),
+    );
     const etapaNfConcluidaSet = new Set(((etapaNfResult.data as any[]) || []).map((e: any) => e.avaliacao_id));
     if (error) { toast.error('Erro ao carregar consignações'); } else {
       const estoqueMap: Record<string, { status: string; observacoes: string | null; data_entrada: string | null; atendimento_venda_id: string | null }> = {};

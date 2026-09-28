@@ -60,11 +60,14 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     // Colunas de aprovação são um eixo separado (venda_aprovacao_status), não pos_venda_status.
     const statuses = POS_VENDA_COLUMNS.map(c => c.value).filter(v => v !== 'aguardando_aprovacao' && v !== 'aprovada');
     const AT_SELECT = `*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes!avaliacoes_atendimento_id_fkey(*, ${MARCA_MODELO_SELECT})`;
-    const [estResRaw, estNovasRaw, lojaMap, nfeResult] = await Promise.all([
+    const [estResRaw, estNovasRaw, lojaMap, nfeResult, nfeDevolucaoResult] = await Promise.all([
       fetchAllRange<any>(() => supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).not('atendimento_venda_id', 'is', null)),
       supabase.from('estoque_motos_novas').select(ESTOQUE_NOVA_SELECT).not('atendimento_venda_id', 'is', null),
       fetchLojaMap(),
       fetchAllRange<any>(() => supabase.from('nfe_entradas' as any).select('atendimento_id, status, ambiente, operacao, created_at').not('atendimento_id', 'is', null).like('operacao', 'venda%')),
+      // NF de venda devolvida (pós-24h): o negócio foi desfeito, não conta mais
+      // como "tem NF de venda" pra travar/esconder o item.
+      fetchAllRange<any>(() => supabase.from('nfe_entradas' as any).select('atendimento_id').in('operacao', ['devolucao_venda_seminova', 'devolucao_venda_0km']).eq('status', 'processada').eq('ambiente', 'producao')),
     ]);
     // Tag de status da NF por atendimento — reflete o último status da NF.
     const nfeRowsPorAtendimento: Record<string, any[]> = {};
@@ -72,6 +75,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       if (!n.atendimento_id) return;
       (nfeRowsPorAtendimento[n.atendimento_id] ??= []).push(n);
     });
+    const atendimentosComDevolucaoVenda = new Set(((nfeDevolucaoResult.data as any[]) || []).map((n: any) => n.atendimento_id));
     const estRes = {
       data: [
         ...(estResRaw.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)),
@@ -118,10 +122,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
         const _nfeTag = est?.fonte === '0km' && est?.renave_atpv_numero
           ? { label: 'ATPV-e', className: 'bg-emerald-600 hover:bg-emerald-700 text-white' }
           : nfeTagFromRows(nfeRowsPorAtendimento[a.id]);
-        if (est) return { ...a, _estoqueMoto: est, _nfeTag };
+        const _temNfeProducao = !atendimentosComDevolucaoVenda.has(a.id) && (nfeRowsPorAtendimento[a.id] || []).some((n: any) => n.status === 'processada' && n.ambiente === 'producao');
+        if (est) return { ...a, _estoqueMoto: est, _nfeTag, _temNfeProducao };
         // Fallback: use first moto_interesse info
         const mi = a.motos_interesse?.[0];
-        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeTag };
+        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeTag, _temNfeProducao };
       });
 
     if (search.trim()) {
@@ -152,7 +157,14 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     if (a.venda_aprovacao_status === 'aprovada' && normal === 'em_aberto') return 'aprovada';
     return normal;
   };
-  const getColumnItems = (status: PosVendaStatus) => items.filter((a: any) => columnOf(a) === status);
+  const getColumnItems = (status: PosVendaStatus) => items.filter((a: any) => {
+    if (columnOf(a) !== status) return false;
+    // Concluída com NF-e de venda já emitida em produção: processo realmente
+    // encerrado, sai do quadro. Sem NF-e vinculada (ex.: venda importada de
+    // outro sistema), continua visível/acessível.
+    if (status === 'concluido' && a._temNfeProducao) return false;
+    return true;
+  });
 
   const handleStatusChanged = useCallback((itemId: string, newStatus: string, field: string) => {
     setItems(prev => prev.map(a => a.id === itemId ? { ...a, [field]: newStatus } : a));
@@ -182,10 +194,10 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       </FiltersPanel>
 
       {loading ? (
-        <KanbanSkeleton columns={4} />
+        <KanbanSkeleton columns={6} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-5">
+          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-6">
             {POS_VENDA_COLUMNS.map(col => {
               const colItems = getColumnItems(col.value);
               return (
