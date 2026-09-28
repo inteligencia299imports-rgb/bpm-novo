@@ -164,6 +164,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [testRideItem, setTestRideItem] = useState<EstoqueItem | null>(null);
   const [idsWithNfeVenda0km, setIdsWithNfeVenda0km] = useState<Set<string>>(new Set());
   const [idsWithNfeVendaSeminova, setIdsWithNfeVendaSeminova] = useState<Set<string>>(new Set());
+  const [idsComTransferencia0kmProducao, setIdsComTransferencia0kmProducao] = useState<Set<string>>(new Set());
 
   const handleOpenHistory = async (item: EstoqueItem) => {
     setHistoryItem(item);
@@ -254,8 +255,23 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           .eq('ambiente', 'producao')
           .in('estoque_moto_nova_id', zeroKmIds);
         setIdsWithNfeVenda0km(new Set((nfData || []).map((n: any) => n.estoque_moto_nova_id)));
+
+        // Motos 0km que já concluíram uma transferência fiscal entre empresas
+        // (NF-e de entrada em produção) — a sincronização com o RENAVE (achado
+        // real 2026-09-28, chassi 95V5D00AATM000086) precisa continuar
+        // acessível mesmo depois da moto ser vendida, já que a transferência
+        // é anterior e independente da venda.
+        const { data: nfTransfData } = await supabase
+          .from('nfe_entradas' as any)
+          .select('estoque_moto_nova_id')
+          .eq('operacao', 'transferencia_entrada_0km')
+          .eq('status', 'processada')
+          .eq('ambiente', 'producao')
+          .in('estoque_moto_nova_id', zeroKmIds);
+        setIdsComTransferencia0kmProducao(new Set((nfTransfData || []).map((n: any) => n.estoque_moto_nova_id)));
       } else {
         setIdsWithNfeVenda0km(new Set());
+        setIdsComTransferencia0kmProducao(new Set());
       }
 
       // Mesma checagem pra seminova — moto vendida sem NF de venda ainda
@@ -408,6 +424,18 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           });
           options.push({
             label: 'Transferir',
+            icon: <ArrowRightLeft className="h-4 w-4" />,
+            action: () => setTransferenciaItem(item),
+          });
+        } else if (idsComTransferencia0kmProducao.has(item.id)) {
+          // Já vendida (NF de venda fecha a transferência pro "Transferir"
+          // normal), mas a transferência entre empresas é anterior e
+          // independente da venda — mantém acesso só pra ver o histórico e
+          // sincronizar o RENAVE (achado real 2026-09-28, chassi
+          // 95V5D00AATM000086: sem isso não tinha como acionar a sincronização
+          // depois que a moto já constava como vendida).
+          options.push({
+            label: 'Sincronizar RENAVE',
             icon: <ArrowRightLeft className="h-4 w-4" />,
             action: () => setTransferenciaItem(item),
           });
