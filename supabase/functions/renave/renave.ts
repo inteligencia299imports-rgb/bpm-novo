@@ -416,12 +416,14 @@ export const sairEstoqueZeroKm = (s: SaidaZeroKm, ctx?: RenaveLogCtx) =>
 //      transferência que o emitir-nfe-compra já emite, CFOP 152/949) —
 //      resultado: "o veículo sairá do estoque da origem e entrará no
 //      estoque do estabelecimento solicitante".
-// NÃO VERIFICADO em produção ainda — nomes de campo são um best-effort
-// (mesma convenção de EntradaZeroKm/SaidaZeroKm já confirmados) pra faltar o
-// mínimo possível; ajustar conforme a rejeição real da SERPRO no primeiro
-// teste (mesma disciplina de todo o resto deste arquivo).
+// Achado real 2026-09-28 (chassi 95V5D00AATM000086): a primeira tentativa
+// com `chassi` no lugar de `idEstoque` voltou "ID do estoque não pode estar
+// em branco" — igual a `SaidaZeroKm`, a SERPRO identifica o veículo pelo
+// idEstoque (registro ativo no estabelecimento de ORIGEM), não pelo chassi.
+// Quem chama precisa descobrir esse id antes (ex.: `listarEstoques` sob o
+// certificado da origem) e passar aqui.
 export interface AutorizacaoTransferenciaZeroKm {
-  chassi: string;
+  idEstoque: number;
   cnpjEstabelecimentoDestino: string;
   valorVenda: number;
   dataTransferencia: string; // ISO

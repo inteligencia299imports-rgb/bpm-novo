@@ -533,8 +533,24 @@ Deno.serve(async (req) => {
         admin, operacao: acao, chassi: chassiUp, estoqueMotoNovaId: emnId, usuarioId: caller.id,
         cnpjEstabelecimento: cnpjOrigem,
       };
+
+      // Achado real 2026-09-28: a autorização exige o idEstoque (registro
+      // ativo no estabelecimento de origem), não o chassi — recupera via
+      // listarEstoques sob o certificado da origem (mesmo endpoint já usado
+      // no resync de entrada 0km/seminova).
+      const leOrigem = await listarEstoques({ chassi: chassiUp }, ctxOrigem);
+      const listaOrigem = Array.isArray(leOrigem.body) ? leOrigem.body : (Array.isArray(leOrigem.body?.content) ? leOrigem.body.content : []);
+      const estoqueOrigem = listaOrigem.find((x: any) => String(x?.chassi ?? '').toUpperCase() === chassiUp)
+        ?? (listaOrigem.length === 1 ? listaOrigem[0] : null);
+      const idEstoqueOrigem = estoqueOrigem?.id ?? estoqueOrigem?.idEstoque ?? null;
+      if (!idEstoqueOrigem) {
+        const msg = `Não foi possível localizar o idEstoque ativo na origem (listarEstoques: HTTP ${leOrigem.status} — ${erroRenave(leOrigem)})`;
+        await persistir(admin, emnId, { renave_ultimo_erro: msg });
+        return json({ error: msg, detalhe: leOrigem.body }, 422);
+      }
+
       const auth = await autorizarTransferenciaZeroKm({
-        chassi: chassiUp, cnpjEstabelecimentoDestino: cnpjDestino, valorVenda, dataTransferencia,
+        idEstoque: idEstoqueOrigem, cnpjEstabelecimentoDestino: cnpjDestino, valorVenda, dataTransferencia,
       }, ctxOrigem);
       if (auth.status !== 201 && auth.status !== 200) {
         const msg = `Autorização (origem): ${erroRenave(auth)}`;
