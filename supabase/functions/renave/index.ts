@@ -383,20 +383,29 @@ Deno.serve(async (req) => {
           // estado (SOLICITADO/TRANSFERIDO/CONFIRMADO), diferente de
           // `consultarVeiculoPorChassi` (só serve se já CONFIRMADO -- é por
           // isso que o chassi 95V5D00AATM000086 não foi encontrado antes).
-          // Diagnóstico temporário: se qualquer uma dessas chamadas falhar
-          // ANTES de logar em renave_chamadas (ex.: exceção na montagem do
-          // client mTLS), o catch silencioso escondia isso por completo --
-          // sem nem aparecer no log. Guarda a mensagem pra entrar na resposta
-          // final e dar visibilidade de qual delas (se alguma) quebrou.
+          // Diagnóstico temporário: o log em renave_chamadas apaga a linha de
+          // FALHA anterior da mesma operação/moto antes de inserir a próxima
+          // (registrarChamada, pra não empilhar retries) -- então se
+          // listarEstoques falhar (não só der exceção, também HTTP 4xx/5xx) e
+          // consultarVeiculoPorChassi falhar logo em seguida NA MESMA
+          // tentativa, a falha do listarEstoques nunca sobrevive pra dar pra
+          // consultar depois. Captura aqui, na resposta, pra não depender do
+          // log.
           const diagnostico: string[] = [];
           if (!achado) {
             try {
               const le = await listarEstoques({ chassi: chassiUp }, ctx);
+              if (le.status < 200 || le.status >= 300) {
+                diagnostico.push(`listarEstoques: HTTP ${le.status} — ${erroRenave(le)}`);
+              }
               const listaLe = Array.isArray(le.body) ? le.body : (Array.isArray(le.body?.content) ? le.body.content : []);
               achado = listaLe.find((x: any) => String(x?.chassi ?? '').toUpperCase() === chassiUp)
                 ?? (listaLe.length === 1 ? listaLe[0] : null);
+              if (!achado && le.status >= 200 && le.status < 300) {
+                diagnostico.push(`listarEstoques: HTTP ${le.status}, ${listaLe.length} item(ns), nenhum casou com o chassi`);
+              }
             } catch (e) {
-              diagnostico.push(`listarEstoques: ${e instanceof Error ? e.message : String(e)}`);
+              diagnostico.push(`listarEstoques: exceção — ${e instanceof Error ? e.message : String(e)}`);
               console.error('renave resync 0km — listarEstoques falhou:', e);
             }
           }
@@ -411,7 +420,7 @@ Deno.serve(async (req) => {
               achado = lv.find((x: any) => String(x?.chassi ?? '').toUpperCase() === chassiUp)
                 ?? (lv.length === 1 ? lv[0] : null);
             } catch (e) {
-              diagnostico.push(`consultarVeiculoPorChassi: ${e instanceof Error ? e.message : String(e)}`);
+              diagnostico.push(`consultarVeiculoPorChassi: exceção — ${e instanceof Error ? e.message : String(e)}`);
               console.error('renave resync 0km — consultarVeiculoPorChassi falhou:', e);
             }
           }
