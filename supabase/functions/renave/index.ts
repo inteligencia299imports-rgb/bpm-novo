@@ -595,6 +595,7 @@ Deno.serve(async (req) => {
         dataEntradaEstoque: dataTransferencia,
         dataHoraMedicaoHodometro: dataTransferencia,
         quilometragemHodometro: 0,
+        valorCompra: valorVenda,
         cpfOperadorResponsavel: cpfOperador,
       }, ctxDestino);
       if (t.status !== 201 && t.status !== 200) {

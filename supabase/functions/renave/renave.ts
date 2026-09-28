@@ -453,7 +453,11 @@ export const consultarAutorizacoesTransferencia = (params: { chassi?: string }, 
 // Achado real 2026-09-28: `idAutorizacaoTransferencia` também não foi
 // reconhecido ("Id da autorização de transferência é obrigatória" mesmo
 // preenchido) — troca pra `idAutorizacao`, nome curto (mesmo padrão de
-// `idEstoque` em vez de `idEstoqueOrigem`/algo mais descritivo).
+// `idEstoque` em vez de `idEstoqueOrigem`/algo mais descritivo). Confirmado:
+// já funcionou na tentativa seguinte (renave_chamadas 23:20:50).
+// Achado real 2026-09-28: exige também `valorCompra` ("Valor da compra é
+// obrigatório") -- mesmo nome de campo de EntradaZeroKm, faz sentido já que
+// o destino está "comprando" (entrando em estoque) o veículo.
 export interface TransferenciaEntreEstabelecimentosZeroKm {
   chassi: string;
   idAutorizacao: number;
@@ -462,6 +466,7 @@ export interface TransferenciaEntreEstabelecimentosZeroKm {
   dataEntradaEstoque: string; // ISO
   dataHoraMedicaoHodometro: string; // ISO
   quilometragemHodometro: number;
+  valorCompra: number;
   cpfOperadorResponsavel?: string;
 }
 export const transferirEntreEstabelecimentosZeroKm = (t: TransferenciaEntreEstabelecimentosZeroKm, ctx?: RenaveLogCtx) =>
