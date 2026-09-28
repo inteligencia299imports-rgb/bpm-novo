@@ -6,13 +6,19 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 import { ArrowRightLeft, FileText, Loader2, RefreshCw, AlertTriangle, CheckCircle2, ArrowRight, Radio } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { extrairErroFuncao } from '@/lib/edgeFunctionError';
+import { useAuth } from '@/contexts/AuthContext';
+import { validarCpf } from '@/lib/cpf';
+import { cn } from '@/lib/utils';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
 import { NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
+
+const formatCpf = (v: string) => v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 
 interface EstoqueItemBasico {
   id: string;
@@ -63,6 +69,10 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
   const [destinoLojaId, setDestinoLojaId] = useState('');
   const [renaveInfo, setRenaveInfo] = useState<{ id_estoque: string | null; estado: string | null; ultimo_erro: string | null } | null>(null);
   const [renaveLoading, setRenaveLoading] = useState(false);
+  const { user } = useAuth();
+  const [funcionarioCpf, setFuncionarioCpf] = useState<string | null>(null);
+  const [funcionarioCpfLoading, setFuncionarioCpfLoading] = useState(true);
+  const [cpfOperador, setCpfOperador] = useState('');
 
   const saida = useNfeCompra(entityId, open, eh0km ? 'transferencia_saida_0km' : 'transferencia_saida', eh0km ? 'estoque_moto_nova' : 'avaliacao');
   const entrada = useNfeCompra(entityId, open, eh0km ? 'transferencia_entrada_0km' : 'transferencia_entrada', eh0km ? 'estoque_moto_nova' : 'avaliacao', onSuccess);
@@ -103,11 +113,34 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
 
   useEffect(() => { if (open) carregarRenaveInfo(); }, [open, carregarRenaveInfo]);
 
+  // CPF do operador — mesmo padrão do RenaveDialog: tenta achar pelo cadastro
+  // de funcionário do usuário logado, só pede na mão se não achar.
+  useEffect(() => {
+    if (!open || !user?.id) return;
+    let cancel = false;
+    setFuncionarioCpfLoading(true);
+    (supabase as any)
+      .from('funcionarios_hcm')
+      .select('cpf')
+      .eq('usuario_id', user.id)
+      .maybeSingle()
+      .then(({ data: fnc }: any) => {
+        if (cancel) return;
+        const cpf = fnc?.cpf ? String(fnc.cpf).replace(/\D/g, '') : null;
+        setFuncionarioCpf(cpf && cpf.length === 11 ? cpf : null);
+        setFuncionarioCpfLoading(false);
+      });
+    return () => { cancel = true; };
+  }, [open, user?.id]);
+
+  const cpfOperadorEnviado = funcionarioCpf || cpfOperador;
+  const cpfOperadorValido = !!funcionarioCpf || validarCpf(cpfOperador);
+
   const sincronizarRenave = async () => {
     setRenaveLoading(true);
     try {
       const { data: res, error } = await supabase.functions.invoke('renave', {
-        body: { acao: 'transferencia-entre-estabelecimentos', estoque_moto_nova_id: entityId },
+        body: { acao: 'transferencia-entre-estabelecimentos', estoque_moto_nova_id: entityId, cpf_operador: cpfOperadorEnviado },
       });
       if (error || (res && res.error)) {
         toast.error(res?.error || await extrairErroFuncao(error, 'Falha ao sincronizar com o RENAVE'));
@@ -343,8 +376,24 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" /> {renaveInfo.ultimo_erro}
                       </p>
                     )}
+                    <div>
+                      <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
+                      {funcionarioCpfLoading ? (
+                        <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando…</p>
+                      ) : funcionarioCpf ? (
+                        <p className="mt-1 text-sm font-semibold">{formatCpf(funcionarioCpf)}</p>
+                      ) : (
+                        <Input
+                          className={cn('mt-1', cpfOperador.length === 11 && !cpfOperadorValido && 'border-destructive text-destructive focus-visible:ring-destructive')}
+                          inputMode="numeric"
+                          value={formatCpf(cpfOperador)}
+                          onChange={(e) => setCpfOperador(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                          placeholder="000.000.000-00"
+                        />
+                      )}
+                    </div>
                     <div className="flex justify-end">
-                      <Button size="sm" className="gap-1.5" disabled={renaveLoading} onClick={sincronizarRenave}>
+                      <Button size="sm" className="gap-1.5" disabled={renaveLoading || funcionarioCpfLoading || !cpfOperadorValido} onClick={sincronizarRenave}>
                         {renaveLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radio className="h-4 w-4" />}
                         Sincronizar RENAVE
                       </Button>

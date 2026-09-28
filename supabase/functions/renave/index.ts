@@ -527,6 +527,8 @@ Deno.serve(async (req) => {
       const valorVenda = Number(emn.valor_custo ?? emn.valor ?? 0);
       if (!valorVenda) return json({ error: 'Valor de custo da moto não determinado.' }, 409);
       const dataTransferencia = brasiliaNaiveIso(body.data_transferencia);
+      const cpfOperador = body.cpf_operador ? String(body.cpf_operador).replace(/\D/g, '') : undefined;
+      if (!cpfOperador) return json({ error: 'cpf_operador é obrigatório' }, 400);
 
       // Passo 1: autorização, invocada PELA ORIGEM.
       const ctxOrigem: RenaveLogCtx = {
@@ -551,6 +553,7 @@ Deno.serve(async (req) => {
 
       const auth = await autorizarTransferenciaZeroKm({
         idEstoque: idEstoqueOrigem, cnpjEstabelecimentoDestino: cnpjDestino, valorVenda, dataTransferencia,
+        cpfOperadorResponsavel: cpfOperador,
       }, ctxOrigem);
       if (auth.status !== 201 && auth.status !== 200) {
         const msg = `Autorização (origem): ${erroRenave(auth)}`;
@@ -570,6 +573,7 @@ Deno.serve(async (req) => {
       const t = await transferirEntreEstabelecimentosZeroKm({
         chassi: chassiUp, idAutorizacaoTransferencia: idAutorizacao,
         chaveNotaFiscal: soChave(nfEntrada.chave_nfe), dataTransferencia,
+        cpfOperadorResponsavel: cpfOperador,
       }, ctxDestino);
       if (t.status !== 201 && t.status !== 200) {
         const msg = `Transferência (destino): ${erroRenave(t)}`;

@@ -422,11 +422,15 @@ export const sairEstoqueZeroKm = (s: SaidaZeroKm, ctx?: RenaveLogCtx) =>
 // idEstoque (registro ativo no estabelecimento de ORIGEM), não pelo chassi.
 // Quem chama precisa descobrir esse id antes (ex.: `listarEstoques` sob o
 // certificado da origem) e passar aqui.
+// Achado real 2026-09-28: também exige cpfOperadorResponsavel ("CPF do
+// operador responsável é obrigatório"), mesmo campo já usado em
+// EntradaZeroKm/SaidaZeroKm.
 export interface AutorizacaoTransferenciaZeroKm {
   idEstoque: number;
   cnpjEstabelecimentoDestino: string;
   valorVenda: number;
   dataTransferencia: string; // ISO
+  cpfOperadorResponsavel?: string;
 }
 export const autorizarTransferenciaZeroKm = (a: AutorizacaoTransferenciaZeroKm, ctx?: RenaveLogCtx) =>
   call('POST', '/api/autorizacoes-transferencias-veiculo-zero-km', { body: a, ctx });
@@ -436,6 +440,7 @@ export interface TransferenciaEntreEstabelecimentosZeroKm {
   idAutorizacaoTransferencia: number;
   chaveNotaFiscal: string;
   dataTransferencia: string; // ISO
+  cpfOperadorResponsavel?: string;
 }
 export const transferirEntreEstabelecimentosZeroKm = (t: TransferenciaEntreEstabelecimentosZeroKm, ctx?: RenaveLogCtx) =>
   call('POST', '/api/transferencias-entre-estabelecimentos-veiculo-zero-km', { body: t, ctx });
