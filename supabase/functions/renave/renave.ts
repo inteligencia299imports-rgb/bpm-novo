@@ -445,15 +445,19 @@ export const consultarAutorizacoesTransferencia = (params: { chassi?: string }, 
   call('GET', '/api/autorizacoes-transferencias', { query: params, ctx });
 
 // Achado real 2026-09-28: além de `dataTransferencia`, exige também
-// `dataEntradaEstoque` ("Data da entrada em estoque é obrigatória") — mesmo
-// nome de campo já usado em EntradaZeroKm, faz sentido já que esse passo
-// cria o novo registro de estoque no destino.
+// `dataEntradaEstoque` ("Data da entrada em estoque é obrigatória") e
+// `quilometragemHodometro` ("Quilometragem do hodômetro é obrigatória") —
+// mesmos nomes de campo já usados em EntradaZeroKm, faz sentido já que esse
+// passo cria o novo registro de estoque no destino. 0km sem hodômetro
+// rodado, mesmo padrão do `entrada` normal (RenaveDialog): quilometragem 0.
 export interface TransferenciaEntreEstabelecimentosZeroKm {
   chassi: string;
   idAutorizacaoTransferencia: number;
   chaveNotaFiscal: string;
   dataTransferencia: string; // ISO
   dataEntradaEstoque: string; // ISO
+  dataHoraMedicaoHodometro: string; // ISO
+  quilometragemHodometro: number;
   cpfOperadorResponsavel?: string;
 }
 export const transferirEntreEstabelecimentosZeroKm = (t: TransferenciaEntreEstabelecimentosZeroKm, ctx?: RenaveLogCtx) =>

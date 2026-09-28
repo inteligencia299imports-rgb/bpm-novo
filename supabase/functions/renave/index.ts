@@ -593,6 +593,8 @@ Deno.serve(async (req) => {
         chassi: chassiUp, idAutorizacaoTransferencia: idAutorizacao,
         chaveNotaFiscal: soChave(nfEntrada.chave_nfe), dataTransferencia,
         dataEntradaEstoque: dataTransferencia,
+        dataHoraMedicaoHodometro: dataTransferencia,
+        quilometragemHodometro: 0,
         cpfOperadorResponsavel: cpfOperador,
       }, ctxDestino);
       if (t.status !== 201 && t.status !== 200) {
