@@ -591,7 +591,7 @@ Deno.serve(async (req) => {
       };
       const t = await transferirEntreEstabelecimentosZeroKm({
         chassi: chassiUp, idAutorizacao,
-        chaveNotaFiscal: soChave(nfEntrada.chave_nfe), dataTransferencia,
+        chaveNotaFiscal: soChave(nfEntrada.chave_nfe), dataTransferenciaEstoque: dataTransferencia,
         dataEntradaEstoque: dataTransferencia,
         dataHoraMedicaoHodometro: dataTransferencia,
         quilometragemHodometro: 0,

@@ -458,11 +458,15 @@ export const consultarAutorizacoesTransferencia = (params: { chassi?: string }, 
 // Achado real 2026-09-28: exige também `valorCompra` ("Valor da compra é
 // obrigatório") -- mesmo nome de campo de EntradaZeroKm, faz sentido já que
 // o destino está "comprando" (entrando em estoque) o veículo.
+// Achado real 2026-09-28: `dataTransferencia` não é reconhecido NESTE passo
+// (na autorização é) — aqui o campo é `dataTransferenciaEstoque` ("Data da
+// transferência de estoque é obrigatória"), mesmo padrão de sufixo
+// "Estoque" de `dataEntradaEstoque`.
 export interface TransferenciaEntreEstabelecimentosZeroKm {
   chassi: string;
   idAutorizacao: number;
   chaveNotaFiscal: string;
-  dataTransferencia: string; // ISO
+  dataTransferenciaEstoque: string; // ISO
   dataEntradaEstoque: string; // ISO
   dataHoraMedicaoHodometro: string; // ISO
   quilometragemHodometro: number;
