@@ -272,6 +272,9 @@ export function descricaoItemMoto(m: DadosMoto): string {
  * Combustível é sempre GASOLINA (não há moto elétrica no catálogo hoje). */
 export function informacoesAdicionaisItemMoto(m: DadosMoto): string {
   const linhas: Array<string | null> = [
+    // Marcador de veículo novo — mesmo padrão usado nas NF-e de 0km emitidas
+    // no sistema antigo (FAG), pra manter a mesma leitura visual na DANFE.
+    m.zero_km ? 'VEÍCULO NOVO' : null,
     ['MARCA', m.marca?.toUpperCase(), 'MODELO', m.modelo?.toUpperCase()].filter(Boolean).join(' '),
     m.cilindrada ? `CILINDRADA: ${m.cilindrada} CC` : null,
     // Só 0km tem esses dois campos preenchidos (vêm do veicProd da NF-e de
