@@ -435,11 +435,16 @@ export interface AutorizacaoTransferenciaZeroKm {
 export const autorizarTransferenciaZeroKm = (a: AutorizacaoTransferenciaZeroKm, ctx?: RenaveLogCtx) =>
   call('POST', '/api/autorizacoes-transferencias-veiculo-zero-km', { body: a, ctx });
 
+// Achado real 2026-09-28: além de `dataTransferencia`, exige também
+// `dataEntradaEstoque` ("Data da entrada em estoque é obrigatória") — mesmo
+// nome de campo já usado em EntradaZeroKm, faz sentido já que esse passo
+// cria o novo registro de estoque no destino.
 export interface TransferenciaEntreEstabelecimentosZeroKm {
   chassi: string;
   idAutorizacaoTransferencia: number;
   chaveNotaFiscal: string;
   dataTransferencia: string; // ISO
+  dataEntradaEstoque: string; // ISO
   cpfOperadorResponsavel?: string;
 }
 export const transferirEntreEstabelecimentosZeroKm = (t: TransferenciaEntreEstabelecimentosZeroKm, ctx?: RenaveLogCtx) =>

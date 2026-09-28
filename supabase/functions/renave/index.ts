@@ -573,6 +573,7 @@ Deno.serve(async (req) => {
       const t = await transferirEntreEstabelecimentosZeroKm({
         chassi: chassiUp, idAutorizacaoTransferencia: idAutorizacao,
         chaveNotaFiscal: soChave(nfEntrada.chave_nfe), dataTransferencia,
+        dataEntradaEstoque: dataTransferencia,
         cpfOperadorResponsavel: cpfOperador,
       }, ctxDestino);
       if (t.status !== 201 && t.status !== 200) {
