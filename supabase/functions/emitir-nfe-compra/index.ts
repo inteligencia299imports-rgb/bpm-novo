@@ -1999,12 +1999,29 @@ Deno.serve(async (req) => {
     : viaVendaPosConsignacao
       ? 'Venda de Mercadoria Recebida Anteriormente Em Consignacao'
       : cfg.naturezaDescricao;
+  // Transferência de estoque (tela de Estoque, transferencia_saida/entrada
+  // e variantes 0km): a família de CFOP depende de origem e destino serem a
+  // MESMA raiz de CNPJ ("filial", ex. FLORIANÓPOLIS↔PORTO ALEGRE — CFOP 152,
+  // padrão) ou raízes DIFERENTES ("empresa diferente", ex. MMATOS↔FLORIANÓPOLIS/
+  // PORTO ALEGRE — CFOP 949). Pedido do usuário, 2026-09-28: nunca hardcoded
+  // por nome de empresa, sempre pela raiz do CNPJ real das duas pontas.
+  let operacaoFiscalTransferencia: OperacaoFiscal = 'transferencia';
+  if (ehTransferenciaEstoque || ehTransferenciaEstoque0km) {
+    const outroLadoId = origemEmpresaIdTransf === empresaId ? destinoEmpresaIdTransf : origemEmpresaIdTransf;
+    const { data: outroLado } = await admin.from('empresas').select('cnpj').eq('id', outroLadoId).maybeSingle();
+    const raizCnpj = (v: string | null | undefined) => (v || '').replace(/\D/g, '').slice(0, 8);
+    if (outroLado?.cnpj && raizCnpj(outroLado.cnpj) !== raizCnpj(empresa.cnpj)) {
+      operacaoFiscalTransferencia = 'transferencia_empresas';
+    }
+  }
   // Desde 2026-09-24 a natureza é UMA por CFOP no SisFin: a operação define a
   // família de CFOPs e a regra mais específica (UF, NCM da moto, bem usado)
   // decide o CFOP — ver _shared/regras-fiscais.ts.
   const operacaoFiscal: OperacaoFiscal = (tipo === 'compra' && viaConversaoConsignacao)
     ? 'compra_consignada'
-    : viaVendaPosConsignacao ? 'venda_consignada' : cfg.operacaoFiscal;
+    : viaVendaPosConsignacao ? 'venda_consignada'
+    : (ehTransferenciaEstoque || ehTransferenciaEstoque0km) ? operacaoFiscalTransferencia
+    : cfg.operacaoFiscal;
   let operacaoCarregada = await carregarOperacao(admin, { empresaId, ufEmitente: empresa.uf, operacao: operacaoFiscal });
   if ('erro' in operacaoCarregada) {
     return jsonResponse({ error: `Natureza de operação "${naturezaDescricaoEfetiva}": ${operacaoCarregada.erro}` }, 409);
