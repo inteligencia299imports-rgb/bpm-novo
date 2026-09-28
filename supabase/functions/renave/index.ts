@@ -1185,7 +1185,7 @@ Deno.serve(async (req) => {
       const nfLink = await enviarNotaFiscal(chaveVenda, 'VENDA', emn.renave_id_estoque, ctx);
       if (nfLink.status >= 400) console.warn('renave notas-fiscais VENDA:', erroRenave(nfLink));
 
-      const r = await sairEstoqueZeroKm({
+      const payloadSaida = {
         idEstoque: emn.renave_id_estoque,
         dataVenda: brasiliaNaiveIso(body.data_venda || nfVenda.data_emissao),
         valorVenda: Number(body.valor_venda ?? nfVenda.valor_total ?? 0),
@@ -1193,7 +1193,24 @@ Deno.serve(async (req) => {
         cpfOperadorResponsavel: body.cpf_operador ? String(body.cpf_operador).replace(/\D/g, '') : undefined,
         emailEstabelecimento: body.email_estabelecimento || EMAIL_ESTABELECIMENTO_PADRAO,
         comprador,
-      }, ctx);
+      };
+      let r = await sairEstoqueZeroKm(payloadSaida, ctx);
+
+      // Achado real 2026-09-28 (chassi 95V5D00AATM000086): quando a entrada
+      // no RENAVE só foi sincronizada hoje (ex.: moto que ficou presa no
+      // desync entre estabelecimentos, resolvida via
+      // 'transferencia-entre-estabelecimentos'), a dataVenda real (do dia em
+      // que o cliente comprou) fica ANTES da data de entrada em estoque no
+      // RENAVE (hoje) — a SERPRO recusa por ordem cronológica interna, mesmo
+      // padrão já visto pro CRV em entrada-usado (2026-09-23). Reenvia uma
+      // vez com a data mínima que a própria SERPRO informou.
+      if (r.status !== 200 && r.status !== 201) {
+        const m = erroRenave(r).match(/anterior a data de entrada em estoque '(\d{4}-\d{2}-\d{2})'/i);
+        if (m) {
+          const horaParte = payloadSaida.dataVenda.includes('T') ? payloadSaida.dataVenda.slice(10) : 'T00:00:00';
+          r = await sairEstoqueZeroKm({ ...payloadSaida, dataVenda: `${m[1]}${horaParte}` }, ctx);
+        }
+      }
       if (r.status !== 200 && r.status !== 201) {
         await persistir(admin, emnId, { renave_ultimo_erro: erroRenave(r) });
         return json({ error: erroRenave(r), status: r.status, detalhe: r.body }, 422);
