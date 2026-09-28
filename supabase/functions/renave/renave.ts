@@ -435,6 +435,15 @@ export interface AutorizacaoTransferenciaZeroKm {
 export const autorizarTransferenciaZeroKm = (a: AutorizacaoTransferenciaZeroKm, ctx?: RenaveLogCtx) =>
   call('POST', '/api/autorizacoes-transferencias-veiculo-zero-km', { body: a, ctx });
 
+// Achado real 2026-09-28: numa segunda tentativa (ex.: depois de corrigir um
+// campo faltante num passo seguinte), a SERPRO recusa criar outra autorização
+// pro mesmo chassi ("já possui autorização de transferência cadastrada").
+// Não existe um GET dedicado documentado pro 0km — catálogo #52 (genérico,
+// documentado só pro fluxo seminova) é o candidato mais próximo; best-effort,
+// ajustar path/params conforme a resposta real caso não sirva pro 0km.
+export const consultarAutorizacoesTransferencia = (params: { chassi?: string }, ctx?: RenaveLogCtx) =>
+  call('GET', '/api/autorizacoes-transferencias', { query: params, ctx });
+
 // Achado real 2026-09-28: além de `dataTransferencia`, exige também
 // `dataEntradaEstoque` ("Data da entrada em estoque é obrigatória") — mesmo
 // nome de campo já usado em EntradaZeroKm, faz sentido já que esse passo

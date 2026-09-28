@@ -29,7 +29,7 @@ import {
   consultarEstoque, consultarVeiculoPorChassi, listarEstoques, municipios, sairEstoqueZeroKm, pdfAtpvPorChassi,
   enviarAssinaturaAtpv, consultarCrlve, termoEntradaEstoque, cancelarEstoque, erroRenave,
   sairEstoque, termoSaidaEstoque, cancelarSaidaEstoque,
-  autorizarTransferenciaZeroKm, transferirEntreEstabelecimentosZeroKm,
+  autorizarTransferenciaZeroKm, transferirEntreEstabelecimentosZeroKm, consultarAutorizacoesTransferencia,
   type RenaveLogCtx, type EnvioAssinaturaAtpv, type EntradaEstoque,
 } from './renave.ts';
 
@@ -555,14 +555,33 @@ Deno.serve(async (req) => {
         idEstoque: idEstoqueOrigem, cnpjEstabelecimentoDestino: cnpjDestino, valorVenda, dataTransferencia,
         cpfOperadorResponsavel: cpfOperador,
       }, ctxOrigem);
+      let idAutorizacao: number | null = null;
       if (auth.status !== 201 && auth.status !== 200) {
-        const msg = `Autorização (origem): ${erroRenave(auth)}`;
-        await persistir(admin, emnId, { renave_ultimo_erro: msg });
-        return json({ error: msg, status: auth.status, detalhe: auth.body }, 422);
-      }
-      const idAutorizacao = auth.body?.id ?? auth.body?.idAutorizacao ?? null;
-      if (!idAutorizacao) {
-        return json({ error: 'Autorização criada mas sem id reconhecível na resposta da SERPRO.', detalhe: auth.body }, 422);
+        const msgAuth = erroRenave(auth);
+        // Achado real 2026-09-28: numa segunda tentativa (após corrigir um
+        // campo faltante no passo 2), a autorização já existe — recupera o id
+        // já criado em vez de falhar de novo.
+        if (/já possui autoriza(ç|c)[aã]o de transfer[eê]ncia/i.test(msgAuth)) {
+          const cons = await consultarAutorizacoesTransferencia({ chassi: chassiUp }, ctxOrigem);
+          const listaCons = Array.isArray(cons.body) ? cons.body : (Array.isArray(cons.body?.content) ? cons.body.content : []);
+          const achadaAuth = listaCons.find((x: any) => String(x?.chassi ?? '').toUpperCase() === chassiUp)
+            ?? (listaCons.length === 1 ? listaCons[0] : null);
+          idAutorizacao = achadaAuth?.id ?? achadaAuth?.idAutorizacao ?? null;
+          if (!idAutorizacao) {
+            const msg = `Autorização já existe na SERPRO mas não foi possível recuperar o id (consulta: HTTP ${cons.status} — ${erroRenave(cons)})`;
+            await persistir(admin, emnId, { renave_ultimo_erro: msg });
+            return json({ error: msg, detalhe: cons.body }, 422);
+          }
+        } else {
+          const msg = `Autorização (origem): ${msgAuth}`;
+          await persistir(admin, emnId, { renave_ultimo_erro: msg });
+          return json({ error: msg, status: auth.status, detalhe: auth.body }, 422);
+        }
+      } else {
+        idAutorizacao = auth.body?.id ?? auth.body?.idAutorizacao ?? null;
+        if (!idAutorizacao) {
+          return json({ error: 'Autorização criada mas sem id reconhecível na resposta da SERPRO.', detalhe: auth.body }, 422);
+        }
       }
 
       // Passo 2: transferência efetiva, invocada PELO DESTINO.
