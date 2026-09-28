@@ -43,6 +43,10 @@ export interface NaturezaCfop {
   informacoes_adicionais_fisco: string | null;
 }
 
+// Tipo do destinatário: PF, PJ contribuinte (com IE) ou PJ não contribuinte/isento. Derivado em
+// montarCenario() a partir de tipoPessoa + indIEDest — nunca cadastrado direto pelo emissor.
+export type DestinatarioTipo = "pf" | "pj_contribuinte" | "pj_nao_contribuinte";
+
 export interface RegraFiscal {
   id: string;
   natureza_operacao_id: string;
@@ -51,6 +55,7 @@ export interface RegraFiscal {
   produto_categorias: string[];
   origem_mercadoria: string | null;
   bem_usado: boolean | null;
+  destinatario_tipo: DestinatarioTipo | null;
   ordem: number;
   cfop: string | null;
   icms_cst: string | null;
@@ -93,6 +98,7 @@ interface ExcecaoNcm {
   bem_usado: boolean | null;
   aliquota_interna: number | null;
   aliquota_fcp: number | null;
+  mva: number | null;
 }
 
 export interface OperacaoCarregada {
@@ -111,6 +117,7 @@ export interface ItemFiscal {
   categoria?: string | null;          // produto_categorias (ex.: itens_equipamentos.id)
   icmsOrigem?: number | null;         // 0–8
   bemUsado?: boolean | null;          // moto seminova = true; ausente = novo
+  destinatarioTipo?: DestinatarioTipo | null; // do cenário — não vem do produto
 }
 
 export interface RegraEscolhida { regra: RegraFiscal; natureza: NaturezaCfop }
@@ -147,7 +154,7 @@ export async function carregarOperacao(
   const [{ data: regras, error: e2 }, { data: ufs, error: e3 }, { data: excecoes, error: e4 }] = await Promise.all([
     supabase.from("naturezas_operacao_regras_fiscais").select("*").in("natureza_operacao_id", lista.map((n) => n.id)).eq("ativo", true).order("ordem"),
     supabase.from("icms_uf").select("uf, aliquota_interna, aliquota_fcp"),
-    supabase.from("icms_uf_ncm").select("uf, ncm, bem_usado, aliquota_interna, aliquota_fcp"),
+    supabase.from("icms_uf_ncm").select("uf, ncm, bem_usado, aliquota_interna, aliquota_fcp, mva"),
   ]);
   const erro = e2 ?? e3 ?? e4;
   if (erro) return { erro: `Erro ao ler regras fiscais: ${erro.message}` };
@@ -210,6 +217,9 @@ export function escolherRegra(op: OperacaoCarregada, item: ItemFiscal): RegraEsc
     const cats = r.produto_categorias || [];
     if (cats.length) { if (!categoria || !cats.includes(categoria)) continue; score += 40; }
     if (r.bem_usado != null) { if (r.bem_usado !== bemUsado) continue; score += 10; }
+    // Sem destinatarioTipo no item (emissor que ainda não manda isso), regra com exigência de
+    // cliente não casa — mais seguro que assumir um tipo.
+    if (r.destinatario_tipo) { if (r.destinatario_tipo !== item.destinatarioTipo) continue; score += 10; }
     if (r.origem_mercadoria) { if (r.origem_mercadoria !== origem) continue; score += 1; }
     if (score > melhorScore || (score === melhorScore && r.ordem < melhorOrdem)) {
       melhor = { regra: r, natureza };
@@ -220,8 +230,10 @@ export function escolherRegra(op: OperacaoCarregada, item: ItemFiscal): RegraEsc
   return melhor;
 }
 
-// Alíquota interna, FCP e dispensa de DIFAL da UF, com exceção por NCM (prefixo mais longo; a
-// exceção de bem usado específico vence a genérica).
+// Alíquota interna, FCP e MVA da UF, com exceção por NCM (prefixo mais longo; a
+// exceção de bem usado específico vence a genérica). MVA não tem valor "padrão da UF"
+// (só existe por exceção de NCM — produto sem ST não tem margem agregada) — sem
+// exceção cadastrada pro NCM/UF, fica null.
 export function aliquotasUf(op: OperacaoCarregada, uf: string, ncm?: string | null, bemUsado?: boolean | null) {
   const u = (uf || "").toUpperCase();
   const base = op.icmsUf[u];
@@ -232,6 +244,7 @@ export function aliquotasUf(op: OperacaoCarregada, uf: string, ncm?: string | nu
   return {
     interna: num(exc?.aliquota_interna) ?? base?.aliquota_interna ?? null,
     fcp: num(exc?.aliquota_fcp) ?? base?.aliquota_fcp ?? 0,
+    mva: num(exc?.mva),
   };
 }
 
@@ -259,12 +272,19 @@ export const cfopDe = (e: RegraEscolhida) => e.regra.cfop ?? e.natureza.cfop;
 //   aliquota_icms_efetiva = a mesma alíquota, sem ST (grupo ICMS Efetivo, CST 60/500);
 //   aliquota_interna_destino (DIFAL) = interna da UF de destino; aliquota_fcp = FCP dela;
 //   aliquota_suportada_consumidor_final (pST, CST 60) = interna da UF do emitente.
+// CST 60 (ICMS90 não, ICMS60 sim) / CSOSN 500: ICMS já retido antes por substituição tributária —
+// o XSD da NF-e nem declara modBC/pICMS/vICMS pra esse CST (só orig/CST + grupo ICMS-ST retido +
+// grupo ICMS Efetivo, ver TICMS60). Não é uma escolha de cadastro (icms_destaca): estruturalmente
+// não há o que destacar de novo na saída — o imposto já foi cobrado na entrada.
+export const CST_ICMS_JA_RETIDO_ST = ["60", "500"];
+
 export function comoRegrasPorImposto(op: OperacaoCarregada, e: RegraEscolhida, item: ItemFiscal) {
   const r = e.regra;
   const uf = (item.ufDestino || "").toUpperCase();
   const destino = aliquotasUf(op, uf, item.ncm, item.bemUsado);
   const emitente = aliquotasUf(op, op.ufEmitente, item.ncm, item.bemUsado);
   const pICMS = uf === op.ufEmitente ? destino.interna : aliquotaInterestadual(op.ufEmitente, uf, item.icmsOrigem);
+  const jaRetidoST = CST_ICMS_JA_RETIDO_ST.includes(String(r.icms_cst));
   const comum = {
     destino_ufs: [uf], tipo_atendimento: "ambos", origem_mercadoria: r.origem_mercadoria,
     produto_tipo: r.produto_ncms.length ? "ncm" : "todos", produto_ncms: r.produto_ncms, produto_categorias: r.produto_categorias,
@@ -272,11 +292,12 @@ export function comoRegrasPorImposto(op: OperacaoCarregada, e: RegraEscolhida, i
   };
   const icms = r.icms_cst ? {
     ...comum, imposto: "icms", cfop: cfopDe(e), situacao_tributaria: r.icms_cst,
-    aliquota: r.icms_destaca === false ? 0 : pICMS, reducao_base_calculo: num(r.icms_reducao_bc), base_calculo: null,
+    aliquota: (r.icms_destaca === false || jaRetidoST) ? 0 : pICMS, reducao_base_calculo: num(r.icms_reducao_bc), base_calculo: null,
     aliquota_interna_destino: destino.interna, aliquota_fcp: destino.fcp ? destino.fcp : null,
     tipo_tributacao: r.icms_tipo_tributacao,
     aliquota_icms_efetiva: pICMS, reducao_base_calculo_efetiva: null,
-    aliquota_suportada_consumidor_final: emitente.interna, codigo_beneficio_fiscal: r.codigo_beneficio_fiscal,
+    aliquota_suportada_consumidor_final: emitente.interna, mva_suportada_consumidor_final: emitente.mva,
+    codigo_beneficio_fiscal: r.codigo_beneficio_fiscal,
     indicador_presenca: e.natureza.indicador_presenca, natureza_operacao_descricao: natOpDe(e),
     informacoes_complementares: r.informacoes_complementares, informacoes_adicionais_fisco: r.informacoes_adicionais_fisco,
   } : null;
@@ -314,6 +335,9 @@ export interface DestinatarioFiscal {
   inscricaoEstadual: string | null | undefined;
   // Marcado no cadastro do cliente (ex.: PJ contribuinte comprando pra uso/consumo).
   consumidorFinal?: boolean | null;
+  // clientes_fornecedores.tipo_pessoa ("fisica"/"juridica"). Sem isso, destinatarioTipo do
+  // cenário fica null e nenhuma regra com exigência de cliente casa (ver escolherRegra).
+  tipoPessoa?: "fisica" | "juridica" | null;
 }
 
 export interface EntradaCenario {
@@ -335,6 +359,7 @@ export interface Cenario {
   difal: boolean;            // DIFAL da operação (por item ainda depende do CST — difalNoItem)
   modalidadeFrete: 0 | 9;    // 9 = sem frete (retirada ou frete zero)
   retiradaPresencial: boolean;
+  destinatarioTipo: DestinatarioTipo | null; // pf / pj_contribuinte / pj_nao_contribuinte; null = não informado
 }
 
 const up = (v: string | null | undefined) => (v || "").trim().toUpperCase();
@@ -352,7 +377,13 @@ export function montarCenario(e: EntradaCenario): Cenario {
   const regimeNormal = !!regime && !regime.includes("SIMPLES") && regime !== "MEI";
   const difal = regimeNormal && !interna && indIEDest === 9 && consumidorFinal === 1;
   const modalidadeFrete: 0 | 9 = retiradaPresencial || !(Number(e.valorFrete) > 0) ? 9 : 0;
-  return { ufFiscal, interna, idDest: interna ? 1 : 2, indIEDest, consumidorFinal, regimeNormal, difal, modalidadeFrete, retiradaPresencial };
+  // pf/pj vem do cadastro do cliente; contribuinte/não contribuinte reaproveita o indIEDest já
+  // calculado acima (mesma regra: só é contribuinte com IE de fato).
+  const destinatarioTipo: DestinatarioTipo | null =
+    e.destinatario.tipoPessoa === "fisica" ? "pf"
+    : e.destinatario.tipoPessoa === "juridica" ? (indIEDest === 1 ? "pj_contribuinte" : "pj_nao_contribuinte")
+    : null;
+  return { ufFiscal, interna, idDest: interna ? 1 : 2, indIEDest, consumidorFinal, regimeNormal, difal, modalidadeFrete, retiradaPresencial, destinatarioTipo };
 }
 
 // DIFAL no item: o da operação, menos CST sem ICMS na operação (40/41/50).
@@ -365,7 +396,7 @@ export const cfopDoCenario = (c: Cenario, cfop: string) => (c.indIEDest === 9 &&
 // Monta um item inteiro (o que a tela "Simulador fiscal" mostra): cenário + regra escolhida +
 // alíquotas da tabela.
 export function simularItem(op: OperacaoCarregada, c: Cenario, produto: { ncm?: string | null; categoria?: string | null; icmsOrigem?: number | null; bemUsado?: boolean | null }) {
-  const item: ItemFiscal = { ufDestino: c.ufFiscal, ...produto };
+  const item: ItemFiscal = { ufDestino: c.ufFiscal, destinatarioTipo: c.destinatarioTipo, ...produto };
   const escolhida = escolherRegra(op, item);
   if (!escolhida) return { erro: `Nenhuma regra fiscal casa com este cenário (UF ${c.ufFiscal}, NCM ${produto.ncm || "—"}).` };
   const linhas = comoRegrasPorImposto(op, escolhida, item);
@@ -379,12 +410,13 @@ export function simularItem(op: OperacaoCarregada, c: Cenario, produto: { ncm?: 
     natOp: cfop !== cfopDe(escolhida) ? (op.naturezas.find((n) => n.cfop === cfop)?.natop ?? natOpDe(escolhida)) : natOpDe(escolhida),
     icms: icms && {
       cst: icms.situacao_tributaria,
-      destaca: escolhida.regra.icms_destaca !== false,
+      destaca: escolhida.regra.icms_destaca !== false && !CST_ICMS_JA_RETIDO_ST.includes(String(icms.situacao_tributaria)),
       aliquota: icms.aliquota,
       reducaoBase: icms.reducao_base_calculo,
       cBenef: icms.codigo_beneficio_fiscal,
-      efetivo: ["60", "500"].includes(String(icms.situacao_tributaria)) ? icms.aliquota_icms_efetiva : null,
-      stRetida: ["60", "500"].includes(String(icms.situacao_tributaria)) ? icms.aliquota_suportada_consumidor_final : null,
+      efetivo: CST_ICMS_JA_RETIDO_ST.includes(String(icms.situacao_tributaria)) ? icms.aliquota_icms_efetiva : null,
+      stRetida: CST_ICMS_JA_RETIDO_ST.includes(String(icms.situacao_tributaria)) ? icms.aliquota_suportada_consumidor_final : null,
+      mvaStRetida: CST_ICMS_JA_RETIDO_ST.includes(String(icms.situacao_tributaria)) ? icms.mva_suportada_consumidor_final : null,
     },
     difal: difal ? {
       aliquotaInternaDestino: icms!.aliquota_interna_destino,
@@ -395,6 +427,10 @@ export function simularItem(op: OperacaoCarregada, c: Cenario, produto: { ncm?: 
     cofins: linhas.cofins && { cst: linhas.cofins.situacao_tributaria, aliquota: linhas.cofins.aliquota },
     ipi: linhas.ipi && { cst: linhas.ipi.situacao_tributaria, aliquota: linhas.ipi.aliquota },
     ibscbs: linhas.ibscbs && { cst: linhas.ibscbs.situacao_tributaria, cclasstrib: linhas.ibscbs.classificacao_tributaria },
+    issqn: linhas.issqn && {
+      cst: linhas.issqn.situacao_tributaria, aliquota: linhas.issqn.aliquota, basePercentual: linhas.issqn.base_percentual,
+      codigoServico: linhas.issqn.codigo_servico_issqn, reterIss: linhas.issqn.reter_iss, descontarIssTotal: linhas.issqn.descontar_iss_total,
+    },
   };
 }
 

@@ -132,6 +132,11 @@ export interface RegraFiscal {
   /** pST — alíquota do ICMS-ST suportada pelo consumidor final (grupo "ICMS-ST
    * retido anteriormente", CST 60). Só na regra de ICMS. Ex.: 12 (SC). */
   aliquota_suportada_consumidor_final?: number | null;
+  /** MVA (Margem de Valor Agregado) da UF do emitente pro NCM, quando não há
+   * dados reais transcritos da NF de entrada da moto (fallback aproximado do
+   * grupo "ICMS-ST retido anteriormente"). null = sem exceção MVA cadastrada
+   * pro NCM/UF — cai no valor de venda puro (comportamento anterior). */
+  mva_suportada_consumidor_final?: number | null;
   /** cBenef — código de benefício fiscal da UF (regra de ICMS). Obrigatório
    * quando o CST tem redução/benefício que a SEFAZ exige identificar.
    * Ex.: "DF816006" (venda de veículo usado no DF, CST 20). */
@@ -592,7 +597,9 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   // moto (nota da fábrica/importador que reteve a ST) — não se calculam a partir
   // do preço de venda. Quando o estoque 0km traz esses valores (moto.icms_st_*),
   // enviamos fiel à NF de entrada; senão, cai no aproximado: BC = valor da
-  // venda, vICMSSubstituto = 0, vICMSSTRet = BC × pST. pST (alíquota suportada
+  // venda × (1 + MVA/100) — MVA da UF do emitente pro NCM (icms_uf_ncm.mva; sem
+  // exceção cadastrada, MVA = 0 e BC fica só o valor da venda, como antes),
+  // vICMSSubstituto = 0, vICMSSTRet = BC × pST. pST (alíquota suportada
   // pelo consumidor final) sempre vem da regra de ICMS. Sem pST cadastrado, não
   // envia o grupo. Ver docs-fiscal-299/pendencias.md.
   //
@@ -603,15 +610,17 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   // "vICMSSubstituto não esperado, esperado vBCSTRet/vBCFCPSTRet/pRedBCEfet".
   if (cstIcms === '60' && regraIcms.aliquota_suportada_consumidor_final != null) {
     const pST = Number(regraIcms.aliquota_suportada_consumidor_final);
+    const mva = Number(regraIcms.mva_suportada_consumidor_final ?? 0);
     const num = (v: unknown) => (v == null || v === '' ? null : Number(v));
     const bcRet = num(moto.icms_st_bc_retido);
     const vSubst = num(moto.icms_st_valor_substituto);
     const vRet = num(moto.icms_st_valor_retido);
     const fiel = bcRet != null && vSubst != null && vRet != null;
-    item.icms_base_calculo_retido_st = fiel ? r2(bcRet!) : valorFmt;
+    const bcAproximada = r2(valorFmt * (1 + mva / 100));
+    item.icms_base_calculo_retido_st = fiel ? r2(bcRet!) : bcAproximada;
     item.icms_aliquota_final = pST;
     item.icms_valor_substituto = fiel ? r2(vSubst!) : 0;
-    item.icms_valor_retido_st = fiel ? r2(vRet!) : r2(valorFmt * (pST / 100));
+    item.icms_valor_retido_st = fiel ? r2(vRet!) : r2(bcAproximada * (pST / 100));
   }
 
   // --- Grupo "ICMS Efetivo" (CST 60 / CSOSN 500) --------------------------
