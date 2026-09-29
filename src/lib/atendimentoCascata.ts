@@ -100,3 +100,56 @@ export const marcarAtendimentoPerdido = async (params: {
   await Promise.all(promises);
   await reverterEstoqueDoAtendimento(atendimentoId);
 };
+
+/**
+ * Pedido do usuário, 2026-09-29: "Marcar como Perdido" dentro do Processo de
+ * Pós-Compra/Consignação (moto própria ou consignada) — pra quando a
+ * aquisição é abandonada ANTES da NF de entrada ser emitida. Diferente de
+ * `marcarAtendimentoPerdido` (showroom, pré-venda): aqui a moto não é
+ * revertida pra "disponível" nem apagada do estoque — ela já é a própria
+ * aquisição em andamento, então vira "retirada" (mesmo efeito e mesma tela
+ * que RetiradaDialog.tsx já usa no fluxo manual do Estoque), com o
+ * atendimento e a avaliação marcados como perdidos e os processos em aberto
+ * fechados. Tudo registrado em status_history.
+ */
+export const marcarAquisicaoRetirada = async (params: {
+  avaliacaoId: string;
+  atendimentoId: string;
+  processoTable: 'consignacao_processos' | 'pos_compra_processos';
+  statusField: 'consignacao_status' | 'pos_compra_status';
+  motivo: string;
+  user: UserLike | null | undefined;
+  userName?: string | null;
+}) => {
+  const { avaliacaoId, atendimentoId, processoTable, statusField, motivo, user, userName } = params;
+  const changed_by = user?.id ?? null;
+  const changed_by_name = userName || user?.email || null;
+  const obs = motivo?.trim() || null;
+
+  const { data: estoqueItem } = await supabase.from('estoque_motos').select('id').eq('avaliacao_id', avaliacaoId).maybeSingle();
+  if (estoqueItem?.id) {
+    await supabase.from('estoque_motos').update({ status: 'retirada', observacoes: obs } as never).eq('id', estoqueItem.id);
+    await supabase.from('status_history').insert({
+      entity_type: 'estoque', entity_id: estoqueItem.id, status: 'RETIRADA',
+      changed_by, changed_by_name, observacoes: obs,
+    } as never);
+  }
+
+  await supabase.from('avaliacoes').update({ situacao: 'perdido', [statusField]: 'concluido' } as never).eq('id', avaliacaoId);
+  await supabase.from('status_history').insert({
+    entity_type: 'avaliacao', entity_id: avaliacaoId, status: 'RETIRADA',
+    changed_by, changed_by_name, observacoes: obs,
+  } as never);
+
+  const { data: processos } = await supabase.from(processoTable).select('id').eq('avaliacao_id', avaliacaoId).eq('concluida', false);
+  const now = new Date().toISOString();
+  await Promise.all(((processos || []) as any[]).map((p) =>
+    supabase.from(processoTable).update({ concluida: true, data_conclusao: now } as never).eq('id', p.id).then((r) => r),
+  ));
+
+  await supabase.from('atendimentos_motos').update({ situacao: 'perdido' } as never).eq('id', atendimentoId);
+  await supabase.from('status_history').insert({
+    entity_type: 'showroom', entity_id: atendimentoId, status: 'perdido',
+    changed_by, changed_by_name, observacoes: obs,
+  } as never);
+};

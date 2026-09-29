@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, AlertTriangle, Plus, Trash2, XCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,6 +20,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { nfeBotaoClasse } from '@/lib/nfeTag';
 import { cn } from '@/lib/utils';
+import { marcarAquisicaoRetirada } from '@/lib/atendimentoCascata';
 
 const formatCurrencyInput = (value: string): string => {
   const digits = value.replace(/\D/g, '');
@@ -51,7 +54,7 @@ interface Props {
 }
 
 const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, onStatusChanged, onEmitirNfe }) => {
-  const { userName } = useAuth();
+  const { user, userName } = useAuth();
   const [etapas, setEtapas] = useState<EtapaData[]>(
     ETAPAS.map(e => ({ etapa: e, concluida: false, data_conclusao: null }))
   );
@@ -60,6 +63,13 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
   const [datasSalvas, setDatasSalvas] = useState<Record<string, string | null>>({});
   const [previousStatus, setPreviousStatus] = useState('em_aberto');
+  const [atendimentoId, setAtendimentoId] = useState<string | null>(null);
+
+  // Pedido do usuário, 2026-09-29: "Marcar como Perdido" só antes da NF de
+  // entrada (consignação) ser emitida — mesma trava do Pós-Compra.
+  const [perdidoOpen, setPerdidoOpen] = useState(false);
+  const [motivoPerdido, setMotivoPerdido] = useState('');
+  const [savingPerdido, setSavingPerdido] = useState(false);
 
   // Abas: "processo" (checklist de etapas) | "abatimentos" (mesma estrutura/
   // lógica do Pós-Compra — custos_oficina é uma tabela por avaliação, não
@@ -119,6 +129,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         supabase.from('custos_oficina').select('*').eq('avaliacao_id', avaliacaoId).order('created_at'),
       ]);
       nfe.setNfe((nfeData as any[])?.[0] || null);
+      setAtendimentoId((avData as any)?.atendimento_id || null);
       setCustosOficina(custosData || []);
       const valorConsig = (avData as any)?.valor_consignacao_nota ?? (avData as any)?.avaliacao_consignacao;
       setValorConsignacao(valorConsig ? formatCurrencyInput(String(Math.round(valorConsig * 100))) : '');
@@ -235,6 +246,27 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         e.etapa === etapa ? { ...e, data_conclusao: null, concluida: false } : e
       )
     );
+  };
+
+  const handleMarcarPerdido = async () => {
+    if (!motivoPerdido.trim()) { toast.error('Informe o motivo'); return; }
+    if (!atendimentoId) { toast.error('Atendimento não encontrado'); return; }
+    setSavingPerdido(true);
+    try {
+      await marcarAquisicaoRetirada({
+        avaliacaoId, atendimentoId, processoTable: 'consignacao_processos', statusField: 'consignacao_status',
+        motivo: motivoPerdido, user, userName,
+      });
+      toast.success('Consignação marcada como perdida — moto retirada.');
+      setPerdidoOpen(false);
+      setMotivoPerdido('');
+      onStatusChanged?.('perdido');
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao marcar como perdido');
+    } finally {
+      setSavingPerdido(false);
+    }
   };
 
   const handleSave = async () => {
@@ -505,8 +537,13 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
             })}
 
             <Separator />
-            <div className="flex justify-end pt-3">
-              <Button onClick={handleSave} disabled={saving} className="gap-1.5">
+            <div className="flex justify-between pt-3">
+              {!nfeEmitida && (
+                <Button variant="outline" className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setPerdidoOpen(true)}>
+                  <XCircle className="h-4 w-4" /> Marcar como Perdido
+                </Button>
+              )}
+              <Button onClick={handleSave} disabled={saving} className="gap-1.5 ml-auto">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Salvar
               </Button>
@@ -598,6 +635,28 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           </>
         )}
       </DialogContent>
+
+      <Dialog open={perdidoOpen} onOpenChange={(o) => { if (!o) setMotivoPerdido(''); setPerdidoOpen(o); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><XCircle className="h-5 w-5 text-destructive" /> Marcar como Perdido</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <p className="text-sm text-muted-foreground">
+              A moto será marcada como retirada, o atendimento e a avaliação como perdidos, e os processos em aberto serão fechados.
+            </p>
+            <Label>Motivo</Label>
+            <Textarea rows={3} value={motivoPerdido} onChange={(e) => setMotivoPerdido(e.target.value)} placeholder="Descreva o motivo..." />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPerdidoOpen(false)} disabled={savingPerdido}>Voltar</Button>
+            <Button variant="destructive" onClick={handleMarcarPerdido} disabled={savingPerdido || !motivoPerdido.trim()} className="gap-1.5">
+              {savingPerdido ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
