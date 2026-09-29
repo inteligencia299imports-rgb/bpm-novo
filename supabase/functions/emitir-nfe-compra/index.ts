@@ -270,13 +270,16 @@ const CFG: Record<Operacao, OperacaoConfig> = {
   },
   // Devolução pós-24h: a SEFAZ só aceita cancelamento até 24h da autorização
   // (janela nacional, Ajuste SINIEF) — depois disso, desfazer uma operação só
-  // com uma NF-e de devolução nova, referenciando a original via NFref. Sem
-  // compromisso financeiro automático (mesmo aviso já mostrado no cancelamento
-  // — ajuste manual se necessário). CFOP/natureza ainda incompletos no
-  // cadastro fiscal (ver docs-fiscal-299/pendencias.md §2.61) — a validação de
-  // regras incompletas já existente bloqueia a emissão real até isso ser
-  // corrigido; o código abaixo já fica pronto pra funcionar assim que o
-  // cadastro for revisado.
+  // com uma NF-e de devolução nova, referenciando a original via NFref. Não
+  // cria compromisso PRÓPRIO (criaCompromisso: false — sem movimentação de
+  // caixa real nessa NF de devolução), mas cancela o compromisso da NF
+  // ORIGINAL que está sendo devolvida (ver cancelarCompromissosDaNf, chamado
+  // com devolucaoOrigemNf.id) — mesmo efeito que o Cancelar já dá. Parcelas já
+  // pagas ficam como estão, avisado na resposta. CFOP/natureza ainda
+  // incompletos no cadastro fiscal (ver docs-fiscal-299/pendencias.md §2.61) —
+  // a validação de regras incompletas já existente bloqueia a emissão real até
+  // isso ser corrigido; o código abaixo já fica pronto pra funcionar assim que
+  // o cadastro for revisado.
   devolucao_compra: {
     refPrefix: 'devolucao-compra',
     naturezaDescricao: 'Devolução de compra p/ comercialização',
@@ -371,6 +374,34 @@ function mapStatus(focusStatus: string | undefined): string {
 }
 
 /**
+ * Cancela os compromissos financeiros (contas a pagar/receber) vinculados a
+ * uma NF-e (`nfe_entrada_id`). Parcelas já pagas ficam como estão (houve
+ * baixa real — acerto/estorno manual); as demais viram 'cancelado'. Usada
+ * tanto no cancelamento (SEFAZ, até 24h) quanto na devolução (pós-24h) —
+ * pedido do usuário, 2026-09-29: "NF canceladas e devolvidas, cancelam o
+ * compromissos a pagar ou receber" — devolve a contagem de parcelas pagas
+ * pra avisar o usuário.
+ */
+async function cancelarCompromissosDaNf(admin: any, nfeEntradaId: string): Promise<number> {
+  const { data: compsNf } = await admin
+    .from('compromissos').select('id').eq('nfe_entrada_id', nfeEntradaId).is('deleted_at', null);
+  const compIds = ((compsNf as any[]) || []).map((c) => c.id);
+  if (compIds.length === 0) return 0;
+  await admin.from('compromissos')
+    .update({ status_compromisso: 'cancelada' })
+    .in('id', compIds);
+  await admin.from('compromissos_parcelas')
+    .update({ status_pagamento: 'cancelado', data_pagamento: null, valor_juros: 0, valor_desconto: 0 })
+    .in('compromisso_id', compIds)
+    .neq('status_pagamento', 'pago');
+  const { count } = await admin.from('compromissos_parcelas')
+    .select('id', { count: 'exact', head: true })
+    .in('compromisso_id', compIds)
+    .eq('status_pagamento', 'pago');
+  return count ?? 0;
+}
+
+/**
  * Aplica no sistema o cancelamento de uma NF-e (feito pelo nosso botão OU
  * direto na SEFAZ/Focus e detectado numa consulta): grava a linha como
  * `cancelada`, reabre a etapa do processo, cancela os compromissos financeiros
@@ -419,26 +450,7 @@ async function aplicarCancelamento(
     }
   }
 
-  // Cancela os compromissos financeiros dessa NF. Parcelas já pagas ficam como
-  // estão (baixa real — acerto/estorno manual); as demais viram 'cancelado'.
-  let parcelasPagas = 0;
-  const { data: compsNf } = await admin
-    .from('compromissos').select('id').eq('nfe_entrada_id', nfeRow.id).is('deleted_at', null);
-  const compIds = ((compsNf as any[]) || []).map((c) => c.id);
-  if (compIds.length > 0) {
-    await admin.from('compromissos')
-      .update({ status_compromisso: 'cancelada' })
-      .in('id', compIds);
-    await admin.from('compromissos_parcelas')
-      .update({ status_pagamento: 'cancelado', data_pagamento: null, valor_juros: 0, valor_desconto: 0 })
-      .in('compromisso_id', compIds)
-      .neq('status_pagamento', 'pago');
-    const { count } = await admin.from('compromissos_parcelas')
-      .select('id', { count: 'exact', head: true })
-      .in('compromisso_id', compIds)
-      .eq('status_pagamento', 'pago');
-    parcelasPagas = count ?? 0;
-  }
+  const parcelasPagas = await cancelarCompromissosDaNf(admin, nfeRow.id);
 
   const { data: jaReg } = await admin
     .from('status_history').select('id')
@@ -1535,6 +1547,10 @@ Deno.serve(async (req) => {
   // não deixa mais cancelar) — guardada aqui pra reaproveitar chave/valor mais
   // adiante (NFref, valor da devolução).
   let devolucaoOrigemNf: any = null;
+  // Parcelas já pagas do compromisso da NF original, canceladas pela devolução
+  // (ver cancelarCompromissosDaNf) — avisa o usuário na resposta, igual ao
+  // fluxo de Cancelar.
+  let parcelasPagasDevolucao = 0;
   // Resolve e valida a NF original de uma devolução: precisa existir, estar
   // autorizada em PRODUÇÃO, e já ter passado da janela de 24h que a SEFAZ dá
   // pra cancelamento (Ajuste SINIEF) — antes disso o caminho certo é
@@ -2563,6 +2579,14 @@ Deno.serve(async (req) => {
         .update({ loja_id: destinoLojaIdBody, empresa_id: destinoEmpresaIdTransf })
         .eq('id', entityId);
     }
+    // Pedido do usuário, 2026-09-29: "NF canceladas e devolvidas, cancelam o
+    // compromissos a pagar ou receber" — a devolução pós-24h não cria
+    // compromisso próprio (semPagamentoReal), mas precisa cancelar o da NF
+    // ORIGINAL que está sendo devolvida (devolucaoOrigemNf.id), mesmo efeito
+    // que o Cancelar já dá (ver cancelarCompromissosDaNf/aplicarCancelamento).
+    if ((tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km') && devolucaoOrigemNf?.id) {
+      parcelasPagasDevolucao = await cancelarCompromissosDaNf(admin, devolucaoOrigemNf.id);
+    }
     // Devolução de venda 0km: a moto some da venda e volta a ficar disponível
     // no estoque de quem a vendeu (mesmo efeito de "perder a venda" já usado
     // em marcarAtendimentoPerdido/reverterEstoqueVenda no frontend).
@@ -2640,5 +2664,10 @@ Deno.serve(async (req) => {
     }
   }
 
-  return jsonResponse({ nfe: nfeRow }, 200);
+  return jsonResponse({
+    nfe: nfeRow,
+    ...(parcelasPagasDevolucao
+      ? { aviso: `Compromisso cancelado. ${parcelasPagasDevolucao} parcela(s) já paga(s) não foram estornadas — acerto manual.` }
+      : {}),
+  }, 200);
 });
