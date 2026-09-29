@@ -6,8 +6,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, FileText, RefreshCw, AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -17,6 +18,15 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { nfeBotaoClasse } from '@/lib/nfeTag';
 import { cn } from '@/lib/utils';
+
+const formatCurrencyInput = (value: string): string => {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '';
+  return (parseInt(digits, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+const parseCurrencyInput = (value: string): number => parseInt(value.replace(/\D/g, '') || '0', 10) / 100;
+const formatCurrency = (v: number | null | undefined) =>
+  v == null ? '-' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const ETAPAS = [
   'CONTRATO ASSINADO',
@@ -51,6 +61,18 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [datasSalvas, setDatasSalvas] = useState<Record<string, string | null>>({});
   const [previousStatus, setPreviousStatus] = useState('em_aberto');
 
+  // Abas: "processo" (checklist de etapas) | "abatimentos" (mesma estrutura/
+  // lógica do Pós-Compra — custos_oficina é uma tabela por avaliação, não
+  // exclusiva de um processo).
+  const [aba, setAba] = useState<'processo' | 'abatimentos'>('processo');
+  const [valorConsignacao, setValorConsignacao] = useState('');
+  const [custosOficina, setCustosOficina] = useState<any[]>([]);
+  const [savingFin, setSavingFin] = useState(false);
+  const [newResp, setNewResp] = useState('Cliente');
+  const [newTipo] = useState('Serviço');
+  const [newDesc, setNewDesc] = useState('');
+  const [newValor, setNewValor] = useState('');
+
   // ---- NF-e de entrada em consignação ----
   const nfe = useNfeCompra(avaliacaoId, open, 'consignacao');
   const nfeEmitida = nfe.emitida;
@@ -65,14 +87,14 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     if (!open) return;
     const load = async () => {
       setLoading(true);
-      const [{ data: processoData }, { data: avData }, { data: consultaHistory }, { data: nfeData }, { data: contratoConsig }] = await Promise.all([
+      const [{ data: processoData }, { data: avData }, { data: consultaHistory }, { data: nfeData }, { data: contratoConsig }, { data: custosData }] = await Promise.all([
         supabase
           .from('consignacao_processos' as any)
           .select('id, etapa, concluida, data_conclusao')
           .eq('avaliacao_id', avaliacaoId),
         supabase
           .from('avaliacoes')
-          .select('atendimento_id, consignacao_status, consulta_realizada')
+          .select('atendimento_id, consignacao_status, consulta_realizada, valor_consignacao_nota, avaliacao_consignacao')
           .eq('id', avaliacaoId)
           .maybeSingle(),
         supabase
@@ -94,8 +116,12 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .select('id')
           .eq('avaliacao_id', avaliacaoId)
           .limit(1),
+        supabase.from('custos_oficina').select('*').eq('avaliacao_id', avaliacaoId).order('created_at'),
       ]);
       nfe.setNfe((nfeData as any[])?.[0] || null);
+      setCustosOficina(custosData || []);
+      const valorConsig = (avData as any)?.valor_consignacao_nota ?? (avData as any)?.avaliacao_consignacao;
+      setValorConsignacao(valorConsig ? formatCurrencyInput(String(Math.round(valorConsig * 100))) : '');
 
 
 
@@ -128,6 +154,45 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     };
     load();
   }, [open, avaliacaoId]);
+
+  // ---- Abatimentos (mesma lógica do Pós-Compra) ----
+  const abatimentos = custosOficina
+    .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
+    .reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
+  const repasseNum = parseCurrencyInput(valorConsignacao) - abatimentos;
+
+  const addCusto = async () => {
+    if (!newValor || parseCurrencyInput(newValor) <= 0) {
+      toast.error('Informe o valor do custo');
+      return;
+    }
+    const payload = {
+      avaliacao_id: avaliacaoId,
+      tipo: newTipo.toLowerCase().replace('ç', 'c').replace('ã', 'a'),
+      responsavel: newResp,
+      detalhes: newDesc || null,
+      valor_previsto: parseCurrencyInput(newValor),
+    };
+    const { data, error } = await supabase.from('custos_oficina').insert(payload as any).select().single();
+    if (error) { toast.error('Erro ao adicionar custo'); return; }
+    setCustosOficina(prev => [...prev, data]);
+    setNewResp('Cliente');
+    setNewDesc('');
+    setNewValor('');
+  };
+
+  const removeCusto = async (id: string) => {
+    await supabase.from('custos_oficina').delete().eq('id', id);
+    setCustosOficina(prev => prev.filter(c => c.id !== id));
+    toast.success('Custo removido');
+  };
+
+  const handleSaveFinanceiro = async () => {
+    setSavingFin(true);
+    toast.success('Abatimentos salvos!');
+    setSavingFin(false);
+    onOpenChange(false);
+  };
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     if (etapa === 'NF EMITIDA') return; // estado dirigido pela emissao da NF-e
@@ -271,6 +336,25 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
+          <>
+          <div className="w-max mx-auto flex items-center rounded-md bg-muted p-1 text-muted-foreground mb-3">
+            <button
+              type="button"
+              onClick={() => setAba('processo')}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-5 py-1.5 text-sm font-medium transition-all focus-visible:outline-none ${aba === 'processo' ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:text-foreground'}`}
+            >
+              Processo
+            </button>
+            <button
+              type="button"
+              onClick={() => setAba('abatimentos')}
+              className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-5 py-1.5 text-sm font-medium transition-all focus-visible:outline-none ${aba === 'abatimentos' ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:text-foreground'}`}
+            >
+              Abatimentos
+            </button>
+          </div>
+
+          {aba === 'processo' && (
           <div className="space-y-1">
             <div className="text-center mb-4">
               <Badge variant="outline" className="text-xs">
@@ -428,6 +512,90 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
               </Button>
             </div>
           </div>
+          )}
+
+          {aba === 'abatimentos' && (
+          <div className="space-y-6 pt-2">
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Abatimentos</h3>
+              <div className="grid grid-cols-[1fr_2fr_1fr_auto] gap-2 items-end">
+                <div>
+                  <label className="text-xs font-medium">Responsável</label>
+                  <Select value={newResp} onValueChange={setNewResp}>
+                    <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cliente">Cliente</SelectItem>
+                      <SelectItem value="Loja">Loja</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium">Descrição</label>
+                  <Input className="mt-1 h-9" value={newDesc} onChange={e => { const v = e.target.value; setNewDesc(v.charAt(0).toUpperCase() + v.slice(1)); }} placeholder="Descrição" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium">Valor</label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                    <Input className="pl-7 h-9" value={newValor} onChange={e => setNewValor(formatCurrencyInput(e.target.value))} inputMode="numeric" placeholder="0,00" />
+                  </div>
+                </div>
+                <Button size="sm" className="h-9" onClick={addCusto}><Plus className="h-4 w-4" /></Button>
+              </div>
+
+              {custosOficina.length > 0 && (
+                <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+                  {custosOficina.map((c: any) => {
+                    const val = c.valor_executado || c.valor_previsto || 0;
+                    if (val <= 0) return null;
+                    const isAbatido = (c.responsavel || '').toLowerCase() === 'cliente';
+                    return (
+                      <div key={c.id} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
+                        <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">
+                          {(c.tipo || '').toUpperCase().replace('PECA', 'PEÇA').replace('SERVICO', 'SERVIÇO')}
+                        </span>
+                        <span className="flex-1 truncate text-xs font-medium">
+                          {(c.responsavel || '').toUpperCase()} - {(c.detalhes || '-').toUpperCase()}
+                        </span>
+                        <span className={`font-semibold text-sm whitespace-nowrap ${isAbatido ? 'text-destructive' : 'text-foreground'}`}>
+                          {formatCurrency(val)}
+                        </span>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeCusto(c.id)}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="rounded-lg border-2 border-muted bg-muted/30 p-3 flex flex-col justify-center">
+                  <span className="text-xs font-semibold text-muted-foreground">Valor de Consignação</span>
+                  <span className="text-lg font-bold">{formatCurrency(parseCurrencyInput(valorConsignacao))}</span>
+                </div>
+                <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-3 flex flex-col justify-center">
+                  <span className="text-xs font-semibold text-muted-foreground">Total de Abatimentos</span>
+                  <span className="text-lg font-bold text-destructive">{formatCurrency(abatimentos)}</span>
+                </div>
+                <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 flex flex-col justify-center">
+                  <span className="text-xs font-semibold text-muted-foreground">Valor de Repasse</span>
+                  <span className={`text-lg font-bold ${repasseNum >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                    {formatCurrency(repasseNum > 0 ? repasseNum : 0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleSaveFinanceiro} disabled={savingFin} className="gap-1.5">
+                {savingFin ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Salvar
+              </Button>
+            </div>
+          </div>
+          )}
+          </>
         )}
       </DialogContent>
     </Dialog>
