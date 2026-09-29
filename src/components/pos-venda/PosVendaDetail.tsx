@@ -40,6 +40,7 @@ import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 import { conferirDocVeiculo, removerDocDoStorage } from '@/lib/docVeiculoAnexo';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
+import { pendenciasVeicProd } from '@/lib/veicProd';
 
 interface Props {
   item: any;
@@ -95,6 +96,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
   const [motosAvaliacao, setMotosAvaliacao] = useState<any[]>([]);
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
   const [estoqueData, setEstoqueData] = useState<Record<string, any>>({});
+  // Pedido do usuário, 2026-09-29: botão "Atualizar" pra puxar dados fiscais
+  // faltantes (nº motor, código de cor, etc.) do XML da NF-e de entrada —
+  // só aparece se a moto 0km tiver essa NF vinculada.
+  const [temNfCompra0km, setTemNfCompra0km] = useState<Record<string, boolean>>({});
+  const [atualizandoVeicProd, setAtualizandoVeicProd] = useState<string | null>(null);
   const [proprietario, setProprietario] = useState<any>(null);
   const [motoConsignada, setMotoConsignada] = useState<any>(null);
   const [avaliacaoConsignada, setAvaliacaoConsignada] = useState<any>(null);
@@ -506,6 +512,51 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     };
     fetchRelated();
   }, [item.id]);
+
+  // Pra cada moto 0km com pendência de dados fiscais (veicProd), checa se já
+  // tem NF-e de entrada (compra) vinculada — só aí o botão "Atualizar" aparece.
+  useEffect(() => {
+    const pendentes = Object.values(estoqueData).filter(
+      (e: any) => e?.fonte === '0km' && pendenciasVeicProd(e).length > 0 && !(e.id in temNfCompra0km),
+    ) as any[];
+    if (pendentes.length === 0) return;
+    let cancel = false;
+    Promise.all(pendentes.map((e) =>
+      supabase.from('nfe_entradas' as any).select('id').eq('estoque_moto_nova_id', e.id).eq('operacao', 'compra')
+        .not('xml_raw', 'is', null).limit(1).maybeSingle().then(({ data }) => [e.id, !!data] as const),
+    )).then((pairs) => {
+      if (cancel) return;
+      setTemNfCompra0km((prev) => ({ ...prev, ...Object.fromEntries(pairs) }));
+    });
+    return () => { cancel = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estoqueData]);
+
+  const atualizarVeicProd = async (estoqueMotoNovaId: string) => {
+    setAtualizandoVeicProd(estoqueMotoNovaId);
+    try {
+      const { data, error } = await supabase.functions.invoke('extrair-dados-veicprod', {
+        body: { estoque_moto_nova_id: estoqueMotoNovaId },
+      });
+      if (error || data?.error) {
+        toast.error(data?.error || error?.message || 'Falha ao atualizar dados fiscais');
+        return;
+      }
+      if (!data.atualizado) {
+        toast.message(data.motivo || 'Nada encontrado no XML para atualizar.');
+        return;
+      }
+      setEstoqueData((prev) => ({
+        ...prev,
+        [estoqueMotoNovaId]: { ...prev[estoqueMotoNovaId], ...data.campos },
+      }));
+      toast.success('Dados fiscais atualizados a partir da NF-e de entrada.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao atualizar dados fiscais');
+    } finally {
+      setAtualizandoVeicProd(null);
+    }
+  };
 
   if (loading) {
     return <DetailSkeleton onClose={onClose} />;
@@ -951,6 +1002,24 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                               </>
                             )}
                           </div>
+                          )}
+                          {estItem.fonte === '0km' && pendenciasVeicProd(estItem).length > 0 && (
+                            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-700 flex items-start gap-2">
+                              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                              <div className="flex-1 space-y-1.5">
+                                <p>Dados fiscais incompletos: {pendenciasVeicProd(estItem).join(', ')}.</p>
+                                {temNfCompra0km[estItem.id] && (
+                                  <Button
+                                    size="sm" variant="outline" className="h-7 gap-1.5 border-amber-500/50 text-amber-700 hover:bg-amber-500/10"
+                                    disabled={atualizandoVeicProd === estItem.id}
+                                    onClick={() => atualizarVeicProd(estItem.id)}
+                                  >
+                                    {atualizandoVeicProd === estItem.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}
+                                    Atualizar
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
                           )}
                           {/* Estoque observation for special statuses */}
                           {estItem.observacoes && ['servico', 'indisponivel_manual', 'bloqueio_juridico'].includes(estItem.status) && (
