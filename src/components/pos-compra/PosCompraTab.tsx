@@ -97,7 +97,13 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
         if (picked) acquDateMap[d.id] = picked;
       });
       let mapped = (data || [])
-        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeTag: nfeTagFromRows(nfeRowsPorAvaliacao[d.id]) ?? (etapaNfConcluidaSet.has(d.id) ? NFE_TAG_SEM_REGISTRO : undefined), _temNfeProducao: !avaliacoesComDevolucaoCompra.has(d.id) && (nfeRowsPorAvaliacao[d.id] || []).some((n: any) => n.operacao === 'compra' && n.status === 'processada' && n.ambiente === 'producao') }));
+        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeTag: nfeTagFromRows(nfeRowsPorAvaliacao[d.id]) ?? (etapaNfConcluidaSet.has(d.id) ? NFE_TAG_SEM_REGISTRO : undefined),
+          // Achado real 2026-09-29: "concluída (sem NF)" ainda mostrava processos
+          // com a etapa "NF EMITIDA" concluída (emitida fora do bpm-novo, ou
+          // avaliação importada) — o filtro só olhava nfe_entradas de verdade
+          // (_temNfeProducao), nunca etapaNfConcluidaSet (mesmo conjunto que já
+          // alimenta o fallback cinza NFE_TAG_SEM_REGISTRO acima).
+          _temNfeProducao: !avaliacoesComDevolucaoCompra.has(d.id) && (etapaNfConcluidaSet.has(d.id) || (nfeRowsPorAvaliacao[d.id] || []).some((n: any) => n.operacao === 'compra' && n.status === 'processada' && n.ambiente === 'producao')) }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       if (filterCidade !== 'todos') { mapped = mapped.filter((a: any) => matchesCidade(a.atendimento?.loja, filterCidade)); }
       setItems(mapped);

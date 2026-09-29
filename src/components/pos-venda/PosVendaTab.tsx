@@ -60,7 +60,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     // Colunas de aprovação são um eixo separado (venda_aprovacao_status), não pos_venda_status.
     const statuses = POS_VENDA_COLUMNS.map(c => c.value).filter(v => v !== 'aguardando_aprovacao' && v !== 'aprovada');
     const AT_SELECT = `*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes!avaliacoes_atendimento_id_fkey(*, ${MARCA_MODELO_SELECT})`;
-    const [estResRaw, estNovasRaw, lojaMap, nfeResult, nfeDevolucaoResult] = await Promise.all([
+    const [estResRaw, estNovasRaw, lojaMap, nfeResult, nfeDevolucaoResult, etapaNfResult] = await Promise.all([
       fetchAllRange<any>(() => supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).not('atendimento_venda_id', 'is', null)),
       supabase.from('estoque_motos_novas').select(ESTOQUE_NOVA_SELECT).not('atendimento_venda_id', 'is', null),
       fetchLojaMap(),
@@ -68,6 +68,10 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       // NF de venda devolvida (pós-24h): o negócio foi desfeito, não conta mais
       // como "tem NF de venda" pra travar/esconder o item.
       fetchAllRange<any>(() => supabase.from('nfe_entradas' as any).select('atendimento_id').in('operacao', ['devolucao_venda_seminova', 'devolucao_venda_0km']).eq('status', 'processada').eq('ambiente', 'producao')),
+      // Achado real 2026-09-29: etapa "NF EMITIDA" concluída sem nfe_entradas
+      // (emitida fora do bpm-novo, ou atendimento importado) — mesmo padrão já
+      // usado em PosCompraTab/ConsignacaoTab, faltava aqui.
+      fetchAllRange<any>(() => supabase.from('pos_venda_processos').select('atendimento_id').eq('etapa', 'NF EMITIDA').eq('concluida', true)),
     ]);
     // Tag de status da NF por atendimento — reflete o último status da NF.
     const nfeRowsPorAtendimento: Record<string, any[]> = {};
@@ -76,6 +80,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       (nfeRowsPorAtendimento[n.atendimento_id] ??= []).push(n);
     });
     const atendimentosComDevolucaoVenda = new Set(((nfeDevolucaoResult.data as any[]) || []).map((n: any) => n.atendimento_id));
+    const etapaNfConcluidaSet = new Set(((etapaNfResult.data as any[]) || []).map((e: any) => e.atendimento_id));
     const estRes = {
       data: [
         ...(estResRaw.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)),
@@ -122,7 +127,8 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
         const _nfeTag = est?.fonte === '0km' && est?.renave_atpv_numero
           ? { label: 'ATPV-e', className: 'bg-emerald-600 hover:bg-emerald-700 text-white' }
           : nfeTagFromRows(nfeRowsPorAtendimento[a.id]);
-        const _temNfeProducao = !atendimentosComDevolucaoVenda.has(a.id) && (nfeRowsPorAtendimento[a.id] || []).some((n: any) => n.status === 'processada' && n.ambiente === 'producao');
+        const _temNfeProducao = !atendimentosComDevolucaoVenda.has(a.id)
+          && (etapaNfConcluidaSet.has(a.id) || (nfeRowsPorAtendimento[a.id] || []).some((n: any) => n.status === 'processada' && n.ambiente === 'producao'));
         if (est) return { ...a, _estoqueMoto: est, _nfeTag, _temNfeProducao };
         // Fallback: use first moto_interesse info
         const mi = a.motos_interesse?.[0];
