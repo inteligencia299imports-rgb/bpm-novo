@@ -124,6 +124,20 @@ const NpsVendasTab = ({ onNavigateToTab }: NpsVendasTabProps) => {
         mapped = mapped.map((a: any) => ({ ...a, _nfeTag: nfeTagFromRows(nfeRowsPorAtendimento[a.id]) }));
       }
 
+      // Achado real 2026-09-29: nps_status só mudava pra "respondido" por ação
+      // manual (sem botão nenhum ligado a isso hoje) — a resposta chega direto
+      // em `respostas_nps` (via Tally) sem passar por aqui. Se já existe
+      // resposta pro atendimento, considera respondido independente do que
+      // está gravado em nps_status.
+      if (atIds.length > 0) {
+        const { data: respData } = await supabase
+          .from('respostas_nps' as any)
+          .select('atendimento_id')
+          .in('atendimento_id', atIds);
+        const respondidoSet = new Set(((respData as any[]) || []).map((r: any) => r.atendimento_id));
+        mapped = mapped.map((a: any) => (respondidoSet.has(a.id) ? { ...a, nps_status: 'respondido' } : a));
+      }
+
       if (search.trim()) {
         const s = search.trim().toLowerCase();
         mapped = mapped.filter((a: any) =>

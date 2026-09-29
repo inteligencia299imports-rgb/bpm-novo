@@ -223,6 +223,20 @@ const NpsAquisicoesTab = ({ onNavigateToTab }: NpsAquisicoesTabProps) => {
       }
       mapped = mapped.map((m: any) => ({ ...m, _npsSent: npsSentMap[m.atendimento_id] || null }));
 
+      // Achado real 2026-09-29: nps_status só mudava pra "respondido" por ação
+      // manual (sem botão nenhum ligado a isso hoje) — a resposta chega direto
+      // em `respostas_nps` (via Tally, ?id=<avaliacao_id> pro formulário de
+      // aquisições) sem passar por aqui. Se já existe resposta pra avaliação,
+      // considera respondido independente do que está gravado em nps_status.
+      if (avalIds.length > 0) {
+        const { data: respData } = await supabase
+          .from('respostas_nps' as any)
+          .select('atendimento_id')
+          .in('atendimento_id', avalIds);
+        const respondidoSet = new Set(((respData as any[]) || []).map((r: any) => r.atendimento_id));
+        mapped = mapped.map((m: any) => (respondidoSet.has(m.id) ? { ...m, nps_status: 'respondido' } : m));
+      }
+
       // Filtra apenas aquisições a partir de 06/04/2026 (data_negociacao definida)
       const cutoff = new Date('2026-04-06T00:00:00').getTime();
       mapped = mapped.filter((m: any) => m._dataAquisicao && new Date(m._dataAquisicao).getTime() >= cutoff);
