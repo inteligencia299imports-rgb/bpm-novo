@@ -8,9 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, Building2, User, Plus, Trash2, FileText, RefreshCw, AlertTriangle, PackagePlus, XCircle } from 'lucide-react';
+import { CalendarIcon, ClipboardList, X, Loader2, Clock, Save, Building2, User, Plus, Trash2, FileText, RefreshCw, AlertTriangle, PackagePlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -23,7 +22,6 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
-import { marcarAquisicaoRetirada } from '@/lib/atendimentoCascata';
 
 const formatCurrencyInput = (value: string): string => {
   const digits = value.replace(/\D/g, '');
@@ -66,13 +64,7 @@ interface Props {
 }
 
 const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacaoId, onStatusChanged, onEmitirNfe, onAbrirEntradaRenave }) => {
-  const { user, userName } = useAuth();
-  // Pedido do usuário, 2026-09-29: "Marcar como Perdido" só antes da NF de
-  // entrada (compra) ser emitida — depois disso a aquisição já é fiscalmente
-  // real, desfazer exige devolução de compra, não "perder o processo".
-  const [perdidoOpen, setPerdidoOpen] = useState(false);
-  const [motivoPerdido, setMotivoPerdido] = useState('');
-  const [savingPerdido, setSavingPerdido] = useState(false);
+  const { userName } = useAuth();
   const [etapas, setEtapas] = useState<EtapaData[]>(
     ETAPAS.map(e => ({ etapa: e, concluida: false, data_conclusao: null, destino_transferencia: null }))
   );
@@ -358,27 +350,6 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         e.etapa === etapa ? { ...e, data_conclusao: null, concluida: false } : e
       )
     );
-  };
-
-  const handleMarcarPerdido = async () => {
-    if (!motivoPerdido.trim()) { toast.error('Informe o motivo'); return; }
-    if (!atendimentoId) { toast.error('Atendimento não encontrado'); return; }
-    setSavingPerdido(true);
-    try {
-      await marcarAquisicaoRetirada({
-        avaliacaoId, atendimentoId, processoTable: 'pos_compra_processos', statusField: 'pos_compra_status',
-        motivo: motivoPerdido, user, userName,
-      });
-      toast.success('Aquisição marcada como perdida — moto retirada.');
-      setPerdidoOpen(false);
-      setMotivoPerdido('');
-      onStatusChanged?.('perdido');
-      onOpenChange(false);
-    } catch (e: any) {
-      toast.error(e?.message || 'Erro ao marcar como perdido');
-    } finally {
-      setSavingPerdido(false);
-    }
   };
 
   const handleSave = async () => {
@@ -724,13 +695,8 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                 <AtendimentoObservacoes idOperacao={atendimentoId} />
               </div>
             )}
-            <div className="flex justify-between pt-3">
-              {!nfeEmitida && (
-                <Button variant="outline" className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setPerdidoOpen(true)}>
-                  <XCircle className="h-4 w-4" /> Marcar como Perdido
-                </Button>
-              )}
-              <Button onClick={handleSave} disabled={saving} className="gap-1.5 ml-auto">
+            <div className="flex justify-end pt-3">
+              <Button onClick={handleSave} disabled={saving} className="gap-1.5">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Salvar
               </Button>
@@ -846,28 +812,6 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           <DialogFooter>
             <Button variant="outline" onClick={() => setDestinoDialogOpen(false)}>Cancelar</Button>
             <Button onClick={confirmDestino}>Confirmar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={perdidoOpen} onOpenChange={(o) => { if (!o) setMotivoPerdido(''); setPerdidoOpen(o); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><XCircle className="h-5 w-5 text-destructive" /> Marcar como Perdido</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 pt-1">
-            <p className="text-sm text-muted-foreground">
-              A moto será marcada como retirada, o atendimento e a avaliação como perdidos, e os processos em aberto serão fechados.
-            </p>
-            <Label>Motivo</Label>
-            <Textarea rows={3} value={motivoPerdido} onChange={(e) => setMotivoPerdido(e.target.value)} placeholder="Descreva o motivo..." />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPerdidoOpen(false)} disabled={savingPerdido}>Voltar</Button>
-            <Button variant="destructive" onClick={handleMarcarPerdido} disabled={savingPerdido || !motivoPerdido.trim()} className="gap-1.5">
-              {savingPerdido ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-              Confirmar
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

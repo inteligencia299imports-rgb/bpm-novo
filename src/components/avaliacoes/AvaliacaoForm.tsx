@@ -9,7 +9,7 @@ import PosCompraProcessoDialog from '@/components/pos-compra/PosCompraProcessoDi
 import RenaveEntradaUsadoDialog from '@/components/pos-compra/RenaveEntradaUsadoDialog';
 import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProcessoDialog';
 import { podeAprovar } from '@/lib/aprovacao';
-import { marcarAtendimentoPerdido } from '@/lib/atendimentoCascata';
+import { marcarAtendimentoPerdido, marcarAquisicaoRetirada } from '@/lib/atendimentoCascata';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -173,6 +173,15 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   // Etapa de aprovação (contexto pos_compra)
   const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar' | 'desaprovar' | 'perdido'; motivo: string } | null>(null);
   const [savingAprovacao, setSavingAprovacao] = useState(false);
+  // Pedido do usuário, 2026-09-29: "Perdido" abaixo do Histórico de
+  // Movimentações — cobre consignação e própria-por-troca (cenários que o
+  // botão "Marcar como Perdido" da aprovação, acima, não cobre: aquele só
+  // existe pra própria-sem-troca em pós-compra, ver `precisaAprovacao`).
+  // Usa `marcarAquisicaoRetirada` (moto vira "retirada", não "disponível" —
+  // diferente do fluxo pré-venda do showroom).
+  const [perdidoRetiradaOpen, setPerdidoRetiradaOpen] = useState(false);
+  const [motivoPerdidoRetirada, setMotivoPerdidoRetirada] = useState('');
+  const [savingPerdidoRetirada, setSavingPerdidoRetirada] = useState(false);
   const [processoPosCompraOpen, setProcessoPosCompraOpen] = useState(false);
   const [processoConsignacaoOpen, setProcessoConsignacaoOpen] = useState(false);
   // Entrada RENAVE (pós-compra, seminova) abre como página própria — fora do
@@ -776,6 +785,30 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     }
   };
 
+  const confirmarPerdidoRetirada = async () => {
+    if (!avaliacao?.id || !avaliacao?.atendimento_id) return;
+    const motivo = motivoPerdidoRetirada.trim();
+    if (!motivo) { toast.error('Informe o motivo'); return; }
+    setSavingPerdidoRetirada(true);
+    try {
+      await marcarAquisicaoRetirada({
+        avaliacaoId: avaliacao.id,
+        atendimentoId: avaliacao.atendimento_id,
+        processoTable: context === 'consignacao' ? 'consignacao_processos' : 'pos_compra_processos',
+        statusField: context === 'consignacao' ? 'consignacao_status' : 'pos_compra_status',
+        motivo, user, userName,
+      });
+      toast.success('Marcado como perdido — moto retirada.');
+      setPerdidoRetiradaOpen(false);
+      onClose();
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao marcar como perdido');
+    } finally {
+      setSavingPerdidoRetirada(false);
+    }
+  };
+
   const handleSaveAquisicao = async () => {
     if (!tipoSelecionado) {
       toast.error('Selecione o tipo de aquisição');
@@ -1000,6 +1033,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   // usuário único que aprova/recusa aquisições. Qualquer gerente/master que
   // acessa o Pós-Compra pode usar.
   const podeMarcarPerdido = role === 'master' || role === 'gerente';
+  // "Perdido" (abaixo do histórico) cobre consignação e própria-por-troca —
+  // os dois cenários de `ehProcesso` que o botão de aprovação acima não
+  // alcança (esse só existe pra própria-sem-troca em pós-compra). Some depois
+  // da avaliação já perdida/dispensada ou da NF de entrada emitida.
+  const podeMarcarPerdidoRetirada = ehProcesso && !precisaAprovacao
+    && avaliacao?.situacao !== 'perdido' && avaliacao?.situacao !== 'dispensada' && !nfeCompraEmitida;
   // Após aprovação (ou emissão da NF-e): nada pode ser editado nem arquivo removido.
   const travado = aprovado || nfeCompraEmitida;
   // Exceção: mesmo após a NF-e, os valores da avaliação comercial continuam editáveis
@@ -1697,6 +1736,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             </CardContent>
           </Card>
 
+          {podeMarcarPerdidoRetirada && (
+            <div className="md:col-span-2 flex justify-center">
+              <Button size="sm" variant="outline" onClick={() => setPerdidoRetiradaOpen(true)} className="gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive">
+                <XCircle className="h-4 w-4" /> Perdido
+              </Button>
+            </div>
+          )}
+
            <div className="md:col-span-2 flex flex-col items-center gap-3">
             <div className="flex gap-2 flex-wrap justify-center">
               {!ehProcesso && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao && !estoqueVendido && !nfeCompraEmitida && (permiteConsignar || isTipoConsignada(avaliacao?.tipo_aquisicao)) && (
@@ -2162,6 +2209,29 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 onClick={confirmarAprovacao}
               >
                 {savingAprovacao ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Perdido (retirada) — consignação/própria-troca, antes da NF de entrada */}
+      <Dialog open={perdidoRetiradaOpen} onOpenChange={(o) => { if (!o) setMotivoPerdidoRetirada(''); setPerdidoRetiradaOpen(o); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><XCircle className="h-5 w-5 text-destructive" /> Perdido</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Motivo <span className="text-destructive">*</span></Label>
+            <Textarea value={motivoPerdidoRetirada} onChange={(e) => setMotivoPerdidoRetirada(e.target.value)} placeholder="Informe o motivo..." rows={3} />
+            <p className="text-xs text-muted-foreground">
+              A moto será marcada como <strong>retirada</strong>, o atendimento e a avaliação como <strong>perdido</strong>, e os processos em aberto serão fechados. Não é possível desfazer.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPerdidoRetiradaOpen(false)}>Cancelar</Button>
+              <Button variant="destructive" disabled={!motivoPerdidoRetirada.trim() || savingPerdidoRetirada} onClick={confirmarPerdidoRetirada}>
+                {savingPerdidoRetirada ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 Confirmar
               </Button>
             </div>
