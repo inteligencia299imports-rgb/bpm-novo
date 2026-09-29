@@ -119,7 +119,7 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                 Devolução Simbólica
                 <NfeStatusBadge nfe={nfeDevolucao} />
                 <span className="ml-auto">
-                  <NfeDanfeButton nfe={nfeDevolucao} />
+                  <NfeDanfeButton nfe={nfeDevolucao} placaOuChassi={avaliacao?.placa} />
                 </span>
               </CardTitle>
               <Separator className="mt-2 mb-3" />
@@ -180,7 +180,7 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                 {!devolucaoProducaoOk && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
                 <NfeStatusBadge nfe={nfeCompra} />
                 <span className="ml-auto">
-                  <NfeDanfeButton nfe={nfeCompra} />
+                  <NfeDanfeButton nfe={nfeCompra} placaOuChassi={avaliacao?.placa} />
                 </span>
               </CardTitle>
               <Separator className="mt-2 mb-3" />

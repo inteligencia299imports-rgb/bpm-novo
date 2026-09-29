@@ -1317,7 +1317,7 @@ const ContratoDialog: React.FC<Props> = ({
           <>
             <NfeStatusBadge nfe={nfe} />
             <span className="ml-auto">
-              <NfeDanfeButton nfe={nfe} />
+              <NfeDanfeButton nfe={nfe} placaOuChassi={estItemNfe?.placa || estItemNfe?.chassi || motoIntNfe?.chassi} />
             </span>
           </>
         )}

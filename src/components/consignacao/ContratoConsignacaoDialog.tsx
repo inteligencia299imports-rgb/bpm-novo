@@ -640,7 +640,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           <>
             <NfeStatusBadge nfe={nfe} />
             <span className="ml-auto">
-              <NfeDanfeButton nfe={nfe} />
+              <NfeDanfeButton nfe={nfe} placaOuChassi={moto?.placa} />
             </span>
           </>
         )}

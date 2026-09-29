@@ -70,7 +70,7 @@ const TransferenciaFagMmatosDialog: React.FC<TransferenciaFagMmatosDialogProps> 
                 <span className={nfe.nfe?.ambiente === 'producao' ? 'font-medium text-emerald-600 dark:text-emerald-400' : 'font-medium text-orange-600 dark:text-orange-400'}>
                   Nº {nfe.nfe?.numero || '-'} • Série {nfe.nfe?.serie || '-'}
                 </span>
-                <NfeDanfeButton nfe={nfe} />
+                <NfeDanfeButton nfe={nfe} placaOuChassi={moto?.placa || moto?.chassi} />
               </div>
             </div>
           )}

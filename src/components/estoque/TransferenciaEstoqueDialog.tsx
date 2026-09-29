@@ -238,7 +238,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                     <span className={saida.nfe?.ambiente === 'producao' ? 'font-medium text-emerald-600 dark:text-emerald-400' : 'font-medium text-orange-600 dark:text-orange-400'}>
                       Nº {saida.nfe?.numero || '-'} • Série {saida.nfe?.serie || '-'}
                     </span>
-                    <NfeDanfeButton nfe={saida} />
+                    <NfeDanfeButton nfe={saida} placaOuChassi={estoqueItem?.placa || estoqueItem?.chassi} />
                   </div>
                 </div>
               )}
@@ -305,7 +305,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                     <span className={entrada.nfe?.ambiente === 'producao' ? 'font-medium text-emerald-600 dark:text-emerald-400' : 'font-medium text-orange-600 dark:text-orange-400'}>
                       Nº {entrada.nfe?.numero || '-'} • Série {entrada.nfe?.serie || '-'}
                     </span>
-                    <NfeDanfeButton nfe={entrada} />
+                    <NfeDanfeButton nfe={entrada} placaOuChassi={estoqueItem?.placa || estoqueItem?.chassi} />
                   </div>
                 </div>
               )}

@@ -625,7 +625,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
           <>
             <NfeStatusBadge nfe={nfe} />
             <span className="ml-auto">
-              <NfeDanfeButton nfe={nfe} />
+              <NfeDanfeButton nfe={nfe} placaOuChassi={moto?.placa} />
             </span>
           </>
         )}
