@@ -2494,6 +2494,24 @@ Deno.serve(async (req) => {
           valor_sinal: null,
         }).eq('id', idEstoque);
       }
+      // Achado real 2026-09-29 (chassi 95V7G00AATM000017): o bloco acima já
+      // devolvia a moto pro estoque, mas nunca marcava o atendimento como
+      // "perdido" — Pós-Venda e Intermediação filtram por
+      // `atendimentos_motos.situacao = 'vendido'` (ver PosVendaTab.tsx/
+      // IntermediacacaoTab.tsx), então o atendimento continuava aparecendo
+      // nas duas telas mesmo com a venda desfeita. Mesmo campo que
+      // marcarAtendimentoPerdido (frontend) usa pra esse efeito.
+      if (atendimentoId) {
+        await admin.from('atendimentos_motos').update({ situacao: 'perdido' }).eq('id', atendimentoId);
+        await admin.from('status_history').insert({
+          entity_type: 'showroom',
+          entity_id: atendimentoId,
+          status: 'perdido',
+          changed_by: caller.id,
+          changed_by_name: callerName,
+          observacoes: 'Venda desfeita por devolução de NF-e.',
+        });
+      }
     }
     // Devolução de compra: a moto sai do estoque de vez (está voltando pro
     // vendedor original — não faz mais sentido continuar aparecendo como
