@@ -457,6 +457,62 @@ async function aplicarCancelamento(
   return { updated, error: null, parcelasPagas };
 }
 
+// Pedido do usuário, 2026-09-29: desfazer a venda de uma moto seminova (por
+// cancelamento dentro das 24h ou por devolução depois disso) só é permitido
+// se ela tiver uma NF-e de entrada (compra) vinculada no sistema — sem isso
+// não há como confiar no histórico da moto voltando pro estoque.
+async function temNfCompraVinculada(admin: any, avaliacaoId: string | null): Promise<boolean> {
+  if (!avaliacaoId) return false;
+  const { data } = await admin
+    .from('nfe_entradas').select('id').eq('avaliacao_id', avaliacaoId)
+    .eq('operacao', 'compra').eq('status', 'processada').eq('ambiente', 'producao')
+    .limit(1).maybeSingle();
+  return !!data;
+}
+
+// Pedido do usuário, 2026-09-29: desfazer a venda de uma moto seminova
+// (cancelamento ou devolução) não a devolve pra "disponível" — ela vira
+// "retirada" (mesmo efeito e mesma tela que RetiradaDialog.tsx já usa pro
+// fluxo manual do Estoque), o atendimento vira "perdido" e os processos de
+// consignação em aberto são fechados. Tudo registrado no histórico.
+async function aplicarRetiradaSeminova(
+  admin: any,
+  params: { estoqueMotoId: string; avaliacaoId: string | null; atendimentoId: string; motivo: string; callerId: string; callerName: string | null },
+): Promise<void> {
+  const { estoqueMotoId, avaliacaoId, atendimentoId, motivo, callerId, callerName } = params;
+
+  await admin.from('estoque_motos').update({ status: 'retirada', observacoes: motivo }).eq('id', estoqueMotoId);
+  await admin.from('status_history').insert({
+    entity_type: 'estoque', entity_id: estoqueMotoId, status: 'RETIRADA',
+    changed_by: callerId, changed_by_name: callerName, observacoes: motivo,
+  });
+
+  if (avaliacaoId) {
+    await admin.from('avaliacoes').update({ situacao: 'perdido' }).eq('id', avaliacaoId);
+    await admin.from('status_history').insert({
+      entity_type: 'avaliacao', entity_id: avaliacaoId, status: 'RETIRADA',
+      changed_by: callerId, changed_by_name: callerName, observacoes: motivo,
+    });
+    const { data: processos } = await admin
+      .from('consignacao_processos').select('id').eq('avaliacao_id', avaliacaoId).eq('concluida', false);
+    if (processos && processos.length > 0) {
+      const now = new Date().toISOString();
+      for (const p of processos as any[]) {
+        await admin.from('consignacao_processos').update({ concluida: true, data_conclusao: now }).eq('id', p.id);
+      }
+    }
+    await admin.from('avaliacoes').update({ consignacao_status: 'concluido' }).eq('id', avaliacaoId);
+  }
+
+  if (atendimentoId) {
+    await admin.from('atendimentos_motos').update({ situacao: 'perdido' }).eq('id', atendimentoId);
+    await admin.from('status_history').insert({
+      entity_type: 'showroom', entity_id: atendimentoId, status: 'perdido',
+      changed_by: callerId, changed_by_name: callerName, observacoes: motivo,
+    });
+  }
+}
+
 const PENDENTES = new Set(['recebida', 'validando', 'processando_itens']);
 
 /**
@@ -1356,6 +1412,12 @@ Deno.serve(async (req) => {
     if (nfeRow.status !== 'processada') {
       return jsonResponse({ error: 'Só é possível cancelar uma NF-e autorizada.' }, 409);
     }
+    // Pedido do usuário, 2026-09-29: mesma trava da devolução — cancelar a
+    // venda de uma moto seminova só é permitido com NF-e de entrada (compra)
+    // vinculada no sistema.
+    if (tipo === 'venda_seminova' && !(await temNfCompraVinculada(admin, estoqueMoto?.avaliacao_id ?? null))) {
+      return jsonResponse({ error: 'Esta moto não tem NF-e de entrada (compra) vinculada no sistema — não é possível cancelar a venda.' }, 409);
+    }
 
     const rowAmbiente = ((nfeRow.ambiente as FocusAmbiente) || ambienteDefault);
     const rowBase = focusBaseUrl(rowAmbiente);
@@ -1402,6 +1464,21 @@ Deno.serve(async (req) => {
     });
     if (updErr) return jsonResponse({ error: `NF-e cancelada na SEFAZ, mas falhou ao gravar: ${updErr.message}` }, 500);
     console.log('cancelar: gravado', nfeRow.id, '->', updated?.status, 'parcelasPagas:', parcelasPagas);
+
+    // Pedido do usuário, 2026-09-29: cancelar a venda de uma moto seminova
+    // tem o mesmo efeito de negócio de uma devolução (ver mais abaixo,
+    // devolucao_venda_seminova) — moto "retirada", atendimento perdido,
+    // processos de consignação concluídos, tudo no histórico.
+    if (tipo === 'venda_seminova' && estoqueMoto?.id) {
+      await aplicarRetiradaSeminova(admin, {
+        estoqueMotoId: estoqueMoto.id,
+        avaliacaoId: estoqueMoto.avaliacao_id ?? null,
+        atendimentoId,
+        motivo: `Venda cancelada — ${justificativa}`,
+        callerId: caller.id,
+        callerName,
+      });
+    }
 
     return jsonResponse({
       nfe: updated ?? nfeRow,
@@ -1558,6 +1635,13 @@ Deno.serve(async (req) => {
   } else if (tipo === 'devolucao_venda_seminova') {
     const erroDevolucao = await validarOrigemDevolucao('atendimento_id', atendimentoId, 'venda_seminova', 'devolucao_venda_seminova', 'A NF-e de venda');
     if (erroDevolucao) return jsonResponse(erroDevolucao, 409);
+    // Pedido do usuário, 2026-09-29: devolver/cancelar a venda de uma moto
+    // seminova só é permitido se ela tiver NF-e de entrada (compra) vinculada
+    // no sistema — sem isso não temos como registrar direito a moto voltando
+    // (ela é marcada "retirada", ver aplicarRetiradaSeminova).
+    if (!(await temNfCompraVinculada(admin, estoqueMoto?.avaliacao_id ?? null))) {
+      return jsonResponse({ error: 'Esta moto não tem NF-e de entrada (compra) vinculada no sistema — não é possível devolver a venda.' }, 409);
+    }
   } else if (tipo === 'devolucao_venda_0km') {
     const erroDevolucao = await validarOrigemDevolucao('atendimento_id', atendimentoId, 'venda_0km', 'devolucao_venda_0km', 'A NF-e de venda');
     if (erroDevolucao) return jsonResponse(erroDevolucao, 409);
@@ -2479,14 +2563,18 @@ Deno.serve(async (req) => {
         .update({ loja_id: destinoLojaIdBody, empresa_id: destinoEmpresaIdTransf })
         .eq('id', entityId);
     }
-    // Devolução de venda: a moto some da venda e volta a ficar disponível no
-    // estoque de quem a vendeu (mesmo efeito de "perder a venda" já usado em
-    // marcarAtendimentoPerdido/reverterEstoqueVenda no frontend).
-    if (tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km') {
-      const tabelaEstoque = ehVenda0km ? 'estoque_motos_novas' : 'estoque_motos';
-      const idEstoque = ehVenda0km ? estoqueMoto?.moto_nova_id : estoqueMoto?.id;
+    // Devolução de venda 0km: a moto some da venda e volta a ficar disponível
+    // no estoque de quem a vendeu (mesmo efeito de "perder a venda" já usado
+    // em marcarAtendimentoPerdido/reverterEstoqueVenda no frontend).
+    // Achado real 2026-09-29 (chassi 95V7G00AATM000017): faltava marcar o
+    // atendimento como "perdido" — Pós-Venda e Intermediação filtram por
+    // `atendimentos_motos.situacao = 'vendido'` (ver PosVendaTab.tsx/
+    // IntermediacacaoTab.tsx), então o atendimento continuava aparecendo nas
+    // duas telas mesmo com a venda desfeita.
+    if (tipo === 'devolucao_venda_0km') {
+      const idEstoque = estoqueMoto?.moto_nova_id;
       if (idEstoque) {
-        await admin.from(tabelaEstoque).update({
+        await admin.from('estoque_motos_novas').update({
           status: 'disponivel',
           atendimento_venda_id: null,
           data_venda: null,
@@ -2494,13 +2582,6 @@ Deno.serve(async (req) => {
           valor_sinal: null,
         }).eq('id', idEstoque);
       }
-      // Achado real 2026-09-29 (chassi 95V7G00AATM000017): o bloco acima já
-      // devolvia a moto pro estoque, mas nunca marcava o atendimento como
-      // "perdido" — Pós-Venda e Intermediação filtram por
-      // `atendimentos_motos.situacao = 'vendido'` (ver PosVendaTab.tsx/
-      // IntermediacacaoTab.tsx), então o atendimento continuava aparecendo
-      // nas duas telas mesmo com a venda desfeita. Mesmo campo que
-      // marcarAtendimentoPerdido (frontend) usa pra esse efeito.
       if (atendimentoId) {
         await admin.from('atendimentos_motos').update({ situacao: 'perdido' }).eq('id', atendimentoId);
         await admin.from('status_history').insert({
@@ -2512,6 +2593,20 @@ Deno.serve(async (req) => {
           observacoes: 'Venda desfeita por devolução de NF-e.',
         });
       }
+    }
+    // Devolução de venda SEMINOVA: pedido do usuário, 2026-09-29 — diferente
+    // do 0km, não volta pra "disponível". Vira "retirada" (mesmo efeito do
+    // RetiradaDialog.tsx manual), atendimento vira "perdido", processos de
+    // consignação em aberto são fechados. Ver aplicarRetiradaSeminova.
+    if (tipo === 'devolucao_venda_seminova' && estoqueMoto?.id) {
+      await aplicarRetiradaSeminova(admin, {
+        estoqueMotoId: estoqueMoto.id,
+        avaliacaoId: estoqueMoto.avaliacao_id ?? null,
+        atendimentoId,
+        motivo: 'Venda desfeita por devolução de NF-e.',
+        callerId: caller.id,
+        callerName,
+      });
     }
     // Devolução de compra: a moto sai do estoque de vez (está voltando pro
     // vendedor original — não faz mais sentido continuar aparecendo como

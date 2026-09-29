@@ -295,6 +295,23 @@ const ContratoDialog: React.FC<Props> = ({
   // (env var), então o da última emissão já indica o de qualquer emissão nova.
   const nfeEmProducao = nfeEmProducaoBruta && !nfeDevolvida;
   const soLeitura = ehNfe || nfeEmProducao;
+
+  // Pedido do usuário, 2026-09-29: cancelar/devolver a venda de uma moto
+  // SEMINOVA só é permitido com NF-e de entrada (compra) vinculada no
+  // sistema — sem isso o botão nem aparece (o backend também trava, ver
+  // temNfCompraVinculada em emitir-nfe-compra/index.ts).
+  const [temNfCompraSeminova, setTemNfCompraSeminova] = useState(true);
+  useEffect(() => {
+    if (!open || eh0kmVenda || !nfeEmProducaoBruta || !estItemNfe?.avaliacao_id) return;
+    let cancel = false;
+    supabase.from('nfe_entradas' as any)
+      .select('id').eq('avaliacao_id', estItemNfe.avaliacao_id)
+      .eq('operacao', 'compra').eq('status', 'processada').eq('ambiente', 'producao')
+      .limit(1).maybeSingle()
+      .then(({ data }: any) => { if (!cancel) setTemNfCompraSeminova(!!data); });
+    return () => { cancel = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, eh0kmVenda, nfeEmProducaoBruta, estItemNfe?.avaliacao_id]);
   // Homologação permite reemitir mesmo com uma NF-e já autorizada (sempre com os
   // dados atuais do sistema) — em produção uma NF-e autorizada é definitiva, não reemite.
   const podeReemitirHomolog = nfeJaEmitida && nfe.nfe?.ambiente === 'homologacao';
@@ -2139,7 +2156,7 @@ const ContratoDialog: React.FC<Props> = ({
                 </p>
               )}
 
-              {(nfe.emitida || nfe.cancelada) && nfe.nfe?.ambiente === 'producao' && <CancelarNfeDialog nfe={nfe} />}
+              {(nfe.emitida || nfe.cancelada) && nfe.nfe?.ambiente === 'producao' && (eh0kmVenda || temNfCompraSeminova) && <CancelarNfeDialog nfe={nfe} />}
 
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
