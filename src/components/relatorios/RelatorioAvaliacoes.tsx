@@ -182,17 +182,19 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         .from('avaliacoes')
         .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, avaliador_id, tipo_aquisicao, situacao, quanto_vende, valor_fechamento, trade_in, created_at, updated_at, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(interesse, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
         .neq('situacao', 'sem_avaliar')
-        .in('atendimentos.interesse', ['trocar', 'vender'])
+        .in('atendimentos_motos.interesse', ['trocar', 'vender'])
       ),
       fetchAllRange<any>(() => supabase
         .from('status_history')
         .select('entity_id, created_at')
+        .eq('entity_type', 'avaliacao')
         .eq('status', 'adquirida')
       ),
       (supabase as any).from('user_roles').select('user_id, nome').eq('projeto_id', BPM_PROJETO_ID),
       fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado')),
     ]);
 
+    if (avalRes.error) console.error('RelatorioAvaliacoes: erro ao carregar avaliações', avalRes.error);
     const avals = ((avalRes.data || []) as any[]).map((a) => flattenMarcaModelo(a));
     const avalIdSet = new Set<string>(avals.map((a) => a.id));
 
