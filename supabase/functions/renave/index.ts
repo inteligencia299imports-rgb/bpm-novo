@@ -880,7 +880,11 @@ Deno.serve(async (req) => {
         cnpjEstabelecimento: await cnpjDaEmpresaPorAvaliacao(admin, avaliacaoId),
       };
       const r = await termoEntradaEstoque(av.renave_id_estoque, ctx);
-      if (r.status !== 200) return json({ error: erroRenave(r), status: r.status, detalhe: r.body }, 422);
+      if (r.status !== 200) {
+        const msg = erroRenave(r);
+        await persistirAvaliacao(admin, avaliacaoId, { renave_ultimo_erro: msg });
+        return json({ error: msg, status: r.status, detalhe: r.body }, 422);
+      }
 
       const b64 = achaPdfBase64(r.body);
       if (!b64) return json({ error: 'A SERPRO não devolveu o PDF do termo de entrada nessa consulta.', detalhe: r.body }, 422);
@@ -919,7 +923,16 @@ Deno.serve(async (req) => {
         cnpjEstabelecimento: await cnpjDaEmpresaPorAvaliacao(admin, avaliacaoId),
       };
       const r = await pdfAtpvPorChassi(String(av.chassi).toUpperCase(), ctx);
-      if (r.status !== 200) return json({ error: erroRenave(r), status: r.status, detalhe: r.body }, 422);
+      if (r.status !== 200) {
+        // Achado real 2026-09-29 (mesmo chassi 95VHA00AAHM000135, placa
+        // QJC6989): esse handler nunca gravava renave_ultimo_erro na falha —
+        // o banner da tela ficava preso mostrando o erro de uma tentativa
+        // anterior (às vezes de uma ação completamente diferente), escondendo
+        // o erro de verdade da tentativa atual.
+        const msg = erroRenave(r);
+        await persistirAvaliacao(admin, avaliacaoId, { renave_ultimo_erro: msg });
+        return json({ error: msg, status: r.status, detalhe: r.body }, 422);
+      }
 
       const patch: Record<string, unknown> = { renave_atpv_numero: r.body?.numeroAtpv ?? null };
       if (r.body?.pdfAtpvBase64) {
@@ -1135,7 +1148,11 @@ Deno.serve(async (req) => {
         cnpjEstabelecimento: await cnpjDaEmpresaPorAvaliacao(admin, avaliacaoId),
       };
       const r = await consultarCrlve(placa, renavam, ctx);
-      if (r.status !== 200) return json({ error: erroRenave(r), status: r.status, detalhe: r.body }, 422);
+      if (r.status !== 200) {
+        const msg = erroRenave(r);
+        await persistirAvaliacao(admin, avaliacaoId, { renave_ultimo_erro: msg });
+        return json({ error: msg, status: r.status, detalhe: r.body }, 422);
+      }
 
       const patch: Record<string, unknown> = {};
       if (r.body?.pdfBase64) {
@@ -1409,7 +1426,10 @@ Deno.serve(async (req) => {
 
       if (acao === 'saida-usado-atpv') {
         const atpv = await baixarAtpvVenda();
-        if (atpv.error) return json({ error: atpv.error }, 422);
+        if (atpv.error) {
+          await persistirAvaliacao(admin, avaliacaoId, { renave_saida_ultimo_erro: atpv.error });
+          return json({ error: atpv.error }, 422);
+        }
         await persistirAvaliacao(admin, avaliacaoId, atpv.patch);
         return json({ ok: true, ...atpv.patch });
       }
@@ -1429,7 +1449,11 @@ Deno.serve(async (req) => {
 
       if (acao === 'saida-usado-termo') {
         const r = await termoSaidaEstoque(av.renave_id_estoque, ctx);
-        if (r.status !== 200) return json({ error: erroRenave(r), status: r.status, detalhe: r.body }, 422);
+        if (r.status !== 200) {
+          const msg = erroRenave(r);
+          await persistirAvaliacao(admin, avaliacaoId, { renave_saida_ultimo_erro: msg });
+          return json({ error: msg, status: r.status, detalhe: r.body }, 422);
+        }
         const b64 = r.body?.pdfBase64 || achaPdfBase64(r.body);
         if (!b64) return json({ error: 'A SERPRO não devolveu o PDF do termo de saída nessa consulta.', detalhe: r.body }, 422);
         const bytes = Uint8Array.from(atob(b64), (c: string) => c.charCodeAt(0));
