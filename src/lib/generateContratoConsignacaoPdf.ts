@@ -23,6 +23,9 @@ interface ContratoConsignacaoPdfData {
   dataContrato: string;
   /** Percentual de comissão (0/vazio = contrato normal, sem cláusula de comissão). */
   percentualComissao: number;
+  /** Acessórios informados no card "Dados da Moto" (avaliacoes.tem_acessorios/acessorios_descricao). */
+  temAcessorios?: boolean | null;
+  acessoriosDescricao?: string | null;
 }
 
 async function loadImage(path: string): Promise<string> {
@@ -311,6 +314,14 @@ export async function generateContratoConsignacaoPdf(
   doc.text(`Fab/Mod: ${data.anoFabMod}`, marginLeft, y); y += lineHeight;
   doc.text(`Placa: ${data.placa}`, marginLeft, y); y += lineHeight;
   doc.text(`Km: ${formatKmPdf(data.km)}`, marginLeft, y); y += lineHeight;
+  if (data.temAcessorios && data.acessoriosDescricao) {
+    const acessLines = doc.splitTextToSize(`Acessórios: ${data.acessoriosDescricao}`, contentWidth);
+    for (const ln of acessLines) {
+      y = lineCheckPageBreak(y, lineHeight);
+      doc.text(ln, marginLeft, y);
+      y += lineHeight;
+    }
+  }
   doc.text(`Valor de Quitação: ${data.valorQuitacao}`, marginLeft, y); y += lineHeight;
   doc.text(`Valor Negociado: ${data.valorNegociado}`, marginLeft, y); y += lineHeight + sectionGap;
 

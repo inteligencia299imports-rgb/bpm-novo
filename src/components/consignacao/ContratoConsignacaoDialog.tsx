@@ -561,6 +561,8 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       valorFechamento: formatCurrencyValue(valorFechamento),
       dataContrato: dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : '-',
       percentualComissao: percentualComissaoNum,
+      temAcessorios: moto?.tem_acessorios,
+      acessoriosDescricao: moto?.acessorios_descricao,
     };
   };
 

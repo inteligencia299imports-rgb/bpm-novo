@@ -467,6 +467,8 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       repasseCliente: fmtNum(fechNum - custosCliente - Number((avaliacao as any)?.previsao_custos_cliente ?? 0) - quitNum),
       observacoes: obsContrato || '',
       dataContrato: dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : '-',
+      temAcessorios: moto?.tem_acessorios,
+      acessoriosDescricao: moto?.acessorios_descricao,
     };
   };
 
