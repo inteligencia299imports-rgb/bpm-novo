@@ -124,15 +124,25 @@ export interface RegraEscolhida { regra: RegraFiscal; natureza: NaturezaCfop }
 
 const num = (v: unknown) => (v == null || v === "" ? null : Number(v));
 
+// Sentido do documento pelo 1º dígito do CFOP: 1/2/3 = entrada, 5/6/7 = saída.
+export type Sentido = "entrada" | "saida";
+export const sentidoDoCfop = (cfop: string): Sentido => (["1", "2", "3"].includes(cfop[0]) ? "entrada" : "saida");
+
 // Carrega naturezas ativas da família da operação (ou só a natureza escolhida) + regras + alíquotas.
+// `sentido`: famílias que misturam entrada e saída no catálogo (transferencia: 1152/2152 + 5152/6152;
+// transferencia_empresas: 2912 + 6912) precisam dele — sem filtro, escolherRegra casa o CFOP de
+// entrada numa NF de saída (2152 x 6152 empatam pra mesma UF de destino) e o natOp do cabeçalho vem
+// da 1ª CFOP da família (1152, de entrada). Achado real: transferência POA -> FLN saiu com 2152.
 export async function carregarOperacao(
   supabase: ClienteSupabase,
-  p: { empresaId: string; ufEmitente: string | null; operacao: Operacao; naturezaId?: string | null },
+  p: { empresaId: string; ufEmitente: string | null; operacao: Operacao; naturezaId?: string | null; sentido?: Sentido },
 ): Promise<OperacaoCarregada | { erro: string }> {
   const { data: familia, error: e0 } = await supabase
     .from("cfops").select("codigo").eq("operacao", p.operacao).eq("ativo", true).order("codigo");
   if (e0) return { erro: `Erro ao ler o catálogo de CFOPs: ${e0.message}` };
-  const cfops = ((familia ?? []) as { codigo: string }[]).map((c) => c.codigo);
+  const cfops = ((familia ?? []) as { codigo: string }[])
+    .map((c) => c.codigo)
+    .filter((c) => !p.sentido || sentidoDoCfop(c) === p.sentido);
   if (!cfops.length) return { erro: `Operação "${p.operacao}" sem CFOPs no catálogo (tabela cfops).` };
   let q = supabase
     .from("naturezas_operacao")
