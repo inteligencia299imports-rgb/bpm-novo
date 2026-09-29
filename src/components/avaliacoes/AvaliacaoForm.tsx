@@ -174,11 +174,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar' | 'desaprovar' | 'perdido'; motivo: string } | null>(null);
   const [savingAprovacao, setSavingAprovacao] = useState(false);
   // Pedido do usuário, 2026-09-29: "Perdido" abaixo do Histórico de
-  // Movimentações — cobre consignação e própria-por-troca (cenários que o
-  // botão "Marcar como Perdido" da aprovação, acima, não cobre: aquele só
-  // existe pra própria-sem-troca em pós-compra, ver `precisaAprovacao`).
-  // Usa `marcarAquisicaoRetirada` (moto vira "retirada", não "disponível" —
-  // diferente do fluxo pré-venda do showroom).
+  // Movimentações — cobre consignação e própria-por-troca. Usa
+  // `marcarAquisicaoRetirada` (moto vira "retirada", não "disponível" —
+  // diferente do fluxo pré-venda do showroom). Própria-sem-troca (fluxo de
+  // aprovação) usa o MESMO botão/posição mas o outro handler — ver
+  // `podeMarcarPerdidoAprovacao`.
   const [perdidoRetiradaOpen, setPerdidoRetiradaOpen] = useState(false);
   const [motivoPerdidoRetirada, setMotivoPerdidoRetirada] = useState('');
   const [savingPerdidoRetirada, setSavingPerdidoRetirada] = useState(false);
@@ -1050,11 +1050,19 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   // acessa o Pós-Compra pode usar.
   const podeMarcarPerdido = role === 'master' || role === 'gerente';
   // "Perdido" (abaixo do histórico) cobre consignação e própria-por-troca —
-  // os dois cenários de `ehProcesso` que o botão de aprovação acima não
-  // alcança (esse só existe pra própria-sem-troca em pós-compra). Some depois
+  // os dois cenários de `ehProcesso` que não passam por aprovação. Some depois
   // da avaliação já perdida/dispensada ou da NF de entrada emitida.
   const podeMarcarPerdidoRetirada = ehProcesso && !precisaAprovacao
     && avaliacao?.situacao !== 'perdido' && avaliacao?.situacao !== 'dispensada' && !nfeCompraEmitida;
+  // Pedido do usuário, 2026-09-29: própria-sem-troca em pós-compra (fluxo de
+  // aprovação) também usa o mesmo botão "Perdido" abaixo do histórico, não um
+  // botão separado no topo — disponível em qualquer etapa (aguardando ou já
+  // aprovada) até a NF-e de compra sair em PRODUÇÃO. Continua chamando
+  // marcarAtendimentoPerdido (via aprovacaoPopup), não a cascata de retirada
+  // de estoque: nessa etapa a moto ainda não passou pela Preparação/Liberação,
+  // então não há linha em estoque_motos pra retirar.
+  const podeMarcarPerdidoAprovacao = precisaAprovacao && podeMarcarPerdido
+    && avaliacao?.situacao !== 'perdido' && avaliacao?.situacao !== 'dispensada' && !nfeEmitidaProducao;
   // Após aprovação (ou emissão da NF-e): nada pode ser editado nem arquivo removido.
   const travado = aprovado || nfeCompraEmitida;
   // Exceção: mesmo após a NF-e, os valores da avaliação comercial continuam editáveis
@@ -1301,14 +1309,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             {precisaAprovacao && souAprovador && apSt === 'aprovada' && !nfeEmitidaProducao && (
               <Button size="sm" variant="outline" onClick={() => setAprovacaoPopup({ modo: 'desaprovar', motivo: '' })} className="gap-1.5 border-amber-500 text-amber-600 hover:bg-amber-500/10 hover:text-amber-600">
                 <RotateCw className="h-4 w-4" /> Desaprovar
-              </Button>
-            )}
-            {/* Marcar como perdido: em qualquer etapa (aguardando ou já aprovada),
-                até a NF-e de compra sair em PRODUÇÃO — depois disso a aquisição já
-                está fiscalmente fechada, não faz mais sentido desistir. */}
-            {precisaAprovacao && podeMarcarPerdido && avaliacao?.situacao !== 'perdido' && avaliacao?.situacao !== 'dispensada' && !nfeEmitidaProducao && (
-              <Button size="sm" variant="outline" onClick={() => setAprovacaoPopup({ modo: 'perdido', motivo: '' })} className="gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive">
-                <XCircle className="h-4 w-4" /> Marcar como Perdido
               </Button>
             )}
             {ehProcesso && aguardandoAprovacao && !souAprovador && (
@@ -1754,9 +1754,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             </CardContent>
           </Card>
 
-          {podeMarcarPerdidoRetirada && (
+          {(podeMarcarPerdidoRetirada || podeMarcarPerdidoAprovacao) && (
             <div className="md:col-span-2 flex justify-center">
-              <Button size="sm" variant="outline" onClick={() => setPerdidoRetiradaOpen(true)} className="gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => podeMarcarPerdidoAprovacao ? setAprovacaoPopup({ modo: 'perdido', motivo: '' }) : setPerdidoRetiradaOpen(true)}
+                className="gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
                 <XCircle className="h-4 w-4" /> Perdido
               </Button>
             </div>
@@ -2219,7 +2224,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 : aprovacaoPopup?.modo === 'desaprovar'
                 ? <><RotateCw className="h-5 w-5 text-amber-600" /> Desaprovar Aquisição</>
                 : aprovacaoPopup?.modo === 'perdido'
-                ? <><XCircle className="h-5 w-5 text-destructive" /> Marcar como Perdido</>
+                ? <><XCircle className="h-5 w-5 text-destructive" /> Perdido</>
                 : <><ThumbsUp className="h-5 w-5 text-green-600" /> Aprovar Aquisição</>}
             </DialogTitle>
           </DialogHeader>
