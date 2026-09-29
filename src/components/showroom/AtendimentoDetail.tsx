@@ -634,7 +634,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     if (!valorPopup) return;
     const sinal = parseCurrencyInput(valorPopup.valorSinal);
     const venda = parseCurrencyInput(valorPopup.valorVenda);
-    
+
+    // Achado real 2026-09-29 (Andre Leonardo Peiter, Ducati FLN): "Vendido" foi
+    // permitido pra uma moto de interesse "Externo" (sem estoque_moto_id) —
+    // Ducati tem a exceção de liberar Sinal/Vendido sem moto de estoque
+    // vinculada (encomenda de fábrica), mas "Vendido" precisa fechar com uma
+    // moto REAL do nosso estoque (não dá pra vender o que não existe no
+    // sistema ainda). "Sinal" continua liberado pra registrar a entrada da
+    // encomenda antes da moto chegar.
+    if (valorPopup.modo === 'vendido' && !motosInteresse.some(m => m.origem === 'estoque' && m.estoque_moto_id)) {
+      toast.error('Vincule a moto ao estoque (edite o atendimento e troque a origem de "Externo" para "Estoque") antes de marcar como Vendido.');
+      return;
+    }
+
     if (valorPopup.modo === 'sinal' && sinal <= 0) {
       toast.error('Informe o valor do sinal');
       return;
@@ -1429,6 +1441,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                   }
                   const isDucati = atendimento.loja?.toLowerCase().startsWith('ducati');
                   if ((b.value === 'sinal' || b.value === 'vendido') && !isDucati && !motosInteresse.some(m => m.origem === 'estoque')) {
+                    return false;
+                  }
+                  // "Vendido" sempre exige moto REAL do estoque vinculada — mesmo
+                  // pra Ducati, cuja exceção acima só cobre "Sinal" (encomenda de
+                  // fábrica ainda sem moto física). Ver handleSaveValor (mesmo guard).
+                  if (b.value === 'vendido' && !motosInteresse.some(m => m.origem === 'estoque' && m.estoque_moto_id)) {
                     return false;
                   }
                   // Hide sinal/vendido if the estoque moto is already sold or reserved by another atendimento
