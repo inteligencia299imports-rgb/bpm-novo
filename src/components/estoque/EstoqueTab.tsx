@@ -73,6 +73,10 @@ interface EstoqueItem {
   uf?: string | null;
   status: string;
   observacoes: string | null;
+  // Observação da moto do card "Dados da Moto" (avaliacoes.observacoes) —
+  // compartilhada com Atendimento/Avaliações; distinta de `observacoes`
+  // acima, que é o motivo de status do estoque.
+  observacao_moto?: string | null;
   data_entrada: string;
   created_at: string;
   atendimento_venda_id: string | null;
@@ -310,7 +314,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     if (filterCidade !== 'todos' && !CIDADE_LOJAS[filterCidade].includes(item.loja_origem)) return false;
     if (!search) return true;
     const s = search.toLowerCase();
-    return [item.marca, item.modelo, item.placa, item.chassi, item.cor, item.cilindrada, item.empresa, item.observacoes]
+    return [item.marca, item.modelo, item.placa, item.chassi, item.cor, item.cilindrada, item.empresa, item.observacoes, item.observacao_moto]
       .some(v => v?.toLowerCase().includes(s));
   });
 
@@ -810,6 +814,12 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                               </span>
                             )}
                           </div>
+
+                          {item.observacao_moto && (
+                            <div className="text-xs text-muted-foreground whitespace-pre-wrap break-words">
+                              <span className="font-medium">Observação da moto:</span> {item.observacao_moto}
+                            </div>
+                          )}
 
                           {item.observacoes && (
                             <div className={`text-xs italic whitespace-pre-wrap break-words ${

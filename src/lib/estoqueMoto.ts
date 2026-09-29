@@ -10,7 +10,7 @@ export const ESTOQUE_MOTO_SELECT =
   '*, avaliacao:avaliacao_id(id, marca:marca_id(nome), modelo:modelo_id(nome), categoria, cor, cilindrada, placa, ' +
   'ano_fabricacao, ano_modelo, km, quanto_pede, valor_fechamento, valor_nf_entrada, classificacao, tipo_aquisicao, chassi, renavam, ' +
   'tem_manual, tem_chave_reserva, manutencao_vencida, tem_acessorios, acessorios_descricao, crlv_url, resultado_consulta, ' +
-  'pos_compra_status, atendimento_id, atendimento:atendimento_id(loja_id)), ' +
+  'pos_compra_status, observacoes, atendimento_id, atendimento:atendimento_id(loja_id)), ' +
   'atendimento_venda:atendimento_venda_id(vendedor_id)';
 
 /** Select de estoque_motos_novas (0km). marca/modelo sao FK (marca_id/modelo_id). */
@@ -84,6 +84,10 @@ export function mapEstoqueMoto(row: any, lojaMap?: Map<string, LojaInfo>) {
     manutencao_vencida: av.manutencao_vencida ?? null,
     tem_acessorios: av.tem_acessorios ?? null,
     acessorios_descricao: av.acessorios_descricao ?? null,
+    // Observação da moto do card "Dados da Moto" (mesma coluna usada em
+    // Atendimento/Avaliações) — distinta de `observacoes`, que aqui é o
+    // motivo de status do estoque (Serviço/Indisponível/Bloqueio/Retirada).
+    observacao_moto: av.observacoes ?? null,
     crlv_url: av.crlv_url ?? null,
     resultado_consulta: av.resultado_consulta ?? null,
     pos_compra_status: av.pos_compra_status ?? null,
@@ -131,6 +135,9 @@ export function mapEstoqueMotoNova(row: any, lojaMap?: Map<string, LojaInfo>) {
     tem_manual: null,
     tem_chave_reserva: null,
     manutencao_vencida: null,
+    // 0km não tem card "Dados da Moto" (não passa por avaliação) — sem
+    // observação de moto equivalente.
+    observacao_moto: null,
     crlv_url: null,
     resultado_consulta: null,
     pos_compra_status: null,
