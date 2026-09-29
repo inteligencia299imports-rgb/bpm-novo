@@ -496,6 +496,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                   temManual={moto.tem_manual}
                   temChaveReserva={moto.tem_chave_reserva}
                   manutencaoVencida={moto.manutencao_vencida}
+                  temAcessorios={moto.tem_acessorios}
+                  acessoriosDescricao={moto.acessorios_descricao}
                 />
                 {/* Estoque Status */}
                 {estoqueStatus && ['servico', 'indisponivel_manual', 'bloqueio_juridico'].includes(estoqueStatus.status) && (

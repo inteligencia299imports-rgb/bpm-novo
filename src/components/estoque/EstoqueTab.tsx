@@ -81,6 +81,8 @@ interface EstoqueItem {
   tem_manual?: boolean | null;
   tem_chave_reserva?: boolean | null;
   manutencao_vencida?: boolean | null;
+  tem_acessorios?: boolean | null;
+  acessorios_descricao?: string | null;
   crlv_url?: string | null;
   resultado_consulta?: string | null;
   classificacao?: string | null;
@@ -759,6 +761,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             temManual={item.tem_manual}
                             temChaveReserva={item.tem_chave_reserva}
                             manutencaoVencida={item.manutencao_vencida}
+                            temAcessorios={item.tem_acessorios}
+                            acessoriosDescricao={item.acessorios_descricao}
                           />
 
                           {item.tipo === 'propria' && item.avaliacao_id && item.pos_compra_status !== 'concluido' && !item.data_venda && (

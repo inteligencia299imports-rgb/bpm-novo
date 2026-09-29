@@ -149,6 +149,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const [editTemManual, setEditTemManual] = useState(false);
   const [editTemChaveReserva, setEditTemChaveReserva] = useState(false);
   const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
+  const [editTemAcessorios, setEditTemAcessorios] = useState(false);
+  const [editAcessoriosDescricao, setEditAcessoriosDescricao] = useState('');
   const [savingMotoEdit, setSavingMotoEdit] = useState(false);
   const { marcas: marcasCatalogo, getModelosByMarcaId } = useMarcasModelos();
 
@@ -405,6 +407,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     setEditTemManual((moto as any).tem_manual ?? false);
     setEditTemChaveReserva((moto as any).tem_chave_reserva ?? false);
     setEditManutencaoVencida((moto as any).manutencao_vencida ?? false);
+    setEditTemAcessorios((moto as any).tem_acessorios ?? false);
+    setEditAcessoriosDescricao((moto as any).acessorios_descricao || '');
   };
 
   const handleSaveMotoEdit = async () => {
@@ -442,6 +446,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
       tem_manual: editTemManual,
       tem_chave_reserva: editTemChaveReserva,
       manutencao_vencida: editManutencaoVencida,
+      tem_acessorios: editTemAcessorios,
+      acessorios_descricao: editTemAcessorios ? (editAcessoriosDescricao.trim() || null) : null,
     };
     if (editMotoId && crlvUrls[editMotoId]) {
       // CRLV anexado: dados do documento são imutáveis.
@@ -1076,6 +1082,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                           temManual={estItem.tem_manual}
                           temChaveReserva={estItem.tem_chave_reserva}
                           manutencaoVencida={estItem.manutencao_vencida}
+                          temAcessorios={estItem.tem_acessorios}
+                          acessoriosDescricao={estItem.acessorios_descricao}
                         />
                         {/* Prices section */}
                         <div className="pt-2 border-t border-border grid grid-cols-[repeat(auto-fit,minmax(7.5rem,1fr))] gap-4">
@@ -1204,6 +1212,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       temManual={(moto as any).tem_manual}
                       temChaveReserva={(moto as any).tem_chave_reserva}
                       manutencaoVencida={(moto as any).manutencao_vencida}
+                      temAcessorios={(moto as any).tem_acessorios}
+                      acessoriosDescricao={(moto as any).acessorios_descricao}
                     />
                     <Separator className="mt-auto" />
                     <div className="flex gap-2 flex-wrap">
@@ -1835,7 +1845,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                   <SelectContent>{CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
                 <div className="space-y-1.5">
                   <Label>Manual</Label>
                   <RadioGroup value={editTemManual ? 'sim' : 'nao'} onValueChange={(v) => setEditTemManual(v === 'sim')} className="flex gap-4">
@@ -1875,7 +1885,30 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     </div>
                   </RadioGroup>
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Acessórios</Label>
+                  <RadioGroup value={editTemAcessorios ? 'sim' : 'nao'} onValueChange={(v) => setEditTemAcessorios(v === 'sim')} className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="sim" id="atd-edit-acess-sim" />
+                      <Label htmlFor="atd-edit-acess-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="nao" id="atd-edit-acess-nao" />
+                      <Label htmlFor="atd-edit-acess-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
               </div>
+              {editTemAcessorios && (
+                <div className="space-y-1.5">
+                  <Label>Quais acessórios?</Label>
+                  <Input
+                    value={editAcessoriosDescricao}
+                    onChange={(e) => setEditAcessoriosDescricao(e.target.value.toUpperCase())}
+                    placeholder="Ex: BAÚ, PROTETOR DE MOTOR..."
+                  />
+                </div>
+              )}
               <div className="space-y-1.5 pt-3">
                 <Label>Observações</Label>
                 <Textarea

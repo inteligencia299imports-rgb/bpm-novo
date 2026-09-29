@@ -288,6 +288,8 @@ export interface Avaliacao {
   tem_manual: boolean | null;
   tem_chave_reserva: boolean | null;
   manutencao_vencida: boolean | null;
+  tem_acessorios: boolean | null;
+  acessorios_descricao: string | null;
   observacoes: string | null;
   observacao_avaliador: string | null;
   crlv_url: string | null;

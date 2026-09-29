@@ -118,6 +118,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [libManual, setLibManual] = useState('');
   const [libChaveReserva, setLibChaveReserva] = useState('');
   const [libRevisaoVencida, setLibRevisaoVencida] = useState('');
+  const [libAcessorios, setLibAcessorios] = useState('');
+  const [libAcessoriosDescricao, setLibAcessoriosDescricao] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -146,6 +148,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     setLibManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
     setLibChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
     setLibRevisaoVencida(ma?.manutencao_vencida ? 'sim' : ma?.manutencao_vencida === false ? 'nao' : '');
+    setLibAcessorios(ma?.tem_acessorios ? 'sim' : ma?.tem_acessorios === false ? 'nao' : '');
+    setLibAcessoriosDescricao(ma?.acessorios_descricao || '');
 
     const loadHistory = async () => {
       setLoading(true);
@@ -466,6 +470,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       if (libManual) avaliacaoUpdate.tem_manual = libManual === 'sim';
       if (libChaveReserva) avaliacaoUpdate.tem_chave_reserva = libChaveReserva === 'sim';
       if (libRevisaoVencida) avaliacaoUpdate.manutencao_vencida = libRevisaoVencida === 'sim';
+      if (libAcessorios) {
+        avaliacaoUpdate.tem_acessorios = libAcessorios === 'sim';
+        avaliacaoUpdate.acessorios_descricao = libAcessorios === 'sim' ? (libAcessoriosDescricao.trim() || null) : null;
+      }
 
       const { error: updateError } = await supabase
         .from('avaliacoes')
@@ -672,8 +680,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   )}
                 </div>
 
-                {(avaliacaoData.moto?.tem_manual != null || avaliacaoData.moto?.tem_chave_reserva != null || avaliacaoData.moto?.manutencao_vencida != null) && (
-                  <div className="flex items-center gap-3 text-xs pt-1">
+                {(avaliacaoData.moto?.tem_manual != null || avaliacaoData.moto?.tem_chave_reserva != null || avaliacaoData.moto?.manutencao_vencida != null || avaliacaoData.moto?.tem_acessorios != null) && (
+                  <div className="flex items-center gap-3 text-xs pt-1 flex-wrap">
                     {avaliacaoData.moto?.tem_manual != null && (
                       <span className="flex items-center gap-1">
                         <span className={`inline-block w-2 h-2 rounded-full ${avaliacaoData.moto.tem_manual ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -690,6 +698,12 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       <span className="flex items-center gap-1">
                         <span className={`inline-block w-2 h-2 rounded-full ${avaliacaoData.moto.manutencao_vencida ? 'bg-red-500' : 'bg-green-500'}`} />
                         Revisão
+                      </span>
+                    )}
+                    {avaliacaoData.moto?.tem_acessorios != null && (
+                      <span className="flex items-center gap-1" title={avaliacaoData.moto.tem_acessorios ? (avaliacaoData.moto.acessorios_descricao || undefined) : undefined}>
+                        <span className={`inline-block w-2 h-2 rounded-full ${avaliacaoData.moto.tem_acessorios ? 'bg-green-500' : 'bg-red-500'}`} />
+                        Acessórios
                       </span>
                     )}
                   </div>
@@ -965,7 +979,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Manual</Label>
                       <RadioGroup value={libManual} onValueChange={setLibManual} className="flex gap-3">
@@ -987,7 +1001,25 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                         <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="lib-rev-nao" /><Label htmlFor="lib-rev-nao" className="text-xs">Não</Label></div>
                       </RadioGroup>
                     </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Acessórios</Label>
+                      <RadioGroup value={libAcessorios} onValueChange={setLibAcessorios} className="flex gap-3">
+                        <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="lib-acess-sim" /><Label htmlFor="lib-acess-sim" className="text-xs">Sim</Label></div>
+                        <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="lib-acess-nao" /><Label htmlFor="lib-acess-nao" className="text-xs">Não</Label></div>
+                      </RadioGroup>
+                    </div>
                   </div>
+                  {libAcessorios === 'sim' && (
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Quais acessórios?</label>
+                      <Input
+                        value={libAcessoriosDescricao}
+                        onChange={e => setLibAcessoriosDescricao(e.target.value.toUpperCase())}
+                        placeholder="Ex: BAÚ, PROTETOR DE MOTOR..."
+                        className="uppercase"
+                      />
+                    </div>
+                  )}
 
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">Observações da Moto</label>

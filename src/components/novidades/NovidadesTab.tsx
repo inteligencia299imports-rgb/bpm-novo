@@ -406,6 +406,8 @@ const NovidadesTab: React.FC<NovidadesTabProps> = ({ onNavigateToShowroom }) => 
                   temManual={moto.tem_manual}
                   temChaveReserva={moto.tem_chave_reserva}
                   manutencaoVencida={moto.manutencao_vencida}
+                  temAcessorios={moto.tem_acessorios}
+                  acessoriosDescricao={moto.acessorios_descricao}
                 />
 
                 <div className="flex items-center justify-between pt-2 border-t border-border">

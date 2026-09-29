@@ -205,6 +205,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [editTemManual, setEditTemManual] = useState(false);
   const [editTemChaveReserva, setEditTemChaveReserva] = useState(false);
   const [editManutencaoVencida, setEditManutencaoVencida] = useState(false);
+  const [editTemAcessorios, setEditTemAcessorios] = useState(false);
+  const [editAcessoriosDescricao, setEditAcessoriosDescricao] = useState('');
   const [savingMoto, setSavingMoto] = useState(false);
 
   const { marcas: marcasCatalogo, getModelosByMarcaId } = useMarcasModelos();
@@ -226,6 +228,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     setEditTemManual(moto.tem_manual ?? false);
     setEditTemChaveReserva(moto.tem_chave_reserva ?? false);
     setEditManutencaoVencida(moto.manutencao_vencida ?? false);
+    setEditTemAcessorios(moto.tem_acessorios ?? false);
+    setEditAcessoriosDescricao(moto.acessorios_descricao || '');
     setEditMotoOpen(true);
   };
 
@@ -263,6 +267,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       tem_manual: editTemManual,
       tem_chave_reserva: editTemChaveReserva,
       manutencao_vencida: editManutencaoVencida,
+      tem_acessorios: editTemAcessorios,
+      acessorios_descricao: editTemAcessorios ? (editAcessoriosDescricao.trim() || null) : null,
     };
     // Com CRLV anexado, os dados extraídos do documento são imutáveis.
     if (crlvUrl) {
@@ -598,6 +604,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [aquisManual, setAquisManual] = useState('');
   const [aquisChaveReserva, setAquisChaveReserva] = useState('');
   const [aquisRevisaoVencida, setAquisRevisaoVencida] = useState('');
+  const [aquisAcessorios, setAquisAcessorios] = useState('');
+  const [aquisAcessoriosDescricao, setAquisAcessoriosDescricao] = useState('');
   const [isConvertendo, setIsConvertendo] = useState(false);
   const handleStatusChange = async (newStatus: SituacaoAvaliacao, tipoAquisicao?: string, valorFechamento?: number, observacoes?: string) => {
     const updateData: any = { situacao: newStatus };
@@ -853,6 +861,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
       if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
       if (aquisRevisaoVencida) motoUpdate.manutencao_vencida = aquisRevisaoVencida === 'sim';
+      if (aquisAcessorios) {
+        motoUpdate.tem_acessorios = aquisAcessorios === 'sim';
+        motoUpdate.acessorios_descricao = aquisAcessorios === 'sim' ? (aquisAcessoriosDescricao.trim() || null) : null;
+      }
       await supabase.from('avaliacoes').update(motoUpdate).eq('id', avaliacao.id);
     }
     await handleStatusChange('adquirida', tipoSelecionado, valor && valor > 0 ? valor : undefined, obsMotaAquisicao.trim().toUpperCase() || undefined);
@@ -914,6 +926,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
       if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
       if (aquisRevisaoVencida) motoUpdate.manutencao_vencida = aquisRevisaoVencida === 'sim';
+      if (aquisAcessorios) {
+        motoUpdate.tem_acessorios = aquisAcessorios === 'sim';
+        motoUpdate.acessorios_descricao = aquisAcessorios === 'sim' ? (aquisAcessoriosDescricao.trim() || null) : null;
+      }
       if (Object.keys(motoUpdate).length > 0) {
         await supabase.from('avaliacoes').update(motoUpdate).eq('id', avaliacao.id);
       }
@@ -1477,6 +1493,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 temManual={moto?.tem_manual}
                 temChaveReserva={moto?.tem_chave_reserva}
                 manutencaoVencida={moto?.manutencao_vencida}
+                temAcessorios={moto?.tem_acessorios}
+                acessoriosDescricao={moto?.acessorios_descricao}
               />
               <Separator className="mt-auto" />
               <div className="flex gap-2 flex-wrap">
@@ -1759,6 +1777,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                     setAquisManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
                     setAquisChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
                     setAquisRevisaoVencida(ma?.manutencao_vencida ? 'sim' : ma?.manutencao_vencida === false ? 'nao' : '');
+                    setAquisAcessorios(ma?.tem_acessorios ? 'sim' : ma?.tem_acessorios === false ? 'nao' : '');
+                    setAquisAcessoriosDescricao(ma?.acessorios_descricao || '');
                     // Pre-select the only available option
                     const currentTipo = avaliacao.tipo_aquisicao;
                     const oppositeTipo = (currentTipo === 'consignada') ? 'propria' : 'consignada';
@@ -1786,6 +1806,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                       setAquisManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
                       setAquisChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
                       setAquisRevisaoVencida(ma?.manutencao_vencida ? 'sim' : ma?.manutencao_vencida === false ? 'nao' : '');
+                    setAquisAcessorios(ma?.tem_acessorios ? 'sim' : ma?.tem_acessorios === false ? 'nao' : '');
+                    setAquisAcessoriosDescricao(ma?.acessorios_descricao || '');
                       setTipoAquisicaoPopup(true);
                       return;
                     }
@@ -2020,7 +2042,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs">Manual</Label>
                 <RadioGroup value={aquisManual} onValueChange={setAquisManual} className="flex gap-3">
@@ -2042,7 +2064,25 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="aq-rev-nao" /><Label htmlFor="aq-rev-nao" className="text-xs">Não</Label></div>
                 </RadioGroup>
               </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Acessórios</Label>
+                <RadioGroup value={aquisAcessorios} onValueChange={setAquisAcessorios} className="flex gap-3">
+                  <div className="flex items-center gap-1"><RadioGroupItem value="sim" id="aq-acess-sim" /><Label htmlFor="aq-acess-sim" className="text-xs">Sim</Label></div>
+                  <div className="flex items-center gap-1"><RadioGroupItem value="nao" id="aq-acess-nao" /><Label htmlFor="aq-acess-nao" className="text-xs">Não</Label></div>
+                </RadioGroup>
+              </div>
             </div>
+            {aquisAcessorios === 'sim' && (
+              <div>
+                <label className="text-sm font-medium text-foreground">Quais acessórios?</label>
+                <Input
+                  className="mt-1"
+                  value={aquisAcessoriosDescricao}
+                  onChange={(e) => setAquisAcessoriosDescricao(e.target.value.toUpperCase())}
+                  placeholder="Ex: BAÚ, PROTETOR DE MOTOR..."
+                />
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium text-foreground">Observações da Moto</label>
               <Textarea
@@ -2327,7 +2367,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   <SelectContent>{CATEGORIAS_MOTO.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
                 <div className="space-y-1.5">
                   <Label>Manual</Label>
                   <RadioGroup value={editTemManual ? 'sim' : 'nao'} onValueChange={(v) => setEditTemManual(v === 'sim')} className="flex gap-4">
@@ -2367,7 +2407,30 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                     </div>
                   </RadioGroup>
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Acessórios</Label>
+                  <RadioGroup value={editTemAcessorios ? 'sim' : 'nao'} onValueChange={(v) => setEditTemAcessorios(v === 'sim')} className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="sim" id="edit-moto-acess-sim" />
+                      <Label htmlFor="edit-moto-acess-sim" className="cursor-pointer font-normal">Sim</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <RadioGroupItem value="nao" id="edit-moto-acess-nao" />
+                      <Label htmlFor="edit-moto-acess-nao" className="cursor-pointer font-normal">Não</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
               </div>
+              {editTemAcessorios && (
+                <div className="space-y-1.5">
+                  <Label>Quais acessórios?</Label>
+                  <Input
+                    value={editAcessoriosDescricao}
+                    onChange={(e) => setEditAcessoriosDescricao(e.target.value.toUpperCase())}
+                    placeholder="Ex: BAÚ, PROTETOR DE MOTOR..."
+                  />
+                </div>
+              )}
               <div className="space-y-1.5 pt-3">
                 <Label>Observações</Label>
                 <Textarea

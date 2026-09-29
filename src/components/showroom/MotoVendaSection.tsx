@@ -26,6 +26,8 @@ interface Props {
   temManual: string; setTemManual: (v: string) => void;
   temChaveReserva: string; setTemChaveReserva: (v: string) => void;
   manutencaoEmDia: string; setManutencaoEmDia: (v: string) => void;
+  temAcessorios: string; setTemAcessorios: (v: string) => void;
+  acessoriosDescricao: string; setAcessoriosDescricao: (v: string) => void;
   observacoes: string; setObservacoes: (v: string) => void;
   motoAvaliacaoId: string | null;
   atendimentoId: string | null;
@@ -41,6 +43,7 @@ const MotoVendaSection: React.FC<Props> = ({
   placa, setPlaca, km, setKm, cilindrada, setCilindrada,
   temManual, setTemManual, temChaveReserva, setTemChaveReserva,
   manutencaoEmDia, setManutencaoEmDia,
+  temAcessorios, setTemAcessorios, acessoriosDescricao, setAcessoriosDescricao,
   observacoes, setObservacoes,
   motoAvaliacaoId, atendimentoId, interesse, isEditing, crlvBloqueado,
 }) => {
@@ -125,7 +128,7 @@ const MotoVendaSection: React.FC<Props> = ({
             <Input value={cilindrada} onChange={e => setCilindrada(formatKm(e.target.value))} placeholder="Ex: 1.200" inputMode="numeric" />
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
           <div className="space-y-1.5">
             <Label>Manual *</Label>
             <RadioGroup value={temManual} onValueChange={setTemManual} className="flex gap-4">
@@ -165,7 +168,31 @@ const MotoVendaSection: React.FC<Props> = ({
               </div>
             </RadioGroup>
           </div>
+          <div className="space-y-1.5">
+            <Label>Acessórios *</Label>
+            <RadioGroup value={temAcessorios} onValueChange={setTemAcessorios} className="flex gap-4">
+              <div className="flex items-center gap-1.5">
+                <RadioGroupItem value="sim" id="acessorios-sim" />
+                <Label htmlFor="acessorios-sim" className="cursor-pointer font-normal">Sim</Label>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <RadioGroupItem value="nao" id="acessorios-nao" />
+                <Label htmlFor="acessorios-nao" className="cursor-pointer font-normal">Não</Label>
+              </div>
+            </RadioGroup>
+          </div>
         </div>
+        {temAcessorios === 'sim' && (
+          <div className="space-y-1.5">
+            <Label>Quais acessórios? *</Label>
+            <Input
+              value={acessoriosDescricao}
+              onChange={e => setAcessoriosDescricao(e.target.value.toUpperCase())}
+              placeholder="Ex: BAÚ, PROTETOR DE MOTOR, GUIDÃO ESPORTIVO..."
+              className="uppercase"
+            />
+          </div>
+        )}
         <div className="space-y-1.5 pt-3">
           <Label>Observações</Label>
           <Textarea

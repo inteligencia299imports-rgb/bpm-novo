@@ -301,6 +301,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [temManual, setTemManual] = useState('');
   const [temChaveReserva, setTemChaveReserva] = useState('');
   const [manutencaoEmDia, setManutencaoEmDia] = useState('');
+  const [temAcessorios, setTemAcessorios] = useState('');
+  const [acessoriosDescricao, setAcessoriosDescricao] = useState('');
   const [motoAvaliacaoId, setMotoAvaliacaoId] = useState<string | null>(null);
   const [vendaCrlvUrl, setVendaCrlvUrl] = useState<string | null>(null);
   const [enviadaAvaliacao, setEnviadaAvaliacao] = useState(false);
@@ -389,6 +391,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             setTemManual((ma as any).tem_manual ? 'sim' : (ma as any).tem_manual === false ? 'nao' : '');
             setTemChaveReserva((ma as any).tem_chave_reserva ? 'sim' : (ma as any).tem_chave_reserva === false ? 'nao' : '');
             setManutencaoEmDia((ma as any).manutencao_vencida ? 'sim' : (ma as any).manutencao_vencida === false ? 'nao' : '');
+            setTemAcessorios((ma as any).tem_acessorios ? 'sim' : (ma as any).tem_acessorios === false ? 'nao' : '');
+            setAcessoriosDescricao((ma as any).acessorios_descricao || '');
             setEnviadaAvaliacao(ma.enviada_avaliacao || false);
             setVendaCrlvUrl((ma as any).crlv_url || null);
           }
@@ -672,8 +676,12 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Preencha todos os campos da Moto do Cliente');
       return;
     }
-    if ((interesse === 'vender' || interesse === 'trocar') && (!temManual || !temChaveReserva || !manutencaoEmDia)) {
-      toast.error('Informe Manual, Chave Reserva e Revisão Vencida');
+    if ((interesse === 'vender' || interesse === 'trocar') && (!temManual || !temChaveReserva || !manutencaoEmDia || !temAcessorios)) {
+      toast.error('Informe Manual, Chave Reserva, Revisão Vencida e Acessórios');
+      return;
+    }
+    if ((interesse === 'vender' || interesse === 'trocar') && temAcessorios === 'sim' && !acessoriosDescricao.trim()) {
+      toast.error('Informe quais acessórios a moto possui');
       return;
     }
     // Placa fora do padrao (7 caracteres / formato) nao bloqueia o salvamento --
@@ -819,6 +827,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           tem_manual: temManual === 'sim',
           tem_chave_reserva: temChaveReserva === 'sim',
           manutencao_vencida: manutencaoEmDia === 'sim',
+          tem_acessorios: temAcessorios === 'sim',
+          acessorios_descricao: temAcessorios === 'sim' ? (acessoriosDescricao.trim() || null) : null,
         };
         if (motoAvaliacaoId) {
           // Com CRLV anexado, os dados extraídos do documento são imutáveis.
@@ -1245,6 +1255,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             temManual={temManual} setTemManual={setTemManual}
             temChaveReserva={temChaveReserva} setTemChaveReserva={setTemChaveReserva}
             manutencaoEmDia={manutencaoEmDia} setManutencaoEmDia={setManutencaoEmDia}
+            temAcessorios={temAcessorios} setTemAcessorios={setTemAcessorios}
+            acessoriosDescricao={acessoriosDescricao} setAcessoriosDescricao={setAcessoriosDescricao}
             observacoes={vendaObs} setObservacoes={setVendaObs}
             motoAvaliacaoId={motoAvaliacaoId}
             atendimentoId={atendimentoId}

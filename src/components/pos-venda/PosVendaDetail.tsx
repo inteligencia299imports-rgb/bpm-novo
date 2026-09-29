@@ -810,6 +810,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   temManual={motoConsignada.tem_manual}
                   temChaveReserva={motoConsignada.tem_chave_reserva}
                   manutencaoVencida={motoConsignada.manutencao_vencida}
+                  temAcessorios={motoConsignada.tem_acessorios}
+                  acessoriosDescricao={motoConsignada.acessorios_descricao}
                 />
                 {motoConsignada.id && (
                   <>
