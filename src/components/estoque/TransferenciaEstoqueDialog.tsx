@@ -116,12 +116,15 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
   useEffect(() => { if (open) carregarRenaveInfo(); }, [open, carregarRenaveInfo]);
 
   // Pedido do usuário, 2026-09-30: o diálogo continua acessível depois da
-  // venda (pra ver/baixar as DANFE's de uma transferência anterior), mas o
-  // Cancelar da saída/entrada da TRANSFERÊNCIA só pode ficar disponível se a
-  // venda dessa moto NÃO estiver fiscalmente fechada — ou seja, bloqueia se
-  // a NF de venda estiver autorizada em produção (e ainda não devolvida);
-  // libera se a venda foi cancelada, devolvida, ou ainda está em aberto
-  // (sem NF de venda emitida).
+  // venda (pra ver/baixar as DANFE's de uma transferência anterior). O
+  // Cancelar da ENTRADA só fica disponível se a venda dessa moto NÃO
+  // estiver fiscalmente fechada (bloqueia se a NF de venda estiver
+  // autorizada em produção e ainda não devolvida) — a entrada reatribui
+  // loja/empresa, então desfazer isso com uma venda fechada em outro lugar
+  // seria inconsistente. Reforço do usuário, mesmo dia: o Cancelar da SAÍDA
+  // NÃO tem essa trava — fica sempre liberado (a saída sozinha não move a
+  // moto nem depende da venda; só a entrada em produção bloqueia, e isso já
+  // é travado no próprio backend).
   const [vendaFechada, setVendaFechada] = useState(false);
   useEffect(() => {
     if (!open || !estoqueItem?.atendimento_venda_id) { setVendaFechada(false); return; }
@@ -316,7 +319,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                 </p>
               )}
               <div className="flex flex-wrap items-center gap-2 justify-end">
-                {(saida.emitida || saida.cancelada) && saida.nfe?.ambiente === 'producao' && !vendaFechada && <CancelarNfeDialog nfe={saida} />}
+                {(saida.emitida || saida.cancelada) && saida.nfe?.ambiente === 'producao' && <CancelarNfeDialog nfe={saida} />}
                 {(!saidaEmitida || podeReemitirHomologSaida) && !saida.pendente && (
                   <Button
                     size="sm"
