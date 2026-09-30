@@ -463,6 +463,62 @@ async function resolverLojaOrigemTransferencia(
   return { empresaOrigem, lojaId: lojaOrigemRow.id };
 }
 
+// Pedido do usuário, 2026-09-30 (reforço sobre o caso real do chassi
+// 95V1200AATM000012, FAG -> Ducati POA): cancelar/devolver a ENTRADA de uma
+// transferência de estoque desfaz uma venda que já estivesse em andamento
+// na empresa de DESTINO (a moto está voltando pra origem, não faz mais
+// sentido continuar vendendo por quem não é mais dono dela) — volta o
+// atendimento pra "em_aberto" e registra no histórico. Cancelar/devolver a
+// SAÍDA NUNCA mexe em nenhum atendimento — a saída sozinha não move a moto
+// (só a entrada reatribui loja/empresa), então não há nada de "venda no
+// destino" pra desfazer nesse caso. Só age se a moto ainda não tiver NF de
+// venda autorizada em PRODUÇÃO (sale já fiscalmente fechada não é desfeita
+// por engano aqui).
+async function reverterAtendimentoVendaSeTiver(
+  admin: any,
+  eh0km: boolean,
+  estoqueId: string,
+  opts: { callerId: string; callerName: string | null; motivo: string },
+): Promise<void> {
+  const tabelaEstoque = eh0km ? 'estoque_motos_novas' : 'estoque_motos';
+  const { data: estoqueRow } = await admin.from(tabelaEstoque)
+    .select('id, status, atendimento_venda_id').eq('id', estoqueId).maybeSingle();
+  const atendimentoId = estoqueRow?.atendimento_venda_id ?? null;
+  if (!atendimentoId || !['vendido', 'sinal'].includes(estoqueRow?.status)) return;
+
+  const operacaoVenda = eh0km ? 'venda_0km' : 'venda_seminova';
+  const { data: nfVenda } = await admin.from('nfe_entradas').select('id')
+    .eq('atendimento_id', atendimentoId).eq('operacao', operacaoVenda)
+    .eq('status', 'processada').eq('ambiente', 'producao').limit(1).maybeSingle();
+  // NF de venda já em produção: a venda está fiscalmente fechada, não
+  // desfaz por causa da transferência (situação que não deveria ocorrer,
+  // já que vender exige a moto pertencer à mesma empresa — ver filtro de
+  // empresa no picker de Moto de Interesse — mas não assume, confere).
+  if (nfVenda) return;
+
+  await admin.from(tabelaEstoque).update({
+    status: 'disponivel', atendimento_venda_id: null, data_venda: null, valor_venda: null, valor_sinal: null,
+  }).eq('id', estoqueId);
+
+  await admin.from('atendimentos_motos').update({
+    situacao: 'em_aberto',
+    venda_aprovacao_status: null,
+    venda_aprovado_por: null,
+    venda_aprovado_em: null,
+    venda_aprovacao_observacao: null,
+    pos_venda_status: 'em_aberto',
+  }).eq('id', atendimentoId);
+
+  await admin.from('status_history').insert({
+    entity_type: 'showroom',
+    entity_id: atendimentoId,
+    status: 'em_aberto',
+    changed_by: opts.callerId,
+    changed_by_name: opts.callerName,
+    observacoes: opts.motivo,
+  });
+}
+
 async function aplicarCancelamento(
   admin: any,
   cfg: OperacaoConfig,
@@ -519,8 +575,19 @@ async function aplicarCancelamento(
           await admin.from('estoque_motos_novas')
             .update({ loja_id: origem.lojaId, empresa_id: origem.empresaOrigem })
             .eq('id', fkValOrigem);
+          await reverterAtendimentoVendaSeTiver(admin, true, fkValOrigem, {
+            callerId: opts.callerId, callerName: opts.callerName,
+            motivo: 'Venda desfeita — a entrada da transferência de estoque desta moto foi cancelada, e ela retornou para a empresa de origem.',
+          });
         } else {
           await admin.from('estoque_motos').update({ loja_id: origem.lojaId }).eq('avaliacao_id', fkValOrigem);
+          const { data: estSeminova } = await admin.from('estoque_motos').select('id').eq('avaliacao_id', fkValOrigem).maybeSingle();
+          if (estSeminova?.id) {
+            await reverterAtendimentoVendaSeTiver(admin, false, estSeminova.id, {
+              callerId: opts.callerId, callerName: opts.callerName,
+              motivo: 'Venda desfeita — a entrada da transferência de estoque desta moto foi cancelada, e ela retornou para a empresa de origem.',
+            });
+          }
         }
       }
     }
@@ -2769,12 +2836,22 @@ Deno.serve(async (req) => {
       const fkValOrigem = eh0kmTransf ? entityId : avaliacaoId;
       const origem = await resolverLojaOrigemTransferencia(admin, eh0kmTransf, fkValOrigem);
       if (origem) {
+        const motivoRevert = 'Venda desfeita — a entrada da transferência de estoque desta moto foi devolvida, e ela retornou para a empresa de origem.';
         if (eh0kmTransf) {
           await admin.from('estoque_motos_novas')
             .update({ loja_id: origem.lojaId, empresa_id: origem.empresaOrigem })
             .eq('id', entityId);
+          await reverterAtendimentoVendaSeTiver(admin, true, entityId, {
+            callerId: caller.id, callerName, motivo: motivoRevert,
+          });
         } else {
           await admin.from('estoque_motos').update({ loja_id: origem.lojaId }).eq('avaliacao_id', avaliacaoId);
+          const { data: estSeminova } = await admin.from('estoque_motos').select('id').eq('avaliacao_id', avaliacaoId).maybeSingle();
+          if (estSeminova?.id) {
+            await reverterAtendimentoVendaSeTiver(admin, false, estSeminova.id, {
+              callerId: caller.id, callerName, motivo: motivoRevert,
+            });
+          }
         }
       }
     }
