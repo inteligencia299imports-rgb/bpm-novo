@@ -94,6 +94,10 @@ export function mapEstoqueMoto(row: any, lojaMap?: Map<string, LojaInfo>) {
     venda_vendedor_id: row?.atendimento_venda?.vendedor_id ?? null,
     loja: li?.loja ?? null,
     empresa: li?.empresa ?? null,
+    // empresa_id explícito (mesmo CNPJ) — precisa pra filtrar o picker de
+    // "Moto de Interesse" do Atendimento pela mesma empresa da loja (evita
+    // reservar/vender moto de outro CNPJ, achado real 2026-09-30).
+    empresa_id: li?.empresa_id ?? null,
     uf: li?.uf ?? null,
     loja_origem: liOrigem?.loja ?? li?.loja ?? null,
   };

@@ -22,6 +22,7 @@ interface EstoqueOption {
   marca: string;
   is0km: boolean;
   isTestRide: boolean;
+  empresaId: string | null;
 }
 
 interface Props {
@@ -41,11 +42,15 @@ interface Props {
   chassi?: string;
   setChassi?: (v: string) => void;
   disabled?: boolean;
+  /** Empresa (CNPJ) do atendimento — filtra o picker pra só mostrar motos da
+   * MESMA empresa, evitando reservar/vender moto de outro CNPJ (a NF de
+   * venda seria emitida com o CNPJ errado). */
+  empresaId?: string;
 }
 
 const MotoCompraSection: React.FC<Props> = ({
   origemMoto, setOrigemMoto, marcaId, setMarcaId, modeloId, setModeloId, ano, setAno,
-  estoqueMotoId, setEstoqueMotoId, setEstoqueTipo, loja, chassi = '', setChassi, disabled,
+  estoqueMotoId, setEstoqueMotoId, setEstoqueTipo, loja, chassi = '', setChassi, disabled, empresaId,
 }) => {
   const { marcas, getModelosByMarcaId, marcaIdByNome, loading } = useMarcasModelos();
   const modelos = getModelosByMarcaId(marcaId);
@@ -76,11 +81,17 @@ const MotoCompraSection: React.FC<Props> = ({
           chassi: m.chassi ?? null,
           is0km: m.fonte === '0km',
           isTestRide: m.tipo_unidade === 'test_ride',
+          empresaId: m.empresa_id ?? null,
         });
 
         const disponiveis = await fetchEstoqueUnificado({ status: 'disponivel' });
-        // Loja Ducati só oferece estoque de 0km; loja 299 só seminovas.
-        let options = disponiveis.map(flatten).filter((o) => (isDucati ? o.is0km : !o.is0km));
+        // Loja Ducati só oferece estoque de 0km; loja 299 só seminovas. Só
+        // mostra moto da MESMA empresa (CNPJ) do atendimento — reservar/
+        // vender moto de outra empresa gera risco de a NF de venda sair com
+        // o CNPJ errado (achado real 2026-09-30).
+        let options = disponiveis.map(flatten)
+          .filter((o) => (isDucati ? o.is0km : !o.is0km))
+          .filter((o) => !empresaId || o.empresaId === empresaId);
 
         // Mantem a moto ja selecionada mesmo que nao esteja mais "disponivel".
         if (estoqueMotoId && !options.some((item) => item.id === estoqueMotoId)) {
@@ -107,7 +118,7 @@ const MotoCompraSection: React.FC<Props> = ({
     return () => {
       isMounted = false;
     };
-  }, [origemMoto, isDucati, estoqueMotoId]);
+  }, [origemMoto, isDucati, estoqueMotoId, empresaId]);
 
   const formatEstoqueLabel = (item?: EstoqueOption | null) => {
     if (!item) return 'Moto não encontrada';

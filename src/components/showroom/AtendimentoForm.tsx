@@ -1237,6 +1237,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           loja={loja}
           chassi={chassi} setChassi={setChassi}
           disabled={isEditing && (situacao === 'sinal' || situacao === 'vendido')}
+          empresaId={empresaId}
         />
       )}
 
