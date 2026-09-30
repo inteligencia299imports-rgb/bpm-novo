@@ -193,6 +193,8 @@ export interface MontarPayloadArgs {
    * Campo Focus: `notas_referenciadas: [{ chave_nfe }]` (campos.focusnfe.com.br/nfe).
    */
   notaReferenciada?: string | null;
+  /** Origem do ICMS (0–8) da moto — 0km repete a da NF de entrada; seminova 0. Default 0. */
+  icmsOrigem?: number;
   /**
    * `true` para operações sem movimentação financeira real (ex.: devolução
    * simbólica) — não manda o grupo pag/cobr/dup calculado por formas de
@@ -434,7 +436,7 @@ export function difalAplicavel(p: {
 }
 
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
-  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, trocaInfoCpl, formasPagamento, bemMovelUsado, notaReferenciada, semPagamentoReal } = args;
+  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, trocaInfoCpl, formasPagamento, bemMovelUsado, notaReferenciada, semPagamentoReal, icmsOrigem } = args;
 
   const pf = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
   const docForn = onlyDigits(fornecedor.cpf_cnpj);
@@ -466,7 +468,7 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     quantidade_tributavel: 1,
     valor_unitario_tributavel: valorFmt,
     valor_bruto: valorFmt,
-    icms_origem: 0,
+    icms_origem: icmsOrigem ?? 0,
     inclui_no_total: 1,
     pis_situacao_tributaria: regraPis.situacao_tributaria,
     cofins_situacao_tributaria: regraCofins.situacao_tributaria,
