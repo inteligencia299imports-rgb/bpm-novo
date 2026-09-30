@@ -944,14 +944,41 @@ async function registrarPosAutorizacao(
             .select('tipo, valor_total, valor_entrada, valor_financiado')
             .eq('contrato_id', contratoVendaTroca.id)
         : { data: [] };
-      const valorVenda = ((formasVenda || []) as any[]).reduce((s, f) => {
+      const valorVendaResidual = ((formasVenda || []) as any[]).reduce((s, f) => {
         if (String(f.tipo ?? '').toLowerCase().includes('financiamento')) {
           return s + Number(f.valor_entrada ?? 0) + Number(f.valor_financiado ?? 0);
         }
         return s + Number(f.valor_total ?? 0);
       }, 0);
+      // `formas_pagamento_contrato` do contrato de venda nunca lista a moto da
+      // troca como forma de pagamento — só o residual (dinheiro/financiamento)
+      // pago ALÉM da troca — então usá-lo como se fosse o preço cheio da moto
+      // nova inflava a "diferença" (fechamento - residual, em vez de fechamento
+      // - preço cheio). Achado em produção (2026-09-30, moto placa OVO3I43):
+      // repasse plenamente absorvido pela venda ficou travado em_aberto pra
+      // sempre. Corrige só quando dá pra confirmar pelo dado fiscal De verdade
+      // (a NF-e de venda já autorizada) — sem ela ainda emitida, mantém o
+      // residual como estava (não dá pra assumir fechamento+residual = preço
+      // cheio nesse ponto: quando a troca vale mais que a moto nova, o troco ao
+      // cliente é tratado à parte, via agregado marcado como troco, e o
+      // residual sozinho não distingue os dois casos).
+      const { data: vendaNfRow } = avFin?.atendimento_id
+        ? await admin
+            .from('nfe_entradas')
+            .select('valor_total')
+            .eq('atendimento_id', avFin.atendimento_id)
+            .in('operacao', ['venda_seminova', 'venda_0km'])
+            .eq('status', 'processada')
+            .eq('ambiente', 'producao')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        : { data: null };
+      const precoTotalNovaMoto = vendaNfRow?.valor_total != null
+        ? Number(vendaNfRow.valor_total)
+        : valorVendaResidual;
 
-      const diferenca = Math.min(Math.max(fechamento - valorVenda, 0), valorRepasse);
+      const diferenca = Math.min(Math.max(fechamento - precoTotalNovaMoto, 0), valorRepasse);
       const restante = valorRepasse - diferenca;
       const itens: { valor: number; forma_pagamento_id: string; pago: boolean }[] = [];
       if (quitacao > 0) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, pago: false });
