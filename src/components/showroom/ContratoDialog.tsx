@@ -671,7 +671,7 @@ const ContratoDialog: React.FC<Props> = ({
           disabled={atendimentoPresencial || nfeEmProducao}
           onCheckedChange={(v) => alterarRetiradaPresencial(v === true)}
         />
-        <Label htmlFor="retirada-presencial" className="cursor-pointer">Retirada presencial</Label>
+        <Label htmlFor="retirada-presencial" className="cursor-pointer">Retirada Presencial</Label>
       </div>
       {!retiradaPresencial && <span className="text-xs text-amber-700">Retirada não presencial gera DIFAL</span>}
     </div>
@@ -1363,15 +1363,13 @@ const ContratoDialog: React.FC<Props> = ({
         <h1 className="text-xl font-bold flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Venda' : 'Emissão de Proposta'}
         </h1>
-        {retiradaPresencialCampo}
-        {ehNfe && (
-          <>
-            <NfeStatusBadge nfe={nfe} />
-            <span className="ml-auto">
-              <NfeDanfeButton nfe={nfe} placaOuChassi={estItemNfe?.placa || estItemNfe?.chassi || motoIntNfe?.chassi} />
-            </span>
-          </>
-        )}
+        {ehNfe && <NfeStatusBadge nfe={nfe} />}
+        <div className="ml-auto flex items-center gap-3">
+          {retiradaPresencialCampo}
+          {ehNfe && (
+            <NfeDanfeButton nfe={nfe} placaOuChassi={estItemNfe?.placa || estItemNfe?.chassi || motoIntNfe?.chassi} />
+          )}
+        </div>
       </div>
 
       {!ehNfe && vendaBloqueadaAprovacao && (
