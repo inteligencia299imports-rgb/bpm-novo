@@ -29,6 +29,7 @@ interface EstoqueItemBasico {
   avaliacao_id?: string | null;
   loja_id?: string | null;
   empresa?: string | null;
+  atendimento_venda_id?: string | null;
 }
 
 interface Props {
@@ -112,6 +113,31 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
   }, [eh0km, entityId]);
 
   useEffect(() => { if (open) carregarRenaveInfo(); }, [open, carregarRenaveInfo]);
+
+  // Pedido do usuário, 2026-09-30: o diálogo continua acessível depois da
+  // venda (pra ver/baixar as DANFE's de uma transferência anterior), mas o
+  // Cancelar da saída/entrada da TRANSFERÊNCIA só pode ficar disponível se a
+  // venda dessa moto NÃO estiver fiscalmente fechada — ou seja, bloqueia se
+  // a NF de venda estiver autorizada em produção (e ainda não devolvida);
+  // libera se a venda foi cancelada, devolvida, ou ainda está em aberto
+  // (sem NF de venda emitida).
+  const [vendaFechada, setVendaFechada] = useState(false);
+  useEffect(() => {
+    if (!open || !estoqueItem?.atendimento_venda_id) { setVendaFechada(false); return; }
+    let cancel = false;
+    const opVenda = eh0km ? 'venda_0km' : 'venda_seminova';
+    const opDevolucao = eh0km ? 'devolucao_venda_0km' : 'devolucao_venda_seminova';
+    Promise.all([
+      (supabase as any).from('nfe_entradas').select('id').eq('atendimento_id', estoqueItem.atendimento_venda_id)
+        .eq('operacao', opVenda).eq('status', 'processada').eq('ambiente', 'producao').limit(1).maybeSingle(),
+      (supabase as any).from('nfe_entradas').select('id').eq('atendimento_id', estoqueItem.atendimento_venda_id)
+        .eq('operacao', opDevolucao).eq('status', 'processada').eq('ambiente', 'producao').limit(1).maybeSingle(),
+    ]).then(([{ data: venda }, { data: devolucao }]) => {
+      if (cancel) return;
+      setVendaFechada(!!venda && !devolucao);
+    });
+    return () => { cancel = true; };
+  }, [open, estoqueItem?.atendimento_venda_id, eh0km]);
 
   // CPF do operador — mesmo padrão do RenaveDialog: tenta achar pelo cadastro
   // de funcionário do usuário logado, só pede na mão se não achar.
@@ -256,7 +282,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                 </p>
               )}
               <div className="flex flex-wrap items-center gap-2 justify-end">
-                {(saida.emitida || saida.cancelada) && saida.nfe?.ambiente === 'producao' && <CancelarNfeDialog nfe={saida} />}
+                {(saida.emitida || saida.cancelada) && saida.nfe?.ambiente === 'producao' && !vendaFechada && <CancelarNfeDialog nfe={saida} />}
                 {(!saidaEmitida || podeReemitirHomologSaida) && !saida.pendente && (
                   <Button
                     size="sm"
@@ -323,7 +349,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                 </p>
               )}
               <div className="flex flex-wrap items-center gap-2 justify-end">
-                {(entrada.emitida || entrada.cancelada) && entrada.nfe?.ambiente === 'producao' && <CancelarNfeDialog nfe={entrada} />}
+                {(entrada.emitida || entrada.cancelada) && entrada.nfe?.ambiente === 'producao' && !vendaFechada && <CancelarNfeDialog nfe={entrada} />}
                 {saidaProducao && (!entradaEmitida || podeReemitirHomologEntrada) && !entrada.pendente && (
                   <Button
                     size="sm"

@@ -171,6 +171,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [idsWithNfeVenda0km, setIdsWithNfeVenda0km] = useState<Set<string>>(new Set());
   const [idsWithNfeVendaSeminova, setIdsWithNfeVendaSeminova] = useState<Set<string>>(new Set());
   const [idsComTransferencia0kmProducao, setIdsComTransferencia0kmProducao] = useState<Set<string>>(new Set());
+  const [idsComTransferenciaSeminovaProducao, setIdsComTransferenciaSeminovaProducao] = useState<Set<string>>(new Set());
 
   const handleOpenHistory = async (item: EstoqueItem) => {
     setHistoryItem(item);
@@ -292,8 +293,35 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           .eq('ambiente', 'producao')
           .in('estoque_moto_id', seminovaIds);
         setIdsWithNfeVendaSeminova(new Set((nfSeminovaData || []).map((n: any) => n.estoque_moto_id)));
+
+        // Mesmo padrão do 0km (idsComTransferencia0kmProducao): motos seminovas
+        // que já passaram por uma transferência fiscal entre empresas mantêm
+        // acesso ao diálogo (pra ver/baixar as DANFE's) mesmo depois de
+        // vendidas — pedido do usuário, 2026-09-30. Diferente do 0km, a
+        // transferência de seminova casa por avaliacao_id, não estoque_moto_id
+        // (ver keyBy: 'avaliacao' em emitir-nfe-compra) — mapeia de volta pro
+        // id do item de estoque, que é a chave usada no menu.
+        const avaliacaoPorEstoqueId = new Map(
+          mapped.filter((m: any) => m.fonte !== '0km' && m.avaliacao_id).map((m: any) => [m.avaliacao_id, m.id]),
+        );
+        const seminovaAvaliacaoIds = Array.from(avaliacaoPorEstoqueId.keys());
+        if (seminovaAvaliacaoIds.length > 0) {
+          const { data: nfTransfSeminovaData } = await supabase
+            .from('nfe_entradas' as any)
+            .select('avaliacao_id')
+            .eq('operacao', 'transferencia_entrada')
+            .eq('status', 'processada')
+            .eq('ambiente', 'producao')
+            .in('avaliacao_id', seminovaAvaliacaoIds);
+          setIdsComTransferenciaSeminovaProducao(new Set(
+            (nfTransfSeminovaData || []).map((n: any) => avaliacaoPorEstoqueId.get(n.avaliacao_id)).filter(Boolean),
+          ));
+        } else {
+          setIdsComTransferenciaSeminovaProducao(new Set());
+        }
       } else {
         setIdsWithNfeVendaSeminova(new Set());
+        setIdsComTransferenciaSeminovaProducao(new Set());
       }
     } catch (err: any) {
       toast.error('Erro ao carregar estoque');
@@ -524,10 +552,16 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     // ver TransferenciaEstoqueDialog). Disponível também se a moto já estiver
     // vendida/com sinal, contanto que a NF-e de venda ainda não tenha sido
     // emitida em produção — depois disso a venda já está fiscalmente fechada
-    // com aquela empresa, não faz mais sentido transferir.
-    const vendidaSemNfe = (item.status === 'vendido' || item.status === 'sinal')
-      && !(item.tipo === '0km' ? idsWithNfeVenda0km : idsWithNfeVendaSeminova).has(item.id);
-    if (item.status === 'disponivel' || vendidaSemNfe) {
+    // com aquela empresa, não faz mais sentido INICIAR uma nova transferência.
+    const nfVendaSet = item.tipo === '0km' ? idsWithNfeVenda0km : idsWithNfeVendaSeminova;
+    const vendidaSemNfe = (item.status === 'vendido' || item.status === 'sinal') && !nfVendaSet.has(item.id);
+    // Pedido do usuário, 2026-09-30: mesmo depois da venda faturada, mantém
+    // acesso ao diálogo se essa moto já passou por uma transferência entre
+    // empresas antes de ser vendida — só pra ver/baixar as DANFE's (o próprio
+    // diálogo trava o botão Cancelar nesse caso, venda já fechada).
+    const transferenciaSet = item.tipo === '0km' ? idsComTransferencia0kmProducao : idsComTransferenciaSeminovaProducao;
+    const vendidaComTransferencia = nfVendaSet.has(item.id) && transferenciaSet.has(item.id);
+    if (item.status === 'disponivel' || vendidaSemNfe || vendidaComTransferencia) {
       options.push({
         label: 'Transferir',
         icon: <ArrowRightLeft className="h-4 w-4" />,
