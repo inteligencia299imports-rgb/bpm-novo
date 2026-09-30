@@ -855,7 +855,7 @@ const ProcessoDialog: React.FC<Props> = ({
                         <Button
                           variant={nfeDevolucaoConv.erro ? 'outline' : 'default'} size="sm"
                           className={cn(
-                            'h-7 w-24 gap-1 justify-center',
+                            'h-7 w-28 gap-1 justify-center',
                             nfeDevolucaoConv.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : nfeBotaoClasse(nfeDevolucaoConv.nfe),
                           )}
                           onClick={() => setConverterConsignacaoOpen(true)}
@@ -907,7 +907,7 @@ const ProcessoDialog: React.FC<Props> = ({
                         <Button
                           variant={nfeCompraConv.erro ? 'outline' : 'default'} size="sm"
                           className={cn(
-                            'h-7 w-24 gap-1 justify-center',
+                            'h-7 w-28 gap-1 justify-center',
                             nfeCompraConv.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : nfeBotaoClasse(nfeCompraConv.nfe),
                           )}
                           onClick={() => setConverterConsignacaoOpen(true)}
@@ -956,7 +956,7 @@ const ProcessoDialog: React.FC<Props> = ({
                           (lá dentro tem o Baixar DANFE / cancelar / reemitir) —
                           não o DANFE direto aqui. */}
                       <Button
-                        size="sm" className={cn('h-7 w-24 gap-1 justify-center', nfeBotaoClasse(nfeObj?.nfe, nfeObjDevolvida))}
+                        size="sm" className={cn('h-7 w-28 gap-1 justify-center', nfeBotaoClasse(nfeObj?.nfe, nfeObjDevolvida))}
                         onClick={() => (
                           isNfTroca ? (trocaAvaliacaoId && onEmitirNfeTroca?.(trocaAvaliacaoId))
                           : isNfTransferencia ? (trocaAvaliacaoId && onEmitirNfeTransferencia?.(trocaAvaliacaoId))
