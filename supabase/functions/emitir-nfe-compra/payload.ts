@@ -8,6 +8,14 @@ export interface DadosEmpresa {
   cnpj: string;
   regime_tributario: string | null;
   uf: string | null;
+  // Endereço — só usado no grupo <entrega> da retirada presencial.
+  logradouro?: string | null;
+  numero?: string | null;
+  complemento?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  cep?: string | null;
+  codigo_municipio_ibge?: string | null;
 }
 
 export interface DadosFornecedor {
@@ -195,6 +203,10 @@ export interface MontarPayloadArgs {
   notaReferenciada?: string | null;
   /** Origem do ICMS (0–8) da moto — 0km repete a da NF de entrada; seminova 0. Default 0. */
   icmsOrigem?: number;
+  /** Venda com retirada presencial: operação interna (UF fiscal = da empresa, idDest=1, sem DIFAL). */
+  retiradaPresencial?: boolean;
+  /** Retirada presencial de cliente de outra UF: monta o grupo <entrega> com o endereço da loja. */
+  entregaNaLoja?: boolean;
   /**
    * `true` para operações sem movimentação financeira real (ex.: devolução
    * simbólica) — não manda o grupo pag/cobr/dup calculado por formas de
@@ -436,7 +448,7 @@ export function difalAplicavel(p: {
 }
 
 export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, unknown> {
-  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, trocaInfoCpl, formasPagamento, bemMovelUsado, notaReferenciada, semPagamentoReal, icmsOrigem } = args;
+  const { natureza, empresa, fornecedor, moto, valor, regraIcms, regraPis, regraCofins, regraIpi, regraIbsCbs, observacoes, vendedorNome, formasPagamentoTexto, trocaInfoCpl, formasPagamento, bemMovelUsado, notaReferenciada, semPagamentoReal, icmsOrigem, retiradaPresencial, entregaNaLoja } = args;
 
   const pf = (fornecedor.tipo_pessoa ?? 'fisica') === 'fisica';
   const docForn = onlyDigits(fornecedor.cpf_cnpj);
@@ -528,7 +540,8 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     // aliquota_fcp da regra é o FCP da UF de DESTINO (vem da tabela icms_uf
     // desde as regras fiscais unificadas do sisfin) e vai no grupo do DIFAL
     // (pFCPUFDest, abaixo) — nunca no grupo do ICMS próprio.
-    const operacaoInterna = (empresa.uf || '').trim().toUpperCase() === (fornecedor.uf || '').trim().toUpperCase();
+    // Retirada presencial também é operação interna (UF fiscal = da empresa).
+    const operacaoInterna = !!retiradaPresencial || (empresa.uf || '').trim().toUpperCase() === (fornecedor.uf || '').trim().toUpperCase();
     if (regraIcms.aliquota_fcp != null && operacaoInterna) item.fcp_aliquota = Number(regraIcms.aliquota_fcp);
     // vBC/vICMS reais do ICMS próprio (base já reduzida, se houver redução).
     //
@@ -659,7 +672,8 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     difalAplicavel({
       regimeTributarioEmitente: empresa.regime_tributario,
       ufEmitente: empresa.uf,
-      ufDestino: fornecedor.uf,
+      // Retirada presencial: operação interna — nunca DIFAL.
+      ufDestino: retiradaPresencial ? empresa.uf : fornecedor.uf,
       indIeDest,
       consumidorFinal: !!natureza.consumidor_final,
       cstIcms,
@@ -804,6 +818,8 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     // do SisFin §4.2). O CFOP/regra em si já é filtrado por tipo de atendimento
     // (presencial/online/ambos) antes de chegar aqui — ver index.ts regraDe().
     presenca_comprador: regraIcms.indicador_presenca ?? regraIpi?.indicador_presenca ?? natureza.indicador_presenca ?? undefined,
+    // Retirada presencial: idDest=1 explícito (a Focus deduziria 2 pela UF do destinatário).
+    ...(retiradaPresencial ? { local_destino: 1 } : {}),
     modalidade_frete: 9,
     // Ordem fixa do infCpl (padrão das NF-e de venda FAG/FLN):
     //  1. VALOR DO IBS / VALOR DA CBS
@@ -844,6 +860,22 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     uf_destinatario: (fornecedor.uf || '').toUpperCase() || undefined,
     cep_destinatario: onlyDigits(fornecedor.cep) || undefined,
     pais_destinatario: 'Brasil',
+    // Retirada presencial de cliente de outra UF: grupo <entrega> = o próprio destinatário
+    // retirando no endereço da loja (mesmo formato do crm-novo/ofc).
+    ...(entregaNaLoja
+      ? {
+        nome_entrega: fornecedor.nome,
+        [pf ? 'cpf_entrega' : 'cnpj_entrega']: docForn,
+        logradouro_entrega: empresa.logradouro,
+        numero_entrega: empresa.numero,
+        complemento_entrega: empresa.complemento || undefined,
+        bairro_entrega: empresa.bairro,
+        codigo_municipio_entrega: empresa.codigo_municipio_ibge || undefined,
+        municipio_entrega: empresa.cidade,
+        uf_entrega: empresa.uf,
+        cep_entrega: onlyDigits(empresa.cep),
+      }
+      : {}),
 
     valor_frete: 0,
     valor_seguro: 0,

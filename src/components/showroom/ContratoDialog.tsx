@@ -20,6 +20,7 @@ import { BPM_PROJETO_ID } from '@/lib/projeto';
 import type { Atendimento, MotoInteresse, Avaliacao } from '@/types/crm';
 import { generateContratoPdf, type ContratoPdfData } from '@/lib/generateContratoPdf';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
+import { Switch } from '@/components/ui/switch';
 import { useNfeDevolvida } from '@/hooks/useNfeDevolvida';
 import { useAuth } from '@/contexts/AuthContext';
 import ClienteForm from '@/components/clientes/ClienteForm';
@@ -320,6 +321,10 @@ const ContratoDialog: React.FC<Props> = ({
   const podeEmitirNova = !nfeJaEmitida || nfeDevolvida;
   const [nfeValor, setNfeValor] = useState('');
   const [nfeObs, setNfeObs] = useState('');
+  // Retirada presencial (cliente de outra UF leva a moto na loja): operação interna na NF-e —
+  // CFOP 5xxx, sem DIFAL, grupo <entrega> com o endereço da loja. Gravado em
+  // atendimentos_motos.retirada_presencial pela própria emissão (emitir-nfe-compra).
+  const [retiradaPresencial, setRetiradaPresencial] = useState(false);
   // ICMS-ST retido anteriormente (grupo <ICMS60> da NF de venda 0km) — transcrito
   // da NF de entrada da moto. Editável aqui e salvo em estoque_motos_novas.
   const [stBcRetido, setStBcRetido] = useState('');
@@ -424,7 +429,7 @@ const ContratoDialog: React.FC<Props> = ({
           .limit(1),
         supabase
           .from('atendimentos_motos')
-          .select('loja_id, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))')
+          .select('loja_id, retirada_presencial, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))')
           .eq('id', atendimento.id)
           .maybeSingle(),
         // Lê valor_sinal/valor_venda pela MESMA chave usada no save: pelo id da moto do
@@ -518,12 +523,13 @@ const ContratoDialog: React.FC<Props> = ({
       setJaGerado(!!(histGerado && histGerado.length > 0));
 
       // Empresa vinculada à loja do atendimento (emitente da NF-e / vendedora no contrato).
+      setRetiradaPresencial((freshAtendimento as any)?.retirada_presencial === true);
       const lojaId = (freshAtendimento as any)?.loja_id ?? (atendimento as any).loja_id;
       let empresas: any[] = [];
       if (lojaId) {
         const { data: le } = await supabase
           .from('loja_empresas')
-          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj)')
+          .select('empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj, uf)')
           .eq('id', lojaId);
         const seen = new Set<string>();
         empresas = (le || [])
@@ -651,6 +657,7 @@ const ContratoDialog: React.FC<Props> = ({
       observacoes: nfeObs || undefined,
       empresa_id: empresaId || undefined,
       ambiente,
+      retirada_presencial: retiradaPresencial,
     });
 
   const resetPagamentoForm = () => {
@@ -2111,6 +2118,24 @@ const ContratoDialog: React.FC<Props> = ({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <InfoDisplay label="Valor da Nota" value={nfeValor ? `R$ ${nfeValor}` : undefined} valueClassName="text-primary" />
+                    {(() => {
+                      const ufCli = String(cliEndereco?.uf ?? '').trim().toUpperCase();
+                      const ufEmp = String(empresaSel?.uf ?? '').trim().toUpperCase();
+                      const outraUf = !!ufCli && !!ufEmp && ufCli !== ufEmp;
+                      return (
+                        <div className={cn("flex items-start justify-between gap-3 rounded-md border p-3", outraUf && "border-amber-300 bg-amber-50/60")}>
+                          <div className="space-y-0.5">
+                            <Label htmlFor="retirada-presencial" className="cursor-pointer">Retirada presencial</Label>
+                            <p className="text-xs text-muted-foreground">
+                              O cliente leva a moto na loja: a NF-e sai como operação interna (CFOP 5xxx, sem DIFAL),
+                              com o endereço da loja como local de entrega.
+                              {outraUf && <span className="block text-amber-700 mt-0.5">Cliente de {ufCli}, empresa de {ufEmp} — marque se ele retira a moto aqui.</span>}
+                            </p>
+                          </div>
+                          <Switch id="retirada-presencial" checked={retiradaPresencial} onCheckedChange={setRetiradaPresencial} />
+                        </div>
+                      );
+                    })()}
                     <div className="space-y-1.5">
                       <Label>Observações na NF-e</Label>
                       <Textarea
