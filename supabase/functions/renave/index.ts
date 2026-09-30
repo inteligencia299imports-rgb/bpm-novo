@@ -1368,9 +1368,20 @@ Deno.serve(async (req) => {
           const up = await admin.storage.from('moto-fotos').upload(path, bytes, { contentType: 'application/pdf', upsert: true });
           if (!up.error) patchCrlve.renave_crlve_url = admin.storage.from('moto-fotos').getPublicUrl(path).data?.publicUrl ?? null;
         }
-        const lido = crlve.body?.pdfCodigoSegurancaCrvBase64
+        let lido = crlve.body?.pdfCodigoSegurancaCrvBase64
           ? await extrairCodigoSegurancaDoAtpv(crlve.body.pdfCodigoSegurancaCrvBase64, 'crv')
           : { codigoSegurancaCrv: null, numeroCrv: null };
+        // O PDF dedicado ao código de segurança (pdfCodigoSegurancaCrvBase64)
+        // às vezes não repete o "NÚMERO DO CRV" (12 dígitos) — cai pro CRLV-e
+        // completo (pdfBase64, já baixado acima pra arquivar), que sempre tem
+        // esse campo na página 1. Achado real 2026-09-30 (placa SUN5C85): sem
+        // o numeroCrv no payload de sairEstoque, a SERPRO rejeitou a saída com
+        // "Número CRV informado não bate com o número CRV do último CRV
+        // registrado no Renavam" mesmo com o código de segurança certo.
+        if (!lido.numeroCrv && crlve.body?.pdfBase64) {
+          const doCrlveCompleto = await extrairCodigoSegurancaDoAtpv(crlve.body.pdfBase64, 'crv');
+          if (doCrlveCompleto.numeroCrv) lido = { ...lido, numeroCrv: doCrlveCompleto.numeroCrv };
+        }
         if (!lido.codigoSegurancaCrv) {
           const msg = 'Não foi possível ler o código de segurança do CRV atual no documento da SERPRO — tente novamente em instantes.';
           await persistirAvaliacao(admin, avaliacaoId, { ...patchCrlve, renave_saida_ultimo_erro: msg });
