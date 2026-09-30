@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Plus, Search, Filter, CalendarIcon, X, Bike } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn, firstLastName } from '@/lib/utils';
+import { cn, firstLastName, normalizeSearch } from '@/lib/utils';
 import { LOJAS, INTERESSES, SITUACOES_SHOWROOM, TEMPERATURAS } from '@/types/crm';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
@@ -186,7 +186,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
       results = results.filter(a => !(a.interesse === 'vender' && adquiridaSet.has(a.id)));
 
       if (search.trim()) {
-        const s = search.trim().toLowerCase();
+        const s = normalizeSearch(search);
         results = results.filter(a => {
           const fields = [
             a.cliente?.nome_razao_social, a.cliente?.telefone, a.loja, a.interesse, a.situacao,
@@ -197,7 +197,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
           const motoFields = motos.flatMap((m: any) => [m.modelo, m.marca, m.ano, m._estoque?.modelo, m._estoque?.marca]);
           const motoAvFields = motosAv.flatMap((m: any) => [m.modelo, m.marca, m.placa, m.cor, m.ano_fabricacao, m.ano_modelo, m.km]);
           const all = [...fields, ...motoFields, ...motoAvFields];
-          return all.some(f => f && String(f).toLowerCase().includes(s));
+          return all.some(f => f && normalizeSearch(String(f)).includes(s));
         });
       }
       if (filterCidade !== 'todos') {

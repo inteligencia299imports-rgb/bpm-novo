@@ -18,6 +18,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Normaliza texto pra busca client-side: minúsculas + remove acentos.
+ * Achado real 2026-09-30: buscar "André" não encontrava "Andre Leonardo
+ * Peiter" cadastrado sem acento (e vice-versa) — `.includes()` puro é
+ * sensível a diacríticos.
+ */
+export function normalizeSearch(v: string | null | undefined): string {
+  return (v ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
 export function formatPersonName(name: string | null | undefined): string {
   if (!name) return "";
 
