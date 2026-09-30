@@ -111,4 +111,13 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  /* Pedido do usuário, 2026-09-30: na página de Relatórios o cabeçalho das
+     listagens não deve ficar fixo (sticky) ao rolar — o <TableHead> padrão
+     (src/components/ui/table.tsx) é sticky por padrão em todo o resto do
+     sistema; aqui essa classe sobrescreve só dentro do wrapper
+     `.relatorios-listagem`, sem mexer no componente compartilhado. */
+  .relatorios-listagem thead th {
+    position: static;
+    top: auto;
+  }
 }
