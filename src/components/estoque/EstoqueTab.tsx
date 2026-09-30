@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download, LogOut, DollarSign, ArrowRightLeft, Radio } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download, LogOut, DollarSign, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -19,7 +19,6 @@ import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { firstLastName } from '@/lib/utils';
 import StatusChangeDialog from '@/components/estoque/StatusChangeDialog';
-import DemonstracaoDialog from '@/components/estoque/DemonstracaoDialog';
 import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import TransferenciaEstoqueDialog from '@/components/estoque/TransferenciaEstoqueDialog';
 import AlterarPrecoDialog from '@/components/estoque/AlterarPrecoDialog';
@@ -103,11 +102,6 @@ interface EstoqueItem {
   displayTipo?: string | null;
   // estoque_motos_novas — coluna própria ('nova' | 'test_ride')
   tipo_unidade?: string | null;
-  // estoque_motos_novas — moto 0km que saiu com NF de demonstração (CFOP
-  // 2912/6912, emitida fora do bpm-novo) mas continua disponível pra venda
-  // na empresa de origem.
-  em_demonstracao?: boolean | null;
-  demonstracao_observacao?: string | null;
   // estoque_motos_novas — specs do grupo veicProd da NF-e (só 0km)
   potencia_motor?: string | number | null;
   peso_liquido?: string | number | null;
@@ -166,7 +160,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [idsWithHistory, setIdsWithHistory] = useState<Set<string>>(new Set());
   const [retiradaDates, setRetiradaDates] = useState<Record<string, string>>({});
   const [statusChangeItem, setStatusChangeItem] = useState<EstoqueItem | null>(null);
-  const [demonstracaoItem, setDemonstracaoItem] = useState<EstoqueItem | null>(null);
   const [historyItem, setHistoryItem] = useState<EstoqueItem | null>(null);
   const [historyEntries, setHistoryEntries] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -179,6 +172,12 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [idsWithNfeVendaSeminova, setIdsWithNfeVendaSeminova] = useState<Set<string>>(new Set());
   const [idsComTransferencia0kmProducao, setIdsComTransferencia0kmProducao] = useState<Set<string>>(new Set());
   const [idsComTransferenciaSeminovaProducao, setIdsComTransferenciaSeminovaProducao] = useState<Set<string>>(new Set());
+  // Saída de transferência (real ou "demonstração" — mesma operação, sem
+  // depender da entrada) autorizada em produção e ainda não cancelada —
+  // cobre o "estoque negativo": moto já vendida na origem mas com a saída
+  // ainda aberta, sem entrada (não é uma transferência de propriedade de
+  // verdade). Ver "Transferir" no menu de moto 0km já vendida.
+  const [idsComTransferenciaSaida0kmAtiva, setIdsComTransferenciaSaida0kmAtiva] = useState<Set<string>>(new Set());
 
   const handleOpenHistory = async (item: EstoqueItem) => {
     setHistoryItem(item);
@@ -283,9 +282,22 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           .eq('ambiente', 'producao')
           .in('estoque_moto_nova_id', zeroKmIds);
         setIdsComTransferencia0kmProducao(new Set((nfTransfData || []).map((n: any) => n.estoque_moto_nova_id)));
+
+        // Saída de transferência/"demonstração" autorizada em produção e
+        // ainda não cancelada, independente de ter entrada — cobre o
+        // "estoque negativo" (moto já vendida na origem, saída ainda aberta).
+        const { data: nfSaidaAtivaData } = await supabase
+          .from('nfe_entradas' as any)
+          .select('estoque_moto_nova_id')
+          .eq('operacao', 'transferencia_saida_0km')
+          .eq('status', 'processada')
+          .eq('ambiente', 'producao')
+          .in('estoque_moto_nova_id', zeroKmIds);
+        setIdsComTransferenciaSaida0kmAtiva(new Set((nfSaidaAtivaData || []).map((n: any) => n.estoque_moto_nova_id)));
       } else {
         setIdsWithNfeVenda0km(new Set());
         setIdsComTransferencia0kmProducao(new Set());
+        setIdsComTransferenciaSaida0kmAtiva(new Set());
       }
 
       // Mesma checagem pra seminova — moto vendida sem NF de venda ainda
@@ -349,7 +361,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
     if (filterCidade !== 'todos' && !CIDADE_LOJAS[filterCidade].includes(item.loja_origem)) return false;
     if (!search) return true;
     const s = search.toLowerCase();
-    return [item.marca, item.modelo, item.placa, item.chassi, item.cor, item.cilindrada, item.empresa, item.observacoes, item.observacao_moto, item.demonstracao_observacao]
+    return [item.marca, item.modelo, item.placa, item.chassi, item.cor, item.cilindrada, item.empresa, item.observacoes, item.observacao_moto]
       .some(v => v?.toLowerCase().includes(s));
   });
 
@@ -480,18 +492,18 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
             icon: <ArrowRightLeft className="h-4 w-4" />,
             action: () => setTransferenciaItem(item),
           });
+        } else if (idsComTransferenciaSaida0kmAtiva.has(item.id)) {
+          // Saída de transferência/"demonstração" ativa mas SEM entrada
+          // (achado real 2026-09-30, chassi 95V1200AATM000012: moto vendida
+          // na própria empresa de origem enquanto a saída continua aberta —
+          // "estoque negativo") — mantém "Transferir" acessível pra ver/
+          // cancelar a saída, mesmo com a moto já vendida.
+          options.push({
+            label: 'Transferir',
+            icon: <ArrowRightLeft className="h-4 w-4" />,
+            action: () => setTransferenciaItem(item),
+          });
         }
-        // Achado real 2026-09-30, chassi 95V1200AATM000012: "Demonstração"
-        // precisa continuar acessível mesmo com a moto já vendida (situação
-        // normal do "estoque negativo" que o recurso existe pra cobrir) —
-        // esse bloco tem um `return` antes de chegar na opção adicionada
-        // mais abaixo (pra motos ainda não vendidas), então precisa
-        // duplicar aqui também.
-        options.push({
-          label: item.em_demonstracao ? 'Demonstração ✓' : 'Demonstração',
-          icon: <Radio className="h-4 w-4" />,
-          action: () => setDemonstracaoItem(item),
-        });
         return options;
       }
     }
@@ -610,16 +622,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           action: () => setTestRideItem(item),
         });
       }
-      // Moto 0km que saiu com NF de demonstração (CFOP 2912/6912, emitida
-      // fora do bpm-novo) continua disponível/vendável na empresa de
-      // origem — pedido do usuário, 2026-09-30. Sem trava por NF de venda:
-      // dá pra marcar/desmarcar em qualquer momento, antes ou depois de
-      // vendida.
-      options.push({
-        label: item.em_demonstracao ? 'Demonstração ✓' : 'Demonstração',
-        icon: <Radio className="h-4 w-4" />,
-        action: () => setDemonstracaoItem(item),
-      });
     }
 
     addConsultaOption();
@@ -883,13 +885,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             </div>
                           )}
 
-                          {item.em_demonstracao && (
-                            <div className="flex items-start gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium bg-blue-500/10 rounded p-2 whitespace-pre-wrap break-words">
-                              <Radio className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                              Em demonstração{item.demonstracao_observacao ? ` — ${item.demonstracao_observacao}` : ''}
-                            </div>
-                          )}
-
                           {item.observacoes && (
                             <div className={`text-xs italic whitespace-pre-wrap break-words ${
                               item.status === 'servico' ? 'flex items-start gap-1.5 text-orange-600 font-medium bg-orange-500/10 rounded p-2' :
@@ -981,16 +976,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         estoqueItem={statusChangeItem}
         onSuccess={() => {
           setStatusChangeItem(null);
-          fetchEstoque();
-        }}
-      />
-
-      <DemonstracaoDialog
-        open={!!demonstracaoItem}
-        onOpenChange={(open) => { if (!open) setDemonstracaoItem(null); }}
-        estoqueItem={demonstracaoItem}
-        onSuccess={() => {
-          setDemonstracaoItem(null);
           fetchEstoque();
         }}
       />

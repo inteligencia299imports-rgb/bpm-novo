@@ -97,7 +97,7 @@ function stRetidoDoXmlEntrada(xml: string): { bc: number; subst: number; ret: nu
   return { bc, subst: subst ?? 0, ret };
 }
 
-type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_saida' | 'transferencia_entrada' | 'transferencia_saida_0km' | 'transferencia_entrada_0km' | 'devolucao_compra' | 'devolucao_venda_seminova' | 'devolucao_venda_0km' | 'devolucao_transferencia' | 'devolucao_transferencia_0km' | 'demonstracao_saida';
+type Operacao = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_saida' | 'transferencia_entrada' | 'transferencia_saida_0km' | 'transferencia_entrada_0km' | 'devolucao_compra' | 'devolucao_venda_seminova' | 'devolucao_venda_0km' | 'devolucao_transferencia' | 'devolucao_transferencia_0km';
 
 // Operação original -> operação de devolução (undo pós-24h, ver CancelarNfeDialog
 // no frontend). Uma NF original devolvida não conta mais como "já emitida em
@@ -255,27 +255,6 @@ const CFG: Record<Operacao, OperacaoConfig> = {
     operacaoFiscal: 'transferencia',
     statusEntity: 'estoque_0km',
     statusHist: 'nfe_transferencia_entrada_emitida',
-    avStatusField: null,
-    avStatusEmAndamento: '',
-    criaCompromisso: false,
-    keyBy: 'estoque_moto_nova',
-  },
-  // Pedido do usuário, 2026-09-30: NF de saída de demonstração (CFOP 6912,
-  // cadastro fiscal já pronto no SisFin — docs-fiscal-299 §2.71) continua
-  // sendo EMITIDA fora do bpm-novo, direto pela Focus (mesmo emissor já
-  // usado aqui) — bpm-novo só VINCULA o XML já autorizado (ação
-  // 'vincular-demonstracao', não passa pelo bloco "acao: emitir" abaixo) e
-  // permite CANCELAR pelo botão padrão, reaproveitando o cancelamento via
-  // Focus/ref_externa que já existe pra qualquer operação do CFG. Sem
-  // etapa de checklist própria e sem compromisso financeiro (a moto
-  // continua no estoque da origem, "estoque negativo" até a NF de retorno
-  // — também fora do bpm-novo).
-  demonstracao_saida: {
-    refPrefix: 'demonstracao-saida',
-    naturezaDescricao: 'REMESSA PARA DEMONSTRAÇÃO',
-    operacaoFiscal: 'transferencia_empresas',
-    statusEntity: 'estoque_0km',
-    statusHist: 'nfe_demonstracao_saida_emitida',
     avStatusField: null,
     avStatusEmAndamento: '',
     criaCompromisso: false,
@@ -614,13 +593,6 @@ async function aplicarCancelamento(
     }
   }
 
-  // Cancelar a saída de demonstração desliga o aviso "Em Demonstração" da
-  // moto (a NF que justificava o aviso não existe mais).
-  if (nfeRow.operacao === 'demonstracao_saida' && nfeRow.estoque_moto_nova_id) {
-    await admin.from('estoque_motos_novas')
-      .update({ em_demonstracao: false, demonstracao_observacao: null })
-      .eq('id', nfeRow.estoque_moto_nova_id);
-  }
 
   const parcelasPagas = await cancelarCompromissosDaNf(admin, nfeRow.id);
 
@@ -1148,10 +1120,10 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Corpo da requisição inválido (JSON esperado)' }, 400);
   }
 
-  const acao: 'consultar' | 'cancelar' | 'emitir' | 'vincular_demonstracao' =
+  const acao: 'consultar' | 'cancelar' | 'emitir' | 'vincular_transferencia_saida' =
     body.acao === 'consultar' ? 'consultar'
       : body.acao === 'cancelar' ? 'cancelar'
-      : body.acao === 'vincular_demonstracao' ? 'vincular_demonstracao'
+      : body.acao === 'vincular_transferencia_saida' ? 'vincular_transferencia_saida'
       : 'emitir';
   const tipo: Operacao = Object.prototype.hasOwnProperty.call(CFG, body.tipo as string)
     ? (body.tipo as Operacao)
@@ -1512,14 +1484,18 @@ Deno.serve(async (req) => {
   };
 
   // =====================================================================
-  // acao: vincular_demonstracao
+  // acao: vincular_transferencia_saida
   // =====================================================================
-  // Pedido do usuário, 2026-09-30: a NF de saída de demonstração é emitida
-  // fora do bpm-novo (direto na Focus, ou pelo painel dela) — aqui só
-  // vincula o XML já autorizado, pra depois poder cancelar pelo botão
-  // padrão (que precisa do `ref` da Focus, não vem no XML em si).
-  if (acao === 'vincular_demonstracao') {
-    if (tipo !== 'demonstracao_saida') return jsonResponse({ error: 'Ação só suportada para demonstracao_saida' }, 400);
+  // Pedido do usuário, 2026-09-30: sem operação nova pra moto enviada "como
+  // demonstração" pra outra empresa/UF — é a MESMA saída de transferência
+  // (CFOP escolhido livremente na hora da emissão externa, seja 949/152 de
+  // transferência de propriedade ou 912 de demonstração), só que emitida
+  // fora do bpm-novo (direto na Focus). Aqui só vincula o XML já autorizado
+  // como `transferencia_saida_0km`, pra aparecer no mesmo popup de
+  // Transferência de Estoque e poder cancelar pelo botão padrão (que
+  // precisa do `ref` da Focus usado na emissão, não vem no XML em si).
+  if (acao === 'vincular_transferencia_saida') {
+    if (tipo !== 'transferencia_saida_0km') return jsonResponse({ error: 'Ação só suportada para transferencia_saida_0km' }, 400);
     if (!emn0km) return jsonResponse({ error: 'Moto 0km não encontrada.' }, 404);
     const xml = typeof body.xml === 'string' ? body.xml.trim() : '';
     const refFocus = typeof body.ref === 'string' ? body.ref.trim() : '';
@@ -1545,9 +1521,9 @@ Deno.serve(async (req) => {
     }
 
     const { data: jaVinculada } = await admin.from('nfe_entradas').select('id')
-      .eq('estoque_moto_nova_id', estoqueMotoNovaIdBody).eq('operacao', 'demonstracao_saida')
+      .eq('estoque_moto_nova_id', estoqueMotoNovaIdBody).eq('operacao', 'transferencia_saida_0km')
       .neq('status', 'cancelada').limit(1).maybeSingle();
-    if (jaVinculada) return jsonResponse({ error: 'Esta moto já tem uma NF de saída de demonstração vinculada (e não cancelada).' }, 409);
+    if (jaVinculada) return jsonResponse({ error: 'Esta moto já tem uma NF de saída de transferência vinculada (e não cancelada).' }, 409);
 
     const { data: natureza } = await admin.from('naturezas_operacao').select('id')
       .eq('empresa_id', emn0km.empresa_id).eq('cfop', cfopXml).eq('ativo', true).limit(1).maybeSingle();
@@ -1570,15 +1546,10 @@ Deno.serve(async (req) => {
       ref_externa: refFocus,
       focus_status: 'autorizado',
       ambiente: 'producao',
-      operacao: 'demonstracao_saida',
+      operacao: 'transferencia_saida_0km',
       xml_raw: xml,
     }).select('*').maybeSingle();
     if (insErr) return jsonResponse({ error: `Falha ao vincular: ${insErr.message}` }, 500);
-
-    await admin.from('estoque_motos_novas').update({
-      em_demonstracao: true,
-      demonstracao_observacao: `NF de demonstração nº ${numero} série ${serie}`,
-    }).eq('id', estoqueMotoNovaIdBody);
 
     return jsonResponse({ nfe: inserida }, 200);
   }
@@ -1695,19 +1666,23 @@ Deno.serve(async (req) => {
     if (tipo === 'venda_seminova' && !(await temNfCompraVinculada(admin, estoqueMoto?.avaliacao_id ?? null))) {
       return jsonResponse({ error: 'Esta moto não tem NF-e de entrada (compra) vinculada no sistema — não é possível cancelar a venda.' }, 409);
     }
-    // Pedido do usuário, 2026-09-30: cancelar a saída de demonstração só é
-    // travado se a moto já tiver NF de venda autorizada em produção na
-    // MESMA empresa que emitiu a demonstração — a venda depende daquele
-    // documento pra justificar a moto ter saído (ida e volta) e voltado à
-    // venda por lá. Se a venda foi em empresa diferente (ou não tem venda
-    // ainda), cancelar a demonstração é seguro e fica liberado.
-    if (tipo === 'demonstracao_saida') {
-      const { data: nfVendaMesmaEmpresa } = await admin.from('nfe_entradas').select('id')
-        .eq('estoque_moto_nova_id', nfeRow.estoque_moto_nova_id).eq('operacao', 'venda_0km')
-        .eq('status', 'processada').eq('ambiente', 'producao').eq('empresa_id', nfeRow.empresa_id)
-        .limit(1).maybeSingle();
-      if (nfVendaMesmaEmpresa) {
-        return jsonResponse({ error: 'Esta moto já tem NF-e de venda autorizada em produção na mesma empresa que emitiu a demonstração — não é possível cancelar a saída de demonstração.' }, 409);
+    // Pedido do usuário, 2026-09-30 (cobre tanto transferência de verdade
+    // quanto moto enviada "como demonstração" pra outra empresa/UF — mesmo
+    // fluxo de saída, sem operação nova): cancelar a SAÍDA fica sempre
+    // liberado enquanto a ENTRADA correspondente ainda não tiver sido
+    // autorizada em produção (é a entrada que de fato reatribui loja/
+    // empresa — sem ela, nada na venda dessa moto depende da saída
+    // continuar existindo). Uma vez a entrada em produção, a transferência
+    // já se efetivou e a saída não pode mais ser cancelada isoladamente.
+    if (tipo === 'transferencia_saida' || tipo === 'transferencia_saida_0km') {
+      const operacaoEntrada = tipo === 'transferencia_saida_0km' ? 'transferencia_entrada_0km' : 'transferencia_entrada';
+      const fkColEntrada = tipo === 'transferencia_saida_0km' ? 'estoque_moto_nova_id' : 'avaliacao_id';
+      const fkValEntrada = tipo === 'transferencia_saida_0km' ? nfeRow.estoque_moto_nova_id : nfeRow.avaliacao_id;
+      const { data: entradaProducao } = await admin.from('nfe_entradas').select('id')
+        .eq(fkColEntrada, fkValEntrada).eq('operacao', operacaoEntrada)
+        .eq('status', 'processada').eq('ambiente', 'producao').limit(1).maybeSingle();
+      if (entradaProducao) {
+        return jsonResponse({ error: 'A entrada desta transferência já foi autorizada em produção — não é possível cancelar a saída isoladamente.' }, 409);
       }
     }
 

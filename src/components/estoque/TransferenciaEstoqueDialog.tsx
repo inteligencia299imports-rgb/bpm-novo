@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
-import { ArrowRightLeft, FileText, Loader2, RefreshCw, AlertTriangle, CheckCircle2, ArrowRight, Radio } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { ArrowRightLeft, FileText, Loader2, RefreshCw, AlertTriangle, CheckCircle2, ArrowRight, Radio, Link2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { extrairErroFuncao } from '@/lib/edgeFunctionError';
@@ -202,6 +203,39 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, estoqueItem?.loja_id, eh0km]);
 
+  // Pedido do usuário, 2026-09-30: a saída também cobre a moto 0km "enviada
+  // como demonstração" pra outra empresa/UF (mesma operação de estoque,
+  // CFOP escolhido livremente na emissão — 949/152 de transferência de
+  // propriedade ou 912 de demonstração) — sem aba/operação nova. Quando a
+  // NF já foi emitida fora do bpm-novo (direto na Focus), dá pra vincular o
+  // XML aqui em vez de emitir pelo botão normal.
+  const [mostrarVincular, setMostrarVincular] = useState(false);
+  const [vincularXml, setVincularXml] = useState('');
+  const [vincularRef, setVincularRef] = useState('');
+  const [vinculandoSaida, setVinculandoSaida] = useState(false);
+  const handleVincularSaida = async () => {
+    if (!vincularXml.trim() || !vincularRef.trim()) {
+      toast.error('Cole o XML completo da NF-e e informe o ref usado na emissão pela Focus');
+      return;
+    }
+    setVinculandoSaida(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('emitir-nfe-compra', {
+        body: { acao: 'vincular_transferencia_saida', tipo: 'transferencia_saida_0km', estoque_moto_nova_id: entityId, xml: vincularXml.trim(), ref: vincularRef.trim() },
+      });
+      if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message || 'Falha ao vincular');
+      toast.success('NF de saída vinculada');
+      setVincularXml('');
+      setVincularRef('');
+      setMostrarVincular(false);
+      await saida.carregar();
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao vincular a NF');
+    } finally {
+      setVinculandoSaida(false);
+    }
+  };
+
   const motoLabel = [estoqueItem?.marca, estoqueItem?.modelo].filter(Boolean).join(' ') || 'Moto';
   const saidaEmitida = saida.emitida;
   const saidaProducao = saidaEmitida && saida.nfe?.ambiente === 'producao';
@@ -304,7 +338,32 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                     <FileText className="h-4 w-4" /> NF-e (Produção)
                   </Button>
                 )}
+                {eh0km && !saidaEmitida && !saida.pendente && (
+                  <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={() => setMostrarVincular((v) => !v)}>
+                    <Link2 className="h-3.5 w-3.5" /> Já tenho o XML
+                  </Button>
+                )}
               </div>
+
+              {mostrarVincular && (
+                <div className="rounded-lg border p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    NF já autorizada fora do bpm-novo (ex.: demonstração, CFOP 912) — cole o XML e o <code>ref</code> usado na emissão pela Focus pra vincular aqui.
+                  </p>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Ref da Focus</Label>
+                    <Input value={vincularRef} onChange={(e) => setVincularRef(e.target.value)} placeholder="referência usada na emissão" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">XML da NF-e</Label>
+                    <Textarea value={vincularXml} onChange={(e) => setVincularXml(e.target.value)} placeholder="Cole o XML completo (nfeProc)..." rows={4} className="font-mono text-xs" />
+                  </div>
+                  <Button size="sm" variant="outline" className="w-full gap-1.5" disabled={vinculandoSaida} onClick={handleVincularSaida}>
+                    {vinculandoSaida ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                    Vincular
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
