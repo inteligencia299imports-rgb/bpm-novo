@@ -34,10 +34,14 @@ const ATPV_E = 'ATPV-E';
 // antes da TRANSFERÊNCIA FINALIZADA — ver RenaveSaidaUsadoDialog.
 const SAIDA_RENAVE = 'SAÍDA RENAVE';
 // Intermediação Parte 1 (moto consignada vendida) — devolução simbólica ao
-// consignante + compra, antes de liberar o resto do processo de transferência.
-// Reaparece aqui (era um botão solto na avaliação) porque é literalmente uma
-// etapa do processo — mesmo padrão das etapas de NF-e acima.
-const CONVERTER_CONSIGNACAO = 'DEVOLUÇÃO SIMBÓLICA / COMPRA';
+// consignante, depois compra, antes de liberar o resto do processo de
+// transferência. Reaparecem aqui (eram um botão solto na avaliação, depois
+// uma única etapa combinada "DEVOLUÇÃO SIMBÓLICA / COMPRA") como duas etapas
+// SEPARADAS — pedido do usuário, 2026-09-30, mesmo padrão de NF_TROCA/NF_VENDA
+// acima (cada NF-e com sua própria linha no checklist). As duas continuam
+// abrindo o mesmo ConverterConsignacaoDialog (já mostra os 2 passos).
+const DEVOLUCAO_CONSIGNACAO = 'DEVOLUÇÃO SIMBÓLICA';
+const NF_COMPRA_CONSIGNACAO = 'NF-E DE COMPRA';
 
 const DEFAULT_ETAPAS = [
   'CHECK-LIST',
@@ -114,7 +118,7 @@ const ProcessoDialog: React.FC<Props> = ({
   const [contratoConsignanteOpen, setContratoConsignanteOpen] = useState(false);
 
   // ---- Intermediação Parte 2: devolução simbólica / compra da consignada vendida ----
-  const hasConverterEtapa = (customEtapas || []).includes(CONVERTER_CONSIGNACAO);
+  const hasConverterEtapa = (customEtapas || []).includes(DEVOLUCAO_CONSIGNACAO) || (customEtapas || []).includes(NF_COMPRA_CONSIGNACAO);
   const [avaliacaoConsignadaId, setAvaliacaoConsignadaId] = useState<string>('');
   const [avaliacaoConsignada, setAvaliacaoConsignada] = useState<any>(null);
   const [converterConsignacaoOpen, setConverterConsignacaoOpen] = useState(false);
@@ -131,6 +135,7 @@ const ProcessoDialog: React.FC<Props> = ({
   const consignacaoEmProducao = nfeConsignacaoConv.emitida && nfeConsignacaoConv.nfe?.ambiente === 'producao';
   const nfeDevolucaoConv = useNfeCompra(avaliacaoConsignadaId, open && !!avaliacaoConsignadaId, 'devolucao_consignacao', 'avaliacao');
   const nfeCompraConv = useNfeCompra(avaliacaoConsignadaId, open && !!avaliacaoConsignadaId, 'compra', 'avaliacao');
+  const devolucaoConvProducaoOk = nfeDevolucaoConv.emitida && nfeDevolucaoConv.nfe?.ambiente === 'producao';
   const converterConcluido = nfeCompraConv.emitida && nfeCompraConv.nfe?.ambiente === 'producao';
 
   // ---- Contexto pós-venda (moto vendida + troca) ----
@@ -369,11 +374,12 @@ const ProcessoDialog: React.FC<Props> = ({
     : etapa === NF_TRANSFERENCIA ? nfeTransferencia.emitida
     : (etapa === ATPV_E && is0km) ? atpvEmitido
     : etapa === SAIDA_RENAVE ? saidaRenaveFeita
-    : etapa === CONVERTER_CONSIGNACAO ? converterConcluido
+    : etapa === DEVOLUCAO_CONSIGNACAO ? devolucaoConvProducaoOk
+    : etapa === NF_COMPRA_CONSIGNACAO ? converterConcluido
     : false;
   // Etapas "automáticas" (sem checkbox, marcadas por estado externo).
   const isNfEtapa = (etapa: string) =>
-    etapa === NF_VENDA || etapa === NF_TROCA || etapa === NF_TRANSFERENCIA || (etapa === ATPV_E && is0km) || etapa === SAIDA_RENAVE || etapa === CONVERTER_CONSIGNACAO;
+    etapa === NF_VENDA || etapa === NF_TROCA || etapa === NF_TRANSFERENCIA || (etapa === ATPV_E && is0km) || etapa === SAIDA_RENAVE || etapa === DEVOLUCAO_CONSIGNACAO || etapa === NF_COMPRA_CONSIGNACAO;
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     if (isNfEtapa(etapa)) return; // estado dirigido pela emissão da NF-e
@@ -435,13 +441,15 @@ const ProcessoDialog: React.FC<Props> = ({
             ? (nfeTroca.nfe?.data_emissao ?? null)
             : e.etapa === NF_TRANSFERENCIA
               ? (nfeTransferencia.nfe?.data_emissao ?? null)
-              : e.etapa === CONVERTER_CONSIGNACAO
-                ? (nfeCompraConv.nfe?.data_emissao ?? null)
-                : e.etapa === ATPV_E
-                  ? ((estoqueMoto as any)?.renave_atualizado_em ?? null)
-                  : e.etapa === SAIDA_RENAVE
-                    ? (saidaRenaveAv?.renave_saida_em ?? null)
-                    : e.data_conclusao,
+              : e.etapa === DEVOLUCAO_CONSIGNACAO
+                ? (nfeDevolucaoConv.nfe?.data_emissao ?? null)
+                : e.etapa === NF_COMPRA_CONSIGNACAO
+                  ? (nfeCompraConv.nfe?.data_emissao ?? null)
+                  : e.etapa === ATPV_E
+                    ? ((estoqueMoto as any)?.renave_atualizado_em ?? null)
+                    : e.etapa === SAIDA_RENAVE
+                      ? (saidaRenaveAv?.renave_saida_em ?? null)
+                      : e.data_conclusao,
       }));
 
       const { error: persistError } = await persistChecklistRows({
@@ -594,16 +602,12 @@ const ProcessoDialog: React.FC<Props> = ({
               const isNfTransferencia = e.etapa === NF_TRANSFERENCIA;
               const isAtpv = e.etapa === ATPV_E;
               const isAtpvAuto = isAtpv && is0km;   // 0km: emitido via RENAVE (sem checkbox)
-              const isConverterConsignacao = e.etapa === CONVERTER_CONSIGNACAO;
+              const isDevolucaoConsignacao = e.etapa === DEVOLUCAO_CONSIGNACAO;
+              const isNfCompraConsignacao = e.etapa === NF_COMPRA_CONSIGNACAO;
               const isSaidaRenave = e.etapa === SAIDA_RENAVE;
-              const isNf = isNfVenda || isNfTroca || isNfTransferencia || isAtpvAuto || isSaidaRenave || isConverterConsignacao;
-              // Converter Consignação em Compra encadeia duas NF-e (devolução simbólica,
-              // depois compra) — "a NF-e ativa" é a devolução enquanto ela não estiver
-              // autorizada em produção, senão a compra (mesmo padrão de emissão/pendente/
-              // erro das outras etapas de NF-e, ver isNfVenda/isNfTroca acima).
-              const devolucaoConvProducaoOk = nfeDevolucaoConv.emitida && nfeDevolucaoConv.nfe?.ambiente === 'producao';
-              const nfeConverterAtiva = devolucaoConvProducaoOk ? nfeCompraConv : nfeDevolucaoConv;
-              const nfeObj = isNfVenda ? nfeVenda : isNfTroca ? nfeTroca : isNfTransferencia ? nfeTransferencia : isConverterConsignacao ? nfeConverterAtiva : null;
+              const isNf = isNfVenda || isNfTroca || isNfTransferencia || isAtpvAuto || isSaidaRenave || isDevolucaoConsignacao || isNfCompraConsignacao;
+              const nfeObj = isNfVenda ? nfeVenda : isNfTroca ? nfeTroca : isNfTransferencia ? nfeTransferencia
+                : isDevolucaoConsignacao ? nfeDevolucaoConv : isNfCompraConsignacao ? nfeCompraConv : null;
               const nfeObjDevolvida = isNfVenda ? nfeVendaDevolvida : isNfTroca ? nfeTrocaDevolvida : false;
               // Transferência só pode ser emitida depois da compra da troca
               // estar autorizada em produção (mesmo gate do servidor).
@@ -612,7 +616,9 @@ const ProcessoDialog: React.FC<Props> = ({
                 ? atpvEmitido
                 : isSaidaRenave
                   ? saidaRenaveFeita
-                : isConverterConsignacao
+                : isDevolucaoConsignacao
+                  ? devolucaoConvProducaoOk
+                : isNfCompraConsignacao
                   ? converterConcluido
                   : (isNf ? !!nfeObj?.emitida : false);
               const dataBloqueada = !isNf && !!e.data_conclusao && e.data_conclusao === datasSalvas[e.etapa];
@@ -673,10 +679,16 @@ const ProcessoDialog: React.FC<Props> = ({
                         {nfeTransferencia.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
                       </p>
                     )}
-                    {isConverterConsignacao && nfeConverterAtiva.erro && (
+                    {isDevolucaoConsignacao && nfeDevolucaoConv.erro && (
                       <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
                         <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
-                        {nfeConverterAtiva.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
+                        {nfeDevolucaoConv.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
+                      </p>
+                    )}
+                    {isNfCompraConsignacao && nfeCompraConv.erro && (
+                      <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                        {nfeCompraConv.nfe?.erro_mensagem || 'Falha na emissão da NF-e'}
                       </p>
                     )}
                   </div>
@@ -826,7 +838,59 @@ const ProcessoDialog: React.FC<Props> = ({
                         {saidaRenaveErro ? 'Tentar novamente' : 'Saída'}
                       </Button>
                     )
-                  ) : isConverterConsignacao ? (
+                  ) : isDevolucaoConsignacao ? (
+                    devolucaoConvProducaoOk ? (
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                        <Button
+                          variant={nfeDevolucaoConv.erro ? 'outline' : 'default'} size="sm"
+                          className={cn(
+                            'h-7 gap-1',
+                            nfeDevolucaoConv.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : nfeBotaoClasse(nfeDevolucaoConv.nfe),
+                          )}
+                          onClick={() => setConverterConsignacaoOpen(true)}
+                        >
+                          <ArrowLeftRight className="h-3.5 w-3.5" /> Devolução
+                        </Button>
+                        <CalendarIcon className="h-4 w-4 shrink-0" />
+                        {nfeDevolucaoConv.nfe?.data_emissao ? format(new Date(nfeDevolucaoConv.nfe.data_emissao), 'dd/MM/yyyy HH:mm', { locale: ptBR }) : '—'}
+                      </span>
+                    ) : !avaliacaoConsignadaId ? (
+                      <span className="text-sm text-muted-foreground">Moto de estoque não encontrada</span>
+                    ) : !consignacaoEmProducao ? (
+                      <span
+                        className="text-sm text-muted-foreground text-right"
+                        title="Fiscalmente só dá pra devolver referenciando uma NF-e de consignação com valor fiscal real"
+                      >
+                        Aguardando NF de consignação em produção
+                      </span>
+                    ) : nfeDevolucaoConv.pendente ? (
+                      <>
+                        <Badge variant="outline" className="gap-1.5 text-xs">
+                          <Loader2 className="h-3 w-3 animate-spin" /> Emitindo NF-e…
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="h-9 gap-1.5" disabled={nfeDevolucaoConv.loading} onClick={nfeDevolucaoConv.consultar}>
+                          <RefreshCw className={`h-4 w-4 ${nfeDevolucaoConv.loading ? 'animate-spin' : ''}`} /> Atualizar
+                        </Button>
+                      </>
+                    ) : nfeDevolucaoConv.erro ? (
+                      <Button
+                        variant="outline" size="sm"
+                        className="h-9 gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={nfeDevolucaoConv.loading}
+                        onClick={() => setConverterConsignacaoOpen(true)}
+                      >
+                        <RefreshCw className="h-4 w-4" /> Tentar novamente
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="default" size="sm"
+                        className={cn('h-9 gap-2 text-sm', nfeBotaoClasse(nfeDevolucaoConv.nfe))}
+                        onClick={() => setConverterConsignacaoOpen(true)}
+                      >
+                        <ArrowLeftRight className="h-4 w-4" /> Devolução Simbólica
+                      </Button>
+                    )
+                  ) : isNfCompraConsignacao ? (
                     converterConcluido ? (
                       <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
                         <Button
@@ -844,27 +908,24 @@ const ProcessoDialog: React.FC<Props> = ({
                       </span>
                     ) : !avaliacaoConsignadaId ? (
                       <span className="text-sm text-muted-foreground">Moto de estoque não encontrada</span>
-                    ) : !consignacaoEmProducao ? (
-                      <span
-                        className="text-sm text-muted-foreground text-right"
-                        title="Fiscalmente só dá pra devolver referenciando uma NF-e de consignação com valor fiscal real"
-                      >
-                        Aguardando NF de consignação em produção
+                    ) : !devolucaoConvProducaoOk ? (
+                      <span className="text-sm text-muted-foreground text-right">
+                        Disponível após a devolução simbólica autorizada em produção
                       </span>
-                    ) : nfeConverterAtiva.pendente ? (
+                    ) : nfeCompraConv.pendente ? (
                       <>
                         <Badge variant="outline" className="gap-1.5 text-xs">
                           <Loader2 className="h-3 w-3 animate-spin" /> Emitindo NF-e…
                         </Badge>
-                        <Button variant="ghost" size="sm" className="h-9 gap-1.5" disabled={nfeConverterAtiva.loading} onClick={nfeConverterAtiva.consultar}>
-                          <RefreshCw className={`h-4 w-4 ${nfeConverterAtiva.loading ? 'animate-spin' : ''}`} /> Atualizar
+                        <Button variant="ghost" size="sm" className="h-9 gap-1.5" disabled={nfeCompraConv.loading} onClick={nfeCompraConv.consultar}>
+                          <RefreshCw className={`h-4 w-4 ${nfeCompraConv.loading ? 'animate-spin' : ''}`} /> Atualizar
                         </Button>
                       </>
-                    ) : nfeConverterAtiva.erro ? (
+                    ) : nfeCompraConv.erro ? (
                       <Button
                         variant="outline" size="sm"
                         className="h-9 gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        disabled={nfeConverterAtiva.loading}
+                        disabled={nfeCompraConv.loading}
                         onClick={() => setConverterConsignacaoOpen(true)}
                       >
                         <RefreshCw className="h-4 w-4" /> Tentar novamente
@@ -872,10 +933,10 @@ const ProcessoDialog: React.FC<Props> = ({
                     ) : (
                       <Button
                         variant="default" size="sm"
-                        className={cn('h-9 gap-2 text-sm', nfeBotaoClasse(nfeConverterAtiva.nfe))}
+                        className={cn('h-9 gap-2 text-sm', nfeBotaoClasse(nfeCompraConv.nfe))}
                         onClick={() => setConverterConsignacaoOpen(true)}
                       >
-                        <ArrowLeftRight className="h-4 w-4" /> Converter em Compra
+                        <ArrowLeftRight className="h-4 w-4" /> Emitir Compra
                       </Button>
                     )
                   ) : isNf ? (
