@@ -104,7 +104,7 @@ const RenaveSaidaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, atendimen
   const carregarAvaliacao = async () => {
     const { data } = await (supabase as any)
       .from('avaliacoes')
-      .select(`id, chassi, placa, renavam, renave_id_estoque, renave_estado, renave_nf_vinculada_em, renave_atpv_assinatura_enviada_em, renave_crlve_url, renave_saida_em, renave_saida_atendimento_id, renave_num_termo_saida, renave_termo_saida_url, renave_saida_atpv_numero, renave_saida_atpv_url, renave_nf_venda_vinculada_em, renave_saida_ultimo_erro, ${MARCA_MODELO_SELECT}`)
+      .select(`id, chassi, placa, renavam, numero_crv, codigo_seguranca_crv, tipo_crv, renave_id_estoque, renave_estado, renave_nf_vinculada_em, renave_atpv_assinatura_enviada_em, renave_crlve_url, renave_saida_em, renave_saida_atendimento_id, renave_num_termo_saida, renave_termo_saida_url, renave_saida_atpv_numero, renave_saida_atpv_url, renave_nf_venda_vinculada_em, renave_saida_ultimo_erro, ${MARCA_MODELO_SELECT}`)
       .eq('id', avaliacaoId)
       .maybeSingle();
     setAvaliacao(flattenMarcaModelo(data) || null);
@@ -315,6 +315,12 @@ const RenaveSaidaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, atendimen
                 <Info label="Placa" value={avaliacao?.placa} />
                 <Info label="Chassi" value={avaliacao?.chassi} />
                 <Info label="RENAVAM" value={avaliacao?.renavam} />
+                {/* Conferência manual contra o erro da SERPRO "Número CRV
+                    informado não bate com o último CRV registrado no Renavam"
+                    — mesmos dados gravados na Entrada RENAVE (Pós-Compra). */}
+                <Info label="Número CRV" value={avaliacao?.numero_crv} />
+                <Info label="Código de Segurança CRV" value={avaliacao?.codigo_seguranca_crv} />
+                <Info label="Tipo do CRV" value={avaliacao?.tipo_crv} />
                 <Info label="ID Estoque RENAVE" value={avaliacao?.renave_id_estoque} />
                 <Info label="Estado RENAVE" value={avaliacao?.renave_estado ? <span className="text-primary">{avaliacao.renave_estado}</span> : undefined} />
               </CardContent>
