@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 export const NFE_PENDENTE = ['recebida', 'validando', 'processando_itens', 'gerando_contas'];
 
-type NfeTipo = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_saida' | 'transferencia_entrada' | 'transferencia_saida_0km' | 'transferencia_entrada_0km';
+type NfeTipo = 'compra' | 'consignacao' | 'devolucao_consignacao' | 'venda_seminova' | 'venda_0km' | 'transferencia' | 'transferencia_saida' | 'transferencia_entrada' | 'transferencia_saida_0km' | 'transferencia_entrada_0km' | 'demonstracao_saida';
 
 /**
  * Estado + acoes da NF-e (emitir / consultar / polling).
