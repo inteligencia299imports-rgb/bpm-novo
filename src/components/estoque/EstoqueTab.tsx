@@ -481,6 +481,17 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
             action: () => setTransferenciaItem(item),
           });
         }
+        // Achado real 2026-09-30, chassi 95V1200AATM000012: "Demonstração"
+        // precisa continuar acessível mesmo com a moto já vendida (situação
+        // normal do "estoque negativo" que o recurso existe pra cobrir) —
+        // esse bloco tem um `return` antes de chegar na opção adicionada
+        // mais abaixo (pra motos ainda não vendidas), então precisa
+        // duplicar aqui também.
+        options.push({
+          label: item.em_demonstracao ? 'Demonstração ✓' : 'Demonstração',
+          icon: <Radio className="h-4 w-4" />,
+          action: () => setDemonstracaoItem(item),
+        });
         return options;
       }
     }
