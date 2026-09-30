@@ -1227,7 +1227,7 @@ Deno.serve(async (req) => {
   } else {
     const { data: atendimentoRow } = await admin
       .from('atendimentos_motos')
-      .select('id, cliente_id, loja_id, vendedor_id, interesse, retirada_presencial')
+      .select('id, cliente_id, loja_id, vendedor_id, interesse, retirada_presencial, tipo_atendimento')
       .eq('id', atendimentoId)
       .maybeSingle();
     if (!atendimentoRow) return jsonResponse({ error: 'Atendimento não encontrado' }, 404);
@@ -1259,7 +1259,10 @@ Deno.serve(async (req) => {
       await admin.from('atendimentos_motos').update({ retirada_presencial: body.retirada_presencial }).eq('id', atendimentoId);
       atendimento.retirada_presencial = body.retirada_presencial;
     }
-    retiradaPresencial = atendimento.retirada_presencial === true;
+    // Atendimento presencial é sempre retirada presencial (a tela trava o checkbox); o online
+    // segue o campo (padrão true — desmarcado = envio, com DIFAL).
+    retiradaPresencial = String(atendimento.tipo_atendimento ?? '').trim().toLowerCase() === 'presencial'
+      || atendimento.retirada_presencial !== false;
   }
 
   // Nome exibido no historico segue o padrao do sistema: user_roles.nome.

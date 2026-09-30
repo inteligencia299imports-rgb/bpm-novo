@@ -20,7 +20,7 @@ import { BPM_PROJETO_ID } from '@/lib/projeto';
 import type { Atendimento, MotoInteresse, Avaliacao } from '@/types/crm';
 import { generateContratoPdf, type ContratoPdfData } from '@/lib/generateContratoPdf';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
-import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useNfeDevolvida } from '@/hooks/useNfeDevolvida';
 import { useAuth } from '@/contexts/AuthContext';
 import ClienteForm from '@/components/clientes/ClienteForm';
@@ -321,10 +321,14 @@ const ContratoDialog: React.FC<Props> = ({
   const podeEmitirNova = !nfeJaEmitida || nfeDevolvida;
   const [nfeValor, setNfeValor] = useState('');
   const [nfeObs, setNfeObs] = useState('');
-  // Retirada presencial (cliente de outra UF leva a moto na loja): operação interna na NF-e —
-  // CFOP 5xxx, sem DIFAL, grupo <entrega> com o endereço da loja. Gravado em
-  // atendimentos_motos.retirada_presencial pela própria emissão (emitir-nfe-compra).
-  const [retiradaPresencial, setRetiradaPresencial] = useState(false);
+  // Retirada presencial (cliente leva a moto na loja): operação interna na NF-e — CFOP 5xxx,
+  // sem DIFAL, grupo <entrega> com o endereço da loja. Padrão: sim. Atendimento presencial é
+  // sempre retirada presencial (trava); online pode desmarcar. Grava na hora em
+  // atendimentos_motos.retirada_presencial (a emissão também força presencial -> true).
+  const [retiradaPresencialBruta, setRetiradaPresencial] = useState(true);
+  const [tipoAtendimento, setTipoAtendimento] = useState<string | null>(null);
+  const atendimentoPresencial = String(tipoAtendimento ?? '').trim().toLowerCase() === 'presencial';
+  const retiradaPresencial = atendimentoPresencial || retiradaPresencialBruta;
   // ICMS-ST retido anteriormente (grupo <ICMS60> da NF de venda 0km) — transcrito
   // da NF de entrada da moto. Editável aqui e salvo em estoque_motos_novas.
   const [stBcRetido, setStBcRetido] = useState('');
@@ -429,7 +433,7 @@ const ContratoDialog: React.FC<Props> = ({
           .limit(1),
         supabase
           .from('atendimentos_motos')
-          .select('loja_id, retirada_presencial, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))')
+          .select('loja_id, retirada_presencial, tipo_atendimento, cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))')
           .eq('id', atendimento.id)
           .maybeSingle(),
         // Lê valor_sinal/valor_venda pela MESMA chave usada no save: pelo id da moto do
@@ -523,7 +527,8 @@ const ContratoDialog: React.FC<Props> = ({
       setJaGerado(!!(histGerado && histGerado.length > 0));
 
       // Empresa vinculada à loja do atendimento (emitente da NF-e / vendedora no contrato).
-      setRetiradaPresencial((freshAtendimento as any)?.retirada_presencial === true);
+      setRetiradaPresencial((freshAtendimento as any)?.retirada_presencial !== false);
+      setTipoAtendimento((freshAtendimento as any)?.tipo_atendimento ?? (atendimento as any).tipo_atendimento ?? null);
       const lojaId = (freshAtendimento as any)?.loja_id ?? (atendimento as any).loja_id;
       let empresas: any[] = [];
       if (lojaId) {
@@ -650,6 +655,27 @@ const ContratoDialog: React.FC<Props> = ({
       .join(' ');
     if (dasFormas) setNfeObs(dasFormas.toUpperCase());
   }, [open, ehNfe, formasPagamento, nfeObs, nfe.nfe]);
+
+  const alterarRetiradaPresencial = async (v: boolean) => {
+    setRetiradaPresencial(v);
+    const { error } = await supabase.from('atendimentos_motos').update({ retirada_presencial: v } as any).eq('id', atendimento.id);
+    if (error) { setRetiradaPresencial(!v); toast.error('Não foi possível salvar a retirada presencial'); }
+  };
+
+  const retiradaPresencialCampo = (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2 pt-1">
+        <Checkbox
+          id="retirada-presencial"
+          checked={retiradaPresencial}
+          disabled={atendimentoPresencial || nfeEmProducao}
+          onCheckedChange={(v) => alterarRetiradaPresencial(v === true)}
+        />
+        <Label htmlFor="retirada-presencial" className="cursor-pointer">Retirada presencial</Label>
+      </div>
+      {!retiradaPresencial && <p className="text-xs text-amber-700">Retirada não presencial gera DIFAL</p>}
+    </div>
+  );
 
   const handleEmitirNf = (ambiente: 'homologacao' | 'producao') =>
     nfe.emitir({
@@ -1406,6 +1432,7 @@ const ContratoDialog: React.FC<Props> = ({
                       {/* Fixo, ver docs-fiscal-299 §2.5. Empresa ocupa 2 colunas (texto
                           longo) — Atendimento cai naturalmente na 3ª coluna. */}
                       {ehNfe && <InfoDisplay label="Atendimento" value="Presencial" />}
+                      {retiradaPresencialCampo}
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -1422,6 +1449,7 @@ const ContratoDialog: React.FC<Props> = ({
                           </SelectContent>
                         </Select>
                       </div>
+                      {retiradaPresencialCampo}
                     </div>
                   )}
 
@@ -2118,24 +2146,6 @@ const ContratoDialog: React.FC<Props> = ({
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <InfoDisplay label="Valor da Nota" value={nfeValor ? `R$ ${nfeValor}` : undefined} valueClassName="text-primary" />
-                    {(() => {
-                      const ufCli = String(cliEndereco?.uf ?? '').trim().toUpperCase();
-                      const ufEmp = String(empresaSel?.uf ?? '').trim().toUpperCase();
-                      const outraUf = !!ufCli && !!ufEmp && ufCli !== ufEmp;
-                      return (
-                        <div className={cn("flex items-start justify-between gap-3 rounded-md border p-3", outraUf && "border-amber-300 bg-amber-50/60")}>
-                          <div className="space-y-0.5">
-                            <Label htmlFor="retirada-presencial" className="cursor-pointer">Retirada presencial</Label>
-                            <p className="text-xs text-muted-foreground">
-                              O cliente leva a moto na loja: a NF-e sai como operação interna (CFOP 5xxx, sem DIFAL),
-                              com o endereço da loja como local de entrega.
-                              {outraUf && <span className="block text-amber-700 mt-0.5">Cliente de {ufCli}, empresa de {ufEmp} — marque se ele retira a moto aqui.</span>}
-                            </p>
-                          </div>
-                          <Switch id="retirada-presencial" checked={retiradaPresencial} onCheckedChange={setRetiradaPresencial} />
-                        </div>
-                      );
-                    })()}
                     <div className="space-y-1.5">
                       <Label>Observações na NF-e</Label>
                       <Textarea
