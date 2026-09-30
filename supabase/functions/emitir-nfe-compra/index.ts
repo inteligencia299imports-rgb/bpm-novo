@@ -435,6 +435,34 @@ async function cancelarCompromissosDaNf(admin: any, nfeEntradaId: string): Promi
  * `cancelado`) e registra no histórico. Parcelas já pagas NÃO são mexidas
  * (houve baixa real) — devolve a contagem para avisar o usuário.
  */
+// Empresa de origem de uma transferência (achada pela NF de SAÍDA
+// correspondente) -> loja certa dentro dela. Usado tanto pra devolver a moto
+// (devolução pós-24h) quanto pra reverter uma entrada cancelada (dentro das
+// 24h, ver aplicarCancelamento). Lojas candidatas por empresa porque uma
+// empresa pode ter mais de uma loja cadastrada no sistema (ex.: MMATOS tem
+// 3) — sem isso, pegar a primeira que aparecer seria arbitrário/errado.
+// Achado real 2026-09-30 (chassi 95V1200AATM000012, FAG/Ducati BSB -> Ducati
+// POA): a lista de 0km não incluía "Ducati BSB", então cancelar a entrada
+// dessa transferência não conseguia devolver a moto pra origem.
+async function resolverLojaOrigemTransferencia(
+  admin: any,
+  eh0km: boolean,
+  fkValOrigem: string,
+): Promise<{ empresaOrigem: string; lojaId: string } | null> {
+  const operacaoSaidaOriginal = eh0km ? 'transferencia_saida_0km' : 'transferencia_saida';
+  const fkColOrigem = eh0km ? 'estoque_moto_nova_id' : 'avaliacao_id';
+  const { data: saidaOriginal } = await admin.from('nfe_entradas').select('empresa_id')
+    .eq(fkColOrigem, fkValOrigem).eq('operacao', operacaoSaidaOriginal).eq('status', 'processada')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  const empresaOrigem = (saidaOriginal as any)?.empresa_id ?? null;
+  if (!empresaOrigem) return null;
+  const lojasCandidatas = eh0km ? ['Ducati FLN', 'Ducati POA', 'Ducati BSB'] : ['299f', '299p'];
+  const { data: lojaOrigemRow } = await admin.from('loja_empresas').select('id').eq('empresa_id', empresaOrigem)
+    .eq('sistema', 'motos').in('loja', lojasCandidatas).limit(1).maybeSingle();
+  if (!lojaOrigemRow?.id) return null;
+  return { empresaOrigem, lojaId: lojaOrigemRow.id };
+}
+
 async function aplicarCancelamento(
   admin: any,
   cfg: OperacaoConfig,
@@ -473,6 +501,28 @@ async function aplicarCancelamento(
       .maybeSingle();
     if ((avStatus?.[cfg.avStatusField] ?? null) === cfg.avStatusEmAndamento) {
       await admin.from('avaliacoes').update({ [cfg.avStatusField]: cfg.avStatusAoCancelar }).eq('id', entityId);
+    }
+  }
+
+  // Cancelar a ENTRADA de uma transferência de estoque (dentro das 24h)
+  // devolve a moto pra empresa/loja de ORIGEM — mesmo efeito que a devolução
+  // pós-24h já faz (ver bloco de devolucao_transferencia/
+  // devolucao_transferencia_0km, que reaproveita o mesmo helper), só que
+  // aqui é a própria NF que vira 'cancelada', sem uma NF nova.
+  if (nfeRow.operacao === 'transferencia_entrada' || nfeRow.operacao === 'transferencia_entrada_0km') {
+    const eh0kmTransf = nfeRow.operacao === 'transferencia_entrada_0km';
+    const fkValOrigem = eh0kmTransf ? nfeRow.estoque_moto_nova_id : nfeRow.avaliacao_id;
+    if (fkValOrigem) {
+      const origem = await resolverLojaOrigemTransferencia(admin, eh0kmTransf, fkValOrigem);
+      if (origem) {
+        if (eh0kmTransf) {
+          await admin.from('estoque_motos_novas')
+            .update({ loja_id: origem.lojaId, empresa_id: origem.empresaOrigem })
+            .eq('id', fkValOrigem);
+        } else {
+          await admin.from('estoque_motos').update({ loja_id: origem.lojaId }).eq('avaliacao_id', fkValOrigem);
+        }
+      }
     }
   }
 
@@ -2675,25 +2725,19 @@ Deno.serve(async (req) => {
     }
     // Devolução de transferência: a moto volta pra loja/empresa de ORIGEM da
     // transferência original (achada pela NF de saída correspondente) — efeito
-    // inverso do que a entrada fez.
+    // inverso do que a entrada fez. Mesmo helper usado no cancelamento dentro
+    // das 24h (ver aplicarCancelamento/resolverLojaOrigemTransferencia).
     if (tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km') {
-      const operacaoSaidaOriginal = tipo === 'devolucao_transferencia' ? 'transferencia_saida' : 'transferencia_saida_0km';
-      const fkColOriginal = tipo === 'devolucao_transferencia' ? 'avaliacao_id' : 'estoque_moto_nova_id';
-      const fkValOriginal = tipo === 'devolucao_transferencia' ? avaliacaoId : entityId;
-      const { data: saidaOriginal } = await admin.from('nfe_entradas').select('empresa_id')
-        .eq(fkColOriginal, fkValOriginal).eq('operacao', operacaoSaidaOriginal).eq('status', 'processada')
-        .order('created_at', { ascending: false }).limit(1).maybeSingle();
-      const empresaOrigem = (saidaOriginal as any)?.empresa_id ?? null;
-      const lojasCandidatas = tipo === 'devolucao_transferencia' ? ['299f', '299p'] : ['Ducati FLN', 'Ducati POA'];
-      const { data: lojaOrigemRow } = empresaOrigem
-        ? await admin.from('loja_empresas').select('id').eq('empresa_id', empresaOrigem).eq('sistema', 'motos')
-            .in('loja', lojasCandidatas).limit(1).maybeSingle()
-        : { data: null };
-      if (empresaOrigem && lojaOrigemRow?.id) {
-        if (tipo === 'devolucao_transferencia') {
-          await admin.from('estoque_motos').update({ loja_id: lojaOrigemRow.id }).eq('avaliacao_id', avaliacaoId);
+      const eh0kmTransf = tipo === 'devolucao_transferencia_0km';
+      const fkValOrigem = eh0kmTransf ? entityId : avaliacaoId;
+      const origem = await resolverLojaOrigemTransferencia(admin, eh0kmTransf, fkValOrigem);
+      if (origem) {
+        if (eh0kmTransf) {
+          await admin.from('estoque_motos_novas')
+            .update({ loja_id: origem.lojaId, empresa_id: origem.empresaOrigem })
+            .eq('id', entityId);
         } else {
-          await admin.from('estoque_motos_novas').update({ loja_id: lojaOrigemRow.id, empresa_id: empresaOrigem }).eq('id', entityId);
+          await admin.from('estoque_motos').update({ loja_id: origem.lojaId }).eq('avaliacao_id', avaliacaoId);
         }
       }
     }
