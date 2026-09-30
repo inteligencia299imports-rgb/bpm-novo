@@ -855,7 +855,7 @@ const ProcessoDialog: React.FC<Props> = ({
                         <Button
                           variant={nfeDevolucaoConv.erro ? 'outline' : 'default'} size="sm"
                           className={cn(
-                            'h-7 gap-1',
+                            'h-7 w-24 gap-1 justify-center',
                             nfeDevolucaoConv.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : nfeBotaoClasse(nfeDevolucaoConv.nfe),
                           )}
                           onClick={() => setConverterConsignacaoOpen(true)}
@@ -907,7 +907,7 @@ const ProcessoDialog: React.FC<Props> = ({
                         <Button
                           variant={nfeCompraConv.erro ? 'outline' : 'default'} size="sm"
                           className={cn(
-                            'h-7 gap-1',
+                            'h-7 w-24 gap-1 justify-center',
                             nfeCompraConv.erro ? 'border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive' : nfeBotaoClasse(nfeCompraConv.nfe),
                           )}
                           onClick={() => setConverterConsignacaoOpen(true)}
