@@ -2514,6 +2514,11 @@ Deno.serve(async (req) => {
   const regraIpi = linhas.ipi as unknown as RegraFiscal | null;
   const regraIbsCbs = linhas.ibscbs as unknown as RegraFiscal | null;
   const faltando: string[] = [];
+  // Moto não sai em remessa de bonificação/doação/brinde (decisão do usuário, 2026-09-30): o bpm
+  // nunca emite com CFOP 5910/6910, mesmo que alguma regra/natureza case com a operação.
+  if (['5910', '6910'].includes(String(regraIcms?.cfop ?? ''))) {
+    return jsonResponse({ error: `CFOP ${regraIcms?.cfop} (remessa em bonificação, doação ou brinde) não é permitido para moto no BPM.` }, 409);
+  }
   if (!regraIcms?.cfop || !regraIcms?.situacao_tributaria) faltando.push('ICMS (CFOP/CST)');
   if (!regraPis?.situacao_tributaria) faltando.push('PIS');
   if (!regraCofins?.situacao_tributaria) faltando.push('COFINS');
