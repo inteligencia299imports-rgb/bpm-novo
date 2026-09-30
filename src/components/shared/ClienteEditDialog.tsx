@@ -59,6 +59,8 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
   const [bairro, setBairro] = useState('');
   const [cidade, setCidade] = useState('');
   const [uf, setUf] = useState('');
+  // Código IBGE do município (NFS-e) — vem da busca de CEP; o gatilho do banco resolve pela cidade + UF ao salvar.
+  const [codigoIbge, setCodigoIbge] = useState<string | null>(null);
   const [buscandoCep, setBuscandoCep] = useState(false);
 
   useEffect(() => {
@@ -87,6 +89,7 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
       setBairro(endereco?.bairro || '');
       setCidade(endereco?.cidade || '');
       setUf(endereco?.uf || '');
+      setCodigoIbge((endereco as any)?.codigo_municipio_ibge || null);
       setCnhDocId(docIdent?.id || null);
       setCnhUrl(docIdent?.arquivo_url || null);
       setLoading(false);
@@ -106,6 +109,7 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
         setBairro(data.bairro || '');
         setCidade(data.localidade || '');
         setUf(data.uf || '');
+        setCodigoIbge(data.ibge || null);
       }
     } catch {
       // best effort - CEP lookup failing shouldn't block manual entry
@@ -152,6 +156,7 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
       bairro: bairro.trim() || null,
       cidade: cidade.trim() || null,
       uf: uf || null,
+      codigo_municipio_ibge: codigoIbge,
     };
     const enderecoTemAlgo = cep || logradouro || numero || complemento || bairro || cidade || uf;
     if (enderecoId) {

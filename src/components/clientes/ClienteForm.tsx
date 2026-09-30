@@ -38,6 +38,9 @@ type Endereco = {
   cidade: string;
   uf: string;
   pais: string;
+  // Código IBGE do município (NFS-e). Vem da busca de CEP/CNPJ; o gatilho do banco
+  // (preencher_codigo_municipio_ibge) resolve pela cidade + UF ao salvar.
+  codigo_municipio_ibge?: string | null;
 };
 
 const emptyEndereco: Endereco = {
@@ -330,6 +333,7 @@ export function ClienteForm({
         bairro: api.neighborhood ?? e.bairro,
         cidade: api.city ?? e.cidade,
         uf: (api.state ?? e.uf).toString().toUpperCase(),
+        codigo_municipio_ibge: api?.ibge?.city ? String(api.ibge.city) : null,
       }));
       setCepConsultado(onlyDigits(endereco.cep));
       toast.success("Endereço preenchido a partir do CEP");
@@ -357,6 +361,7 @@ export function ClienteForm({
         bairro: api.neighborhood ?? e.bairro,
         cidade: api.city ?? e.cidade,
         uf: (api.state ?? e.uf).toString().toUpperCase(),
+        codigo_municipio_ibge: api?.ibge?.city ? String(api.ibge.city) : null,
       }));
       setCepConsultadoAtpv(onlyDigits(enderecoAtpv.cep));
       toast.success("Endereço preenchido a partir do CEP");
@@ -437,8 +442,8 @@ export function ClienteForm({
   }, [existing]);
 
   const set = (k: string) => (v: any) => setForm((f: any) => ({ ...f, [k]: v }));
-  const setE = (k: keyof Endereco) => (v: any) => setEndereco((e) => ({ ...e, [k]: v }));
-  const setEAtpv = (k: keyof Endereco) => (v: any) => setEnderecoAtpv((e) => ({ ...e, [k]: v }));
+  const setE = (k: keyof Endereco) => (v: any) => setEndereco((e) => ({ ...e, [k]: v, ...(k === "cep" || k === "cidade" || k === "uf" ? { codigo_municipio_ibge: null } : {}) }));
+  const setEAtpv = (k: keyof Endereco) => (v: any) => setEnderecoAtpv((e) => ({ ...e, [k]: v, ...(k === "cep" || k === "cidade" || k === "uf" ? { codigo_municipio_ibge: null } : {}) }));
 
   // Botões "puxar dados" entre os dois endereços — copiam os campos, mantendo
   // o id (se houver) de quem está recebendo os dados, pra não trocar a linha.
@@ -585,6 +590,7 @@ export function ClienteForm({
         complemento: api.complemento ?? "",
         bairro: api.bairro ?? "",
         cidade: api.municipio ?? "",
+        codigo_municipio_ibge: api?.codigo_municipio_ibge ? String(api.codigo_municipio_ibge) : null,
         uf: (api.uf ?? "").toString().toUpperCase(),
         pais: api.pais || "BRASIL",
       }));
