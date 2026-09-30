@@ -265,23 +265,23 @@ const ProcessoDialog: React.FC<Props> = ({
           estMoto = em ? { ...(em as any), fonte: eh0km ? '0km' : 'seminova' } : null;
         }
 
-        // Detecção de troca e injeção de NF_VENDA/NF_TROCA na lista de etapas:
-        // só no Pós-Venda normal (etapas dinâmicas). Na Intermediação a
-        // etapa NF-E DE VENDA já vem fixa em customEtapas, e o item é sempre
-        // consignada (nunca troca).
-        if (isPosVenda) {
-          if (inter === 'trocar') {
-            const { data: tav } = await supabase
-              .from('avaliacoes')
-              .select('id')
-              .eq('atendimento_id', atendimentoId)
-              .in('tipo_aquisicao', TIPOS_PROPRIA)
-              .in('situacao', ['adquirida', 'estoque'])
-              .limit(1)
-              .maybeSingle();
-            trocaAvId = (tav as any)?.id ?? '';
-          }
+        // Detecção de troca: a moto vendida (seminova própria/0km OU, achado
+        // real 2026-09-30, uma consignada da Intermediação) pode ter vindo
+        // acompanhada de outra entrando como parte de pagamento — não é
+        // exclusividade do Pós-Venda normal.
+        if ((isPosVenda || hasConverterEtapa) && inter === 'trocar') {
+          const { data: tav } = await supabase
+            .from('avaliacoes')
+            .select('id')
+            .eq('atendimento_id', atendimentoId)
+            .in('tipo_aquisicao', TIPOS_PROPRIA)
+            .in('situacao', ['adquirida', 'estoque'])
+            .limit(1)
+            .maybeSingle();
+          trocaAvId = (tav as any)?.id ?? '';
+        }
 
+        if (isPosVenda) {
           if (estMoto?.fonte === '0km') {
             // Moto 0km: ATPV-e (RENAVE) no lugar da transferência, antes do
             // PENDENTE (BOLETO).
@@ -297,12 +297,23 @@ const ProcessoDialog: React.FC<Props> = ({
           }
 
           if (estMoto) {
+            // NF_VENDA e o que vem antes dela (transferência FAG, troca) ainda
+            // não existem na lista dinâmica — ancora depois da VISTORIA.
             const anchor = names.indexOf('VISTORIA');
             const pos = anchor >= 0 ? anchor + 1 : names.length;
             names.splice(pos, 0, NF_VENDA);
             if (inter === 'trocar' && trocaAvId && EMPRESAS_SO_MOTO_NOVA.has(empresaIdAt)) names.splice(pos, 0, NF_TRANSFERENCIA);
             if (inter === 'trocar' && trocaAvId) names.splice(pos, 0, NF_TROCA);
           }
+        } else if (hasConverterEtapa && trocaAvId) {
+          // Intermediação (moto consignada vendida) com troca: NF-E DE VENDA
+          // já vem fixa em customEtapas — insere a NF de entrada (troca) logo
+          // antes dela (mesmo lugar de sempre, ver bloco acima), nunca
+          // reaproveitando as etapas "NF-E DE COMPRA"/"DEVOLUÇÃO SIMBÓLICA"
+          // (essas são da conversão da PRÓPRIA consignada, não da moto que
+          // entra como parte de pagamento).
+          const pos = names.indexOf(NF_VENDA);
+          names.splice(pos >= 0 ? pos : names.length, 0, NF_TROCA);
         }
       }
 
