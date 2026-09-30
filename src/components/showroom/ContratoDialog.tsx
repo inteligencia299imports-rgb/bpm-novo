@@ -663,8 +663,8 @@ const ContratoDialog: React.FC<Props> = ({
   };
 
   const retiradaPresencialCampo = (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-2 pt-1">
+    <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2">
         <Checkbox
           id="retirada-presencial"
           checked={retiradaPresencial}
@@ -673,7 +673,7 @@ const ContratoDialog: React.FC<Props> = ({
         />
         <Label htmlFor="retirada-presencial" className="cursor-pointer">Retirada presencial</Label>
       </div>
-      {!retiradaPresencial && <p className="text-xs text-amber-700">Retirada não presencial gera DIFAL</p>}
+      {!retiradaPresencial && <span className="text-xs text-amber-700">Retirada não presencial gera DIFAL</span>}
     </div>
   );
 
@@ -1363,6 +1363,7 @@ const ContratoDialog: React.FC<Props> = ({
         <h1 className="text-xl font-bold flex items-center gap-2">
           <FileText className="h-5 w-5 text-primary" /> {ehNfe ? 'Emissão de NF-e de Venda' : 'Emissão de Proposta'}
         </h1>
+        {retiradaPresencialCampo}
         {ehNfe && (
           <>
             <NfeStatusBadge nfe={nfe} />
@@ -1432,7 +1433,6 @@ const ContratoDialog: React.FC<Props> = ({
                       {/* Fixo, ver docs-fiscal-299 §2.5. Empresa ocupa 2 colunas (texto
                           longo) — Atendimento cai naturalmente na 3ª coluna. */}
                       {ehNfe && <InfoDisplay label="Atendimento" value="Presencial" />}
-                      {retiradaPresencialCampo}
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -1449,7 +1449,6 @@ const ContratoDialog: React.FC<Props> = ({
                           </SelectContent>
                         </Select>
                       </div>
-                      {retiradaPresencialCampo}
                     </div>
                   )}
 
