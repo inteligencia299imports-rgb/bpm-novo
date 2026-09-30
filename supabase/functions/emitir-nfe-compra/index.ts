@@ -1227,7 +1227,7 @@ Deno.serve(async (req) => {
   } else {
     const { data: atendimentoRow } = await admin
       .from('atendimentos_motos')
-      .select('id, cliente_id, loja_id, vendedor_id, interesse')
+      .select('id, cliente_id, loja_id, vendedor_id, interesse, retirada_presencial')
       .eq('id', atendimentoId)
       .maybeSingle();
     if (!atendimentoRow) return jsonResponse({ error: 'Atendimento não encontrado' }, 404);
@@ -1246,6 +1246,21 @@ Deno.serve(async (req) => {
   }
 
   const entityId = ehVenda ? atendimentoId : (ehPor0km ? estoqueMotoNovaIdBody : avaliacaoId);
+
+  // Retirada presencial (só venda — mesmo esquema do crm-novo/ofc, docs-fiscal-299
+  // difal-ec87.md §6.3/§6.4): o cliente de outra UF vem à loja e leva a moto. A UF FISCAL da
+  // operação vira a da empresa (CFOP 5xxx, alíquota interna, idDest=1, sem DIFAL); o endereço
+  // do destinatário continua o real e a NF-e leva o grupo <entrega> com o endereço da loja.
+  // Marcado no card "NF-e de Venda" do contrato: a emissão manda o valor e ele fica gravado
+  // em atendimentos_motos.retirada_presencial.
+  let retiradaPresencial = false;
+  if (ehVenda && atendimento) {
+    if (acao === 'emitir' && typeof body.retirada_presencial === 'boolean' && body.retirada_presencial !== (atendimento.retirada_presencial === true)) {
+      await admin.from('atendimentos_motos').update({ retirada_presencial: body.retirada_presencial }).eq('id', atendimentoId);
+      atendimento.retirada_presencial = body.retirada_presencial;
+    }
+    retiradaPresencial = atendimento.retirada_presencial === true;
+  }
 
   // Nome exibido no historico segue o padrao do sistema: user_roles.nome.
   const callerName =
@@ -1361,7 +1376,7 @@ Deno.serve(async (req) => {
 
   const { data: empresa } = await admin
     .from('empresas')
-    .select('id, cnpj, regime_tributario, uf')
+    .select('id, cnpj, regime_tributario, uf, logradouro, numero, complemento, bairro, cidade, cep, codigo_municipio_ibge')
     .eq('id', empresaId)
     .maybeSingle();
 
@@ -2226,7 +2241,19 @@ Deno.serve(async (req) => {
     const tipoNatureza = (tipo === 'transferencia_saida' || tipo === 'transferencia_saida_0km') ? 'saida' : 'entrada';
     operacaoCarregada = { ...operacaoCarregada, naturezas: operacaoCarregada.naturezas.filter((n) => n.tipo === tipoNatureza) };
   }
-  const ufDestino = (end.uf ?? '').trim().toUpperCase();
+  // UF fiscal: a do cliente; na retirada presencial, a da empresa (operação interna).
+  const ufCliente = (end.uf ?? '').trim().toUpperCase();
+  const ufDestino = retiradaPresencial ? String(empresa.uf ?? '').trim().toUpperCase() : ufCliente;
+  // Grupo <entrega> (endereço da loja) — só quando o cliente é de outra UF (mesmo critério do ofc):
+  // sem ele a SEFAZ não tem como casar CFOP interno com destinatário de fora. Sem endereço da
+  // empresa cadastrado, bloqueia com mensagem clara em vez de mandar o grupo incompleto.
+  const entregaNaLoja = retiradaPresencial && !!ufCliente && ufCliente !== ufDestino;
+  if (entregaNaLoja) {
+    const faltantesEndereco = ['logradouro', 'numero', 'bairro', 'cidade', 'cep'].filter((c) => !(empresa as Record<string, unknown>)[c]);
+    if (faltantesEndereco.length) {
+      return jsonResponse({ error: `Retirada presencial: endereço da empresa emitente incompleto (faltando ${faltantesEndereco.join(', ')}) — cadastre em empresas antes de emitir.` }, 409);
+    }
+  }
   // Moto é sempre NCM do capítulo 8711. Origem: 0km repete a da NF de entrada da moto
   // (origemMoto0km); seminova/usada continua 0.
   const icmsOrigemMoto = (ehVenda0km || ehPor0km)
@@ -2258,6 +2285,7 @@ Deno.serve(async (req) => {
     regimeEmitente: empresa.regime_tributario,
     ufEmitente: empresa.uf,
     ufDestinatario: end.uf ?? null,
+    retiradaPresencial,
     destinatario: { contribuinteIcms: !pfDestinatario && fornecedor.contribuinte_icms === true, inscricaoEstadual: fornecedor.inscricao_estadual },
   });
   const natureza = {
@@ -2298,7 +2326,7 @@ Deno.serve(async (req) => {
     const difalNecessario = difalAplicavel({
       regimeTributarioEmitente: empresa.regime_tributario,
       ufEmitente: empresa.uf,
-      ufDestino: end.uf ?? null,
+      ufDestino: ufDestino || null,
       indIeDest: indIeDestPreview,
       consumidorFinal: !!natureza.consumidor_final,
       cstIcms: regraIcms?.situacao_tributaria,
@@ -2468,7 +2496,13 @@ Deno.serve(async (req) => {
       informacoes_complementares: natureza.informacoes_complementares ?? null,
       informacoes_adicionais_fisco: natureza.informacoes_adicionais_fisco ?? null,
     },
-    empresa: { cnpj: empresa.cnpj, regime_tributario: empresa.regime_tributario, uf: empresa.uf },
+    empresa: {
+      cnpj: empresa.cnpj, regime_tributario: empresa.regime_tributario, uf: empresa.uf,
+      logradouro: empresa.logradouro, numero: empresa.numero, complemento: empresa.complemento, bairro: empresa.bairro,
+      cidade: empresa.cidade, cep: empresa.cep, codigo_municipio_ibge: empresa.codigo_municipio_ibge,
+    },
+    retiradaPresencial,
+    entregaNaLoja,
     fornecedor: {
       nome: fornecedor.nome_razao_social,
       cpf_cnpj: fornecedor.cpf_cnpj,

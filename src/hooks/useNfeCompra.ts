@@ -78,13 +78,14 @@ export function useNfeCompra(
     setNfe((data as any[])?.[0] || null);
   }, [avaliacaoId, keyCol, by, tipo]);
 
-  const emitir = useCallback(async (opts?: { observacoes?: string; valor?: number; empresa_id?: string; ambiente?: 'homologacao' | 'producao'; destino_loja_id?: string }) => {
+  const emitir = useCallback(async (opts?: { observacoes?: string; valor?: number; empresa_id?: string; ambiente?: 'homologacao' | 'producao'; destino_loja_id?: string; retirada_presencial?: boolean }) => {
     setLoading(true);
     try {
       const extra: Record<string, unknown> = {};
       if (opts?.observacoes) extra.observacoes = opts.observacoes;
       if (typeof opts?.valor === 'number' && opts.valor > 0) extra.valor = opts.valor;
       if (opts?.empresa_id) extra.empresa_id = opts.empresa_id;
+      if (typeof opts?.retirada_presencial === 'boolean') extra.retirada_presencial = opts.retirada_presencial;
       if (opts?.ambiente) extra.ambiente = opts.ambiente;
       // Transferência de estoque entre empresas (saída/entrada) — loja de
       // destino escolhida no popup, o backend resolve a empresa a partir dela.
