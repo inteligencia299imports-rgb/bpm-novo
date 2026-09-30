@@ -37,6 +37,32 @@ const nomeCat = (v: any): string | null =>
  * "fornecedor"/destinatário certo numa transferência entre empresas (cada
  * lado do grupo já está cadastrado como cliente/fornecedor do outro).
  */
+// Origem do ICMS (0–8) da moto 0km: a da NF-e de ENTRADA dessa moto (XML do fornecedor) — a moto
+// nova importada pode vir com origem 1/2, e a venda/transferência/devolução tem que repetir a origem
+// do produto. Acha a nota pelo vínculo (nfe_entradas.estoque_moto_nova_id) ou pelo chassi no XML e
+// lê o <orig> do item (<det>) que tem esse chassi. Sem nota de entrada com XML, mantém 0 (o que
+// sempre foi usado; é a origem da maioria das entradas). Achado 2026-09-29: 2 motos da FAG entraram
+// com origem 1 e sairiam com 0.
+async function origemMoto0km(admin: any, motoNovaId: string | null, chassi: string | null): Promise<number> {
+  const ch = (chassi ?? '').trim().toUpperCase();
+  let xml: string | null = null;
+  if (motoNovaId) {
+    const { data } = await admin.from('nfe_entradas').select('xml_raw').eq('estoque_moto_nova_id', motoNovaId)
+      .like('xml_raw', '<%').order('data_emissao', { ascending: false }).limit(1);
+    xml = (data ?? [])[0]?.xml_raw ?? null;
+  }
+  if (!xml && ch) {
+    const { data } = await admin.from('nfe_entradas').select('xml_raw').ilike('xml_raw', `%${ch}%`)
+      .is('ref_externa', null).order('data_emissao', { ascending: false }).limit(1);
+    xml = (data ?? [])[0]?.xml_raw ?? null;
+  }
+  if (!xml) return 0;
+  const dets = xml.split(/<det\b/).slice(1);
+  const det = (ch && dets.find((d) => d.toUpperCase().includes(`<CHASSI>${ch}</CHASSI>`))) || (dets.length === 1 ? dets[0] : null);
+  const orig = det?.match(/<orig>(\d)<\/orig>/)?.[1];
+  return orig != null ? Number(orig) : 0;
+}
+
 async function fornecedorPorEmpresaId(admin: any, empresaId: string): Promise<string | null> {
   const { data: emp } = await admin.from('empresas').select('cnpj').eq('id', empresaId).maybeSingle();
   const cnpjDigits = String(emp?.cnpj ?? '').replace(/\D/g, '');
@@ -2151,14 +2177,22 @@ Deno.serve(async (req) => {
     operacaoCarregada = { ...operacaoCarregada, naturezas: operacaoCarregada.naturezas.filter((n) => n.tipo === tipoNatureza) };
   }
   const ufDestino = (end.uf ?? '').trim().toUpperCase();
-  // Moto é sempre NCM do capítulo 8711 e a NF sai com origem 0 (ver payload.ts).
+  // Moto é sempre NCM do capítulo 8711. Origem: 0km repete a da NF de entrada da moto
+  // (origemMoto0km); seminova/usada continua 0.
+  const icmsOrigemMoto = (ehVenda0km || ehPor0km)
+    ? await origemMoto0km(
+        admin,
+        ehPor0km ? (estoqueMotoNovaIdBody || null) : (estoqueMoto?.moto_nova_id ?? estoqueMoto?.id ?? null),
+        ehPor0km ? (emn0km?.chassi ?? null) : (estoqueMoto?.chassi ?? estoqueMoto?.moto_nova?.chassi ?? null),
+      )
+    : 0;
   // Bem usado: seminova e a venda de moto que veio de consignação (também usada)
   // — separa as regras do mesmo CFOP e pega a alíquota de veículo usado da
   // tabela de alíquotas (exceção por NCM).
   const itemFiscal = {
     ufDestino,
     ncm: '8711',
-    icmsOrigem: 0,
+    icmsOrigem: icmsOrigemMoto,
     bemUsado: viaVendaPosConsignacao ? true : cfg.bemUsado ?? null,
   };
   const escolhida = escolherRegra(operacaoCarregada, itemFiscal);
@@ -2418,6 +2452,7 @@ Deno.serve(async (req) => {
     // PIS/COFINS pela margem (venda − custo de aquisição).
     bemMovelUsado: tipo === 'venda_seminova',
     notaReferenciada,
+    icmsOrigem: icmsOrigemMoto,
     // Sem movimentação financeira real — devolução simbólica e transferência
     // pra MMATOS são as duas "saídas" sem pagamento de verdade do cliente.
     semPagamentoReal: tipo === 'devolucao_consignacao' || tipo === 'transferencia'
