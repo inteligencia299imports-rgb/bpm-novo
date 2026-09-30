@@ -394,6 +394,13 @@ const ProcessoDialog: React.FC<Props> = ({
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     if (isNfEtapa(etapa)) return; // estado dirigido pela emissão da NF-e
+    // Pedido do usuário, 2026-09-30: achados 4 casos com TRANSFERÊNCIA
+    // FINALIZADA marcada sem NF-e de venda emitida — trava aqui em vez de só
+    // deixar visível no checklist.
+    if (etapa === TRANSF_FINALIZADA && checked && !nfVendaProducao) {
+      toast.error('Emita a NF-e de venda em produção antes de marcar a transferência como finalizada.');
+      return;
+    }
     setEtapas(prev =>
       prev.map(e =>
         e.etapa === etapa
