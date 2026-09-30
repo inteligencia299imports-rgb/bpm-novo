@@ -1954,6 +1954,20 @@ Deno.serve(async (req) => {
     if (!saidaOk) {
       return jsonResponse({ error: 'A NF-e de saída da transferência ainda não foi emitida.' }, 409);
     }
+    // Pedido do usuário, 2026-09-30: se a moto já tem NF de venda autorizada
+    // em produção (vendida na empresa de origem — o "estoque negativo" da
+    // demonstração), não deixa gerar a entrada — a transferência de
+    // propriedade contradiz a venda já fechada. Cancele a saída em vez de
+    // completar a entrada.
+    const { data: estSeminovaVenda } = await admin.from('estoque_motos').select('id').eq('avaliacao_id', avaliacaoId).maybeSingle();
+    if (estSeminovaVenda?.id) {
+      const { data: vendaOk } = await admin.from('nfe_entradas').select('id')
+        .eq('estoque_moto_id', estSeminovaVenda.id).eq('operacao', 'venda_seminova')
+        .eq('status', 'processada').eq('ambiente', 'producao').limit(1).maybeSingle();
+      if (vendaOk) {
+        return jsonResponse({ error: 'Esta moto já tem NF-e de venda autorizada em produção — não é possível gerar a entrada da transferência. Cancele a saída em vez disso.' }, 409);
+      }
+    }
   } else if (tipo === 'transferencia_saida_0km') {
     // Mesmo pré-requisito — a moto 0km já entrou no estoque via NF-e de
     // compra da fábrica antes de poder ser transferida entre empresas. Mas,
@@ -1973,6 +1987,15 @@ Deno.serve(async (req) => {
       .eq('operacao', 'transferencia_saida_0km').eq('status', 'processada').limit(1).maybeSingle();
     if (!saidaOk) {
       return jsonResponse({ error: 'A NF-e de saída da transferência ainda não foi emitida.' }, 409);
+    }
+    // Pedido do usuário, 2026-09-30: mesma trava da seminova — moto já
+    // vendida (NF de venda_0km autorizada em produção) não pode receber a
+    // entrada da transferência.
+    const { data: vendaOk0km } = await admin.from('nfe_entradas').select('id')
+      .eq('estoque_moto_nova_id', estoqueMotoNovaIdBody).eq('operacao', 'venda_0km')
+      .eq('status', 'processada').eq('ambiente', 'producao').limit(1).maybeSingle();
+    if (vendaOk0km) {
+      return jsonResponse({ error: 'Esta moto já tem NF-e de venda autorizada em produção — não é possível gerar a entrada da transferência. Cancele a saída em vez disso.' }, 409);
     }
   } else {
     // venda

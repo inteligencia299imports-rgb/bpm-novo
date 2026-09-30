@@ -386,6 +386,12 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
               {!saidaProducao && (
                 <p className="text-xs text-muted-foreground">Disponível depois da saída ser autorizada em produção.</p>
               )}
+              {saidaProducao && !entradaEmitida && vendaFechada && (
+                <p className="text-sm text-destructive flex items-start gap-1.5">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  Esta moto já tem NF-e de venda autorizada em produção — não é possível gerar a entrada. Cancele a saída em vez disso.
+                </p>
+              )}
               {entradaEmitida && (
                 <div className="flex items-center justify-between rounded-lg border p-3 text-sm">
                   <span className="text-muted-foreground">Nº NF</span>
@@ -412,7 +418,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
               )}
               <div className="flex flex-wrap items-center gap-2 justify-end">
                 {(entrada.emitida || entrada.cancelada) && entrada.nfe?.ambiente === 'producao' && !vendaFechada && <CancelarNfeDialog nfe={entrada} />}
-                {saidaProducao && (!entradaEmitida || podeReemitirHomologEntrada) && !entrada.pendente && (
+                {saidaProducao && !vendaFechada && (!entradaEmitida || podeReemitirHomologEntrada) && !entrada.pendente && (
                   <Button
                     size="sm"
                     className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
@@ -423,7 +429,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                     {entrada.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
                   </Button>
                 )}
-                {saidaProducao && podeReemitirHomologEntrada && !entrada.pendente && (
+                {saidaProducao && !vendaFechada && podeReemitirHomologEntrada && !entrada.pendente && (
                   <Button
                     size="sm"
                     className="gap-1.5"
