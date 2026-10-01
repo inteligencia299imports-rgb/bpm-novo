@@ -97,9 +97,13 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saida.nfe, entrada.nfe]);
 
-  // Seminova só POA↔FLN por ora. 0km também inclui a FAG (Ducati BSB) — CFOP
-  // 6949/2949 (raiz de CNPJ diferente), resolvido automaticamente no backend.
-  const lojasPermitidas = eh0km ? ['Ducati FLN', 'Ducati POA', 'Ducati BSB'] : ['299f', '299p'];
+  // Seminova: POA/FLN (Ducati) + MMATOS/FAG (raiz de CNPJ diferente — CFOP
+  // 5949/1949 mesmo estado ou 6912/2912 interestadual, resolvido
+  // automaticamente no backend; cadastro fiscal da MMATOS 1949 feito em
+  // 2026-09-30). 0km já incluía a FAG (Ducati BSB) antes.
+  const lojasPermitidas = eh0km
+    ? ['Ducati FLN', 'Ducati POA', 'Ducati BSB']
+    : ['299f', '299p', '299i', '299s', 'Ducati BSB'];
 
   const carregarRenaveInfo = React.useCallback(() => {
     if (!eh0km || !entityId) return;
