@@ -72,12 +72,18 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
     });
     const etapaNfConcluidaSet = new Set(((etapaNfResult.data as any[]) || []).map((e: any) => e.avaliacao_id));
     // NF de compra devolvida (pós-24h): o negócio foi desfeito, não conta mais
-    // como "tem NF de compra" pra travar/esconder o item.
-    const avaliacoesComDevolucaoCompra = new Set(
-      ((nfeResult.data as any[]) || [])
-        .filter((n: any) => n.operacao === 'devolucao_compra' && n.status === 'processada' && n.ambiente === 'producao')
-        .map((n: any) => n.avaliacao_id),
-    );
+    // como "tem NF de compra" pra travar/esconder o item — a não ser que uma NF de
+    // compra nova tenha sido autorizada DEPOIS da devolução (reemissão; mesmo achado
+    // do PosVendaTab, 2026-10-01).
+    const ultimaDevolucaoCompra: Record<string, string> = {};
+    ((nfeResult.data as any[]) || [])
+      .filter((n: any) => n.operacao === 'devolucao_compra' && n.status === 'processada' && n.ambiente === 'producao')
+      .forEach((n: any) => {
+        if (String(n.created_at) > (ultimaDevolucaoCompra[n.avaliacao_id] ?? '')) ultimaDevolucaoCompra[n.avaliacao_id] = String(n.created_at);
+      });
+    const avaliacoesComDevolucaoCompra = new Set(Object.keys(ultimaDevolucaoCompra).filter((id) =>
+      !(nfeRowsPorAvaliacao[id] || []).some((n: any) => n.operacao === 'compra' && n.status === 'processada' && n.ambiente === 'producao' && String(n.created_at) > ultimaDevolucaoCompra[id]),
+    ));
     if (error) { toast.error('Erro ao carregar pós-compra'); } else {
       const estoqueMap: Record<string, { status: string; observacoes: string | null; data_entrada: string | null }> = {};
       (estData || []).forEach((e: any) => { if (e.avaliacao_id) estoqueMap[e.avaliacao_id] = { status: e.status, observacoes: e.observacoes, data_entrada: e.created_at }; });
