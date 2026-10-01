@@ -58,10 +58,12 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
     // VENDA dessa moto (não a NF de consignação/devolução/compra da cadeia
     // interna, que é só formalidade de entrada) — mesma regra do
     // ContratoConsignacaoDialog.
-    const nfeVendaResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('atendimento_id, status, ambiente').in('operacao', ['venda_seminova', 'venda_0km']).eq('status', 'processada').eq('ambiente', 'producao'));
+    const nfeVendaResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('atendimento_id, status, ambiente, created_at').in('operacao', ['venda_seminova', 'venda_0km']).eq('status', 'processada').eq('ambiente', 'producao'));
     // NF de venda devolvida (pós-24h): o negócio foi desfeito, não conta mais
-    // como "tem NF de venda" pra reaparecer no quadro.
-    const nfeDevolucaoVendaResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('atendimento_id').in('operacao', ['devolucao_venda_seminova', 'devolucao_venda_0km']).eq('status', 'processada').eq('ambiente', 'producao'));
+    // como "tem NF de venda" pra reaparecer no quadro — a não ser que uma NF de venda
+    // nova tenha sido autorizada DEPOIS da devolução (reemissão; mesmo achado do
+    // PosVendaTab, 2026-10-01).
+    const nfeDevolucaoVendaResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('atendimento_id, created_at').in('operacao', ['devolucao_venda_seminova', 'devolucao_venda_0km']).eq('status', 'processada').eq('ambiente', 'producao'));
     // Etapa "NF EMITIDA" concluída sem nfe_entradas (emitida fora do bpm-novo,
     // ou avaliação importada) — cai no fallback cinza (NFE_TAG_SEM_REGISTRO).
     const etapaNfResult = await fetchAllRange(() => supabase.from('consignacao_processos').select('avaliacao_id').eq('etapa', 'NF EMITIDA').eq('concluida', true));
@@ -77,11 +79,14 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
       if (!n.avaliacao_id) return;
       (nfeRowsPorAvaliacao[n.avaliacao_id] ??= []).push(n);
     });
-    const atendimentosComDevolucaoVenda = new Set(((nfeDevolucaoVendaResult.data as any[]) || []).map((n: any) => n.atendimento_id));
+    const ultimaDevolucaoVenda: Record<string, string> = {};
+    ((nfeDevolucaoVendaResult.data as any[]) || []).forEach((n: any) => {
+      if (n.atendimento_id && String(n.created_at) > (ultimaDevolucaoVenda[n.atendimento_id] ?? '')) ultimaDevolucaoVenda[n.atendimento_id] = String(n.created_at);
+    });
     const atendimentosComNfeVenda = new Set(
       ((nfeVendaResult.data as any[]) || [])
-        .map((n: any) => n.atendimento_id)
-        .filter((id: string) => !atendimentosComDevolucaoVenda.has(id)),
+        .filter((n: any) => !ultimaDevolucaoVenda[n.atendimento_id] || String(n.created_at) > ultimaDevolucaoVenda[n.atendimento_id])
+        .map((n: any) => n.atendimento_id),
     );
     const etapaNfConcluidaSet = new Set(((etapaNfResult.data as any[]) || []).map((e: any) => e.avaliacao_id));
     if (error) { toast.error('Erro ao carregar consignações'); } else {

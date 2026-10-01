@@ -73,8 +73,9 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       fetchLojaMap(),
       fetchAllRange<any>(() => supabase.from('nfe_entradas' as any).select('atendimento_id, status, ambiente, operacao, created_at').not('atendimento_id', 'is', null).like('operacao', 'venda%')),
       // NF de venda devolvida (pós-24h): o negócio foi desfeito, não conta mais
-      // como "tem NF de venda" pra travar/esconder o item.
-      fetchAllRange<any>(() => supabase.from('nfe_entradas' as any).select('atendimento_id').in('operacao', ['devolucao_venda_seminova', 'devolucao_venda_0km']).eq('status', 'processada').eq('ambiente', 'producao')),
+      // como "tem NF de venda" pra travar/esconder o item — a não ser que uma NF de
+      // venda nova tenha sido autorizada DEPOIS da devolução (reemissão).
+      fetchAllRange<any>(() => supabase.from('nfe_entradas' as any).select('atendimento_id, created_at').in('operacao', ['devolucao_venda_seminova', 'devolucao_venda_0km']).eq('status', 'processada').eq('ambiente', 'producao')),
       // Achado real 2026-09-29: etapa "NF EMITIDA" concluída sem nfe_entradas
       // (emitida fora do bpm-novo, ou atendimento importado) — mesmo padrão já
       // usado em PosCompraTab/ConsignacaoTab, faltava aqui.
@@ -86,7 +87,16 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       if (!n.atendimento_id) return;
       (nfeRowsPorAtendimento[n.atendimento_id] ??= []).push(n);
     });
-    const atendimentosComDevolucaoVenda = new Set(((nfeDevolucaoResult.data as any[]) || []).map((n: any) => n.atendimento_id));
+    // Última devolução de venda autorizada por atendimento. Uma devolução só anula a NF de venda
+    // se for posterior à última venda autorizada em produção — achado real 2026-10-01: Alessa
+    // Louany (NF 534 venda → 564 devolução → 565 nova venda) aparecia "concluída sem NF".
+    const ultimaDevolucaoVenda: Record<string, string> = {};
+    ((nfeDevolucaoResult.data as any[]) || []).forEach((n: any) => {
+      if (n.atendimento_id && String(n.created_at) > (ultimaDevolucaoVenda[n.atendimento_id] ?? '')) ultimaDevolucaoVenda[n.atendimento_id] = String(n.created_at);
+    });
+    const atendimentosComDevolucaoVenda = new Set(Object.keys(ultimaDevolucaoVenda).filter((id) =>
+      !(nfeRowsPorAtendimento[id] || []).some((n: any) => n.status === 'processada' && n.ambiente === 'producao' && String(n.created_at) > ultimaDevolucaoVenda[id]),
+    ));
     const etapaNfConcluidaSet = new Set(((etapaNfResult.data as any[]) || []).map((e: any) => e.atendimento_id));
     const estRes = {
       data: [
