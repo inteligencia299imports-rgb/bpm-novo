@@ -2107,9 +2107,26 @@ Deno.serve(async (req) => {
     // SEMPRE referenciam uma NF original já em produção (validarOrigemDevolucao
     // exige isso), então testar em homologação é sempre impossível, não só
     // condicionalmente.
+    // Entrada da transferência referencia a chave da saída (NFref) — se a
+    // saída já foi autorizada em PRODUÇÃO, testar a entrada em homologação é
+    // impossível por definição (mesmo motivo da devolução simbólica acima):
+    // a SEFAZ de homologação não enxerga chave de produção. Achado real
+    // 2026-09-30/10-01 (transferência FAG->MMATOS, SSH9B65): rejeição [267]
+    // "Chave de Acesso referenciada inexistente" tentando a entrada em
+    // homologação com a saída já em produção.
+    let saidaTransfEmProducao = false;
+    if (tipo === 'transferencia_entrada' || tipo === 'transferencia_entrada_0km') {
+      const col = tipo === 'transferencia_entrada_0km' ? 'estoque_moto_nova_id' : 'avaliacao_id';
+      const operacaoSaida = tipo === 'transferencia_entrada_0km' ? 'transferencia_saida_0km' : 'transferencia_saida';
+      const { data: saidaProdCheck } = await admin
+        .from('nfe_entradas').select('id').eq(col, entityId).eq('operacao', operacaoSaida)
+        .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
+      saidaTransfEmProducao = !!saidaProdCheck;
+    }
     const dispensaHomologPrevia = (tipo === 'devolucao_consignacao' && consignacaoRefAmbiente === 'producao')
       || tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km'
-      || tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km';
+      || tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km'
+      || saidaTransfEmProducao;
     if (!homologAutorizada && !dispensaHomologPrevia) {
       return jsonResponse({ error: 'Emita em homologação antes de emitir em produção.' }, 409);
     }
