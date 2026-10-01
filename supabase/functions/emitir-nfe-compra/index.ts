@@ -1574,7 +1574,9 @@ Deno.serve(async (req) => {
 
     const { data: inserida, error: insErr } = await admin.from('nfe_entradas').insert({
       empresa_id: emn0km.empresa_id,
-      chave_nfe: `NFe${chave}`,
+      // Só os 44 dígitos — "NFe" é o prefixo do atributo Id do XML, não faz
+      // parte da chave de acesso em si (usada depois como NFref de outra NF).
+      chave_nfe: chave,
       numero,
       serie,
       data_emissao: dataEmissao,
@@ -2406,7 +2408,11 @@ Deno.serve(async (req) => {
       .eq('avaliacao_id', avaliacaoId).eq('operacao', 'transferencia_saida').eq('status', 'processada')
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     saidaNfIdParaEntrada = saidaValorRow?.id ?? null;
-    saidaChaveParaEntrada = saidaValorRow?.chave_nfe ?? null;
+    // Só dígitos: achado real 2026-10-01 (SSH9B65) — chave_nfe gravada com o
+    // prefixo "NFe" (do atributo Id do XML, não da chave em si) fazia a
+    // SEFAZ rejeitar a entrada com [267] "Chave de Acesso referenciada
+    // inexistente" (chave de 44 dígitos não bate com string de 47 chars).
+    saidaChaveParaEntrada = saidaValorRow?.chave_nfe ? String(saidaValorRow.chave_nfe).replace(/\D/g, '') : null;
     valor = Number(saidaValorRow?.valor_total ?? 0);
   } else if (tipo === 'transferencia_saida_0km') {
     // Valor de custo da moto 0km (o que a fábrica cobrou) — mesmo critério
@@ -2418,7 +2424,7 @@ Deno.serve(async (req) => {
       .eq('estoque_moto_nova_id', estoqueMotoNovaIdBody).eq('operacao', 'transferencia_saida_0km').eq('status', 'processada')
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     saidaNfIdParaEntrada = saidaValorRow?.id ?? null;
-    saidaChaveParaEntrada = saidaValorRow?.chave_nfe ?? null;
+    saidaChaveParaEntrada = saidaValorRow?.chave_nfe ? String(saidaValorRow.chave_nfe).replace(/\D/g, '') : null;
     valor = Number(saidaValorRow?.valor_total ?? 0);
   } else if (tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km'
     || tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km') {
@@ -2894,7 +2900,10 @@ Deno.serve(async (req) => {
     erro_mensagem: null,
     numero: (focusBody.numero as string) ?? null,
     serie: (focusBody.serie as string) ?? null,
-    chave_nfe: (focusBody.chave_nfe as string) ?? null,
+    // Só dígitos — proteção extra (ver achado 2026-10-01 acima): mesmo que a
+    // Focus devolva com algum prefixo, nunca grava a chave suja (ela é usada
+    // depois como NFref de outra NF, que a SEFAZ rejeita se não bater 44 dígitos).
+    chave_nfe: focusBody.chave_nfe ? String(focusBody.chave_nfe).replace(/\D/g, '') || null : null,
     caminho_danfe: focusBody.caminho_danfe ? `${base}${focusBody.caminho_danfe}` : null,
     xml_raw: focusBody.caminho_xml_nota_fiscal ? `${base}${focusBody.caminho_xml_nota_fiscal}` : null,
   };
