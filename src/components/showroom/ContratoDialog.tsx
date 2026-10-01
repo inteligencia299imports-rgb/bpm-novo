@@ -323,12 +323,12 @@ const ContratoDialog: React.FC<Props> = ({
   const [nfeObs, setNfeObs] = useState('');
   // Retirada presencial (cliente leva a moto na loja): operação interna na NF-e — CFOP 5xxx,
   // sem DIFAL, grupo <entrega> com o endereço da loja. Padrão: sim. Atendimento presencial é
-  // sempre retirada presencial (trava); online pode desmarcar. Grava na hora em
-  // atendimentos_motos.retirada_presencial (a emissão também força presencial -> true).
+  // sempre retirada presencial (trava), assim como cliente do DF; online de fora do DF pode
+  // desmarcar. Grava na hora em atendimentos_motos.retirada_presencial (a emissão também força
+  // presencial/DF -> true).
   const [retiradaPresencialBruta, setRetiradaPresencial] = useState(true);
   const [tipoAtendimento, setTipoAtendimento] = useState<string | null>(null);
   const atendimentoPresencial = String(tipoAtendimento ?? '').trim().toLowerCase() === 'presencial';
-  const retiradaPresencial = atendimentoPresencial || retiradaPresencialBruta;
   // ICMS-ST retido anteriormente (grupo <ICMS60> da NF de venda 0km) — transcrito
   // da NF de entrada da moto. Editável aqui e salvo em estoque_motos_novas.
   const [stBcRetido, setStBcRetido] = useState('');
@@ -347,6 +347,12 @@ const ContratoDialog: React.FC<Props> = ({
   // Cadastro completo do cliente (para embutir o ClienteForm, igual ao contrato de compra).
   const clienteId = atendimento.cliente_id || null;
   const [clienteRecord, setClienteRecord] = useState<any | null>(null);
+  // Cliente do DF: retirada sempre presencial. UF do endereço fiscal (ou o primeiro) — mesmo
+  // critério da emissão (emitir-nfe-compra).
+  const enderecosCliente = (clienteRecord?.clientes_fornecedores_enderecos as any[] | undefined) ?? [];
+  const ufClienteRetirada = String((enderecosCliente.find((e) => e.tipo === 'fiscal') ?? enderecosCliente[0])?.uf ?? '').trim().toUpperCase();
+  const retiradaTravada = atendimentoPresencial || ufClienteRetirada === 'DF';
+  const retiradaPresencial = retiradaTravada || retiradaPresencialBruta;
   const [editandoCliente, setEditandoCliente] = useState(false);
   const [clienteTocado, setClienteTocado] = useState(false);
 
@@ -668,7 +674,7 @@ const ContratoDialog: React.FC<Props> = ({
         <Checkbox
           id="retirada-presencial"
           checked={retiradaPresencial}
-          disabled={atendimentoPresencial || nfeEmProducao}
+          disabled={retiradaTravada || nfeEmProducao}
           onCheckedChange={(v) => alterarRetiradaPresencial(v === true)}
         />
         <Label htmlFor="retirada-presencial" className="cursor-pointer">Retirada Presencial</Label>
