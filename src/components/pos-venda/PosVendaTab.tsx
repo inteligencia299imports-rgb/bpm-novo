@@ -24,6 +24,13 @@ interface PosVendaTabProps {
   onNavigateToPosCompra?: (avaliacaoId: string) => void;
 }
 
+// Oculto temporariamente a pedido do usuário, 2026-09-30: atendimento
+// reconstruído (era o lado da aquisição de uma moto já revendida — sem
+// NF de venda própria pra acompanhar aqui). Reavaliar depois.
+const ATENDIMENTOS_OCULTOS_POS_VENDA = new Set<string>([
+  'bd165fb9-859b-4225-b2b7-df7dc4f1bb43', // Roberto Frederico Conrado Rivas Marquez
+]);
+
 const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCompra }: PosVendaTabProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,6 +157,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     if (filterCidade !== 'todos') {
       filtered = filtered.filter((a: any) => matchesCidade(a.loja, filterCidade));
     }
+    filtered = filtered.filter((a: any) => !ATENDIMENTOS_OCULTOS_POS_VENDA.has(a.id));
     setItems(filtered);
     setLoading(false);
   }, [search, filterCidade]);
