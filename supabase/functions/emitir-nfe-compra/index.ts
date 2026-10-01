@@ -79,7 +79,12 @@ async function fornecedorPorEmpresaId(admin: any, empresaId: string): Promise<st
   const { data: emp } = await admin.from('empresas').select('cnpj').eq('id', empresaId).maybeSingle();
   const cnpjDigits = String(emp?.cnpj ?? '').replace(/\D/g, '');
   if (!cnpjDigits) return null;
-  const { data: forn } = await admin.from('clientes_fornecedores').select('id').eq('cpf_cnpj', cnpjDigits).maybeSingle();
+  // .maybeSingle() falha (silenciosamente, forn vira undefined) se houver mais
+  // de uma linha com o mesmo CNPJ — achado real 2026-09-30 (MMATOS cadastrada
+  // 2x, uma delas provavelmente duplicata por engano). Pega sempre a mais
+  // antiga em vez de travar a transferência por causa de dado duplicado.
+  const { data: forn } = await admin.from('clientes_fornecedores').select('id')
+    .eq('cpf_cnpj', cnpjDigits).order('created_at', { ascending: true }).limit(1).maybeSingle();
   return forn?.id ?? null;
 }
 
