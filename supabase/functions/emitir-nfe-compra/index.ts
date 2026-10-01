@@ -26,6 +26,18 @@ const DIAS_VENCIMENTO = 7;
 const FAG_EMPRESA_ID = '30496c3b-721f-4795-98fd-2785d3821f3b';
 const MMATOS_FORNECEDOR_ID = '5e86c319-7bef-4508-8402-9ff12705f919'; // clientes_fornecedores (CNPJ 21.194.795/0001-96)
 
+// Exceção pontual, pedida pelo usuário em 2026-09-30: a transferência de
+// estoque FAG -> MMATOS (CFOPs 5912/6912) está sem regra fiscal ativa pra
+// UF->UF iguais (DF->DF) — ver docs-fiscal-299. Até isso ser corrigido,
+// libera a venda de seminova diretamente pela FAG só pro chassi abaixo
+// (fiscalmente correto, já que a NF-e de compra também foi emitida pela
+// FAG — a moto é dela de verdade). Mesma lista em src/lib/tipoAquisicao.ts
+// (frontend). Remover depois que a transferência for consertada ou a moto
+// for vendida.
+const CHASSIS_EXCECAO_VENDA_SEMINOVA_FAG = new Set<string>([
+  '97NE67DF1RMBP3313', // SSH9B65 - Triumph Tiger 900 Rally Pro
+]);
+
 /** marca/modelo agora vem do catalogo via embed `marca:marca_id(nome)`.
  * Aceita tambem string crua (janela em que a coluna-ponte ainda existe). */
 const nomeCat = (v: any): string | null =>
@@ -2029,7 +2041,8 @@ Deno.serve(async (req) => {
     // Empresa "só moto nova" (FAG): não pode vender moto seminova — só teria
     // uma via troca, e essa já é obrigada a ir pra MMATOS antes da venda (ver
     // bloco de troca abaixo). Mesma regra aplicada no frontend (ContratoDialog).
-    if (!ehVenda0km && empresaId === FAG_EMPRESA_ID) {
+    const chassiVenda = String(estoqueMoto?.avaliacao?.chassi ?? '').toUpperCase();
+    if (!ehVenda0km && empresaId === FAG_EMPRESA_ID && !CHASSIS_EXCECAO_VENDA_SEMINOVA_FAG.has(chassiVenda)) {
       return jsonResponse({ error: 'Esta empresa só vende motos 0km — moto seminova não pode ser vendida por ela.' }, 409);
     }
     // Moto ainda "em consignação" (tipo_aquisicao='consignada' pra sempre — não

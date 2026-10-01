@@ -30,7 +30,7 @@ import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
 import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 import AgregadosContrato, { type Agregado, type AgregadoLinha } from '@/components/showroom/AgregadosContrato';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
-import { EMPRESAS_SO_MOTO_NOVA } from '@/lib/tipoAquisicao';
+import { EMPRESAS_SO_MOTO_NOVA, CHASSIS_EXCECAO_VENDA_SEMINOVA_FAG } from '@/lib/tipoAquisicao';
 import { pendenciasVeicProd } from '@/lib/veicProd';
 
 interface Props {
@@ -1294,7 +1294,8 @@ const ContratoDialog: React.FC<Props> = ({
   // seminova (EMPRESAS_SO_MOTO_NOVA) — pela mesma razão, também não podem
   // VENDER uma moto seminova (só teriam uma via troca, e essa já é obrigada a
   // ser transferida pra MMATOS antes da venda concluir).
-  const motoSeminovaBloqueadaEmpresa = EMPRESAS_SO_MOTO_NOVA.has(empresaId) && !!(motoInt || estItem) && !eh0kmVenda;
+  const motoSeminovaBloqueadaEmpresa = EMPRESAS_SO_MOTO_NOVA.has(empresaId) && !!(motoInt || estItem) && !eh0kmVenda
+    && !CHASSIS_EXCECAO_VENDA_SEMINOVA_FAG.has(String(estItem?.chassi ?? '').toUpperCase());
   const buildErrosGeracao = (variant: 'sinal' | 'venda'): string[] => {
     const errors: string[] = [];
     if (motoSeminovaBloqueadaEmpresa) errors.push('Moto seminova não pode ser vendida por esta empresa (só vende 0km)');
