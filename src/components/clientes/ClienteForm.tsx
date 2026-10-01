@@ -468,13 +468,19 @@ export function ClienteForm({
     prevTipoCadastro.current = form.tipo_cadastro;
   }, [form.tipo_cadastro, loading]);
 
-  // Pessoa física: origem sempre manual; sair da aba "fiscais" se selecionada
+  // Pessoa física: origem sempre manual; sair da aba "fiscais" se selecionada.
+  // Os setForm abaixo (e dos dois efeitos seguintes) re-checam tipo_pessoa no estado ATUAL:
+  // com o cadastro já em cache, a carga do banco (PJ) entra no mesmo ciclo que estes efeitos,
+  // que ainda enxergam o emptyForm (física) — sem a re-checagem sobrescreviam o PJ recém-carregado
+  // (achado real: MEI 56.334.243 WESLLEY, contribuinte_icms salvo true voltava "Não" na tela).
   useEffect(() => {
     if (form.tipo_pessoa === "fisica") {
-      if (form.origem_cadastro !== "manual") setForm((f: any) => ({ ...f, origem_cadastro: "manual" }));
+      if (form.origem_cadastro !== "manual") {
+        setForm((f: any) => (f.tipo_pessoa === "fisica" ? { ...f, origem_cadastro: "manual" } : f));
+      }
       // CPF tem no máximo 11 dígitos — trunca valor de CNPJ herdado
       if (onlyDigits(form.cpf_cnpj).length > 11) {
-        setForm((f: any) => ({ ...f, cpf_cnpj: maskCpfCnpj(onlyDigits(f.cpf_cnpj).slice(0, 11)) }));
+        setForm((f: any) => (f.tipo_pessoa === "fisica" ? { ...f, cpf_cnpj: maskCpfCnpj(onlyDigits(f.cpf_cnpj).slice(0, 11)) } : f));
       }
     }
     // Pessoa física não tem aba Fiscais; PJ (inclusive cliente) sempre tem.
@@ -488,7 +494,7 @@ export function ClienteForm({
   // ver docs-fiscal-299 §2.16). Nesse caso o campo fica liberado pra edição.
   useEffect(() => {
     if (form.tipo_pessoa === "juridica" && form.regime_tributario !== "mei") {
-      setForm((f: any) => ({ ...f, contribuinte_icms: true }));
+      setForm((f: any) => (f.tipo_pessoa === "juridica" && f.regime_tributario !== "mei" ? { ...f, contribuinte_icms: true } : f));
     }
   }, [form.tipo_pessoa, form.regime_tributario]);
 
@@ -499,7 +505,7 @@ export function ClienteForm({
   // Moreira, PF vindo de um cadastro que passou por Jurídica antes).
   useEffect(() => {
     if (form.tipo_pessoa === "fisica" && form.contribuinte_icms !== false) {
-      setForm((f: any) => ({ ...f, contribuinte_icms: false }));
+      setForm((f: any) => (f.tipo_pessoa === "fisica" ? { ...f, contribuinte_icms: false } : f));
     }
   }, [form.tipo_pessoa, form.contribuinte_icms]);
 

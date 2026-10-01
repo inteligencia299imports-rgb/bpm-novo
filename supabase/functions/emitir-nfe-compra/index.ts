@@ -2498,6 +2498,8 @@ Deno.serve(async (req) => {
   }
   // UF fiscal: a do cliente; na retirada presencial, a da empresa (operação interna).
   const ufCliente = (end.uf ?? '').trim().toUpperCase();
+  // Cliente do DF na venda: retirada sempre presencial (a tela também trava o checkbox).
+  if (ehVenda && ufCliente === 'DF') retiradaPresencial = true;
   const ufDestino = retiradaPresencial ? String(empresa.uf ?? '').trim().toUpperCase() : ufCliente;
   // Grupo <entrega> (endereço da loja) — só quando o cliente é de outra UF (mesmo critério do ofc):
   // sem ele a SEFAZ não tem como casar CFOP interno com destinatário de fora. Sem endereço da
