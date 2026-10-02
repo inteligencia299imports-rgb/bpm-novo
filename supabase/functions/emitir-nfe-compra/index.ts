@@ -8,6 +8,7 @@ const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
 // Planos de conta / centros de custo do compromisso financeiro (chaves fixas — validar com a contabilidade).
 const PLANO_COMPRA_USADA = 'd16507df-9655-4677-8ed9-01398ce28239'; // Compra de Motos Usadas (custo)
+const PLANO_COMPRA_NOVA = '1c4f23ec-3bec-4b5e-8901-7c7a47deb543';  // Compra de Motos Novas (custo)
 const PLANO_VENDA_USADA = 'c4f76d4e-bfd9-4ade-987e-4a0798603416';  // Venda de Motos Usadas (receita)
 const PLANO_VENDA_NOVA = 'c155d12c-4f49-4592-be1c-63f515ff97d3';   // Venda de Motos Novas (receita)
 const CC_MOTOS_USADAS = '7fe3888a-fd17-4c31-b78b-82a0af680ff3';    // CC.102 Venda de motos usadas
@@ -442,6 +443,101 @@ async function cancelarCompromissosDaNf(admin: any, nfeEntradaId: string): Promi
     .in('compromisso_id', compIds)
     .eq('status_pagamento', 'pago');
   return count ?? 0;
+}
+
+// NF-e de SAÍDA de transferência de moto entre empresas do grupo — a que gera o financeiro.
+const OPERACOES_SAIDA_TRANSFERENCIA = new Set(['transferencia', 'transferencia_saida', 'transferencia_saida_0km']);
+
+/**
+ * Transferência de moto entre EMPRESAS DIFERENTES (raiz de CNPJ diferente) gera o financeiro
+ * dos dois lados — pedido do usuário, 2026-10-02: conta a RECEBER na empresa de origem
+ * (emitente da NF de saída) e conta a PAGAR na de destino (destinatário), mesmo valor, à vista
+ * (vencimento = data da NF). Matriz x filial (mesma raiz, ex.: FLN <-> POA) não gera nada.
+ * Roda só com a NF de saída autorizada em PRODUÇÃO; as duas contas ficam vinculadas a ela
+ * (`nfe_entrada_id`), então cancelar a saída cancela as duas (cancelarCompromissosDaNf) e a
+ * devolução da transferência também (ver bloco das devoluções). Idempotente.
+ */
+async function gerarCompromissosTransferenciaEntreEmpresas(admin: any, nfeSaidaId: string, callerId: string) {
+  const { data: nf } = await admin.from('nfe_entradas')
+    .select('id, operacao, status, ambiente, empresa_id, fornecedor_id, valor_total, numero, data_emissao, avaliacao_id, estoque_moto_nova_id')
+    .eq('id', nfeSaidaId).maybeSingle();
+  if (!nf || nf.status !== 'processada' || nf.ambiente !== 'producao' || !OPERACOES_SAIDA_TRANSFERENCIA.has(nf.operacao)) return;
+  const valor = Number(nf.valor_total ?? 0);
+  if (!(valor > 0) || !nf.empresa_id || !nf.fornecedor_id) return;
+
+  const { data: ja } = await admin.from('compromissos').select('id')
+    .eq('nfe_entrada_id', nf.id).eq('origem', 'transferencia').limit(1);
+  if ((ja as any[] | null)?.length) return;
+
+  const digitos = (v: unknown) => String(v ?? '').replace(/\D/g, '');
+  const { data: empresas } = await admin.from('empresas').select('id, nome, cnpj');
+  const origem = ((empresas || []) as any[]).find((e) => e.id === nf.empresa_id);
+  const { data: destinatario } = await admin.from('clientes_fornecedores').select('cpf_cnpj').eq('id', nf.fornecedor_id).maybeSingle();
+  const cnpjDestino = digitos(destinatario?.cpf_cnpj);
+  const destino = ((empresas || []) as any[]).find((e) => cnpjDestino && digitos(e.cnpj) === cnpjDestino);
+  if (!origem || !destino) {
+    console.warn('transferência sem empresa de origem/destino resolvida — compromissos não gerados', nf.id);
+    return;
+  }
+  if (digitos(origem.cnpj).slice(0, 8) === digitos(destino.cnpj).slice(0, 8)) return; // matriz x filial
+
+  const fornecedorOrigem = await fornecedorPorEmpresaId(admin, origem.id);
+  if (!fornecedorOrigem) {
+    console.warn(`empresa ${origem.nome} sem cadastro em clientes_fornecedores — conta a pagar da transferência não gerada`, nf.id);
+  }
+
+  const eh0km = nf.operacao === 'transferencia_saida_0km';
+  let obs: string | null = null;
+  if (eh0km && nf.estoque_moto_nova_id) {
+    const { data: m } = await admin.from('estoque_motos_novas')
+      .select('chassi, marca:marca_id(nome), modelo:modelo_id(nome)').eq('id', nf.estoque_moto_nova_id).maybeSingle();
+    obs = [nomeCat((m as any)?.marca), nomeCat((m as any)?.modelo), (m as any)?.chassi].filter(Boolean).join(' - ') || null;
+  } else if (nf.avaliacao_id) {
+    const { data: a } = await admin.from('avaliacoes')
+      .select('placa, marca:marca_id(nome), modelo:modelo_id(nome)').eq('id', nf.avaliacao_id).maybeSingle();
+    obs = [nomeCat((a as any)?.marca), nomeCat((a as any)?.modelo), String((a as any)?.placa ?? '').replace(/[^A-Za-z0-9]/g, '')].filter(Boolean).join(' - ') || null;
+  }
+  obs = `TRANSFERÊNCIA ${origem.nome} -> ${destino.nome}${obs ? ` | ${obs}` : ''}`.toUpperCase();
+  const venc = new Date(nf.data_emissao || Date.now()).toISOString().slice(0, 10);
+
+  const lados = [
+    { empresaId: origem.id, fornecedorId: nf.fornecedor_id, natureza: 'receita', prefixo: 'TRF-R',
+      plano: eh0km ? PLANO_VENDA_NOVA : PLANO_VENDA_USADA },
+    ...(fornecedorOrigem ? [{ empresaId: destino.id, fornecedorId: fornecedorOrigem, natureza: 'despesa', prefixo: 'TRF-D',
+      plano: eh0km ? PLANO_COMPRA_NOVA : PLANO_COMPRA_USADA }] : []),
+  ];
+  for (const l of lados) {
+    const { data: numero } = await admin.rpc('gerar_numero_compromisso', { _prefix: l.prefixo });
+    const { data: comp, error } = await admin.from('compromissos').insert({
+      empresa_id: l.empresaId,
+      fornecedor_id: l.fornecedorId,
+      natureza: l.natureza,
+      despesa_fixa: false,
+      plano_conta_id: l.plano,
+      centro_custo_id: eh0km ? CC_MOTOS_NOVAS : CC_MOTOS_USADAS,
+      observacoes: obs,
+      status_compromisso: 'em_aberto',
+      nfe_entrada_id: nf.id,
+      origem: 'transferencia',
+      ...(nf.avaliacao_id ? { avaliacao_id: nf.avaliacao_id } : {}),
+      numero_compromisso: (numero as string | null) ?? null,
+      numero_documento: nf.numero ? `NF-${nf.numero}` : null,
+      created_by: callerId,
+    }).select('id').maybeSingle();
+    if (error || !comp?.id) {
+      console.error('erro ao criar compromisso da transferência', error);
+      continue;
+    }
+    await admin.from('compromissos_parcelas').insert({
+      compromisso_id: comp.id,
+      numero_parcela: 1,
+      valor,
+      data_vencimento: venc,
+      tipo: 'unico',
+      forma_pagamento_id: FORMA_PAGAMENTO_ID,
+      status_pagamento: 'em_aberto',
+    });
+  }
 }
 
 /**
@@ -1671,6 +1767,9 @@ Deno.serve(async (req) => {
         callerId: caller.id,
         callerName,
       });
+      if (OPERACOES_SAIDA_TRANSFERENCIA.has(tipo)) {
+        await gerarCompromissosTransferenciaEntreEmpresas(admin, (updated?.id as string) || nfeRow.id, caller.id);
+      }
       // Mesmo efeito do caminho "emitir" (linha ~2059) — a autorização em
       // produção de uma transferência pode chegar por aqui (polling), não só
       // na resposta síncrona do emitir. Usa a loja gravada na própria linha
@@ -1860,7 +1959,7 @@ Deno.serve(async (req) => {
     fkCol: string, fkVal: string, operacaoOriginal: string, operacaoDevolucao: string, rotuloOriginal: string,
   ): Promise<{ error: string } | null> => {
     const { data: origem } = await admin
-      .from('nfe_entradas').select('id, chave_nfe, valor_total, data_emissao, ambiente, status, fornecedor_id')
+      .from('nfe_entradas').select('id, chave_nfe, valor_total, data_emissao, ambiente, status, fornecedor_id, transferencia_par_id')
       .eq(fkCol, fkVal).eq('operacao', operacaoOriginal).eq('status', 'processada').eq('ambiente', 'producao')
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (!origem) return { error: `${rotuloOriginal} em produção não encontrada — só é possível devolver uma NF-e já autorizada em produção.` };
@@ -1878,6 +1977,7 @@ Deno.serve(async (req) => {
       chave_nfe: (origem as any).chave_nfe ?? null,
       valor_total: (origem as any).valor_total ?? null,
       fornecedor_id: (origem as any).fornecedor_id ?? null,
+      transferencia_par_id: (origem as any).transferencia_par_id ?? null,
     };
     return null;
   };
@@ -2951,6 +3051,9 @@ Deno.serve(async (req) => {
       callerId: caller.id,
       callerName,
     });
+    if (OPERACOES_SAIDA_TRANSFERENCIA.has(tipo)) {
+      await gerarCompromissosTransferenciaEntreEmpresas(admin, nfeRow.id, caller.id);
+    }
     // Efeito de negócio da transferência de estoque: só a ENTRADA (empresa de
     // destino) autorizada em produção reatribui a moto pra loja de destino —
     // a saída sozinha não move nada (a moto continua "fisicamente" da origem
@@ -2970,6 +3073,11 @@ Deno.serve(async (req) => {
     // que o Cancelar já dá (ver cancelarCompromissosDaNf/aplicarCancelamento).
     if ((tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km') && devolucaoOrigemNf?.id) {
       parcelasPagasDevolucao = await cancelarCompromissosDaNf(admin, devolucaoOrigemNf.id);
+    }
+    // Devolução de transferência: referencia a NF de ENTRADA; as contas a pagar/receber da
+    // transferência entre empresas estão vinculadas à SAÍDA, o par dela (transferencia_par_id).
+    if ((tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km') && devolucaoOrigemNf?.transferencia_par_id) {
+      parcelasPagasDevolucao = await cancelarCompromissosDaNf(admin, devolucaoOrigemNf.transferencia_par_id);
     }
     // Devolução de venda 0km: a moto some da venda e volta a ficar disponível
     // no estoque de quem a vendeu (mesmo efeito de "perder a venda" já usado
