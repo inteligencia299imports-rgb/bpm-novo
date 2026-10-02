@@ -8,7 +8,11 @@ const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
 // Planos de conta / centros de custo do compromisso financeiro (chaves fixas — validar com a contabilidade).
 const PLANO_COMPRA_USADA = 'd16507df-9655-4677-8ed9-01398ce28239'; // Compra de Motos Usadas (custo)
-const PLANO_COMPRA_NOVA = '1c4f23ec-3bec-4b5e-8901-7c7a47deb543';  // Compra de Motos Novas (custo)
+// Transferência de produtos entre empresas (1.8.01 receita / 2.1.07 custo) — uma conta por centro de custo.
+const PLANO_TRANSF_RECEITA_NOVA = 'aab0d1d1-ad07-471b-a682-ec9b4a14624b';  // 1.8.01, CC.101 motos novas
+const PLANO_TRANSF_RECEITA_USADA = '5aece72b-3d5f-4f6d-ab35-8f8fbd66d387'; // 1.8.01, CC.102 motos usadas
+const PLANO_TRANSF_CUSTO_NOVA = 'bd138f74-6fd6-49e6-bf3d-a63364b8137d';    // 2.1.07, CC.101 motos novas
+const PLANO_TRANSF_CUSTO_USADA = '2d7e9636-5a69-4344-a0a7-df0bc4b0e40a';   // 2.1.07, CC.102 motos usadas
 const PLANO_VENDA_USADA = 'c4f76d4e-bfd9-4ade-987e-4a0798603416';  // Venda de Motos Usadas (receita)
 const PLANO_VENDA_NOVA = 'c155d12c-4f49-4592-be1c-63f515ff97d3';   // Venda de Motos Novas (receita)
 const CC_MOTOS_USADAS = '7fe3888a-fd17-4c31-b78b-82a0af680ff3';    // CC.102 Venda de motos usadas
@@ -503,9 +507,9 @@ async function gerarCompromissosTransferenciaEntreEmpresas(admin: any, nfeSaidaI
 
   const lados = [
     { empresaId: origem.id, fornecedorId: nf.fornecedor_id, natureza: 'receita', prefixo: 'TRF-R',
-      plano: eh0km ? PLANO_VENDA_NOVA : PLANO_VENDA_USADA },
+      plano: eh0km ? PLANO_TRANSF_RECEITA_NOVA : PLANO_TRANSF_RECEITA_USADA },
     ...(fornecedorOrigem ? [{ empresaId: destino.id, fornecedorId: fornecedorOrigem, natureza: 'despesa', prefixo: 'TRF-D',
-      plano: eh0km ? PLANO_COMPRA_NOVA : PLANO_COMPRA_USADA }] : []),
+      plano: eh0km ? PLANO_TRANSF_CUSTO_NOVA : PLANO_TRANSF_CUSTO_USADA }] : []),
   ];
   for (const l of lados) {
     const { data: numero } = await admin.rpc('gerar_numero_compromisso', { _prefix: l.prefixo });
