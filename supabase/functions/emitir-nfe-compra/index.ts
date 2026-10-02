@@ -498,7 +498,8 @@ async function gerarCompromissosTransferenciaEntreEmpresas(admin: any, nfeSaidaI
     obs = [nomeCat((a as any)?.marca), nomeCat((a as any)?.modelo), String((a as any)?.placa ?? '').replace(/[^A-Za-z0-9]/g, '')].filter(Boolean).join(' - ') || null;
   }
   obs = `TRANSFERÊNCIA ${origem.nome} -> ${destino.nome}${obs ? ` | ${obs}` : ''}`.toUpperCase();
-  const venc = new Date(nf.data_emissao || Date.now()).toISOString().slice(0, 10);
+  // Data da NF no horário de Brasília (UTC-3) — em UTC uma NF das 21h em diante cairia no dia seguinte.
+  const venc = new Date(new Date(nf.data_emissao || Date.now()).getTime() - 3 * 3600e3).toISOString().slice(0, 10);
 
   const lados = [
     { empresaId: origem.id, fornecedorId: nf.fornecedor_id, natureza: 'receita', prefixo: 'TRF-R',
