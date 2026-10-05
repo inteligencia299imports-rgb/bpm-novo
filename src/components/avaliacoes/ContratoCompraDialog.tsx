@@ -253,9 +253,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         const { data: ccs } = await supabase.from('contratos_consignante').select('id').in('atendimento_id', atVendaIds);
         const ccIds = ((ccs as any[]) || []).map((c) => c.id);
         if (ccIds.length > 0) {
-          const { data: ops } = await supabase.from('custos_operacionais').select('responsavel, valor').in('contrato_consignante_id', ccIds);
+          const { data: ops } = await supabase.from('custos_operacionais').select('responsavel, valor, descricao').in('contrato_consignante_id', ccIds);
+          // Quitação de financiamento lançada como custo operacional não é abatimento
+          // (é quitação: faz parte do preço) — mesma regra de _shared/abatimentos-cliente.ts.
           custosOperacionaisCliente = ((ops as any[]) || [])
             .filter((c) => String(c.responsavel || '').toLowerCase() === 'cliente')
+            .filter((c) => !/quita/i.test(String(c.descricao || '')))
             .reduce((sum, c) => sum + (Number(c.valor) || 0), 0);
         }
       }

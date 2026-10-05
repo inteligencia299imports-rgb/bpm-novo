@@ -21,6 +21,7 @@ import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto } from '@/lib/clienteCadastro';
 import { rotuloDocumento, ehCnpj, placeholderDocumento } from '@/lib/documento';
+import FormasPagamentoCard, { mapFormaRow, type FormaPagamento } from '@/components/shared/FormasPagamentoCard';
 
 /** Props for ContratoConsignanteDialog */
 interface Props {
@@ -135,6 +136,11 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
 
   // Custos operacionais
   const [custosOp, setCustosOp] = useState<CustoOperacional[]>([]);
+
+  // Formas de pagamento do repasse ao consignante (formas_pagamento_contrato.contrato_consignante_id).
+  const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
+  // Forma adicionada/editada/removida desde a última geração -> libera o Gerar.
+  const [formasTocadas, setFormasTocadas] = useState(false);
   const [newCustoTipo, setNewCustoTipo] = useState('Processo');
   const [newCustoResp, setNewCustoResp] = useState('Cliente');
   const [newCustoDesc, setNewCustoDesc] = useState('');
@@ -271,8 +277,17 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
         descricao: c.descricao || '',
         valor: c.valor ? formatCurrencyInput(String(Math.round(c.valor * 100))) : '',
       })));
+
+      // contrato_consignante_id ainda não está nos tipos gerados do Supabase -> cast.
+      const { data: formas } = await (supabase as any)
+        .from('formas_pagamento_contrato')
+        .select('*')
+        .eq('contrato_consignante_id', contrato.id)
+        .order('created_at', { ascending: true });
+      setFormasPagamento(((formas as any[]) || []).map(mapFormaRow));
     } else {
       setContratoId(null);
+      setFormasPagamento([]);
       // Pre-fill consignante data from the original atendimento + contrato_consignacao
       setNomeConsignante(consignanteAtendimento?.nome_cliente || '');
       setTelefoneConsignante(formatTelefone(consignanteAtendimento?.telefone || ''));
@@ -558,6 +573,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       setJaGerado(true);
       setBaseline(consignanteSnapshot());
       setClienteTocado(false);
+      setFormasTocadas(false);
       onSaved?.();
       toast.success('Contrato gerado com sucesso!');
       // Volta para a tela de detalhes.
@@ -600,7 +616,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
   const repasseNum = parseCurrencyInput(valorFechamento) - abatimentos;
 
   // Houve edição desde a última geração/carregamento? (igual contrato de compra)
-  const editado = consignanteSnapshot() !== baseline || clienteTocado;
+  const editado = consignanteSnapshot() !== baseline || clienteTocado || formasTocadas;
   // Contrato já gerado e sem edições -> só permite baixar/visualizar.
   const modoLeitura = jaGerado && !editado;
 
@@ -900,6 +916,18 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                 </div>
                 </CardContent>
               </Card>
+
+              {/* Card: Formas de Pagamento do repasse — mesmo layout da venda/compra */}
+              <FormasPagamentoCard
+                formas={formasPagamento}
+                setFormas={setFormasPagamento}
+                contratoId={contratoId}
+                vinculo="contrato_consignante_id"
+                garantirContrato={saveContrato}
+                valorTotal={Math.max(repasseNum, 0)}
+                soLeitura={false}
+                onAlterado={() => setFormasTocadas(true)}
+              />
 
               {/* Card: Observações */}
               <Card>

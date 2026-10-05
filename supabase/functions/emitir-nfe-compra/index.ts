@@ -22,6 +22,9 @@ const CC_MOTOS_NOVAS = '30f457e2-d6b9-48c3-aca7-e45bbf0200df';     // CC.101 Ven
 // Formas de pagamento fixas (tabela formas_pagamento) — repasse ao cliente / financiamento.
 const FORMA_PAGAMENTO_ID = '63e1fff5-14d7-476c-b2da-e1ea173279a1'; // Pix
 const FORMA_PAGAMENTO_BOLETO_ID = '7d0f2125-fedf-4a27-8ab0-be21fecaf642'; // Boleto
+// Observação das parcelas de contas a pagar de compra/troca (identifica o que cada uma paga).
+const OBS_PARCELA_REPASSE = 'REPASSE AO CLIENTE';
+const OBS_PARCELA_QUITACAO = 'BOLETO DE QUITAÇÃO';
 
 const DIAS_VENCIMENTO = 7;
 
@@ -920,7 +923,7 @@ async function registrarPosAutorizacao(
   venc.setDate(venc.getDate() + DIAS_VENCIMENTO);
   const vencStr = venc.toISOString().slice(0, 10);
 
-  type ParcelaDesejada = { numero_parcela: number; valor: number; tipo: string; forma_pagamento_id: string; data_vencimento?: string; pago?: boolean };
+  type ParcelaDesejada = { numero_parcela: number; valor: number; tipo: string; forma_pagamento_id: string; data_vencimento?: string; pago?: boolean; observacoes?: string };
   const compromissoNatureza = cfg.compromissoTipo === 'receber' ? 'receita' : 'despesa';
   let parcelasDesejadas: ParcelaDesejada[] = [];
   let obsCompromisso: string | null = null;
@@ -1016,7 +1019,7 @@ async function registrarPosAutorizacao(
     const { data: contratoFin } = avFin?.atendimento_id
       ? await admin
           .from('contratos')
-          .select('valor_quitacao, valor_fechamento')
+          .select('id, valor_quitacao, valor_fechamento')
           .eq('atendimento_id', avFin.atendimento_id)
           .eq('ipva_tipo', 'COMPRA')
           .order('created_at', { ascending: false })
@@ -1092,10 +1095,10 @@ async function registrarPosAutorizacao(
 
       const diferenca = Math.min(Math.max(fechamento - precoTotalNovaMoto, 0), valorRepasse);
       const restante = valorRepasse - diferenca;
-      const itens: { valor: number; forma_pagamento_id: string; pago: boolean }[] = [];
-      if (quitacao > 0) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, pago: false });
-      if (diferenca > 0) itens.push({ valor: diferenca, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: false });
-      if (restante > 0) itens.push({ valor: restante, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: true });
+      const itens: { valor: number; forma_pagamento_id: string; pago: boolean; observacoes: string }[] = [];
+      if (quitacao > 0) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, pago: false, observacoes: OBS_PARCELA_QUITACAO });
+      if (diferenca > 0) itens.push({ valor: diferenca, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: false, observacoes: OBS_PARCELA_REPASSE });
+      if (restante > 0) itens.push({ valor: restante, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: true, observacoes: OBS_PARCELA_REPASSE });
       if (itens.length === 0) return;
       const tipoTroca = itens.length > 1 ? 'parcelado' : 'unico';
       parcelasDesejadas = itens.map((it, i) => ({
@@ -1104,18 +1107,39 @@ async function registrarPosAutorizacao(
         tipo: tipoTroca,
         forma_pagamento_id: it.forma_pagamento_id,
         pago: it.pago,
+        observacoes: it.observacoes,
       }));
       statusCompromissoTroca = itens.every((it) => it.pago) ? 'pago' : 'em_aberto';
     } else {
-      // Com quitação (financiamento a quitar): parcela à parte por BOLETO; o repasse fica no Pix.
-      parcelasDesejadas = quitacao > 0
-        ? [
-            { numero_parcela: 1, valor: quitacao, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID },
-            { numero_parcela: 2, valor: valorRepasse, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_ID },
-          ]
-        : [
-            { numero_parcela: 1, valor: valorRepasse, tipo: 'unico', forma_pagamento_id: FORMA_PAGAMENTO_ID },
-          ];
+      // Quitação (financiamento a quitar): parcela à parte, sempre por BOLETO.
+      // Repasse: segue as formas de pagamento lançadas na proposta de compra
+      // (mesma regra de gerar-compromissos-proposta); o que não estiver coberto
+      // por elas fica numa parcela Pix no vencimento padrão.
+      const { data: formasCompra } = contratoFin?.id
+        ? await admin
+            .from('formas_pagamento_contrato')
+            .select('tipo, forma_pagamento_id, valor_total, valor_entrada, valor_financiado, data_pagamento')
+            .eq('contrato_id', contratoFin.id)
+            .order('created_at', { ascending: true })
+        : { data: [] };
+      const itens: { valor: number; forma_pagamento_id: string; data_vencimento?: string; observacoes: string }[] = [];
+      if (quitacao > 0) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, observacoes: OBS_PARCELA_QUITACAO });
+      let cobertoFormas = 0;
+      for (const f of ((formasCompra || []) as any[])) {
+        const vencForma = typeof f.data_pagamento === 'string' && f.data_pagamento ? f.data_pagamento : undefined;
+        const valores = String(f.tipo ?? '').toLowerCase().includes('financiamento')
+          ? [Number(f.valor_entrada ?? 0), Number(f.valor_financiado ?? 0)]
+          : [Number(f.valor_total ?? 0)];
+        for (const v of valores) {
+          if (v <= 0.005) continue;
+          itens.push({ valor: v, forma_pagamento_id: f.forma_pagamento_id ?? FORMA_PAGAMENTO_ID, data_vencimento: vencForma, observacoes: OBS_PARCELA_REPASSE });
+          cobertoFormas += v;
+        }
+      }
+      const restanteRepasse = Math.round((valorRepasse - cobertoFormas) * 100) / 100;
+      if (restanteRepasse > 0.005) itens.push({ valor: restanteRepasse, forma_pagamento_id: FORMA_PAGAMENTO_ID, observacoes: OBS_PARCELA_REPASSE });
+      const tipoCompra = itens.length > 1 ? 'parcelado' : 'unico';
+      parcelasDesejadas = itens.map((it, i) => ({ numero_parcela: i + 1, tipo: tipoCompra, ...it }));
     }
     obsCompromisso = obsMoto(avFin?.marca, avFin?.modelo, avFin?.placa);
   }
@@ -1215,10 +1239,98 @@ async function registrarPosAutorizacao(
       forma_pagamento_id: p.forma_pagamento_id,
       status_pagamento: p.pago ? 'pago' : 'em_aberto',
       ...(p.pago ? { data_pagamento: dataPagamento } : {}),
+      ...(p.observacoes ? { observacoes: p.observacoes } : {}),
     }));
 
   if (parcelasAInserir.length > 0) {
     await admin.from('compromissos_parcelas').insert(parcelasAInserir);
+  }
+}
+
+/**
+ * NF-e de VENDA autorizada em produção num atendimento de troca: refaz a conta
+ * do compromisso a pagar da moto que entrou. Se a NF-e de compra da troca saiu
+ * antes da NF-e de venda, a "sobra devida ao cliente" foi calculada pelas
+ * formas de pagamento da venda (residual), não pelo preço cheio da moto nova, e
+ * ficaria em aberto para sempre (achados FKL2C73 / RED5D15, 2026-10-05).
+ * Agora, com o valor da NF-e de venda: sobra = fechamento − valor da venda
+ * (limitada ao repasse); o que passar disso nas parcelas de repasse em aberto
+ * abate a venda e vira PAGO. Quitação (boleto) não muda.
+ */
+async function reconciliarTrocaAposNfVenda(admin: any, atendimentoId: string, valorNfVenda: number, dataPagamento: string) {
+  const { data: at } = await admin.from('atendimentos_motos').select('interesse').eq('id', atendimentoId).maybeSingle();
+  if ((at as any)?.interesse !== 'trocar' || !(valorNfVenda > 0)) return;
+
+  const { data: avs } = await admin
+    .from('avaliacoes')
+    .select('id, valor_fechamento, valor_quitacao')
+    .eq('atendimento_id', atendimentoId);
+  for (const av of ((avs || []) as any[])) {
+    const { data: comp } = await admin
+      .from('compromissos')
+      .select('id')
+      .eq('avaliacao_id', av.id)
+      .in('origem', ['troca', 'compra'])
+      .not('nfe_entrada_id', 'is', null)
+      .is('deleted_at', null)
+      .neq('status_compromisso', 'cancelada')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!comp?.id) continue;
+
+    const fechamento = Number(av.valor_fechamento ?? 0);
+    const quitacao = Number(av.valor_quitacao ?? 0);
+    const repasse = Math.max(fechamento - quitacao - await abatimentosCliente(admin, av.id), 0);
+    const sobra = Math.min(Math.max(fechamento - valorNfVenda, 0), repasse);
+
+    const { data: parcelas } = await admin
+      .from('compromissos_parcelas')
+      .select('id, numero_parcela, valor, status_pagamento, forma_pagamento_id, tipo, data_vencimento')
+      .eq('compromisso_id', comp.id);
+    const todas = (parcelas || []) as any[];
+    // Parcelas de repasse em aberto (a de quitação é sempre boleto e não entra).
+    const abertas = todas
+      .filter((p) => p.status_pagamento === 'em_aberto' && p.forma_pagamento_id !== FORMA_PAGAMENTO_BOLETO_ID)
+      .sort((a, b) => b.numero_parcela - a.numero_parcela);
+    let excesso = Math.round((abertas.reduce((s, p) => s + Number(p.valor), 0) - sobra) * 100) / 100;
+    if (excesso <= 0.005) continue;
+
+    let proximoNumero = Math.max(0, ...todas.map((p) => Number(p.numero_parcela))) + 1;
+    for (const p of abertas) {
+      if (excesso <= 0.005) break;
+      const valor = Number(p.valor);
+      if (valor <= excesso + 0.005) {
+        await admin.from('compromissos_parcelas')
+          .update({ status_pagamento: 'pago', data_pagamento: dataPagamento, observacoes: OBS_PARCELA_REPASSE })
+          .eq('id', p.id);
+        excesso -= valor;
+      } else {
+        // Parte da parcela abate a venda: reduz a aberta e lança a parte paga à parte.
+        await admin.from('compromissos_parcelas')
+          .update({ valor: Math.round((valor - excesso) * 100) / 100, observacoes: OBS_PARCELA_REPASSE })
+          .eq('id', p.id);
+        await admin.from('compromissos_parcelas').insert({
+          compromisso_id: comp.id,
+          numero_parcela: proximoNumero++,
+          valor: Math.round(excesso * 100) / 100,
+          data_vencimento: p.data_vencimento,
+          tipo: 'parcelado',
+          forma_pagamento_id: p.forma_pagamento_id,
+          status_pagamento: 'pago',
+          data_pagamento: dataPagamento,
+          observacoes: OBS_PARCELA_REPASSE,
+        });
+        excesso = 0;
+      }
+    }
+
+    const { data: depois } = await admin.from('compromissos_parcelas').select('status_pagamento').eq('compromisso_id', comp.id);
+    const tudoPago = ((depois || []) as any[]).every((p) => p.status_pagamento === 'pago');
+    await admin.from('compromissos')
+      .update({ status_compromisso: tudoPago ? 'pago' : 'em_aberto' })
+      .eq('id', comp.id)
+      .neq('status_compromisso', 'cancelada');
   }
 }
 
@@ -1768,6 +1880,14 @@ Deno.serve(async (req) => {
       });
       if (OPERACOES_SAIDA_TRANSFERENCIA.has(tipo)) {
         await gerarCompromissosTransferenciaEntreEmpresas(admin, (updated?.id as string) || nfeRow.id, caller.id);
+      }
+      if (tipo === 'venda_seminova' || tipo === 'venda_0km') {
+        await reconciliarTrocaAposNfVenda(
+          admin,
+          entityId,
+          Number((updated as any)?.valor_total ?? nfeRow.valor_total ?? 0),
+          String((updated?.data_emissao as string) || nfeRow.data_emissao || new Date().toISOString()).slice(0, 10),
+        );
       }
       // Mesmo efeito do caminho "emitir" (linha ~2059) — a autorização em
       // produção de uma transferência pode chegar por aqui (polling), não só
@@ -3054,6 +3174,9 @@ Deno.serve(async (req) => {
     });
     if (OPERACOES_SAIDA_TRANSFERENCIA.has(tipo)) {
       await gerarCompromissosTransferenciaEntreEmpresas(admin, nfeRow.id, caller.id);
+    }
+    if (tipo === 'venda_seminova' || tipo === 'venda_0km') {
+      await reconciliarTrocaAposNfVenda(admin, entityId, Number(nfeRow.valor_total ?? 0), String(dataEmissao).slice(0, 10));
     }
     // Efeito de negócio da transferência de estoque: só a ENTRADA (empresa de
     // destino) autorizada em produção reatribui a moto pra loja de destino —
