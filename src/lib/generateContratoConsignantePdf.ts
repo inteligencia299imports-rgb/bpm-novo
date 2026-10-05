@@ -152,34 +152,53 @@ const CIDADE_OVERRIDES: { cnpj?: string; matchLoja?: (l: string) => boolean; dat
       cidadeAssinatura: 'Florianópolis',
     },
   },
+  {
+    // 299i / 299s / Aventura têm várias empresas vinculadas (MMATOS, M2, FAG),
+    // mas o contrato dessas lojas é sempre da MMATOS (Brasília).
+    cnpj: '21.194.795/0001-96',
+    matchLoja: (l) => l === '299I' || l === '299S' || l.includes('AVENTURA'),
+    data: {
+      empresaNome: 'MMATOS COMERCIO DE VEÍCULOS E PEÇAS LTDA',
+      cnpj: '21.194.795/0001-96',
+      enderecoSede: 'SCIA QD 15 Conjunto 03 Loja 06 parte a Brasília–DF',
+      cidadeAssinatura: 'Brasília',
+    },
+  },
 ];
 
 const digitsOnly = (v?: string | null) => (v || '').replace(/\D/g, '');
 
-const getCidadeOverride = (cnpj?: string | null, loja?: string | null): CidadeOverride | null => {
+// A loja manda: 299p = Porto Alegre, 299f = Florianópolis, 299i/299s/Aventura = MMATOS
+// (Brasília). Só cai no CNPJ da empresa vinculada quando a loja não está mapeada.
+const getCidadeOverride = (cnpj?: string | null, loja?: string | null): { data: CidadeOverride; porLoja: boolean } | null => {
+  const l = (loja || '').trim().toUpperCase();
+  const byLoja = CIDADE_OVERRIDES.find(o => o.matchLoja?.(l));
+  if (byLoja) return { data: byLoja.data, porLoja: true };
   const cd = digitsOnly(cnpj);
   if (cd) {
     const byCnpj = CIDADE_OVERRIDES.find(o => digitsOnly(o.cnpj) === cd);
-    if (byCnpj) return byCnpj.data;
+    if (byCnpj) return { data: byCnpj.data, porLoja: false };
   }
-  const l = (loja || '').toUpperCase();
-  return CIDADE_OVERRIDES.find(o => o.matchLoja?.(l))?.data || null;
+  return null;
 };
 
 export async function generateContratoConsignantePdf(
   data: ContratoConsignantePdfData,
   modo: 'download' | 'view' = 'download',
 ): Promise<void> {
-  const override = getCidadeOverride(data.empresa?.cnpj, data.loja);
+  const resolvido = getCidadeOverride(data.empresa?.cnpj, data.loja);
+  const override = resolvido?.data ?? null;
+  // Loja mapeada ignora a empresa vinculada: essas lojas podem ter mais de uma
+  // empresa em loja_empresas e a primeira retornada nem sempre é a do contrato.
+  // Fora delas, a empresa vinculada tem prioridade e o override por CNPJ só
+  // completa sede/cidade; por fim o default histórico (MMATOS/DF).
+  const empresa = resolvido?.porLoja ? null : data.empresa;
   const isDucati = (data.loja || '').toUpperCase().includes('DUCATI');
-  // Empresa vinculada à loja (buscada no cadastro) tem prioridade; override por
-  // CNPJ/loja preenche a sede/cidade quando o cadastro não tem esses campos;
-  // por fim o default histórico (MMATOS/DF), igual aos demais contratos.
-  const empresaNome = data.empresa?.razaoSocial || data.empresa?.nome || override?.empresaNome || 'MMATOS COMERCIO DE VEÍCULOS E PEÇAS LTDA';
-  const cnpj = data.empresa?.cnpj || override?.cnpj || '21.194.795/0001-96';
+  const empresaNome = empresa?.razaoSocial || empresa?.nome || override?.empresaNome || 'MMATOS COMERCIO DE VEÍCULOS E PEÇAS LTDA';
+  const cnpj = empresa?.cnpj || override?.cnpj || '21.194.795/0001-96';
   const nomeFantasiaSuffix = override && isDucati ? '' : ', 299 Imports';
-  const enderecoSede = data.empresa?.endereco || override?.enderecoSede || 'SCIA QD 15 Conjunto 03 Loja 06 parte a Brasília–DF';
-  const cidadeAssinatura = override?.cidadeAssinatura || data.empresa?.uf || 'Brasília';
+  const enderecoSede = empresa?.endereco || override?.enderecoSede || 'SCIA QD 15 Conjunto 03 Loja 06 parte a Brasília–DF';
+  const cidadeAssinatura = override?.cidadeAssinatura || empresa?.uf || 'Brasília';
   const logoPath = override && isDucati ? '/logos/ducati-logo.png' : '/logos/299-logo.jpg';
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
