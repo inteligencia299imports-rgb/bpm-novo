@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { cancelarNfe, consultarNfe, emitirNfe, focusBaseUrl, mensagemErroFocus, type FocusAmbiente } from './focus.ts';
 import { montarPayloadNfeCompra, brl, indicadorIeDestinatario, difalAplicavel, type RegraFiscal } from './payload.ts';
 import { carregarOperacao, montarCenario, escolherRegra, comoRegrasPorImposto, natOpDe, type Operacao as OperacaoFiscal } from '../_shared/regras-fiscais.ts';
+import { abatimentosCliente } from '../_shared/abatimentos-cliente.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
@@ -1027,21 +1028,14 @@ async function registrarPosAutorizacao(
       ? await admin.from('atendimentos_motos').select('interesse').eq('id', avFin.atendimento_id).maybeSingle()
       : { data: null };
     ehTrocaCompromisso = (atTroca as any)?.interesse === 'trocar';
-    const { data: custosCli } = await admin
-      .from('custos_oficina')
-      .select('responsavel, valor_previsto, valor_executado')
-      .eq('avaliacao_id', entityId);
-
-    const custosClienteOficina = (custosCli || [])
-      .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
-      .reduce((s: number, c: any) => s + Number(c.valor_executado ?? c.valor_previsto ?? 0), 0);
+    // Previsão da avaliação + oficina (cliente) + custos operacionais (cliente) da intermediação.
+    const abatimentos = await abatimentosCliente(admin, entityId);
     // Fechamento e quitação têm origem única na avaliação — nunca usam o
     // valor já salvo no contrato (ficaria divergente se a avaliação for
     // atualizada depois de o contrato já ter sido gerado uma vez).
     const fechamento = Number(avFin?.valor_fechamento ?? contratoFin?.valor_fechamento ?? nfeRow.valor_total ?? 0);
     const quitacao = Number(avFin?.valor_quitacao ?? contratoFin?.valor_quitacao ?? 0);
-    const custosClientePrev = Number(avFin?.previsao_custos_cliente ?? 0);
-    const valorRepasse = Math.max(fechamento - quitacao - custosClientePrev - custosClienteOficina, 0);
+    const valorRepasse = Math.max(fechamento - quitacao - abatimentos, 0);
 
     if (ehTrocaCompromisso) {
       // Troca (moto entra como parte de pagamento): quitação do financiamento
@@ -2478,8 +2472,10 @@ Deno.serve(async (req) => {
       .order('created_at', { ascending: false }).limit(1).maybeSingle();
     // Fechamento tem origem única na avaliação — nunca usa o valor já salvo
     // no contrato (ficaria divergente se a avaliação for atualizada depois
-    // de o contrato já ter sido gerado uma vez).
-    valor = valorBody ?? Number(av.valor_fechamento ?? contrato?.valor_fechamento ?? 0);
+    // de o contrato já ter sido gerado uma vez). O valor de compra é o
+    // fechamento menos os abatimentos do cliente (ex.: 57k − 1k de transporte = 56k).
+    const fechamentoNf = Number(av.valor_fechamento ?? contrato?.valor_fechamento ?? 0);
+    valor = valorBody ?? Math.max(fechamentoNf - await abatimentosCliente(admin, avaliacaoId), 0);
     // Registra o valor da NF-e de compra como custo de aquisição fiscal da moto
     // — base da margem de PIS/COFINS quando ela for revendida (Lei 9.716/98).
     if (valor > 0) {

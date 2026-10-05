@@ -229,11 +229,31 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         supabase.from('estoque_motos').select('valor_venda').eq('atendimento_venda_id', atendimentoId).maybeSingle(),
       ]);
 
-      setCustosCliente(
-        (custosData || [])
-          .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
-          .reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0),
-      );
+      const custosOficinaCliente = (custosData || [])
+        .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
+        .reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
+      // Custos operacionais do cliente lançados no contrato de intermediação
+      // (consignante) da venda dessa moto — ex.: transporte. Também abatem do
+      // valor de compra (mesma conta do "Total de Abatimentos" da intermediação).
+      let custosOperacionaisCliente = 0;
+      const { data: estVendas } = await supabase
+        .from('estoque_motos')
+        .select('atendimento_venda_id')
+        .eq('avaliacao_id', avaliacao.id)
+        .not('atendimento_venda_id', 'is', null);
+      const atVendaIds = ((estVendas as any[]) || []).map((e) => e.atendimento_venda_id).filter(Boolean);
+      if (atVendaIds.length > 0) {
+        const { data: ccs } = await supabase.from('contratos_consignante').select('id').in('atendimento_id', atVendaIds);
+        const ccIds = ((ccs as any[]) || []).map((c) => c.id);
+        if (ccIds.length > 0) {
+          const { data: ops } = await supabase.from('custos_operacionais').select('responsavel, valor').in('contrato_consignante_id', ccIds);
+          custosOperacionaisCliente = ((ops as any[]) || [])
+            .filter((c) => String(c.responsavel || '').toLowerCase() === 'cliente')
+            .reduce((sum, c) => sum + (Number(c.valor) || 0), 0);
+        }
+      }
+      const custosClienteLoad = custosOficinaCliente + custosOperacionaisCliente;
+      setCustosCliente(custosClienteLoad);
       const valorVendaMotoLoad = Number((estNova as any)?.valor_venda ?? (estSemi as any)?.valor_venda ?? 0);
       const ehTrocaLoad = valorVendaMotoLoad > 0;
       setJaGerado(
@@ -304,8 +324,11 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       setCpfCnpj(vals.cpfCnpj);
       setValorQuitacao(vals.valorQuitacao);
       setValorFechamento(vals.valorFechamento);
-      // Valor da NF-e default = valor de fechamento (editável na tela de emissão).
-      setNfeValor(vals.valorFechamento);
+      // Valor da NF-e default = valor de compra = fechamento − abatimentos do
+      // cliente (editável na tela de emissão). A quitação não abate: faz parte do preço.
+      const abatimentosLoad = custosClienteLoad + Number((avaliacao as any)?.previsao_custos_cliente ?? 0);
+      const valorCompraNf = Math.max(parseCurrencyInput(vals.valorFechamento) - abatimentosLoad, 0);
+      setNfeValor(vals.valorFechamento ? formatCurrencyInput(String(Math.round(valorCompraNf * 100))) : '');
       setObsInternas(vals.obsInternas);
       setObsContrato(vals.obsContrato);
       setDataContrato(vals.dataContrato);
