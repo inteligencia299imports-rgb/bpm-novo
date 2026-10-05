@@ -468,11 +468,39 @@ async function acaoConsignante(admin: any, atendimentoId: string, callerId: stri
 
   const { data: cc } = await admin
     .from('contratos_consignante')
-    .select('valor_repasse')
+    .select('id, valor_repasse')
     .eq('atendimento_id', atendimentoId)
     .maybeSingle();
   const repasse = nz(cc?.valor_repasse);
   if (repasse <= 0) return { status: 'sem_valor_repasse' };
+
+  // Repasse: segue as formas de pagamento lançadas no contrato de intermediação
+  // (cada uma na sua data; sem data = vencimento da PREVISÃO DE PAGAMENTO). O que
+  // não estiver coberto por elas fica numa parcela Pix no vencimento da previsão.
+  const { data: formas } = cc?.id
+    ? await admin
+        .from('formas_pagamento_contrato')
+        .select('tipo, forma_pagamento_id, valor_total, valor_entrada, valor_financiado, data_pagamento')
+        .eq('contrato_consignante_id', cc.id)
+        .order('created_at', { ascending: true })
+    : { data: [] };
+  const itens: { valor: number; forma_pagamento_id: string; data_vencimento: string }[] = [];
+  let cobertoFormas = 0;
+  for (const f of ((formas as any[]) || [])) {
+    const vencForma = typeof f.data_pagamento === 'string' && f.data_pagamento ? f.data_pagamento : vencimento;
+    const valores = String(f.tipo ?? '').toLowerCase().includes('financiamento')
+      ? [nz(f.valor_entrada), nz(f.valor_financiado)]
+      : [nz(f.valor_total)];
+    for (const v of valores) {
+      if (v <= 0.005) continue;
+      itens.push({ valor: v, forma_pagamento_id: f.forma_pagamento_id ?? FORMA_PAGAMENTO_ID, data_vencimento: vencForma });
+      cobertoFormas += v;
+    }
+  }
+  const restante = Math.round((repasse - cobertoFormas) * 100) / 100;
+  if (restante > 0.005) itens.push({ valor: restante, forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: vencimento });
+  const tipoParcelas = itens.length > 1 ? 'parcelado' : 'unico';
+  const parcelas: Parcela[] = itens.map((it, i) => ({ numero_parcela: i + 1, tipo: tipoParcelas, observacoes: OBS_PARCELA_REPASSE, ...it }));
 
   const { data: est } = await admin
     .from('estoque_motos')
@@ -518,7 +546,7 @@ async function acaoConsignante(admin: any, atendimentoId: string, callerId: stri
     centroCustoId: CC_MOTOS_USADAS,
     observacoes,
     numeroPrefix: 'CPR-D',
-    parcelas: [{ numero_parcela: 1, valor: repasse, tipo: 'unico', forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: vencimento, observacoes: OBS_PARCELA_REPASSE }],
+    parcelas,
     callerId,
   });
 }

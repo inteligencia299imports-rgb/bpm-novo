@@ -16,7 +16,8 @@ import { cn } from '@/lib/utils';
 
 // Card "Formas de Pagamento" no mesmo layout da tela de venda (ContratoDialog),
 // gravando em formas_pagamento_contrato. Usado na proposta de compra
-// (ContratoCompraDialog), onde as formas cobrem o Repasse ao Cliente.
+// (ContratoCompraDialog) e na intermediação (ContratoConsignanteDialog, via
+// contrato_consignante_id), onde as formas cobrem o repasse ao cliente.
 
 /** Forma cujo nome é "Financiamento" ganha o bloco de campos extras (entrada/parcelas). */
 export const ehFinanciamento = (nome: string | null | undefined) =>
@@ -131,6 +132,8 @@ interface Props {
   formas: FormaPagamento[];
   setFormas: React.Dispatch<React.SetStateAction<FormaPagamento[]>>;
   contratoId: string | null;
+  /** Coluna que liga a forma ao contrato: `contratos` (venda/compra) ou `contratos_consignante` (intermediação). */
+  vinculo?: 'contrato_id' | 'contrato_consignante_id';
   /** Garante que o contrato existe (salva se preciso) e devolve o id. */
   garantirContrato: () => Promise<string | null>;
   /** Valor que as formas de pagamento devem cobrir. */
@@ -140,7 +143,7 @@ interface Props {
   onAlterado?: () => void;
 }
 
-const FormasPagamentoCard: React.FC<Props> = ({ formas, setFormas, contratoId, garantirContrato, valorTotal, soLeitura, onAlterado }) => {
+const FormasPagamentoCard: React.FC<Props> = ({ formas, setFormas, contratoId, vinculo = 'contrato_id', garantirContrato, valorTotal, soLeitura, onAlterado }) => {
   const [formasPagOpcoes, setFormasPagOpcoes] = useState<{ id: string; nome: string }[]>([]);
   const [instituicoesByForma, setInstituicoesByForma] = useState<Record<string, InstituicaoOpt[]>>({});
   // id do registro de formas_pagamento_contrato em edição (null = formulário está em modo "adicionar")
@@ -308,7 +311,7 @@ const FormasPagamentoCard: React.FC<Props> = ({ formas, setFormas, contratoId, g
       const cId = contratoId || await garantirContrato();
       if (!cId) return;
 
-      const { data, error } = await supabase.from('formas_pagamento_contrato').insert({ ...formaData, contrato_id: cId }).select().single();
+      const { data, error } = await supabase.from('formas_pagamento_contrato').insert({ ...formaData, [vinculo]: cId } as any).select().single();
       if (error) {
         toast.error('Erro ao adicionar forma de pagamento');
         return;
