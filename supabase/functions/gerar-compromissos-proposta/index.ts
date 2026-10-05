@@ -9,6 +9,7 @@
 //     agregado marcado como troco no contrato de venda; não cobrado do
 //     cliente, gera conta a pagar do mesmo valor.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { abatimentosCliente } from '../_shared/abatimentos-cliente.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
@@ -247,21 +248,15 @@ async function construirRepasse(
     .eq('id', av.atendimento_id)
     .maybeSingle();
 
-  const { data: custosCli } = await admin
-    .from('custos_oficina')
-    .select('responsavel, valor_previsto, valor_executado')
-    .eq('avaliacao_id', avaliacaoId);
-  const custosClienteOficina = ((custosCli as any[]) || [])
-    .filter((c) => (c.responsavel || '').toLowerCase() === 'cliente')
-    .reduce((s, c) => s + nz(c.valor_executado ?? c.valor_previsto), 0);
+  // Previsão da avaliação + oficina (cliente) + custos operacionais (cliente) da intermediação.
+  const abatimentos = await abatimentosCliente(admin, avaliacaoId);
 
   // Fechamento e quitação têm origem única na avaliação — nunca usam o valor
   // já salvo no contrato (ficaria divergente se a avaliação for atualizada
   // depois de o contrato já ter sido gerado uma vez).
   const fechamento = nz(av.valor_fechamento ?? contratoCompra?.valor_fechamento);
   const quitacao = nz(av.valor_quitacao ?? contratoCompra?.valor_quitacao);
-  const custosPrev = nz(av.previsao_custos_cliente);
-  const repasse = Math.max(fechamento - quitacao - custosPrev - custosClienteOficina, 0);
+  const repasse = Math.max(fechamento - quitacao - abatimentos, 0);
 
   const venc = vencimentoOverride || addDias(contratoCompra?.data_sinal, DIAS_VENCIMENTO);
 
