@@ -287,12 +287,35 @@ async function construirRepasse(
       pago: it.pago,
     }));
   } else {
-    parcelas = quitacao > 0
-      ? [
-          { numero_parcela: 1, valor: quitacao, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, data_vencimento: venc },
-          { numero_parcela: 2, valor: repasse, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: venc },
-        ]
-      : [{ numero_parcela: 1, valor: repasse, tipo: 'unico', forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: venc }];
+    // Repasse: segue as formas de pagamento lançadas na proposta de compra
+    // (cada uma na sua data). O que não estiver coberto por elas continua numa
+    // parcela Pix no vencimento padrão, para o total seguir igual ao repasse.
+    const { data: formas } = contratoCompra?.id
+      ? await admin
+          .from('formas_pagamento_contrato')
+          .select('tipo, forma_pagamento_id, valor_total, valor_entrada, valor_financiado, data_pagamento')
+          .eq('contrato_id', contratoCompra.id)
+          .order('created_at', { ascending: true })
+      : { data: [] };
+    const ehFinanciamento = (t?: string | null) => String(t ?? '').toLowerCase().includes('financiamento');
+    const itens: { valor: number; forma_pagamento_id: string; data_vencimento: string }[] = [];
+    if (quitacao > 0) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, data_vencimento: venc });
+    let cobertoFormas = 0;
+    for (const f of ((formas as any[]) || [])) {
+      const vencForma = typeof f.data_pagamento === 'string' && f.data_pagamento ? f.data_pagamento : venc;
+      const valores = ehFinanciamento(f.tipo)
+        ? [nz(f.valor_entrada), nz(f.valor_financiado)]
+        : [nz(f.valor_total)];
+      for (const v of valores) {
+        if (v <= 0.005) continue;
+        itens.push({ valor: v, forma_pagamento_id: f.forma_pagamento_id ?? FORMA_PAGAMENTO_ID, data_vencimento: vencForma });
+        cobertoFormas += v;
+      }
+    }
+    const restante = Math.round((repasse - cobertoFormas) * 100) / 100;
+    if (restante > 0.005) itens.push({ valor: restante, forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: venc });
+    const tipo = itens.length > 1 ? 'parcelado' : 'unico';
+    parcelas = itens.map((it, i) => ({ numero_parcela: i + 1, tipo, ...it }));
   }
 
   const empresaId = contratoCompra?.empresa_id || at?.empresa_id;

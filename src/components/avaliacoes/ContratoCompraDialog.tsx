@@ -27,6 +27,7 @@ import { generateContratoCompraPdf } from '@/lib/generateContratoCompraPdf';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { useNfeDevolvida } from '@/hooks/useNfeDevolvida';
+import FormasPagamentoCard, { mapFormaRow, somaFormasPagamento, type FormaPagamento } from '@/components/shared/FormasPagamentoCard';
 
 interface Props {
   open: boolean;
@@ -161,6 +162,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   const [valorQuitacao, setValorQuitacao] = useState('');
   const [valorFechamento, setValorFechamento] = useState('');
 
+  // Formas de pagamento do repasse ao cliente (formas_pagamento_contrato do contrato de compra).
+  const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([]);
+  // Forma adicionada/editada/removida desde a última geração -> libera o Gerar
+  // (é a geração que refaz o compromisso a pagar com as formas novas).
+  const [formasTocadas, setFormasTocadas] = useState(false);
+
   // Observations
   const [obsInternas, setObsInternas] = useState('');
   const [obsContrato, setObsContrato] = useState('');
@@ -275,6 +282,18 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       setEmpresaId((contrato as any)?.empresa_id || empresas[0]?.id || '');
 
       const quitacaoAval = (avaliacao as any).valor_quitacao;
+
+      setFormasTocadas(false);
+      if (contrato) {
+        const { data: formas } = await supabase
+          .from('formas_pagamento_contrato')
+          .select('*')
+          .eq('contrato_id', contrato.id)
+          .order('created_at', { ascending: true });
+        setFormasPagamento(((formas as any[]) || []).map(mapFormaRow));
+      } else {
+        setFormasPagamento([]);
+      }
 
       let vals: SnapshotVals;
       if (contrato) {
@@ -500,6 +519,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
       setJaGerado(true);
       setBaseline(snapshotFields({ cpfCnpj, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato }));
       setClienteTocado(false);
+      setFormasTocadas(false);
       toast.success('Contrato de compra gerado com sucesso!');
       // Volta para a tela de detalhes do pós-compra.
       onOpenChange(false);
@@ -593,10 +613,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   const previsaoCustosCliente = Number((avaliacao as any)?.previsao_custos_cliente ?? 0);
   const custosClienteTotal = custosCliente + previsaoCustosCliente;
   const repasseCliente = fechamentoNum - custosClienteTotal - quitacaoNum;
+  // As formas de pagamento cobrem o repasse (a quitação é paga à parte, direto ao banco).
+  const valorFaltante = Math.max(repasseCliente, 0) - somaFormasPagamento(formasPagamento);
 
   // Houve edição desde a última geração/carregamento?
   const currentSnapshot = snapshotFields({ cpfCnpj, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato });
-  const editado = currentSnapshot !== baseline || clienteTocado;
+  const editado = currentSnapshot !== baseline || clienteTocado || formasTocadas;
   // Contrato já gerado e sem edições (ou NF-e já emitida em produção) -> modo leitura.
   const modoLeitura = (jaGerado && !editado) || nfeEmProducao;
   // Campos do contrato/cliente somente leitura: na tela de NF-e ou após NF-e em produção.
@@ -892,8 +914,22 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             </CardContent>
           </Card>
 
+          {/* Card: Formas de Pagamento do repasse — mesmo layout da venda. Na troca o
+              repasse é acertado pelo contrato de venda, então não se aplica. */}
+          {!ehTroca && (
+            <FormasPagamentoCard
+              formas={formasPagamento}
+              setFormas={setFormasPagamento}
+              contratoId={contratoId}
+              garantirContrato={saveContrato}
+              valorTotal={Math.max(repasseCliente, 0)}
+              soLeitura={soLeitura}
+              onAlterado={() => setFormasTocadas(true)}
+            />
+          )}
+
           {/* Resumo financeiro — um card por indicador (mesmo padrão da tela de venda) */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className={cn('grid grid-cols-2 gap-3', !ehTroca && !nfeEmProducao ? 'md:grid-cols-3 lg:grid-cols-5' : 'md:grid-cols-4')}>
             <Card>
               <CardContent className="pt-4">
                 <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Abatimentos (Custos+Despesas)</span>
@@ -918,6 +954,18 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                 <p className={`text-base font-bold ${repasseCliente >= 0 ? 'text-primary' : 'text-destructive'}`}>{brl(repasseCliente)}</p>
               </CardContent>
             </Card>
+            {!ehTroca && !nfeEmProducao && (
+              <Card>
+                <CardContent className="pt-4">
+                  <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                    {valorFaltante < -0.005 ? 'Valor Sobrando' : 'Valor Faltante'}
+                  </span>
+                  <p className={cn('text-base font-bold', valorFaltante > 0.005 ? 'text-orange-600' : 'text-emerald-600')}>
+                    {brl(Math.abs(valorFaltante))}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Card: Data do Contrato (só no fluxo de contrato editável) */}
