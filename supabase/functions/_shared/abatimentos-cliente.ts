@@ -31,10 +31,15 @@ export async function abatimentosCliente(admin: any, avaliacaoId: string): Promi
     if (contratoIds.length > 0) {
       const { data: ops } = await admin
         .from('custos_operacionais')
-        .select('responsavel, valor')
+        .select('responsavel, valor, descricao')
         .in('contrato_consignante_id', contratoIds);
+      // Quitação de financiamento lançada como custo operacional NÃO é abatimento:
+      // faz parte do preço (paga ao banco) e já é tratada como quitação — contá-la
+      // aqui reduziria a NF-e e descontaria a quitação duas vezes do repasse
+      // (achados PAL7I16 / UJA1I95 / PBO6F33, 2026-10-05).
       custosOperacionais = ((ops as any[]) || [])
         .filter((c) => String(c.responsavel || '').toLowerCase() === 'cliente')
+        .filter((c) => !/quita/i.test(String(c.descricao || '')))
         .reduce((s, c) => s + nz(c.valor), 0);
     }
   }
