@@ -131,7 +131,7 @@ export async function processarCnhAnexada(params: {
         toast.warning(`Documento: ${res.divergencias.join('; ')}. Ajuste manualmente se necessário.`);
       }
     } else {
-      toast.warning('Não foi possível validar o documento automaticamente. Anexo mantido — confira nome e CPF do cliente manualmente.', { id: toastId });
+      toast.warning('Não foi possível validar o documento automaticamente. Anexo mantido — confira nome e CPF do cliente manualmente.', { id: toastId, description: res.motivo || undefined });
     }
     return { aceita: true, resultado: res };
   } catch {

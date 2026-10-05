@@ -1196,7 +1196,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       }
       if (!data.extraido) {
         console.warn('extrair-dados-crlv não extraiu:', data?.motivo || data);
-        toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });
+        toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId, description: data?.motivo || undefined });
         return true;
       }
       const campos: Record<string, string> = {};
