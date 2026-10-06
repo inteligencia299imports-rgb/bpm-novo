@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { liberarEstoquePresoAoAtendimento } from '@/lib/liberarEstoqueAtendimento';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -805,12 +806,16 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         } else {
           await supabase.from('motos_interesse').insert(miData as any);
         }
+        // Moto de interesse trocada: a anterior não pode continuar Sinal/Vendido
+        // para este atendimento no estoque.
+        await liberarEstoquePresoAoAtendimento(atId!, [miData.estoque_moto_id]);
       } else {
         await supabase.from('motos_interesse').insert(miData as any);
       }
     } else if (isEditing && interesse === 'vender') {
       // Se mudou para "vender", remover moto de interesse existente
       await supabase.from('motos_interesse').delete().eq('atendimento_id', atId!);
+      await liberarEstoquePresoAoAtendimento(atId!);
     }
 
     // Save moto avaliacao
