@@ -10,8 +10,9 @@ import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check, ArrowLeft, Search } from 'lucide-react';
+import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check, ArrowLeft, Search, MessageSquarePlus } from 'lucide-react';
 import StatusTimeline from '@/components/shared/StatusTimeline';
+import PreparacaoObservacoes from '@/components/preparacao/PreparacaoObservacoes';
 import { supabase } from '@/lib/supabase';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { firstLastName } from '@/lib/utils';
@@ -100,6 +101,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const isEstoqueIdle = isInEstoque && (currentStatus === 'estoque' || !currentStatus);
   const isEstoqueTracking = isInEstoque && !isEstoqueIdle;
   const [detalhes, setDetalhes] = useState('');
+  // Incrementa a cada observação registrada, para a lista recarregar.
+  const [obsRefresh, setObsRefresh] = useState(0);
   const [reenviarObs, setReenviarObs] = useState('');
   const [reenviarLoja, setReenviarLoja] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -299,6 +302,40 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     }
 
     return true;
+  };
+
+  // Botão "Observação": grava o texto de "Detalhes da movimentação" em
+  // observacoes_preparacao. Só registra informação — não move status nem entra
+  // no histórico de movimentações.
+  const handleObservacao = async () => {
+    const texto = detalhes.trim();
+    if (!texto) {
+      toast.error('Digite a observação em "Detalhes da movimentação"');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { user } = await getUserInfo();
+      if (!user) {
+        toast.error('Sua sessão expirou. Faça login novamente para continuar.');
+        return;
+      }
+      const { error } = await (supabase as any).from('observacoes_preparacao').insert({
+        avaliacao_id: avaliacaoId,
+        observacao: texto,
+        created_by: user.id,
+      });
+      if (error) {
+        console.error('Erro ao registrar observação:', error);
+        toast.error('Erro ao registrar observação');
+        return;
+      }
+      setDetalhes('');
+      setObsRefresh(k => k + 1);
+      toast.success('Observação registrada');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAction = async (targetStatus: string, _actionLabel: string) => {
@@ -876,27 +913,35 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 <div className="space-y-3">
                   <label className="text-sm font-medium">Ações</label>
                   
-                  {/* Secondary actions (Pendente, Oficina, Serviço Externo) */}
-                  {visibleButtons.filter(btn => !['preparacao', 'aceite', 'liberar'].includes(btn.value)).length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {visibleButtons.filter(btn => !['preparacao', 'aceite', 'liberar'].includes(btn.value)).map(btn => {
-                        const Icon = btn.icon;
-                        return (
-                          <Button
-                            key={btn.value}
-                            variant="outline"
-                            size="sm"
-                            disabled={saving}
-                            onClick={() => handleAction(btn.targetStatus, btn.label)}
-                            className="gap-1.5 h-9 text-xs"
-                          >
-                            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
-                            {btn.label}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {/* Secondary actions (Pendente, Oficina, Serviço Externo) + Observação (só registra, não move status) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {visibleButtons.filter(btn => !['preparacao', 'aceite', 'liberar'].includes(btn.value)).map(btn => {
+                      const Icon = btn.icon;
+                      return (
+                        <Button
+                          key={btn.value}
+                          variant="outline"
+                          size="sm"
+                          disabled={saving}
+                          onClick={() => handleAction(btn.targetStatus, btn.label)}
+                          className="gap-1.5 h-9 text-xs"
+                        >
+                          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
+                          {btn.label}
+                        </Button>
+                      );
+                    })}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={saving}
+                      onClick={handleObservacao}
+                      className="gap-1.5 h-9 text-xs"
+                    >
+                      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageSquarePlus className="h-3.5 w-3.5" />}
+                      Observação
+                    </Button>
+                  </div>
 
                   {/* Primary action (Preparação / Aceite / Liberar) - below and highlighted */}
                   {!isEstoqueTracking && visibleButtons.filter(btn => ['preparacao', 'aceite', 'liberar'].includes(btn.value)).map(btn => {
@@ -1044,6 +1089,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 </div>
               </>
             )}
+
+            <Separator />
+
+            {/* Observações (botão "Observação" das Ações) — acima do histórico */}
+            <div className="px-10">
+              <PreparacaoObservacoes avaliacaoId={avaliacaoId} refreshKey={obsRefresh} />
+            </div>
 
             <Separator />
 
