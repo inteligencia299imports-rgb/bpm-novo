@@ -275,7 +275,7 @@ const ProcessoDialog: React.FC<Props> = ({
             .select('id')
             .eq('atendimento_id', atendimentoId)
             .in('tipo_aquisicao', TIPOS_PROPRIA)
-            .in('situacao', ['adquirida', 'estoque'])
+            .in('situacao', ['adquirida', 'estoque', 'oficina'])
             .limit(1)
             .maybeSingle();
           trocaAvId = (tav as any)?.id ?? '';

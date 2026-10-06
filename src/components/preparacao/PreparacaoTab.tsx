@@ -59,7 +59,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
 
     const estResult = await fetchAllRange(() => supabase.from('estoque_motos').select('avaliacao_id, status, observacoes, created_at').not('avaliacao_id', 'is', null));
     const result = await fetchAllRange(() =>
-      supabase.from('avaliacoes').select(selectStr).in('situacao', ['adquirida', 'estoque']).order('updated_at', { ascending: false })
+      supabase.from('avaliacoes').select(selectStr).in('situacao', ['adquirida', 'estoque', 'oficina']).order('updated_at', { ascending: false })
     );
     const err1 = result.error;
     const allData = flattenMarcaModeloList(result.data);
