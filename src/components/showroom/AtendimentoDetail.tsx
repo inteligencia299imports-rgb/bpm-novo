@@ -28,6 +28,7 @@ import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
+import { liberarEstoquePresoAoAtendimento } from '@/lib/liberarEstoqueAtendimento';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { formatPersonName, firstLastName, formatDataNascimento } from '@/lib/utils';
@@ -554,19 +555,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           }
         }
 
-        // Reverter moto de interesse no estoque para disponível
-        for (const mi of motosInteresse) {
-          if (mi.estoque_moto_id) {
-            const tabela = (mi as any).estoque_tipo === '0km' ? 'estoque_motos_novas' : 'estoque_motos';
-            promises.push(supabase.from(tabela).update({
-              status: 'disponivel',
-              atendimento_venda_id: null,
-              data_venda: null,
-              valor_venda: null,
-              valor_sinal: null,
-            }).eq('id', mi.estoque_moto_id).eq('atendimento_venda_id', atendimento.id).then(r => r));
-          }
-        }
+        // Reverter para disponível TODA moto do estoque presa a este atendimento
+        // (não só a moto de interesse atual — uma moto trocada antes podia
+        // continuar Sinal/Vendido para ele).
+        promises.push(liberarEstoquePresoAoAtendimento(atendimento.id));
 
         // Remover do estoque motos de troca que entraram via este atendimento
         if (atendimento.interesse === 'trocar') {
