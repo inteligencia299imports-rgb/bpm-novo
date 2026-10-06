@@ -114,11 +114,13 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    // Fetch avaliacoes that reached preparation flow (situacao adquirida or estoque)
+    // Motos que chegaram ao fluxo de preparação. 'oficina' = moto de estoque com O.S.
+    // aberta na Oficina (mover_moto_frota_oficina) — sem ela a moto sumia do relatório
+    // enquanto a O.S. estivesse aberta (ex.: DTN6I68, O.S. 198).
     const avalRes = await fetchAllRange<any>(() => supabase
       .from('avaliacoes')
       .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, atendimento_id, tipo_aquisicao, situacao, preparacao_status, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
-      .in('situacao', ['adquirida', 'estoque', 'perdido'])
+      .in('situacao', ['adquirida', 'estoque', 'oficina', 'perdido'])
     );
     const avals = flattenMarcaModeloList(avalRes.data);
 
@@ -177,18 +179,19 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       // Data Entrada Preparação = última conclusão de pausa OU data de aquisição
       const dataEntradaPrep = ultimaDespausa || dataAquisicao;
 
-      // Data de preparação = última 'repreparacao_concluida' (se houver, independente de despausa) OU primeira 'aguardando_aceite' após dataEntradaPrep
-      const repreps = prepHist.filter(h => h.status === 'repreparacao_concluida').map(h => h.created_at);
+      // Conclusão da preparação = primeiro 'aguardando_aceite' depois da data de aquisição.
+      // Regra do negócio: Tempo de Preparação = aquisição → Aguardando Aceite (pausas
+      // e re-preparações não reiniciam a contagem).
       const aceites = prepHist.filter(h => h.status === 'aguardando_aceite' &&
-        (!dataEntradaPrep || new Date(h.created_at) >= new Date(dataEntradaPrep))).map(h => h.created_at);
-      const dataPreparacao = repreps.length ? repreps[repreps.length - 1] : (aceites.length ? aceites[0] : null);
+        (!dataAquisicao || new Date(h.created_at) >= new Date(dataAquisicao))).map(h => h.created_at);
+      const dataPreparacao = aceites.length ? aceites[0] : null;
 
       // Data de liberação = primeira 'estoque' após dataEntradaPrep
       const liberacoes = prepHist.filter(h => h.status === 'estoque' &&
         (!dataEntradaPrep || new Date(h.created_at) >= new Date(dataEntradaPrep))).map(h => h.created_at);
       const dataLiberacao = liberacoes.length ? liberacoes[0] : null;
 
-      const tempoPrepMs = dataPreparacao && dataEntradaPrep ? diffExcludingSundays(new Date(dataEntradaPrep).getTime(), new Date(dataPreparacao).getTime()) : null;
+      const tempoPrepMs = dataPreparacao && dataAquisicao ? diffExcludingSundays(new Date(dataAquisicao).getTime(), new Date(dataPreparacao).getTime()) : null;
       const tempoLibMs = dataLiberacao && dataEntradaPrep ? diffExcludingSundays(new Date(dataEntradaPrep).getTime(), new Date(dataLiberacao).getTime()) : null;
 
       // Retornos: cada vez que a moto saiu do estoque e voltou para preparação
