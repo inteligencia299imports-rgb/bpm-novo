@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { LISTAGEM_SECAO, LISTAGEM_NIVEL, LISTAGEM_TABELA } from './listagemLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { fmtInt } from '@/lib/utils';
 import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMotoNova, fetchLojaMap } from '@/lib/estoqueMoto';
@@ -435,7 +436,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
 
       {/* Section: Lista de Motos em Estoque */}
-      <div className="space-y-1 !mt-8">
+      <section className={LISTAGEM_SECAO}>
+      <div className="space-y-1 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-foreground">Motos em Estoque ({motos.length})</h2>
           <div className="flex items-center gap-1">
@@ -449,9 +451,9 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         </div>
         <Separator />
       </div>
-      <Card className="border shadow-sm rounded-xl">
-        <CardContent className="p-0 overflow-x-auto">
-          <Table stickyHeader>
+      <Card className={cn('border shadow-sm rounded-xl', LISTAGEM_NIVEL)}>
+        <CardContent className={cn('p-0', LISTAGEM_NIVEL)}>
+          <Table stickyHeader maxHeightClassName={LISTAGEM_TABELA}>
             <TableHeader sticky>
               <TableRow>
                 <TableHead className="text-xs">Empresa</TableHead>
@@ -535,6 +537,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
           </Table>
         </CardContent>
       </Card>
+      </section>
     </div>
   );
 };

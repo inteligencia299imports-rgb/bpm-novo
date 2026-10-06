@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { LISTAGEM_SECAO, LISTAGEM_NIVEL, LISTAGEM_TABELA } from './listagemLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { flattenMarcaModeloList } from '@/lib/marcaModelo';
@@ -505,7 +506,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       </div>
 
       {/* Table */}
-      <div className="space-y-1 !mt-8">
+      <section className={LISTAGEM_SECAO}>
+      <div className="space-y-1 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-foreground">Motos Preparadas</h2>
           <div className="flex items-center gap-1">
@@ -519,9 +521,9 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         </div>
         <Separator />
       </div>
-      <Card className="border shadow-sm rounded-xl">
-        <CardContent className="p-0 overflow-x-auto">
-          <Table stickyHeader>
+      <Card className={cn('border shadow-sm rounded-xl', LISTAGEM_NIVEL)}>
+        <CardContent className={cn('p-0', LISTAGEM_NIVEL)}>
+          <Table stickyHeader maxHeightClassName={LISTAGEM_TABELA}>
             <TableHeader sticky>
               <TableRow>
                 <TableHead>Cliente</TableHead>
@@ -578,6 +580,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
           </Table>
         </CardContent>
       </Card>
+      </section>
     </div>
   );
 };

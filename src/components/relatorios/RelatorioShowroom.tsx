@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { LISTAGEM_SECAO, LISTAGEM_NIVEL, LISTAGEM_TABELA } from './listagemLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { abbreviateName, fmtInt } from '@/lib/utils';
@@ -545,7 +546,8 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       </div>
 
       {/* Lists */}
-      <div className="space-y-1 !mt-8">
+      <section className={LISTAGEM_SECAO}>
+      <div className="space-y-1 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-foreground">Listagem</h2>
           <div className="flex items-center gap-1">
@@ -559,16 +561,16 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         </div>
         <Separator />
       </div>
-      <Card className="overflow-hidden">
-        <CardContent className="pt-4">
-          <Tabs value={listTab} onValueChange={setListTab}>
+      <Card className={cn('overflow-hidden', LISTAGEM_NIVEL)}>
+        <CardContent className={cn('pt-4', LISTAGEM_NIVEL)}>
+          <Tabs value={listTab} onValueChange={setListTab} className={LISTAGEM_NIVEL}>
             <TabsList className="mb-3">
               <TabsTrigger value="vendidas">Vendidas ({motosVendidas.length})</TabsTrigger>
               <TabsTrigger value="sinais">Com Sinal ({motosSinal.length})</TabsTrigger>
             </TabsList>
-            <TabsContent value="vendidas">
-              <div className="overflow-x-auto pb-2">
-                <Table stickyHeader className="min-w-[900px]">
+            <TabsContent value="vendidas" className={LISTAGEM_NIVEL}>
+              <div className={cn('pb-2', LISTAGEM_NIVEL)}>
+                <Table stickyHeader maxHeightClassName={LISTAGEM_TABELA} className="min-w-[900px]">
                   <TableHeader sticky>
                     <TableRow>
                       <TableHead>Cliente</TableHead>
@@ -612,9 +614,9 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                 </Table>
               </div>
             </TabsContent>
-            <TabsContent value="sinais">
-              <div className="overflow-x-auto pb-2">
-                <Table stickyHeader className="min-w-[900px]">
+            <TabsContent value="sinais" className={LISTAGEM_NIVEL}>
+              <div className={cn('pb-2', LISTAGEM_NIVEL)}>
+                <Table stickyHeader maxHeightClassName={LISTAGEM_TABELA} className="min-w-[900px]">
                   <TableHeader sticky>
                     <TableRow>
                       <TableHead>Cliente</TableHead>
@@ -661,6 +663,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
           </Tabs>
         </CardContent>
       </Card>
+      </section>
     </div>
   );
 };
