@@ -569,8 +569,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       <Card className="overflow-hidden">
         <CardContent className="pt-4">
           <div className="overflow-x-auto pb-2">
-            <Table className="min-w-[1200px]">
-              <TableHeader>
+            <Table stickyHeader className="min-w-[1200px]">
+              <TableHeader sticky>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Avaliador</TableHead>

@@ -2,17 +2,39 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
+type TableProps = React.HTMLAttributes<HTMLTableElement> & {
+  /**
+   * Cabeçalho congelado (igual linha congelada do Excel): a tabela rola dentro
+   * de uma área com altura máxima e o <thead> fica fixo no topo dela. Use junto
+   * com <TableHeader sticky>.
+   */
+  stickyHeader?: boolean;
+  /** Altura máxima da área de rolagem quando stickyHeader (padrão 70vh). */
+  maxHeightClassName?: string;
+};
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  ({ className, stickyHeader, maxHeightClassName = "max-h-[70vh]", ...props }, ref) => (
+    <div className={cn("relative w-full overflow-auto", stickyHeader && maxHeightClassName)}>
       <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   ),
 );
 Table.displayName = "Table";
 
-const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
-  ({ className, ...props }, ref) => <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />,
+const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement> & { sticky?: boolean }>(
+  ({ className, sticky, ...props }, ref) => (
+    <thead
+      ref={ref}
+      className={cn(
+        "[&_tr]:border-b",
+        // Fundo opaco + linha inferior desenhada por sombra (a borda do <tr> não acompanha o sticky).
+        sticky && "sticky top-0 z-10 bg-card shadow-[0_1px_0_hsl(var(--border))] [&_th]:bg-card",
+        className,
+      )}
+      {...props}
+    />
+  ),
 );
 TableHeader.displayName = "TableHeader";
 

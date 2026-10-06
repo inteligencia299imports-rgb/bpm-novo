@@ -451,8 +451,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       </div>
       <Card className="border shadow-sm rounded-xl">
         <CardContent className="p-0 overflow-x-auto">
-          <Table>
-            <TableHeader>
+          <Table stickyHeader>
+            <TableHeader sticky>
               <TableRow>
                 <TableHead className="text-xs">Empresa</TableHead>
                 <TableHead className="text-xs">Tipo</TableHead>

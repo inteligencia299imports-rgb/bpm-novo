@@ -521,8 +521,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       </div>
       <Card className="border shadow-sm rounded-xl">
         <CardContent className="p-0 overflow-x-auto">
-          <Table>
-            <TableHeader>
+          <Table stickyHeader>
+            <TableHeader sticky>
               <TableRow>
                 <TableHead>Cliente</TableHead>
                 <TableHead className="max-w-[220px]">Modelo</TableHead>
