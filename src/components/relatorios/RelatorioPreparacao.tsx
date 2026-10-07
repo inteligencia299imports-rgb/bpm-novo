@@ -180,11 +180,12 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       // Data Entrada Preparação = última conclusão de pausa OU data de aquisição
       const dataEntradaPrep = ultimaDespausa || dataAquisicao;
 
-      // Conclusão da preparação = primeiro 'aguardando_aceite' depois da data de aquisição.
-      // Regra do negócio: Tempo de Preparação = aquisição → Aguardando Aceite (pausas
-      // e re-preparações não reiniciam a contagem).
+      // Conclusão da preparação = primeiro 'aguardando_aceite' depois da Entrada.
+      // Regra do negócio (2026-10-07): Tempo de Preparação e Tempo de Liberação
+      // contam a partir da Entrada (última conclusão de pausa ou aquisição) —
+      // mesma data exibida na coluna Entrada.
       const aceites = prepHist.filter(h => h.status === 'aguardando_aceite' &&
-        (!dataAquisicao || new Date(h.created_at) >= new Date(dataAquisicao))).map(h => h.created_at);
+        (!dataEntradaPrep || new Date(h.created_at) >= new Date(dataEntradaPrep))).map(h => h.created_at);
       const dataPreparacao = aceites.length ? aceites[0] : null;
 
       // Data de liberação = primeira 'estoque' após dataEntradaPrep
@@ -192,7 +193,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         (!dataEntradaPrep || new Date(h.created_at) >= new Date(dataEntradaPrep))).map(h => h.created_at);
       const dataLiberacao = liberacoes.length ? liberacoes[0] : null;
 
-      const tempoPrepMs = dataPreparacao && dataAquisicao ? diffExcludingSundays(new Date(dataAquisicao).getTime(), new Date(dataPreparacao).getTime()) : null;
+      const tempoPrepMs = dataPreparacao && dataEntradaPrep ? diffExcludingSundays(new Date(dataEntradaPrep).getTime(), new Date(dataPreparacao).getTime()) : null;
       const tempoLibMs = dataLiberacao && dataEntradaPrep ? diffExcludingSundays(new Date(dataEntradaPrep).getTime(), new Date(dataLiberacao).getTime()) : null;
 
       // Retornos: cada vez que a moto saiu do estoque e voltou para preparação
