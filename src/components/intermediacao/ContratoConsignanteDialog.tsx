@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, Save, Download, Eye, Plus, Trash2, Loader2, DollarSign, User, Bike, MessageSquare, ArrowLeft, Pencil, MapPin, Landmark } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { recalcularRepasseCompra } from '@/lib/abatimentosCliente';
+import { recalcularRepasseCompra, buscarComissaoConsignacao, fmtPercentual, type ComissaoConsignacao } from '@/lib/abatimentosCliente';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -164,6 +164,12 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     custos: custosOp.map((c) => `${c.tipo}|${c.responsavel}|${c.descricao}|${c.valor}`).join(';'),
   });
 
+  // Comissão de consignação (percentual do contrato de consignação × valor da
+  // venda): abatimento fixo do cliente — não se edita nem remove aqui, só muda
+  // alterando o percentual. Com ela, comissão digitada à mão não conta.
+  const [comissao, setComissao] = useState<ComissaoConsignacao>({ percentual: 0, base: 0, valor: 0 });
+  const ehComissaoManual = (desc: string | null | undefined) => comissao.percentual > 0 && /comiss/i.test(String(desc || ''));
+
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -209,6 +215,8 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     const estoqueRaw = estoqueItems?.[0];
     const estoque = estoqueRaw ? mapEstoqueMoto(estoqueRaw, lojaMap) : null;
     setEstoqueInfo(estoque);
+    if (estoque?.avaliacao_id) buscarComissaoConsignacao(estoque.avaliacao_id).then(setComissao);
+    else setComissao({ percentual: 0, base: 0, valor: 0 });
 
     let avaliacao: any = null;
     let moto: any = null;
@@ -345,8 +353,9 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     const oficTotal = custosOficina.filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente').reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
     const opClienteTotal = custosOp
       .filter(c => c.responsavel === 'Cliente')
+      .filter(c => !ehComissaoManual(c.descricao))
       .reduce((sum, c) => sum + parseCurrencyInput(c.valor), 0);
-    return oficTotal + opClienteTotal;
+    return oficTotal + opClienteTotal + comissao.valor;
   };
 
   // Auto-calculate repasse
@@ -861,7 +870,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                 </div>
 
                 {/* Unified cost list */}
-                {(custosOficina.length > 0 || custosOp.length > 0) && (
+                {(custosOficina.length > 0 || custosOp.length > 0 || comissao.valor > 0) && (
                   <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
                     {custosOficina.map((c: any) => {
                       const val = c.valor_executado || c.valor_previsto || 0;
@@ -884,15 +893,30 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                         </div>
                       );
                     })}
+                    {comissao.valor > 0 && (
+                      <div
+                        className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 text-sm"
+                        title="Percentual do contrato de consignação sobre o valor da venda — muda só alterando o percentual"
+                      >
+                        <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium shrink-0">Comissão</span>
+                        <span className="flex-1 truncate text-xs font-medium">
+                          CLIENTE - COMISSÃO DE CONSIGNAÇÃO ({fmtPercentual(comissao.percentual)}% DE {formatCurrency(comissao.base)})
+                        </span>
+                        <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(comissao.valor)}</span>
+                        <span className="h-7 w-7 shrink-0" />
+                      </div>
+                    )}
                     {custosOp.map((c, idx) => {
                       const val = parseCurrencyInput(c.valor);
                       if (val <= 0) return null;
-                      const isAbatido = c.responsavel === 'Cliente';
+                      const substituida = c.responsavel === 'Cliente' && ehComissaoManual(c.descricao);
+                      const isAbatido = c.responsavel === 'Cliente' && !substituida;
                       return (
                         <div key={`op-${idx}`} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
                           <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium shrink-0">Operação</span>
-                          <span className="flex-1 truncate text-xs font-medium">
+                          <span className={`flex-1 truncate text-xs font-medium ${substituida ? 'line-through text-muted-foreground' : ''}`}>
                             {(c.responsavel || '').toUpperCase()} - PROCESSO - {(c.descricao || '-').toUpperCase()}
+                            {substituida && <span className="no-underline"> (não conta — comissão automática)</span>}
                           </span>
                           <span className={`font-semibold text-sm whitespace-nowrap ${isAbatido ? 'text-destructive' : 'text-foreground'}`}>{formatCurrency(val)}</span>
                           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeCustoOp(idx)}>

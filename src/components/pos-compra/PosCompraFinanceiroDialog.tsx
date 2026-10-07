@@ -226,9 +226,9 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                     })}
                     {/* Abatimentos de fora da oficina (intermediação / previsão): só leitura — edite no contrato de intermediação ou na avaliação. */}
                     {itensForaOficina.map((it, i) => (
-                      <div key={`fora-${i}`} className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 text-sm" title={it.origem === 'intermediacao' ? 'Lançado no contrato de intermediação' : 'Previsão de custos do cliente da avaliação'}>
+                      <div key={`fora-${i}`} className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 text-sm" title={it.origem === 'intermediacao' ? 'Lançado no contrato de intermediação' : it.origem === 'comissao' ? 'Percentual do contrato de consignação sobre o valor da venda — muda só alterando o percentual' : 'Previsão de custos do cliente da avaliação'}>
                         <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium shrink-0">
-                          {it.origem === 'intermediacao' ? 'INTERMEDIAÇÃO' : 'PREVISÃO'}
+                          {it.origem === 'intermediacao' ? 'INTERMEDIAÇÃO' : it.origem === 'comissao' ? 'COMISSÃO' : 'PREVISÃO'}
                         </span>
                         <span className="flex-1 truncate text-xs font-medium">CLIENTE - {it.descricao.toUpperCase()}</span>
                         <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(it.valor)}</span>
