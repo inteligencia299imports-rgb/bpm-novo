@@ -206,11 +206,11 @@ export function computeRowMetrics(atend: AtendimentoRow, idx: ShowroomIndexes, m
   const opLoja = idx.opLojaByAtend.get(atend.id) || 0;
   const contratoV = idx.contratoByAtend.get(atend.id);
   const consignanteV = idx.consignanteByAtend.get(atend.id);
-  // Custo do produto pra moto 0km: estoque_motos_novas.valor_custo é só o
-  // vProd do item na NF-e da montadora — não inclui o ICMS-ST retido, que é
-  // parte do custo real pago (confirmado batendo com o vNF da nota real).
+  // Custo do produto pra moto 0km: estoque_motos_novas.valor_custo é o valor
+  // TOTAL da NF-e de entrada da montadora (vNF — já inclui ICMS-ST, IPI etc.;
+  // desde 2026-10-07, antes era só o vProd do item e aqui se somava o ST).
   // Seminova não tem essa coluna, então soma 0 e não muda nada pra ela.
-  const custoProdutoEstoque = Number(estoque?.valor_custo || 0) + Number(estoque?.icms_st_valor_retido || 0);
+  const custoProdutoEstoque = Number(estoque?.valor_custo || 0);
 
   let quantoVende: number;
   let valorFechamento: number;

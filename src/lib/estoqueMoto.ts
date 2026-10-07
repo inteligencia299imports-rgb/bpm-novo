@@ -129,10 +129,9 @@ export function mapEstoqueMotoNova(row: any, lojaMap?: Map<string, LojaInfo>) {
     tipo_aquisicao: null,
     preco: row?.valor ?? null,
     valor_custo: row?.valor_custo ?? null,
-    // valor_custo é só o vProd do item na NF-e de entrada da montadora
-    // (gravado pelo confirmar-motos-novas do SisFin) — não inclui o ICMS-ST
-    // retido. Custo total real pago = valor_custo + icms_st_valor_retido
-    // (confirmado batendo com o vNF da nota real).
+    // valor_custo é o valor TOTAL da NF-e de entrada da montadora (vNF, já
+    // com ICMS-ST, IPI etc.), gravado pelo confirmar-motos-novas do SisFin —
+    // é o custo real pago (desde 2026-10-07; antes era só o vProd do item).
     valor_compra: row?.valor_custo ?? null,
     classificacao: null,
     data_entrada: row?.created_at ?? null,
