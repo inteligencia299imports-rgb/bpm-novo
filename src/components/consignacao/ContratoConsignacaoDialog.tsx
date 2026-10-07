@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import { FileText, CalendarIcon, Save, Download, Percent, Eye, ArrowLeft, Loader2, RefreshCw, AlertTriangle, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Building2, ListChecks } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { buscarAbatimentosForaDaOficina } from '@/lib/abatimentosCliente';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -230,6 +231,10 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [valorFechamento, setValorFechamento] = useState('');
   // Custos de oficina de responsabilidade do cliente (abatem o repasse) — igual ao contrato de compra.
   const [custosCliente, setCustosCliente] = useState(0);
+  // Previsão de custos do cliente + custos do cliente lançados na intermediação
+  // (IPVA, licenciamento, transporte...) — todo custo do cliente abate do repasse,
+  // igual ao compromisso a pagar (lib/abatimentosCliente).
+  const [abatimentosForaOficina, setAbatimentosForaOficina] = useState(0);
 
   // Observations
   const [obsInternas, setObsInternas] = useState('');
@@ -278,6 +283,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
           .reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0),
       );
+      buscarAbatimentosForaDaOficina(avaliacao.id).then(setAbatimentosForaOficina);
       nfe.carregar();
       // Quitação e Fechamento da moto do cliente têm origem na avaliação — não são editados no contrato.
       const quitacaoAval = (avaliacao as any)?.valor_quitacao;
@@ -489,8 +495,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const fechamentoNum = valorFechamento?.trim() ? parseCurrencyInput(valorFechamento) : 0;
   const quitacaoNum = valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : 0;
-  const previsaoCustosCliente = Number((avaliacao as any)?.previsao_custos_cliente ?? 0);
-  const abatimentos = custosCliente + previsaoCustosCliente;
+  const abatimentos = custosCliente + abatimentosForaOficina;
   const repasseCliente = fechamentoNum - abatimentos - quitacaoNum;
 
   // Houve edição desde a última geração/carregamento? (igual contrato de compra)
@@ -559,6 +564,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       valorNegociado: formatCurrencyValue(valorFechamento),
       observacoes: obsContrato || '',
       valorFechamento: formatCurrencyValue(valorFechamento),
+      valorRepasse: brl(Math.max(repasseCliente, 0)),
       dataContrato: dataContrato ? format(dataContrato, "dd/MM/yyyy", { locale: ptBR }) : '-',
       percentualComissao: percentualComissaoNum,
       temAcessorios: moto?.tem_acessorios,

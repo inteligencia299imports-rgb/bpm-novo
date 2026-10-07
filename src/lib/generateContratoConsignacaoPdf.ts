@@ -20,6 +20,8 @@ interface ContratoConsignacaoPdfData {
   valorNegociado: string;
   observacoes: string;
   valorFechamento: string;
+  /** Repasse líquido ao consignante (fechamento − quitação − abatimentos do cliente). */
+  valorRepasse?: string;
   dataContrato: string;
   /** Percentual de comissão (0/vazio = contrato normal, sem cláusula de comissão). */
   percentualComissao: number;
@@ -347,7 +349,10 @@ export async function generateContratoConsignacaoPdf(
       ? 'A CONSIGNATÁRIA fica autorizada, através do presente, a vender o bem objeto do presente, pelo valor de'
       : 'A CONSIGNATÁRIA fica acordado a repassar em mãos o valor de';
     const suffix = ';';
-    const valor = data.valorFechamento;
+    // Com comissão: valor de VENDA autorizado (fechamento). Sem comissão: o que a
+    // consignatária repassa em mãos = repasse líquido (fechamento − quitação −
+    // abatimentos do cliente), não o fechamento cheio (achado PAL7I16, 2026-10-07).
+    const valor = temComissao ? data.valorFechamento : (data.valorRepasse || data.valorFechamento);
 
     // Render prefix in normal, valor in bold, suffix in normal
     let cx = marginLeft;
