@@ -8,6 +8,8 @@ import { Plus, Trash2, Loader2, DollarSign, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { useNfeEmitida } from '@/hooks/useNfeEmitida';
+import { useNfeVendaDaMoto } from '@/hooks/useNfeVendaDaMoto';
+import { isTipoConsignada } from '@/lib/tipoAquisicao';
 
 interface Props {
   open: boolean;
@@ -36,10 +38,14 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [valorFechamento, setValorFechamento] = useState('');
   const [custosOficina, setCustosOficina] = useState<any[]>([]);
   const [aprovacaoStatus, setAprovacaoStatus] = useState<string | null>(null);
+  const [tipoAquisicao, setTipoAquisicao] = useState<string | null>(null);
   const { emitida: nfeEmitida } = useNfeEmitida(open ? avaliacaoId : null, 'avaliacao');
   // Mesma trava do AvaliacaoForm: após aprovada a aquisição ou emitida a NF-e de
-  // compra, o Valor de Fechamento fica congelado (não é regravado).
-  const valorFechamentoTravado = aprovacaoStatus === 'aprovada' || nfeEmitida;
+  // compra, o Valor de Fechamento fica congelado (não é regravado). Consignada só
+  // trava com a NF-e de venda dessa moto em produção.
+  const ehConsignada = isTipoConsignada(tipoAquisicao);
+  const { emitida: nfeVendaEmitida } = useNfeVendaDaMoto(open ? avaliacaoId : null, ehConsignada);
+  const valorFechamentoTravado = ehConsignada ? nfeVendaEmitida : (aprovacaoStatus === 'aprovada' || nfeEmitida);
 
   // New cost form
   const [newResp, setNewResp] = useState('Cliente');
@@ -57,7 +63,7 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const loadData = async () => {
     setLoading(true);
     const [{ data: avData }, { data: custosData }] = await Promise.all([
-      supabase.from('avaliacoes').select('valor_fechamento, aprovacao_status').eq('id', avaliacaoId).maybeSingle(),
+      supabase.from('avaliacoes').select('valor_fechamento, aprovacao_status, tipo_aquisicao').eq('id', avaliacaoId).maybeSingle(),
       supabase.from('custos_oficina').select('*').eq('avaliacao_id', avaliacaoId).order('created_at'),
     ]);
 
@@ -67,6 +73,7 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       setValorFechamento('');
     }
     setAprovacaoStatus((avData as any)?.aprovacao_status ?? null);
+    setTipoAquisicao((avData as any)?.tipo_aquisicao ?? null);
     setCustosOficina(custosData || []);
     setLoading(false);
   };

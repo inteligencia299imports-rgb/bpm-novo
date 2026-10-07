@@ -38,7 +38,7 @@ import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, vali
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { useNfeEmitida } from '@/hooks/useNfeEmitida';
-import { useNfeCompra } from '@/hooks/useNfeCompra';
+import { useNfeVendaDaMoto } from '@/hooks/useNfeVendaDaMoto';
 import StatusTimeline, { defaultFormatStatusLabel } from '@/components/shared/StatusTimeline';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
 import { SITUACOES_AVALIACAO } from '@/types/crm';
@@ -157,18 +157,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [history, setHistory] = useState<any[]>([]);
   // NF-e de compra/consignação autorizada -> avaliação travada (destrava se cancelada).
   const { emitida: nfeEmitida, emitidaProducao: nfeEmitidaProducao, recarregar: recarregarNfe } = useNfeEmitida(avaliacao?.id, 'avaliacao');
-  // Consignação: Valor de Fechamento continua editável durante a NF de consignação
-  // e a devolução — só trava depois de uma recompra (NF de compra pós-devolução) ou
-  // de uma NF de venda dessa moto (mesmo padrão de ConverterConsignacaoDialog.tsx).
+  // Consignação: Valor de Fechamento continua editável (NF de consignação,
+  // devolução e até a NF de compra) — só trava com a NF-e de VENDA dessa moto
+  // autorizada em produção.
   const ehConsignadaLock = isTipoConsignada(avaliacao?.tipo_aquisicao);
-  const nfeRecompraConsignacao = useNfeCompra(avaliacao?.id || '', ehConsignadaLock, 'compra', 'avaliacao');
-  const nfeVendaConsignacao = useNfeCompra((avaliacao as any)?.atendimento_id || '', ehConsignadaLock, 'venda_seminova', 'atendimento');
-  useEffect(() => {
-    if (!ehConsignadaLock || !avaliacao?.id) return;
-    nfeRecompraConsignacao.carregar();
-    nfeVendaConsignacao.carregar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ehConsignadaLock, avaliacao?.id]);
+  const nfeVendaConsignacao = useNfeVendaDaMoto(avaliacao?.id, ehConsignadaLock);
   const [editClienteOpen, setEditClienteOpen] = useState(false);
   // Etapa de aprovação (contexto pos_compra)
   const [aprovacaoPopup, setAprovacaoPopup] = useState<{ modo: 'aprovar' | 'recusar' | 'desaprovar' | 'perdido'; motivo: string } | null>(null);
@@ -1035,10 +1028,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const aprovado = precisaAprovacao && apSt === 'aprovada';
   // Valor de Fechamento congela após a aquisição ser aprovada (troca já nasce aprovada
   // junto com a venda) ou após a NF-e de compra emitida — o que ocorrer primeiro.
-  // Consignação é exceção: continua editável durante a NF de consignação e a
-  // devolução, só travando depois de uma recompra ou de uma NF de venda.
+  // Consignação é exceção: só trava com a NF-e de venda dessa moto em produção.
   const valorFechamentoTravado = ehConsignadaLock
-    ? (nfeRecompraConsignacao.emitida || nfeVendaConsignacao.emitida)
+    ? nfeVendaConsignacao.emitida
     : (nfeCompraEmitida || apSt === 'aprovada');
   // Remoção de documento travada: aquisição aprovada (inclui troca auto-aprovada
   // junto com a venda) OU NF-e em produção. Anexar documento ausente segue liberado.
