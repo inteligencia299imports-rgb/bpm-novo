@@ -108,8 +108,6 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
   const [nomeConsignante, setNomeConsignante] = useState('');
   const [telefoneConsignante, setTelefoneConsignante] = useState('');
   const [cpfCnpj, setCpfCnpj] = useState('');
-  const [dadosBancarios, setDadosBancarios] = useState('');
-  const [titularConta, setTitularConta] = useState('');
   // Cadastro completo do consignante (embute o ClienteForm, igual ao contrato de compra).
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [clienteRecord, setClienteRecord] = useState<any | null>(null);
@@ -155,10 +153,26 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
   const [dataContrato, setDataContrato] = useState<Date | undefined>();
   const [calOpen, setCalOpen] = useState(false);
 
+  // Dados para o repasse ao consignante: vêm SÓ do cadastro do cliente (card
+  // "Dados Bancários (cadastro)"), sem campo de texto livre na tela — antes eram
+  // digitados à mão e podiam divergir do cadastro, que o PDF também usa. Para
+  // mudar, edita o cadastro. O contrato grava um retrato desses dados.
+  const contaCadastro = clienteRecord?.conta
+    ? `${clienteRecord.conta}${clienteRecord?.digito_conta ? `-${clienteRecord.digito_conta}` : ''}`
+    : null;
+  const dadosBancarios = [
+    clienteRecord?.banco,
+    tipoContaLabel(clienteRecord?.tipo_conta)?.toUpperCase(),
+    clienteRecord?.agencia ? `AGÊNCIA ${clienteRecord.agencia}` : null,
+    contaCadastro ? `CONTA ${contaCadastro}` : null,
+    clienteRecord?.chave_pix ? `CHAVE PIX ${clienteRecord.chave_pix}` : null,
+  ].filter(Boolean).join(' - ');
+  const titularConta = clienteRecord?.favorecido || clienteRecord?.nome_razao_social || nomeConsignante || '';
+
   // Baseline p/ detectar edição desde a última geração/carregamento (igual compra).
   const [baseline, setBaseline] = useState('');
   const consignanteSnapshot = () => JSON.stringify({
-    nomeConsignante, telefoneConsignante, cpfCnpj, dadosBancarios, titularConta,
+    nomeConsignante, telefoneConsignante, cpfCnpj,
     valorFechamento, valorRepasse, obsContrato, obsInternas,
     dataContrato: dataContrato ? dataContrato.toISOString().slice(0, 10) : '',
     custos: custosOp.map((c) => `${c.tipo}|${c.responsavel}|${c.descricao}|${c.valor}`).join(';'),
@@ -258,8 +272,6 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       setNomeConsignante(contrato.nome_consignante || '');
       setTelefoneConsignante(formatTelefone(contrato.telefone_consignante || ''));
       setCpfCnpj(formatCpfCnpj(contrato.cpf_cnpj || ''));
-      setDadosBancarios(contrato.dados_bancarios || '');
-      setTitularConta(contrato.titular_conta || '');
       // Valor de Fechamento tem origem única na avaliação — nunca usa o
       // valor já salvo no contrato (ficaria divergente se a avaliação for
       // atualizada depois de o contrato já ter sido gerado uma vez).
@@ -310,8 +322,6 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       } else {
         setValorFechamento('');
       }
-      setDadosBancarios('');
-      setTitularConta('');
       setValorRepasse('');
       setObsContrato('');
       setObsInternas('');
@@ -716,18 +726,6 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                     />
                   )}
 
-                  <Separator />
-                  <p className="text-xs font-medium text-muted-foreground">Dados para repasse ao consignante</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Titular da Conta</Label>
-                      <Input value={titularConta} onChange={e => setTitularConta(e.target.value)} placeholder="Nome do titular" />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Dados Bancários</Label>
-                    <Textarea rows={2} value={dadosBancarios} onChange={e => setDadosBancarios(e.target.value)} placeholder="Banco, Agência, Conta, Tipo (Corrente/Poupança), PIX..." />
-                  </div>
                 </CardContent>
               </Card>
 
