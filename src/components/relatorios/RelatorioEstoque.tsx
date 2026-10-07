@@ -316,6 +316,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       styles: { fontSize: 7, cellPadding: 3, textColor: [30, 41, 59], lineColor: [226, 232, 240] },
       headStyles: { fillColor: [47, 111, 132], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
       footStyles: { fillColor: [241, 244, 247], textColor: [30, 41, 59], fontStyle: 'bold', fontSize: 7.5 },
+      // Linha de TOTAL só no fim da listagem (padrão do autoTable repete em toda página).
+      showFoot: 'lastPage',
       alternateRowStyles: { fillColor: [245, 247, 250] },
       columnStyles: {
         3: { halign: 'right' }, 11: { halign: 'right' }, 12: { halign: 'right' }, 13: { halign: 'right' },
