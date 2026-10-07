@@ -900,7 +900,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                       >
                         <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium shrink-0">Comissão</span>
                         <span className="flex-1 truncate text-xs font-medium">
-                          CLIENTE - COMISSÃO DE CONSIGNAÇÃO ({fmtPercentual(comissao.percentual)}% DE {formatCurrency(comissao.base)})
+                          CLIENTE - COMISSÃO DE CONSIGNAÇÃO ({fmtPercentual(comissao.percentual)}%)
                         </span>
                         <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(comissao.valor)}</span>
                         <span className="h-7 w-7 shrink-0" />

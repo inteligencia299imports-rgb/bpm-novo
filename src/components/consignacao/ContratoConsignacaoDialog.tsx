@@ -951,7 +951,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                       </div>
                       {comissaoValor > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          Comissão {brl(comissaoValor)} ({percentualComissao}% de {brl(comissaoBase)}, valor da venda) — abatida do repasse ao cliente.
+                          Comissão ({percentualComissao}%): {brl(comissaoValor)} — abatida do repasse ao cliente.
                         </p>
                       )}
                     </div>
