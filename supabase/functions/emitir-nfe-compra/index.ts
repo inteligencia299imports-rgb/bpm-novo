@@ -1415,7 +1415,7 @@ Deno.serve(async (req) => {
     const { data: en } = await admin
       .from('estoque_motos_novas')
       .select(
-        'id, empresa_id, loja_id, chassi, placa, renavam, ncm, valor, valor_custo, numero_nf_entrada, ' +
+        'id, empresa_id, loja_id, chassi, placa, renavam, ncm, valor, valor_custo, numero_nf_entrada, nfe_item_id, ' +
           'ano_fabricacao, ano_modelo, cilindrada, cor, marca:marca_id(nome), modelo:modelo_id(nome), ' +
           'potencia_motor, peso_liquido, peso_bruto, numero_motor, codigo_cor_fabricante, codigo_cor_denatran, ' +
           'codigo_marca_modelo_denatran, icms_st_bc_retido, icms_st_valor_substituto, icms_st_valor_retido, ' +
@@ -2636,9 +2636,17 @@ Deno.serve(async (req) => {
     saidaChaveParaEntrada = saidaValorRow?.chave_nfe ? String(saidaValorRow.chave_nfe).replace(/\D/g, '') : null;
     valor = Number(saidaValorRow?.valor_total ?? 0);
   } else if (tipo === 'transferencia_saida_0km') {
-    // Valor de custo da moto 0km (o que a fábrica cobrou) — mesmo critério
-    // da transferência de seminova, nunca o preço de venda/tabela.
-    valor = Number(emn0km?.valor_custo ?? emn0km?.valor ?? 0);
+    // Valor do PRODUTO na NF-e da montadora (vProd do item, sem ICMS-ST/IPI) —
+    // decisão do usuário 2026-10-07. valor_custo passou a ser o total da NF de
+    // entrada (custo real), então não serve aqui; só é usado como fallback
+    // quando a moto não tem item de NF vinculado (cadastro manual).
+    let valorProduto: number | null = null;
+    if ((emn0km as any)?.nfe_item_id) {
+      const { data: itemNf } = await admin
+        .from('nfe_itens').select('valor_total_item').eq('id', (emn0km as any).nfe_item_id).maybeSingle();
+      if (itemNf?.valor_total_item != null) valorProduto = Number(itemNf.valor_total_item);
+    }
+    valor = Number(valorProduto ?? emn0km?.valor_custo ?? emn0km?.valor ?? 0);
   } else if (tipo === 'transferencia_entrada_0km') {
     const { data: saidaValorRow } = await admin
       .from('nfe_entradas').select('id, valor_total, chave_nfe')
