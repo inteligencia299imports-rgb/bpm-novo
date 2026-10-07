@@ -454,6 +454,93 @@ async function acaoVenda(admin: any, atendimentoId: string, callerId: string): P
   return out;
 }
 
+/**
+ * Recalcula o repasse do compromisso de COMPRA da moto quando um custo do
+ * cliente é lançado/removido — inclusive depois da NF-e de compra (achado
+ * PBP8964, 2026-10-07: oficina de R$ 650 lançada depois da NF não abateu).
+ * Regra: repasse = fechamento − quitação − abatimentos do cliente (todos).
+ * Mexe só nas parcelas de repasse NÃO pagas (a quitação, sempre boleto, e
+ * parcelas pagas ficam como estão): a última parcela em aberto absorve a
+ * diferença; sem parcela em aberto, cria uma (Pix, vencimento padrão).
+ */
+async function recalcularRepasseCompra(admin: any, avaliacaoId: string, callerId: string): Promise<Record<string, unknown>> {
+  const { data: comp } = await admin
+    .from('compromissos')
+    .select('id, status_compromisso')
+    .eq('avaliacao_id', avaliacaoId)
+    .eq('origem', 'compra')
+    .is('deleted_at', null)
+    .not('status_compromisso', 'in', '("cancelada","cancelado")')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (!comp?.id) return { status: 'sem_compromisso' };
+
+  const { data: av } = await admin
+    .from('avaliacoes')
+    .select('atendimento_id, valor_fechamento, valor_quitacao')
+    .eq('id', avaliacaoId)
+    .maybeSingle();
+  if (!av) return { status: 'avaliacao_nao_encontrada' };
+  // Troca tem outra divisão (abate da venda / sobra / quitação) — não mexe aqui.
+  const { data: at } = await admin.from('atendimentos_motos').select('interesse').eq('id', av.atendimento_id).maybeSingle();
+  if ((at as any)?.interesse === 'trocar') return { status: 'troca_ignorada' };
+  const { data: contratoCompra } = await admin
+    .from('contratos')
+    .select('valor_fechamento, valor_quitacao, data_sinal')
+    .eq('atendimento_id', av.atendimento_id)
+    .eq('ipva_tipo', 'COMPRA')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const fechamento = nz(av.valor_fechamento ?? contratoCompra?.valor_fechamento);
+  const quitacao = nz(av.valor_quitacao ?? contratoCompra?.valor_quitacao);
+  const repasse = Math.round(Math.max(fechamento - quitacao - await abatimentosCliente(admin, avaliacaoId), 0) * 100) / 100;
+
+  const { data: parcelasRaw } = await admin
+    .from('compromissos_parcelas')
+    .select('id, numero_parcela, valor, status_pagamento, forma_pagamento_id')
+    .eq('compromisso_id', comp.id);
+  const parcelas = ((parcelasRaw as any[]) || []);
+  const repasseParc = parcelas.filter((p) => p.forma_pagamento_id !== FORMA_PAGAMENTO_BOLETO_ID && p.status_pagamento !== 'cancelado');
+  const pago = repasseParc.filter((p) => p.status_pagamento === 'pago').reduce((s, p) => s + nz(p.valor), 0);
+  const abertas = repasseParc.filter((p) => p.status_pagamento !== 'pago').sort((a, b) => a.numero_parcela - b.numero_parcela);
+  const alvoAberto = Math.round((repasse - pago) * 100) / 100;
+  const atualAberto = Math.round(abertas.reduce((s, p) => s + nz(p.valor), 0) * 100) / 100;
+  if (Math.abs(alvoAberto - atualAberto) < 0.005) return { status: 'sem_alteracao', repasse };
+
+  if (abertas.length === 0) {
+    if (alvoAberto <= 0.005) return { status: 'sem_alteracao', repasse };
+    await admin.from('compromissos_parcelas').insert({
+      compromisso_id: comp.id,
+      numero_parcela: Math.max(0, ...parcelas.map((p) => Number(p.numero_parcela))) + 1,
+      valor: alvoAberto,
+      data_vencimento: addDias(contratoCompra?.data_sinal, DIAS_VENCIMENTO),
+      tipo: 'parcelado',
+      forma_pagamento_id: FORMA_PAGAMENTO_ID,
+      status_pagamento: 'em_aberto',
+      observacoes: OBS_PARCELA_REPASSE,
+    });
+  } else {
+    const ultima = abertas[abertas.length - 1];
+    const outras = atualAberto - nz(ultima.valor);
+    const novoValor = Math.round((alvoAberto - outras) * 100) / 100;
+    if (novoValor > 0.005) {
+      await admin.from('compromissos_parcelas').update({ valor: novoValor }).eq('id', ultima.id);
+    } else {
+      await admin.from('compromissos_parcelas').delete().eq('id', ultima.id);
+    }
+  }
+
+  const { data: depois } = await admin.from('compromissos_parcelas').select('status_pagamento').eq('compromisso_id', comp.id);
+  const ativas = ((depois as any[]) || []).filter((p) => p.status_pagamento !== 'cancelado');
+  await admin.from('compromissos')
+    .update({ status_compromisso: ativas.length > 0 && ativas.every((p) => p.status_pagamento === 'pago') ? 'pago' : 'em_aberto', updated_by: callerId })
+    .eq('id', comp.id);
+  return { status: 'atualizado', repasse, antes: atualAberto, depois: alvoAberto };
+}
+
 /** Repasse ao consignante (venda de moto consignada): a PAGAR, no vencimento da
  *  etapa PREVISÃO DE PAGAMENTO da Intermediação Parte 1. */
 async function acaoConsignante(admin: any, atendimentoId: string, callerId: string): Promise<Record<string, unknown>> {
@@ -603,7 +690,11 @@ Deno.serve(async (req) => {
       if (!atendimentoId) return jsonResponse({ error: 'atendimento_id é obrigatório' }, 400);
       return jsonResponse({ ok: true, consignante: await acaoConsignante(admin, atendimentoId, caller.id) }, 200);
     }
-    return jsonResponse({ error: "acao inválida (use 'venda' | 'compra' | 'consignante')" }, 400);
+    if (acao === 'recalcular_repasse') {
+      if (!avaliacaoId) return jsonResponse({ error: 'avaliacao_id é obrigatório' }, 400);
+      return jsonResponse({ ok: true, repasse: await recalcularRepasseCompra(admin, avaliacaoId, caller.id) }, 200);
+    }
+    return jsonResponse({ error: "acao inválida (use 'venda' | 'compra' | 'consignante' | 'recalcular_repasse')" }, 400);
   } catch (e) {
     console.error('gerar-compromissos-proposta erro', e);
     return jsonResponse({ error: String((e as any)?.message || e) }, 500);

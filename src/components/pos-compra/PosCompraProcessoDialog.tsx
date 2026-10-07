@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
+import { buscarAbatimentosForaDaOficina, recalcularRepasseCompra } from '@/lib/abatimentosCliente';
 import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { useNfeDevolvida } from '@/hooks/useNfeDevolvida';
@@ -81,6 +82,9 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   const [aba, setAba] = useState<'processo' | 'financeiro'>('processo');
   const [valorFechamento, setValorFechamento] = useState('');
   const [custosOficina, setCustosOficina] = useState<any[]>([]);
+  // Previsão de custos do cliente + custos do cliente lançados na intermediação:
+  // também abatem do repasse (todo custo do cliente abate), igual ao compromisso.
+  const [abatimentosForaOficina, setAbatimentosForaOficina] = useState(0);
   const [savingFin, setSavingFin] = useState(false);
   const [newResp, setNewResp] = useState('Cliente');
   const [newTipo] = useState('Serviço');
@@ -139,6 +143,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       ]);
 
       setCustosOficina(custosData || []);
+      buscarAbatimentosForaDaOficina(avaliacaoId).then(setAbatimentosForaOficina);
       setNfeCompra((nfeData as any[])?.[0] || null);
       setAprovacaoStatus((avData as any)?.aprovacao_status ?? null);
       setRenaveEntrouEstoque(!!(avData as any)?.renave_id_estoque);
@@ -242,7 +247,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   // ---- Financeiro ----
   const abatimentos = custosOficina
     .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
-    .reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
+    .reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0) + abatimentosForaOficina;
   const repasseNum = parseCurrencyInput(valorFechamento) - abatimentos;
 
   const addCusto = async () => {
@@ -260,6 +265,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
     const { data, error } = await supabase.from('custos_oficina').insert(payload as any).select().single();
     if (error) { toast.error('Erro ao adicionar custo'); return; }
     setCustosOficina(prev => [...prev, data]);
+    recalcularRepasseCompra(avaliacaoId);
     setNewResp('Cliente');
     setNewDesc('');
     setNewValor('');
@@ -268,6 +274,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   const removeCusto = async (id: string) => {
     await supabase.from('custos_oficina').delete().eq('id', id);
     setCustosOficina(prev => prev.filter(c => c.id !== id));
+    recalcularRepasseCompra(avaliacaoId);
     toast.success('Custo removido');
   };
 
