@@ -176,9 +176,9 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       const venda = m.data_venda ? new Date(m.data_venda).getTime() : null;
       return entrada <= cutoffMs && (venda === null || venda > cutoffMs);
     });
-    // Ordem da listagem (e do Excel/PDF, que usam a mesma lista): modelo, depois marca.
+    // Ordem da listagem (e do Excel/PDF, que usam a mesma lista): marca, depois modelo.
     const cmp = (x: unknown, y: unknown) => String(x ?? '').localeCompare(String(y ?? ''), 'pt-BR', { sensitivity: 'base', numeric: true });
-    motosFiltradas.sort((x: any, y: any) => cmp(x.modelo, y.modelo) || cmp(x.marca, y.marca));
+    motosFiltradas.sort((x: any, y: any) => cmp(x.marca, y.marca) || cmp(x.modelo, y.modelo));
     setMotos(motosFiltradas);
     setLoading(false);
   }, [dateTo, filterLoja, filterTipo]);
