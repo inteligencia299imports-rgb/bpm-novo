@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { LISTAGEM_SECAO, LISTAGEM_NIVEL, LISTAGEM_TABELA } from './listagemLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { flattenMarcaModelo } from '@/lib/marcaModelo';
@@ -552,7 +553,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       </div>
 
       {/* Section: Motos Adquiridas */}
-      <div className="space-y-1 !mt-8">
+      <section className={LISTAGEM_SECAO}>
+      <div className="space-y-1 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-foreground">Motos Adquiridas</h2>
           <div className="flex items-center gap-1">
@@ -566,11 +568,11 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         </div>
         <Separator />
       </div>
-      <Card className="overflow-hidden">
-        <CardContent className="pt-4">
-          <div className="overflow-x-auto pb-2">
-            <Table className="min-w-[1200px]">
-              <TableHeader>
+      <Card className={cn('overflow-hidden', LISTAGEM_NIVEL)}>
+        <CardContent className={cn('pt-4', LISTAGEM_NIVEL)}>
+          <div className={cn('pb-2', LISTAGEM_NIVEL)}>
+            <Table stickyHeader maxHeightClassName={LISTAGEM_TABELA} className="min-w-[1200px]">
+              <TableHeader sticky>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Avaliador</TableHead>
@@ -623,6 +625,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
           </div>
         </CardContent>
       </Card>
+      </section>
     </div>
   );
 };
