@@ -10,6 +10,7 @@ import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
 import { supabase } from '@/lib/supabase';
+import { buscarAbatimentosCliente } from '@/lib/abatimentosCliente';
 import { toast } from 'sonner';
 
 interface Props {
@@ -43,6 +44,11 @@ const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', curren
 const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, onConcluido }) => {
   const valorConsignacao = Number(avaliacao?.valor_consignacao_nota ?? avaliacao?.avaliacao_consignacao ?? 0);
   const [valorCompra, setValorCompra] = useState('');
+  // Valor de compra sugerido = fechamento − abatimentos do cliente (mesma conta
+  // do compromisso a pagar). Antes sugeria o valor da NF de consignação, e a NF
+  // de compra saía sem os abatimentos (achado PBP8964, 2026-10-07: NF 42.000 x
+  // contas a pagar 39.693,84).
+  const [sugestao, setSugestao] = useState<{ base: number; abatimentos: number } | null>(null);
 
   const nfeDevolucao = useNfeCompra(avaliacao?.id, open, 'devolucao_consignacao', 'avaliacao');
   const nfeCompra = useNfeCompra(avaliacao?.id, open, 'compra', 'avaliacao', () => {
@@ -67,6 +73,21 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
     nfeCompra.carregar();
     nfeVenda.carregar();
     setValorCompra(valorConsignacao > 0 ? formatCurrencyInput(String(Math.round(valorConsignacao * 100))) : '');
+    setSugestao(null);
+    if (avaliacao?.id) {
+      (async () => {
+        const [{ data: avFresh }, abatimentos] = await Promise.all([
+          supabase.from('avaliacoes').select('valor_fechamento').eq('id', avaliacao.id).maybeSingle(),
+          buscarAbatimentosCliente(avaliacao.id),
+        ]);
+        const fechamento = Number((avFresh as any)?.valor_fechamento ?? avaliacao?.valor_fechamento ?? 0);
+        const base = fechamento > 0 ? fechamento : valorConsignacao;
+        if (base <= 0) return;
+        const sugerido = Math.max(base - abatimentos, 0);
+        setSugestao({ base, abatimentos });
+        setValorCompra(formatCurrencyInput(String(Math.round(sugerido * 100))));
+      })();
+    }
     if (avaliacao?.id) {
       supabase
         .from('nfe_entradas' as any)
@@ -228,6 +249,11 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                           disabled={compraOk && !podeReemitirHomologCompra}
                         />
                       </div>
+                      {sugestao && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Sugerido: fechamento {brl(sugestao.base)} − abatimentos do cliente {brl(sugestao.abatimentos)} = <strong>{brl(Math.max(sugestao.base - sugestao.abatimentos, 0))}</strong> (mesmo valor do contas a pagar).
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground mt-1">Pode ser renegociado com o consignante — não precisa ser igual ao valor da consignação.</p>
                     </div>
                   )}
