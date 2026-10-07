@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import { FileText, CalendarIcon, Save, Download, Percent, Eye, ArrowLeft, Loader2, RefreshCw, AlertTriangle, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Building2, ListChecks } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { buscarAbatimentosForaDaOficina } from '@/lib/abatimentosCliente';
+import { listarAbatimentosForaDaOficina, buscarComissaoConsignacao, recalcularRepasseCompra } from '@/lib/abatimentosCliente';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -235,6 +235,10 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // (IPVA, licenciamento, transporte...) — todo custo do cliente abate do repasse,
   // igual ao compromisso a pagar (lib/abatimentosCliente).
   const [abatimentosForaOficina, setAbatimentosForaOficina] = useState(0);
+  // Base da comissão de consignação: valor real da venda (ou "quanto vende"
+  // enquanto não vendida). A comissão é calculada aqui com o percentual da tela,
+  // para o repasse acompanhar a digitação antes de salvar.
+  const [comissaoBase, setComissaoBase] = useState(0);
 
   // Observations
   const [obsInternas, setObsInternas] = useState('');
@@ -283,7 +287,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
           .filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente')
           .reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0),
       );
-      buscarAbatimentosForaDaOficina(avaliacao.id).then(setAbatimentosForaOficina);
+      listarAbatimentosForaDaOficina(avaliacao.id, { incluirComissao: false })
+        .then((itens) => setAbatimentosForaOficina(itens.reduce((sum, i) => sum + i.valor, 0)));
+      buscarComissaoConsignacao(avaliacao.id, 0).then((c) => setComissaoBase(c.base));
       nfe.carregar();
       // Quitação e Fechamento da moto do cliente têm origem na avaliação — não são editados no contrato.
       const quitacaoAval = (avaliacao as any)?.valor_quitacao;
@@ -357,6 +363,8 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         setObsInternas(contrato.observacoes_internas || '');
         setObsContrato(contrato.observacoes_contrato || '');
         setDataContrato(contrato.data_contrato ? new Date(contrato.data_contrato + 'T12:00:00') : undefined);
+        const pct = Number((contrato as any).percentual_comissao) || 0;
+        setPercentualComissao(pct > 0 ? String(pct).replace('.', ',') : '');
       } else {
         setContratoId(null);
         // Pré-preencher dados do cliente a partir do atendimento
@@ -370,6 +378,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         setObsInternas('');
         setObsContrato('');
         setDataContrato(undefined);
+        setPercentualComissao('');
       }
       setLoading(false);
     };
@@ -401,6 +410,8 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       observacoes_internas: obsInternas || null,
       observacoes_contrato: obsContrato || null,
       data_contrato: dataContrato ? format(dataContrato, 'yyyy-MM-dd') : null,
+      // Percentual de comissão gravado: vira abatimento fixo do cliente (repasse).
+      percentual_comissao: percentualComissaoNum > 0 ? percentualComissaoNum : null,
     };
 
     // Sync client data back to o cliente vinculado
@@ -430,6 +441,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         return null;
       }
       setSaving(false);
+      recalcularRepasseCompra(avaliacao?.id);
       return contratoId;
     } else {
       const { data, error } = await supabase.from('contratos_consignacao').insert(payload).select().single();
@@ -440,6 +452,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       }
       setContratoId(data.id);
       setSaving(false);
+      recalcularRepasseCompra(avaliacao?.id);
       return data.id;
     }
   };
@@ -495,7 +508,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const fechamentoNum = valorFechamento?.trim() ? parseCurrencyInput(valorFechamento) : 0;
   const quitacaoNum = valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : 0;
-  const abatimentos = custosCliente + abatimentosForaOficina;
+  // Comissão de consignação (percentual × valor da venda): abatimento fixo do cliente.
+  const comissaoValor = percentualComissaoNum > 0 ? Math.round(comissaoBase * percentualComissaoNum) / 100 : 0;
+  const abatimentos = custosCliente + abatimentosForaOficina + comissaoValor;
   const repasseCliente = fechamentoNum - abatimentos - quitacaoNum;
 
   // Houve edição desde a última geração/carregamento? (igual contrato de compra)
@@ -934,6 +949,11 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                         />
                         <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
                       </div>
+                      {comissaoValor > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Comissão ({percentualComissao}%): {brl(comissaoValor)} — abatida do repasse ao cliente.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardContent>

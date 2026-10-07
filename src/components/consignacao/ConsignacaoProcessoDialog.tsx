@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
-import { buscarAbatimentosForaDaOficina, recalcularRepasseCompra } from '@/lib/abatimentosCliente';
+import { listarAbatimentosForaDaOficina, recalcularRepasseCompra, type AbatimentoForaDaOficina } from '@/lib/abatimentosCliente';
 import { persistChecklistRows } from '@/lib/persistChecklistRows';
 import { useNfeCompra } from '@/hooks/useNfeCompra';
 import { toast } from 'sonner';
@@ -71,6 +71,8 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // Previsão de custos do cliente + custos do cliente lançados na intermediação:
   // também abatem do repasse (todo custo do cliente abate), igual ao compromisso.
   const [abatimentosForaOficina, setAbatimentosForaOficina] = useState(0);
+  // Itens desses abatimentos, listados só para leitura junto dos custos de oficina.
+  const [itensForaOficina, setItensForaOficina] = useState<AbatimentoForaDaOficina[]>([]);
   const [savingFin, setSavingFin] = useState(false);
   const [newResp, setNewResp] = useState('Cliente');
   const [newTipo] = useState('Serviço');
@@ -124,7 +126,10 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       ]);
       nfe.setNfe((nfeData as any[])?.[0] || null);
       setCustosOficina(custosData || []);
-      buscarAbatimentosForaDaOficina(avaliacaoId).then(setAbatimentosForaOficina);
+      listarAbatimentosForaDaOficina(avaliacaoId).then((itens) => {
+        setItensForaOficina(itens);
+        setAbatimentosForaOficina(itens.reduce((sum, i) => sum + i.valor, 0));
+      });
       const valorConsig = (avData as any)?.valor_consignacao_nota ?? (avData as any)?.avaliacao_consignacao;
       setValorConsignacao(valorConsig ? formatCurrencyInput(String(Math.round(valorConsig * 100))) : '');
 
@@ -550,7 +555,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                 <Button size="sm" className="h-9" onClick={addCusto}><Plus className="h-4 w-4" /></Button>
               </div>
 
-              {custosOficina.length > 0 && (
+              {(custosOficina.length > 0 || itensForaOficina.length > 0) && (
                 <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
                   {custosOficina.map((c: any) => {
                     const val = c.valor_executado || c.valor_previsto || 0;
@@ -573,6 +578,17 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                       </div>
                     );
                   })}
+                  {/* Abatimentos de fora da oficina (intermediação / previsão): só leitura — edite no contrato de intermediação ou na avaliação. */}
+                  {itensForaOficina.map((it, i) => (
+                    <div key={`fora-${i}`} className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 text-sm" title={it.origem === 'intermediacao' ? 'Lançado no contrato de intermediação' : it.origem === 'comissao' ? 'Percentual do contrato de consignação sobre o valor da venda — muda só alterando o percentual' : 'Previsão de custos do cliente da avaliação'}>
+                      <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium shrink-0">
+                        {it.origem === 'intermediacao' ? 'INTERMEDIAÇÃO' : it.origem === 'comissao' ? 'COMISSÃO' : 'PREVISÃO'}
+                      </span>
+                      <span className="flex-1 truncate text-xs font-medium">CLIENTE - {it.descricao.toUpperCase()}</span>
+                      <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(it.valor)}</span>
+                      <span className="h-7 w-7 shrink-0" />
+                    </div>
+                  ))}
                 </div>
               )}
 
