@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, Save, Download, Eye, Plus, Trash2, Loader2, DollarSign, User, Bike, MessageSquare, ArrowLeft, Pencil, MapPin, Landmark } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { recalcularRepasseCompra } from '@/lib/abatimentosCliente';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -395,6 +396,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     const item = custosOp[idx];
     if (item.id) {
       await supabase.from('custos_operacionais').delete().eq('id', item.id);
+      recalcularRepasseCompra(estoqueInfo?.avaliacao_id);
     }
     setCustosOp(prev => prev.filter((_, i) => i !== idx));
   };
@@ -472,6 +474,9 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     }
 
     setSaving(false);
+    // Custos do cliente da intermediação abatem do repasse da compra da moto:
+    // recalcula o compromisso de compra (se houver), inclusive após a NF.
+    recalcularRepasseCompra(estoqueInfo?.avaliacao_id);
     return id;
   };
 

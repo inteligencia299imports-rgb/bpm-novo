@@ -3,26 +3,29 @@ import { supabase } from '@/lib/supabase';
 /**
  * Abatimentos do cliente sobre o valor de compra de uma moto (avaliação) —
  * mesma conta de supabase/functions/_shared/abatimentos-cliente.ts, usada pelo
- * compromisso a pagar:
+ * compromisso a pagar. Regra (usuário, 2026-10-07): TODO custo com
+ * responsável = cliente abate do repasse ao cliente:
  *  - previsão de custos do cliente registrada na avaliação;
  *  - custos de oficina com responsável = cliente;
  *  - custos operacionais com responsável = Cliente do contrato de
  *    intermediação (contratos_consignante) da venda dessa moto — exceto
  *    quitação de financiamento lançada ali (é quitação, não abatimento).
  *
- * Valor de compra (NF-e de entrada e repasse) = fechamento − abatimentos.
+ * Valor de compra / repasse = fechamento − quitação − abatimentos.
  */
-export async function buscarAbatimentosCliente(avaliacaoId: string): Promise<number> {
-  const nz = (v: unknown) => Number(v) || 0;
-  const [{ data: av }, { data: oficina }, { data: estoque }] = await Promise.all([
+
+const nz = (v: unknown) => Number(v) || 0;
+
+/**
+ * Parte dos abatimentos que NÃO é custo de oficina: previsão de custos do
+ * cliente + custos operacionais do cliente na intermediação. As telas de
+ * pós-compra já mantêm a lista de oficina em memória e somam esta parte.
+ */
+export async function buscarAbatimentosForaDaOficina(avaliacaoId: string): Promise<number> {
+  const [{ data: av }, { data: estoque }] = await Promise.all([
     supabase.from('avaliacoes').select('previsao_custos_cliente').eq('id', avaliacaoId).maybeSingle(),
-    supabase.from('custos_oficina').select('responsavel, valor_previsto, valor_executado').eq('avaliacao_id', avaliacaoId),
     (supabase as any).from('estoque_motos').select('atendimento_venda_id').eq('avaliacao_id', avaliacaoId).not('atendimento_venda_id', 'is', null),
   ]);
-
-  const custosOficina = ((oficina as any[]) || [])
-    .filter((c) => String(c.responsavel || '').toLowerCase() === 'cliente')
-    .reduce((s, c) => s + nz(c.valor_executado ?? c.valor_previsto), 0);
 
   let custosOperacionais = 0;
   const atendimentosVenda = ((estoque as any[]) || []).map((e) => e.atendimento_venda_id).filter(Boolean);
@@ -41,5 +44,30 @@ export async function buscarAbatimentosCliente(avaliacaoId: string): Promise<num
     }
   }
 
-  return nz((av as any)?.previsao_custos_cliente) + custosOficina + custosOperacionais;
+  return nz((av as any)?.previsao_custos_cliente) + custosOperacionais;
+}
+
+export async function buscarAbatimentosCliente(avaliacaoId: string): Promise<number> {
+  const [{ data: oficina }, foraDaOficina] = await Promise.all([
+    supabase.from('custos_oficina').select('responsavel, valor_previsto, valor_executado').eq('avaliacao_id', avaliacaoId),
+    buscarAbatimentosForaDaOficina(avaliacaoId),
+  ]);
+  const custosOficina = ((oficina as any[]) || [])
+    .filter((c) => String(c.responsavel || '').toLowerCase() === 'cliente')
+    .reduce((s, c) => s + nz(c.valor_executado ?? c.valor_previsto), 0);
+  return custosOficina + foraDaOficina;
+}
+
+/**
+ * Recalcula a parcela de repasse em aberto do compromisso de COMPRA dessa moto
+ * (inclusive depois da NF-e de compra) para fechar com fechamento − quitação −
+ * abatimentos. Chamar depois de lançar/remover custo do cliente. Best-effort:
+ * falha só registra no console.
+ */
+export async function recalcularRepasseCompra(avaliacaoId: string | null | undefined) {
+  if (!avaliacaoId) return;
+  const { error } = await supabase.functions.invoke('gerar-compromissos-proposta', {
+    body: { acao: 'recalcular_repasse', avaliacao_id: avaliacaoId },
+  });
+  if (error) console.error('recalcular_repasse', error);
 }

@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, Loader2, DollarSign, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { buscarAbatimentosForaDaOficina, recalcularRepasseCompra } from '@/lib/abatimentosCliente';
 import { toast } from 'sonner';
 import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 import { useNfeVendaDaMoto } from '@/hooks/useNfeVendaDaMoto';
@@ -37,6 +38,9 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const [saving, setSaving] = useState(false);
   const [valorFechamento, setValorFechamento] = useState('');
   const [custosOficina, setCustosOficina] = useState<any[]>([]);
+  // Previsão de custos do cliente + custos do cliente lançados na intermediação:
+  // também abatem do repasse (todo custo do cliente abate), igual ao compromisso.
+  const [abatimentosForaOficina, setAbatimentosForaOficina] = useState(0);
   const [aprovacaoStatus, setAprovacaoStatus] = useState<string | null>(null);
   const [tipoAquisicao, setTipoAquisicao] = useState<string | null>(null);
   const { emitida: nfeEmitida } = useNfeEmitida(open ? avaliacaoId : null, 'avaliacao');
@@ -75,6 +79,7 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     setAprovacaoStatus((avData as any)?.aprovacao_status ?? null);
     setTipoAquisicao((avData as any)?.tipo_aquisicao ?? null);
     setCustosOficina(custosData || []);
+    buscarAbatimentosForaDaOficina(avaliacaoId).then(setAbatimentosForaOficina);
     setLoading(false);
   };
 
@@ -84,7 +89,7 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       .reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
   };
 
-  const abatimentos = calcAbatimentos();
+  const abatimentos = calcAbatimentos() + abatimentosForaOficina;
   const vf = parseCurrencyInput(valorFechamento);
   const repasseNum = vf - abatimentos;
 
@@ -106,6 +111,7 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     if (error) { toast.error('Erro ao adicionar custo'); return; }
 
     setCustosOficina(prev => [...prev, data]);
+    recalcularRepasseCompra(avaliacaoId);
     setNewTipo('Serviço');
     setNewResp('Cliente');
     setNewDesc('');
@@ -117,6 +123,7 @@ const PosCompraFinanceiroDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const removeCusto = async (id: string) => {
     await supabase.from('custos_oficina').delete().eq('id', id);
     setCustosOficina(prev => prev.filter(c => c.id !== id));
+    recalcularRepasseCompra(avaliacaoId);
     toast.success('Custo removido');
   };
 
