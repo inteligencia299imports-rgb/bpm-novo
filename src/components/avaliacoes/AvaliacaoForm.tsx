@@ -365,7 +365,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [prevCustosLoja, setPrevCustosLoja] = useState('');
   const [prevCustosCliente, setPrevCustosCliente] = useState('');
   const [valorQuitacao, setValorQuitacao] = useState('');
-  const [valorBonus, setValorBonus] = useState('');
+  const [valorTradeIn, setValorTradeIn] = useState('');
   const [classificacao, setClassificacao] = useState('');
   const [obsAvaliador, setObsAvaliador] = useState('');
   const [valorFechamentoEdit, setValorFechamentoEdit] = useState('');
@@ -419,7 +419,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       setPrevCustosLoja(numberToCurrencyMask(data.previsao_custos_loja));
       setValorQuitacao(numberToCurrencyMask((data as any).valor_quitacao));
       setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
-      setValorBonus(numberToCurrencyMask((data as any).trade_in));
+      setValorTradeIn(numberToCurrencyMask((data as any).trade_in));
       setClassificacao((data as any).classificacao || '');
       setValorFechamentoEdit(numberToCurrencyMask(data.valor_fechamento));
 
@@ -537,7 +537,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       avaliacao_compra: parseCurrencyToNumber(avalCompra),
       previsao_custos_loja: parseCurrencyToNumber(prevCustosLoja),
       previsao_custos_cliente: parseCurrencyToNumber(prevCustosCliente),
-      trade_in: parseCurrencyToNumber(valorBonus) || null,
+      trade_in: parseCurrencyToNumber(valorTradeIn) || null,
       classificacao: classificacao || null,
       observacao_avaliador: obsAvaliador.trim() || null,
       // Na 1ª avaliação o avaliador é quem está salvando; na edição respeita a seleção.
@@ -1692,7 +1692,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                     })()}
                     {isLojaDucati(at?.loja) && interesse === 'trocar' && (avaliacao as any)?.trade_in != null && (
                       <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-                        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valor do Bônus</span>
+                        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Trade-in</span>
                         <p className="text-base font-bold text-primary">{formatCurrency((avaliacao as any).trade_in)}</p>
                       </div>
                     )}
@@ -1858,7 +1858,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
             <CurrencyField label="Valor de Quitação" opcional value={valorQuitacao} onChange={handleCurrencyChange(setValorQuitacao)} disabled={nfeCompraEmitida} />
             {isLojaDucati(avaliacao?.atendimento?.loja) && avaliacao?.atendimento?.interesse === 'trocar' && (
-              <CurrencyField label="Valor do Bônus" value={valorBonus} onChange={handleCurrencyChange(setValorBonus)} />
+              <CurrencyField label="Trade-in" value={valorTradeIn} onChange={handleCurrencyChange(setValorTradeIn)} />
             )}
             {estoqueId && (
               <div className="space-y-1.5">
