@@ -44,6 +44,9 @@ const NpsAquisicoesTab = ({ onNavigateToTab }: NpsAquisicoesTabProps) => {
         atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), interesse, situacao, temperatura, created_at, updated_at, nps_status, tipo_atendimento, vendedor_id, origem, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, clientes_fornecedores_enderecos(uf)))
       `)
       .in('tipo_aquisicao', TODOS_TIPOS_AQUISICAO)
+      // Troca (interesse 'trocar') não é aquisição pro NPS: a pesquisa é da
+      // venda e é administrada na aba Vendas (atendimentos_motos).
+      .eq('atendimentos_motos.interesse', 'vender')
       .order('updated_at', { ascending: false });
 
     if (error) {
@@ -51,7 +54,6 @@ const NpsAquisicoesTab = ({ onNavigateToTab }: NpsAquisicoesTabProps) => {
       console.error(error);
     } else {
       let mapped = flattenMarcaModeloList(data)
-        .filter((a: any) => a.atendimentos_motos?.interesse === 'vender')
         // Motos próprias só entram no NPS depois de aprovadas no Pós-Compra.
         .filter((a: any) => !(isTipoPropria(a.tipo_aquisicao) && (a.aprovacao_status === 'aguardando' || a.aprovacao_status === 'recusada')))
         .map((d: any) => {
