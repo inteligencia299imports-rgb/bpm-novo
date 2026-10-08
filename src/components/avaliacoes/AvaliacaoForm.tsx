@@ -157,6 +157,20 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [history, setHistory] = useState<any[]>([]);
   // NF-e de compra/consignação autorizada -> avaliação travada (destrava se cancelada).
   const { emitida: nfeEmitida, emitidaProducao: nfeEmitidaProducao, recarregar: recarregarNfe } = useNfeEmitida(avaliacao?.id, 'avaliacao');
+  // Consignação com NF de entrada autorizada em produção: a conversão em
+  // compra direta passa a ser pela Transferência (devolução + compra) — o
+  // "Converter" da avaliação só vale enquanto a consignação não tem NF
+  // (pedido do usuário, 2026-10-08).
+  const [temNfConsignacao, setTemNfConsignacao] = useState(false);
+  useEffect(() => {
+    if (!avaliacao?.id) { setTemNfConsignacao(false); return; }
+    let cancel = false;
+    (supabase as any).from('nfe_entradas').select('id').eq('avaliacao_id', avaliacao.id)
+      .eq('operacao', 'consignacao').eq('status', 'processada').eq('ambiente', 'producao')
+      .limit(1).maybeSingle()
+      .then(({ data }: any) => { if (!cancel) setTemNfConsignacao(!!data); });
+    return () => { cancel = true; };
+  }, [avaliacao?.id]);
   // Consignação: Valor de Fechamento continua editável (NF de consignação,
   // devolução e até a NF de compra) — só trava com a NF-e de VENDA dessa moto
   // autorizada em produção.
@@ -1761,7 +1775,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
 
            <div className="md:col-span-2 flex flex-col items-center gap-3">
             <div className="flex gap-2 flex-wrap justify-center">
-              {!ehProcesso && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao && !estoqueVendido && !nfeCompraEmitida && (permiteConsignar || isTipoConsignada(avaliacao?.tipo_aquisicao)) && (
+              {!ehProcesso && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && avaliacao?.tipo_aquisicao && !estoqueVendido && !nfeCompraEmitida && (permiteConsignar || isTipoConsignada(avaliacao?.tipo_aquisicao)) && !(isTipoConsignada(avaliacao?.tipo_aquisicao) && temNfConsignacao) && (
                 <Button
                   size="sm"
                   className="gap-2 text-white hover:opacity-90"
