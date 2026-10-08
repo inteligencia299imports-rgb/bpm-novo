@@ -30,19 +30,6 @@ export const EMPRESAS_SO_MOTO_NOVA = new Set<string>([
   '30496c3b-721f-4795-98fd-2785d3821f3b', // FAG
 ]);
 
-/**
- * Exceção pontual, pedida pelo usuário em 2026-09-30: a transferência de
- * estoque FAG -> MMATOS (CFOPs 5912/6912) está sem regra fiscal ativa pra
- * UF->UF iguais (DF->DF) — ver docs-fiscal-299. Até isso ser corrigido,
- * libera a venda de seminova diretamente pela FAG só pro chassi abaixo
- * (fiscalmente correto, já que a NF-e de compra também foi emitida pela
- * FAG — a moto é dela de verdade). Remover depois que a transferência
- * for consertada ou a moto for vendida.
- */
-export const CHASSIS_EXCECAO_VENDA_SEMINOVA_FAG = new Set<string>([
-  '97NE67DF1RMBP3313', // SSH9B65 - Triumph Tiger 900 Rally Pro
-]);
-
 /** Empresa pode comprar moto seminova diretamente (interesse 'vender'). */
 export const empresaCompraDireta = (empresaId?: string | null): boolean =>
   !empresaId || !EMPRESAS_SO_MOTO_NOVA.has(empresaId);

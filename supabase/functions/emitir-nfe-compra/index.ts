@@ -35,18 +35,6 @@ const DIAS_VENCIMENTO = 7;
 const FAG_EMPRESA_ID = '30496c3b-721f-4795-98fd-2785d3821f3b';
 const MMATOS_FORNECEDOR_ID = '5e86c319-7bef-4508-8402-9ff12705f919'; // clientes_fornecedores (CNPJ 21.194.795/0001-96)
 
-// Exceção pontual, pedida pelo usuário em 2026-09-30: a transferência de
-// estoque FAG -> MMATOS (CFOPs 5912/6912) está sem regra fiscal ativa pra
-// UF->UF iguais (DF->DF) — ver docs-fiscal-299. Até isso ser corrigido,
-// libera a venda de seminova diretamente pela FAG só pro chassi abaixo
-// (fiscalmente correto, já que a NF-e de compra também foi emitida pela
-// FAG — a moto é dela de verdade). Mesma lista em src/lib/tipoAquisicao.ts
-// (frontend). Remover depois que a transferência for consertada ou a moto
-// for vendida.
-const CHASSIS_EXCECAO_VENDA_SEMINOVA_FAG = new Set<string>([
-  '97NE67DF1RMBP3313', // SSH9B65 - Triumph Tiger 900 Rally Pro
-]);
-
 /** marca/modelo agora vem do catalogo via embed `marca:marca_id(nome)`.
  * Aceita tambem string crua (janela em que a coluna-ponte ainda existe). */
 const nomeCat = (v: any): string | null =>
@@ -451,6 +439,154 @@ async function cancelarCompromissosDaNf(admin: any, nfeEntradaId: string): Promi
     .in('compromisso_id', compIds)
     .eq('status_pagamento', 'pago');
   return count ?? 0;
+}
+
+// Devoluções pós-24h que têm efeito de negócio além da própria NF.
+const TIPOS_DEVOLUCAO_COM_EFEITO = new Set([
+  'devolucao_compra', 'devolucao_venda_seminova', 'devolucao_venda_0km',
+  'devolucao_transferencia', 'devolucao_transferencia_0km',
+]);
+
+/**
+ * NF-e original de uma devolução (a que está sendo devolvida), pro caminho do
+ * consultar — no emitir ela vem de validarOrigemDevolucao. Mesmo mapeamento
+ * operação de devolução -> operação/chave da original; a mais recente
+ * autorizada em produção ANTES da própria devolução.
+ */
+async function buscarNfOriginalDaDevolucao(
+  admin: any,
+  tipo: string,
+  p: { avaliacaoId: string; atendimentoId: string; entityId: string; antesDe: string },
+): Promise<{ id: string; transferencia_par_id: string | null } | null> {
+  const mapa: Record<string, [string, string | null, string]> = {
+    devolucao_compra: ['avaliacao_id', p.avaliacaoId, 'compra'],
+    devolucao_venda_seminova: ['atendimento_id', p.atendimentoId, 'venda_seminova'],
+    devolucao_venda_0km: ['atendimento_id', p.atendimentoId, 'venda_0km'],
+    devolucao_transferencia: ['avaliacao_id', p.avaliacaoId, 'transferencia_entrada'],
+    devolucao_transferencia_0km: ['estoque_moto_nova_id', p.entityId, 'transferencia_entrada_0km'],
+  };
+  const m = mapa[tipo];
+  if (!m || !m[1]) return null;
+  const { data } = await admin
+    .from('nfe_entradas').select('id, transferencia_par_id')
+    .eq(m[0], m[1]).eq('operacao', m[2]).eq('status', 'processada').eq('ambiente', 'producao')
+    .lt('created_at', p.antesDe)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  return data ? { id: data.id, transferencia_par_id: data.transferencia_par_id ?? null } : null;
+}
+
+/**
+ * Efeitos de negócio de uma NF-e de devolução autorizada em PRODUÇÃO: cancela o
+ * compromisso da NF original, devolve/retira a moto, marca o atendimento como
+ * perdido. Chamada nos dois caminhos em que a autorização chega — resposta
+ * síncrona do emitir e polling do consultar. Achado real 2026-10-08 (OVQ1H52,
+ * devolução NF 7331): autorizada via consultar, só o emitir aplicava estes
+ * efeitos — compromisso VND-R ficou em aberto e a moto continuou "vendido".
+ * Devolve a contagem de parcelas já pagas (não estornadas) pra avisar o usuário.
+ */
+async function aplicarEfeitosDevolucao(
+  admin: any,
+  p: {
+    tipo: string; entityId: string; avaliacaoId: string; atendimentoId: string; estoqueMoto: any;
+    origemNf: { id?: string | null; transferencia_par_id?: string | null } | null;
+    callerId: string; callerName: string | null;
+  },
+): Promise<number> {
+  const { tipo, entityId, avaliacaoId, atendimentoId, estoqueMoto, origemNf: devolucaoOrigemNf, callerId, callerName } = p;
+  let parcelasPagas = 0;
+  // Pedido do usuário, 2026-09-29: "NF canceladas e devolvidas, cancelam o
+  // compromissos a pagar ou receber" — a devolução pós-24h não cria
+  // compromisso próprio (semPagamentoReal), mas precisa cancelar o da NF
+  // ORIGINAL que está sendo devolvida (devolucaoOrigemNf.id), mesmo efeito
+  // que o Cancelar já dá (ver cancelarCompromissosDaNf/aplicarCancelamento).
+  if ((tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km') && devolucaoOrigemNf?.id) {
+    parcelasPagas = await cancelarCompromissosDaNf(admin, devolucaoOrigemNf.id);
+  }
+  // Devolução de transferência: referencia a NF de ENTRADA; as contas a pagar/receber da
+  // transferência entre empresas estão vinculadas à SAÍDA, o par dela (transferencia_par_id).
+  if ((tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km') && devolucaoOrigemNf?.transferencia_par_id) {
+    parcelasPagas = await cancelarCompromissosDaNf(admin, devolucaoOrigemNf.transferencia_par_id);
+  }
+  // Devolução de venda 0km: a moto some da venda e volta a ficar disponível
+  // no estoque de quem a vendeu (mesmo efeito de "perder a venda" já usado
+  // em marcarAtendimentoPerdido/reverterEstoqueVenda no frontend).
+  // Achado real 2026-09-29 (chassi 95V7G00AATM000017): faltava marcar o
+  // atendimento como "perdido" — Pós-Venda e Intermediação filtram por
+  // `atendimentos_motos.situacao = 'vendido'` (ver PosVendaTab.tsx/
+  // IntermediacacaoTab.tsx), então o atendimento continuava aparecendo nas
+  // duas telas mesmo com a venda desfeita.
+  if (tipo === 'devolucao_venda_0km') {
+    const idEstoque = estoqueMoto?.moto_nova_id;
+    if (idEstoque) {
+      await admin.from('estoque_motos_novas').update({
+        status: 'disponivel',
+        atendimento_venda_id: null,
+        data_venda: null,
+        valor_venda: null,
+        valor_sinal: null,
+      }).eq('id', idEstoque);
+    }
+    if (atendimentoId) {
+      await admin.from('atendimentos_motos').update({ situacao: 'perdido' }).eq('id', atendimentoId);
+      await admin.from('status_history').insert({
+        entity_type: 'showroom',
+        entity_id: atendimentoId,
+        status: 'perdido',
+        changed_by: callerId,
+        changed_by_name: callerName,
+        observacoes: 'Venda desfeita por devolução de NF-e.',
+      });
+    }
+  }
+  // Devolução de venda SEMINOVA: pedido do usuário, 2026-09-29 — diferente
+  // do 0km, não volta pra "disponível". Vira "retirada" (mesmo efeito do
+  // RetiradaDialog.tsx manual), atendimento vira "perdido", processos de
+  // consignação em aberto são fechados. Ver aplicarRetiradaSeminova.
+  if (tipo === 'devolucao_venda_seminova' && estoqueMoto?.id) {
+    await aplicarRetiradaSeminova(admin, {
+      estoqueMotoId: estoqueMoto.id,
+      avaliacaoId: estoqueMoto.avaliacao_id ?? null,
+      atendimentoId,
+      motivo: 'Venda desfeita por devolução de NF-e.',
+      callerId,
+      callerName,
+    });
+  }
+  // Devolução de compra: a moto sai do estoque de vez (está voltando pro
+  // vendedor original — não faz mais sentido continuar aparecendo como
+  // disponível pra venda). Mesmo efeito já usado em marcarAtendimentoPerdido.
+  if (tipo === 'devolucao_compra') {
+    await admin.from('estoque_motos').delete().eq('avaliacao_id', avaliacaoId);
+  }
+  // Devolução de transferência: a moto volta pra loja/empresa de ORIGEM da
+  // transferência original (achada pela NF de saída correspondente) — efeito
+  // inverso do que a entrada fez. Mesmo helper usado no cancelamento dentro
+  // das 24h (ver aplicarCancelamento/resolverLojaOrigemTransferencia).
+  if (tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km') {
+    const eh0kmTransf = tipo === 'devolucao_transferencia_0km';
+    const fkValOrigem = eh0kmTransf ? entityId : avaliacaoId;
+    const origem = await resolverLojaOrigemTransferencia(admin, eh0kmTransf, fkValOrigem);
+    if (origem) {
+      const motivoRevert = 'Venda desfeita — a entrada da transferência de estoque desta moto foi devolvida, e ela retornou para a empresa de origem.';
+      if (eh0kmTransf) {
+        await admin.from('estoque_motos_novas')
+          .update({ loja_id: origem.lojaId, empresa_id: origem.empresaOrigem })
+          .eq('id', entityId);
+        await reverterAtendimentoVendaSeTiver(admin, true, entityId, {
+          callerId, callerName, motivo: motivoRevert,
+        });
+      } else {
+        await admin.from('estoque_motos').update({ loja_id: origem.lojaId }).eq('avaliacao_id', avaliacaoId);
+        const { data: estSeminova } = await admin.from('estoque_motos').select('id').eq('avaliacao_id', avaliacaoId).maybeSingle();
+        if (estSeminova?.id) {
+          await reverterAtendimentoVendaSeTiver(admin, false, estSeminova.id, {
+            callerId, callerName, motivo: motivoRevert,
+          });
+        }
+      }
+    }
+  }
+  return parcelasPagas;
 }
 
 // NF-e de SAÍDA de transferência de moto entre empresas do grupo — a que gera o financeiro.
@@ -1904,6 +2040,25 @@ Deno.serve(async (req) => {
           await admin.from('estoque_motos_novas').update({ loja_id: destinoLoja, empresa_id: destinoEmpresa }).eq('id', entityId);
         }
       }
+      // Devolução autorizada via polling: mesmos efeitos do caminho "emitir"
+      // (ver aplicarEfeitosDevolucao). Só na TRANSIÇÃO pra autorizada — o
+      // consultar pode rodar de novo sobre uma linha já processada, e os
+      // efeitos (histórico, retirada) não são idempotentes.
+      if (TIPOS_DEVOLUCAO_COM_EFEITO.has(tipo) && nfeRow.status !== 'processada') {
+        const origemNf = await buscarNfOriginalDaDevolucao(admin, tipo, {
+          avaliacaoId, atendimentoId, entityId, antesDe: nfeRow.created_at as string,
+        });
+        const parcelasPagas = await aplicarEfeitosDevolucao(admin, {
+          tipo, entityId, avaliacaoId, atendimentoId, estoqueMoto,
+          origemNf, callerId: caller.id, callerName,
+        });
+        return jsonResponse({
+          nfe: updated ?? nfeRow,
+          ...(parcelasPagas
+            ? { aviso: `Compromisso cancelado. ${parcelasPagas} parcela(s) já paga(s) não foram estornadas — acerto manual.` }
+            : {}),
+        }, 200);
+      }
     }
     return jsonResponse({ nfe: updated ?? nfeRow }, 200);
   }
@@ -2264,13 +2419,6 @@ Deno.serve(async (req) => {
     }
   } else {
     // venda
-    // Empresa "só moto nova" (FAG): não pode vender moto seminova — só teria
-    // uma via troca, e essa já é obrigada a ir pra MMATOS antes da venda (ver
-    // bloco de troca abaixo). Mesma regra aplicada no frontend (ContratoDialog).
-    const chassiVenda = String(estoqueMoto?.avaliacao?.chassi ?? '').toUpperCase();
-    if (!ehVenda0km && empresaId === FAG_EMPRESA_ID && !CHASSIS_EXCECAO_VENDA_SEMINOVA_FAG.has(chassiVenda)) {
-      return jsonResponse({ error: 'Esta empresa só vende motos 0km — moto seminova não pode ser vendida por ela.' }, 409);
-    }
     // Moto ainda "em consignação" (tipo_aquisicao='consignada' pra sempre — não
     // vira mais 'convertida'): a venda como estoque próprio só é permitida
     // depois da devolução simbólica + compra, verificado pelo histórico de NF-e
@@ -3198,97 +3346,13 @@ Deno.serve(async (req) => {
         .update({ loja_id: destinoLojaIdBody, empresa_id: destinoEmpresaIdTransf })
         .eq('id', entityId);
     }
-    // Pedido do usuário, 2026-09-29: "NF canceladas e devolvidas, cancelam o
-    // compromissos a pagar ou receber" — a devolução pós-24h não cria
-    // compromisso próprio (semPagamentoReal), mas precisa cancelar o da NF
-    // ORIGINAL que está sendo devolvida (devolucaoOrigemNf.id), mesmo efeito
-    // que o Cancelar já dá (ver cancelarCompromissosDaNf/aplicarCancelamento).
-    if ((tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km') && devolucaoOrigemNf?.id) {
-      parcelasPagasDevolucao = await cancelarCompromissosDaNf(admin, devolucaoOrigemNf.id);
-    }
-    // Devolução de transferência: referencia a NF de ENTRADA; as contas a pagar/receber da
-    // transferência entre empresas estão vinculadas à SAÍDA, o par dela (transferencia_par_id).
-    if ((tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km') && devolucaoOrigemNf?.transferencia_par_id) {
-      parcelasPagasDevolucao = await cancelarCompromissosDaNf(admin, devolucaoOrigemNf.transferencia_par_id);
-    }
-    // Devolução de venda 0km: a moto some da venda e volta a ficar disponível
-    // no estoque de quem a vendeu (mesmo efeito de "perder a venda" já usado
-    // em marcarAtendimentoPerdido/reverterEstoqueVenda no frontend).
-    // Achado real 2026-09-29 (chassi 95V7G00AATM000017): faltava marcar o
-    // atendimento como "perdido" — Pós-Venda e Intermediação filtram por
-    // `atendimentos_motos.situacao = 'vendido'` (ver PosVendaTab.tsx/
-    // IntermediacacaoTab.tsx), então o atendimento continuava aparecendo nas
-    // duas telas mesmo com a venda desfeita.
-    if (tipo === 'devolucao_venda_0km') {
-      const idEstoque = estoqueMoto?.moto_nova_id;
-      if (idEstoque) {
-        await admin.from('estoque_motos_novas').update({
-          status: 'disponivel',
-          atendimento_venda_id: null,
-          data_venda: null,
-          valor_venda: null,
-          valor_sinal: null,
-        }).eq('id', idEstoque);
-      }
-      if (atendimentoId) {
-        await admin.from('atendimentos_motos').update({ situacao: 'perdido' }).eq('id', atendimentoId);
-        await admin.from('status_history').insert({
-          entity_type: 'showroom',
-          entity_id: atendimentoId,
-          status: 'perdido',
-          changed_by: caller.id,
-          changed_by_name: callerName,
-          observacoes: 'Venda desfeita por devolução de NF-e.',
-        });
-      }
-    }
-    // Devolução de venda SEMINOVA: pedido do usuário, 2026-09-29 — diferente
-    // do 0km, não volta pra "disponível". Vira "retirada" (mesmo efeito do
-    // RetiradaDialog.tsx manual), atendimento vira "perdido", processos de
-    // consignação em aberto são fechados. Ver aplicarRetiradaSeminova.
-    if (tipo === 'devolucao_venda_seminova' && estoqueMoto?.id) {
-      await aplicarRetiradaSeminova(admin, {
-        estoqueMotoId: estoqueMoto.id,
-        avaliacaoId: estoqueMoto.avaliacao_id ?? null,
-        atendimentoId,
-        motivo: 'Venda desfeita por devolução de NF-e.',
-        callerId: caller.id,
-        callerName,
+    // Efeitos de negócio da devolução — mesma função no caminho da consulta
+    // (autorização assíncrona), ver aplicarEfeitosDevolucao.
+    if (TIPOS_DEVOLUCAO_COM_EFEITO.has(tipo)) {
+      parcelasPagasDevolucao = await aplicarEfeitosDevolucao(admin, {
+        tipo, entityId, avaliacaoId, atendimentoId, estoqueMoto,
+        origemNf: devolucaoOrigemNf, callerId: caller.id, callerName,
       });
-    }
-    // Devolução de compra: a moto sai do estoque de vez (está voltando pro
-    // vendedor original — não faz mais sentido continuar aparecendo como
-    // disponível pra venda). Mesmo efeito já usado em marcarAtendimentoPerdido.
-    if (tipo === 'devolucao_compra') {
-      await admin.from('estoque_motos').delete().eq('avaliacao_id', avaliacaoId);
-    }
-    // Devolução de transferência: a moto volta pra loja/empresa de ORIGEM da
-    // transferência original (achada pela NF de saída correspondente) — efeito
-    // inverso do que a entrada fez. Mesmo helper usado no cancelamento dentro
-    // das 24h (ver aplicarCancelamento/resolverLojaOrigemTransferencia).
-    if (tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km') {
-      const eh0kmTransf = tipo === 'devolucao_transferencia_0km';
-      const fkValOrigem = eh0kmTransf ? entityId : avaliacaoId;
-      const origem = await resolverLojaOrigemTransferencia(admin, eh0kmTransf, fkValOrigem);
-      if (origem) {
-        const motivoRevert = 'Venda desfeita — a entrada da transferência de estoque desta moto foi devolvida, e ela retornou para a empresa de origem.';
-        if (eh0kmTransf) {
-          await admin.from('estoque_motos_novas')
-            .update({ loja_id: origem.lojaId, empresa_id: origem.empresaOrigem })
-            .eq('id', entityId);
-          await reverterAtendimentoVendaSeTiver(admin, true, entityId, {
-            callerId: caller.id, callerName, motivo: motivoRevert,
-          });
-        } else {
-          await admin.from('estoque_motos').update({ loja_id: origem.lojaId }).eq('avaliacao_id', avaliacaoId);
-          const { data: estSeminova } = await admin.from('estoque_motos').select('id').eq('avaliacao_id', avaliacaoId).maybeSingle();
-          if (estSeminova?.id) {
-            await reverterAtendimentoVendaSeTiver(admin, false, estSeminova.id, {
-              callerId: caller.id, callerName, motivo: motivoRevert,
-            });
-          }
-        }
-      }
     }
   }
 
