@@ -57,6 +57,13 @@ interface LojaOpcao {
  * comum de transferência). Seminova chaveia por avaliacao_id; 0km chaveia
  * pelo próprio id de estoque_motos_novas (não tem avaliação).
  *
+ * Moto CONSIGNADA (seminova ainda não convertida em compra), pedido do
+ * usuário 2026-10-08: mesma estrutura de duas etapas, com as naturezas da
+ * cadeia de consignação — 1) devolução simbólica da consignação pela origem e
+ * 2) COMPRA pela empresa de destino escolhida (a moto vira estoque próprio
+ * dela). Mesmas operações do ConverterConsignacaoDialog; o backend emite a
+ * compra pela empresa da loja de destino (destino_loja_id).
+ *
  * Seminova só POA↔FLN por ora ("299f"/"299p"). 0km também inclui a FAG
  * ("Ducati BSB"), além de "Ducati FLN"/"Ducati POA" — o backend decide
  * sozinho a família de CFOP certa (152 = mesma raiz de CNPJ/filial;
@@ -76,16 +83,46 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
   const [funcionarioCpfLoading, setFuncionarioCpfLoading] = useState(true);
   const [cpfOperador, setCpfOperador] = useState('');
 
-  const saida = useNfeCompra(entityId, open, eh0km ? 'transferencia_saida_0km' : 'transferencia_saida', eh0km ? 'estoque_moto_nova' : 'avaliacao');
-  const entrada = useNfeCompra(entityId, open, eh0km ? 'transferencia_entrada_0km' : 'transferencia_entrada', eh0km ? 'estoque_moto_nova' : 'avaliacao', onSuccess);
+  // Fluxo de moto consignada (ver comentário do componente): consignada, sem
+  // compra própria já autorizada (conversão feita na própria empresa) e sem uma
+  // transferência comum já iniciada. null = ainda verificando.
+  const [modoConsignado, setModoConsignado] = useState<boolean | null>(null);
+  // Ambiente da NF de consignação: em produção, a devolução não passa em
+  // homologação (SEFAZ de homologação não enxerga a chave referenciada).
+  const [consignacaoAmbiente, setConsignacaoAmbiente] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open || !entityId) return;
+    if (eh0km) { setModoConsignado(false); return; }
+    let cancel = false;
+    setModoConsignado(null);
+    Promise.all([
+      supabase.from('avaliacoes').select('tipo_aquisicao').eq('id', entityId).maybeSingle(),
+      (supabase as any).from('nfe_entradas').select('id').eq('avaliacao_id', entityId).eq('operacao', 'compra')
+        .eq('status', 'processada').eq('ambiente', 'producao').is('transferencia_destino_loja_id', null).limit(1).maybeSingle(),
+      (supabase as any).from('nfe_entradas').select('id').eq('avaliacao_id', entityId).eq('operacao', 'transferencia_saida')
+        .eq('status', 'processada').eq('ambiente', 'producao').limit(1).maybeSingle(),
+      (supabase as any).from('nfe_entradas').select('ambiente').eq('avaliacao_id', entityId).eq('operacao', 'consignacao')
+        .eq('status', 'processada').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    ]).then(([{ data: av }, { data: compraPropria }, { data: saidaComum }, { data: consig }]: any[]) => {
+      if (cancel) return;
+      setModoConsignado(av?.tipo_aquisicao === 'consignada' && !compraPropria && !saidaComum);
+      setConsignacaoAmbiente(consig?.ambiente ?? null);
+    });
+    return () => { cancel = true; };
+  }, [open, entityId, eh0km]);
+
+  const tipoSaida = eh0km ? 'transferencia_saida_0km' : modoConsignado ? 'devolucao_consignacao' : 'transferencia_saida';
+  const tipoEntrada = eh0km ? 'transferencia_entrada_0km' : modoConsignado ? 'compra' : 'transferencia_entrada';
+  const saida = useNfeCompra(entityId, open, tipoSaida, eh0km ? 'estoque_moto_nova' : 'avaliacao');
+  const entrada = useNfeCompra(entityId, open, tipoEntrada, eh0km ? 'estoque_moto_nova' : 'avaliacao', onSuccess);
 
   // useNfeCompra não carrega sozinho ao montar (mesmo achado do
   // TransferenciaFagMmatosDialog) — sem isso o diálogo sempre parte de "nada
   // emitido ainda", mesmo reabrindo sobre uma transferência já em andamento.
   useEffect(() => {
-    if (open && entityId) { saida.carregar(); entrada.carregar(); }
+    if (open && entityId && modoConsignado !== null) { saida.carregar(); entrada.carregar(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, entityId]);
+  }, [open, entityId, modoConsignado]);
 
   // Restaura a loja de destino ao reabrir sobre uma transferência já em
   // andamento — sem isso, o Select (já travado depois da saída emitida)
@@ -249,8 +286,23 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
   const podeReemitirHomologSaida = saidaEmitida && saida.nfe?.ambiente === 'homologacao';
   const entradaEmitida = entrada.emitida;
   const podeReemitirHomologEntrada = entradaEmitida && entrada.nfe?.ambiente === 'homologacao';
+  const entradaProducao = entradaEmitida && entrada.nfe?.ambiente === 'producao';
+  // Consignada: a devolução vai direto pra produção quando a consignação é de
+  // produção (mesma regra do ConverterConsignacaoDialog), e não cancela com a
+  // compra já em produção (elo da cadeia).
+  const devolucaoDiretoProducao = !!modoConsignado && consignacaoAmbiente === 'producao';
+  const podeCancelarSaida = !modoConsignado || !entradaProducao;
 
   if (!estoqueItem) return null;
+  if (modoConsignado === null && open) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</p>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -271,7 +323,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
 
           <div>
             <Label className="text-xs text-muted-foreground">Empresa/loja de destino</Label>
-            <Select value={destinoLojaId} onValueChange={setDestinoLojaId} disabled={saidaEmitida || lojasLoading}>
+            <Select value={destinoLojaId} onValueChange={setDestinoLojaId} disabled={(modoConsignado ? entradaProducao : saidaEmitida) || lojasLoading}>
               <SelectTrigger className="mt-1">
                 <SelectValue placeholder={lojasLoading ? 'Carregando…' : 'Selecione o destino'} />
               </SelectTrigger>
@@ -283,13 +335,20 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
             </Select>
           </div>
 
+          {modoConsignado && (
+            <p className="text-xs text-muted-foreground">
+              Moto consignada: a transferência é feita pela devolução da consignação (origem) seguida da
+              compra pela empresa de destino.
+            </p>
+          )}
+
           <Separator />
 
-          {/* Passo 1: saída (empresa de origem) */}
+          {/* Passo 1: saída (empresa de origem) — consignada: devolução da consignação */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <ArrowRight className="h-4 w-4 text-primary" /> 1. Saída (origem)
+                <ArrowRight className="h-4 w-4 text-primary" /> {modoConsignado ? '1. Devolução da consignação (origem)' : '1. Saída (origem)'}
                 {saidaProducao && (
                   <Badge variant="outline" className="gap-1.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Autorizada
@@ -323,8 +382,8 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                 </p>
               )}
               <div className="flex flex-wrap items-center gap-2 justify-end">
-                {(saida.emitida || saida.cancelada) && saida.nfe?.ambiente === 'producao' && <CancelarNfeDialog nfe={saida} />}
-                {(!saidaEmitida || podeReemitirHomologSaida) && !saida.pendente && (
+                {(saida.emitida || saida.cancelada) && saida.nfe?.ambiente === 'producao' && podeCancelarSaida && <CancelarNfeDialog nfe={saida} />}
+                {!devolucaoDiretoProducao && (!saidaEmitida || podeReemitirHomologSaida) && !saida.pendente && (
                   <Button
                     size="sm"
                     className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
@@ -335,7 +394,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                     {saida.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
                   </Button>
                 )}
-                {podeReemitirHomologSaida && !saida.pendente && (
+                {((devolucaoDiretoProducao && !saidaEmitida) || podeReemitirHomologSaida) && !saida.pendente && (
                   <Button
                     size="sm"
                     className="gap-1.5"
@@ -374,11 +433,11 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
             </CardContent>
           </Card>
 
-          {/* Passo 2: entrada (empresa de destino) — só depois da saída em produção */}
+          {/* Passo 2: entrada (empresa de destino) — só depois da saída em produção. Consignada: compra pela empresa de destino. */}
           <Card className={!saidaProducao ? 'opacity-50 pointer-events-none' : undefined}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <ArrowRight className="h-4 w-4 text-primary" /> 2. Entrada (destino)
+                <ArrowRight className="h-4 w-4 text-primary" /> {modoConsignado ? '2. Compra (destino)' : '2. Entrada (destino)'}
                 {entradaEmitida && entrada.nfe?.ambiente === 'producao' && (
                   <Badge variant="outline" className="gap-1.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Autorizada
@@ -388,7 +447,9 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
             </CardHeader>
             <CardContent className="space-y-3">
               {!saidaProducao && (
-                <p className="text-xs text-muted-foreground">Disponível depois da saída ser autorizada em produção.</p>
+                <p className="text-xs text-muted-foreground">
+                  {modoConsignado ? 'Disponível depois da devolução da consignação ser autorizada em produção.' : 'Disponível depois da saída ser autorizada em produção.'}
+                </p>
               )}
               {saidaProducao && !entradaEmitida && vendaFechada && (
                 <p className="text-sm text-destructive flex items-start gap-1.5">
@@ -428,7 +489,28 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                     homologação é sempre impossível por definição (a SEFAZ de
                     homologação não enxerga chave de produção, rejeição [267]
                     — achado real 2026-10-01, SSH9B65). Direto em produção. */}
-                {saidaProducao && !vendaFechada && (!entradaEmitida || podeReemitirHomologEntrada) && !entrada.pendente && (
+                {modoConsignado && saidaProducao && !vendaFechada && (!entradaEmitida || podeReemitirHomologEntrada) && !entrada.pendente && (
+                  <Button
+                    size="sm"
+                    className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
+                    disabled={entrada.loading || !destinoLojaId}
+                    onClick={() => entrada.emitir({ ambiente: 'homologacao', destino_loja_id: destinoLojaId })}
+                  >
+                    {entrada.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : entrada.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                    {entrada.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
+                  </Button>
+                )}
+                {modoConsignado && saidaProducao && !vendaFechada && podeReemitirHomologEntrada && !entrada.pendente && (
+                  <Button
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={entrada.loading || !destinoLojaId}
+                    onClick={() => entrada.emitir({ ambiente: 'producao', destino_loja_id: destinoLojaId })}
+                  >
+                    <FileText className="h-4 w-4" /> NF-e (Produção)
+                  </Button>
+                )}
+                {!modoConsignado && saidaProducao && !vendaFechada && (!entradaEmitida || podeReemitirHomologEntrada) && !entrada.pendente && (
                   <Button
                     size="sm"
                     className="gap-1.5"

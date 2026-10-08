@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, History, Download, LogOut, DollarSign, ArrowRightLeft } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, Download, LogOut, DollarSign, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -23,7 +23,6 @@ import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import TransferenciaEstoqueDialog from '@/components/estoque/TransferenciaEstoqueDialog';
 import AlterarPrecoDialog from '@/components/estoque/AlterarPrecoDialog';
 import TestRideDialog from '@/components/estoque/TestRideDialog';
-import StatusTimeline from '@/components/shared/StatusTimeline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Popover,
@@ -157,12 +156,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [reenviarItem, setReenviarItem] = useState<EstoqueItem | null>(null);
   const [reenviarAvaliacaoData, setReenviarAvaliacaoData] = useState<any>(null);
   const [reenviarLoading, setReenviarLoading] = useState(false);
-  const [idsWithHistory, setIdsWithHistory] = useState<Set<string>>(new Set());
   const [retiradaDates, setRetiradaDates] = useState<Record<string, string>>({});
   const [statusChangeItem, setStatusChangeItem] = useState<EstoqueItem | null>(null);
-  const [historyItem, setHistoryItem] = useState<EstoqueItem | null>(null);
-  const [historyEntries, setHistoryEntries] = useState<any[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
   const [retiradaItem, setRetiradaItem] = useState<EstoqueItem | null>(null);
   const [consultaItem, setConsultaItem] = useState<EstoqueItem | null>(null);
   const [precoItem, setPrecoItem] = useState<EstoqueItem | null>(null);
@@ -178,24 +173,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   // ainda aberta, sem entrada (não é uma transferência de propriedade de
   // verdade). Ver "Transferir" no menu de moto 0km já vendida.
   const [idsComTransferenciaSaida0kmAtiva, setIdsComTransferenciaSaida0kmAtiva] = useState<Set<string>>(new Set());
-
-  const handleOpenHistory = async (item: EstoqueItem) => {
-    setHistoryItem(item);
-    setHistoryLoading(true);
-    try {
-      const { data } = await supabase
-        .from('status_history')
-        .select('*')
-        .eq('entity_id', item.id)
-        .eq('entity_type', 'estoque')
-        .order('created_at', { ascending: false });
-      setHistoryEntries(data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
 
   useEffect(() => {
     fetchEstoqueUnificado(filterStatus !== 'todos' ? { status: filterStatus } : {}).then((lista) => {
@@ -236,7 +213,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       mapped = mapped.filter((m: any) => m.tipo_aquisicao !== 'repasse');
       setItems(mapped);
 
-      // Fetch which items have history
+      // Data da retirada (histórico 'RETIRADA' do estoque)
       const estoqueIds = (data || []).map((d: any) => d.id);
       if (estoqueIds.length > 0) {
         const { data: histData } = await supabase
@@ -245,14 +222,12 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           .eq('entity_type', 'estoque')
           .in('entity_id', estoqueIds)
           .order('created_at', { ascending: true });
-        setIdsWithHistory(new Set((histData || []).map((h: any) => h.entity_id)));
         const retMap: Record<string, string> = {};
         (histData || []).forEach((h: any) => {
           if (h.status === 'RETIRADA' && !retMap[h.entity_id]) retMap[h.entity_id] = h.created_at;
         });
         setRetiradaDates(retMap);
       } else {
-        setIdsWithHistory(new Set());
         setRetiradaDates({});
       }
 
@@ -596,15 +571,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         label: 'Transferir',
         icon: <ArrowRightLeft className="h-4 w-4" />,
         action: () => setTransferenciaItem(item),
-      });
-    }
-
-    // History option only if there's history
-    if (idsWithHistory.has(item.id)) {
-      options.push({
-        label: 'Histórico',
-        icon: <History className="h-4 w-4" />,
-        action: () => handleOpenHistory(item),
       });
     }
 
@@ -1019,31 +985,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           fetchEstoque();
         }}
       />
-
-      <Dialog open={!!historyItem} onOpenChange={(open) => { if (!open) setHistoryItem(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <History className="h-5 w-5" /> Histórico - {historyItem?.modelo}
-            </DialogTitle>
-          </DialogHeader>
-          {historyLoading ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
-          ) : (
-            <div className="max-h-[400px] overflow-y-auto px-2">
-              <StatusTimeline
-                history={historyEntries}
-                renderPopupExtra={(entry) => entry.observacoes ? (
-                  <div>
-                    <span className="text-xs text-muted-foreground">Observação</span>
-                    <p className="text-sm">{entry.observacoes}</p>
-                  </div>
-                ) : null}
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={!!consultaItem} onOpenChange={(open) => { if (!open) setConsultaItem(null); }}>
         <DialogContent className="max-w-md">
