@@ -1,26 +1,28 @@
 /**
  * Helpers for tipo_aquisicao classification.
  * repasse behaves like própria for all workflow purposes.
- * 'convertida' (moto de consignação que virou compra) NÃO existe mais como
- * transição — decisão de negócio: continua tratada como 'consignada' em tudo
- * (taxa fixa, KPIs de relatório, aprovação). O valor pode aparecer em
- * registros legados; tratamos como não-própria (mesmo comportamento de
- * 'consignada') se aparecer.
+ * 'convertida' = moto que entrou como consignação e passou a ser estoque
+ * próprio por compra direta — pela conversão manual da avaliação ("converter
+ * para própria") ou pela compra da transferência de moto consignada.
+ * Pedido do usuário, 2026-10-08: tem o MESMO comportamento de 'propria' em
+ * tudo (fluxo de compra, pós-compra, estoque, taxa fixa, relatórios). A
+ * conversão pela Intermediação (devolução simbólica + compra de mercadoria
+ * recebida em consignação) continua 'consignada' (venda com CFOP 5115).
  */
 
-/** Returns true if the tipo behaves like 'própria' (própria, repasse) */
+/** Returns true if the tipo behaves like 'própria' (própria, repasse, convertida) */
 export const isTipoPropria = (tipo: string | null | undefined): boolean =>
-  !!tipo && ['propria', 'repasse'].includes(tipo);
+  !!tipo && ['propria', 'repasse', 'convertida'].includes(tipo);
 
-/** Returns true if the tipo is 'consignada' (inclui o legado 'convertida') */
+/** Returns true if the tipo is 'consignada' */
 export const isTipoConsignada = (tipo: string | null | undefined): boolean =>
-  tipo === 'consignada' || tipo === 'convertida';
+  tipo === 'consignada';
 
 /** All tipo_aquisicao values that behave like própria (for DB queries) */
-export const TIPOS_PROPRIA = ['propria', 'repasse'];
+export const TIPOS_PROPRIA = ['propria', 'repasse', 'convertida'];
 
 /** All tipo_aquisicao values for NPS/listing queries */
-export const TODOS_TIPOS_AQUISICAO = ['propria', 'consignada', 'repasse'];
+export const TODOS_TIPOS_AQUISICAO = ['propria', 'consignada', 'repasse', 'convertida'];
 
 /**
  * Empresas que só operam venda de moto nova (ex.: Ducati/FAG): não fazem compra
