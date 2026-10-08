@@ -538,14 +538,11 @@ async function aplicarEfeitosDevolucao(
       });
     }
   }
-  // Devolução de venda SEMINOVA: pedido do usuário, 2026-09-29 — diferente
-  // do 0km, não volta pra "disponível". Vira "retirada" (mesmo efeito do
-  // RetiradaDialog.tsx manual), atendimento vira "perdido", processos de
-  // consignação em aberto são fechados. Ver aplicarRetiradaSeminova.
+  // Devolução de venda SEMINOVA: a venda é desfeita e a moto volta pro estoque
+  // (ver desfazerVendaSeminova).
   if (tipo === 'devolucao_venda_seminova' && estoqueMoto?.id) {
-    await aplicarRetiradaSeminova(admin, {
+    await desfazerVendaSeminova(admin, {
       estoqueMotoId: estoqueMoto.id,
-      avaliacaoId: estoqueMoto.avaliacao_id ?? null,
       atendimentoId,
       motivo: 'Venda desfeita por devolução de NF-e.',
       callerId,
@@ -850,6 +847,18 @@ async function aplicarCancelamento(
       }
     }
   }
+  // Compra da transferência de moto consignada (transferencia_destino_loja_id
+  // preenchido): cancelar devolve a moto pra loja de origem — a do atendimento
+  // em que ela entrou em consignação.
+  if (nfeRow.operacao === 'compra' && nfeRow.transferencia_destino_loja_id && nfeRow.avaliacao_id) {
+    const { data: avOrigem } = await admin.from('avaliacoes').select('atendimento_id').eq('id', nfeRow.avaliacao_id).maybeSingle();
+    const { data: atOrigem } = avOrigem?.atendimento_id
+      ? await admin.from('atendimentos_motos').select('loja_id').eq('id', avOrigem.atendimento_id).maybeSingle()
+      : { data: null };
+    if (atOrigem?.loja_id) {
+      await admin.from('estoque_motos').update({ loja_id: atOrigem.loja_id }).eq('avaliacao_id', nfeRow.avaliacao_id);
+    }
+  }
 
 
   const parcelasPagas = await cancelarCompromissosDaNf(admin, nfeRow.id);
@@ -884,39 +893,26 @@ async function temNfCompraVinculada(admin: any, avaliacaoId: string | null): Pro
   return !!data;
 }
 
-// Pedido do usuário, 2026-09-29: desfazer a venda de uma moto seminova
-// (cancelamento ou devolução) não a devolve pra "disponível" — ela vira
-// "retirada" (mesmo efeito e mesma tela que RetiradaDialog.tsx já usa pro
-// fluxo manual do Estoque), o atendimento vira "perdido" e os processos de
-// consignação em aberto são fechados. Tudo registrado no histórico.
-async function aplicarRetiradaSeminova(
+// Desfaz a venda de uma moto seminova (cancelamento até 24h ou devolução
+// pós-24h da NF de venda): a moto volta pra "disponível" no estoque, sem os
+// dados da venda, e o atendimento vira "perdido" — mesmo efeito da devolução
+// de venda 0km. Pedido do usuário, 2026-10-08: cancelar/devolver a venda NÃO
+// significa que a moto saiu da loja — antes (2026-09-29) ela ia pra
+// "retirada" (achado real: UJL2F09, venda cancelada por CNPJ divergente).
+// Retirada continua só pela ação manual no Estoque (RetiradaDialog.tsx).
+async function desfazerVendaSeminova(
   admin: any,
-  params: { estoqueMotoId: string; avaliacaoId: string | null; atendimentoId: string; motivo: string; callerId: string; callerName: string | null },
+  params: { estoqueMotoId: string; atendimentoId: string; motivo: string; callerId: string; callerName: string | null },
 ): Promise<void> {
-  const { estoqueMotoId, avaliacaoId, atendimentoId, motivo, callerId, callerName } = params;
+  const { estoqueMotoId, atendimentoId, motivo, callerId, callerName } = params;
 
-  await admin.from('estoque_motos').update({ status: 'retirada', observacoes: motivo }).eq('id', estoqueMotoId);
-  await admin.from('status_history').insert({
-    entity_type: 'estoque', entity_id: estoqueMotoId, status: 'RETIRADA',
-    changed_by: callerId, changed_by_name: callerName, observacoes: motivo,
-  });
-
-  if (avaliacaoId) {
-    await admin.from('avaliacoes').update({ situacao: 'perdido' }).eq('id', avaliacaoId);
-    await admin.from('status_history').insert({
-      entity_type: 'avaliacao', entity_id: avaliacaoId, status: 'RETIRADA',
-      changed_by: callerId, changed_by_name: callerName, observacoes: motivo,
-    });
-    const { data: processos } = await admin
-      .from('consignacao_processos').select('id').eq('avaliacao_id', avaliacaoId).eq('concluida', false);
-    if (processos && processos.length > 0) {
-      const now = new Date().toISOString();
-      for (const p of processos as any[]) {
-        await admin.from('consignacao_processos').update({ concluida: true, data_conclusao: now }).eq('id', p.id);
-      }
-    }
-    await admin.from('avaliacoes').update({ consignacao_status: 'concluido' }).eq('id', avaliacaoId);
-  }
+  await admin.from('estoque_motos').update({
+    status: 'disponivel',
+    atendimento_venda_id: null,
+    data_venda: null,
+    valor_venda: null,
+    valor_sinal: null,
+  }).eq('id', estoqueMotoId);
 
   if (atendimentoId) {
     await admin.from('atendimentos_motos').update({ situacao: 'perdido' }).eq('id', atendimentoId);
@@ -1743,6 +1739,26 @@ Deno.serve(async (req) => {
   // "acao: emitir" mais abaixo. "consultar" usa o ref_externa gravado na própria linha.
   const ref = `${cfg.refPrefix}-${entityId}`;
 
+  // Transferência de moto CONSIGNADA entre empresas (TransferenciaEstoqueDialog,
+  // pedido do usuário 2026-10-08): mesma estrutura de duas etapas da
+  // transferência, mas com as naturezas da cadeia de consignação — 1) devolução
+  // simbólica pela empresa de origem e 2) COMPRA pela empresa de destino
+  // escolhida (a moto sai da consignação e passa a ser estoque próprio dela).
+  // A compra marca a loja de destino em transferencia_destino_loja_id; o
+  // polling/cancelamento (que não mandam destino_loja_id) lê da própria linha.
+  let compraDestinoLojaId = '';
+  if (tipo === 'compra') {
+    if (acao === 'emitir') {
+      compraDestinoLojaId = destinoLojaIdBody;
+    } else {
+      const { data: compraAtual } = await admin
+        .from('nfe_entradas').select('transferencia_destino_loja_id')
+        .eq('avaliacao_id', avaliacaoId).eq('operacao', 'compra')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      compraDestinoLojaId = (compraAtual as any)?.transferencia_destino_loja_id || '';
+    }
+  }
+
   // ---- Empresa + token Focus ----
   // Transferência de estoque: o emitente NÃO vem do atendimento original (que
   // é só o da avaliação/compra) — vem de quem hoje é dona da moto no estoque
@@ -1812,6 +1828,11 @@ Deno.serve(async (req) => {
   } else if (tipo === 'devolucao_transferencia_0km') {
     if (!emn0km?.empresa_id) return jsonResponse({ error: 'Moto 0km sem empresa vinculada.' }, 409);
     empresaId = emn0km.empresa_id;
+  } else if (compraDestinoLojaId) {
+    // Compra da transferência de moto consignada: emitente = empresa da loja de destino.
+    const { data: lojaDestino } = await admin.from('loja_empresas').select('empresa_id').eq('id', compraDestinoLojaId).maybeSingle();
+    if (!lojaDestino?.empresa_id) return jsonResponse({ error: 'Loja de destino sem empresa vinculada.' }, 400);
+    empresaId = lojaDestino.empresa_id;
   } else {
     const { data: lojaEmpresa } = await admin
       .from('loja_empresas')
@@ -2029,7 +2050,7 @@ Deno.serve(async (req) => {
       // produção de uma transferência pode chegar por aqui (polling), não só
       // na resposta síncrona do emitir. Usa a loja gravada na própria linha
       // (transferencia_destino_loja_id), não um body que o polling não manda.
-      if (tipo === 'transferencia_entrada') {
+      if (tipo === 'transferencia_entrada' || (tipo === 'compra' && compraDestinoLojaId)) {
         const destinoLoja = (updated?.transferencia_destino_loja_id as string) || (nfeRow.transferencia_destino_loja_id as string);
         if (destinoLoja) await admin.from('estoque_motos').update({ loja_id: destinoLoja }).eq('avaliacao_id', avaliacaoId);
       }
@@ -2043,7 +2064,7 @@ Deno.serve(async (req) => {
       // Devolução autorizada via polling: mesmos efeitos do caminho "emitir"
       // (ver aplicarEfeitosDevolucao). Só na TRANSIÇÃO pra autorizada — o
       // consultar pode rodar de novo sobre uma linha já processada, e os
-      // efeitos (histórico, retirada) não são idempotentes.
+      // efeitos (histórico, estoque) não são idempotentes.
       if (TIPOS_DEVOLUCAO_COM_EFEITO.has(tipo) && nfeRow.status !== 'processada') {
         const origemNf = await buscarNfOriginalDaDevolucao(admin, tipo, {
           avaliacaoId, atendimentoId, entityId, antesDe: nfeRow.created_at as string,
@@ -2151,14 +2172,12 @@ Deno.serve(async (req) => {
     if (updErr) return jsonResponse({ error: `NF-e cancelada na SEFAZ, mas falhou ao gravar: ${updErr.message}` }, 500);
     console.log('cancelar: gravado', nfeRow.id, '->', updated?.status, 'parcelasPagas:', parcelasPagas);
 
-    // Pedido do usuário, 2026-09-29: cancelar a venda de uma moto seminova
-    // tem o mesmo efeito de negócio de uma devolução (ver mais abaixo,
-    // devolucao_venda_seminova) — moto "retirada", atendimento perdido,
-    // processos de consignação concluídos, tudo no histórico.
+    // Cancelar a venda de uma moto seminova tem o mesmo efeito de negócio da
+    // devolução (devolucao_venda_seminova): venda desfeita, moto de volta ao
+    // estoque — ver desfazerVendaSeminova.
     if (tipo === 'venda_seminova' && estoqueMoto?.id) {
-      await aplicarRetiradaSeminova(admin, {
+      await desfazerVendaSeminova(admin, {
         estoqueMotoId: estoqueMoto.id,
-        avaliacaoId: estoqueMoto.avaliacao_id ?? null,
         atendimentoId,
         motivo: `Venda cancelada — ${justificativa}`,
         callerId: caller.id,
@@ -2264,16 +2283,40 @@ Deno.serve(async (req) => {
         .eq('operacao', 'devolucao_consignacao').eq('status', 'processada').limit(1).maybeSingle()
     : { data: null };
   const viaConversaoConsignacao = !!devolucaoAutorizada;
+  // Compra da transferência de moto consignada (ver compraDestinoLojaId): só
+  // depois da devolução simbólica, e quando o destino é OUTRA empresa (não a
+  // que recebeu a moto em consignação) a natureza é a de compra comum — o
+  // destino nunca teve a moto consignada (CFOP 1102/2102, não 1113/2113).
+  let compraEmOutraEmpresa = false;
+  if (tipo === 'compra' && compraDestinoLojaId) {
+    if (!viaConversaoConsignacao) {
+      return jsonResponse({ error: 'Emita a devolução da consignação antes da compra pela empresa de destino.' }, 409);
+    }
+    const { data: nfConsig } = await admin
+      .from('nfe_entradas').select('empresa_id').eq('avaliacao_id', avaliacaoId)
+      .eq('operacao', 'consignacao').eq('status', 'processada')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    compraEmOutraEmpresa = !!(nfConsig as any)?.empresa_id && (nfConsig as any).empresa_id !== empresaId;
+  }
+  const compraDeConsignada = tipo === 'compra' && viaConversaoConsignacao && !compraEmOutraEmpresa;
   // Venda de moto que veio de consignação: tipo_aquisicao continua 'consignada'
   // pra sempre (decisão de negócio, ver comentário em registrarPosAutorizacao
   // acima) — "já passou pela devolução + compra, pode vender" é verificado
   // direto pelo histórico de NF-e, não pelo campo.
   const { data: compraPosConsignacaoAutorizada } = (ehVenda && !ehVenda0km && estoqueMoto?.avaliacao_id)
-    ? await admin.from('nfe_entradas').select('id').eq('avaliacao_id', estoqueMoto.avaliacao_id)
-        .eq('operacao', 'compra').eq('status', 'processada').limit(1).maybeSingle()
+    ? await admin.from('nfe_entradas').select('id, transferencia_destino_loja_id').eq('avaliacao_id', estoqueMoto.avaliacao_id)
+        .eq('operacao', 'compra').eq('status', 'processada')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle()
     : { data: null };
   const viaVendaPosConsignacao = ehVenda && !ehVenda0km
     && (estoqueMoto?.avaliacao as any)?.tipo_aquisicao === 'consignada' && !!compraPosConsignacaoAutorizada;
+  // Natureza de "venda de mercadoria recebida em consignação" (5115/6115) só
+  // quando a compra foi a conversão na própria empresa que tinha a moto
+  // consignada. Compra feita pela transferência de moto consignada
+  // (transferencia_destino_loja_id) é compra comum de outra empresa — a venda
+  // dela é venda comum (5102/6102).
+  const vendaNaturezaConsignada = viaVendaPosConsignacao
+    && !(compraPosConsignacaoAutorizada as any)?.transferencia_destino_loja_id;
   if (tipo === 'compra') {
     if (av.consulta_realizada !== true) return jsonResponse({ error: 'A consulta veicular ainda não foi realizada.' }, 409);
     // Troca (moto entrando como parte de pagamento): não exige aprovação da
@@ -2329,7 +2372,7 @@ Deno.serve(async (req) => {
     // Pedido do usuário, 2026-09-29: devolver/cancelar a venda de uma moto
     // seminova só é permitido se ela tiver NF-e de entrada (compra) vinculada
     // no sistema — sem isso não temos como registrar direito a moto voltando
-    // (ela é marcada "retirada", ver aplicarRetiradaSeminova).
+    // pro estoque (ver desfazerVendaSeminova).
     if (!(await temNfCompraVinculada(admin, estoqueMoto?.avaliacao_id ?? null))) {
       return jsonResponse({ error: 'Esta moto não tem NF-e de entrada (compra) vinculada no sistema — não é possível devolver a venda.' }, 409);
     }
@@ -2833,9 +2876,9 @@ Deno.serve(async (req) => {
   // lógica: natureza dedicada, CFOP e natOp próprios, achada numa NF de
   // referência real da MMATOS — "Venda de Mercadoria Recebida Anteriormente
   // Em Consignacao", 2026-09-12.
-  const naturezaDescricaoEfetiva = (tipo === 'compra' && viaConversaoConsignacao)
+  const naturezaDescricaoEfetiva = compraDeConsignada
     ? 'Compra p/ comerc. de merc. recebida anter. em consignacao'
-    : viaVendaPosConsignacao
+    : vendaNaturezaConsignada
       ? 'Venda de Mercadoria Recebida Anteriormente Em Consignacao'
       : cfg.naturezaDescricao;
   // Transferência de estoque (tela de Estoque, transferencia_saida/entrada
@@ -2856,9 +2899,9 @@ Deno.serve(async (req) => {
   // Desde 2026-09-24 a natureza é UMA por CFOP no SisFin: a operação define a
   // família de CFOPs e a regra mais específica (UF, NCM da moto, bem usado)
   // decide o CFOP — ver _shared/regras-fiscais.ts.
-  const operacaoFiscal: OperacaoFiscal = (tipo === 'compra' && viaConversaoConsignacao)
+  const operacaoFiscal: OperacaoFiscal = compraDeConsignada
     ? 'compra_consignada'
-    : viaVendaPosConsignacao ? 'venda_consignada'
+    : vendaNaturezaConsignada ? 'venda_consignada'
     : (ehTransferenciaEstoque || ehTransferenciaEstoque0km) ? operacaoFiscalTransferencia
     : cfg.operacaoFiscal;
   let operacaoCarregada = await carregarOperacao(admin, { empresaId, ufEmitente: empresa.uf, operacao: operacaoFiscal });
@@ -3248,7 +3291,7 @@ Deno.serve(async (req) => {
       focus_status: fStatus ?? `http_${r.httpStatus}`,
       erro_mensagem: errMsg,
       ...((tipo === 'transferencia_entrada' || tipo === 'transferencia_entrada_0km') ? { transferencia_par_id: saidaNfIdParaEntrada } : {}),
-      ...((ehTransferenciaEstoque || ehTransferenciaEstoque0km) ? { transferencia_destino_loja_id: destinoLojaIdBody || null } : {}),
+      ...((ehTransferenciaEstoque || ehTransferenciaEstoque0km || compraDestinoLojaId) ? { transferencia_destino_loja_id: destinoLojaIdBody || compraDestinoLojaId || null } : {}),
     };
     if (atualizaExistente) {
       await admin.from('nfe_entradas').update(linhaErro).eq('id', nfeExistente.id);
@@ -3270,7 +3313,7 @@ Deno.serve(async (req) => {
     valor_total: valor,
     departamento,
     ...((tipo === 'transferencia_entrada' || tipo === 'transferencia_entrada_0km') ? { transferencia_par_id: saidaNfIdParaEntrada } : {}),
-    ...((ehTransferenciaEstoque || ehTransferenciaEstoque0km) ? { transferencia_destino_loja_id: destinoLojaIdBody || null } : {}),
+    ...((ehTransferenciaEstoque || ehTransferenciaEstoque0km || compraDestinoLojaId) ? { transferencia_destino_loja_id: destinoLojaIdBody || compraDestinoLojaId || null } : {}),
     observacoes: observacoesNf,
     data_emissao: dataEmissao,
     data_entrada: dataEmissao,
@@ -3340,6 +3383,10 @@ Deno.serve(async (req) => {
     // até o destino confirmar o recebimento com a própria NF-e dela).
     if (tipo === 'transferencia_entrada' && destinoLojaIdBody) {
       await admin.from('estoque_motos').update({ loja_id: destinoLojaIdBody }).eq('avaliacao_id', avaliacaoId);
+    }
+    // Compra da transferência de moto consignada: mesmo efeito da entrada.
+    if (tipo === 'compra' && compraDestinoLojaId) {
+      await admin.from('estoque_motos').update({ loja_id: compraDestinoLojaId }).eq('avaliacao_id', avaliacaoId);
     }
     if (tipo === 'transferencia_entrada_0km' && destinoLojaIdBody) {
       await admin.from('estoque_motos_novas')
