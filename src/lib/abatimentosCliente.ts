@@ -11,8 +11,8 @@ import { supabase } from '@/lib/supabase';
  *    intermediação (contratos_consignante) da venda dessa moto — exceto
  *    quitação de financiamento lançada ali (é quitação, não abatimento);
  *  - comissão de consignação: contratos_consignacao.percentual_comissao × valor
- *    real da venda (estoque_motos.valor_venda; enquanto não vendida, o "quanto
- *    vende"). Fixa: só muda pelo percentual. Com percentual, custos da
+ *    de fechamento (avaliacoes.valor_fechamento — decisão do usuário 2026-10-09).
+ *    Fixa: só muda pelo percentual (ou pelo fechamento). Com percentual, custos da
  *    intermediação com "comiss" na descrição (digitados à mão) não contam.
  *
  * Valor de compra / repasse = fechamento − quitação − abatimentos.
@@ -28,7 +28,7 @@ export interface AbatimentoForaDaOficina {
 
 export interface ComissaoConsignacao {
   percentual: number;
-  /** Valor real da venda; enquanto não vendida, o "quanto vende". */
+  /** Valor de fechamento da avaliação. */
   base: number;
   valor: number;
 }
@@ -38,13 +38,12 @@ export interface ComissaoConsignacao {
  * percentual digitado na tela antes de salvar (contrato de consignação).
  */
 export async function buscarComissaoConsignacao(avaliacaoId: string, percentualOverride?: number): Promise<ComissaoConsignacao> {
-  const [{ data: cc }, { data: av }, { data: est }] = await Promise.all([
+  const [{ data: cc }, { data: av }] = await Promise.all([
     (supabase as any).from('contratos_consignacao').select('percentual_comissao').eq('avaliacao_id', avaliacaoId).maybeSingle(),
-    supabase.from('avaliacoes').select('quanto_vende').eq('id', avaliacaoId).maybeSingle(),
-    (supabase as any).from('estoque_motos').select('valor_venda').eq('avaliacao_id', avaliacaoId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('avaliacoes').select('valor_fechamento').eq('id', avaliacaoId).maybeSingle(),
   ]);
   const percentual = percentualOverride ?? nz((cc as any)?.percentual_comissao);
-  const base = nz((est as any)?.valor_venda) > 0 ? nz((est as any)?.valor_venda) : nz((av as any)?.quanto_vende);
+  const base = nz((av as any)?.valor_fechamento);
   if (percentual <= 0) return { percentual: 0, base, valor: 0 };
   return { percentual, base, valor: Math.round(base * percentual) / 100 };
 }
