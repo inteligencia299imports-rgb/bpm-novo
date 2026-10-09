@@ -1,0 +1,103 @@
+-- Remove as views vw_nps_respostas e vw_atendimentos_nps (pedido do usuário, 2026-10-09).
+-- Nenhum sistema no código usava nenhuma das duas; a vw_nps é a view de NPS.
+-- As respostas continuam na tabela respostas_nps.
+-- Definições removidas, para recriar se precisar:
+--
+-- vw_atendimentos_nps (with security_invoker=on):
+--   SELECT DISTINCT ON (am.id) am.id,
+--       "left"(am.id::text, 8) AS id_prefix,
+--       'SHOWROOM'::text AS departamento,
+--       le.loja,
+--       upper(am.interesse) AS negociacao,
+--       ur.nome AS vendedor,
+--       cf.nome_razao_social AS cliente,
+--       cf.telefone,
+--       COALESCE(mo_direto.nome, mo_seminova.nome, mo_nova.nome, '-'::text) AS produto,
+--       vh.created_at::date AS data_negociacao,
+--       am.nps_status,
+--       am.nps_enviado_at::date AS data_envio
+--      FROM atendimentos_motos am
+--        JOIN loja_empresas le ON le.id = am.loja_id
+--        JOIN user_roles ur ON ur.user_id = am.vendedor_id
+--        JOIN clientes_fornecedores cf ON cf.id = am.cliente_id
+--        LEFT JOIN motos_interesse mi ON mi.atendimento_id = am.id
+--        LEFT JOIN modelos_motos mo_direto ON mo_direto.id = mi.modelo_id
+--        LEFT JOIN estoque_motos em ON em.id = mi.estoque_moto_id::uuid AND mi.estoque_tipo = 'seminova'::text
+--        LEFT JOIN avaliacoes av ON av.id = em.avaliacao_id
+--        LEFT JOIN modelos_motos mo_seminova ON mo_seminova.id = av.modelo_id
+--        LEFT JOIN estoque_motos_novas en ON en.id = mi.estoque_moto_id::uuid AND mi.estoque_tipo <> 'seminova'::text
+--        LEFT JOIN modelos_motos mo_nova ON mo_nova.id = en.modelo_id
+--        JOIN LATERAL ( SELECT sh.created_at
+--              FROM status_history sh
+--             WHERE sh.entity_type = 'showroom'::text AND sh.entity_id = am.id AND sh.status = 'vendido'::text
+--             ORDER BY sh.created_at DESC
+--            LIMIT 1) vh ON true
+--     WHERE am.interesse <> 'vender'::text AND am.situacao = 'vendido'::text
+--   UNION ALL
+--    SELECT DISTINCT ON (ae.id) ae.id,
+--       "left"(ae.id::text, 8) AS id_prefix,
+--       'EQUIPAMENTOS'::text AS departamento,
+--       le.loja,
+--       'COMPRAR'::text AS negociacao,
+--       ur.nome AS vendedor,
+--       cf.nome_razao_social AS cliente,
+--       cf.telefone,
+--       '-'::text AS produto,
+--       vh.created_at::date AS data_negociacao,
+--       ae.nps_status,
+--       ae.nps_enviado_at::date AS data_envio
+--      FROM atendimento_equipamentos ae
+--        JOIN loja_empresas le ON le.id = ae.loja_id
+--        JOIN user_roles ur ON ur.user_id = ae.user_id
+--        JOIN clientes_fornecedores cf ON cf.id = ae.cliente_id
+--        JOIN LATERAL ( SELECT sh.created_at
+--              FROM status_history_equipamentos sh
+--             WHERE sh.entity_type = 'atendimento_equipamento'::text AND sh.entity_id = ae.id AND sh.status = 'VENDIDO'::text
+--             ORDER BY sh.created_at DESC
+--            LIMIT 1) vh ON true
+--     WHERE ae.status = 'vendido'::text AND COALESCE(cf.consumidor_final, false) = false
+--   UNION ALL
+--    SELECT DISTINCT ON (ats.id) ats.id,
+--       "left"(ats.id::text, 8) AS id_prefix,
+--       'OFICINA'::text AS departamento,
+--       le.loja,
+--       'SERVIÇO'::text AS negociacao,
+--       ur.nome AS vendedor,
+--       cf.nome_razao_social AS cliente,
+--       cf.telefone,
+--       COALESCE(NULLIF(TRIM(BOTH FROM concat_ws(' '::text, ma.nome, mo.nome)), ''::text), ats.moto_placa, ats.numero_os, '-'::text) AS produto,
+--       ats.entregue_em::date AS data_negociacao,
+--       ats.nps_status,
+--       ats.nps_enviado_at::date AS data_envio
+--      FROM atendimento_servicos ats
+--        JOIN loja_empresas le ON le.id = ats.loja_id
+--        JOIN user_roles ur ON ur.user_id = ats.user_id
+--        JOIN clientes_fornecedores cf ON cf.id = ats.cliente_id
+--        LEFT JOIN marcas_motos ma ON ma.id = ats.marca_id
+--        LEFT JOIN modelos_motos mo ON mo.id = ats.modelo_id
+--     WHERE ats.status = 'entregue'::text AND ats.entregue_em IS NOT NULL;
+--
+-- vw_nps_respostas (with security_invoker=on):
+--   SELECT v.id AS id_atendimento,
+--       r.id AS id_resposta,
+--       v.cliente AS nome_cliente,
+--       v.telefone,
+--       v.vendedor AS vendedor_avaliador,
+--       v.departamento,
+--       v.produto AS objeto,
+--       v.data_negociacao AS data_venda,
+--       r.data_resposta AS data_envio,
+--       r.data_resposta,
+--       r.atendimento,
+--       r.outros_setores,
+--       r.produto,
+--       r.experiencia,
+--       r.nps,
+--       r.melhorias,
+--       r.espaco_livre,
+--       r.origem
+--      FROM respostas_nps r
+--        JOIN vw_atendimentos_nps v ON v.id = r.atendimento_id;
+
+drop view if exists public.vw_nps_respostas;
+drop view if exists public.vw_atendimentos_nps;
