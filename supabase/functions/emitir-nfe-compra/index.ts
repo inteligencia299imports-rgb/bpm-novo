@@ -1741,6 +1741,31 @@ Deno.serve(async (req) => {
   // "acao: emitir" mais abaixo. "consultar" usa o ref_externa gravado na própria linha.
   const ref = `${cfg.refPrefix}-${entityId}`;
 
+  // Moto consignada (ou convertida a partir de consignação) só pode mudar de
+  // loja dentro da MESMA empresa (mesma raiz de CNPJ: matriz <-> filial). Entre
+  // empresas diferentes, bloqueado — decisão do usuário 2026-10-09. Vale para
+  // as etapas que recebem loja de destino: devolução simbólica, compra no
+  // destino e transferência comum.
+  if (acao === 'emitir' && avaliacaoId && destinoLojaIdBody
+    && (tipo === 'devolucao_consignacao' || tipo === 'compra' || tipo === 'transferencia_saida')) {
+    const [{ data: avTipo }, { data: emOrigem }] = await Promise.all([
+      admin.from('avaliacoes').select('tipo_aquisicao').eq('id', avaliacaoId).maybeSingle(),
+      admin.from('estoque_motos').select('loja_id').eq('avaliacao_id', avaliacaoId).maybeSingle(),
+    ]);
+    if (['consignada', 'convertida'].includes(String((avTipo as any)?.tipo_aquisicao || '')) && (emOrigem as any)?.loja_id) {
+      const lojaCnpj = async (lojaId: string) => {
+        const { data } = await admin.from('loja_empresas').select('empresas:empresa_id(cnpj)').eq('id', lojaId).maybeSingle();
+        return String((data as any)?.empresas?.cnpj || '').replace(/D/g, '');
+      };
+      const [cnpjOrigem, cnpjDestino] = await Promise.all([lojaCnpj((emOrigem as any).loja_id), lojaCnpj(destinoLojaIdBody)]);
+      if (cnpjOrigem && cnpjDestino && cnpjOrigem.slice(0, 8) !== cnpjDestino.slice(0, 8)) {
+        return jsonResponse({
+          error: 'Moto consignada não pode ser transferida para empresa de CNPJ diferente — só entre matriz e filial da mesma empresa.',
+        }, 409);
+      }
+    }
+  }
+
   // Transferência de moto CONSIGNADA entre empresas (TransferenciaEstoqueDialog,
   // pedido do usuário 2026-10-08): mesma estrutura de duas etapas da
   // transferência, mas com as naturezas da cadeia de consignação — 1) devolução

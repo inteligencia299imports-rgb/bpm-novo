@@ -99,6 +99,10 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
   // compra própria já autorizada (conversão feita na própria empresa) e sem uma
   // transferência comum já iniciada. null = ainda verificando.
   const [modoConsignado, setModoConsignado] = useState<boolean | null>(null);
+  // Moto consignada (ou convertida a partir de consignação): só pode ir para loja
+  // da MESMA empresa (mesma raiz de CNPJ) — decisão do usuário 2026-10-09; o
+  // servidor (emitir-nfe-compra) também recusa.
+  const [ehConsignada, setEhConsignada] = useState(false);
   // Ambiente da NF de consignação: em produção, a devolução não passa em
   // homologação (SEFAZ de homologação não enxerga a chave referenciada).
   const [consignacaoAmbiente, setConsignacaoAmbiente] = useState<string | null>(null);
@@ -124,6 +128,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
     ]).then(([{ data: av }, { data: compraPropria }, { data: saidaComum }, { data: consig }, abat]: any[]) => {
       if (cancel) return;
       setModoConsignado(av?.tipo_aquisicao === 'consignada' && !compraPropria && !saidaComum);
+      setEhConsignada(['consignada', 'convertida'].includes(av?.tipo_aquisicao));
       setConsignacaoAmbiente(consig?.ambiente ?? null);
       const fech = Number(av?.valor_fechamento ?? 0);
       setValorFechamento(fech > 0 ? formatCurrencyInput(String(Math.round(fech * 100))) : '');
@@ -254,12 +259,16 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
     setLojasLoading(true);
     (supabase as any)
       .from('loja_empresas')
-      .select('id, loja, empresa_id, empresas:empresa_id(nome)')
+      .select('id, loja, empresa_id, empresas:empresa_id(nome, cnpj)')
       .eq('sistema', 'motos')
       .then(({ data }: any) => {
         if (cancel) return;
+        const raiz = (l: any) => String(l?.empresas?.cnpj || '').replace(/D/g, '').slice(0, 8);
+        const raizOrigem = raiz(((data as any[]) || []).find((l) => l.id === estoqueItem?.loja_id));
         const opts = ((data as any[]) || [])
           .filter((l) => (l.id === estoqueItem?.loja_id ? !!modoConsignado : lojasPermitidas.includes(l.loja)))
+          // Consignada: só destinos da mesma empresa (mesma raiz de CNPJ).
+          .filter((l) => !ehConsignada || !raizOrigem || raiz(l) === raizOrigem)
           .map((l) => ({ id: l.id, loja: l.loja, empresa_id: l.empresa_id, empresa_nome: l.empresas?.nome || '' }))
           .sort((a, b) => (a.empresa_nome + a.loja).localeCompare(b.empresa_nome + b.loja));
         setLojas(opts);
@@ -267,7 +276,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
       });
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, estoqueItem?.loja_id, eh0km, modoConsignado]);
+  }, [open, estoqueItem?.loja_id, eh0km, modoConsignado, ehConsignada]);
 
   // Pedido do usuário, 2026-09-30: a saída também cobre a moto 0km "enviada
   // como demonstração" pra outra empresa/UF (mesma operação de estoque,
@@ -363,6 +372,14 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                 ))}
               </SelectContent>
             </Select>
+            {ehConsignada && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Moto consignada: só pode ser transferida entre lojas da mesma empresa (mesmo CNPJ raiz — matriz e filial).
+              </p>
+            )}
+            {ehConsignada && !lojasLoading && lojas.length === 0 && (
+              <p className="text-xs text-destructive mt-1">Nenhuma loja da mesma empresa disponível como destino.</p>
+            )}
           </div>
 
           {modoConsignado && (
