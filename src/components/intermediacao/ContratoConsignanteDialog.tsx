@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { rotuloSexo } from '@/lib/sexo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -721,7 +722,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <InfoDisplay label="Nome" value={cli?.nome_razao_social} />
                       <InfoDisplay label={rotuloDocumento(cli)} value={cli?.cpf_cnpj ? formatCpfCnpj(cli.cpf_cnpj) : undefined} />
-                      <InfoDisplay label="Sexo" value={cli?.sexo} />
+                      <InfoDisplay label="Sexo" value={rotuloSexo(cli?.sexo)} />
                       <InfoDisplay label="Data de Nascimento" value={fmtDataNasc(cli?.data_nascimento)} />
                       <InfoDisplay label="E-mail (NF)" value={cli?.email_nf} />
                       <InfoDisplay label="Telefone (comercial)" value={fmtTelefone(cli?.telefone_comercial)} />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { rotuloSexo } from '@/lib/sexo';
 import { getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -727,7 +728,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                     )}
                   </div>
                 </div>
-                {!isIntermParte2 && <InfoItem label="Sexo" value={displayClient.cliente?.sexo} />}
+                {!isIntermParte2 && <InfoItem label="Sexo" value={rotuloSexo(displayClient.cliente?.sexo)} />}
                 {!isIntermParte2 && <InfoItem label="Data de Nascimento" value={formatDataNascimento((displayClient.cliente as any)?.data_nascimento)} />}
                 {!isIntermParte2 && <InfoItem label="UF" value={displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.uf} />}
                 {isIntermParte2 && proprietario?.loja && <InfoItem label="Loja" value={proprietario.loja} />}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { sexoParaGravar } from '@/lib/sexo';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -152,11 +153,9 @@ function normalizeSexo(v: unknown): string {
   return "";
 }
 
-/** Formato canônico usado no restante do CRM. */
+/** Grava em minúsculo ('masculino'/'feminino'), padrão de todos os sistemas (lib/sexo). */
 function sexoParaBanco(v: string): string | null {
-  if (v === "masculino") return "Masculino";
-  if (v === "feminino") return "Feminino";
-  return null;
+  return sexoParaGravar(v);
 }
 
 /** Máscara de data no formato dd/mm/aaaa. */

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { rotuloSexo } from '@/lib/sexo';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada, empresaConsignaMoto } from '@/lib/tipoAquisicao';
 import { useAuth } from '@/contexts/AuthContext';
 import ContratoConsignacaoDialog from '@/components/consignacao/ContratoConsignacaoDialog';
@@ -1413,7 +1414,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                     )}
                   </div>
                 </div>
-                <InfoItem label="Sexo" value={at?.cliente?.sexo} />
+                <InfoItem label="Sexo" value={rotuloSexo(at?.cliente?.sexo)} />
                 <InfoItem label="Data de Nascimento" value={formatDataNascimento((at?.cliente as any)?.data_nascimento)} />
                 <InfoItem label="UF" value={(at?.cliente as any)?.clientes_fornecedores_enderecos?.[0]?.uf} />
                 {(at?.cliente as any)?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj((at.cliente as any).cpf_cnpj)} />}
