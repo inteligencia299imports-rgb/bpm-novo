@@ -590,8 +590,10 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
     const id = await saveContrato();
     if (!id) { setGenerating(false); return; }
     try {
-      await generateContratoConsignacaoPdf(buildPdfData(), 'download');
-
+      // Registra "CONTRATO GERADO" (é o que libera a NF de consignação) ANTES do
+      // download: no celular o download do PDF pode falhar e, antes, o registro
+      // nunca era gravado — a NF ficava travada mesmo com o contrato salvo
+      // (achado UJL2F09, iPhone, 2026-10-09).
       if (user) {
         const { error } = await supabase.from('status_history').insert({
           entity_type: 'consignacao',
@@ -602,8 +604,15 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
         });
         if (error) console.error('Erro ao registrar histórico:', error);
       }
-
       setJaGerado(true);
+
+      try {
+        await generateContratoConsignacaoPdf(buildPdfData(), 'download');
+      } catch (pdfErr) {
+        console.error('Erro ao baixar o PDF do contrato:', pdfErr);
+        toast.warning('Contrato gerado, mas não foi possível baixar o PDF neste aparelho. Use "Baixar" ou "Visualizar" para tentar de novo.');
+      }
+
       setBaseline(snapshotFields({ cpfCnpj, email, endereco, cep, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato, percentualComissao }));
       setClienteTocado(false);
       toast.success(`Contrato de consignação ${temComissao ? `(${percentualComissao}%) ` : ''}gerado com sucesso!`);
