@@ -4,8 +4,7 @@
 //  - custos operacionais com responsável = Cliente lançados no contrato de
 //    intermediação (contratos_consignante) da venda dessa moto — ex.: transporte;
 //  - comissão de consignação: contratos_consignacao.percentual_comissao × valor
-//    real da venda (estoque_motos.valor_venda; enquanto não vendida, o "quanto
-//    vende"). Com percentual, custos operacionais com "comiss" na descrição
+//    de fechamento (avaliacoes.valor_fechamento — decisão do usuário 2026-10-09). Com percentual, custos operacionais com "comiss" na descrição
 //    (comissão digitada à mão) deixam de contar, para não cobrar duas vezes.
 // Mesma conta do front (src/lib/abatimentosCliente.ts). O valor de compra (NF-e
 // de entrada e repasse) é o fechamento menos esses abatimentos; a quitação é
@@ -15,14 +14,13 @@ const nz = (v: unknown): number => Number(v) || 0;
 
 /** Comissão de consignação da moto (0 quando o contrato não tem percentual). */
 export async function comissaoConsignacao(admin: any, avaliacaoId: string): Promise<{ percentual: number; base: number; valor: number }> {
-  const [{ data: cc }, { data: av }, { data: est }] = await Promise.all([
+  const [{ data: cc }, { data: av }] = await Promise.all([
     admin.from('contratos_consignacao').select('percentual_comissao').eq('avaliacao_id', avaliacaoId).maybeSingle(),
-    admin.from('avaliacoes').select('quanto_vende').eq('id', avaliacaoId).maybeSingle(),
-    admin.from('estoque_motos').select('valor_venda').eq('avaliacao_id', avaliacaoId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    admin.from('avaliacoes').select('valor_fechamento').eq('id', avaliacaoId).maybeSingle(),
   ]);
   const percentual = nz(cc?.percentual_comissao);
   if (percentual <= 0) return { percentual: 0, base: 0, valor: 0 };
-  const base = nz(est?.valor_venda) > 0 ? nz(est?.valor_venda) : nz(av?.quanto_vende);
+  const base = nz(av?.valor_fechamento);
   return { percentual, base, valor: Math.round(base * percentual) / 100 };
 }
 

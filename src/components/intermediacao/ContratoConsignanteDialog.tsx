@@ -179,11 +179,13 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     custos: custosOp.map((c) => `${c.tipo}|${c.responsavel}|${c.descricao}|${c.valor}`).join(';'),
   });
 
-  // Comissão de consignação (percentual do contrato de consignação × valor da
-  // venda): abatimento fixo do cliente — não se edita nem remove aqui, só muda
+  // Comissão de consignação (percentual do contrato de consignação × valor de
+  // fechamento): abatimento fixo do cliente — não se edita nem remove aqui, só muda
   // alterando o percentual. Com ela, comissão digitada à mão não conta.
   const [comissao, setComissao] = useState<ComissaoConsignacao>({ percentual: 0, base: 0, valor: 0 });
   const ehComissaoManual = (desc: string | null | undefined) => comissao.percentual > 0 && /comiss/i.test(String(desc || ''));
+  // Comissão = percentual × valor de fechamento da tela (acompanha a digitação).
+  const comissaoValor = comissao.percentual > 0 ? Math.round(parseCurrencyInput(valorFechamento) * comissao.percentual) / 100 : 0;
 
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -366,7 +368,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
       .filter(c => c.responsavel === 'Cliente')
       .filter(c => !ehComissaoManual(c.descricao))
       .reduce((sum, c) => sum + parseCurrencyInput(c.valor), 0);
-    return oficTotal + opClienteTotal + comissao.valor;
+    return oficTotal + opClienteTotal + comissaoValor;
   };
 
   // Auto-calculate repasse
@@ -869,7 +871,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                 </div>
 
                 {/* Unified cost list */}
-                {(custosOficina.length > 0 || custosOp.length > 0 || comissao.valor > 0) && (
+                {(custosOficina.length > 0 || custosOp.length > 0 || comissaoValor > 0) && (
                   <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
                     {custosOficina.map((c: any) => {
                       const val = c.valor_executado || c.valor_previsto || 0;
@@ -892,16 +894,16 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                         </div>
                       );
                     })}
-                    {comissao.valor > 0 && (
+                    {comissaoValor > 0 && (
                       <div
                         className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 text-sm"
-                        title="Percentual do contrato de consignação sobre o valor da venda — muda só alterando o percentual"
+                        title="Percentual do contrato de consignação sobre o valor de fechamento"
                       >
                         <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium shrink-0">Comissão</span>
                         <span className="flex-1 truncate text-xs font-medium">
                           CLIENTE - COMISSÃO DE CONSIGNAÇÃO ({fmtPercentual(comissao.percentual)}%)
                         </span>
-                        <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(comissao.valor)}</span>
+                        <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(comissaoValor)}</span>
                         <span className="h-7 w-7 shrink-0" />
                       </div>
                     )}

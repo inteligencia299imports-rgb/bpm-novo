@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import { FileText, CalendarIcon, Save, Download, Percent, Eye, ArrowLeft, Loader2, RefreshCw, AlertTriangle, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Building2, ListChecks } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { listarAbatimentosForaDaOficina, buscarComissaoConsignacao, recalcularRepasseCompra } from '@/lib/abatimentosCliente';
+import { listarAbatimentosForaDaOficina, recalcularRepasseCompra } from '@/lib/abatimentosCliente';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -236,10 +236,6 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   // (IPVA, licenciamento, transporte...) — todo custo do cliente abate do repasse,
   // igual ao compromisso a pagar (lib/abatimentosCliente).
   const [abatimentosForaOficina, setAbatimentosForaOficina] = useState(0);
-  // Base da comissão de consignação: valor real da venda (ou "quanto vende"
-  // enquanto não vendida). A comissão é calculada aqui com o percentual da tela,
-  // para o repasse acompanhar a digitação antes de salvar.
-  const [comissaoBase, setComissaoBase] = useState(0);
 
   // Observations
   const [obsInternas, setObsInternas] = useState('');
@@ -290,7 +286,6 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
       );
       listarAbatimentosForaDaOficina(avaliacao.id, { incluirComissao: false })
         .then((itens) => setAbatimentosForaOficina(itens.reduce((sum, i) => sum + i.valor, 0)));
-      buscarComissaoConsignacao(avaliacao.id, 0).then((c) => setComissaoBase(c.base));
       nfe.carregar();
       // Quitação e Fechamento da moto do cliente têm origem na avaliação — não são editados no contrato.
       const quitacaoAval = (avaliacao as any)?.valor_quitacao;
@@ -509,8 +504,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
   const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const fechamentoNum = valorFechamento?.trim() ? parseCurrencyInput(valorFechamento) : 0;
   const quitacaoNum = valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : 0;
-  // Comissão de consignação (percentual × valor da venda): abatimento fixo do cliente.
-  const comissaoValor = percentualComissaoNum > 0 ? Math.round(comissaoBase * percentualComissaoNum) / 100 : 0;
+  // Comissão de consignação = percentual × valor de fechamento (o da tela, para
+  // acompanhar a digitação): abatimento fixo do cliente.
+  const comissaoValor = percentualComissaoNum > 0 ? Math.round(fechamentoNum * percentualComissaoNum) / 100 : 0;
   const abatimentos = custosCliente + abatimentosForaOficina + comissaoValor;
   const repasseCliente = fechamentoNum - abatimentos - quitacaoNum;
 
