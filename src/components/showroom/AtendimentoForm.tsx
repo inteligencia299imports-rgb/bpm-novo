@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react';
+import { sexoParaGravar } from '@/lib/sexo';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { liberarEstoquePresoAoAtendimento } from '@/lib/liberarEstoqueAtendimento';
@@ -697,7 +698,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       if (finalClienteId) {
         // Cliente existente: telefone é imutável — não vai no update.
         const { error: clienteError } = await supabase.from('clientes_fornecedores')
-          .update({ nome_razao_social: formatPersonName(nomeCliente), sexo, tipo_pessoa: tipoPessoa })
+          .update({ nome_razao_social: formatPersonName(nomeCliente), sexo: sexoParaGravar(sexo), tipo_pessoa: tipoPessoa })
           .eq('id', finalClienteId);
         if (clienteError) { toast.error('Erro ao salvar dados do cliente'); setSaving(false); return; }
       } else {
@@ -705,7 +706,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         const clientePayload = {
           nome_razao_social: formatPersonName(nomeCliente),
           telefone: unformatPhone(telefone),
-          sexo,
+          sexo: sexoParaGravar(sexo),
           tipo_pessoa: tipoPessoa,
           ...(cpfDigits.length === 11 ? { cpf_cnpj: cpfDigits } : {}),
         };

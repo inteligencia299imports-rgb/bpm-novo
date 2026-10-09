@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { sexoParaGravar, rotuloSexo } from '@/lib/sexo';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -76,7 +77,7 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
       const docIdent = ((docs as any[]) || []).find((d) => d.tipo_documento === (pjCliente ? 'cartao_cnpj' : 'cnh')) || null;
       setNome(cliente ? formatPersonName(cliente.nome_razao_social || '') : '');
       setTelefone(cliente?.telefone ? formatPhone(cliente.telefone.replace(/\D/g, '')) : '');
-      setSexo(cliente?.sexo || '');
+      setSexo(rotuloSexo(cliente?.sexo) ?? '');
       setTipoPessoa(pjCliente ? 'juridica' : 'fisica');
       setCpfCnpj(cliente?.cpf_cnpj ? formatCpfCnpj(cliente.cpf_cnpj) : '');
       setCpfBloqueado(!!cliente?.cpf_cnpj);
@@ -131,7 +132,7 @@ const ClienteEditDialog: React.FC<Props> = ({ clienteId, open, onOpenChange, onS
     const ehPJ = tipoPessoa === 'juridica' || cpfDigits.length > 11;
     const { error: clienteError } = await supabase.from('clientes_fornecedores').update({
       nome_razao_social: formatPersonName(nome),
-      sexo: ehPJ ? null : (sexo || null),
+      sexo: ehPJ ? null : sexoParaGravar(sexo),
       email: email.trim().toLowerCase() || null,
       ...(cpfBloqueado ? {} : {
         cpf_cnpj: cpfDigits || null,

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { rotuloSexo } from '@/lib/sexo';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
@@ -933,7 +934,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     </button>
                   </div>
                 </div>
-                <InfoItem label="Sexo" value={atendimento.cliente?.sexo} />
+                <InfoItem label="Sexo" value={rotuloSexo(atendimento.cliente?.sexo)} />
                 <InfoItem label="Data de Nascimento" value={formatDataNascimento((atendimento.cliente as any)?.data_nascimento)} />
                 <InfoItem label="UF" value={atendimento.cliente?.clientes_fornecedores_enderecos?.[0]?.uf} />
                 <InfoItem label="CPF/CNPJ" value={atendimento.cliente?.cpf_cnpj ? formatCpfCnpj(atendimento.cliente.cpf_cnpj) : undefined} />
