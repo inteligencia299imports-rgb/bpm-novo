@@ -1177,8 +1177,9 @@ const ContratoDialog: React.FC<Props> = ({
       const pdfData = buildPdfData();
       if (!pdfData) throw new Error('Dados insuficientes');
 
-      await generateContratoPdf(pdfData, variant);
-
+      // Registra a geração ANTES do download do PDF: no celular o download pode
+      // falhar e, antes, o registro (que libera a etapa seguinte e o contas a receber) não era
+      // gravado (achado UJL2F09, iPhone, 2026-10-09).
       if (!soLeitura) {
         // Registrar no histórico de movimentações (só na geração "real", não no re-download).
         if (user) {
@@ -1200,6 +1201,13 @@ const ContratoDialog: React.FC<Props> = ({
             .invoke('gerar-compromissos-proposta', { body: { acao: 'venda', atendimento_id: atendimento.id } })
             .then(({ error }) => { if (error) console.error('gerar-compromissos-proposta (venda)', error); });
         }
+      }
+
+      try {
+        await generateContratoPdf(pdfData, variant);
+      } catch (pdfErr) {
+        console.error('Erro ao baixar o PDF do contrato:', pdfErr);
+        toast.warning('Contrato gerado, mas não foi possível baixar o PDF neste aparelho. Use "Baixar" ou "Visualizar" para tentar de novo.');
       }
       toast.success(variant === 'venda' ? 'Proposta de venda gerada com sucesso!' : 'Proposta gerada com sucesso!');
     } catch (err) {

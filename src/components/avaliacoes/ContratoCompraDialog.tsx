@@ -525,8 +525,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
     if (!id) { setGenerating(false); return; }
 
     try {
-      await generateContratoCompraPdf(buildPdfData());
-
+      // Registra a geração ANTES do download do PDF: no celular o download pode
+      // falhar e, antes, o registro (que libera a etapa seguinte e o contas a pagar) não era
+      // gravado (achado UJL2F09, iPhone, 2026-10-09).
       if (user) {
         await supabase.from('status_history').insert({
           entity_type: 'pos_compra',
@@ -544,6 +545,13 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         .then(({ error }) => { if (error) console.error('gerar-compromissos-proposta (compra)', error); });
 
       setJaGerado(true);
+
+      try {
+        await generateContratoCompraPdf(buildPdfData());
+      } catch (pdfErr) {
+        console.error('Erro ao baixar o PDF do contrato:', pdfErr);
+        toast.warning('Contrato gerado, mas não foi possível baixar o PDF neste aparelho. Use "Baixar" ou "Visualizar" para tentar de novo.');
+      }
       setBaseline(snapshotFields({ cpfCnpj, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato }));
       setClienteTocado(false);
       setFormasTocadas(false);
