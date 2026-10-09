@@ -327,6 +327,28 @@ export async function generateContratoConsignacaoPdf(
   doc.text(`Valor de Quitação: ${data.valorQuitacao}`, marginLeft, y); y += lineHeight;
   doc.text(`Valor Negociado: ${data.valorNegociado}`, marginLeft, y); y += lineHeight + sectionGap;
 
+  // DA CONSIGNAÇÃO E COMERCIALIZAÇÃO EM MÚLTIPLAS UNIDADES (pedido do usuário,
+  // 2026-10-09) — logo após o OBJETO.
+  sectionHeader('DA CONSIGNAÇÃO E COMERCIALIZAÇÃO EM MÚLTIPLAS UNIDADES:');
+  setNormal();
+  {
+    const paragrafos: { texto: string; negrito?: string }[] = [
+      { texto: 'O CONSIGNANTE declara estar ciente e autoriza expressamente que a motocicleta objeto deste contrato seja consignada e disponibilizada para divulgação, oferta e comercialização, de forma simultânea, pelas seguintes empresas:' },
+      { texto: 'I – BRASÍLIA/DF: MMATOS COMERCIO DE VEÍCULOS E PECAS LTDA, inscrita no CNPJ nº 21.194.795/0001-96.', negrito: 'I – BRASÍLIA/DF:' },
+      { texto: 'II – PORTO ALEGRE/RS: INTERCONTINENTAL MOTORSPORT LTDA, inscrita no CNPJ nº 05.564.902/0002-55.', negrito: 'II – PORTO ALEGRE/RS:' },
+      { texto: 'III – FLORIANÓPOLIS/SC: INTERCONTINENTAL MOTORSPORT LTDA, inscrita no CNPJ nº 05.564.902/0001-74.', negrito: 'III – FLORIANÓPOLIS/SC:' },
+      { texto: 'Parágrafo Primeiro: A autorização permite que as três unidades realizem simultaneamente a divulgação, prospecção de compradores, negociação e intermediação da venda da motocicleta, respeitando integralmente as condições comerciais estabelecidas neste contrato.', negrito: 'Parágrafo Primeiro:' },
+      { texto: 'Parágrafo Segundo: A consignação simultânea não implica a celebração de três contratos independentes, permanecendo válidas as condições, os valores e os prazos definidos neste instrumento.', negrito: 'Parágrafo Segundo:' },
+      { texto: 'Parágrafo Terceiro: A venda da motocicleta por qualquer uma das unidades deverá ser comunicada às demais, encerrando-se imediatamente a oferta do veículo nas outras unidades, a fim de evitar negociações ou vendas em duplicidade.', negrito: 'Parágrafo Terceiro:' },
+    ];
+    for (const par of paragrafos) {
+      checkPageBreak(lineHeight);
+      y = drawJustifiedText(doc, par.texto, marginLeft, contentWidth, y, lineHeight, par.negrito ? [par.negrito] : undefined, lineCheckPageBreak);
+      y += 2;
+    }
+    y += sectionGap;
+  }
+
   // OBSERVAÇÕES
   if (data.observacoes) {
     sectionHeader('OBSERVAÇÕES:');
