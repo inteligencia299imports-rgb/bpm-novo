@@ -19,6 +19,8 @@ interface Props {
   interesseLabelOverride?: string;
   /** Tag de status da NF-e (ver src/lib/nfeTag.ts) — badge colorido ao lado do nome. */
   nameTag?: { label: string; className?: string };
+  /** Nota de NPS respondida (respostas_nps.nps) — mostrada ao lado da loja, sem ícone. */
+  npsNota?: string | number | null;
 }
 
 const formatPhone = (value: string): string => {
@@ -67,11 +69,15 @@ const getMotoClienteLabel = (atendimento: Props['atendimento']): string | null =
   return parts.join(' - ');
 };
 
-const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator, readyReason, interesseLabelOverride, nameTag }) => {
+const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statusColorOverride, dateOverride, readyIndicator, readyReason, interesseLabelOverride, nameTag, npsNota }) => {
   const interesse = atendimento.interesse;
   const motoInteresse = (interesse === 'comprar' || interesse === 'trocar') ? getMotoInteresseLabel(atendimento) : null;
   const motoCliente = (interesse === 'vender' || interesse === 'trocar') ? getMotoClienteLabel(atendimento) : null;
   const statusColor = statusColorOverride || STATUS_COLORS[atendimento.situacao as SituacaoShowroom] || '#6B7280';
+  // Mesma faixa de cor do RespostasNpsDialog: 9-10 verde, 7-8 amarelo, 0-6 vermelho.
+  const temNps = npsNota != null && String(npsNota).trim() !== '';
+  const npsNum = temNps ? Number(npsNota) : NaN;
+  const npsColor = isNaN(npsNum) ? 'text-foreground' : npsNum > 8 ? 'text-green-700' : npsNum >= 7 ? 'text-yellow-700' : 'text-red-700';
 
 
   return (
@@ -133,9 +139,14 @@ const AtendimentoCard: React.FC<Props> = ({ atendimento, onClick, actions, statu
 
           {/* Store badge */}
           <div className="flex items-center justify-between">
-            <Badge variant="secondary" className="text-[10px]">
-              {atendimento.loja}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-[10px]">
+                {atendimento.loja}
+              </Badge>
+              {temNps && (
+                <span className={`text-xs font-semibold ${npsColor}`}>NPS: {String(npsNota).trim()}</span>
+              )}
+            </div>
             {atendimento.temperatura && (
               <span className={`flex items-center gap-1 text-[10px] font-medium ${
                 atendimento.temperatura === 'Quente' ? 'text-destructive' :

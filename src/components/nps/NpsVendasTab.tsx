@@ -132,10 +132,14 @@ const NpsVendasTab = ({ onNavigateToTab }: NpsVendasTabProps) => {
       if (atIds.length > 0) {
         const { data: respData } = await supabase
           .from('respostas_nps' as any)
-          .select('atendimento_id')
-          .in('atendimento_id', atIds);
+          .select('atendimento_id, nps, data_resposta')
+          .in('atendimento_id', atIds)
+          .order('data_resposta', { ascending: false });
         const respondidoSet = new Set(((respData as any[]) || []).map((r: any) => r.atendimento_id));
-        mapped = mapped.map((a: any) => (respondidoSet.has(a.id) ? { ...a, nps_status: 'respondido' } : a));
+        // Nota da resposta mais recente (mesma que o "Visualizar Respostas" mostra).
+        const npsNotaMap: Record<string, string | null> = {};
+        ((respData as any[]) || []).forEach((r: any) => { if (!(r.atendimento_id in npsNotaMap)) npsNotaMap[r.atendimento_id] = r.nps ?? null; });
+        mapped = mapped.map((a: any) => (respondidoSet.has(a.id) ? { ...a, nps_status: 'respondido', _npsNota: npsNotaMap[a.id] } : a));
       }
 
       if (search.trim()) {
@@ -327,6 +331,7 @@ const NpsVendasTab = ({ onNavigateToTab }: NpsVendasTabProps) => {
                           readyIndicator={indicator}
                           readyReason={reason}
                           nameTag={a._nfeTag || undefined}
+                          npsNota={a._npsNota}
                           actions={
                             <>
                               {(a.nps_status || 'em_aberto') === 'em_aberto' && entregaMap[a.id] && (
