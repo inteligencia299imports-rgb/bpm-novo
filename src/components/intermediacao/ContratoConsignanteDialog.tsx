@@ -655,7 +655,9 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     ?? cli?.clientes_fornecedores_enderecos?.[0] ?? null;
   // Endereço RESIDENCIAL (ATPV) — só existe (2ª linha) pra PJ que preencheu no cadastro.
   const cliEnderecoAtpv = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'residencial') ?? null;
-  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco);
+  // Dados bancários não são obrigatórios no pós-compra (desde 2026-10-13) — o
+  // card "Dados Bancários (cadastro)" continua só informativo.
+  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco, { exigirBancarios: false });
   const fmtTelefone = (v: string | null | undefined) => {
     const d = (v || '').replace(/\D/g, '');
     if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
@@ -733,6 +735,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                     <ClienteForm
                       embedded
                       id={clienteId}
+                      exigirBancarios={false}
                       onSaved={handleClienteSaved}
                       onCancel={editandoCliente && cadastroCompleto ? () => setEditandoCliente(false) : undefined}
                     />

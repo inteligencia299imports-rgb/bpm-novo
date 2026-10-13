@@ -614,14 +614,15 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
     ?? cli?.clientes_fornecedores_enderecos?.[0] ?? null;
   // Endereço RESIDENCIAL (ATPV) — só existe (2ª linha) pra PJ que preencheu no cadastro.
   const cliEnderecoAtpv = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'residencial') ?? null;
-  // Compra pura (sem contrato de venda no atendimento): a loja paga o vendedor
-  // -> dados bancários obrigatórios. Troca (há contrato de venda): só obrigatórios
-  // se a loja fica devendo pro cliente, ou seja, o valor de fechamento da moto
-  // que entra é maior que o valor da moto vendida.
-  const exigirBancarios = !vendaValorInfo
+  // Compra pura (sem contrato de venda no atendimento): a loja paga o vendedor.
+  // Troca (há contrato de venda): só paga se o valor de fechamento da moto que
+  // entra é maior que o valor da moto vendida. Nesses casos o card de dados
+  // bancários aparece, mas só informativo — desde 2026-10-13 os dados bancários
+  // não são obrigatórios no pós-compra (não travam contrato nem NF).
+  const lojaPagaCliente = !vendaValorInfo
     || Number(vendaValorInfo.valor_fechamento ?? 0) > Number(vendaValorInfo.valor_venda ?? 0);
-  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco, { exigirBancarios });
-  const pendenciasNf = pendenciasCadastroCliente(cli, cliEndereco, { exigirBancarios });
+  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco, { exigirBancarios: false });
+  const pendenciasNf = pendenciasCadastroCliente(cli, cliEndereco, { exigirBancarios: false });
   const nfSemPendencias = semPendencias(pendenciasNf);
   const fmtTelefone = (v: string | null | undefined) => {
     const d = (v || '').replace(/\D/g, '');
@@ -827,6 +828,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                 <ClienteForm
                   embedded
                   id={clienteId}
+                  exigirBancarios={false}
                   onSaved={handleClienteSaved}
                   onCancel={editandoCliente && cadastroCompleto ? () => setEditandoCliente(false) : undefined}
                 />
@@ -881,13 +883,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                 </CardContent>
               </Card>
 
-              {/* Card: Dados Bancários — só quando a loja paga o cliente/vendedor */}
-              {exigirBancarios && (
+              {/* Card: Dados Bancários — só quando a loja paga o cliente/vendedor (informativo, não obrigatório) */}
+              {lojaPagaCliente && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                     <Landmark className="h-4 w-4 text-primary" /> Dados Bancários
-                    {ehNfe && <PendenciaTag itens={pendenciasNf.bancario} className="ml-auto" />}
                   </CardTitle>
                   <Separator className="mt-2" />
                 </CardHeader>
