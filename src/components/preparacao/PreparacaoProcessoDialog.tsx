@@ -70,10 +70,13 @@ const getStatusLabel = (value: string, entityType?: string) => {
 };
 const getStatusHex = (value: string) => PREPARACAO_COLUMNS.find(c => c.value === value)?.hex || '#888';
 
+// Sem botão "Oficina" desde 2026-10-13: quem manda a moto pra oficina é o
+// sistema da oficina (ofc), ao abrir a O.S. (RPC mover_moto_frota_oficina, que
+// também a devolve ao finalizar). O status 'oficina' continua existindo e
+// sendo exibido aqui.
 const ACTION_BUTTONS = [
   { value: 'em_aberto', label: 'Em Aberto', icon: CheckCircle, targetStatus: 'em_aberto' },
   { value: 'pendente', label: 'Pendente', icon: AlertCircle, targetStatus: 'pendente' },
-  { value: 'oficina', label: 'Oficina', icon: Wrench, targetStatus: 'oficina' },
   { value: 'servico_externo', label: 'Serviço Externo', icon: Truck, targetStatus: 'servico_externo' },
   { value: 'preparacao', label: 'Preparação', icon: CheckCircle, targetStatus: 'aguardando_aceite' },
   { value: 'aceite', label: 'Aceite', icon: Check, targetStatus: 'aguardando_liberacao_estoque' },
@@ -548,6 +551,11 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   };
 
   const isPausedStatus = ['pendente', 'oficina', 'servico_externo'].includes(activeStatus);
+  // Moto com O.S. aberta no ofc (avaliacoes.situacao = 'oficina'): o retorno é
+  // feito pelo ofc ao finalizar a O.S. — aqui não se conclui a oficina. Motos
+  // enviadas pra oficina pelo bpm antes dessa mudança (situacao adquirida/estoque)
+  // ainda podem ser concluídas pelo botão "Oficina Concluída".
+  const oficinaControladaPeloOfc = activeStatus === 'oficina' && avaliacaoData?.situacao === 'oficina';
   const CONCLUSAO_LABELS: Record<string, string> = {
     pendente: 'Pendência Concluída',
     oficina: 'Oficina Concluída',
@@ -558,9 +566,9 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     if (btn.targetStatus === activeStatus) return false;
     // "Em Aberto" é renderizado como botão primário de conclusão quando pausado
     if (btn.value === 'em_aberto') return false;
-    // For estoque tracking: only allow pendente, oficina, servico_externo (em_aberto handled above)
+    // For estoque tracking: only allow pendente, servico_externo (em_aberto handled above)
     if (isEstoqueTracking) {
-      return ['pendente', 'oficina', 'servico_externo'].includes(btn.value);
+      return ['pendente', 'servico_externo'].includes(btn.value);
     }
     // Oculta Preparação quando pausado (pendente/oficina/servico_externo) — usa botão de conclusão
     if (btn.value === 'preparacao' && (isPausedStatus || activeStatus === 'aguardando_aceite' || activeStatus === 'aguardando_liberacao_estoque')) return false;
@@ -961,7 +969,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   })}
 
                   {/* Botão primário de conclusão quando pausado (Pendente/Oficina/Serviço Externo) */}
-                  {!isEstoqueTracking && isPausedStatus && (
+                  {oficinaControladaPeloOfc && (
+                    <p className="text-xs text-muted-foreground rounded-md border border-border/60 bg-muted/40 p-2.5 flex items-center gap-1.5">
+                      <Wrench className="h-3.5 w-3.5 shrink-0" />
+                      Moto com O.S. aberta na Oficina — volta para a preparação automaticamente quando a O.S. for finalizada.
+                    </p>
+                  )}
+                  {!isEstoqueTracking && isPausedStatus && !oficinaControladaPeloOfc && (
                     <Button
                       variant="default"
                       disabled={saving}
