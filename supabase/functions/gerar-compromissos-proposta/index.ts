@@ -15,6 +15,9 @@ const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
 // Chaves fixas — MESMAS de emitir-nfe-compra/index.ts (validar com a contabilidade).
 const PLANO_COMPRA_USADA = 'd16507df-9655-4677-8ed9-01398ce28239';
+// 3.6.06 Intermediação (custo, CC motos usadas) — repasse ao consignante na venda
+// de moto consignada. Pedido do usuário 2026-10-13 (antes ia em Compra de Motos Usadas).
+const PLANO_INTERMEDIACAO = 'e1716c2d-9520-4b2c-912d-a9cf74e20e39';
 const PLANO_VENDA_USADA = 'c4f76d4e-bfd9-4ade-987e-4a0798603416';
 const PLANO_VENDA_NOVA = 'c155d12c-4f49-4592-be1c-63f515ff97d3';
 const CC_MOTOS_USADAS = '7fe3888a-fd17-4c31-b78b-82a0af680ff3';
@@ -629,7 +632,7 @@ async function acaoConsignante(admin: any, atendimentoId: string, callerId: stri
     empresaId,
     fornecedorId,
     natureza: 'despesa',
-    planoContaId: PLANO_COMPRA_USADA,
+    planoContaId: PLANO_INTERMEDIACAO,
     centroCustoId: CC_MOTOS_USADAS,
     observacoes,
     numeroPrefix: 'CPR-D',
