@@ -233,10 +233,14 @@ const NpsAquisicoesTab = ({ onNavigateToTab }: NpsAquisicoesTabProps) => {
       if (avalIds.length > 0) {
         const { data: respData } = await supabase
           .from('respostas_nps' as any)
-          .select('atendimento_id')
-          .in('atendimento_id', avalIds);
+          .select('atendimento_id, nps, data_resposta')
+          .in('atendimento_id', avalIds)
+          .order('data_resposta', { ascending: false });
         const respondidoSet = new Set(((respData as any[]) || []).map((r: any) => r.atendimento_id));
-        mapped = mapped.map((m: any) => (respondidoSet.has(m.id) ? { ...m, nps_status: 'respondido' } : m));
+        // Nota da resposta mais recente (mesma que o "Visualizar Respostas" mostra).
+        const npsNotaMap: Record<string, string | null> = {};
+        ((respData as any[]) || []).forEach((r: any) => { if (!(r.atendimento_id in npsNotaMap)) npsNotaMap[r.atendimento_id] = r.nps ?? null; });
+        mapped = mapped.map((m: any) => (respondidoSet.has(m.id) ? { ...m, nps_status: 'respondido', _npsNota: npsNotaMap[m.id] } : m));
       }
 
       // Filtra apenas aquisições a partir de 06/04/2026 (data_negociacao definida)
@@ -390,6 +394,7 @@ const NpsAquisicoesTab = ({ onNavigateToTab }: NpsAquisicoesTabProps) => {
                         <AtendimentoCard
                           key={a.id}
                           atendimento={a._atendimentoCard}
+                          npsNota={a._npsNota}
                           onClick={() => {
                             if (isTipoPropria(a.tipo_aquisicao)) {
                               onNavigateToTab({ tab: 'pos_compra', avaliacaoId: a.id });
