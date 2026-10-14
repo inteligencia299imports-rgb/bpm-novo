@@ -14,6 +14,7 @@ import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
+import ObservacoesEditaveis from '@/components/shared/ObservacoesEditaveis';
 import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 import { Badge } from '@/components/ui/badge';
 import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, Building2, ListChecks } from 'lucide-react';
@@ -1037,11 +1038,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             </CardHeader>
             <CardContent className="space-y-4">
               {soLeitura ? (
-                <>
-                  <InfoDisplay label="Observações Internas" value={obsInternas || undefined} />
-                  <InfoDisplay label="Observações do Contrato" value={obsContrato || undefined} />
-                  {!obsInternas && !obsContrato && <p className="text-sm text-muted-foreground">Sem observações.</p>}
-                </>
+                <ObservacoesEditaveis tabela="contratos" contratoId={contratoId} obsInternas={obsInternas} obsContrato={obsContrato} setObsInternas={setObsInternas} setObsContrato={setObsContrato} />
               ) : (
                 <>
                   <div className="space-y-1.5">
