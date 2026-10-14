@@ -15,6 +15,7 @@ import { LOJAS, INTERESSES, SITUACOES_SHOWROOM, TEMPERATURAS } from '@/types/crm
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
+import { fetchAllRange } from '@/lib/fetchAllRange';
 import type { Atendimento, SituacaoShowroom } from '@/types/crm';
 import AtendimentoCard from './AtendimentoCard';
 import AtendimentoDetail from './AtendimentoDetail';
@@ -125,7 +126,11 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     let data: any[];
     let error: any;
     if (isSearching) {
-      const result = await buildQuery();
+      // Busca traz todos os status de uma vez e filtra em memória — paginado,
+      // senão o teto de 1000 linhas do PostgREST cortava os atendimentos mais
+      // antigos antes do filtro (achado 2026-10-14: Juliano Weber, de 25/07,
+      // não aparecia na busca com ~1.100 atendimentos na base).
+      const result = await fetchAllRange(() => buildQuery());
       error = result.error;
       data = result.data || [];
     } else {
