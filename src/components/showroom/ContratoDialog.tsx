@@ -28,6 +28,7 @@ import ClienteForm from '@/components/clientes/ClienteForm';
 import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } from '@/lib/clienteCadastro';
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
+import ObservacoesEditaveis from '@/components/shared/ObservacoesEditaveis';
 import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 import AgregadosContrato, { type Agregado, type AgregadoLinha } from '@/components/showroom/AgregadosContrato';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
@@ -2058,18 +2059,7 @@ const ContratoDialog: React.FC<Props> = ({
                 <CardContent className="space-y-4">
                   {soLeitura ? (
                     <div className="space-y-4">
-                      {obsInternas && (
-                        <div>
-                          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações Internas</span>
-                          <p className="text-sm whitespace-pre-wrap">{obsInternas}</p>
-                        </div>
-                      )}
-                      {obsContrato && (
-                        <div>
-                          <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Observações do Contrato</span>
-                          <p className="text-sm whitespace-pre-wrap">{obsContrato}</p>
-                        </div>
-                      )}
+                      <ObservacoesEditaveis tabela="contratos" contratoId={contratoId} obsInternas={obsInternas} obsContrato={obsContrato} setObsInternas={setObsInternas} setObsContrato={setObsContrato} />
                       <div className="grid grid-cols-3 gap-4">
                         <InfoDisplay label="Data do Sinal" value={dataSinal ? format(dataSinal, "dd/MM/yyyy", { locale: ptBR }) : undefined} />
                         <InfoDisplay label="Data Vencimento do Sinal" value={dataVencimento ? format(dataVencimento, "dd/MM/yyyy", { locale: ptBR }) : undefined} />

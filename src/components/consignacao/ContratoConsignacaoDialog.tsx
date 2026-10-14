@@ -28,6 +28,7 @@ import { cadastroClienteCompleto, pendenciasCadastroCliente, semPendencias } fro
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 import PendenciaTag from '@/components/shared/PendenciaTag';
 import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
+import ObservacoesEditaveis from '@/components/shared/ObservacoesEditaveis';
 import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 
 interface Props {
@@ -992,11 +993,7 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                       </div>
                     </>
                   ) : soLeitura ? (
-                    <>
-                      <InfoDisplay label="Observações Internas" value={obsInternas || undefined} />
-                      <InfoDisplay label="Observações do Contrato" value={obsContrato || undefined} />
-                      {!obsInternas && !obsContrato && <p className="text-sm text-muted-foreground">Sem observações.</p>}
-                    </>
+                    <ObservacoesEditaveis tabela="contratos_consignacao" contratoId={contratoId} obsInternas={obsInternas} obsContrato={obsContrato} setObsInternas={setObsInternas} setObsContrato={setObsContrato} />
                   ) : (
                     <>
                       <div className="space-y-1.5">
