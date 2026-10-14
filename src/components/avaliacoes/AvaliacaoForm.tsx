@@ -621,7 +621,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     if (valorFechamento && valorFechamento > 0) updateData.valor_fechamento = valorFechamento;
     // Aquisição como própria entra na fila de aprovação do Pós-Compra — exceto troca
     // (moto como parte de pagamento), que não passa por aprovação e já entra aprovada.
-    if (newStatus === 'adquirida' && isTipoPropria(tipoAquisicao)) {
+    if (newStatus === 'adquirida' && isTipoPropria(tipoAquisicao) && tipoAquisicao !== 'convertida') {
       const ehTroca = (avaliacao as any)?.atendimento?.interesse === 'trocar';
       updateData.aprovacao_status = ehTroca ? 'aprovada' : 'aguardando';
     }
@@ -1038,7 +1038,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const ehTrocaPosCompra = context === 'pos_compra' && (avaliacao as any)?.atendimento?.interesse === 'trocar';
   // Etapa de aprovação (só no contexto de Pós-Compra, para motos próprias — exceto troca)
   const apSt: string | null = avaliacao?.aprovacao_status ?? null;
-  const precisaAprovacao = context === 'pos_compra' && isTipoPropria(avaliacao?.tipo_aquisicao) && !ehTrocaPosCompra;
+  // Convertida (consignação que virou compra) também não passa por aprovação (2026-10-14).
+  const precisaAprovacao = context === 'pos_compra' && isTipoPropria(avaliacao?.tipo_aquisicao) && avaliacao?.tipo_aquisicao !== 'convertida' && !ehTrocaPosCompra;
   const aguardandoAprovacao = precisaAprovacao && apSt !== 'aprovada' && apSt !== 'recusada';
   const aprovado = precisaAprovacao && apSt === 'aprovada';
   // Valor de Fechamento congela após a aquisição ser aprovada (troca já nasce aprovada
