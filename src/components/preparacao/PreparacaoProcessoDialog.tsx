@@ -215,6 +215,19 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
       const remapStatus = (s: string) => STATUS_REMAP[s] || s;
 
+      // Movimentações gravadas pelo ofc (abertura/finalização de O.S.) trazem
+      // o número da O.S. nas observações — "O.S. #0246" (desde 2026-10-14) ou
+      // "(OS246)" nas antigas. Vai pro título como #XXXX.
+      const numeroOs = (obs: string | null) => {
+        const m = obs?.match(/O\.S\.\s*#(\d+)|\(OS(\d+)\)/);
+        const d = m?.[1] ?? m?.[2];
+        return d ? `#${d.padStart(4, '0')}` : null;
+      };
+      const tituloPrep = (h: HistoryEntry) => {
+        const os = numeroOs(h.observacoes);
+        return os ? `${remapStatus(h.status)} ${os}` : remapStatus(h.status);
+      };
+
       const acquisitionHistory = avalHistory.reduce<HistoryEntry[]>((acc, entry) => {
         const status = String(entry.status || '').trim().toLowerCase();
         if (status !== 'adquirida') {
@@ -238,8 +251,10 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       }, []);
 
       // Merge and sort by date descending
-      const merged = [...prepHistory, ...acquisitionHistory, ...showroomHistory]
-        .map(h => ({ ...h, status: remapStatus(h.status) }))
+      const merged = [
+        ...prepHistory.map(h => ({ ...h, status: tituloPrep(h) })),
+        ...[...acquisitionHistory, ...showroomHistory].map(h => ({ ...h, status: remapStatus(h.status) })),
+      ]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setHistory(merged);
