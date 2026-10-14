@@ -115,6 +115,19 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [activeStatus, setActiveStatus] = useState(currentStatus);
   const [pendingSteps, setPendingSteps] = useState<string[]>([]);
   const [showConsulta, setShowConsulta] = useState(false);
+  // O.S. aberta no ofc pra esta moto (#XXXX) — enquanto houver, o status da
+  // preparação não muda por aqui (quem move é o ofc); só "Observação" fica.
+  const [osAberta, setOsAberta] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !avaliacaoId) { setOsAberta(null); return; }
+    let cancelado = false;
+    (async () => {
+      const { data } = await (supabase as any).rpc('os_aberta_da_moto', { _avaliacao_id: avaliacaoId });
+      if (!cancelado) setOsAberta((data as string | null) ?? null);
+    })();
+    return () => { cancelado = true; };
+  }, [open, avaliacaoId]);
 
   // Liberar form fields
   const [loja, setLoja] = useState('');
@@ -578,6 +591,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   };
 
   const visibleButtons = ACTION_BUTTONS.filter(btn => {
+    // Moto com O.S. aberta no ofc: nenhum botão de status (só "Observação").
+    if (osAberta) return false;
     if (btn.targetStatus === activeStatus) return false;
     // "Em Aberto" é renderizado como botão primário de conclusão quando pausado
     if (btn.value === 'em_aberto') return false;
@@ -984,13 +999,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   })}
 
                   {/* Botão primário de conclusão quando pausado (Pendente/Oficina/Serviço Externo) */}
-                  {oficinaControladaPeloOfc && (
+                  {(osAberta || oficinaControladaPeloOfc) && (
                     <p className="text-xs text-muted-foreground rounded-md border border-border/60 bg-muted/40 p-2.5 flex items-center gap-1.5">
                       <Wrench className="h-3.5 w-3.5 shrink-0" />
-                      Moto com O.S. aberta na Oficina — volta para a preparação automaticamente quando a O.S. for finalizada.
+                      Moto com O.S.{osAberta ? ` ${osAberta}` : ''} aberta na Oficina — o status não pode ser alterado; volta para a preparação automaticamente quando a O.S. for finalizada.
                     </p>
                   )}
-                  {!isEstoqueTracking && isPausedStatus && !oficinaControladaPeloOfc && (
+                  {!osAberta && !isEstoqueTracking && isPausedStatus && !oficinaControladaPeloOfc && (
                     <Button
                       variant="default"
                       disabled={saving}
@@ -1004,7 +1019,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
 
                   {/* Preparação Concluída for estoque tracking */}
-                  {isEstoqueTracking && (
+                  {isEstoqueTracking && !osAberta && (
                     <Button
                       variant="default"
                       disabled={saving}
