@@ -518,13 +518,27 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       const precoAcaoValue = precoTabela ? parseCurrencyValue(precoTabela) : null;
 
       // Estoque enxuto: specs/preço de tabela vêm da avaliação.
-      const { error: estoqueError } = await supabase.from('estoque_motos').insert({
+      // Moto que já passou pelo estoque (ex.: voltou da oficina/O.S. do ofc e foi
+      // liberada de novo) reaproveita a linha existente — antes sempre inseria
+      // e duplicava (achado RPT8E74, 2026-10-14: 2 linhas "disponível" da mesma
+      // avaliação, a 2ª sem os vínculos de motos_interesse da 1ª).
+      const { data: estoqueExistente } = await supabase
+        .from('estoque_motos')
+        .select('id, status')
+        .eq('avaliacao_id', avaliacaoId)
+        .neq('status', 'vendido')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      const dadosEstoque = {
         status: 'disponivel',
-        avaliacao_id: avaliacaoId,
         loja_id: (lojaEmp as any)?.id ?? null,
         preco_acao: precoAcaoValue,
         observacoes: obsMoto.trim() || null,
-      } as any);
+      };
+      const { error: estoqueError } = estoqueExistente
+        ? await supabase.from('estoque_motos').update(dadosEstoque as any).eq('id', (estoqueExistente as any).id)
+        : await supabase.from('estoque_motos').insert({ ...dadosEstoque, avaliacao_id: avaliacaoId } as any);
 
       if (estoqueError) {
         console.error('Erro ao registrar no estoque:', estoqueError);
