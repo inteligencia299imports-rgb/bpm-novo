@@ -20,9 +20,13 @@ interface Props {
   obsContrato: string;
   setObsInternas: (v: string) => void;
   setObsContrato: (v: string) => void;
+  /** Cria a linha do contrato quando ela ainda não existe (ex.: moto convertida
+   *  pela transferência de estoque, que emite as NFs sem nunca salvar a proposta
+   *  de compra — achado OVQ9B54, 2026-10-14). Devolve o id criado. */
+  criarContrato?: () => Promise<string | null>;
 }
 
-const ObservacoesEditaveis: React.FC<Props> = ({ tabela, contratoId, obsInternas, obsContrato, setObsInternas, setObsContrato }) => {
+const ObservacoesEditaveis: React.FC<Props> = ({ tabela, contratoId, obsInternas, obsContrato, setObsInternas, setObsContrato, criarContrato }) => {
   const [saving, setSaving] = useState(false);
   // Valores gravados — o botão só habilita quando há alteração.
   const salvo = useRef({ internas: obsInternas, contrato: obsContrato });
@@ -35,16 +39,18 @@ const ObservacoesEditaveis: React.FC<Props> = ({ tabela, contratoId, obsInternas
   const alterado = obsInternas !== salvo.current.internas || obsContrato !== salvo.current.contrato;
 
   const salvar = async () => {
-    if (!contratoId) {
+    if (!contratoId && !criarContrato) {
       toast.error('Proposta ainda não salva — não há onde gravar as observações.');
       return;
     }
     setSaving(true);
     try {
+      const id = contratoId || (await criarContrato!());
+      if (!id) throw new Error('não foi possível criar a proposta');
       const { data, error } = await supabase
         .from(tabela as any)
         .update({ observacoes_internas: obsInternas.trim() || null, observacoes_contrato: obsContrato.trim() || null } as any)
-        .eq('id', contratoId)
+        .eq('id', id)
         .select('id');
       if (error) throw error;
       if (!data || (data as any[]).length === 0) throw new Error('Sem permissão para alterar esta proposta.');
@@ -68,7 +74,7 @@ const ObservacoesEditaveis: React.FC<Props> = ({ tabela, contratoId, obsInternas
         <Textarea rows={3} value={obsContrato} onChange={(e) => setObsContrato(e.target.value)} placeholder="Observações do contrato..." />
       </div>
       <div className="flex justify-end">
-        <Button size="sm" variant="outline" className="gap-1.5" disabled={saving || !alterado || !contratoId} onClick={salvar}>
+        <Button size="sm" variant="outline" className="gap-1.5" disabled={saving || !alterado || (!contratoId && !criarContrato)} onClick={salvar}>
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
           Salvar observações
         </Button>

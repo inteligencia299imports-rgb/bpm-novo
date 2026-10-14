@@ -419,6 +419,26 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
     }
   };
 
+  // Só pras observações quando a proposta nunca foi salva e a NF já saiu
+  // (conversão pela transferência de estoque) — mesmos dados que a tela já
+  // carregou; o saveContrato normal é bloqueado com NF de produção.
+  const criarContratoParaObservacoes = async (): Promise<string | null> => {
+    const atendimentoId = atendimento?.id;
+    if (!atendimentoId) return null;
+    const { data, error } = await supabase.from('contratos').insert({
+      atendimento_id: atendimentoId,
+      cpf_cnpj: cpfCnpj || null,
+      valor_quitacao: valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : null,
+      valor_fechamento: parseCurrencyInput(valorFechamento) || null,
+      data_sinal: dataContrato ? format(dataContrato, 'yyyy-MM-dd') : null,
+      ipva_tipo: 'COMPRA',
+      empresa_id: empresaId || null,
+    } as any).select('id').single();
+    if (error || !data) return null;
+    setContratoId((data as any).id);
+    return (data as any).id;
+  };
+
   const handleSave = async () => {
     const id = await saveContrato();
     if (id) {
@@ -1039,7 +1059,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             </CardHeader>
             <CardContent className="space-y-4">
               {soLeitura ? (
-                <ObservacoesEditaveis tabela="contratos" contratoId={contratoId} obsInternas={obsInternas} obsContrato={obsContrato} setObsInternas={setObsInternas} setObsContrato={setObsContrato} />
+                <ObservacoesEditaveis tabela="contratos" contratoId={contratoId} obsInternas={obsInternas} obsContrato={obsContrato} setObsInternas={setObsInternas} setObsContrato={setObsContrato} criarContrato={criarContratoParaObservacoes} />
               ) : (
                 <>
                   <div className="space-y-1.5">
