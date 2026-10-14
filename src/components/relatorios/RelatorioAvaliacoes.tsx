@@ -87,6 +87,8 @@ interface AvalRow {
   loja: string | null;
   createdAt: string;
   dataAquisicao: string | null;
+  /** Convertida: data da NF de compra autorizada em produção (a conversão). */
+  dataConversao: string | null;
   nomeCliente: string | null;
   marca: string | null;
   modelo: string | null;
@@ -115,6 +117,11 @@ const emptyKpis = (): KpiSet => ({
   entrada_direta: 0, troca: 0, retiradas: 0,
 });
 
+/** Tipo da moto NA DATA DA AQUISIÇÃO: a convertida entrou como consignada e só
+ *  virou compra depois — no mês da aquisição conta como consignada; a conversão
+ *  conta à parte, no card "Convertidas", pela data da NF de compra (2026-10-14). */
+const tipoNaAquisicao = (r: AvalRow) => (r.tipoNorm === 'convertida' ? 'consignada' : r.tipoNorm);
+
 const computeKpis = (rows: AvalRow[], loja: string, from: Date | undefined, to: Date | undefined): KpiSet => {
   const kpi = emptyKpis();
   for (const r of rows) {
@@ -129,12 +136,12 @@ const computeKpis = (rows: AvalRow[], loja: string, from: Date | undefined, to: 
     // aquisições: INNER JOIN status_history (status='adquirida') filtrado por s.created_at
     if (r.dataAquisicao && inRange(r.dataAquisicao, from, to)) {
       kpi.total_aquisicoes += 1;
-      if (['propria', 'convertida', 'repasse', 'test-ride'].includes(r.tipoNorm)) kpi.aquisicoes_propria += 1;
-      if (r.tipoNorm === 'consignada') kpi.aquisicoes_consignada += 1;
-      if (r.tipoNorm === 'convertida') kpi.aquisicoes_convertida += 1;
+      if (['propria', 'repasse', 'test-ride'].includes(tipoNaAquisicao(r))) kpi.aquisicoes_propria += 1;
+      if (tipoNaAquisicao(r) === 'consignada') kpi.aquisicoes_consignada += 1;
       if (r.interesse === 'vender') kpi.entrada_direta += 1;
       if (r.interesse === 'trocar') kpi.troca += 1;
     }
+    if (r.tipoNorm === 'convertida' && r.dataConversao && inRange(r.dataConversao, from, to)) kpi.aquisicoes_convertida += 1;
   }
   return kpi;
 };
@@ -178,7 +185,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   }, [onRegisterClear, setDateFrom, setDateTo]);
 
   const loadData = useCallback(async () => {
-    const [avalRes, histRes, rolesRes, coRes] = await Promise.all([
+    const [avalRes, histRes, rolesRes, coRes, convRes] = await Promise.all([
       fetchAllRange<any>(() => supabase
         .from('avaliacoes')
         .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, avaliador_id, tipo_aquisicao, situacao, quanto_vende, valor_fechamento, trade_in, created_at, updated_at, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(interesse, loja_id, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(nome_razao_social))')
@@ -193,7 +200,19 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       ),
       (supabase as any).from('user_roles').select('user_id, nome').eq('projeto_id', BPM_PROJETO_ID),
       fetchAllRange<any>(() => supabase.from('custos_oficina').select('avaliacao_id, responsavel, valor_previsto, valor_executado')),
+      // Conversão (consignação → compra): NF de compra autorizada em produção.
+      fetchAllRange<any>(() => supabase
+        .from('nfe_entradas' as any)
+        .select('avaliacao_id, created_at')
+        .eq('operacao', 'compra').eq('status', 'processada').eq('ambiente', 'producao')
+        .not('avaliacao_id', 'is', null)
+      ),
     ]);
+    const conversaoByAval = new Map<string, string>();
+    for (const n of (convRes.data || []) as any[]) {
+      const cur = conversaoByAval.get(n.avaliacao_id);
+      if (!cur || n.created_at < cur) conversaoByAval.set(n.avaliacao_id, n.created_at);
+    }
 
     if (avalRes.error) console.error('RelatorioAvaliacoes: erro ao carregar avaliações', avalRes.error);
     const avals = ((avalRes.data || []) as any[]).map((a) => flattenMarcaModelo(a));
@@ -231,6 +250,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         loja: a.atendimentos_motos?.loja_empresas?.loja || null,
         createdAt: a.created_at,
         dataAquisicao: aquisicaoByAval.get(a.id) || null,
+        dataConversao: normTipo(a.tipo_aquisicao) === 'convertida' ? (conversaoByAval.get(a.id) || null) : null,
         nomeCliente: a.atendimentos_motos?.cliente?.nome_razao_social || null,
         marca: a.marca || null,
         modelo: a.modelo || null,
@@ -293,8 +313,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       if (r.dataAquisicao && inRange(r.dataAquisicao, dateFrom, dateTo)) {
         if (r.interesse === 'trocar') entry.aqTrocar += 1;
         if (r.interesse === 'vender') entry.aqVender += 1;
-        if (['propria', 'convertida', 'repasse', 'test-ride'].includes(r.tipoNorm)) entry.aqPropria += 1;
-        if (r.tipoNorm === 'consignada') entry.aqConsignada += 1;
+        if (['propria', 'repasse', 'test-ride'].includes(tipoNaAquisicao(r))) entry.aqPropria += 1;
+        if (tipoNaAquisicao(r) === 'consignada') entry.aqConsignada += 1;
       }
       map.set(r.avaliadorId, entry);
     }
@@ -315,8 +335,8 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
         if (inRange(r.createdAt, b.start, b.end)) avaliacoes += 1;
         if (r.dataAquisicao && inRange(r.dataAquisicao, b.start, b.end)) {
           aquisicoes += 1;
-          if (['propria', 'convertida', 'repasse', 'test-ride'].includes(r.tipoNorm)) proprias += 1;
-          if (r.tipoNorm === 'consignada') consignadas += 1;
+          if (['propria', 'repasse', 'test-ride'].includes(tipoNaAquisicao(r))) proprias += 1;
+          if (tipoNaAquisicao(r) === 'consignada') consignadas += 1;
           if (r.interesse === 'trocar') negTrocar += 1;
           if (r.interesse === 'vender') negVender += 1;
         }
