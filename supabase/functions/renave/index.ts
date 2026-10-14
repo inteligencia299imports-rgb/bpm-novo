@@ -1032,7 +1032,7 @@ Deno.serve(async (req) => {
     if (acao === 'estoque-status') {
       const avaliacaoId: string = body.avaliacao_id;
       if (!avaliacaoId) return json({ error: 'avaliacao_id é obrigatório' }, 400);
-      const { data: av } = await admin.from('avaliacoes').select('id, chassi, renave_id_estoque').eq('id', avaliacaoId).maybeSingle();
+      const { data: av } = await admin.from('avaliacoes').select('id, chassi, renave_id_estoque, renave_atpv_assinatura_enviada_em').eq('id', avaliacaoId).maybeSingle();
       if (!av) return json({ error: 'Avaliação não encontrada' }, 404);
       if (!av.renave_id_estoque) return json({ error: 'Esta moto ainda não tem entrada no RENAVE.' }, 409);
 
@@ -1046,7 +1046,20 @@ Deno.serve(async (req) => {
       const r = await consultarEstoque(av.renave_id_estoque, ctx);
       if (r.status !== 200) return json({ error: erroRenave(r), status: r.status, detalhe: r.body }, 422);
 
-      await persistirAvaliacao(admin, avaliacaoId, { renave_estado: r.body?.estado ?? null });
+      // ATPV-e (CRV digital) assinado pelo vendedor FORA do sistema — app
+      // Carteira Digital de Trânsito / gov.br: a assinatura chega direto na
+      // SERPRO, sem passar pela ação atpv-assinatura, e o estoque sai de
+      // SOLICITADO sozinho. Sem marcar aqui, termo de entrada e saída na venda
+      // ficavam travados esperando renave_atpv_assinatura_enviada_em (achado
+      // MKZ7G28/TPS3C15, 2026-10-14: P7S recusado, vendedor vai assinar no app).
+      const estadoNovo = String(r.body?.estado ?? '').toUpperCase();
+      const assinaturaJaProcessada = ['TRANSFERIDO', 'CONFIRMADO', 'FINALIZADO'].includes(estadoNovo);
+      await persistirAvaliacao(admin, avaliacaoId, {
+        renave_estado: r.body?.estado ?? null,
+        ...(assinaturaJaProcessada && !av.renave_atpv_assinatura_enviada_em
+          ? { renave_atpv_assinatura_enviada_em: new Date().toISOString(), renave_ultimo_erro: null }
+          : {}),
+      });
       return json({ ok: true, estado: r.body?.estado ?? null, estoque: r.body });
     }
 

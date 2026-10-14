@@ -674,6 +674,25 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       deferPreview
                     />
                   ) : (
+                    <div className="space-y-1.5">
+                    {crvDigital && (
+                      // ATPV-e: o vendedor pode assinar direto no app Carteira Digital
+                      // de Trânsito / gov.br — a assinatura chega na SERPRO sem anexo
+                      // aqui; atualizar o status marca o passo como feito quando o
+                      // estoque sai de SOLICITADO (ver estoque-status no backend).
+                      <div className="flex items-center justify-end gap-1.5 text-[11px] text-muted-foreground">
+                        <span>Vendedor assinou pelo app (CDT/gov.br)? Atualize o status:</span>
+                        <button
+                          type="button"
+                          onClick={handleAtualizarEstado}
+                          disabled={atualizandoEstado}
+                          title="Consultar estado atual no RENAVE"
+                          className="hover:text-primary disabled:opacity-50 shrink-0"
+                        >
+                          <RefreshCw className={cn('h-3.5 w-3.5', atualizandoEstado && 'animate-spin')} />
+                        </button>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <Select value={tipoAssinatura} onValueChange={setTipoAssinatura}>
                         <SelectTrigger className="h-9 text-xs flex-1"><SelectValue /></SelectTrigger>
@@ -690,6 +709,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                         onRemoved={handleAssinaturaRemovida}
                         deferPreview
                       />
+                    </div>
                     </div>
                   )}
                 </StepRow>
