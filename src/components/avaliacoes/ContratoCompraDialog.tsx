@@ -1059,7 +1059,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             </CardHeader>
             <CardContent className="space-y-4">
               {soLeitura ? (
-                <ObservacoesEditaveis tabela="contratos" contratoId={contratoId} obsInternas={obsInternas} obsContrato={obsContrato} setObsInternas={setObsInternas} setObsContrato={setObsContrato} criarContrato={criarContratoParaObservacoes} />
+                <ObservacoesEditaveis tabela="contratos" contratoId={contratoId} obsInternas={obsInternas} obsContrato={obsContrato} setObsInternas={setObsInternas} setObsContrato={setObsContrato} criarContrato={criarContratoParaObservacoes} data={dataContrato} setData={setDataContrato} colunaData="data_sinal" />
               ) : (
                 <>
                   <div className="space-y-1.5">
