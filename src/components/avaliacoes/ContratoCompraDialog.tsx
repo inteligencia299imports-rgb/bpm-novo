@@ -658,10 +658,11 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   // Modo NF-e
   // Troca (moto entrando como parte de pagamento): não exige aprovação da
   // aquisição — basta contrato de compra gerado + consulta realizada.
-  // Compra pura: continua exigindo aprovação.
+  // Compra pura: continua exigindo aprovação. Convertida (consignação que virou
+  // compra) não passa por aprovação (2026-10-14).
   const ehTroca = !!vendaValorInfo;
   const podeEmitirNfe =
-    (ehTroca || (avaliacao as any)?.aprovacao_status === 'aprovada')
+    (ehTroca || (avaliacao as any)?.tipo_aquisicao === 'convertida' || (avaliacao as any)?.aprovacao_status === 'aprovada')
     && jaGerado
     && (avaliacao as any)?.consulta_realizada === true;
 

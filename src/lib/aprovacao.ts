@@ -13,9 +13,13 @@ interface AvaliacaoAprovavel {
   aprovacao_status?: string | null;
 }
 
-/** Aquisição própria (compra/troca) exige aprovação; consignada não. */
+/** Aquisição própria (compra/troca) exige aprovação; consignada não.
+ *  Convertida (consignação que virou compra) também não — pedido do usuário,
+ *  2026-10-14: a moto já foi avaliada e aceita na consignação. */
+export const ehConvertida = (tipo?: string | null): boolean => tipo === 'convertida';
+
 export const exigeAprovacao = (av?: AvaliacaoAprovavel | null): boolean =>
-  !!av && isTipoPropria(av.tipo_aquisicao);
+  !!av && isTipoPropria(av.tipo_aquisicao) && !ehConvertida(av.tipo_aquisicao);
 
 export const aguardandoAprovacao = (av?: AvaliacaoAprovavel | null): boolean =>
   av?.aprovacao_status === 'aguardando';

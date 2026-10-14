@@ -150,7 +150,8 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         setAbatimentosForaOficina(itens.reduce((sum, i) => sum + i.valor, 0));
       });
       setNfeCompra((nfeData as any[])?.[0] || null);
-      setAprovacaoStatus((avData as any)?.aprovacao_status ?? null);
+      // Convertida (consignação que virou compra) não passa por aprovação (2026-10-14).
+      setAprovacaoStatus((avData as any)?.tipo_aquisicao === 'convertida' ? 'aprovada' : ((avData as any)?.aprovacao_status ?? null));
       setRenaveEntrouEstoque(!!(avData as any)?.renave_id_estoque);
       setRenaveAtualizadoEm((avData as any)?.renave_atualizado_em ?? null);
       setRenaveUltimoErro((avData as any)?.renave_ultimo_erro ?? null);
