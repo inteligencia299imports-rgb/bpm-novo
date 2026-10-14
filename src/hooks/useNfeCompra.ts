@@ -34,9 +34,18 @@ export function useNfeCompra(
 
   const invoke = useCallback(
     async (acao: 'emitir' | 'consultar' | 'cancelar', extra?: Record<string, unknown>) => {
-      const { data, error } = await supabase.functions.invoke('emitir-nfe-compra', {
+      const chamar = () => supabase.functions.invoke('emitir-nfe-compra', {
         body: { [keyCol]: avaliacaoId, acao, tipo, ...(extra || {}) },
       });
+      let { data, error } = await chamar();
+      // Sessão vencida (achado 2026-10-14, OVQ9B54: "Unauthorized" na compra da
+      // transferência logo após a devolução ter passado — aba em segundo plano
+      // atrasa a renovação automática do token). A função recusa no início,
+      // antes de emitir qualquer coisa, então renovar e repetir uma vez é seguro.
+      if (error && (error as any).context?.status === 401) {
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (!refreshError) ({ data, error } = await chamar());
+      }
       if (error) {
         // A Edge Function devolve { error } no corpo em 4xx.
         let msg = error.message || 'Falha ao emitir a NF-e';
@@ -47,6 +56,7 @@ export function useNfeCompra(
         } catch {
           /* ignore */
         }
+        if ((error as any).context?.status === 401) msg = 'Sessão expirada. Recarregue a página e entre novamente.';
         throw new Error(msg);
       }
       return data as { nfe: any | null; aviso?: string };
