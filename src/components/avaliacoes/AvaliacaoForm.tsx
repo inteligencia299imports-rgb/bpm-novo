@@ -1077,8 +1077,12 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   // (só "Valor de Quitação" e "Valor de Fechamento" ficam bloqueados — ver diálogo abaixo).
   const podeEditarAvaliacao = !travado || nfeCompraEmitida;
   // Botões de contrato / processo / financeiro liberados: consignação sempre;
-  // pós-compra só após aprovar — exceto troca, que libera direto.
-  const liberadoProcesso = context === 'consignacao' || aprovado || ehTrocaPosCompra;
+  // pós-compra só após aprovar — exceto troca e convertida (consignação que
+  // virou compra), que não passam por aprovação e liberam direto. Sem a
+  // convertida aqui, os botões Processo/Proposta sumiam (achado OVQ9B54,
+  // 2026-10-14, efeito do #315).
+  const ehConvertidaPosCompra = context === 'pos_compra' && avaliacao?.tipo_aquisicao === 'convertida';
+  const liberadoProcesso = context === 'consignacao' || aprovado || ehTrocaPosCompra || ehConvertidaPosCompra;
 
   const abrirContratoVenda = async () => {
     const atId = (avaliacao as any)?.atendimento?.id;
