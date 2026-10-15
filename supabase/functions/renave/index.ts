@@ -237,7 +237,10 @@ async function montarComprador(
         // conter no máximo 20 caracteres") — bairros do cadastro do
         // cliente costumam vir mais longos que isso.
         bairro: end.bairro ? String(end.bairro).slice(0, 20) : undefined,
-        complemento: end.complemento || undefined,
+        // SERPRO rejeita complemento com mais de 20 caracteres ("Complemento
+        // do endereço deve conter no máximo 20 caracteres", achado real
+        // 2026-10-15, saída da JCC6E84) — mesmo tratamento do bairro.
+        complemento: end.complemento ? String(end.complemento).trim().slice(0, 20) || undefined : undefined,
       },
     },
   };
