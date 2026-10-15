@@ -1346,13 +1346,24 @@ Deno.serve(async (req) => {
         // Pré-requisitos da SERPRO (manual): NF de entrada e assinatura do ATPV
         // da entrada já enviadas, e estoque CONFIRMADO pelo Detran.
         if (!av.renave_nf_vinculada_em) return json({ error: 'A NF-e de compra ainda não foi vinculada à entrada no RENAVE — conclua a entrada no Pós-Compra.' }, 409);
-        if (!av.renave_atpv_assinatura_enviada_em) return json({ error: 'A assinatura do ATPV da entrada ainda não foi enviada — conclua a entrada no Pós-Compra.' }, 409);
         let estado: string | null = av.renave_estado ?? null;
         try {
           const est = await consultarEstoque(av.renave_id_estoque, ctxSemLog);
           if (est.status === 200 && est.body?.estado) estado = est.body.estado;
         } catch { /* best-effort -- fica o estado salvo */ }
         if (estado && estado !== av.renave_estado) await persistirAvaliacao(admin, avaliacaoId, { renave_estado: estado });
+        // Estoque TRANSFERIDO/CONFIRMADO/FINALIZADO = assinatura do ATPV da
+        // entrada já processada pela SERPRO, mesmo feita FORA do sistema (sem
+        // renave_atpv_assinatura_enviada_em) — mesma regra de estoque-status.
+        // Achado real 2026-10-15: JCC6E84, entrada feita fora (termo 4236876),
+        // saída barrada aqui com o estoque já CONFIRMADO.
+        const assinaturaProcessada = ['TRANSFERIDO', 'CONFIRMADO', 'FINALIZADO'].includes(String(estado ?? '').toUpperCase());
+        if (!av.renave_atpv_assinatura_enviada_em && !assinaturaProcessada) {
+          return json({ error: 'A assinatura do ATPV da entrada ainda não foi enviada — conclua a entrada no Pós-Compra.' }, 409);
+        }
+        if (!av.renave_atpv_assinatura_enviada_em && assinaturaProcessada) {
+          await persistirAvaliacao(admin, avaliacaoId, { renave_atpv_assinatura_enviada_em: new Date().toISOString() });
+        }
         if (String(estado ?? '').toUpperCase() !== 'CONFIRMADO') {
           return json({ error: `A SERPRO só aceita a saída com o estoque CONFIRMADO pelo Detran (estado atual: ${estado || 'desconhecido'}).` }, 409);
         }
