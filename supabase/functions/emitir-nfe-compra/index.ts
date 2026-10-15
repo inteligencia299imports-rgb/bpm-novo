@@ -549,11 +549,47 @@ async function aplicarEfeitosDevolucao(
       callerName,
     });
   }
-  // Devolução de compra: a moto sai do estoque de vez (está voltando pro
-  // vendedor original — não faz mais sentido continuar aparecendo como
-  // disponível pra venda). Mesmo efeito já usado em marcarAtendimentoPerdido.
-  if (tipo === 'devolucao_compra') {
-    await admin.from('estoque_motos').delete().eq('avaliacao_id', avaliacaoId);
+  // Devolução de compra: a compra foi desfeita — a moto volta pro vendedor
+  // original. Mesmo efeito do "Marcar como Perdido" do Pós-Compra
+  // (marcarAquisicaoRetirada em src/lib/atendimentoCascata.ts):
+  // - estoque: vira "retirada" (antes era DELETE, mas o trigger
+  //   trg_bloquear_exclusao_com_nfe barra apagar moto com NF-e de produção —
+  //   o delete falhava calado e a moto ficava no estoque; achado real
+  //   2026-10-15, SDE5A72, devolução da NF 7340);
+  // - avaliação: situação/pós-compra/preparação "perdido" (sai do Pós-Compra,
+  //   da Preparação e dos relatórios) + etapas abertas do pós-compra concluídas;
+  // - histórico da avaliação e do estoque.
+  // O atendimento NÃO é tocado: numa troca ele é a venda de outra moto, que a
+  // devolução da compra da moto de troca não desfaz.
+  if (tipo === 'devolucao_compra' && avaliacaoId) {
+    let numeroOriginal: string | null = null;
+    if (devolucaoOrigemNf?.id) {
+      const { data: nfOrig } = await admin.from('nfe_entradas').select('numero').eq('id', devolucaoOrigemNf.id).maybeSingle();
+      numeroOriginal = (nfOrig as any)?.numero != null ? String((nfOrig as any).numero) : null;
+    }
+    const motivo = `Compra desfeita por devolução de NF-e${numeroOriginal ? ` (NF de compra nº ${numeroOriginal})` : ''}.`;
+    const { data: estoqueItem } = await admin.from('estoque_motos').select('id').eq('avaliacao_id', avaliacaoId).maybeSingle();
+    if (estoqueItem?.id) {
+      const { error: eEst } = await admin.from('estoque_motos').update({ status: 'retirada', observacoes: motivo }).eq('id', estoqueItem.id);
+      if (eEst) console.error('[devolucao_compra] estoque_motos -> retirada', eEst.message);
+      await admin.from('status_history').insert({
+        entity_type: 'estoque', entity_id: estoqueItem.id, status: 'RETIRADA',
+        changed_by: callerId, changed_by_name: callerName, observacoes: motivo,
+      });
+    }
+    const { error: eAv } = await admin.from('avaliacoes').update({
+      situacao: 'perdido',
+      pos_compra_status: 'perdido',
+      preparacao_status: 'perdido',
+    }).eq('id', avaliacaoId);
+    if (eAv) console.error('[devolucao_compra] avaliacoes -> perdido', eAv.message);
+    await admin.from('status_history').insert({
+      entity_type: 'avaliacao', entity_id: avaliacaoId, status: 'perdido',
+      changed_by: callerId, changed_by_name: callerName, observacoes: motivo,
+    });
+    await admin.from('pos_compra_processos')
+      .update({ concluida: true, data_conclusao: new Date().toISOString() })
+      .eq('avaliacao_id', avaliacaoId).eq('concluida', false);
   }
   // Devolução de transferência: a moto volta pra loja/empresa de ORIGEM da
   // transferência original (achada pela NF de saída correspondente) — efeito
