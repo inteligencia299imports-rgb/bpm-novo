@@ -470,6 +470,10 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
 
   const validateFields = (): boolean => {
     if (errosGeracao.length > 0) { toast.error(`Preencha os campos obrigatórios: ${errosGeracao.join(', ')}`); return false; }
+    if (pendenciasBancarias.length > 0) {
+      toast.error(`A loja tem repasse a pagar ao cliente — complete os dados bancários no cadastro do cliente: ${pendenciasBancarias.join(', ')}`);
+      return false;
+    }
     if (dataContrato > new Date()) { toast.error('A Data do Contrato não pode ser maior que hoje'); return false; }
     return true;
   };
@@ -638,8 +642,11 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   // Compra pura (sem contrato de venda no atendimento): a loja paga o vendedor.
   // Troca (há contrato de venda): só paga se o valor de fechamento da moto que
   // entra é maior que o valor da moto vendida. Nesses casos o card de dados
-  // bancários aparece, mas só informativo — desde 2026-10-13 os dados bancários
-  // não são obrigatórios no pós-compra (não travam contrato nem NF).
+  // bancários aparece. Desde 2026-10-15 os dados bancários voltam a ser
+  // OBRIGATÓRIOS pra gerar o contrato quando há repasse a pagar ao cliente
+  // (fechamento − quitação − abatimentos > 0): o compromisso a pagar só nasce
+  // com o contrato gerado (gerar-compromissos-proposta), então é aqui que se
+  // garante que ele sai com a conta do cliente. Continuam não travando a NF.
   const lojaPagaCliente = !vendaValorInfo
     || Number(vendaValorInfo.valor_fechamento ?? 0) > Number(vendaValorInfo.valor_venda ?? 0);
   const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco, { exigirBancarios: false });
@@ -664,6 +671,11 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
   const repasseCliente = fechamentoNum - custosClienteTotal - quitacaoNum;
   // As formas de pagamento cobrem o repasse (a quitação é paga à parte, direto ao banco).
   const valorFaltante = Math.max(repasseCliente, 0) - somaFormasPagamento(formasPagamento);
+  // Dados bancários exigidos pra gerar o contrato: loja paga o cliente e há repasse.
+  const exigirBancariosCompra = lojaPagaCliente && repasseCliente > 0.005;
+  const pendenciasBancarias: string[] = exigirBancariosCompra
+    ? pendenciasCadastroCliente(cli, cliEndereco, { exigirBancarios: true }).bancario
+    : [];
 
   // Houve edição desde a última geração/carregamento?
   const currentSnapshot = snapshotFields({ cpfCnpj, valorQuitacao, valorFechamento, obsInternas, obsContrato, dataContrato });
@@ -705,9 +717,12 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
         )}
       </div>
 
-      {!soLeitura && !modoLeitura && errosGeracao.length > 0 && (
+      {!soLeitura && !modoLeitura && (errosGeracao.length > 0 || pendenciasBancarias.length > 0) && (
         <div className="rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-700 flex items-start gap-1.5">
-          <ListChecks className="h-3.5 w-3.5 mt-0.5 shrink-0" /> Faltam para gerar o contrato: {errosGeracao.join(', ')}.
+          <ListChecks className="h-3.5 w-3.5 mt-0.5 shrink-0" /> Faltam para gerar o contrato: {[
+            ...errosGeracao,
+            ...(pendenciasBancarias.length > 0 ? [`Dados bancários do cliente (${pendenciasBancarias.join(', ')})`] : []),
+          ].join(', ')}.
         </div>
       )}
 
@@ -850,7 +865,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                 <ClienteForm
                   embedded
                   id={clienteId}
-                  exigirBancarios={false}
+                  exigirBancarios={exigirBancariosCompra}
                   onSaved={handleClienteSaved}
                   onCancel={editandoCliente && cadastroCompleto ? () => setEditandoCliente(false) : undefined}
                 />
@@ -905,12 +920,13 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                 </CardContent>
               </Card>
 
-              {/* Card: Dados Bancários — só quando a loja paga o cliente/vendedor (informativo, não obrigatório) */}
+              {/* Card: Dados Bancários — quando a loja paga o cliente/vendedor; obrigatório pra gerar o contrato se há repasse */}
               {lojaPagaCliente && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                     <Landmark className="h-4 w-4 text-primary" /> Dados Bancários
+                    {exigirBancariosCompra && <PendenciaTag itens={pendenciasBancarias} className="ml-auto" />}
                   </CardTitle>
                   <Separator className="mt-2" />
                 </CardHeader>

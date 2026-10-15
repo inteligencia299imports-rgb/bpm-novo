@@ -702,6 +702,18 @@ Deno.serve(async (req) => {
     }
     if (acao === 'compra') {
       if (!avaliacaoId) return jsonResponse({ error: 'avaliacao_id é obrigatório' }, 400);
+      // Compromisso de compra só nasce com o CONTRATO DE COMPRA gerado — é a
+      // geração do contrato que garante os dados obrigatórios (cliente,
+      // valores, dados bancários quando a loja paga o cliente). Pedido do
+      // usuário, 2026-10-15. Marcador: histórico pos_compra
+      // 'contrato_compra_gerado' (gravado pelo ContratoCompraDialog antes de
+      // chamar esta ação).
+      const { data: contratoGerado } = await admin.from('status_history').select('id')
+        .eq('entity_type', 'pos_compra').eq('entity_id', avaliacaoId).eq('status', 'contrato_compra_gerado')
+        .limit(1).maybeSingle();
+      if (!contratoGerado) {
+        return jsonResponse({ error: 'Gere o contrato de compra antes de gerar o compromisso financeiro.', status: 'sem_contrato' }, 409);
+      }
       return jsonResponse({ ok: true, compra: await construirRepasse(admin, avaliacaoId, 'compra', null, caller.id) }, 200);
     }
     if (acao === 'consignante') {
