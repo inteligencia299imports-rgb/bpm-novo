@@ -38,7 +38,7 @@ import { formatPersonName, firstLastName, cn, formatDataNascimento } from '@/lib
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { processarCnhAnexada, upsertCnhDoc, docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket, ehPessoaJuridica } from '@/lib/cnhAnexo';
 import { useNfeEmitida } from '@/hooks/useNfeEmitida';
-import { conferirDocVeiculo, removerDocDoStorage } from '@/lib/docVeiculoAnexo';
+import { conferirDocVeiculo, removerDocDoStorage, substituirAtpv } from '@/lib/docVeiculoAnexo';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { pendenciasVeicProd } from '@/lib/veicProd';
@@ -838,6 +838,13 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                       />
                       <DocumentUpload
                         label="ATPV"
+                        // Moto adquirida (anexo travado): só "Substituir", conferido pela IA.
+                        onSubstituir={async (url) => {
+                          if (!motoConsignada.id) return false;
+                          const ok = await substituirAtpv(motoConsignada.id, url);
+                          if (ok) setMotoConsignada((m: any) => ({ ...m, atpv_url: url }));
+                          return ok;
+                        }}
                         className="flex-1"
                         currentUrl={motoConsignada.atpv_url || null}
                         bucketPath={`docs/${motoConsignada.id}/atpv`}

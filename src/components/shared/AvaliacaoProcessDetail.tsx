@@ -25,7 +25,7 @@ import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
 import PlacaInput from '@/components/shared/PlacaInput';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
-import { conferirDocVeiculo, removerDocDoStorage } from '@/lib/docVeiculoAnexo';
+import { conferirDocVeiculo, removerDocDoStorage, substituirAtpv } from '@/lib/docVeiculoAnexo';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import { formatPersonName, firstLastName } from '@/lib/utils';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
@@ -554,6 +554,13 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
                       />
                       <DocumentUpload
                         label="ATPV"
+                        // Moto adquirida (anexo travado): só "Substituir", conferido pela IA.
+                        onSubstituir={async (url) => {
+                          if (!moto.id) return false;
+                          const ok = await substituirAtpv(moto.id, url);
+                          if (ok) setAtpvUrl(url);
+                          return ok;
+                        }}
                         className="flex-1"
                         currentUrl={atpvUrl}
                         bucketPath={moto.id ? `docs/${moto.id}/atpv` : ''}
