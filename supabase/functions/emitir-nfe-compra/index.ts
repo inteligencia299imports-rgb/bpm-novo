@@ -45,8 +45,10 @@ async function planoContaRepasse(admin: any, cfg: OperacaoConfig, porAvaliacao: 
 const FORMA_PAGAMENTO_ID = '63e1fff5-14d7-476c-b2da-e1ea173279a1'; // Pix
 const FORMA_PAGAMENTO_BOLETO_ID = '7d0f2125-fedf-4a27-8ab0-be21fecaf642'; // Boleto
 // Observação das parcelas de contas a pagar de compra/troca (identifica o que cada uma paga).
-const OBS_PARCELA_REPASSE = 'REPASSE AO CLIENTE';
-const OBS_PARCELA_QUITACAO = 'BOLETO DE QUITAÇÃO';
+// Observação da parcela no compromisso de compra/troca — é o que o SisFin
+// mostra na coluna Observação pra diferenciar quitação de repasse (2026-10-15).
+const OBS_PARCELA_REPASSE = 'REPASSE';
+const OBS_PARCELA_QUITACAO = 'QUITAÇÃO';
 
 const DIAS_VENCIMENTO = 7;
 
