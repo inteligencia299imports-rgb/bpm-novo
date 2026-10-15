@@ -23,7 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, ArrowLeftRight, ShieldCheck, Handshake, Pencil, RotateCw, AlertTriangle, ClipboardList, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, User, Store, Tag, DollarSign, Camera, MessageCircle, CheckCircle, XCircle, Clock, Search, CheckCircle2, FileText, ArrowLeftRight, ShieldCheck, Handshake, Repeat, Pencil, RotateCw, AlertTriangle, ClipboardList, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { ANOS_MOTO, CORES_MOTO, CATEGORIAS_MOTO } from '@/types/crm';
 import { formatPersonName, firstLastName, formatDataNascimento } from '@/lib/utils';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
@@ -2017,7 +2017,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium text-foreground">Tipo de Aquisição <span className="text-destructive">*</span></label>
-              <div className="grid grid-cols-2 gap-2.5 mt-2.5">
+              <div className={`grid ${isConvertendo ? 'grid-cols-2' : 'grid-cols-3'} gap-2.5 mt-2.5`}>
                 {isConvertendo ? (
                   (() => {
                     const currentTipo = avaliacao?.tipo_aquisicao;
@@ -2040,6 +2040,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                       onClick={() => setTipoSelecionado('propria')}
                     >
                       <ShieldCheck className="h-4 w-4" /> Própria
+                    </Button>
+                    {/* Repasse: fluxo igual ao da própria (pós-compra, NF-e, estoque);
+                        só o financeiro muda de plano de contas (2.4.09 compra /
+                        1.8.03 venda — ver emitir-nfe-compra e gerar-compromissos-proposta). */}
+                    <Button
+                      variant={tipoSelecionado === 'repasse' ? 'default' : 'outline'}
+                      className={`w-full gap-2 ${tipoSelecionado === 'repasse' ? 'bg-gray-600 hover:bg-gray-700 text-white border-gray-600' : 'border-gray-500 text-gray-600 hover:bg-gray-50'}`}
+                      onClick={() => setTipoSelecionado('repasse')}
+                    >
+                      <Repeat className="h-4 w-4" /> Repasse
                     </Button>
                     <Button
                       variant={tipoSelecionado === 'consignada' ? 'default' : 'outline'}

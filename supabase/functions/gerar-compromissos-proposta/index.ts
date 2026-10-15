@@ -22,6 +22,12 @@ const PLANO_VENDA_USADA = 'c4f76d4e-bfd9-4ade-987e-4a0798603416';
 const PLANO_VENDA_NOVA = 'c155d12c-4f49-4592-be1c-63f515ff97d3';
 const CC_MOTOS_USADAS = '7fe3888a-fd17-4c31-b78b-82a0af680ff3';
 const CC_MOTOS_NOVAS = '30f457e2-d6b9-48c3-aca7-e45bbf0200df';
+// Moto de REPASSE (tipo_aquisicao='repasse'): igual à própria, mas com plano
+// de contas próprio na compra e na venda (centro de custo CC.102) — pedido do
+// usuário, 2026-10-15. Mesmas constantes de emitir-nfe-compra.
+const PLANO_COMPRA_REPASSE = '9f15eccf-8da7-48da-916f-2d57e88271d1'; // 2.4.09 Compra de Motos Repasse
+const PLANO_VENDA_REPASSE = '4ad0a3d4-4306-4a3d-ac44-1e3cbb0a1b8d';  // 1.8.03 Venda de Motos Repasse
+const PLANOS_REPASSE = new Set([PLANO_COMPRA_REPASSE, PLANO_VENDA_REPASSE]);
 // Troco ao cliente (agregado marcado como troco no contrato de venda) — plano
 // de contas próprio, diferente do de venda normal (não é receita de venda,
 // é devolução de dinheiro). Centro de custo é o mesmo de venda usada/nova.
@@ -158,6 +164,8 @@ async function upsertCompromisso(admin: any, a: UpsertArgs): Promise<Record<stri
         observacoes: a.observacoes,
         fornecedor_id: a.fornecedorId,
         empresa_id: a.empresaId,
+        // Repasse: corrige o plano se a moto virou repasse depois de gerado.
+        ...(PLANOS_REPASSE.has(a.planoContaId) ? { plano_conta_id: a.planoContaId, centro_custo_id: a.centroCustoId } : {}),
         status_compromisso: statusHeader,
         updated_by: a.callerId,
       })
@@ -239,7 +247,7 @@ async function construirRepasse(
 ): Promise<Record<string, unknown>> {
   const { data: av } = await admin
     .from('avaliacoes')
-    .select('id, atendimento_id, previsao_custos_cliente, valor_quitacao, valor_fechamento, placa, marca:marca_id(nome), modelo:modelo_id(nome)')
+    .select('id, atendimento_id, previsao_custos_cliente, valor_quitacao, valor_fechamento, placa, tipo_aquisicao, marca:marca_id(nome), modelo:modelo_id(nome)')
     .eq('id', avaliacaoId)
     .maybeSingle();
   if (!av) return { origem, status: 'avaliacao_nao_encontrada' };
@@ -335,7 +343,7 @@ async function construirRepasse(
     empresaId,
     fornecedorId: at?.cliente_id ?? null,
     natureza: 'despesa',
-    planoContaId: PLANO_COMPRA_USADA,
+    planoContaId: av.tipo_aquisicao === 'repasse' ? PLANO_COMPRA_REPASSE : PLANO_COMPRA_USADA,
     centroCustoId: CC_MOTOS_USADAS,
     observacoes: obsMoto(nomeCat(av.marca), nomeCat(av.modelo), av.placa),
     numeroPrefix: 'CPR-D',
@@ -365,12 +373,19 @@ async function acaoVenda(admin: any, atendimentoId: string, callerId: string): P
 
   const { data: mi } = await admin
     .from('motos_interesse')
-    .select('estoque_tipo')
+    .select('estoque_tipo, estoque_moto_id')
     .eq('atendimento_id', atendimentoId)
     .not('estoque_moto_id', 'is', null)
     .limit(1)
     .maybeSingle();
   const eh0km = mi?.estoque_tipo === '0km';
+  // Seminova de repasse -> plano 1.8.03.
+  let vendaRepasse = false;
+  if (!eh0km && mi?.estoque_moto_id) {
+    const { data: est } = await admin.from('estoque_motos')
+      .select('avaliacao:avaliacao_id(tipo_aquisicao)').eq('id', mi.estoque_moto_id).maybeSingle();
+    vendaRepasse = (est as any)?.avaliacao?.tipo_aquisicao === 'repasse';
+  }
 
   const { data: formas } = await admin
     .from('formas_pagamento_contrato')
@@ -402,7 +417,7 @@ async function acaoVenda(admin: any, atendimentoId: string, callerId: string): P
     empresaId,
     fornecedorId: at?.cliente_id ?? null,
     natureza: 'receita',
-    planoContaId: eh0km ? PLANO_VENDA_NOVA : PLANO_VENDA_USADA,
+    planoContaId: eh0km ? PLANO_VENDA_NOVA : vendaRepasse ? PLANO_VENDA_REPASSE : PLANO_VENDA_USADA,
     centroCustoId: eh0km ? CC_MOTOS_NOVAS : CC_MOTOS_USADAS,
     observacoes: await obsMotoVendida(admin, atendimentoId),
     numeroPrefix: 'VND-R',

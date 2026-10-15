@@ -209,8 +209,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           return m.tipo === filterTipo;
         });
       }
-      // Motos de repasse ficam ocultas do catálogo de estoque
-      mapped = mapped.filter((m: any) => m.tipo_aquisicao !== 'repasse');
+      // Motos de repasse aparecem no estoque como as próprias (voltou a ser
+      // tipo de aquisição em 2026-10-15 — antes ficavam ocultas daqui).
       setItems(mapped);
 
       // Data da retirada (histórico 'RETIRADA' do estoque)
