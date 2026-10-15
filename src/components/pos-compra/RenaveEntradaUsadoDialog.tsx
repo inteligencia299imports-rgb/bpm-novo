@@ -231,7 +231,11 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     || !avaliacao?.tipo_crv;
 
   const kmInformado = quilometragem ? Number(quilometragem) : null;
-  const assinaturaEnviada = !!avaliacao?.renave_atpv_assinatura_enviada_em;
+  // Estoque já TRANSFERIDO/CONFIRMADO/FINALIZADO = assinatura do ATPV já
+  // processada pela SERPRO, mesmo que feita fora do sistema (ver estoque-status
+  // na edge renave e RenaveSaidaUsadoDialog).
+  const assinaturaEnviada = !!avaliacao?.renave_atpv_assinatura_enviada_em
+    || ['TRANSFERIDO', 'CONFIRMADO', 'FINALIZADO'].includes(String(avaliacao?.renave_estado ?? '').toUpperCase());
   const nfVinculada = !!avaliacao?.renave_nf_vinculada_em;
   // O CRLV-e só libera quando o estabelecimento já consta como proprietário
   // no RENAVAM -- confirmado no manual oficial ("O estabelecimento somente

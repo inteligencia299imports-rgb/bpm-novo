@@ -186,8 +186,14 @@ const RenaveSaidaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, atendimen
   // Pré-requisitos da SERPRO pra saída (manual solicitar-saida-estoque).
   const entrouEstoque = !!avaliacao?.renave_id_estoque;
   const nfCompraVinculada = !!avaliacao?.renave_nf_vinculada_em;
-  const assinaturaEntradaEnviada = !!avaliacao?.renave_atpv_assinatura_enviada_em;
   const estadoConfirmado = String(avaliacao?.renave_estado ?? '').toUpperCase() === 'CONFIRMADO';
+  // Estoque TRANSFERIDO/CONFIRMADO/FINALIZADO só acontece depois da assinatura
+  // do ATPV da entrada — vale como enviada mesmo sem o registro do envio aqui
+  // (entrada/assinatura feitas FORA do sistema; achado real 2026-10-15,
+  // JCC6E84: termo de entrada nº 4236876, estado CONFIRMADO, saída travada).
+  // Mesma regra da ação estoque-status da edge renave.
+  const assinaturaEntradaEnviada = !!avaliacao?.renave_atpv_assinatura_enviada_em
+    || ['TRANSFERIDO', 'CONFIRMADO', 'FINALIZADO'].includes(String(avaliacao?.renave_estado ?? '').toUpperCase());
   const nfVendaAutorizada = !!nfVenda && nfVenda.status === 'processada' && nfVenda.ambiente === 'producao' && !!nfVenda.chave_nfe;
   const podeSair = entrouEstoque && nfCompraVinculada && assinaturaEntradaEnviada && estadoConfirmado && nfVendaAutorizada;
 

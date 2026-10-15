@@ -864,14 +864,18 @@ Deno.serve(async (req) => {
     if (acao === 'termo-entrada-pdf') {
       const avaliacaoId: string = body.avaliacao_id;
       if (!avaliacaoId) return json({ error: 'avaliacao_id é obrigatório' }, 400);
-      const { data: av } = await admin.from('avaliacoes').select('id, chassi, renave_id_estoque, renave_atpv_assinatura_enviada_em').eq('id', avaliacaoId).maybeSingle();
+      const { data: av } = await admin.from('avaliacoes').select('id, chassi, renave_id_estoque, renave_estado, renave_atpv_assinatura_enviada_em').eq('id', avaliacaoId).maybeSingle();
       if (!av) return json({ error: 'Avaliação não encontrada' }, 404);
       if (!av.renave_id_estoque) return json({ error: 'Esta moto ainda não tem entrada no RENAVE.' }, 409);
+      // Estoque TRANSFERIDO/CONFIRMADO/FINALIZADO = assinatura já processada
+      // (inclusive feita fora do sistema — mesma regra de estoque-status).
+      const assinaturaProcessada = !!av.renave_atpv_assinatura_enviada_em
+        || ['TRANSFERIDO', 'CONFIRMADO', 'FINALIZADO'].includes(String(av.renave_estado ?? '').toUpperCase());
       // Achado real 2026-09-22 (chassi 95VHA00AAHM000135): a SERPRO rejeita o
       // termo de entrada ("...estabelecimento ainda não enviou a assinatura
       // do ATPV...") até a assinatura (passo 3) ter sido enviada -- não basta
       // ter a entrada confirmada (passo 1).
-      if (!av.renave_atpv_assinatura_enviada_em) {
+      if (!assinaturaProcessada) {
         return json({ error: 'Envie a assinatura do ATPV (passo 3) antes de baixar o termo de entrada — a SERPRO exige isso primeiro.' }, 409);
       }
 
