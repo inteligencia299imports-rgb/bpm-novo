@@ -117,8 +117,16 @@ export function buildIndexes(params: {
         agg.custo_processo_loja += prev;
       }
     } else if (resp === 'cliente') {
-      agg.custo_prev_cliente += prev;
-      if (exec != null) agg.custo_real_cliente += Number(exec);
+      // Custo do cliente já foi abatido do repasse — só vira margem a
+      // diferença previsto x executado DEPOIS de executado (mesma regra do
+      // custo da loja acima). Sem executado, previsto e real se anulam: antes
+      // o previsto inteiro entrava como "margem de oficina" (achado real
+      // 2026-10-15, SGU5I58: IPVA/multas R$ 5.257,72 do cliente, sem
+      // executado, somava na Margem Real.).
+      if (exec != null) {
+        agg.custo_prev_cliente += prev;
+        agg.custo_real_cliente += Number(exec);
+      }
     }
     costsByAvaliacao.set(c.avaliacao_id, agg);
   }
