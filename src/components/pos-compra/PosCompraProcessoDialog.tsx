@@ -43,6 +43,12 @@ const ETAPAS = [
   'PROCESSO PAUSADO',
   'TRANSFERÊNCIA CONCLUÍDA',
 ];
+// Moto de REPASSE não tem NF-e de compra nem entra no RENAVE (sem NF não há
+// vínculo na SERPRO) — essas etapas não se aplicam e saem do checklist
+// (pedido do usuário, 2026-10-15). O resto do processo segue igual.
+const ETAPAS_FORA_REPASSE = ['NF EMITIDA', 'ENTRADA RENAVE'];
+const etapasDoTipo = (tipoAquisicao: string | null | undefined) =>
+  tipoAquisicao === 'repasse' ? ETAPAS.filter((e) => !ETAPAS_FORA_REPASSE.includes(e)) : ETAPAS;
 
 interface EtapaData {
   id?: string;
@@ -71,6 +77,8 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [tipoAquisicao, setTipoAquisicao] = useState<string | null>(null);
+  const etapasAplicaveis = etapasDoTipo(tipoAquisicao);
   const [calendarOpen, setCalendarOpen] = useState<string | null>(null);
   const [datasSalvas, setDatasSalvas] = useState<Record<string, string | null>>({});
   const [previousStatus, setPreviousStatus] = useState('aprovada');
@@ -152,6 +160,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       setNfeCompra((nfeData as any[])?.[0] || null);
       // Convertida (consignação que virou compra) não passa por aprovação (2026-10-14).
       setAprovacaoStatus((avData as any)?.tipo_aquisicao === 'convertida' ? 'aprovada' : ((avData as any)?.aprovacao_status ?? null));
+      setTipoAquisicao((avData as any)?.tipo_aquisicao ?? null);
       setRenaveEntrouEstoque(!!(avData as any)?.renave_id_estoque);
       setRenaveAtualizadoEm((avData as any)?.renave_atualizado_em ?? null);
       setRenaveUltimoErro((avData as any)?.renave_ultimo_erro ?? null);
@@ -225,7 +234,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         }
       }
 
-      const built = ETAPAS.map(e => {
+      const built = etapasDoTipo((avData as any)?.tipo_aquisicao).map(e => {
         // Existing pos_compra data takes priority
         if (map[e]) return map[e];
         // Se veio de consignação, pull matching dates from consignação process
@@ -463,7 +472,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
       : e.etapa === 'ENTRADA RENAVE' ? (renaveEntrouEstoque || e.concluida)
       : e.concluida
   ).length;
-  const statusLabel = concluidas === ETAPAS.length ? 'CONCLUÍDO' : 'APROVADA';
+  const statusLabel = concluidas === etapasAplicaveis.length ? 'CONCLUÍDO' : 'APROVADA';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -501,7 +510,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
           <div className="space-y-1">
             <div className="text-center mb-4">
               <Badge variant="outline" className="text-xs">
-                {statusLabel} ({concluidas}/{ETAPAS.length})
+                {statusLabel} ({concluidas}/{etapasAplicaveis.length})
               </Badge>
             </div>
 

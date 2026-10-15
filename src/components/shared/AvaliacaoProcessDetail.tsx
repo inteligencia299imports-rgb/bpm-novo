@@ -288,7 +288,8 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
             .in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']);
           const nf = pcSteps?.find(p => p.etapa === 'NF EMITIDA');
           const vistoria = pcSteps?.find(p => p.etapa === 'VISTORIA/CADEIA DOMINIAL');
-          if (!nf?.concluida) pending.push('NF Emitida (Pós-Compra)');
+          // Repasse não tem NF-e de compra (2026-10-15) — não é pendência.
+          if (tipo !== 'repasse' && !nf?.concluida) pending.push('NF Emitida (Pós-Compra)');
           if (!vistoria?.concluida) pending.push('Vistoria/Cadeia Dominial (Pós-Compra)');
         } else if (isTipoConsignada(tipo)) {
           const { data: consigSteps } = await supabase.from('consignacao_processos')

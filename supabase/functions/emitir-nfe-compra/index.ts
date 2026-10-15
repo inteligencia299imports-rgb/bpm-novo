@@ -1719,7 +1719,7 @@ Deno.serve(async (req) => {
       .select(
         'id, atendimento_id, aprovacao_status, consulta_realizada, valor_fechamento, ' +
           'avaliacao_consignacao, valor_consignacao_nota, consignacao_status, valor_nf_entrada, ' +
-          'marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam, km',
+          'marca:marca_id(nome), modelo:modelo_id(nome), ano_fabricacao, ano_modelo, cilindrada, cor, placa, chassi, renavam, km, tipo_aquisicao',
       )
       .eq('id', avaliacaoId)
       .maybeSingle();
@@ -2399,6 +2399,14 @@ Deno.serve(async (req) => {
   // dela é venda comum (5102/6102).
   const vendaNaturezaConsignada = viaVendaPosConsignacao
     && !(compraPosConsignacaoAutorizada as any)?.transferencia_destino_loja_id;
+  // Moto de REPASSE não tem NF-e de compra nem de venda — o processo segue
+  // sem nota (pedido do usuário, 2026-10-15; ver isRepasse no front).
+  if (tipo === 'compra' && (av as any)?.tipo_aquisicao === 'repasse') {
+    return jsonResponse({ error: 'Moto de repasse não tem NF-e de compra.' }, 409);
+  }
+  if (ehVenda && !ehVenda0km && (estoqueMoto?.avaliacao as any)?.tipo_aquisicao === 'repasse') {
+    return jsonResponse({ error: 'Moto de repasse não tem NF-e de venda.' }, 409);
+  }
   if (tipo === 'compra') {
     if (av.consulta_realizada !== true) return jsonResponse({ error: 'A consulta veicular ainda não foi realizada.' }, 409);
     // Troca (moto entrando como parte de pagamento): não exige aprovação da

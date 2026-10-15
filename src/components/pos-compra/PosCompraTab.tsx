@@ -109,7 +109,8 @@ const PosCompraTab = ({ initialAvaliacaoId, onInitialHandled }: PosCompraTabProp
           // avaliação importada) — o filtro só olhava nfe_entradas de verdade
           // (_temNfeProducao), nunca etapaNfConcluidaSet (mesmo conjunto que já
           // alimenta o fallback cinza NFE_TAG_SEM_REGISTRO acima).
-          _temNfeProducao: !avaliacoesComDevolucaoCompra.has(d.id) && (etapaNfConcluidaSet.has(d.id) || (nfeRowsPorAvaliacao[d.id] || []).some((n: any) => n.operacao === 'compra' && n.status === 'processada' && n.ambiente === 'producao')) }));
+          // Repasse não tem NF-e de compra (2026-10-15): concluída já encerra o processo.
+          _temNfeProducao: d.tipo_aquisicao === 'repasse' || !avaliacoesComDevolucaoCompra.has(d.id) && (etapaNfConcluidaSet.has(d.id) || (nfeRowsPorAvaliacao[d.id] || []).some((n: any) => n.operacao === 'compra' && n.status === 'processada' && n.ambiente === 'producao')) }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       if (filterCidade !== 'todos') { mapped = mapped.filter((a: any) => matchesCidade(a.atendimento?.loja, filterCidade)); }
       setItems(mapped);

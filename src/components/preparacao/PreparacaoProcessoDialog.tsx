@@ -283,7 +283,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         const { data: pcSteps } = await supabase.from('pos_compra_processos')
           .select('etapa, concluida').eq('avaliacao_id', avaliacaoId)
           .in('etapa', ['NF EMITIDA', 'VISTORIA/CADEIA DOMINIAL']);
-        if (!pcSteps?.find(p => p.etapa === 'NF EMITIDA')?.concluida) pending.push('NF Emitida (Pós-Compra)');
+        // Repasse não tem NF-e de compra (2026-10-15) — não é pendência.
+        if (tipo !== 'repasse' && !pcSteps?.find(p => p.etapa === 'NF EMITIDA')?.concluida) pending.push('NF Emitida (Pós-Compra)');
         if (!pcSteps?.find(p => p.etapa === 'VISTORIA/CADEIA DOMINIAL')?.concluida) pending.push('Vistoria/Cadeia Dominial (Pós-Compra)');
       } else if (isTipoConsignada(tipo)) {
         const { data: consigSteps } = await supabase.from('consignacao_processos')
@@ -395,7 +396,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         const nfEmitida = processos?.find(p => p.etapa === 'NF EMITIDA');
         const vistoria = processos?.find(p => p.etapa === 'VISTORIA/CADEIA DOMINIAL');
 
-        if (!nfEmitida?.concluida) pendencias.push('NF Emitida (Pós-Compra)');
+        // Repasse não tem NF-e de compra (2026-10-15) — não é pendência.
+        if (tipoAquisicao !== 'repasse' && !nfEmitida?.concluida) pendencias.push('NF Emitida (Pós-Compra)');
         if (!vistoria?.concluida) pendencias.push('Vistoria/Cadeia Dominial (Pós-Compra)');
       } else if (isConsignada) {
         // Check consignacao_processos for NF EMITIDA

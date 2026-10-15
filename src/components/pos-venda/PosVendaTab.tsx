@@ -144,7 +144,8 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
         const _nfeTag = est?.fonte === '0km' && est?.renave_atpv_numero
           ? { label: 'ATPV-e', className: 'bg-emerald-600 hover:bg-emerald-700 text-white' }
           : nfeTagFromRows(nfeRowsPorAtendimento[a.id]);
-        const _temNfeProducao = !atendimentosComDevolucaoVenda.has(a.id)
+        // Venda de moto de repasse não tem NF-e (2026-10-15): concluída já encerra.
+        const _temNfeProducao = est?.tipo_aquisicao === 'repasse' || !atendimentosComDevolucaoVenda.has(a.id)
           && (etapaNfConcluidaSet.has(a.id) || (nfeRowsPorAtendimento[a.id] || []).some((n: any) => n.status === 'processada' && n.ambiente === 'producao'));
         if (est) return { ...a, _estoqueMoto: est, _nfeTag, _temNfeProducao };
         // Fallback: use first moto_interesse info
