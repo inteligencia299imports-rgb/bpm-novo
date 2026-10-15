@@ -266,15 +266,17 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   // visualizar/baixar/remover (mesmo padrão da CNH). `deferPreview` mantém o
   // botão em estado de carregando até a SERPRO confirmar o envio.
   const [tipoAssinatura, setTipoAssinatura] = useState<string>(TIPOS_ASSINATURA[0].value);
-  // CRV digital: a SERPRO rejeita as opções "próprio punho" (foto assinada à
-  // mão / papel-moeda) — achado real, chassi 95VHA00AAHM000135, estoque
-  // 203832487: "Não é permitido, nem necessário, enviar assinatura de
-  // próprio punho para ATPVe [...]" (422). Sem papel físico envolvido no
-  // fluxo digital, só a assinatura qualificada sobre o XML do ATPV-e serve.
+  // Todas as opções valem também pra CRV digital. Correção 2026-10-15: a
+  // trava anterior ("CRV digital só aceita P7S") partiu de uma mensagem da
+  // SERPRO lida cortada — o texto completo é "Não é permitido, nem necessário,
+  // enviar assinatura de próprio punho para ATPVe, pois esse estoque (203832487)
+  // NÃO ESTÁ RELACIONADO A NENHUMA INTENÇÃO DE VENDA" (caso específico, chassi
+  // 95VHA00AAHM000135). SXI9A07 e SUN5C85 (CRV digital) foram aceitas com
+  // "Foto - ATPV-e assinado à mão" (PDF do ATPV-e com firma reconhecida) e
+  // chegaram a CONFIRMADO/FINALIZADO; MKZ7G28 e TPS3C15 ficaram presas porque
+  // só restava o P7S e o PDF foi mandado como P7S ("Bytes inválidos ... PKCS7").
   const crvDigital = avaliacao?.tipo_crv === 'DIGITAL';
-  const opcoesAssinatura = crvDigital
-    ? TIPOS_ASSINATURA.filter((t) => t.value === 'qualificada_xml_atpve')
-    : TIPOS_ASSINATURA;
+  const opcoesAssinatura = TIPOS_ASSINATURA;
   useEffect(() => {
     if (!opcoesAssinatura.some((t) => t.value === tipoAssinatura)) {
       setTipoAssinatura(opcoesAssinatura[0]?.value ?? TIPOS_ASSINATURA[0].value);
@@ -681,7 +683,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       // aqui; atualizar o status marca o passo como feito quando o
                       // estoque sai de SOLICITADO (ver estoque-status no backend).
                       <div className="flex items-center justify-end gap-1.5 text-[11px] text-muted-foreground">
-                        <span>Vendedor assinou pelo app (CDT/gov.br)? Atualize o status:</span>
+                        <span>Assinatura feita fora do sistema (app CDT/gov.br)? Atualize o status:</span>
                         <button
                           type="button"
                           onClick={handleAtualizarEstado}
