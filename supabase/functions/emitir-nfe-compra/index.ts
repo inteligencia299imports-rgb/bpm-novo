@@ -18,6 +18,28 @@ const PLANO_VENDA_USADA = 'c4f76d4e-bfd9-4ade-987e-4a0798603416';  // Venda de M
 const PLANO_VENDA_NOVA = 'c155d12c-4f49-4592-be1c-63f515ff97d3';   // Venda de Motos Novas (receita)
 const CC_MOTOS_USADAS = '7fe3888a-fd17-4c31-b78b-82a0af680ff3';    // CC.102 Venda de motos usadas
 const CC_MOTOS_NOVAS = '30f457e2-d6b9-48c3-aca7-e45bbf0200df';     // CC.101 Venda de motos novas
+// Moto de REPASSE (tipo_aquisicao='repasse'): funciona igual à própria, mas o
+// financeiro vai pra plano próprio — pedido do usuário, 2026-10-15.
+const PLANO_COMPRA_REPASSE = '9f15eccf-8da7-48da-916f-2d57e88271d1'; // 2.4.09 Compra de Motos Repasse (despesa)
+const PLANO_VENDA_REPASSE = '4ad0a3d4-4306-4a3d-ac44-1e3cbb0a1b8d';  // 1.8.03 Venda de Motos Repasse (receita)
+
+// Plano de contas do compromisso quando a moto é de repasse: compra (por
+// avaliação) -> 2.4.09; venda de seminova (por atendimento, moto do estoque)
+// -> 1.8.03. Centro de custo continua CC.102 (motos usadas). null = não é
+// repasse (segue o plano do cfg).
+async function planoContaRepasse(admin: any, cfg: OperacaoConfig, porAvaliacao: boolean, entityId: string): Promise<string | null> {
+  if (cfg.planoContaId === PLANO_COMPRA_USADA && porAvaliacao) {
+    const { data: av } = await admin.from('avaliacoes').select('tipo_aquisicao').eq('id', entityId).maybeSingle();
+    return (av as any)?.tipo_aquisicao === 'repasse' ? PLANO_COMPRA_REPASSE : null;
+  }
+  if (cfg.planoContaId === PLANO_VENDA_USADA && !porAvaliacao) {
+    const { data: est } = await admin.from('estoque_motos')
+      .select('avaliacao:avaliacao_id(tipo_aquisicao)').eq('atendimento_venda_id', entityId)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    return (est as any)?.avaliacao?.tipo_aquisicao === 'repasse' ? PLANO_VENDA_REPASSE : null;
+  }
+  return null;
+}
 
 // Formas de pagamento fixas (tabela formas_pagamento) — repasse ao cliente / financiamento.
 const FORMA_PAGAMENTO_ID = '63e1fff5-14d7-476c-b2da-e1ea173279a1'; // Pix
@@ -1075,6 +1097,7 @@ async function registrarPosAutorizacao(
   // é verificado direto no histórico de NF-e (nfe_entradas), não por esse campo.
 
   if (!cfg.criaCompromisso || !cfg.planoContaId || !cfg.centroCustoId) return;
+  const planoRepasse = await planoContaRepasse(admin, cfg, porAvaliacao, entityId);
 
   // Compromisso financeiro (contas a pagar/receber) da NF-e.
   const { data: nfeRow } = await admin
@@ -1348,6 +1371,8 @@ async function registrarPosAutorizacao(
         numero_documento: nfeRow.numero ? `NF-${nfeRow.numero}` : null,
         observacoes: obsCompromisso,
         updated_by: callerId,
+        // Repasse: garante o plano próprio mesmo se a proposta gerou com o de usada.
+        ...(planoRepasse ? { plano_conta_id: planoRepasse, centro_custo_id: CC_MOTOS_USADAS } : {}),
         ...(statusCompromissoTroca ? { status_compromisso: statusCompromissoTroca } : {}),
       })
       .eq('id', compId)
@@ -1365,8 +1390,8 @@ async function registrarPosAutorizacao(
         fornecedor_id: nfeRow.fornecedor_id,
         natureza: compromissoNatureza,
         despesa_fixa: false,
-        plano_conta_id: cfg.planoContaId,
-        centro_custo_id: cfg.centroCustoId,
+        plano_conta_id: planoRepasse ?? cfg.planoContaId,
+        centro_custo_id: planoRepasse ? CC_MOTOS_USADAS : cfg.centroCustoId,
         observacoes: obsCompromisso,
         status_compromisso: statusCompromissoTroca ?? 'em_aberto',
         nfe_entrada_id: nfeRow.id,
