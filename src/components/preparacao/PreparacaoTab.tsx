@@ -90,7 +90,8 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
           // Própria / Convertida / Test-ride / Repasse: exige NF EMITIDA + VISTORIA/CADEIA DOMINIAL
           const nf = pcData.find(p => p.avaliacao_id === d.id && p.etapa === 'NF EMITIDA');
           const vistoria = pcData.find(p => p.avaliacao_id === d.id && p.etapa === 'VISTORIA/CADEIA DOMINIAL');
-          releaseReadyMap[d.id] = !!(nf?.concluida && vistoria?.concluida);
+          // Repasse não tem NF-e de compra (2026-10-15): só a vistoria conta.
+          releaseReadyMap[d.id] = !!((tipo === 'repasse' || nf?.concluida) && vistoria?.concluida);
         } else {
           releaseReadyMap[d.id] = false;
         }

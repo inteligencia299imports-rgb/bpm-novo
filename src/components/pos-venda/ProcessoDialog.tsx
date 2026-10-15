@@ -143,13 +143,19 @@ const ProcessoDialog: React.FC<Props> = ({
   const [interesse, setInteresse] = useState<string | null>(null);
   const [contratoVendaGerado, setContratoVendaGerado] = useState(false);
   const [trocaAvaliacaoId, setTrocaAvaliacaoId] = useState<string>('');
+  // Moto de troca de REPASSE: sem NF-e de entrada (troca) — 2026-10-15.
+  const [trocaRepasse, setTrocaRepasse] = useState(false);
   const [atendimentoEmpresaId, setAtendimentoEmpresaId] = useState<string>('');
 
   const eh0km = estoqueMoto?.fonte === '0km';
   // Saída RENAVE: seminova própria (não consignada) — a avaliação da moto é
   // onde vive o estoque RENAVE (ver load abaixo).
   const saidaRenaveAv = estoqueMoto?.fonte === 'seminova' ? estoqueMoto?.avaliacao : null;
-  const temSaidaRenave = !!saidaRenaveAv && TIPOS_PROPRIA.includes(saidaRenaveAv.tipo_aquisicao);
+  // Venda de moto de REPASSE: sem NF-e de venda e sem saída RENAVE (não entrou
+  // no RENAVE, sem NF não há vínculo) — essas etapas não se aplicam e a
+  // transferência é finalizada sem NF (pedido do usuário, 2026-10-15).
+  const vendaRepasse = saidaRenaveAv?.tipo_aquisicao === 'repasse';
+  const temSaidaRenave = !!saidaRenaveAv && TIPOS_PROPRIA.includes(saidaRenaveAv.tipo_aquisicao) && !vendaRepasse;
   const tipoVenda = eh0km ? 'venda_0km' : 'venda_seminova';
   // Intermediação Parte 1 também tem a etapa NF-E DE VENDA no checklist
   // (mesmo padrão do Pós-Venda) — precisa do mesmo contexto (estoque/contrato/
@@ -190,12 +196,12 @@ const ProcessoDialog: React.FC<Props> = ({
       // e, na FAG, a de transferência pra MMATOS — vêm ANTES da NF-e de venda.
       const anchor = names.indexOf('VISTORIA');
       const pos = anchor >= 0 ? anchor + 1 : names.length;
-      names.splice(pos, 0, NF_VENDA);
+      if (!vendaRepasse) names.splice(pos, 0, NF_VENDA);
       if (precisaTransferenciaFag) names.splice(pos, 0, NF_TRANSFERENCIA);
-      if (interesse === 'trocar' && trocaAvaliacaoId) names.splice(pos, 0, NF_TROCA);
+      if (interesse === 'trocar' && trocaAvaliacaoId && !trocaRepasse) names.splice(pos, 0, NF_TROCA);
     }
     return names;
-  }, [customEtapas, estoqueMoto, eh0km, temSaidaRenave, interesse, trocaAvaliacaoId, precisaTransferenciaFag]);
+  }, [customEtapas, estoqueMoto, eh0km, temSaidaRenave, vendaRepasse, interesse, trocaAvaliacaoId, trocaRepasse, precisaTransferenciaFag]);
 
   useEffect(() => {
     if (!open) return;
@@ -207,6 +213,7 @@ const ProcessoDialog: React.FC<Props> = ({
       let estMoto: any = null;
       let inter: string | null = null;
       let trocaAvId = '';
+      let trocaEhRepasse = false;
       let contratoVenda = false;
       let avConsigId = '';
       let avConsig: any = null;
@@ -272,13 +279,14 @@ const ProcessoDialog: React.FC<Props> = ({
         if ((isPosVenda || hasConverterEtapa) && inter === 'trocar') {
           const { data: tav } = await supabase
             .from('avaliacoes')
-            .select('id')
+            .select('id, tipo_aquisicao')
             .eq('atendimento_id', atendimentoId)
             .in('tipo_aquisicao', TIPOS_PROPRIA)
             .in('situacao', ['adquirida', 'estoque', 'oficina'])
             .limit(1)
             .maybeSingle();
           trocaAvId = (tav as any)?.id ?? '';
+          trocaEhRepasse = (tav as any)?.tipo_aquisicao === 'repasse';
         }
 
         if (isPosVenda) {
@@ -291,7 +299,8 @@ const ProcessoDialog: React.FC<Props> = ({
             names.splice(p >= 0 ? p : names.length, 0, ATPV_E);
           }
 
-          if (estMoto?.fonte === 'seminova' && estMoto.avaliacao && TIPOS_PROPRIA.includes(estMoto.avaliacao.tipo_aquisicao)) {
+          const estRepasse = estMoto?.fonte === 'seminova' && estMoto.avaliacao?.tipo_aquisicao === 'repasse';
+          if (estMoto?.fonte === 'seminova' && estMoto.avaliacao && TIPOS_PROPRIA.includes(estMoto.avaliacao.tipo_aquisicao) && !estRepasse) {
             const t = names.indexOf(TRANSF_FINALIZADA);
             names.splice(t >= 0 ? t : names.length, 0, SAIDA_RENAVE);
           }
@@ -301,9 +310,9 @@ const ProcessoDialog: React.FC<Props> = ({
             // não existem na lista dinâmica — ancora depois da VISTORIA.
             const anchor = names.indexOf('VISTORIA');
             const pos = anchor >= 0 ? anchor + 1 : names.length;
-            names.splice(pos, 0, NF_VENDA);
+            if (!estRepasse) names.splice(pos, 0, NF_VENDA);
             if (inter === 'trocar' && trocaAvId && EMPRESAS_SO_MOTO_NOVA.has(empresaIdAt)) names.splice(pos, 0, NF_TRANSFERENCIA);
-            if (inter === 'trocar' && trocaAvId) names.splice(pos, 0, NF_TROCA);
+            if (inter === 'trocar' && trocaAvId && !trocaEhRepasse) names.splice(pos, 0, NF_TROCA);
           }
         } else if (hasConverterEtapa && trocaAvId) {
           // Intermediação (moto consignada vendida) com troca: NF-E DE VENDA
@@ -328,6 +337,7 @@ const ProcessoDialog: React.FC<Props> = ({
       setInteresse(inter);
       setContratoVendaGerado(contratoVenda);
       setTrocaAvaliacaoId(trocaAvId);
+      setTrocaRepasse(trocaEhRepasse);
       setAtendimentoEmpresaId(empresaIdAt);
       setAvaliacaoConsignadaId(avConsigId);
       setAvaliacaoConsignada(avConsig);
@@ -397,7 +407,7 @@ const ProcessoDialog: React.FC<Props> = ({
     // Pedido do usuário, 2026-09-30: achados 4 casos com TRANSFERÊNCIA
     // FINALIZADA marcada sem NF-e de venda emitida — trava aqui em vez de só
     // deixar visível no checklist.
-    if (etapa === TRANSF_FINALIZADA && checked && !nfVendaProducao) {
+    if (etapa === TRANSF_FINALIZADA && checked && !nfVendaProducao && !vendaRepasse) {
       toast.error('Emita a NF-e de venda em produção antes de marcar a transferência como finalizada.');
       return;
     }
