@@ -12,6 +12,25 @@ export async function removerDocDoStorage(bucketPath: string): Promise<void> {
 }
 
 /**
+ * Substitui o ATPV-e de uma moto já adquirida (anexo travado contra remoção):
+ * confere o arquivo NOVO pela IA (mesma conferência do anexo + atualização do
+ * nº/código de segurança do CRV) e só então grava `atpv_url`. Recusado pela
+ * IA -> devolve false e o ATPV atual fica como está (o DocumentUpload apaga o
+ * arquivo novo).
+ */
+export async function substituirAtpv(avaliacaoId: string, url: string): Promise<boolean> {
+  const { ok } = await conferirDocVeiculo(avaliacaoId, url, 'atpv');
+  if (!ok) return false;
+  const { error } = await supabase.from('avaliacoes').update({ atpv_url: url } as any).eq('id', avaliacaoId);
+  if (error) {
+    toast.error('Erro ao salvar o novo ATPV-e: ' + error.message);
+    return false;
+  }
+  toast.success('ATPV-e substituído');
+  return true;
+}
+
+/**
  * Confere, via IA, se o ATPV-e / Procuração anexado é realmente daquela moto.
  * Retorna `{ ok }`: `ok=false` só quando a IA tem CERTEZA de que é o documento
  * errado ou de outra moto (aí o chamador deve desfazer o anexo). Conferência
@@ -21,7 +40,7 @@ export async function conferirDocVeiculo(
   avaliacaoId: string,
   url: string,
   tipo: DocVeiculoTipo,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; atualizados?: Record<string, string> }> {
   const rotulo = ROTULO[tipo];
   const toastId = toast.loading(`Conferindo o ${rotulo}…`);
   try {
@@ -40,8 +59,10 @@ export async function conferirDocVeiculo(
       toast.warning(data.motivo || `Não foi possível confirmar que o ${rotulo} é desta moto — verifique manualmente.`, { id: toastId });
       return { ok: true };
     }
-    toast.success(`${rotulo} conferido`, { id: toastId });
-    return { ok: true };
+    const atualizados = (data.atualizados ?? {}) as Record<string, string>;
+    const nAtualizados = Object.keys(atualizados).length;
+    toast.success(nAtualizados ? `${rotulo} conferido — nº/código de segurança do CRV atualizados` : `${rotulo} conferido`, { id: toastId });
+    return { ok: true, atualizados };
   } catch {
     toast.warning(`Não foi possível conferir o ${rotulo} automaticamente — verifique manualmente.`, { id: toastId });
     return { ok: true };

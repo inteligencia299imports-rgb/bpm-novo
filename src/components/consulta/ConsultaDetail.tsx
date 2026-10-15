@@ -20,7 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
 import { docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket, ehPessoaJuridica, upsertCnhDoc } from '@/lib/cnhAnexo';
 import { useNfeEmitida } from '@/hooks/useNfeEmitida';
-import { conferirDocVeiculo, removerDocDoStorage } from '@/lib/docVeiculoAnexo';
+import { conferirDocVeiculo, removerDocDoStorage, substituirAtpv } from '@/lib/docVeiculoAnexo';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -498,6 +498,13 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                 />
                 <DocumentUpload
                   label="ATPV"
+                  // Moto adquirida (anexo travado): só "Substituir", conferido pela IA.
+                  onSubstituir={async (url) => {
+                    if (!moto.id) return false;
+                    const ok = await substituirAtpv(moto.id, url);
+                    if (ok) setAtpvUrl(url);
+                    return ok;
+                  }}
                   className="flex-1"
                   bloquearRemocao={docRemocaoTravada}
                   currentUrl={atpvUrl}

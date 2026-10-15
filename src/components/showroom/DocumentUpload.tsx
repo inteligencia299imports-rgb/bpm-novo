@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { FileUp, FileCheck, Loader2, Eye, Trash2, Download, Save } from 'lucide-react';
+import { FileUp, FileCheck, Loader2, Eye, Trash2, Download, Save, RefreshCw } from 'lucide-react';
 
 interface Props {
   label: string;
@@ -26,14 +26,54 @@ interface Props {
    * O arquivo só fica disponível para abrir depois disso.
    */
   deferPreview?: boolean;
+  /**
+   * Substituir com a trava pós-aquisição (`bloquearRemocao`): no lugar do
+   * "Remover", o diálogo oferece "Substituir". O arquivo novo vai pra um
+   * caminho próprio e só vira o anexo se `onSubstituir` (validação) devolver
+   * true — senão é apagado e o anexo atual continua intacto. Ignorado quando
+   * `readOnly`.
+   */
+  onSubstituir?: (url: string) => Promise<boolean>;
 }
 
-const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUploaded, onRemoved, className, readOnly, bloquearRemocao, deferPreview }) => {
-  // Sem botão "Remover" (logo, sem substituir) quando em somente leitura ou trava pós-NF.
+const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUploaded, onRemoved, className, readOnly, bloquearRemocao, deferPreview, onSubstituir }) => {
+  // Sem botão "Remover" quando em somente leitura ou trava pós-NF.
   const semRemover = readOnly || bloquearRemocao;
+  // Com a trava, só a substituição validada (onSubstituir) troca o arquivo.
+  const podeSubstituir = !readOnly && !!bloquearRemocao && !!onSubstituir;
   const [uploading, setUploading] = useState(false);
+  const [substituindo, setSubstituindo] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const substituirRef = useRef<HTMLInputElement>(null);
+
+  const handleSubstituir = async (file: File) => {
+    if (!onSubstituir) return;
+    setSubstituindo(true);
+    const ext = file.name.split('.').pop() || 'jpg';
+    // Caminho novo (não sobrescreve o atual): se a validação recusar, o
+    // anexo antigo continua lá.
+    const path = `${bucketPath}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('moto-fotos').upload(path, file, { upsert: true, contentType: file.type });
+    if (error) {
+      toast.error(`Erro ao enviar ${label}`);
+      setSubstituindo(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from('moto-fotos').getPublicUrl(path);
+    const newUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+    let ok = false;
+    try { ok = await onSubstituir(newUrl); } catch { ok = false; }
+    if (ok) {
+      // Apaga o arquivo antigo (best effort) — o novo já é o anexo.
+      const antigo = currentUrl?.split('?')[0].split('/moto-fotos/')[1];
+      if (antigo && antigo !== path) await supabase.storage.from('moto-fotos').remove([decodeURIComponent(antigo)]);
+      setDialogOpen(false);
+    } else {
+      await supabase.storage.from('moto-fotos').remove([path]);
+    }
+    setSubstituindo(false);
+  };
 
   const handleFile = async (file: File) => {
     setUploading(true);
@@ -95,6 +135,17 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
           const f = e.target.files?.[0];
           if (f) handleFile(f);
           if (inputRef.current) inputRef.current.value = '';
+        }}
+      />
+      <input
+        ref={substituirRef}
+        type="file"
+        accept="image/*,.pdf"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleSubstituir(f);
+          if (substituirRef.current) substituirRef.current.value = '';
         }}
       />
       <Button
@@ -160,7 +211,7 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
               </div>
 
               {/* Actions */}
-              <div className={cn('grid gap-2', semRemover ? 'grid-cols-2' : 'grid-cols-3')}>
+              <div className={cn('grid gap-2', semRemover && !podeSubstituir ? 'grid-cols-2' : 'grid-cols-3')}>
                 <Button
                   size="sm"
                   variant="outline"
@@ -194,13 +245,28 @@ const DocumentUpload: React.FC<Props> = ({ label, currentUrl, bucketPath, onUplo
                     <Eye className="h-4 w-4" /> Abrir
                   </Button>
                 ) : semRemover ? (
-                  <Button
-                    size="sm"
-                    className="gap-1.5 w-full"
-                    onClick={() => setDialogOpen(false)}
-                  >
-                    <Save className="h-4 w-4" /> Salvar
-                  </Button>
+                  <>
+                    {podeSubstituir && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 w-full"
+                        disabled={substituindo}
+                        onClick={() => substituirRef.current?.click()}
+                      >
+                        {substituindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                        {substituindo ? 'Conferindo…' : 'Substituir'}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      className="gap-1.5 w-full"
+                      disabled={substituindo}
+                      onClick={() => setDialogOpen(false)}
+                    >
+                      <Save className="h-4 w-4" /> Salvar
+                    </Button>
+                  </>
                 ) : (
                   <>
                     <Button

@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import { processarCnhAnexada, upsertCnhDoc, docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket } from '@/lib/cnhAnexo';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
-import { conferirDocVeiculo, removerDocDoStorage } from '@/lib/docVeiculoAnexo';
+import { conferirDocVeiculo, removerDocDoStorage, substituirAtpv } from '@/lib/docVeiculoAnexo';
 import { fetchEstoqueUnificado, type EstoqueFonte } from '@/lib/estoqueMoto';
 import { MARCA_MODELO_SELECT, flattenMarcaModeloList } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
@@ -1333,6 +1333,13 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       />
                       <DocumentUpload
                         label="ATPV"
+                        // Moto adquirida (anexo travado): só "Substituir", conferido pela IA.
+                        onSubstituir={async (url) => {
+                          if (!moto.id) return false;
+                          const ok = await substituirAtpv(moto.id, url);
+                          if (ok) setAtpvUrls(prev => ({ ...prev, [moto.id]: url }));
+                          return ok;
+                        }}
                         className="flex-1"
                         currentUrl={atpvUrls[moto.id] || null}
                         bucketPath={`docs/${moto.id}/atpv`}

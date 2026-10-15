@@ -34,7 +34,7 @@ import ChassiRenavamFields from '@/components/shared/ChassiRenavamFields';
 import PlacaInput from '@/components/shared/PlacaInput';
 import { processarCnhAnexada, upsertCnhDoc, docIdentificacaoLabel, docIdentificacaoTipo, docIdentificacaoBucket } from '@/lib/cnhAnexo';
 import { removerCrlvDoStorage } from '@/lib/crlvAnexo';
-import { conferirDocVeiculo, removerDocDoStorage } from '@/lib/docVeiculoAnexo';
+import { conferirDocVeiculo, removerDocDoStorage, substituirAtpv } from '@/lib/docVeiculoAnexo';
 import { normalizeChassi, normalizeRenavam, normalizePlaca, validateChassi, validateRenavam } from '@/lib/veiculoValidators';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { useMarcasModelos } from '@/hooks/useMarcasModelos';
@@ -1566,6 +1566,13 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 />
                 <DocumentUpload
                   label="ATPV"
+                  // Moto adquirida (anexo travado): só "Substituir", conferido pela IA.
+                  onSubstituir={async (url) => {
+                    if (!moto?.id) return false;
+                    const ok = await substituirAtpv(moto?.id, url);
+                    if (ok) setAtpvUrl(url);
+                    return ok;
+                  }}
                   className="flex-1"
                   bloquearRemocao={docRemocaoTravada}
                   currentUrl={atpvUrl}

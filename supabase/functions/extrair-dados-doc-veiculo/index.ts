@@ -1,7 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Confere se um ATPV-e ou uma Procuração anexados pertencem à moto da avaliação.
-// Não grava campos — só valida (OCR + comparação de placa/chassi/RENAVAM).
+// Confere se um ATPV-e ou uma Procuração anexados pertencem à moto da avaliação
+// (OCR + comparação de placa/chassi/RENAVAM).
+// ATPV-e conferido (match=true) também ATUALIZA o nº do CRV (12 dígitos) e o
+// código de segurança do CRV (11 dígitos) da avaliação — dados exigidos na
+// entrada do RENAVE; mesma regra do extrair-dados-crlv com match forte
+// (sobrescreve o cadastro). Pedido do usuário, 2026-10-15 (substituir o ATPV
+// de moto já adquirida). Procuração continua só validando.
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 const ANTHROPIC_MODEL = Deno.env.get('ANTHROPIC_MODEL_EXTRACAO') || 'claude-sonnet-5';
 
@@ -31,6 +36,10 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 const soAlfaNum = (v: string | null | undefined) => (v || '').toUpperCase().replace(/[^A-Z0-9]/g, '') || null;
 const soDigitos = (v: string | null | undefined) => (v || '').replace(/\D/g, '') || null;
 const limpaTexto = (v: string | null | undefined) => ((v || '').trim() || null);
+// Nº do CRV: 12 dígitos; código de segurança do CRV/CLA: 11 dígitos (mesmas
+// regras do extrair-dados-crlv) — fora disso, descarta (nunca grava chute).
+const soNumeroCrv = (v: string | null | undefined) => { const d = (v || '').replace(/\D/g, ''); return d.length === 12 ? d : null; };
+const soCodigoSegurancaCrv = (v: string | null | undefined) => { const d = (v || '').replace(/\D/g, ''); return d.length === 11 ? d : null; };
 
 type Tipo = 'atpv' | 'procuracao';
 const NOME_DOC: Record<Tipo, string> = {
@@ -47,6 +56,8 @@ interface Extracao {
   menciona_veiculo: boolean;
   confere_com_moto: boolean | null;
   leitura: string | null;
+  numero_crv: string | null;
+  codigo_seguranca_crv: string | null;
 }
 
 async function extrairViaClaude(fileBase64: string, mediaType: string, apiKey: string, tipo: Tipo, moto: {
@@ -95,10 +106,12 @@ async function extrairViaClaude(fileBase64: string, mediaType: string, apiKey: s
             placa: { type: 'string', description: 'Placa do veículo no documento (7 caracteres). "" se não houver/ilegível — nunca invente.' },
             chassi: { type: 'string', description: 'Chassi do veículo no documento (17 caracteres alfanuméricos). "" se não houver/ilegível.' },
             renavam: { type: 'string', description: 'RENAVAM do veículo no documento. "" se não houver/ilegível.' },
+            numero_crv: { type: 'string', description: 'Só no ATPV-e: "NÚMERO DO CRV" (12 dígitos). É DIFERENTE do código de segurança. "" se não houver/ilegível ou se for procuração — nunca invente.' },
+            codigo_seguranca_crv: { type: 'string', description: 'Só no ATPV-e: "CÓDIGO DE SEGURANÇA DO CRV" / "CÓDIGO DE SEGURANÇA DO CLA" (11 dígitos). DIFERENTE do número do CRV (12 dígitos). "" se não houver/ilegível ou se for procuração — nunca invente.' },
             menciona_veiculo: { type: 'boolean', description: 'true se o documento menciona um veículo específico (com placa/chassi/renavam/marca/modelo); false se é genérico.' },
             confere_com_moto: { type: 'boolean', description: 'true/false/null conforme a regra passada no texto.' },
           },
-          required: ['leitura', 'eh_documento_esperado', 'tipo_documento', 'placa', 'chassi', 'renavam', 'menciona_veiculo', 'confere_com_moto'],
+          required: ['leitura', 'eh_documento_esperado', 'tipo_documento', 'placa', 'chassi', 'renavam', 'numero_crv', 'codigo_seguranca_crv', 'menciona_veiculo', 'confere_com_moto'],
         },
       }],
       tool_choice: { type: 'tool', name: 'registrar_conferencia' },
@@ -133,6 +146,8 @@ async function extrairViaClaude(fileBase64: string, mediaType: string, apiKey: s
     menciona_veiculo: input.menciona_veiculo === true,
     confere_com_moto: temReferencia ? (input.confere_com_moto === true ? true : input.confere_com_moto === false ? false : null) : null,
     leitura: limpaTexto(input.leitura as string),
+    numero_crv: tipo === 'atpv' ? soNumeroCrv(input.numero_crv as string) : null,
+    codigo_seguranca_crv: tipo === 'atpv' ? soCodigoSegurancaCrv(input.codigo_seguranca_crv as string) : null,
   };
 }
 
@@ -167,7 +182,7 @@ Deno.serve(async (req) => {
   const [roleRes, acessoRes] = await Promise.all([
     supabaseAdmin.from('user_roles').select('app_role').eq('user_id', caller.id).eq('projeto_id', BPM_PROJETO_ID).eq('ativo', true).maybeSingle(),
     supabaseAdmin.from('avaliacoes')
-      .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, chassi, renavam, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(vendedor_id, loja_id)')
+      .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, chassi, renavam, numero_crv, codigo_seguranca_crv, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(vendedor_id, loja_id)')
       .eq('id', avaliacao_id).maybeSingle(),
   ]);
 
@@ -234,7 +249,19 @@ Deno.serve(async (req) => {
       else if (match === null) motivo = `Não foi possível confirmar que ${tipo === 'atpv' ? 'o ATPV-e' : 'a procuração'} é desta moto — confira manualmente.`;
     }
 
-    return jsonResponse({ extraido: true, match, motivo, lido: ex }, 200);
+    // ATPV-e da mesma moto (match forte): atualiza nº/código de segurança do CRV.
+    const atualizados: Record<string, string> = {};
+    if (tipo === 'atpv' && match === true) {
+      if (ex.numero_crv && ex.numero_crv !== soDigitos(acesso.numero_crv)) atualizados.numero_crv = ex.numero_crv;
+      if (ex.codigo_seguranca_crv && ex.codigo_seguranca_crv !== soDigitos(acesso.codigo_seguranca_crv)) atualizados.codigo_seguranca_crv = ex.codigo_seguranca_crv;
+      if (Object.keys(atualizados).length) {
+        const { error: eUpd } = await supabaseAdmin.from('avaliacoes').update(atualizados).eq('id', avaliacao_id);
+        if (eUpd) { console.error('extrair-dados-doc-veiculo update', eUpd.message); for (const k of Object.keys(atualizados)) delete atualizados[k]; }
+      }
+      console.log('extrair-dados-doc-veiculo(atpv) atualizados:', JSON.stringify(atualizados));
+    }
+
+    return jsonResponse({ extraido: true, match, motivo, lido: ex, atualizados }, 200);
   } catch (err) {
     console.error('extrair-dados-doc-veiculo error', err);
     return jsonResponse({ extraido: false, match: null, motivo: err instanceof Error ? err.message : String(err) }, 200);
