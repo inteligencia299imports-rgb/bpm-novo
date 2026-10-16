@@ -427,10 +427,19 @@ const ContratoDialog: React.FC<Props> = ({
       setEditingId(null);
       nfe.carregar();
       const [{ data: contrato }, { data: histGerado }, { data: freshAtendimento }, { data: freshEstoque }, { data: formasOpts }, { data: instOpts }, { data: agregadosOpts }] = await Promise.all([
+        // Contrato de VENDA do atendimento: ignora o contrato de COMPRA (ipva_tipo
+        // 'COMPRA', ex.: moto da troca) e pega o mais recente — mesma regra das
+        // edges (gerar-compromissos-proposta / emitir-nfe-compra). Antes era um
+        // .maybeSingle() puro: com 2+ contratos no atendimento ele devolvia null,
+        // a tela abria "sem contrato" e cada Gerar INSERIA um contrato novo
+        // (achado real 2026-10-16, Marcelo Liscio Pedrotti: 3 duplicados).
         supabase
           .from('contratos')
           .select('*')
           .eq('atendimento_id', atendimento.id)
+          .or('ipva_tipo.is.null,ipva_tipo.neq.COMPRA')
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle(),
         supabase
           .from('status_history')
