@@ -10,7 +10,7 @@ export const ESTOQUE_MOTO_SELECT =
   '*, avaliacao:avaliacao_id(id, marca:marca_id(nome), modelo:modelo_id(nome), categoria, cor, cilindrada, placa, ' +
   'ano_fabricacao, ano_modelo, km, quanto_pede, valor_fechamento, valor_nf_entrada, classificacao, tipo_aquisicao, chassi, renavam, ' +
   'tem_manual, tem_chave_reserva, manutencao_vencida, tem_acessorios, acessorios_descricao, crlv_url, resultado_consulta, ' +
-  'pos_compra_status, observacoes, atendimento_id, atendimento:atendimento_id(loja_id)), ' +
+  'pos_compra_status, observacoes, situacao, atendimento_id, atendimento:atendimento_id(loja_id)), ' +
   'atendimento_venda:atendimento_venda_id(vendedor_id)';
 
 /** Select de estoque_motos_novas (0km). marca/modelo sao FK (marca_id/modelo_id). */
@@ -91,6 +91,8 @@ export function mapEstoqueMoto(row: any, lojaMap?: Map<string, LojaInfo>) {
     crlv_url: av.crlv_url ?? null,
     resultado_consulta: av.resultado_consulta ?? null,
     pos_compra_status: av.pos_compra_status ?? null,
+    // Situação da avaliação — 'oficina' = moto com O.S. aberta no ofc.
+    situacao_avaliacao: av.situacao ?? null,
     venda_vendedor_id: row?.atendimento_venda?.vendedor_id ?? null,
     loja: li?.loja ?? null,
     empresa: li?.empresa ?? null,
@@ -155,6 +157,8 @@ export function mapEstoqueMotoNova(row: any, lojaMap?: Map<string, LojaInfo>) {
 export interface FetchEstoqueOpts {
   /** Filtra os dois estoques por status (ex.: 'disponivel'). */
   status?: string;
+  /** Filtra por qualquer um dos status (ex.: ['disponivel', 'servico']). */
+  statuses?: string[];
   /** Busca apenas ids especificos (com a fonte de cada um). */
   ids?: Array<{ id: string; tipo: EstoqueFonte }>;
 }
@@ -172,6 +176,7 @@ export async function fetchEstoqueUnificado(opts: FetchEstoqueOpts = {}) {
     let q = supabase.from('estoque_motos').select(ESTOQUE_MOTO_SELECT).order('created_at', { ascending: false });
     if (seminovaIds && seminovaIds.length) q = q.in('id', seminovaIds);
     if (opts.status) q = q.eq('status', opts.status);
+    if (opts.statuses?.length) q = q.in('status', opts.statuses);
     return q;
   };
   const q2 = () => {
@@ -179,6 +184,7 @@ export async function fetchEstoqueUnificado(opts: FetchEstoqueOpts = {}) {
     let q = supabase.from('estoque_motos_novas').select(ESTOQUE_NOVA_SELECT).order('created_at', { ascending: false });
     if (novaIds && novaIds.length) q = q.in('id', novaIds);
     if (opts.status) q = q.eq('status', opts.status);
+    if (opts.statuses?.length) q = q.in('status', opts.statuses);
     return q;
   };
 
