@@ -234,7 +234,13 @@ const CFG: Record<Operacao, OperacaoConfig> = {
   transferencia: {
     refPrefix: 'transferencia',
     naturezaDescricao: 'TRANSFERÊNCIA ENTRE EMPRESAS',
-    operacaoFiscal: 'outra_saida',
+    // FAG -> MMATOS: empresas de raízes de CNPJ diferentes -> família
+    // "transferencia_empresas" do catálogo (5949 interna / 6912 interestadual),
+    // a mesma da transferência de estoque entre empresas diferentes. Era
+    // 'outra_saida', que deixou de existir no catálogo cfops (o 5949 foi pra
+    // transferencia_empresas) — desde 2026-09-24 a NF dava "Operação
+    // outra_saida sem CFOPs no catálogo" (achado real 2026-10-16, BVL8H24).
+    operacaoFiscal: 'transferencia_empresas',
     statusEntity: 'pos_compra',
     statusHist: 'nfe_transferencia_emitida',
     avStatusField: null,
@@ -3004,8 +3010,11 @@ Deno.serve(async (req) => {
   // de SAÍDA (5152/6152) cadastradas juntas pra mesma empresa — sem filtrar
   // por tipo aqui, escolherRegra poderia casar com o lado errado (o CFOP
   // 2152/6152 "casam" com a mesma UF de destino independente do tipo).
-  if (ehTransferenciaEstoque || ehTransferenciaEstoque0km) {
-    const tipoNatureza = (tipo === 'transferencia_saida' || tipo === 'transferencia_saida_0km') ? 'saida' : 'entrada';
+  // Transferência FAG -> MMATOS (tipo 'transferencia') usa a família
+  // transferencia_empresas, que também mistura entrada (1949/2912) e saída
+  // (5949/6912) — mesmo filtro, sempre saída.
+  if (ehTransferenciaEstoque || ehTransferenciaEstoque0km || tipo === 'transferencia') {
+    const tipoNatureza = (tipo === 'transferencia' || tipo === 'transferencia_saida' || tipo === 'transferencia_saida_0km') ? 'saida' : 'entrada';
     operacaoCarregada = { ...operacaoCarregada, naturezas: operacaoCarregada.naturezas.filter((n) => n.tipo === tipoNatureza) };
   }
   // UF fiscal: a do cliente; na retirada presencial, a da empresa (operação interna).
