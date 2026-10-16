@@ -23,6 +23,8 @@ interface EstoqueOption {
   is0km: boolean;
   isTestRide: boolean;
   empresaId: string | null;
+  /** Moto em oficina: estoque "Serviço" (voltou pra preparação) ou O.S. aberta no ofc. */
+  emOficina: boolean;
 }
 
 interface Props {
@@ -82,9 +84,15 @@ const MotoCompraSection: React.FC<Props> = ({
           is0km: m.fonte === '0km',
           isTestRide: m.tipo_unidade === 'test_ride',
           empresaId: m.empresa_id ?? null,
+          emOficina: m.status === 'servico' || m.situacao_avaliacao === 'oficina',
         });
 
-        const disponiveis = await fetchEstoqueUnificado({ status: 'disponivel' });
+        // Disponíveis + em "Serviço" (moto do estoque que voltou pra
+        // preparação/oficina): pode ser escolhida e marcada como sinal/vendida
+        // mesmo na oficina — pedido do usuário, 2026-10-16. A conclusão da
+        // preparação só volta pra "disponível" se ainda estiver em "Serviço"
+        // (PreparacaoProcessoDialog), então não desfaz o sinal/venda.
+        const disponiveis = await fetchEstoqueUnificado({ statuses: ['disponivel', 'servico'] });
         // Loja Ducati só oferece estoque de 0km; loja 299 só seminovas. Só
         // mostra moto da MESMA empresa (CNPJ) do atendimento — reservar/
         // vender moto de outra empresa gera risco de a NF de venda sair com
@@ -137,7 +145,8 @@ const MotoCompraSection: React.FC<Props> = ({
     } else {
       parts.push(`Nº ${item.id.slice(0, 6)}`);
     }
-    return parts.join(' - ').toUpperCase();
+    const label = parts.join(' - ').toUpperCase();
+    return item.emOficina ? `${label} (EM OFICINA)` : label;
   };
 
   const sortedEstoque = useMemo(() =>
