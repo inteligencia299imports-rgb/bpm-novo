@@ -1506,7 +1506,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         const _estTabela = (_miEst as any)?.estoque_tipo === '0km' ? 'estoque_motos_novas' : 'estoque_motos';
                         const [{ data: freshEstoque }, { data: freshContrato }] = await Promise.all([
                           supabase.from(_estTabela).select('valor_sinal, valor_venda').eq('atendimento_venda_id', atendimento.id).maybeSingle(),
-                          supabase.from('contratos').select('valor_fechamento').eq('atendimento_id', atendimento.id).maybeSingle(),
+                          // Contrato de venda (ignora o de COMPRA da troca; mais recente).
+                          supabase.from('contratos').select('valor_fechamento').eq('atendimento_id', atendimento.id)
+                            .or('ipva_tipo.is.null,ipva_tipo.neq.COMPRA').order('created_at', { ascending: false }).limit(1).maybeSingle(),
                         ]);
                         const freshSinal = freshEstoque?.valor_sinal ?? atendimento.valor_sinal;
                         const freshVenda = freshEstoque?.valor_venda ?? atendimento.valor_venda;
