@@ -2,8 +2,31 @@ import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 
 import { cn } from "@/lib/utils";
+import { PopoverCloseContext } from "@/components/ui/popover-close-context";
 
-const Popover = PopoverPrimitive.Root;
+/**
+ * Root do Radix + estado de aberto próprio quando ninguém controla (`open`
+ * ausente), pra que filhos (ex.: Calendar) consigam fechar o popover via
+ * PopoverCloseContext — inclusive nos popovers não controlados.
+ */
+const Popover = ({ open: openProp, defaultOpen, onOpenChange, ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) => {
+  const [openInterno, setOpenInterno] = React.useState(defaultOpen ?? false);
+  const controlado = openProp !== undefined;
+  const open = controlado ? openProp : openInterno;
+  const setOpen = React.useCallback(
+    (v: boolean) => {
+      if (!controlado) setOpenInterno(v);
+      onOpenChange?.(v);
+    },
+    [controlado, onOpenChange],
+  );
+  const fechar = React.useCallback(() => setOpen(false), [setOpen]);
+  return (
+    <PopoverCloseContext.Provider value={fechar}>
+      <PopoverPrimitive.Root open={open} onOpenChange={setOpen} {...props} />
+    </PopoverCloseContext.Provider>
+  );
+};
 
 const PopoverTrigger = PopoverPrimitive.Trigger;
 

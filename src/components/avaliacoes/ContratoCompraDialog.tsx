@@ -1055,9 +1055,6 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar mode="single" selected={dataContrato} onSelect={setDataContrato} disabled={{ after: new Date() }} initialFocus className="p-3 pointer-events-auto" />
-                    <div className="border-t p-2 flex justify-end">
-                      <Button size="sm" disabled={!dataContrato} onClick={() => setCalOpen(false)}>OK</Button>
-                    </div>
                   </PopoverContent>
                 </Popover>
               </div>

@@ -446,9 +446,8 @@ const FormasPagamentoCard: React.FC<Props> = ({ formas, setFormas, contratoId, v
                   className="p-3 pointer-events-auto"
                 />
                 {novaDataPagamento && (
-                  <div className="border-t p-2 flex justify-between">
+                  <div className="border-t p-2 flex justify-start">
                     <Button size="sm" variant="ghost" onClick={() => { setNovaDataPagamento(''); setPagCalOpen(false); }}>Limpar</Button>
-                    <Button size="sm" onClick={() => setPagCalOpen(false)}>OK</Button>
                   </div>
                 )}
               </PopoverContent>
