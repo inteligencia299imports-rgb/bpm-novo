@@ -31,7 +31,9 @@ const VALID_TABS = new Set([
 const Dashboard = () => {
   const { role } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const getDefaultTab = (r: string | null) => 'showroom';
+  // Tela inicial do BPM: Relatórios (pedido do usuário, 2026-10-18). Links com
+  // ?tab=... continuam abrindo direto na aba indicada.
+  const getDefaultTab = (r: string | null) => 'relatorios';
 
   const urlTab = searchParams.get('tab');
   const urlTabValida = !!urlTab && VALID_TABS.has(urlTab);
