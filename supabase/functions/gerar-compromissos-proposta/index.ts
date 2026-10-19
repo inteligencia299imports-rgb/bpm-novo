@@ -33,6 +33,12 @@ const PLANOS_REPASSE = new Set([PLANO_COMPRA_REPASSE, PLANO_VENDA_REPASSE]);
 // é devolução de dinheiro). Centro de custo é o mesmo de venda usada/nova.
 const PLANO_TROCO_USADA = '31b50885-ffba-469a-8454-95eab010ca0f';
 const PLANO_TROCO_NOVA = '1299f5d9-d3b4-4fae-a601-4fa9c3e6bb58';
+// Trade-in: bônus da montadora na troca por moto 0km (avaliacoes.trade_in).
+// Abate o repasse da moto que entra (contas a pagar) e vira um contas a
+// RECEBER da montadora — plano 1.8.04 Bônus Trade-in, CC motos novas. Pedido
+// do usuário, 2026-10-19. Plano de contas é único (vale pra FAG/POA/FLN).
+const PLANO_BONUS_TRADE_IN = '09b79e64-3e9f-463b-a8c1-e7992ea4694e';
+const FORNECEDOR_DUCATI = 'e12914e5-59e2-4b5d-8718-5fa87c6021d3'; // DUCATI DO BRASIL IND. E COM. DE MOTOCICLETAS LTDA
 const FORMA_PAGAMENTO_ID = '63e1fff5-14d7-476c-b2da-e1ea173279a1'; // Pix
 const FORMA_PAGAMENTO_BOLETO_ID = '7d0f2125-fedf-4a27-8ab0-be21fecaf642'; // Boleto
 // Observação das parcelas de contas a pagar de compra/troca (identifica o que cada uma paga).
@@ -85,7 +91,7 @@ type Parcela = {
   observacoes?: string;
 };
 
-type Origem = 'venda' | 'compra' | 'troca' | 'consignante' | 'troco';
+type Origem = 'venda' | 'compra' | 'troca' | 'consignante' | 'troco' | 'trade_in';
 
 async function gerarNumero(admin: any, prefix: string): Promise<string | null> {
   const { data, error } = await admin.rpc('gerar_numero_compromisso', { _prefix: prefix });
@@ -249,7 +255,7 @@ async function construirRepasse(
 ): Promise<Record<string, unknown>> {
   const { data: av } = await admin
     .from('avaliacoes')
-    .select('id, atendimento_id, previsao_custos_cliente, valor_quitacao, valor_fechamento, placa, tipo_aquisicao, marca:marca_id(nome), modelo:modelo_id(nome)')
+    .select('id, atendimento_id, previsao_custos_cliente, valor_quitacao, valor_fechamento, trade_in, placa, tipo_aquisicao, marca:marca_id(nome), modelo:modelo_id(nome)')
     .eq('id', avaliacaoId)
     .maybeSingle();
   if (!av) return { origem, status: 'avaliacao_nao_encontrada' };
@@ -277,7 +283,10 @@ async function construirRepasse(
   // depois de o contrato já ter sido gerado uma vez).
   const fechamento = nz(av.valor_fechamento ?? contratoCompra?.valor_fechamento);
   const quitacao = nz(av.valor_quitacao ?? contratoCompra?.valor_quitacao);
-  const repasse = Math.max(fechamento - quitacao - abatimentos, 0);
+  // Troca por 0km: o bônus trade-in (pago pela montadora) abate o que a loja
+  // paga pela moto — só no contas a pagar; a NF-e de compra segue o fechamento.
+  const tradeIn = origem === 'troca' ? nz(av.trade_in) : 0;
+  const repasse = Math.max(fechamento - quitacao - abatimentos - tradeIn, 0);
 
   const venc = vencimentoOverride || addDias(contratoCompra?.data_sinal, DIAS_VENCIMENTO);
 
@@ -350,6 +359,71 @@ async function construirRepasse(
     observacoes: obsMoto(nomeCat(av.marca), nomeCat(av.modelo), av.placa),
     numeroPrefix: 'CPR-D',
     parcelas,
+    callerId,
+  });
+}
+
+/**
+ * Bônus trade-in (troca por moto 0km): a RECEBER da montadora, 1 parcela.
+ * Sem bônus (ou venda que não é 0km) -> remove o compromisso que tiver sobrado
+ * de uma geração anterior, desde que nada tenha sido recebido.
+ */
+async function construirTradeIn(
+  admin: any,
+  avaliacaoId: string,
+  empresaId: string,
+  eh0km: boolean,
+  venc: string,
+  callerId: string,
+): Promise<Record<string, unknown>> {
+  const { data: av } = await admin
+    .from('avaliacoes')
+    .select('trade_in, placa, marca:marca_id(nome), modelo:modelo_id(nome)')
+    .eq('id', avaliacaoId)
+    .maybeSingle();
+  const valor = eh0km ? Math.round(nz(av?.trade_in) * 100) / 100 : 0;
+
+  if (valor <= 0.005) {
+    const { data: exist } = await admin
+      .from('compromissos')
+      .select('id')
+      .eq('avaliacao_id', avaliacaoId)
+      .eq('origem', 'trade_in')
+      .is('deleted_at', null)
+      .limit(1)
+      .maybeSingle();
+    if (!exist?.id) return { origem: 'trade_in', status: 'sem_valor' };
+    const { data: pagas } = await admin
+      .from('compromissos_parcelas')
+      .select('id')
+      .eq('compromisso_id', exist.id)
+      .eq('status_pagamento', 'pago')
+      .limit(1);
+    if (((pagas as any[]) || []).length > 0) return { origem: 'trade_in', status: 'mantido_recebido', compromisso_id: exist.id };
+    await admin.from('compromissos').update({ deleted_at: new Date().toISOString(), updated_by: callerId }).eq('id', exist.id);
+    return { origem: 'trade_in', status: 'removido', compromisso_id: exist.id };
+  }
+
+  const placa = obsMoto(nomeCat(av?.marca), nomeCat(av?.modelo), av?.placa);
+  return upsertCompromisso(admin, {
+    origem: 'trade_in',
+    linkField: 'avaliacao_id',
+    linkId: avaliacaoId,
+    empresaId,
+    fornecedorId: FORNECEDOR_DUCATI,
+    natureza: 'receita',
+    planoContaId: PLANO_BONUS_TRADE_IN,
+    centroCustoId: CC_MOTOS_NOVAS,
+    observacoes: ['BÔNUS TRADE-IN', placa].filter(Boolean).join(' - '),
+    numeroPrefix: 'BTI-R',
+    parcelas: [{
+      numero_parcela: 1,
+      valor,
+      tipo: 'unico',
+      forma_pagamento_id: FORMA_PAGAMENTO_ID,
+      data_vencimento: venc,
+      observacoes: 'BÔNUS TRADE-IN',
+    }],
     callerId,
   });
 }
@@ -437,6 +511,11 @@ async function acaoVenda(admin: any, atendimentoId: string, callerId: string): P
     out.troca = [];
     for (const avRow of ((avs as any[]) || [])) {
       (out.troca as unknown[]).push(await construirRepasse(admin, avRow.id, 'troca', vencTroca, callerId, valorVenda));
+    }
+    // Troca por 0km com bônus trade-in: contas a RECEBER da montadora.
+    out.trade_in = [];
+    for (const avRow of ((avs as any[]) || [])) {
+      (out.trade_in as unknown[]).push(await construirTradeIn(admin, avRow.id, empresaId, eh0km, vencTroca, callerId));
     }
   }
 

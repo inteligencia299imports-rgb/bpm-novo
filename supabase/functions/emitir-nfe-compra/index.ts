@@ -1211,7 +1211,7 @@ async function registrarPosAutorizacao(
     // repasse = fechamento - quitação - custo do cliente (previsão da avaliação + custos de oficina do cliente).
     const { data: avFinRaw } = await admin
       .from('avaliacoes')
-      .select('previsao_custos_cliente, valor_quitacao, valor_fechamento, atendimento_id, marca:marca_id(nome), modelo:modelo_id(nome), placa')
+      .select('previsao_custos_cliente, valor_quitacao, valor_fechamento, trade_in, atendimento_id, marca:marca_id(nome), modelo:modelo_id(nome), placa')
       .eq('id', entityId)
       .maybeSingle();
     const avFin = avFinRaw
@@ -1239,7 +1239,11 @@ async function registrarPosAutorizacao(
     // atualizada depois de o contrato já ter sido gerado uma vez).
     const fechamento = Number(avFin?.valor_fechamento ?? contratoFin?.valor_fechamento ?? nfeRow.valor_total ?? 0);
     const quitacao = Number(avFin?.valor_quitacao ?? contratoFin?.valor_quitacao ?? 0);
-    const valorRepasse = Math.max(fechamento - quitacao - abatimentos, 0);
+    // Troca por 0km: o bônus trade-in (montadora) abate o repasse — só no contas
+    // a pagar; a NF-e de compra continua pelo fechamento (2026-10-19). O a receber
+    // do bônus nasce em gerar-compromissos-proposta (origem 'trade_in').
+    const tradeIn = ehTrocaCompromisso ? Number((avFin as any)?.trade_in ?? 0) : 0;
+    const valorRepasse = Math.max(fechamento - quitacao - abatimentos - tradeIn, 0);
 
     if (ehTrocaCompromisso) {
       // Troca (moto entra como parte de pagamento): quitação do financiamento
@@ -1466,7 +1470,7 @@ async function reconciliarTrocaAposNfVenda(admin: any, atendimentoId: string, va
 
   const { data: avs } = await admin
     .from('avaliacoes')
-    .select('id, valor_fechamento, valor_quitacao')
+    .select('id, valor_fechamento, valor_quitacao, trade_in')
     .eq('atendimento_id', atendimentoId);
   for (const av of ((avs || []) as any[])) {
     const { data: comp } = await admin
@@ -1484,7 +1488,7 @@ async function reconciliarTrocaAposNfVenda(admin: any, atendimentoId: string, va
 
     const fechamento = Number(av.valor_fechamento ?? 0);
     const quitacao = Number(av.valor_quitacao ?? 0);
-    const repasse = Math.max(fechamento - quitacao - await abatimentosCliente(admin, av.id), 0);
+    const repasse = Math.max(fechamento - quitacao - await abatimentosCliente(admin, av.id) - Number(av.trade_in ?? 0), 0);
     const sobra = Math.min(Math.max(fechamento - valorNfVenda, 0), repasse);
 
     const { data: parcelas } = await admin

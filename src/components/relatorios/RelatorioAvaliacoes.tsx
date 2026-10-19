@@ -353,8 +353,11 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
       .map((r) => {
         const modelo = [r.marca, r.modelo].filter(Boolean).join(' ') || '-';
         const assertividade = r.previsaoCusto > 0 ? r.custosRealizados / r.previsaoCusto : 0;
-        const margemPrevista = r.quantoVende - r.valorFechamento - r.valorBonus - r.previsaoCusto;
-        const margemExecutada = r.quantoVende - r.valorFechamento - r.valorBonus - r.custosRealizados;
+        // Trade-in (bônus da montadora na troca por 0km) ABATE o fechamento: o
+        // custo real da moto é fechamento − bônus (pedido do usuário, 2026-10-19;
+        // antes o bônus era somado ao custo).
+        const margemPrevista = r.quantoVende - (r.valorFechamento - r.valorBonus) - r.previsaoCusto;
+        const margemExecutada = r.quantoVende - (r.valorFechamento - r.valorBonus) - r.custosRealizados;
         return {
           id: r.id,
           cliente: r.nomeCliente || '-',

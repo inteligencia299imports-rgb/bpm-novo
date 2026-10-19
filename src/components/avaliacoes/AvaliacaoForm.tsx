@@ -48,7 +48,6 @@ import { toast } from 'sonner';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { isLojaDucati } from '@/lib/lojaUtils';
 
 interface Props {
   avaliacaoId: string;
@@ -381,6 +380,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [prevCustosCliente, setPrevCustosCliente] = useState('');
   const [valorQuitacao, setValorQuitacao] = useState('');
   const [valorTradeIn, setValorTradeIn] = useState('');
+  // Trade-in (bônus da montadora) só existe em TROCA por moto 0km: o cliente
+  // leva uma 0km do estoque (motos_interesse.estoque_tipo = '0km') — pedido do
+  // usuário, 2026-10-19 (antes dependia só de a loja ser Ducati).
+  const [trocaPor0km, setTrocaPor0km] = useState(false);
   const [classificacao, setClassificacao] = useState('');
   const [obsAvaliador, setObsAvaliador] = useState('');
   const [valorFechamentoEdit, setValorFechamentoEdit] = useState('');
@@ -502,6 +505,22 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   useEffect(() => {
     loadAvaliacao();
   }, [avaliacaoId]);
+
+  // Troca por 0km? (libera o campo Trade-in na avaliação)
+  useEffect(() => {
+    const atId = avaliacao?.atendimento?.id;
+    if (!atId || avaliacao?.atendimento?.interesse !== 'trocar') { setTrocaPor0km(false); return; }
+    let ativo = true;
+    // estoque_tipo ainda não está nos tipos gerados do Supabase.
+    (supabase as any)
+      .from('motos_interesse')
+      .select('id')
+      .eq('atendimento_id', atId)
+      .eq('estoque_tipo', '0km')
+      .limit(1)
+      .then(({ data }: { data: any[] | null }) => { if (ativo) setTrocaPor0km((data || []).length > 0); });
+    return () => { ativo = false; };
+  }, [avaliacao?.atendimento?.id, avaliacao?.atendimento?.interesse]);
 
   // Realtime: atualizar quando valor_fechamento ou outros campos mudarem externamente
   useEffect(() => {
@@ -1020,6 +1039,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
 
   const moto = avaliacao;
   const at = avaliacao?.atendimento;
+  const podeTradeIn = at?.interesse === 'trocar' && (trocaPor0km || (avaliacao as any)?.trade_in != null);
   const sit = SITUACOES_AVALIACAO.find(s => s.value === avaliacao?.situacao);
   const interesse = at?.interesse;
 
@@ -1717,7 +1737,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                         </div>
                       );
                     })()}
-                    {isLojaDucati(at?.loja) && interesse === 'trocar' && (avaliacao as any)?.trade_in != null && (
+                    {interesse === 'trocar' && (avaliacao as any)?.trade_in != null && (
                       <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
                         <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Trade-in</span>
                         <p className="text-base font-bold text-primary">{formatCurrency((avaliacao as any).trade_in)}</p>
@@ -1884,8 +1904,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             <CurrencyField label="Previsão Custos Loja" value={prevCustosLoja} onChange={handleCurrencyChange(setPrevCustosLoja)} />
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
             <CurrencyField label="Valor de Quitação" opcional value={valorQuitacao} onChange={handleCurrencyChange(setValorQuitacao)} disabled={nfeCompraEmitida} />
-            {isLojaDucati(avaliacao?.atendimento?.loja) && avaliacao?.atendimento?.interesse === 'trocar' && (
-              <CurrencyField label="Trade-in" value={valorTradeIn} onChange={handleCurrencyChange(setValorTradeIn)} />
+            {podeTradeIn && (
+              <CurrencyField label="Trade-in (bônus 0km)" opcional value={valorTradeIn} onChange={handleCurrencyChange(setValorTradeIn)} />
             )}
             {estoqueId && (
               <div className="space-y-1.5">
