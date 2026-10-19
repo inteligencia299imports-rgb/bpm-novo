@@ -400,8 +400,9 @@ export function montarCenario(e: EntradaCenario): Cenario {
 export const difalNoItem = (c: Cenario, cst: string | null | undefined) =>
   c.difal && !["40", "41", "50"].includes(String(cst ?? ""));
 
-// 6102 -> 6108 (venda interestadual a não contribuinte). Só existe na família interestadual.
-export const cfopDoCenario = (c: Cenario, cfop: string) => (c.indIEDest === 9 && !c.interna && cfop === "6102" ? "6108" : cfop);
+// CFOP da regra, sem troca 6102 -> 6108 pra não contribuinte: toda venda sai com 6102
+// (decisão do usuário, 2026-10-18; ver _shared/grupos-tributos.ts).
+export const cfopDoCenario = (_c: Cenario, cfop: string) => cfop;
 
 // Monta um item inteiro (o que a tela "Simulador fiscal" mostra): cenário + regra escolhida +
 // alíquotas da tabela.
