@@ -1028,12 +1028,6 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   })}
 
                   {/* Botão primário de conclusão quando pausado (Pendente/Oficina/Serviço Externo) */}
-                  {(osAberta || oficinaControladaPeloOfc) && (
-                    <p className="text-xs text-muted-foreground rounded-md border border-border/60 bg-muted/40 p-2.5 flex items-center gap-1.5">
-                      <Wrench className="h-3.5 w-3.5 shrink-0" />
-                      Moto com O.S.{osAberta ? ` ${osAberta}` : ''} aberta na Oficina — o status não pode ser alterado; volta para a preparação automaticamente quando a O.S. for finalizada.
-                    </p>
-                  )}
                   {!osAberta && !isEstoqueTracking && isPausedStatus && !oficinaControladaPeloOfc && (
                     <Button
                       variant="default"
