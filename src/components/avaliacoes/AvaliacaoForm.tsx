@@ -1716,13 +1716,20 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                       const margem = quantoVendeVal - fechamentoVal;
                       const margemPct = quantoVendeVal > 0 ? Math.round((margem / quantoVendeVal) * 1000) / 10 : 0;
                       const margemPositiva = margem >= 0;
+                      const tradeInVal = interesse === 'trocar' ? (avaliacao as any)?.trade_in : null;
                       return (
                         <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
-                          <div className="grid grid-cols-3 gap-4 text-center">
+                          <div className={`grid ${tradeInVal != null ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'} gap-4 text-center`}>
                             <div>
                               <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Quanto Vende</span>
                               <p className="text-base font-bold text-primary">{formatCurrency(quantoVendeVal)}</p>
                             </div>
+                            {tradeInVal != null && (
+                              <div>
+                                <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Trade-in</span>
+                                <p className="text-base font-bold text-primary">{formatCurrency(tradeInVal)}</p>
+                              </div>
+                            )}
                             <div>
                               <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Valor Fechamento</span>
                               <p className="text-base font-bold text-primary">{formatCurrency(fechamentoVal)}</p>
@@ -1737,12 +1744,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                         </div>
                       );
                     })()}
-                    {interesse === 'trocar' && (avaliacao as any)?.trade_in != null && (
-                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-                        <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Trade-in</span>
-                        <p className="text-base font-bold text-primary">{formatCurrency((avaliacao as any).trade_in)}</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               ) : (
@@ -1904,9 +1905,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             <CurrencyField label="Previsão Custos Loja" value={prevCustosLoja} onChange={handleCurrencyChange(setPrevCustosLoja)} />
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
             <CurrencyField label="Valor de Quitação" opcional value={valorQuitacao} onChange={handleCurrencyChange(setValorQuitacao)} disabled={nfeCompraEmitida} />
-            {podeTradeIn && (
-              <CurrencyField label="Trade-in (bônus 0km)" opcional value={valorTradeIn} onChange={handleCurrencyChange(setValorTradeIn)} />
-            )}
             {estoqueId && (
               <div className="space-y-1.5">
                 <Label>Preço Ação</Label>
@@ -1937,9 +1935,21 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 </div>
               </div>
             )}
-            {(avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && (
-              <CurrencyField label="Valor de Fechamento (moto avaliada)" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} disabled={valorFechamentoTravado} />
-            )}
+            {(() => {
+              const mostraFechamento = avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque';
+              if (!podeTradeIn && !mostraFechamento) return null;
+              // Trade-in fica na mesma linha do Valor de Fechamento, à esquerda.
+              return (
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {podeTradeIn && (
+                    <CurrencyField label="Trade-in (bônus 0km)" opcional value={valorTradeIn} onChange={handleCurrencyChange(setValorTradeIn)} />
+                  )}
+                  {mostraFechamento && (
+                    <CurrencyField label="Valor de Fechamento (moto avaliada)" value={valorFechamentoEdit} onChange={handleCurrencyChange(setValorFechamentoEdit)} disabled={valorFechamentoTravado} />
+                  )}
+                </div>
+              );
+            })()}
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Classificação da Moto <span className="text-destructive">*</span></Label>
               <div className="flex gap-2">
