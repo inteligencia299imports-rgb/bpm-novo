@@ -856,9 +856,20 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     rows={3}
                   />
                 </div>
+                {osAberta && (
+                  <p className="text-xs text-muted-foreground rounded-md border border-border/60 bg-muted/40 p-2.5 flex items-center gap-1.5">
+                    <Wrench className="h-3.5 w-3.5 shrink-0" />
+                    Moto com O.S. {osAberta} aberta na Oficina — não pode ser reenviada para preparação; volta automaticamente quando a O.S. for finalizada.
+                  </p>
+                )}
+                {!osAberta && (
                 <Button
                   disabled={saving}
                   onClick={async () => {
+                    if (osAberta) {
+                      toast.error(`Moto com O.S. ${osAberta} aberta na Oficina — não pode ser reenviada para preparação.`);
+                      return;
+                    }
                     if (!reenviarLoja) {
                       toast.error('Selecione o pátio');
                       return;
@@ -908,6 +919,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
                   Confirmar Reenvio
                 </Button>
+                )}
                 <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-300 rounded-lg dark:bg-yellow-900/20 dark:border-yellow-600/40">
                   <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 shrink-0 mt-0.5" />
                   <p className="text-sm text-yellow-800 dark:text-yellow-400">

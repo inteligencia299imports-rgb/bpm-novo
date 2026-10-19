@@ -354,6 +354,14 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const handleOpenReenviar = async (item: EstoqueItem) => {
     setReenviarLoading(true);
     try {
+      // Moto com O.S. aberta no ofc: a preparação já está em "oficina" e volta
+      // sozinha quando a O.S. for finalizada — reenviar deixaria "em aberto"
+      // (achado real 2026-10-19, RPT8E74 com a O.S. #0212). Sem O.S., segue igual.
+      const { data: osAberta } = await (supabase as any).rpc('os_aberta_da_moto', { _avaliacao_id: item.avaliacao_id });
+      if (osAberta) {
+        toast.error(`Moto com O.S. ${osAberta} aberta na Oficina — não pode ser reenviada para preparação. Ela volta automaticamente quando a O.S. for finalizada.`);
+        return;
+      }
       const { data: avaliacaoRaw } = await supabase
         .from('avaliacoes')
         .select(`*, ${MARCA_MODELO_SELECT}, atendimento:atendimento_id(loja, cliente:clientes_fornecedores(nome_razao_social))`)
