@@ -480,6 +480,7 @@ const ConsignacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                           mode="single"
                           selected={e.data_conclusao ? new Date(e.data_conclusao) : undefined}
                           onSelect={(d) => setDate(e.etapa, d)}
+                          closeOnSelect={false}
                           locale={ptBR}
                           initialFocus
                           className="p-3 pointer-events-auto"

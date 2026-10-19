@@ -1,13 +1,32 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
+import { DayPicker, type SelectSingleEventHandler } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+import { usePopoverClose } from "@/components/ui/popover-close-context";
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+  /** Dentro de um Popover, fecha ao clicar no dia (padrão). false = mantém
+   * aberto, ex.: seletor de data + hora, em que ainda falta escolher a hora. */
+  closeOnSelect?: boolean;
+};
+
+function Calendar({ className, classNames, showOutsideDays = true, closeOnSelect = true, ...rest }: CalendarProps) {
+  const fecharPopover = usePopoverClose();
+  // Modo single dentro de Popover: seleciona e já fecha. Clicar de novo no dia
+  // selecionado (desmarcar, d = undefined) não fecha.
+  const props: React.ComponentProps<typeof DayPicker> =
+    rest.mode === "single" && closeOnSelect && fecharPopover
+      ? {
+          ...rest,
+          onSelect: ((d, selecionado, modificadores, e) => {
+            rest.onSelect?.(d, selecionado, modificadores, e);
+            if (d) fecharPopover();
+          }) as SelectSingleEventHandler,
+        }
+      : rest;
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}

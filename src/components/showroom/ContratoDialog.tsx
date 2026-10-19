@@ -1963,9 +1963,8 @@ const ContratoDialog: React.FC<Props> = ({
                             className="p-3 pointer-events-auto"
                           />
                           {novaDataPagamento && (
-                            <div className="border-t p-2 flex justify-between">
+                            <div className="border-t p-2 flex justify-start">
                               <Button size="sm" variant="ghost" onClick={() => { setNovaDataPagamento(''); setPagCalOpen(false); }}>Limpar</Button>
-                              <Button size="sm" onClick={() => setPagCalOpen(false)}>OK</Button>
                             </div>
                           )}
                         </PopoverContent>
@@ -2134,9 +2133,6 @@ const ContratoDialog: React.FC<Props> = ({
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar mode="single" selected={dataSinal} onSelect={setDataSinal} initialFocus className="p-3 pointer-events-auto" />
-                          <div className="border-t p-2 flex justify-end">
-                            <Button size="sm" disabled={!dataSinal} onClick={() => setSinalCalOpen(false)}>OK</Button>
-                          </div>
                         </PopoverContent>
                       </Popover>
                     </div>
@@ -2151,9 +2147,6 @@ const ContratoDialog: React.FC<Props> = ({
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar mode="single" selected={dataVencimento} onSelect={setDataVencimento} initialFocus className="p-3 pointer-events-auto" />
-                          <div className="border-t p-2 flex justify-end">
-                            <Button size="sm" disabled={!dataVencimento} onClick={() => setVencCalOpen(false)}>OK</Button>
-                          </div>
                         </PopoverContent>
                       </Popover>
                     </div>
