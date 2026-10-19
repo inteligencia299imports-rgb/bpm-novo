@@ -38,6 +38,8 @@ interface AvaliacaoRow {
   id: string;
   quanto_vende: number | null; valor_fechamento: number | null;
   avaliacao_compra: number | null; avaliacao_consignacao: number | null;
+  /** Bônus trade-in (troca por 0km) — abate o fechamento nos relatórios. */
+  trade_in?: number | null;
   updated_at: string | null; created_at: string | null;
 }
 export interface AtendimentoRow {
@@ -235,6 +237,10 @@ export function computeRowMetrics(atend: AtendimentoRow, idx: ShowroomIndexes, m
       ?? nz(custoProdutoEstoque) ?? 0;
     valorVendaReal = Number(estoque?.valor_venda ?? estoque?.preco_acao ?? estoque?.preco ?? 0);
   }
+
+  // Trade-in (bônus da montadora na troca por 0km) abate o fechamento: o custo
+  // real da moto é fechamento − bônus (pedido do usuário, 2026-10-19).
+  valorFechamento = Math.max(valorFechamento - Number(avaliacao?.trade_in || 0), 0);
 
   const taxaFixa = ['propria', 'convertida'].includes(tipo) ? 445 : 0;
   const fatReal = valorVendaReal + (costs.custo_prev_cliente - costs.custo_real_cliente) + (costs.custo_oficina_loja_prev - costs.custo_oficina_loja_exec);
