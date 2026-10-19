@@ -113,6 +113,9 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   const setNfeCompra = nfe.setNfe;
   const [aprovacaoStatus, setAprovacaoStatus] = useState<string | null>(null);
   const [contratoGerado, setContratoGerado] = useState(false);
+  // Moto que entrou numa TROCA: a NF-e de entrada só é gerada no Pós-Venda
+  // (etapa NF-E DE ENTRADA (TROCA)), nunca aqui — pedido do usuário, 2026-10-19.
+  const [ehTroca, setEhTroca] = useState(false);
   const [consultaRealizada, setConsultaRealizada] = useState(false);
 
   // ---- Entrada RENAVE (seminova) ----
@@ -190,6 +193,16 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
         }
       }
       setContratoGerado(contratoGeradoFinal);
+      if (atendIdTroca) {
+        const { data: atInteresse } = await supabase
+          .from('atendimentos_motos')
+          .select('interesse')
+          .eq('id', atendIdTroca)
+          .maybeSingle();
+        setEhTroca((atInteresse as any)?.interesse === 'trocar');
+      } else {
+        setEhTroca(false);
+      }
       setValorFechamento(
         (avData as any)?.valor_fechamento
           ? formatCurrencyInput(String(Math.round((avData as any).valor_fechamento * 100)))
@@ -301,7 +314,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
   };
 
   // ---- NF-e de compra ----
-  const podeEmitirNfe = aprovacaoStatus === 'aprovada' && contratoGerado && consultaRealizada;
+  const podeEmitirNfe = !ehTroca && aprovacaoStatus === 'aprovada' && contratoGerado && consultaRealizada;
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
     if (etapa === 'NF EMITIDA') return; // estado dirigido pela emissao da NF-e, nao manual
@@ -585,6 +598,14 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
                           <RefreshCw className={`h-4 w-4 ${emitindoNfe ? 'animate-spin' : ''}`} /> Atualizar
                         </Button>
                       </>
+                    ) : ehTroca ? (
+                      <Badge
+                        variant="outline"
+                        className="h-9 gap-1.5 text-xs"
+                        title="Moto de troca: a NF-e de entrada é emitida no Pós-Venda, na etapa NF-E DE ENTRADA (TROCA)"
+                      >
+                        <FileText className="h-3.5 w-3.5" /> Emitir no Pós-Venda (troca)
+                      </Badge>
                     ) : nfeErro ? (
                       <Button
                         variant="outline"
