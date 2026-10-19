@@ -31,6 +31,13 @@ import CancelarNfeDialog from '@/components/shared/CancelarNfeDialog';
 import ObservacoesEditaveis from '@/components/shared/ObservacoesEditaveis';
 import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalhoAcoes';
 import AgregadosContrato, { type Agregado, type AgregadoLinha } from '@/components/showroom/AgregadosContrato';
+import {
+  ehVoucherEquipamentos,
+  listarVendedoresEquipamentos,
+  sincronizarVoucherEquipamentos,
+  statusVoucherEquipamentos,
+  type VendedorEquipamentos,
+} from '@/lib/voucherEquipamentos';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
 import { EMPRESAS_SO_MOTO_NOVA } from '@/lib/tipoAquisicao';
 import { pendenciasVeicProd } from '@/lib/veicProd';
@@ -386,6 +393,9 @@ const ContratoDialog: React.FC<Props> = ({
   const [formasPagOpcoes, setFormasPagOpcoes] = useState<{ id: string; nome: string }[]>([]);
   const [agregados, setAgregados] = useState<AgregadoLinha[]>([]);
   const [agregadoOpcoes, setAgregadoOpcoes] = useState<Agregado[]>([]);
+  // Voucher Equipamentos -> CRM (só Ducati BSB/FLN/POA; lista vazia nas demais).
+  const [vendedoresEquipamentos, setVendedoresEquipamentos] = useState<VendedorEquipamentos[]>([]);
+  const [voucherCrmStatus, setVoucherCrmStatus] = useState<string | null>(null);
   // instituições (banco / administradora) vinculadas a cada forma_pagamento_id
   const [instituicoesByForma, setInstituicoesByForma] = useState<Record<string, InstituicaoOpt[]>>({});
   // id do registro de formas_pagamento_contrato em edição (null = formulário está em modo "adicionar")
@@ -476,7 +486,13 @@ const ContratoDialog: React.FC<Props> = ({
           .eq('ativo', true)
           .order('descricao'),
       ]);
+      const [vendEquipOpts, voucherCrm] = await Promise.all([
+        listarVendedoresEquipamentos(atendimento.id),
+        statusVoucherEquipamentos(atendimento.id),
+      ]);
 
+      setVendedoresEquipamentos(vendEquipOpts);
+      setVoucherCrmStatus(voucherCrm?.status ?? null);
       setFormasPagOpcoes((formasOpts as any[]) || []);
       setAgregadoOpcoes(((agregadosOpts as any[]) || []).map((a) => ({ id: a.id, descricao: a.descricao, valor: Number(a.valor) || 0, empresa_id: a.empresa_id, ativo: a.ativo !== false })));
 
@@ -609,7 +625,7 @@ const ContratoDialog: React.FC<Props> = ({
 
         const { data: ags } = await supabase
           .from('contratos_agregados')
-          .select('agregado_id, descricao, valor, observacoes, cortesia, troco')
+          .select('agregado_id, descricao, valor, observacoes, cortesia, troco, voucher_vendedor_id')
           .eq('contrato_id', contrato.id)
           .order('created_at', { ascending: true });
         setAgregados(((ags as any[]) || []).map((a) => ({
@@ -619,6 +635,7 @@ const ContratoDialog: React.FC<Props> = ({
           observacoes: a.observacoes ?? null,
           cortesia: !!a.cortesia,
           troco: !!a.troco,
+          voucher_vendedor_id: a.voucher_vendedor_id ?? null,
         })));
       } else {
         // Reset
@@ -928,6 +945,7 @@ const ContratoDialog: React.FC<Props> = ({
             observacoes: (a.observacoes ?? '').trim() || null,
             cortesia: !!a.cortesia,
             troco: !!a.troco,
+            voucher_vendedor_id: a.voucher_vendedor_id ?? null,
           })),
         );
       }
@@ -1181,6 +1199,24 @@ const ContratoDialog: React.FC<Props> = ({
     if (!id) {
       setGenerating(false);
       return;
+    }
+
+    // Voucher Equipamentos direcionado -> cria/atualiza o atendimento no CRM;
+    // sem voucher direcionado -> encerra o que estiver em aberto. Antes do PDF:
+    // se o CRM recusar (ex.: atendimento já finalizado lá), a proposta não sai.
+    if (!soLeitura && vendedoresEquipamentos.length > 0) {
+      const voucher = agregados.find((a) => ehVoucherEquipamentos(a.descricao) && a.voucher_vendedor_id);
+      const { data: voucherRes, error: voucherErr } = await sincronizarVoucherEquipamentos(
+        atendimento.id,
+        voucher?.voucher_vendedor_id ?? null,
+        voucher ? Number(voucher.valor) || 0 : null,
+      );
+      if (voucherErr) {
+        toast.error(voucherErr.message || 'Erro ao enviar o voucher de equipamentos para o CRM');
+        setGenerating(false);
+        return;
+      }
+      setVoucherCrmStatus(voucherRes?.status ?? null);
     }
 
     try {
@@ -1811,6 +1847,8 @@ const ContratoDialog: React.FC<Props> = ({
                       onChange={setAgregados}
                       catalogo={empresaId ? agregadoOpcoes.filter((a) => a.empresa_id === empresaId && a.ativo !== false) : []}
                       soLeitura={soLeitura}
+                      vendedoresEquipamentos={vendedoresEquipamentos}
+                      voucherCrmStatus={voucherCrmStatus}
                     />
                   </CardContent>
                 </Card>
