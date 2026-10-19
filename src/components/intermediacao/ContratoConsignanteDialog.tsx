@@ -586,8 +586,9 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     if (!id) { setGenerating(false); return; }
 
     try {
-      await generateContratoConsignantePdf(buildPdfData(), 'download');
-
+      // Registra a geração ANTES do download do PDF: no celular o download pode
+      // falhar e, antes, o registro (que libera a etapa seguinte) não era
+      // gravado (achado UJL2F09, iPhone, 2026-10-09).
       if (user) {
         await supabase.from('status_history').insert({
           entity_type: 'contrato_consignante',
@@ -598,6 +599,13 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
         });
       }
       setJaGerado(true);
+
+      try {
+        await generateContratoConsignantePdf(buildPdfData(), 'download');
+      } catch (pdfErr) {
+        console.error('Erro ao baixar o PDF do contrato:', pdfErr);
+        toast.warning('Contrato gerado, mas não foi possível baixar o PDF neste aparelho. Use "Baixar" ou "Visualizar" para tentar de novo.');
+      }
       setBaseline(consignanteSnapshot());
       setClienteTocado(false);
       setFormasTocadas(false);
