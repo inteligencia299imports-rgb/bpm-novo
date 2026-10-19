@@ -1,9 +1,10 @@
--- vw_nps: departamento DUCATI também pela MARCA da moto (pedido do usuário,
+-- vw_nps: departamento DUCATI = moto Ducati 0km (pedido do usuário,
 -- 2026-10-18). Antes só a loja decidia (norm_loja = 'Ducati' -> DUCATI, senão
--- SHOWROOM), então moto Ducati vendida em loja 299/Aventura caía em SHOWROOM
--- (24 vendas em 18/10). Agora: marca Ducati OU loja Ducati -> DUCATI.
--- Só o bloco do showroom muda; avaliação, equipamentos e oficina seguem com o
--- departamento próprio. Corpo copiado da definição em produção em 18/10 (já
+-- SHOWROOM). Agora DUCATI só quando a moto vendida é 0km — a mesma expressão
+-- de tipo_moto = 'ducati' (moto do estoque de novas; sem moto vinculada, loja
+-- Ducati). Seminova Ducati (própria, consignada, test-ride), em qualquer loja,
+-- é SHOWROOM. Só o bloco do showroom muda; avaliação, equipamentos e oficina
+-- seguem com o departamento próprio. Corpo copiado da definição em produção em 18/10 (já
 -- inclui o bloco OFICINA, que não estava versionado aqui).
 -- Mesmas colunas: create or replace mantém security_invoker e permissões.
 create or replace view public.vw_nps with (security_invoker = on) as
@@ -30,7 +31,11 @@ create or replace view public.vw_nps with (security_invoker = on) as
             ELSE NULL::timestamp with time zone
         END, vh.created_at) AS data_venda,
         CASE
-            WHEN upper(COALESCE(e.marca, mi.marca)) = 'DUCATI'::text OR norm_loja(le.loja) = 'Ducati'::text THEN 'DUCATI'::text
+            WHEN COALESCE(e.tipo,
+            CASE
+                WHEN norm_loja(le.loja) = 'Ducati'::text THEN 'ducati'::text
+                ELSE 'propria'::text
+            END) = 'ducati'::text THEN 'DUCATI'::text
             ELSE 'SHOWROOM'::text
         END AS departamento,
     a.nps_enviado_at AS data_envio,
