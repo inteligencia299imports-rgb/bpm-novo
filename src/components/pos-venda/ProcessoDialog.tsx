@@ -640,6 +640,23 @@ const ProcessoDialog: React.FC<Props> = ({
               // Transferência só pode ser emitida depois da compra da troca
               // estar autorizada em produção (mesmo gate do servidor).
               const trocaCompraProducaoOk = nfeTroca.emitida && nfeTroca.nfe?.ambiente === 'producao';
+              // O que falta para liberar o botão de emissão desta etapa — as mesmas
+              // condições do disabled dos botões abaixo, mostradas sob o nome da etapa.
+              const pendenciasEtapa: string[] = [];
+              if (isNfVenda && !nfeVenda.emitida && !nfeVenda.pendente) {
+                if (vendaBloqueadaAprovacao) pendenciasEtapa.push('Aprovação da venda pelo gestor');
+                if (!estoqueMoto) pendenciasEtapa.push('Moto do estoque vinculada à venda');
+                else if (!['vendido', 'sinal'].includes(estoqueMoto.status)) pendenciasEtapa.push('Moto marcada como vendida');
+                if (!contratoVendaGerado) pendenciasEtapa.push('Proposta de venda gerada');
+              }
+              if (isNfTroca && !nfeTroca.emitida && !nfeTroca.pendente && vendaBloqueadaAprovacao) {
+                pendenciasEtapa.push('Aprovação da venda pelo gestor');
+              }
+              if (isNfTransferencia && !nfeTransferencia.emitida && !nfeTransferencia.pendente) {
+                if (vendaBloqueadaAprovacao) pendenciasEtapa.push('Aprovação da venda pelo gestor');
+                if (!trocaCompraProducaoOk) pendenciasEtapa.push('NF-e de compra da moto da troca em produção');
+              }
+              if (isAtpvAuto && !atpvEmitido && !nfVendaProducao) pendenciasEtapa.push('NF-e de venda em produção');
               const nfMarcada = isAtpvAuto
                 ? atpvEmitido
                 : isSaidaRenave
@@ -687,6 +704,12 @@ const ProcessoDialog: React.FC<Props> = ({
                       <p className="text-xs text-destructive flex items-start gap-1 mt-0.5">
                         <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                         {saidaRenaveAv.renave_saida_ultimo_erro}
+                      </p>
+                    )}
+                    {pendenciasEtapa.length > 0 && (
+                      <p className="text-xs text-amber-700 flex items-start gap-1 mt-0.5">
+                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                        <span>Pendente: {pendenciasEtapa.join(' · ')}</span>
                       </p>
                     )}
                     {isNfVenda && nfeVenda.erro && (
