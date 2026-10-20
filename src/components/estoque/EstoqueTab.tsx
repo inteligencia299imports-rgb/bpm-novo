@@ -896,7 +896,13 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                         <PopoverTrigger asChild>
                           {cardEl}
                         </PopoverTrigger>
-                        <PopoverContent className="w-56 p-2" align="center">
+                        {/* Card alto: o menu não cabia acima nem abaixo e passava da tela.
+                            Limita à altura disponível (Radix) com rolagem e folga das bordas. */}
+                        <PopoverContent
+                          className="w-56 p-2 overflow-y-auto max-h-[var(--radix-popover-content-available-height)]"
+                          align="center"
+                          collisionPadding={12}
+                        >
                           <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Acessar</p>
                           <div className="flex flex-col gap-0.5">
                             {navOptions.map((opt, i) => (
