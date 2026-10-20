@@ -25,6 +25,10 @@ import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, CIDADE_LOJAS, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
 import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
 
+// Atendimento completo (cliente, motos de interesse, avaliações) — o detalhe
+// depende de tudo isso; recarregar só parte dele esvazia os cards da tela.
+const ATENDIMENTO_SELECT = `*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes!avaliacoes_atendimento_id_fkey(*, ${MARCA_MODELO_SELECT})`;
+
 const KANBAN_COLUMNS = SITUACOES_SHOWROOM;
 
 interface ShowroomTabProps {
@@ -71,7 +75,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
   // Open detail from external navigation (e.g. NPS, Estoque)
   useEffect(() => {
     if (initialAtendimentoId) {
-      supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes!avaliacoes_atendimento_id_fkey(*, ${MARCA_MODELO_SELECT})`).eq('id', initialAtendimentoId).single().then(({ data: raw }) => {
+      supabase.from('atendimentos_motos').select(ATENDIMENTO_SELECT).eq('id', initialAtendimentoId).single().then(({ data: raw }) => {
         const data = flattenMarcaModelo(raw as any);
         if (data) {
           setSelectedAtendimento({ ...data, loja: (data as any).loja_empresas?.loja } as unknown as Atendimento);
@@ -105,7 +109,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     }
 
     const buildQuery = (status?: string) => {
-      let q = supabase.from('atendimentos_motos').select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*)), motos_interesse(*, ${MARCA_MODELO_SELECT}), avaliacoes!avaliacoes_atendimento_id_fkey(*, ${MARCA_MODELO_SELECT})`);
+      let q = supabase.from('atendimentos_motos').select(ATENDIMENTO_SELECT);
       if (status) q = q.eq('situacao', status);
       if (filterInteresse !== 'todos') q = q.eq('interesse', filterInteresse);
       if (filterTemperatura !== 'todos') q = q.eq('temperatura', filterTemperatura);
@@ -244,11 +248,12 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
     if (selectedAtendimento) {
       const { data } = await supabase
         .from('atendimentos_motos')
-        .select('*, loja_empresas:loja_id(loja)')
+        .select(ATENDIMENTO_SELECT)
         .eq('id', selectedAtendimento.id)
         .single();
       if (data) {
-        setSelectedAtendimento({ ...data, loja: (data as any).loja_empresas?.loja } as Atendimento);
+        const completo = flattenMarcaModelo(data);
+        setSelectedAtendimento({ ...completo, loja: (data as any).loja_empresas?.loja } as unknown as Atendimento);
       }
     }
   };
