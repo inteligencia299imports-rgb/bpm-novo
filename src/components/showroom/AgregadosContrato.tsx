@@ -114,14 +114,15 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setSelId('');
     setEditIdx(i);
     setFValor(toInput(Number(l.valor) || 0));
-    setFObs(l.observacoes ?? '');
+    setFObs((l.observacoes ?? '').toUpperCase());
     setFCortesia(!!l.cortesia || ehVoucherEquipamentos(l.descricao));
     setFTroco(!!l.troco && !ehVoucherEquipamentos(l.descricao));
     setFVendedorId(l.voucher_vendedor_id ?? '');
   };
 
   const salvar = () => {
-    const obs = fObs.trim() || null;
+    // Observações sempre em maiúsculas (pedido do usuário, 2026-10-20).
+    const obs = fObs.trim().toUpperCase() || null;
     const voucher_vendedor_id = podeDirecionar && fVendedorId ? fVendedorId : null;
     const cortesia = ehVoucher || fCortesia;
     const troco = !ehVoucher && fTroco;
@@ -181,7 +182,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
                   : `Valor: ${brl(Number(l.valor) || 0)}`}
             </p>
             {l.observacoes?.trim() && (
-              <p className="text-xs text-muted-foreground italic whitespace-pre-wrap">{l.observacoes}</p>
+              <p className="text-xs text-muted-foreground italic whitespace-pre-wrap uppercase">{l.observacoes}</p>
             )}
           </div>
           {!soLeitura && (
@@ -263,10 +264,10 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
             <div>
               <Label className="text-xs text-muted-foreground">Observações</Label>
               <Input
-                className="mt-1"
+                className="mt-1 uppercase placeholder:normal-case"
                 placeholder="Observações deste agregado..."
                 value={fObs}
-                onChange={(e) => setFObs(e.target.value)}
+                onChange={(e) => setFObs(e.target.value.toUpperCase())}
               />
             </div>
 
