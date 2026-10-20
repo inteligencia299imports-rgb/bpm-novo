@@ -364,7 +364,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     doc.setFontSize(14); doc.setTextColor(30, 41, 59);
     doc.text(`Showroom — ${title} — ${count} registro(s)`, 40, 36);
     doc.setFontSize(9); doc.setTextColor(100);
-    doc.text(`Loja: ${filterLoja === 'todos' ? 'Todas' : filterLoja.split(',').join(', ')}  •  Tipo: ${filterTipo === 'todos' ? 'Todos' : tipoLabel(filterTipo)}  •  Período: ${periodo}`, 40, 52);
+    doc.text(`Loja: ${filterLoja === 'todos' ? 'Todas' : filterLoja.split(',').join(', ')}  •  Tipo: ${filterTipo === 'todos' ? 'Todos' : filterTipo.split(',').map(tipoLabel).join(', ')}  •  Período: ${periodo}`, 40, 52);
 
     autoTable(doc, {
       startY: 64,
@@ -419,11 +419,21 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
         <div className="flex flex-wrap items-center gap-2 max-w-full">
           <span className="text-xs font-medium text-muted-foreground shrink-0">Tipo:</span>
           <div className="flex flex-wrap items-center gap-2">
-            {[{ value: 'todos', label: 'Todos' }, { value: 'propria', label: 'Própria' }, { value: 'consignada', label: 'Consignada' }, { value: 'repasse', label: 'Repasse' }, { value: '0km', label: '0km' }, { value: 'test-ride', label: 'Test-Ride' }].map(t => (
-              <Button key={t.value} size="sm" variant={filterTipo === t.value ? 'default' : 'outline'} className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')} onClick={() => setFilterTipo(t.value)}>
-                {t.label}
-              </Button>
-            ))}
+            {/* Tipo com seleção múltipla (valor = lista separada por vírgula; 'todos' = sem filtro). */}
+            {[{ value: 'todos', label: 'Todos' }, { value: 'propria', label: 'Própria' }, { value: 'consignada', label: 'Consignada' }, { value: 'repasse', label: 'Repasse' }, { value: '0km', label: '0km' }, { value: 'test-ride', label: 'Test-Ride' }].map(t => {
+              const marcados = filterTipo === 'todos' ? [] : filterTipo.split(',');
+              const ativo = t.value === 'todos' ? filterTipo === 'todos' : marcados.includes(t.value);
+              const clicar = () => {
+                if (t.value === 'todos') return setFilterTipo('todos');
+                const prox = ativo ? marcados.filter((m) => m !== t.value) : [...marcados, t.value];
+                setFilterTipo(prox.length ? prox.join(',') : 'todos');
+              };
+              return (
+                <Button key={t.value} size="sm" variant={ativo ? 'default' : 'outline'} className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', ativo && 'shadow-sm')} onClick={clicar}>
+                  {t.label}
+                </Button>
+              );
+            })}
           </div>
         </div>
       </div>
