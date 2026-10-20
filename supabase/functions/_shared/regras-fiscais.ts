@@ -99,6 +99,8 @@ interface ExcecaoNcm {
   aliquota_interna: number | null;
   aliquota_fcp: number | null;
   mva: number | null;
+  reducao_base_calculo: number | null;   // % (pRedBC) — venda interna (CST 00 → 20) e carga do DIFAL
+  codigo_beneficio_fiscal: string | null; // cBenef dessa redução na UF
 }
 
 export interface OperacaoCarregada {
@@ -164,7 +166,7 @@ export async function carregarOperacao(
   const [{ data: regras, error: e2 }, { data: ufs, error: e3 }, { data: excecoes, error: e4 }] = await Promise.all([
     supabase.from("naturezas_operacao_regras_fiscais").select("*").in("natureza_operacao_id", lista.map((n) => n.id)).eq("ativo", true).order("ordem"),
     supabase.from("icms_uf").select("uf, aliquota_interna, aliquota_fcp"),
-    supabase.from("icms_uf_ncm").select("uf, ncm, bem_usado, aliquota_interna, aliquota_fcp, mva"),
+    supabase.from("icms_uf_ncm").select("uf, ncm, bem_usado, aliquota_interna, aliquota_fcp, mva, reducao_base_calculo, codigo_beneficio_fiscal"),
   ]);
   const erro = e2 ?? e3 ?? e4;
   if (erro) return { erro: `Erro ao ler regras fiscais: ${erro.message}` };
@@ -243,7 +245,8 @@ export function escolherRegra(op: OperacaoCarregada, item: ItemFiscal): RegraEsc
 // Alíquota interna, FCP e MVA da UF, com exceção por NCM (prefixo mais longo; a
 // exceção de bem usado específico vence a genérica). MVA não tem valor "padrão da UF"
 // (só existe por exceção de NCM — produto sem ST não tem margem agregada) — sem
-// exceção cadastrada pro NCM/UF, fica null.
+// exceção cadastrada pro NCM/UF, fica null. Redução de base (e o cBenef dela) também só existe por
+// exceção de NCM (planilha do usuário, 2026-10-20 — docs-fiscal-299 pendencias §2.122).
 export function aliquotasUf(op: OperacaoCarregada, uf: string, ncm?: string | null, bemUsado?: boolean | null) {
   const u = (uf || "").toUpperCase();
   const base = op.icmsUf[u];
@@ -255,7 +258,17 @@ export function aliquotasUf(op: OperacaoCarregada, uf: string, ncm?: string | nu
     interna: num(exc?.aliquota_interna) ?? base?.aliquota_interna ?? null,
     fcp: num(exc?.aliquota_fcp) ?? base?.aliquota_fcp ?? 0,
     mva: num(exc?.mva),
+    reducao: num(exc?.reducao_base_calculo),
+    cBenef: exc?.codigo_beneficio_fiscal ?? null,
   };
+}
+
+// Carga efetiva da UF com a redução de base do NCM: interna × (1 − redução), 2 casas.
+// Ex.: RS 17% com 29,41% de redução = 12%; DF 12% com 41,67% = 7%.
+export function cargaEfetiva(interna: number | null, reducao: number | null): number | null {
+  if (interna == null) return null;
+  if (!reducao) return interna;
+  return Math.round(interna * (1 - reducao / 100) * 100) / 100;
 }
 
 // Alíquota interestadual (Res. SF 22/1989 e 13/2012): importado (origem 1, 2, 3, 8) = 4%;
@@ -293,21 +306,31 @@ export function comoRegrasPorImposto(op: OperacaoCarregada, e: RegraEscolhida, i
   const uf = (item.ufDestino || "").toUpperCase();
   const destino = aliquotasUf(op, uf, item.ncm, item.bemUsado);
   const emitente = aliquotasUf(op, op.ufEmitente, item.ncm, item.bemUsado);
-  const pICMS = uf === op.ufEmitente ? destino.interna : aliquotaInterestadual(op.ufEmitente, uf, item.icmsOrigem);
+  const interna = uf === op.ufEmitente;
+  const pICMS = interna ? destino.interna : aliquotaInterestadual(op.ufEmitente, uf, item.icmsOrigem);
   const jaRetidoST = CST_ICMS_JA_RETIDO_ST.includes(String(r.icms_cst));
+  // Redução de base por NCM na UF (icms_uf_ncm.reducao_base_calculo), decisão do usuário 2026-10-20:
+  //  (1) venda INTERNA: regra CST 00 que destaca ICMS e não tem redução própria sai como CST 20 com
+  //      pRedBC (alíquota cheia + base reduzida); a redução/cBenef da regra, quando houver, vence;
+  //  (2) venda INTERESTADUAL: o DIFAL usa a carga efetiva do destino, nunca abaixo da interestadual
+  //      (DIFAL zero, nunca negativo). Não vale no ICMS-ST retido (CST 60).
+  const reducaoNcm = interna && r.icms_cst === "00" && r.icms_destaca !== false && num(r.icms_reducao_bc) == null && (destino.reducao ?? 0) > 0;
+  const internaDestino = interna
+    ? destino.interna
+    : (() => { const c = cargaEfetiva(destino.interna, destino.reducao); return c != null && pICMS != null && destino.reducao ? Math.max(c, pICMS) : c; })();
   const comum = {
     destino_ufs: [uf], tipo_atendimento: "ambos", origem_mercadoria: r.origem_mercadoria,
     produto_tipo: r.produto_ncms.length ? "ncm" : "todos", produto_ncms: r.produto_ncms, produto_categorias: r.produto_categorias,
     ordem: r.ordem, informacoes_complementares: null as string | null, informacoes_adicionais_fisco: null as string | null,
   };
   const icms = r.icms_cst ? {
-    ...comum, imposto: "icms", cfop: cfopDe(e), situacao_tributaria: r.icms_cst,
-    aliquota: (r.icms_destaca === false || jaRetidoST) ? 0 : pICMS, reducao_base_calculo: num(r.icms_reducao_bc), base_calculo: null,
-    aliquota_interna_destino: destino.interna, aliquota_fcp: destino.fcp ? destino.fcp : null,
+    ...comum, imposto: "icms", cfop: cfopDe(e), situacao_tributaria: reducaoNcm ? "20" : r.icms_cst,
+    aliquota: (r.icms_destaca === false || jaRetidoST) ? 0 : pICMS, reducao_base_calculo: reducaoNcm ? destino.reducao : num(r.icms_reducao_bc), base_calculo: null,
+    aliquota_interna_destino: internaDestino, aliquota_fcp: destino.fcp ? destino.fcp : null,
     tipo_tributacao: r.icms_tipo_tributacao,
     aliquota_icms_efetiva: pICMS, reducao_base_calculo_efetiva: null,
     aliquota_suportada_consumidor_final: emitente.interna, mva_suportada_consumidor_final: emitente.mva,
-    codigo_beneficio_fiscal: r.codigo_beneficio_fiscal,
+    codigo_beneficio_fiscal: r.codigo_beneficio_fiscal ?? (reducaoNcm ? destino.cBenef : null),
     indicador_presenca: e.natureza.indicador_presenca, natureza_operacao_descricao: natOpDe(e),
     informacoes_complementares: r.informacoes_complementares, informacoes_adicionais_fisco: r.informacoes_adicionais_fisco,
   } : null;
