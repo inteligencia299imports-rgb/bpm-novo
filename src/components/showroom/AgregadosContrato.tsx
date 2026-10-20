@@ -32,6 +32,9 @@ export interface AgregadoLinha {
   voucher_vendedor_id?: string | null;
 }
 
+// Valor do item "Sem direcionamento" do seletor de consultor (o Select não aceita '').
+const SEM_CONSULTOR = '__sem_consultor__';
+
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtInput = (v: string) => {
   const d = v.replace(/\D/g, '');
@@ -77,7 +80,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
   const [fObs, setFObs] = useState('');
   const [fCortesia, setFCortesia] = useState(false);
   const [fTroco, setFTroco] = useState(false);
-  const [fDirecionar, setFDirecionar] = useState(false);
+  // Consultor de equipamentos do Voucher Equipamentos ('' = sem direcionamento).
   const [fVendedorId, setFVendedorId] = useState('');
 
   const disponiveis = useMemo(
@@ -91,7 +94,10 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
   const agSel = catalogo.find((c) => c.id === selId);
   const descAtual = editando ? (value[editIdx as number]?.descricao ?? '') : (agSel?.descricao ?? '');
   const mostrarCampos = !!selId || editando;
-  const podeDirecionar = ehVoucherEquipamentos(descAtual) && vendedoresEquipamentos.length > 0;
+  // Voucher Equipamentos é sempre cortesia (não cobrado do cliente): fica marcado e
+  // travado, e "Troco ao Cliente" nem aparece.
+  const ehVoucher = ehVoucherEquipamentos(descAtual);
+  const podeDirecionar = ehVoucher && vendedoresEquipamentos.length > 0;
   const nomeVendedor = (id: string | null | undefined) =>
     vendedoresEquipamentos.find((v) => v.user_id === id)?.nome ?? 'vendedor de equipamentos';
 
@@ -102,7 +108,6 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setFObs('');
     setFCortesia(false);
     setFTroco(false);
-    setFDirecionar(false);
     setFVendedorId('');
   };
 
@@ -113,9 +118,8 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     const ag = catalogo.find((c) => c.id === id);
     setFValor(ag ? toInput(Number(ag.valor) || 0) : '');
     setFObs('');
-    setFCortesia(false);
+    setFCortesia(ehVoucherEquipamentos(ag?.descricao));
     setFTroco(false);
-    setFDirecionar(false);
     setFVendedorId('');
   };
 
@@ -125,15 +129,16 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setEditIdx(i);
     setFValor(toInput(Number(l.valor) || 0));
     setFObs(l.observacoes ?? '');
-    setFCortesia(!!l.cortesia);
-    setFTroco(!!l.troco);
-    setFDirecionar(!!l.voucher_vendedor_id);
+    setFCortesia(!!l.cortesia || ehVoucherEquipamentos(l.descricao));
+    setFTroco(!!l.troco && !ehVoucherEquipamentos(l.descricao));
     setFVendedorId(l.voucher_vendedor_id ?? '');
   };
 
   const salvar = () => {
     const obs = fObs.trim() || null;
-    const voucher_vendedor_id = podeDirecionar && fDirecionar && fVendedorId ? fVendedorId : null;
+    const voucher_vendedor_id = podeDirecionar && fVendedorId ? fVendedorId : null;
+    const cortesia = ehVoucher || fCortesia;
+    const troco = !ehVoucher && fTroco;
     if (editando) {
       const i = editIdx as number;
       const next = value.slice();
@@ -141,8 +146,8 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         ...next[i],
         valor: parseInput(fValor),
         observacoes: obs,
-        cortesia: fCortesia,
-        troco: fTroco,
+        cortesia,
+        troco,
         voucher_vendedor_id,
       };
       onChange(next);
@@ -154,8 +159,8 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         descricao: ag.descricao,
         valor: fValor.trim() ? parseInput(fValor) : (Number(ag.valor) || 0),
         observacoes: obs,
-        cortesia: fCortesia,
-        troco: fTroco,
+        cortesia,
+        troco,
         voucher_vendedor_id,
       }]);
     }
@@ -262,6 +267,21 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
               </div>
             </div>
 
+            {podeDirecionar && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Consultor Equipamentos</Label>
+                <Select value={fVendedorId || SEM_CONSULTOR} onValueChange={(v) => setFVendedorId(v === SEM_CONSULTOR ? '' : v)}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SEM_CONSULTOR}>Sem direcionamento</SelectItem>
+                    {vendedoresEquipamentos.map((v) => (
+                      <SelectItem key={v.user_id} value={v.user_id}>{v.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
               <Label className="text-xs text-muted-foreground">Observações</Label>
               <Input
@@ -272,39 +292,26 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
               />
             </div>
 
-            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
-              <Checkbox checked={fCortesia} onCheckedChange={(c) => { setFCortesia(c === true); if (c === true) setFTroco(false); }} />
-              Cortesia — não cobrar do cliente (não soma no total nem nos cálculos)
+            <label className={cn('flex items-center gap-2 text-xs font-medium select-none', ehVoucher ? 'cursor-not-allowed' : 'cursor-pointer')}>
+              <Checkbox
+                checked={ehVoucher || fCortesia}
+                disabled={ehVoucher}
+                onCheckedChange={(c) => { setFCortesia(c === true); if (c === true) setFTroco(false); }}
+              />
+              Cortesia
             </label>
-            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
-              <Checkbox checked={fTroco} onCheckedChange={(c) => { setFTroco(c === true); if (c === true) setFCortesia(false); }} />
-              Troco ao cliente — não cobrar (gera conta a pagar deste valor)
-            </label>
-
-            {podeDirecionar && (
-              <div className="space-y-2 rounded-md border border-dashed p-2">
-                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
-                  <Checkbox checked={fDirecionar} onCheckedChange={(c) => setFDirecionar(c === true)} />
-                  Direcionar ao vendedor de equipamentos (cria o atendimento no CRM ao gerar a proposta)
-                </label>
-                {fDirecionar && (
-                  <Select value={fVendedorId} onValueChange={setFVendedorId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o vendedor de equipamentos" /></SelectTrigger>
-                    <SelectContent>
-                      {vendedoresEquipamentos.map((v) => (
-                        <SelectItem key={v.user_id} value={v.user_id}>{v.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+            {!ehVoucher && (
+              <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
+                <Checkbox checked={fTroco} onCheckedChange={(c) => { setFTroco(c === true); if (c === true) setFCortesia(false); }} />
+                Troco ao Cliente
+              </label>
             )}
 
             <div className="flex justify-center gap-2 pt-1">
               <Button size="sm" variant="outline" className="flex-1 max-w-[10.5rem]" onClick={resetForm}>
                 <X className="h-4 w-4 mr-1" /> Cancelar
               </Button>
-              <Button size="sm" className="flex-1 max-w-[10.5rem]" onClick={salvar} disabled={(!editando && !selId) || (podeDirecionar && fDirecionar && !fVendedorId)}>
+              <Button size="sm" className="flex-1 max-w-[10.5rem]" onClick={salvar} disabled={!editando && !selId}>
                 <Plus className="h-4 w-4 mr-1" />
                 {editando ? 'Salvar Alterações' : 'Registrar'}
               </Button>
