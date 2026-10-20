@@ -706,6 +706,26 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
     && jaGerado
     && (avaliacao as any)?.consulta_realizada === true;
 
+  // Pendências da emissão da NF-e de compra/entrada — as mesmas travas do botão,
+  // listadas antes do clique (igual à NF-e de venda). Na troca, o que libera é a
+  // proposta de VENDA gerada (achado Marcelo Liscio Pedrotti, 2026-10-20: a
+  // proposta não tinha entrado no histórico e o botão ficava desligado sem dizer por quê).
+  const pendenciasEmissaoNf: string[] = [];
+  const pendenciasProducaoNf: string[] = [];
+  if (ehNfe && !loading && (podeEmitirNova || podeReemitirHomolog) && !nfe.pendente) {
+    if (!empresaId) pendenciasEmissaoNf.push('Empresa emitente');
+    if (!ehTroca && (avaliacao as any)?.tipo_aquisicao !== 'convertida' && (avaliacao as any)?.aprovacao_status !== 'aprovada') {
+      pendenciasEmissaoNf.push('Aquisição aprovada');
+    }
+    if (!jaGerado) pendenciasEmissaoNf.push(ehTroca ? 'Proposta de venda gerada (a troca entra pela proposta de venda)' : 'Contrato de compra gerado');
+    if ((avaliacao as any)?.consulta_realizada !== true) pendenciasEmissaoNf.push('Consulta veicular realizada');
+    if (!valorQuitacao?.trim()) pendenciasEmissaoNf.push('Valor de Quitação (informe 0 se não houver)');
+    pendenciasNf.cliente.forEach((p) => pendenciasEmissaoNf.push(`Cadastro do cliente: ${p}`));
+    pendenciasNf.endereco.forEach((p) => pendenciasEmissaoNf.push(`Endereço do cliente: ${p}`));
+    if (parseCurrencyInput(nfeValor) <= 0) pendenciasEmissaoNf.push('Valor da nota');
+    if (!podeReemitirHomolog) pendenciasProducaoNf.push('NF-e de teste (homologação) autorizada');
+  }
+
   return (
     <div className="space-y-4 animate-fade-in pb-10">
       <div className="flex items-center gap-3">
@@ -731,6 +751,31 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
             ...errosGeracao,
             ...(pendenciasBancarias.length > 0 ? [`Dados bancários do cliente (${pendenciasBancarias.join(', ')})`] : []),
           ].join(', ')}.
+        </div>
+      )}
+
+      {(pendenciasEmissaoNf.length > 0 || pendenciasProducaoNf.length > 0) && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700">
+          {pendenciasEmissaoNf.length > 0 && (
+            <>
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5" /> Informações pendentes para emissão da NF-e:
+              </div>
+              <ul className="mt-3 list-disc pl-6 space-y-0.5">
+                {pendenciasEmissaoNf.map((p) => <li key={p}>{p}</li>)}
+              </ul>
+            </>
+          )}
+          {pendenciasProducaoNf.length > 0 && (
+            <>
+              <div className={cn('flex items-center gap-1.5', pendenciasEmissaoNf.length > 0 && 'mt-3')}>
+                <AlertTriangle className="h-3.5 w-3.5" /> Pendentes para emitir em produção:
+              </div>
+              <ul className="mt-3 list-disc pl-6 space-y-0.5">
+                {pendenciasProducaoNf.map((p) => <li key={p}>{p}</li>)}
+              </ul>
+            </>
+          )}
         </div>
       )}
 
