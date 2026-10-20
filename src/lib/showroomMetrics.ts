@@ -22,9 +22,10 @@ export const matchesLoja = (loja: string | null | undefined, filter: LojaFilterV
 
 export const tipoDefault = (loja: string | null | undefined) => (isDucati(loja) ? 'ducati' : 'propria');
 
+/** Aceita vários tipos separados por vírgula (filtro com seleção múltipla). */
 export const matchesTipo = (tipo: string, filter: TipoFilterValue) => {
   if (!filter || filter === 'todos') return true;
-  return tipo === filter;
+  return filter.split(',').includes(tipo);
 };
 
 /**

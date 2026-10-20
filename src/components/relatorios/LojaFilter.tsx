@@ -45,7 +45,8 @@ export const LojaFilter: React.FC<LojaFilterProps> = ({ value, onChange, hideDuc
     const grupoAtivo = (g: 'todos' | '299' | 'Ducati') =>
       g === 'todos' ? value === 'todos' : gruposAbertos.includes(g);
     const aplicar = (prox: string[]) => {
-      if (prox.length === 0 || mesmoConjunto(prox, todasLojas)) return onChange('todos');
+      // Só vira 'Todas Lojas' pelo botão ou sem nenhuma marcada — juntar 299 + Ducati mantém a lista.
+      if (prox.length === 0) return onChange('todos');
       if (mesmoConjunto(prox, SUB_LOJAS['299'])) return onChange('299');
       if (mesmoConjunto(prox, SUB_LOJAS.Ducati)) return onChange('Ducati');
       onChange(todasLojas.filter((l) => prox.includes(l)).join(','));
@@ -68,7 +69,7 @@ export const LojaFilter: React.FC<LojaFilterProps> = ({ value, onChange, hideDuc
               key={g}
               size="sm"
               variant={grupoAtivo(g) ? 'default' : 'outline'}
-              className={cn('rounded-full px-4 h-8 text-xs font-medium', grupoAtivo(g) && 'shadow-sm')}
+              className={cn('rounded-full w-24 px-0 h-8 text-xs font-medium justify-center', grupoAtivo(g) && 'shadow-sm')}
               onClick={() => clicarGrupo(g)}
             >
               {g === 'todos' ? 'Todas Lojas' : g}
@@ -85,7 +86,7 @@ export const LojaFilter: React.FC<LojaFilterProps> = ({ value, onChange, hideDuc
                 key={s}
                 size="sm"
                 variant={ativa ? 'default' : 'outline'}
-                className={cn('rounded-full px-3 h-7 text-xs', ativa && 'shadow-sm')}
+                className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', ativa && 'shadow-sm')}
                 onClick={() => alternar(s)}
               >
                 {s}
@@ -109,7 +110,7 @@ export const LojaFilter: React.FC<LojaFilterProps> = ({ value, onChange, hideDuc
             key={g}
             size="sm"
             variant={group === g ? 'default' : 'outline'}
-            className={cn('rounded-full px-4 h-8 text-xs font-medium', group === g && 'shadow-sm')}
+            className={cn('rounded-full w-24 px-0 h-8 text-xs font-medium justify-center', group === g && 'shadow-sm')}
             onClick={() => onChange(g)}
           >
             {g === 'todos' ? 'Todas Lojas' : g}
@@ -122,7 +123,7 @@ export const LojaFilter: React.FC<LojaFilterProps> = ({ value, onChange, hideDuc
           <Button
             size="sm"
             variant={value === group ? 'default' : 'outline'}
-            className={cn('rounded-full px-3 h-7 text-xs', value === group && 'shadow-sm')}
+            className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', value === group && 'shadow-sm')}
             onClick={() => onChange(group!)}
           >
             Todas
@@ -132,7 +133,7 @@ export const LojaFilter: React.FC<LojaFilterProps> = ({ value, onChange, hideDuc
               key={s}
               size="sm"
               variant={value === s ? 'default' : 'outline'}
-              className={cn('rounded-full px-3 h-7 text-xs', value === s && 'shadow-sm')}
+              className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', value === s && 'shadow-sm')}
               onClick={() => onChange(s)}
             >
               {s}
