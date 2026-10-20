@@ -321,7 +321,6 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
   // Consignada: a devolução vai direto pra produção quando a consignação é de
   // produção (mesma regra do ConverterConsignacaoDialog), e não cancela com a
   // compra já em produção (elo da cadeia).
-  const devolucaoDiretoProducao = !!modoConsignado && consignacaoAmbiente === 'producao';
   const podeCancelarSaida = !modoConsignado || !entradaProducao;
   const fechamentoNum = parseCurrencyInput(valorFechamento);
   const valorCompraNf = Math.max(fechamentoNum - abatimentos, 0);
@@ -430,25 +429,16 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
               )}
               <div className="flex flex-wrap items-center gap-2 justify-end">
                 {(saida.emitida || saida.cancelada) && saida.nfe?.ambiente === 'producao' && podeCancelarSaida && <CancelarNfeDialog nfe={saida} />}
-                {!devolucaoDiretoProducao && (!saidaEmitida || podeReemitirHomologSaida) && !saida.pendente && (
-                  <Button
-                    size="sm"
-                    className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
-                    disabled={saida.loading || !destinoLojaId}
-                    onClick={() => saida.emitir({ ambiente: 'homologacao', destino_loja_id: destinoLojaId })}
-                  >
-                    {saida.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : saida.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                    {saida.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
-                  </Button>
-                )}
-                {((devolucaoDiretoProducao && !saidaEmitida) || podeReemitirHomologSaida) && !saida.pendente && (
+                {/* Sem homologação: emite direto em produção (pedido do usuário, 2026-10-20). */}
+                {(!saidaEmitida || podeReemitirHomologSaida) && !saida.pendente && (
                   <Button
                     size="sm"
                     className="gap-1.5"
                     disabled={saida.loading || !destinoLojaId}
                     onClick={() => saida.emitir({ ambiente: 'producao', destino_loja_id: destinoLojaId })}
                   >
-                    <FileText className="h-4 w-4" /> NF-e (Produção)
+                    {saida.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : saida.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                    {saida.erro ? 'Tentar novamente' : 'Emitir NF-e'}
                   </Button>
                 )}
                 {eh0km && !saidaEmitida && !saida.pendente && (
@@ -565,22 +555,12 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                 {modoConsignado && saidaProducao && !vendaFechada && (!entradaEmitida || podeReemitirHomologEntrada) && !entrada.pendente && (
                   <Button
                     size="sm"
-                    className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
-                    disabled={entrada.loading || !destinoLojaId || fechamentoNum <= 0}
-                    onClick={() => emitirCompra('homologacao')}
-                  >
-                    {entrada.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : entrada.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                    {entrada.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
-                  </Button>
-                )}
-                {modoConsignado && saidaProducao && !vendaFechada && podeReemitirHomologEntrada && !entrada.pendente && (
-                  <Button
-                    size="sm"
                     className="gap-1.5"
                     disabled={entrada.loading || !destinoLojaId || fechamentoNum <= 0}
                     onClick={() => emitirCompra('producao')}
                   >
-                    <FileText className="h-4 w-4" /> NF-e (Produção)
+                    {entrada.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : entrada.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                    {entrada.erro ? 'Tentar novamente' : 'Emitir NF-e'}
                   </Button>
                 )}
                 {!modoConsignado && saidaProducao && !vendaFechada && (!entradaEmitida || podeReemitirHomologEntrada) && !entrada.pendente && (
@@ -591,7 +571,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
                     onClick={() => entrada.emitir({ ambiente: 'producao', destino_loja_id: destinoLojaId })}
                   >
                     {entrada.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : entrada.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                    {entrada.erro ? 'Tentar novamente' : 'NF-e (Produção)'}
+                    {entrada.erro ? 'Tentar novamente' : 'Emitir NF-e'}
                   </Button>
                 )}
               </div>

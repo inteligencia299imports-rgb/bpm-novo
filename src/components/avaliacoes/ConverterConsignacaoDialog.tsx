@@ -105,7 +105,6 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
 
   const devolucaoOk = nfeDevolucao.emitida;
   const devolucaoProducaoOk = devolucaoOk && nfeDevolucao.nfe?.ambiente === 'producao';
-  const referenciaProducao = consignacaoAmbiente === 'producao';
   const podeReemitirHomologDevolucao = devolucaoOk && nfeDevolucao.nfe?.ambiente === 'homologacao';
   const compraOk = nfeCompra.emitida;
   const compraProducaoOk = compraOk && nfeCompra.nfe?.ambiente === 'producao';
@@ -145,18 +144,8 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
               </CardTitle>
               <Separator className="mt-2 mb-3" />
               <div className="flex items-center gap-2 flex-wrap">
-                {!referenciaProducao && (!devolucaoOk || podeReemitirHomologDevolucao) && !nfeDevolucao.pendente && (
-                  <Button
-                    size="sm"
-                    className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
-                    disabled={nfeDevolucao.loading || valorConsignacao <= 0}
-                    onClick={() => nfeDevolucao.emitir({ ambiente: 'homologacao' })}
-                  >
-                    {nfeDevolucao.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfeDevolucao.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                    {nfeDevolucao.erro ? 'Tentar novamente' : 'Devolução (Homologação)'}
-                  </Button>
-                )}
-                {((referenciaProducao && !devolucaoOk) || podeReemitirHomologDevolucao) && !nfeDevolucao.pendente && (
+                {/* Sem homologação: emite direto em produção (pedido do usuário, 2026-10-20). */}
+                {(!devolucaoOk || podeReemitirHomologDevolucao) && !nfeDevolucao.pendente && (
                   <Button
                     size="sm"
                     className="gap-1.5"
@@ -164,7 +153,7 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                     onClick={() => nfeDevolucao.emitir({ ambiente: 'producao' })}
                   >
                     {nfeDevolucao.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfeDevolucao.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                    {nfeDevolucao.erro ? 'Tentar novamente' : 'Devolução (Produção)'}
+                    {nfeDevolucao.erro ? 'Tentar novamente' : 'Emitir Devolução'}
                   </Button>
                 )}
                 {podeCancelarDevolucao && <CancelarNfeDialog nfe={nfeDevolucao} />}
@@ -182,12 +171,6 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
               )}
               {valorConsignacao <= 0 && (
                 <p className="text-xs text-destructive">Sem valor de consignação registrado — não é possível emitir a devolução.</p>
-              )}
-              {referenciaProducao && !devolucaoOk && (
-                <p className="text-xs text-muted-foreground">
-                  A NF de consignação foi autorizada em produção — a devolução precisa ser emitida direto em
-                  produção (a SEFAZ de homologação não reconhece essa referência).
-                </p>
               )}
             </CardContent>
           </Card>
@@ -209,22 +192,12 @@ const ConverterConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avali
                 {devolucaoProducaoOk && (!compraOk || podeReemitirHomologCompra) && !nfeCompra.pendente && (
                   <Button
                     size="sm"
-                    className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
-                    disabled={nfeCompra.loading || parseCurrencyInput(valorCompra) <= 0}
-                    onClick={() => nfeCompra.emitir({ valor: parseCurrencyInput(valorCompra), ambiente: 'homologacao' })}
-                  >
-                    {nfeCompra.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfeCompra.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                    {nfeCompra.erro ? 'Tentar novamente' : 'Compra (Homologação)'}
-                  </Button>
-                )}
-                {devolucaoProducaoOk && podeReemitirHomologCompra && !nfeCompra.pendente && (
-                  <Button
-                    size="sm"
                     className="gap-1.5"
                     disabled={nfeCompra.loading || parseCurrencyInput(valorCompra) <= 0}
                     onClick={() => nfeCompra.emitir({ valor: parseCurrencyInput(valorCompra), ambiente: 'producao' })}
                   >
-                    <FileText className="h-4 w-4" /> Compra (Produção)
+                    {nfeCompra.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfeCompra.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                    {nfeCompra.erro ? 'Tentar novamente' : 'Emitir Compra'}
                   </Button>
                 )}
                 {podeCancelarCompra && <CancelarNfeDialog nfe={nfeCompra} />}

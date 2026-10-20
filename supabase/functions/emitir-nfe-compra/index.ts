@@ -2641,8 +2641,11 @@ Deno.serve(async (req) => {
       || tipo === 'devolucao_compra' || tipo === 'devolucao_venda_seminova' || tipo === 'devolucao_venda_0km'
       || tipo === 'devolucao_transferencia' || tipo === 'devolucao_transferencia_0km'
       || saidaTransfEmProducao;
+    // BPM sem homologação (pedido do usuário, 2026-10-20): produção direto. A
+    // exigência de uma NF de teste autorizada antes ficou desligada — mantém o
+    // cálculo acima só como diagnóstico no log.
     if (!homologAutorizada && !dispensaHomologPrevia) {
-      return jsonResponse({ error: 'Emita em homologação antes de emitir em produção.' }, 409);
+      console.log(`[emitir-nfe-compra] ${tipo} ${entityId}: produção sem homologação prévia (permitido desde 2026-10-20)`);
     }
     // Transferência (FAG -> MMATOS): só emite em produção depois da NF-e de
     // COMPRA dessa mesma avaliação (a moto da troca) já estar em produção —
