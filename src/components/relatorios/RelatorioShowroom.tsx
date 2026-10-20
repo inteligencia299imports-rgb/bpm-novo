@@ -551,7 +551,16 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       <section className={LISTAGEM_SECAO}>
       <div className="space-y-1 shrink-0">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-bold text-foreground">Listagem</h2>
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Vendidas / Com Sinal à esquerda do título — controla as abas da listagem abaixo. */}
+            <Tabs value={listTab} onValueChange={setListTab}>
+              <TabsList>
+                <TabsTrigger value="vendidas">Vendidas ({motosVendidas.length})</TabsTrigger>
+                <TabsTrigger value="sinais">Com Sinal ({motosSinal.length})</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <h2 className="text-lg font-bold text-foreground">Listagem</h2>
+          </div>
           <div className="flex items-center gap-1">
             <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportExcel} disabled={currentList().count === 0} title="Baixar Excel">
               <FileSpreadsheet className="h-4 w-4 text-[#3a8f6a]" />
@@ -566,10 +575,6 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       <Card className={cn('overflow-hidden', LISTAGEM_NIVEL)}>
         <CardContent className={cn('pt-4', LISTAGEM_NIVEL)}>
           <Tabs value={listTab} onValueChange={setListTab} className={LISTAGEM_NIVEL}>
-            <TabsList className="mb-3">
-              <TabsTrigger value="vendidas">Vendidas ({motosVendidas.length})</TabsTrigger>
-              <TabsTrigger value="sinais">Com Sinal ({motosSinal.length})</TabsTrigger>
-            </TabsList>
             <TabsContent value="vendidas" className={LISTAGEM_NIVEL}>
               <div className={cn('pb-2', LISTAGEM_NIVEL)}>
                 <Table stickyHeader maxHeightClassName={LISTAGEM_TABELA} className="min-w-[900px]">
