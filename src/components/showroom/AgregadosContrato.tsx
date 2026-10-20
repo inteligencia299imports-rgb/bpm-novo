@@ -32,9 +32,6 @@ export interface AgregadoLinha {
   voucher_vendedor_id?: string | null;
 }
 
-// Valor do item "Sem direcionamento" do seletor de consultor (o Select não aceita '').
-const SEM_CONSULTOR = '__sem_consultor__';
-
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtInput = (v: string) => {
   const d = v.replace(/\D/g, '');
@@ -94,10 +91,12 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
   const agSel = catalogo.find((c) => c.id === selId);
   const descAtual = editando ? (value[editIdx as number]?.descricao ?? '') : (agSel?.descricao ?? '');
   const mostrarCampos = !!selId || editando;
-  // Voucher Equipamentos é sempre cortesia (não cobrado do cliente): fica marcado e
-  // travado, e "Troco ao Cliente" nem aparece.
+  // Voucher Equipamentos é sempre cortesia (não cobrado do cliente) — gravado como
+  // cortesia sem exibir as opções Cortesia/Troco. Valor e Consultor Equipamentos
+  // (lojas com voucher para o CRM) são obrigatórios.
   const ehVoucher = ehVoucherEquipamentos(descAtual);
   const podeDirecionar = ehVoucher && vendedoresEquipamentos.length > 0;
+  const faltaObrigatorio = ehVoucher && (parseInput(fValor) <= 0 || (podeDirecionar && !fVendedorId));
   const nomeVendedor = (id: string | null | undefined) =>
     vendedoresEquipamentos.find((v) => v.user_id === id)?.nome ?? 'vendedor de equipamentos';
 
@@ -254,7 +253,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         {mostrarCampos && (
           <>
             <div>
-              <Label className="text-xs text-muted-foreground">Valor</Label>
+              <Label className="text-xs text-muted-foreground">Valor{ehVoucher && <span className="text-destructive"> *</span>}</Label>
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                 <Input
@@ -269,11 +268,10 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
 
             {podeDirecionar && (
               <div>
-                <Label className="text-xs text-muted-foreground">Consultor Equipamentos</Label>
-                <Select value={fVendedorId || SEM_CONSULTOR} onValueChange={(v) => setFVendedorId(v === SEM_CONSULTOR ? '' : v)}>
+                <Label className="text-xs text-muted-foreground">Consultor Equipamentos <span className="text-destructive">*</span></Label>
+                <Select value={fVendedorId} onValueChange={setFVendedorId}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={SEM_CONSULTOR}>Sem direcionamento</SelectItem>
                     {vendedoresEquipamentos.map((v) => (
                       <SelectItem key={v.user_id} value={v.user_id}>{v.nome}</SelectItem>
                     ))}
@@ -292,26 +290,24 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
               />
             </div>
 
-            <label className={cn('flex items-center gap-2 text-xs font-medium select-none', ehVoucher ? 'cursor-not-allowed' : 'cursor-pointer')}>
-              <Checkbox
-                checked={ehVoucher || fCortesia}
-                disabled={ehVoucher}
-                onCheckedChange={(c) => { setFCortesia(c === true); if (c === true) setFTroco(false); }}
-              />
-              Cortesia
-            </label>
             {!ehVoucher && (
-              <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
-                <Checkbox checked={fTroco} onCheckedChange={(c) => { setFTroco(c === true); if (c === true) setFCortesia(false); }} />
-                Troco ao Cliente
-              </label>
+              <>
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
+                  <Checkbox checked={fCortesia} onCheckedChange={(c) => { setFCortesia(c === true); if (c === true) setFTroco(false); }} />
+                  Cortesia
+                </label>
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
+                  <Checkbox checked={fTroco} onCheckedChange={(c) => { setFTroco(c === true); if (c === true) setFCortesia(false); }} />
+                  Troco ao Cliente
+                </label>
+              </>
             )}
 
             <div className="flex justify-center gap-2 pt-1">
               <Button size="sm" variant="outline" className="flex-1 max-w-[10.5rem]" onClick={resetForm}>
                 <X className="h-4 w-4 mr-1" /> Cancelar
               </Button>
-              <Button size="sm" className="flex-1 max-w-[10.5rem]" onClick={salvar} disabled={!editando && !selId}>
+              <Button size="sm" className="flex-1 max-w-[10.5rem]" onClick={salvar} disabled={(!editando && !selId) || faltaObrigatorio}>
                 <Plus className="h-4 w-4 mr-1" />
                 {editando ? 'Salvar Alterações' : 'Registrar'}
               </Button>
