@@ -322,6 +322,21 @@ const ContratoDialog: React.FC<Props> = ({
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, eh0kmVenda, nfeEmProducaoBruta, estItemNfe?.avaliacao_id]);
+  // Moto consignada só vende como estoque próprio depois da devolução simbólica +
+  // NF-e de compra (mesma checagem de viaVendaPosConsignacao em emitir-nfe-compra) —
+  // vira pendência na tela de emissão em vez de só estourar no servidor.
+  const consignadaVenda = ehNfe && !eh0kmVenda && estItemNfe?.tipo_aquisicao === 'consignada';
+  const [consignadaComCompra, setConsignadaComCompra] = useState(true);
+  useEffect(() => {
+    if (!open || !consignadaVenda || !estItemNfe?.avaliacao_id) { setConsignadaComCompra(true); return; }
+    let cancel = false;
+    supabase.from('nfe_entradas' as never)
+      .select('id').eq('avaliacao_id' as never, estItemNfe.avaliacao_id as never)
+      .eq('operacao' as never, 'compra' as never).eq('status' as never, 'processada' as never)
+      .limit(1).maybeSingle()
+      .then(({ data }) => { if (!cancel) setConsignadaComCompra(!!data); });
+    return () => { cancel = true; };
+  }, [open, consignadaVenda, estItemNfe?.avaliacao_id]);
   // Homologação permite reemitir mesmo com uma NF-e já autorizada (sempre com os
   // dados atuais do sistema) — em produção uma NF-e autorizada é definitiva, não reemite.
   const podeReemitirHomolog = nfeJaEmitida && nfe.nfe?.ambiente === 'homologacao';
@@ -1407,6 +1422,36 @@ const ContratoDialog: React.FC<Props> = ({
   const podeGerarContrato = errosGeracaoVenda.length === 0 && valorTotalContrato > 0.005
     && valorFaltante <= 0.005 && !vendaBloqueadaAprovacao && !exigeMotoNovaParaVenda;
 
+  // Pendências da emissão da NF-e de venda — as mesmas travas dos botões e de
+  // emitir-nfe-compra, listadas antes do clique (igual às da proposta). As de
+  // produção só valem para o botão "NF-e (Produção)".
+  // Moto 0km: produção exige os valores de ICMS-ST retido (da NF de entrada).
+  const stRetidoOk = !eh0kmVenda || (
+    parseCurrencyInput(stBcRetido) > 0 &&
+    parseCurrencyInput(stValorSubstituto) > 0 &&
+    parseCurrencyInput(stValorRetido) > 0
+  );
+  const precisaTransferenciaFag = hasTroca && EMPRESAS_SO_MOTO_NOVA.has(empresaId) && !trocaTransferenciaProdOk;
+  const pendenciasEmissaoNf: string[] = [];
+  const pendenciasProducaoNf: string[] = [];
+  if (ehNfe && !loading && (podeEmitirNova || podeReemitirHomolog)) {
+    if (!empresaId) pendenciasEmissaoNf.push('Empresa vinculada à loja do atendimento');
+    if (!contratoId) pendenciasEmissaoNf.push('Proposta de venda gerada');
+    if (!estItemNfe) pendenciasEmissaoNf.push('Moto do estoque vinculada à Moto de Interesse');
+    else if (!['vendido', 'sinal'].includes(String(estItemNfe.status ?? ''))) pendenciasEmissaoNf.push('Moto marcada como vendida no atendimento');
+    if (consignadaVenda && !consignadaComCompra) pendenciasEmissaoNf.push('Moto consignada: devolução simbólica e NF-e de compra (Pós-Compra)');
+    if (veicProdBloqueado) pendenciasEmissaoNf.push(`Dados fiscais da moto 0km (${veicProdFaltando.join(', ')}) — Estoque → "Dados Fiscais (NF-e)"`);
+    if (hasTroca && !valorQuitacao?.trim()) pendenciasEmissaoNf.push('Valor de Quitação da moto do cliente');
+    pendenciasNf.cliente.forEach((p) => pendenciasEmissaoNf.push(`Cadastro do cliente: ${p}`));
+    pendenciasNf.endereco.forEach((p) => pendenciasEmissaoNf.push(`Endereço do cliente: ${p}`));
+    pendenciasNf.bancario.forEach((p) => pendenciasEmissaoNf.push(`Dados bancários do cliente: ${p}`));
+    if (parseCurrencyInput(nfeValor) <= 0) pendenciasEmissaoNf.push('Valor da nota');
+    if (!podeReemitirHomolog) pendenciasProducaoNf.push('NF-e de teste (homologação) autorizada');
+    if (!stRetidoOk) pendenciasProducaoNf.push('ICMS-ST retido da NF de entrada da moto (BC, ICMS do substituto e ICMS-ST)');
+    if (hasTroca && !trocaCompraProdOk) pendenciasProducaoNf.push('NF-e de compra da moto da troca em produção');
+    if (precisaTransferenciaFag) pendenciasProducaoNf.push('NF-e de transferência da moto da troca para a MMATOS em produção');
+  }
+
   if (!open) return null;
 
   return (
@@ -1433,7 +1478,7 @@ const ContratoDialog: React.FC<Props> = ({
         </div>
       )}
 
-      {veicProdBloqueado && (
+      {veicProdBloqueado && !ehNfe && (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive flex items-center gap-1.5">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           Emissão bloqueada: faltam dados fiscais do veículo ({veicProdFaltando.join(', ')}) — sem eles a NF-e sai sem o grupo estruturado do veículo e o DETRAN rejeita a transferência. Preencha em Estoque → menu da moto → "Dados Fiscais (NF-e)".
@@ -1448,6 +1493,31 @@ const ContratoDialog: React.FC<Props> = ({
           <ul className="mt-3 list-disc pl-6 space-y-0.5">
             {errosGeracaoVenda.map((erro) => <li key={erro}>{erro}</li>)}
           </ul>
+        </div>
+      )}
+
+      {(pendenciasEmissaoNf.length > 0 || pendenciasProducaoNf.length > 0) && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700">
+          {pendenciasEmissaoNf.length > 0 && (
+            <>
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5" /> Informações pendentes para emissão da NF-e:
+              </div>
+              <ul className="mt-3 list-disc pl-6 space-y-0.5">
+                {pendenciasEmissaoNf.map((p) => <li key={p}>{p}</li>)}
+              </ul>
+            </>
+          )}
+          {pendenciasProducaoNf.length > 0 && (
+            <>
+              <div className={cn('flex items-center gap-1.5', pendenciasEmissaoNf.length > 0 && 'mt-3')}>
+                <AlertTriangle className="h-3.5 w-3.5" /> Pendentes para emitir em produção:
+              </div>
+              <ul className="mt-3 list-disc pl-6 space-y-0.5">
+                {pendenciasProducaoNf.map((p) => <li key={p}>{p}</li>)}
+              </ul>
+            </>
+          )}
         </div>
       )}
 
@@ -2228,12 +2298,6 @@ const ContratoDialog: React.FC<Props> = ({
               </Button>
               {(() => {
                 const disabled = nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim()) || !nfSemPendencias || veicProdBloqueado;
-                // Moto 0km: produção exige os valores de ICMS-ST retido (da NF de entrada).
-                const stRetidoOk = !eh0kmVenda || (
-                  parseCurrencyInput(stBcRetido) > 0 &&
-                  parseCurrencyInput(stValorSubstituto) > 0 &&
-                  parseCurrencyInput(stValorRetido) > 0
-                );
                 const title = !empresaId
                   ? 'Nenhuma empresa vinculada à loja do atendimento'
                   : veicProdBloqueado
@@ -2257,7 +2321,6 @@ const ContratoDialog: React.FC<Props> = ({
                       </Button>
                     )}
                     {(() => {
-                      const precisaTransferenciaFag = hasTroca && EMPRESAS_SO_MOTO_NOVA.has(empresaId) && !trocaTransferenciaProdOk;
                       return podeReemitirHomolog && !nfe.pendente && (
                         <Button
                           className="gap-1.5"
