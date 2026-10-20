@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { sexoParaGravar } from '@/lib/sexo';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -382,9 +383,11 @@ export function ClienteForm({
     },
   });
 
-  // CPF/CNPJ só é editável enquanto o cliente não tiver um cadastrado.
-  // Telefone e tipo de pessoa (quando já há CPF/CNPJ) são imutáveis na edição.
-  const cpfBloqueado = isEdit && !!onlyDigits((existing as any)?.cpf_cnpj ?? "");
+  // CPF/CNPJ só é editável enquanto o cliente não tiver um cadastrado (master
+  // ainda corrige). Tipo de pessoa segue a mesma trava. O telefone pode mudar,
+  // mas nunca pro de outro cliente (ver telefoneDuplicado).
+  const podeCorrigirCpf = useAuth().role === "master";
+  const cpfBloqueado = isEdit && !!onlyDigits((existing as any)?.cpf_cnpj ?? "") && !podeCorrigirCpf;
   // Data de nascimento segue a mesma regra do CPF/CNPJ: só editável enquanto vazia.
   const nascimentoBloqueado = isEdit && !!String((existing as any)?.data_nascimento ?? "").trim();
 
@@ -531,6 +534,36 @@ export function ClienteForm({
   });
   const isDuplicate = !!dupRow;
 
+  // CPF/CNPJ de cliente já cadastrado não muda (só master corrige): telefone e
+  // CPF identificam o cliente — trocar o CPF aqui transformaria o cadastro em
+  // outra pessoa. Cliente ainda sem CPF pode receber um.
+  const cpfOriginal = onlyDigits((existing as any)?.cpf_cnpj ?? "");
+  const cpfTravado = cpfBloqueado;
+
+  // Telefone pode mudar (cliente trocou de número), mas não pode ser o de outro
+  // cliente já cadastrado.
+  const telDigits = onlyDigits(form.telefone);
+  const telOriginal = onlyDigits((existing as any)?.telefone ?? "");
+  const checarTelDup =
+    form.tipo_cadastro === "cliente" && telDigits.length >= 10 && !/^0+$/.test(telDigits) && telDigits !== telOriginal;
+  const { data: telDupRow } = useQuery({
+    queryKey: ["telefone-dup", telDigits, id ?? null],
+    enabled: checarTelDup,
+    queryFn: async () => {
+      let q = supabase
+        .from("clientes_fornecedores")
+        .select("id, nome_razao_social")
+        .eq("telefone", telDigits)
+        .eq("tipo_cadastro", "cliente")
+        .limit(1);
+      if (id) q = q.neq("id", id);
+      const { data, error } = await q.maybeSingle();
+      if (error) throw error;
+      return data as { id: string; nome_razao_social: string | null } | null;
+    },
+  });
+  const telefoneDuplicado = checarTelDup && !!telDupRow;
+
   const brasilApi = useMutation({
     mutationFn: async () => {
       const cnpj = onlyDigits(form.cpf_cnpj);
@@ -640,7 +673,8 @@ export function ClienteForm({
     !!s(form.email) && isValidEmail(form.email) &&
     !!s(form.email_nf) && isValidEmail(form.email_nf) &&
     !!s(form.telefone) && !!s(form.telefone_comercial) &&
-    !!form.autoriza_contato && !!form.aceite_politica_privacidade;
+    !!form.autoriza_contato && !!form.aceite_politica_privacidade &&
+    !telefoneDuplicado;
 
   const principaisOk = () => {
     if (!s(form.cpf_cnpj) || !s(form.nome_razao_social) || isDuplicate || !cpfCnpjValido) return false;
@@ -699,6 +733,7 @@ export function ClienteForm({
       if (!dataNascOk) throw new Error(`Data de nascimento inválida (idade entre ${IDADE_MIN} e ${IDADE_MAX} anos)`);
       if (isJuridica && form.tipo_cadastro !== "fornecedor" && !form.consumidor_final) throw new Error("Consumidor final obrigatório");
       if (isDuplicate) throw new Error("Este CPF/CNPJ já possui cadastro");
+      if (telefoneDuplicado) throw new Error(`Este telefone já pertence a outro cliente (${telDupRow?.nome_razao_social ?? "cadastro existente"})`);
       if (isJuridica && !fiscaisOk) throw new Error("Preencha os dados fiscais (Inscrição Estadual ou isento, e contribuinte de ICMS)");
       if (s(form.email) && !isValidEmail(form.email)) throw new Error("E-mail para contato inválido");
       if (s(form.email_nf) && !isValidEmail(form.email_nf)) throw new Error("E-mail para NF inválido");
@@ -711,6 +746,7 @@ export function ClienteForm({
 
       const payload: any = { ...form };
       payload.cpf_cnpj = onlyDigits(payload.cpf_cnpj ?? "");
+      if (cpfTravado) payload.cpf_cnpj = cpfOriginal;
       payload.telefone = onlyDigits(payload.telefone ?? "");
       payload.telefone_comercial = onlyDigits(payload.telefone_comercial ?? "");
       payload.cpf_cnpj_favorecido = onlyDigits(payload.cpf_cnpj_favorecido ?? "") || null;
@@ -741,9 +777,9 @@ export function ClienteForm({
 
       let cfId = id;
       if (isEdit) {
-        // Telefone é imutável. CPF/CNPJ, tipo de pessoa e data de nascimento
-        // só podem mudar se o campo ainda não estava preenchido.
-        delete payload.telefone;
+        // Telefone pode mudar (já validado contra outro cliente em
+        // telefoneDuplicado). CPF/CNPJ, tipo de pessoa e data de nascimento só
+        // podem mudar se o campo ainda não estava preenchido (master corrige CPF).
         if (cpfBloqueado) {
           delete payload.cpf_cnpj;
           delete payload.tipo_pessoa;
@@ -1114,7 +1150,7 @@ export function ClienteForm({
             <div>
               <Label>Telefone para contato <span className="text-red-500">*</span></Label>
               <div className="flex gap-2">
-                <Select value={ddi} onValueChange={setDdi} disabled={isEdit}>
+                <Select value={ddi} onValueChange={setDdi}>
                   <SelectTrigger className="w-[150px]">{ddiShortLabel(ddi)}</SelectTrigger>
                   <SelectContent>
                     {DDI_OPTIONS.map((o) => (
@@ -1124,14 +1160,19 @@ export function ClienteForm({
                 </Select>
                 <Input
                   value={form.telefone}
-                  disabled={isEdit}
-                  className={errCls(!s(form.telefone))}
+                  aria-invalid={telefoneDuplicado}
+                  className={telefoneDuplicado ? ERR_CLS : errCls(!s(form.telefone))}
                   onChange={(e) =>
                     set("telefone")(ddi === "+55" ? maskPhoneBR(e.target.value) : maskPhoneIntl(e.target.value))
                   }
                   placeholder={ddi === "+55" ? "(11) 99999-9999" : ""}
                 />
               </div>
+              {telefoneDuplicado && (
+                <p className="text-xs text-destructive mt-1">
+                  Este telefone já pertence a outro cliente{telDupRow?.nome_razao_social ? ` (${telDupRow.nome_razao_social})` : ""}.
+                </p>
+              )}
             </div>
             <Button
               type="button"
