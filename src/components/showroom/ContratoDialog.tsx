@@ -1217,17 +1217,18 @@ const ContratoDialog: React.FC<Props> = ({
       // Registra a geração ANTES do download do PDF: no celular o download pode
       // falhar e, antes, o registro (que libera a etapa seguinte e o contas a receber) não era
       // gravado (achado UJL2F09, iPhone, 2026-10-09).
+      // Histórico de movimentações: toda geração registra, inclusive o re-download
+      // de proposta já fechada (pedido do usuário, 2026-10-20).
+      if (user) {
+        await supabase.from('status_history').insert({
+          entity_type: 'showroom',
+          entity_id: atendimento.id,
+          status: variant === 'venda' ? 'contrato_de_venda' : 'contrato_de_sinal',
+          changed_by: user.id,
+          changed_by_name: userName || 'Vendedor',
+        });
+      }
       if (!soLeitura) {
-        // Registrar no histórico de movimentações (só na geração "real", não no re-download).
-        if (user) {
-          await supabase.from('status_history').insert({
-            entity_type: 'showroom',
-            entity_id: atendimento.id,
-            status: variant === 'venda' ? 'contrato_de_venda' : 'contrato_de_sinal',
-            changed_by: user.id,
-            changed_by_name: userName || 'Vendedor',
-          });
-        }
         setJaGerado(true);
 
         // Proposta de VENDA → gera o compromisso financeiro a receber (parcelas =
@@ -1247,6 +1248,10 @@ const ContratoDialog: React.FC<Props> = ({
         toast.warning('Contrato gerado, mas não foi possível baixar o PDF neste aparelho. Use "Baixar" ou "Visualizar" para tentar de novo.');
       }
       toast.success(variant === 'venda' ? 'Proposta de venda gerada com sucesso!' : 'Proposta gerada com sucesso!');
+      // Mesmo desfecho do Salvar: os dados já foram gravados (saveContrato acima),
+      // a lista recarrega e a tela fecha.
+      onSaved?.();
+      onOpenChange(false);
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
       toast.error('Erro ao gerar o contrato PDF');
