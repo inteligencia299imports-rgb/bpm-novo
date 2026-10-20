@@ -49,18 +49,7 @@ interface Props {
   /** Vendedores de equipamentos da loja (CRM). Vazio = loja sem voucher para o
    * CRM (só Ducati BSB/FLN/POA) — a opção de direcionar não aparece. */
   vendedoresEquipamentos?: VendedorEquipamentos[];
-  /** Status do atendimento de equipamentos já criado no CRM, se houver. */
-  voucherCrmStatus?: string | null;
 }
-
-const STATUS_CRM_LABEL: Record<string, string> = {
-  em_aberto: 'Em aberto no CRM',
-  aprovacao_desconto: 'Aguardando aprovação no CRM',
-  pendente_estoque: 'Pendência de estoque no CRM',
-  aguardando_nf: 'Finalizado no CRM — sai na NF-e da moto',
-  vendido: 'Faturado na NF-e da moto',
-  perdido: 'Encerrado no CRM',
-};
 
 /**
  * Agregados do contrato: serviços cobrados à parte do cliente. Seleciona um
@@ -70,14 +59,14 @@ const STATUS_CRM_LABEL: Record<string, string> = {
  * Após registrado, o agregado é editado/excluído pelos ícones do card (igual
  * às Formas de Pagamento) — os campos não ficam sempre abertos.
  */
-const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitura, vendedoresEquipamentos = [], voucherCrmStatus }) => {
+const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitura, vendedoresEquipamentos = [] }) => {
   const [selId, setSelId] = useState('');
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [fValor, setFValor] = useState('');
   const [fObs, setFObs] = useState('');
   const [fCortesia, setFCortesia] = useState(false);
   const [fTroco, setFTroco] = useState(false);
-  const [fDirecionar, setFDirecionar] = useState(false);
+  // Consultor de equipamentos do Voucher Equipamentos ('' = sem direcionamento).
   const [fVendedorId, setFVendedorId] = useState('');
 
   const disponiveis = useMemo(
@@ -91,9 +80,12 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
   const agSel = catalogo.find((c) => c.id === selId);
   const descAtual = editando ? (value[editIdx as number]?.descricao ?? '') : (agSel?.descricao ?? '');
   const mostrarCampos = !!selId || editando;
-  const podeDirecionar = ehVoucherEquipamentos(descAtual) && vendedoresEquipamentos.length > 0;
-  const nomeVendedor = (id: string | null | undefined) =>
-    vendedoresEquipamentos.find((v) => v.user_id === id)?.nome ?? 'vendedor de equipamentos';
+  // Voucher Equipamentos é sempre cortesia (não cobrado do cliente) — gravado como
+  // cortesia sem exibir as opções Cortesia/Troco. Valor e Consultor Equipamentos
+  // (lojas com voucher para o CRM) são obrigatórios.
+  const ehVoucher = ehVoucherEquipamentos(descAtual);
+  const podeDirecionar = ehVoucher && vendedoresEquipamentos.length > 0;
+  const faltaObrigatorio = ehVoucher && (parseInput(fValor) <= 0 || (podeDirecionar && !fVendedorId));
 
   const resetForm = () => {
     setSelId('');
@@ -102,7 +94,6 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setFObs('');
     setFCortesia(false);
     setFTroco(false);
-    setFDirecionar(false);
     setFVendedorId('');
   };
 
@@ -113,9 +104,8 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     const ag = catalogo.find((c) => c.id === id);
     setFValor(ag ? toInput(Number(ag.valor) || 0) : '');
     setFObs('');
-    setFCortesia(false);
+    setFCortesia(ehVoucherEquipamentos(ag?.descricao));
     setFTroco(false);
-    setFDirecionar(false);
     setFVendedorId('');
   };
 
@@ -124,16 +114,18 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setSelId('');
     setEditIdx(i);
     setFValor(toInput(Number(l.valor) || 0));
-    setFObs(l.observacoes ?? '');
-    setFCortesia(!!l.cortesia);
-    setFTroco(!!l.troco);
-    setFDirecionar(!!l.voucher_vendedor_id);
+    setFObs((l.observacoes ?? '').toUpperCase());
+    setFCortesia(!!l.cortesia || ehVoucherEquipamentos(l.descricao));
+    setFTroco(!!l.troco && !ehVoucherEquipamentos(l.descricao));
     setFVendedorId(l.voucher_vendedor_id ?? '');
   };
 
   const salvar = () => {
-    const obs = fObs.trim() || null;
-    const voucher_vendedor_id = podeDirecionar && fDirecionar && fVendedorId ? fVendedorId : null;
+    // Observações sempre em maiúsculas (pedido do usuário, 2026-10-20).
+    const obs = fObs.trim().toUpperCase() || null;
+    const voucher_vendedor_id = podeDirecionar && fVendedorId ? fVendedorId : null;
+    const cortesia = ehVoucher || fCortesia;
+    const troco = !ehVoucher && fTroco;
     if (editando) {
       const i = editIdx as number;
       const next = value.slice();
@@ -141,8 +133,8 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         ...next[i],
         valor: parseInput(fValor),
         observacoes: obs,
-        cortesia: fCortesia,
-        troco: fTroco,
+        cortesia,
+        troco,
         voucher_vendedor_id,
       };
       onChange(next);
@@ -154,8 +146,8 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         descricao: ag.descricao,
         valor: fValor.trim() ? parseInput(fValor) : (Number(ag.valor) || 0),
         observacoes: obs,
-        cortesia: fCortesia,
-        troco: fTroco,
+        cortesia,
+        troco,
         voucher_vendedor_id,
       }]);
     }
@@ -184,20 +176,13 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
             </span>
             <p className="text-xs text-muted-foreground">
               {l.cortesia
-                ? `Cortesia — não cobrado do cliente${(Number(l.valor) || 0) > 0 ? ` (valor de referência: ${brl(Number(l.valor) || 0)})` : ''}`
+                ? `Cortesia - não cobrado do cliente${(Number(l.valor) || 0) > 0 ? ` (valor de referência: ${brl(Number(l.valor) || 0)})` : ''}`
                 : l.troco
-                  ? `Troco ao cliente — não cobrado, gera conta a pagar de ${brl(Number(l.valor) || 0)}`
+                  ? `Troco ao cliente - não cobrado, gera conta a pagar de ${brl(Number(l.valor) || 0)}`
                   : `Valor: ${brl(Number(l.valor) || 0)}`}
             </p>
             {l.observacoes?.trim() && (
-              <p className="text-xs text-muted-foreground italic whitespace-pre-wrap">{l.observacoes}</p>
-            )}
-            {l.voucher_vendedor_id && (
-              <p className="text-xs font-medium text-sky-700">
-                Direcionado a {nomeVendedor(l.voucher_vendedor_id)}
-                {' — '}
-                {voucherCrmStatus ? (STATUS_CRM_LABEL[voucherCrmStatus] ?? voucherCrmStatus) : 'atendimento criado no CRM ao gerar a proposta'}
-              </p>
+              <p className="text-xs text-muted-foreground italic whitespace-pre-wrap uppercase">{l.observacoes}</p>
             )}
           </div>
           {!soLeitura && (
@@ -239,7 +224,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
             <SelectContent>
               {disponiveis.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
-                  {c.descricao}{c.valor ? ` — ${brl(Number(c.valor))}` : ''}
+                  {c.descricao}{c.valor ? ` - ${brl(Number(c.valor))}` : ''}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -249,7 +234,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         {mostrarCampos && (
           <>
             <div>
-              <Label className="text-xs text-muted-foreground">Valor</Label>
+              <Label className="text-xs text-muted-foreground">Valor{ehVoucher && <span className="text-destructive"> *</span>}</Label>
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                 <Input
@@ -262,49 +247,48 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
               </div>
             </div>
 
+            {podeDirecionar && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Consultor Equipamentos <span className="text-destructive">*</span></Label>
+                <Select value={fVendedorId} onValueChange={setFVendedorId}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {vendedoresEquipamentos.map((v) => (
+                      <SelectItem key={v.user_id} value={v.user_id}>{v.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
               <Label className="text-xs text-muted-foreground">Observações</Label>
               <Input
-                className="mt-1"
+                className="mt-1 uppercase placeholder:normal-case"
                 placeholder="Observações deste agregado..."
                 value={fObs}
-                onChange={(e) => setFObs(e.target.value)}
+                onChange={(e) => setFObs(e.target.value.toUpperCase())}
               />
             </div>
 
-            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
-              <Checkbox checked={fCortesia} onCheckedChange={(c) => { setFCortesia(c === true); if (c === true) setFTroco(false); }} />
-              Cortesia — não cobrar do cliente (não soma no total nem nos cálculos)
-            </label>
-            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
-              <Checkbox checked={fTroco} onCheckedChange={(c) => { setFTroco(c === true); if (c === true) setFCortesia(false); }} />
-              Troco ao cliente — não cobrar (gera conta a pagar deste valor)
-            </label>
-
-            {podeDirecionar && (
-              <div className="space-y-2 rounded-md border border-dashed p-2">
+            {!ehVoucher && (
+              <>
                 <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
-                  <Checkbox checked={fDirecionar} onCheckedChange={(c) => setFDirecionar(c === true)} />
-                  Direcionar ao vendedor de equipamentos (cria o atendimento no CRM ao gerar a proposta)
+                  <Checkbox checked={fCortesia} onCheckedChange={(c) => { setFCortesia(c === true); if (c === true) setFTroco(false); }} />
+                  Cortesia
                 </label>
-                {fDirecionar && (
-                  <Select value={fVendedorId} onValueChange={setFVendedorId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o vendedor de equipamentos" /></SelectTrigger>
-                    <SelectContent>
-                      {vendedoresEquipamentos.map((v) => (
-                        <SelectItem key={v.user_id} value={v.user_id}>{v.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
+                  <Checkbox checked={fTroco} onCheckedChange={(c) => { setFTroco(c === true); if (c === true) setFCortesia(false); }} />
+                  Troco ao Cliente
+                </label>
+              </>
             )}
 
             <div className="flex justify-center gap-2 pt-1">
               <Button size="sm" variant="outline" className="flex-1 max-w-[10.5rem]" onClick={resetForm}>
                 <X className="h-4 w-4 mr-1" /> Cancelar
               </Button>
-              <Button size="sm" className="flex-1 max-w-[10.5rem]" onClick={salvar} disabled={(!editando && !selId) || (podeDirecionar && fDirecionar && !fVendedorId)}>
+              <Button size="sm" className="flex-1 max-w-[10.5rem]" onClick={salvar} disabled={(!editando && !selId) || faltaObrigatorio}>
                 <Plus className="h-4 w-4 mr-1" />
                 {editando ? 'Salvar Alterações' : 'Registrar'}
               </Button>
