@@ -1020,16 +1020,15 @@ const ContratoDialog: React.FC<Props> = ({
     ?? cli?.clientes_fornecedores_enderecos?.[0] ?? null;
   // Endereço RESIDENCIAL (ATPV) — só existe (2ª linha) pra PJ que preencheu no cadastro.
   const cliEnderecoAtpv = (cli?.clientes_fornecedores_enderecos as any[] | undefined)?.find((e) => e.tipo === 'residencial') ?? null;
-  // Dados bancários do cliente só são obrigatórios quando há troca E a loja fica
-  // devendo pro cliente — ou seja, o valor de fechamento da moto que entra é
-  // maior que o valor da moto vendida (aí a loja paga a diferença nessa conta).
-  // Se a moto da troca vale menos que a vendida, o cliente é que paga a
-  // diferença: não precisa dos dados bancários.
-  const exigirBancarios = hasTroca
+  // Troca em que a loja fica devendo pro cliente (valor de fechamento da moto que
+  // entra maior que o da moto vendida): mostra o card de dados bancários, só
+  // informativo. Desde 2026-10-13 os dados bancários não são obrigatórios em
+  // nenhum fluxo de moto que entra (compra, consignação, intermediação, troca).
+  const lojaPagaCliente = hasTroca
     && parseCurrencyInput(valorFechamento) > parseCurrencyInput(valorVenda);
-  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco, { exigirBancarios });
+  const cadastroCompleto = cadastroClienteCompleto(cli, cliEndereco, { exigirBancarios: false });
   // Pendências de cadastro para emissão de NF-e, por card. Só usadas quando ehNfe.
-  const pendenciasNf = pendenciasCadastroCliente(cli, cliEndereco, { exigirBancarios });
+  const pendenciasNf = pendenciasCadastroCliente(cli, cliEndereco, { exigirBancarios: false });
   const nfSemPendencias = semPendencias(pendenciasNf);
   const fmtTelefone = (v: string | null | undefined) => {
     const d = (v || '').replace(/\D/g, '');
@@ -1375,7 +1374,6 @@ const ContratoDialog: React.FC<Props> = ({
       if (pendenciasNf.cliente.includes('E-mail para NF')) errors.push('E-mail para NF');
       if (pendenciasNf.cliente.includes('Telefone comercial')) errors.push('Telefone comercial');
       if (pendenciasNf.endereco.length > 0) errors.push('CEP + Endereço');
-      if (exigirBancarios && pendenciasNf.bancario.length > 0) errors.push('Bancário');
     }
     if (!motoInt && !estItem) errors.push('Moto de Interesse');
     if (!valorSinal) errors.push('Valor do Sinal');
@@ -1626,7 +1624,7 @@ const ContratoDialog: React.FC<Props> = ({
                     <ClienteForm
                       embedded
                       id={clienteId}
-                      exigirBancarios={exigirBancarios}
+                      exigirBancarios={false}
                       onSaved={handleClienteSaved}
                       onCancel={editandoCliente && cadastroCompleto ? () => setEditandoCliente(false) : undefined}
                     />
@@ -1682,12 +1680,11 @@ const ContratoDialog: React.FC<Props> = ({
                   </Card>
 
                   {/* Card: Dados Bancários — troca em que a loja paga o cliente */}
-                  {exigirBancarios && (
+                  {lojaPagaCliente && (
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                         <Landmark className="h-4 w-4 text-primary" /> Dados Bancários
-                        {ehNfe && <PendenciaTag itens={pendenciasNf.bancario} className="ml-auto" />}
                       </CardTitle>
                       <Separator className="mt-2" />
                     </CardHeader>
