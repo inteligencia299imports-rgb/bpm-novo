@@ -149,6 +149,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [filterStatus, setFilterStatus] = useState('disponivel');
   
   const [filterCidade, setFilterCidade] = useState<'todos' | 'Brasília' | 'Florianópolis' | 'Porto Alegre'>('todos');
+  // Empresa (CNPJ) dona da loja onde a moto está — loja_empresas.empresa_id.
+  const [filterEmpresa, setFilterEmpresa] = useState('todas');
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
@@ -334,6 +336,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   };
   const filtered = items.filter((item: any) => {
     if (filterCidade !== 'todos' && !CIDADE_LOJAS[filterCidade].includes(item.loja_origem)) return false;
+    if (filterEmpresa !== 'todas' && item.empresa !== filterEmpresa) return false;
     if (!search) return true;
     const s = search.toLowerCase();
     return [item.marca, item.modelo, item.placa, item.chassi, item.cor, item.cilindrada, item.empresa, item.observacoes, item.observacao_moto]
@@ -343,7 +346,10 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  useEffect(() => { setPage(1); }, [search, filterMarca, filterTipo, filterStatus]);
+  useEffect(() => { setPage(1); }, [search, filterMarca, filterTipo, filterStatus, filterEmpresa, filterCidade]);
+  const empresasOpcoes = Array.from(new Set(
+    items.map((i: any) => i.empresa).filter(Boolean).concat(filterEmpresa !== 'todas' ? [filterEmpresa] : []),
+  )).sort((a: any, b: any) => String(a).localeCompare(String(b), 'pt-BR')) as string[];
 
   // --- Navigation handlers (delegate to parent tab) ---
 
@@ -683,13 +689,20 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                 <SelectItem value="test_ride">Test-Ride</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
+              <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas as empresas</SelectItem>
+                {empresasOpcoes.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-          {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterCidade !== 'todos') && (
+          {(filterStatus !== 'disponivel' || filterMarca !== 'todas' || filterTipo !== 'todos' || filterCidade !== 'todos' || filterEmpresa !== 'todas') && (
             <Button
               variant="ghost"
               size="sm"
               className="text-muted-foreground"
-              onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterCidade('todos'); }}
+              onClick={() => { setFilterStatus('disponivel'); setFilterMarca('todas'); setFilterTipo('todos'); setFilterCidade('todos'); setFilterEmpresa('todas'); }}
             >
               <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
             </Button>
