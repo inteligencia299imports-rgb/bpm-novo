@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, Pencil, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, firstLastName } from '@/lib/utils';
 import { ehVoucherEquipamentos, type VendedorEquipamentos } from '@/lib/voucherEquipamentos';
 
 export interface Agregado {
@@ -254,7 +254,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {vendedoresEquipamentos.map((v) => (
-                      <SelectItem key={v.user_id} value={v.user_id}>{v.nome}</SelectItem>
+                      <SelectItem key={v.user_id} value={v.user_id}>{firstLastName(v.nome) || v.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
