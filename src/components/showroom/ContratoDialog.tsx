@@ -35,7 +35,6 @@ import {
   ehVoucherEquipamentos,
   listarVendedoresEquipamentos,
   sincronizarVoucherEquipamentos,
-  statusVoucherEquipamentos,
   type VendedorEquipamentos,
 } from '@/lib/voucherEquipamentos';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
@@ -395,7 +394,6 @@ const ContratoDialog: React.FC<Props> = ({
   const [agregadoOpcoes, setAgregadoOpcoes] = useState<Agregado[]>([]);
   // Voucher Equipamentos -> CRM (só Ducati BSB/FLN/POA; lista vazia nas demais).
   const [vendedoresEquipamentos, setVendedoresEquipamentos] = useState<VendedorEquipamentos[]>([]);
-  const [voucherCrmStatus, setVoucherCrmStatus] = useState<string | null>(null);
   // instituições (banco / administradora) vinculadas a cada forma_pagamento_id
   const [instituicoesByForma, setInstituicoesByForma] = useState<Record<string, InstituicaoOpt[]>>({});
   // id do registro de formas_pagamento_contrato em edição (null = formulário está em modo "adicionar")
@@ -486,13 +484,7 @@ const ContratoDialog: React.FC<Props> = ({
           .eq('ativo', true)
           .order('descricao'),
       ]);
-      const [vendEquipOpts, voucherCrm] = await Promise.all([
-        listarVendedoresEquipamentos(atendimento.id),
-        statusVoucherEquipamentos(atendimento.id),
-      ]);
-
-      setVendedoresEquipamentos(vendEquipOpts);
-      setVoucherCrmStatus(voucherCrm?.status ?? null);
+      setVendedoresEquipamentos(await listarVendedoresEquipamentos(atendimento.id));
       setFormasPagOpcoes((formasOpts as any[]) || []);
       setAgregadoOpcoes(((agregadosOpts as any[]) || []).map((a) => ({ id: a.id, descricao: a.descricao, valor: Number(a.valor) || 0, empresa_id: a.empresa_id, ativo: a.ativo !== false })));
 
@@ -1206,7 +1198,7 @@ const ContratoDialog: React.FC<Props> = ({
     // se o CRM recusar (ex.: atendimento já finalizado lá), a proposta não sai.
     if (!soLeitura && vendedoresEquipamentos.length > 0) {
       const voucher = agregados.find((a) => ehVoucherEquipamentos(a.descricao) && a.voucher_vendedor_id);
-      const { data: voucherRes, error: voucherErr } = await sincronizarVoucherEquipamentos(
+      const { error: voucherErr } = await sincronizarVoucherEquipamentos(
         atendimento.id,
         voucher?.voucher_vendedor_id ?? null,
         voucher ? Number(voucher.valor) || 0 : null,
@@ -1216,7 +1208,6 @@ const ContratoDialog: React.FC<Props> = ({
         setGenerating(false);
         return;
       }
-      setVoucherCrmStatus(voucherRes?.status ?? null);
     }
 
     try {
@@ -1856,7 +1847,6 @@ const ContratoDialog: React.FC<Props> = ({
                       catalogo={empresaId ? agregadoOpcoes.filter((a) => a.empresa_id === empresaId && a.ativo !== false) : []}
                       soLeitura={soLeitura}
                       vendedoresEquipamentos={vendedoresEquipamentos}
-                      voucherCrmStatus={voucherCrmStatus}
                     />
                   </CardContent>
                 </Card>

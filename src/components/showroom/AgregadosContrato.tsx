@@ -49,18 +49,7 @@ interface Props {
   /** Vendedores de equipamentos da loja (CRM). Vazio = loja sem voucher para o
    * CRM (só Ducati BSB/FLN/POA) — a opção de direcionar não aparece. */
   vendedoresEquipamentos?: VendedorEquipamentos[];
-  /** Status do atendimento de equipamentos já criado no CRM, se houver. */
-  voucherCrmStatus?: string | null;
 }
-
-const STATUS_CRM_LABEL: Record<string, string> = {
-  em_aberto: 'Em aberto no CRM',
-  aprovacao_desconto: 'Aguardando aprovação no CRM',
-  pendente_estoque: 'Pendência de estoque no CRM',
-  aguardando_nf: 'Finalizado no CRM — sai na NF-e da moto',
-  vendido: 'Faturado na NF-e da moto',
-  perdido: 'Encerrado no CRM',
-};
 
 /**
  * Agregados do contrato: serviços cobrados à parte do cliente. Seleciona um
@@ -70,7 +59,7 @@ const STATUS_CRM_LABEL: Record<string, string> = {
  * Após registrado, o agregado é editado/excluído pelos ícones do card (igual
  * às Formas de Pagamento) — os campos não ficam sempre abertos.
  */
-const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitura, vendedoresEquipamentos = [], voucherCrmStatus }) => {
+const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitura, vendedoresEquipamentos = [] }) => {
   const [selId, setSelId] = useState('');
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [fValor, setFValor] = useState('');
@@ -97,8 +86,6 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
   const ehVoucher = ehVoucherEquipamentos(descAtual);
   const podeDirecionar = ehVoucher && vendedoresEquipamentos.length > 0;
   const faltaObrigatorio = ehVoucher && (parseInput(fValor) <= 0 || (podeDirecionar && !fVendedorId));
-  const nomeVendedor = (id: string | null | undefined) =>
-    vendedoresEquipamentos.find((v) => v.user_id === id)?.nome ?? 'vendedor de equipamentos';
 
   const resetForm = () => {
     setSelId('');
@@ -188,20 +175,13 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
             </span>
             <p className="text-xs text-muted-foreground">
               {l.cortesia
-                ? `Cortesia — não cobrado do cliente${(Number(l.valor) || 0) > 0 ? ` (valor de referência: ${brl(Number(l.valor) || 0)})` : ''}`
+                ? `Cortesia - não cobrado do cliente${(Number(l.valor) || 0) > 0 ? ` (valor de referência: ${brl(Number(l.valor) || 0)})` : ''}`
                 : l.troco
-                  ? `Troco ao cliente — não cobrado, gera conta a pagar de ${brl(Number(l.valor) || 0)}`
+                  ? `Troco ao cliente - não cobrado, gera conta a pagar de ${brl(Number(l.valor) || 0)}`
                   : `Valor: ${brl(Number(l.valor) || 0)}`}
             </p>
             {l.observacoes?.trim() && (
               <p className="text-xs text-muted-foreground italic whitespace-pre-wrap">{l.observacoes}</p>
-            )}
-            {l.voucher_vendedor_id && (
-              <p className="text-xs font-medium text-sky-700">
-                Direcionado a {nomeVendedor(l.voucher_vendedor_id)}
-                {' — '}
-                {voucherCrmStatus ? (STATUS_CRM_LABEL[voucherCrmStatus] ?? voucherCrmStatus) : 'atendimento criado no CRM ao gerar a proposta'}
-              </p>
             )}
           </div>
           {!soLeitura && (
@@ -243,7 +223,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
             <SelectContent>
               {disponiveis.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
-                  {c.descricao}{c.valor ? ` — ${brl(Number(c.valor))}` : ''}
+                  {c.descricao}{c.valor ? ` - ${brl(Number(c.valor))}` : ''}
                 </SelectItem>
               ))}
             </SelectContent>
