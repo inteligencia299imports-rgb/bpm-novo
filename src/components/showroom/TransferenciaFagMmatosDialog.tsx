@@ -101,23 +101,15 @@ const TransferenciaFagMmatosDialog: React.FC<TransferenciaFagMmatosDialogProps> 
             Fechar
           </Button>
 
+          {/* Sem homologação: emite direto em produção (pedido do usuário, 2026-10-20). */}
           {(!nfeJaEmitida || podeReemitirHomolog) && !nfe.pendente && (
-            <Button
-              className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
-              disabled={nfe.loading || !avaliacaoId}
-              onClick={() => nfe.emitir({ ambiente: 'homologacao' })}
-            >
-              {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-              {nfe.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
-            </Button>
-          )}
-          {podeReemitirHomolog && !nfe.pendente && (
             <Button
               className="gap-1.5"
               disabled={nfe.loading || !avaliacaoId}
               onClick={() => nfe.emitir({ ambiente: 'producao' })}
             >
-              <FileText className="h-4 w-4" /> NF-e (Produção)
+              {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+              {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
             </Button>
           )}
         </div>

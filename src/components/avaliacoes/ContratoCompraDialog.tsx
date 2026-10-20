@@ -723,7 +723,6 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
     pendenciasNf.cliente.forEach((p) => pendenciasEmissaoNf.push(`Cadastro do cliente: ${p}`));
     pendenciasNf.endereco.forEach((p) => pendenciasEmissaoNf.push(`Endereço do cliente: ${p}`));
     if (parseCurrencyInput(nfeValor) <= 0) pendenciasEmissaoNf.push('Valor da nota');
-    if (!podeReemitirHomolog) pendenciasProducaoNf.push('NF-e de teste (homologação) autorizada');
   }
 
   return (
@@ -1184,25 +1183,16 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                                 : 'Disponível após aprovação, contrato gerado e consulta realizada';
                     return (
                       <>
+                        {/* Sem homologação: emite direto em produção (pedido do usuário, 2026-10-20). */}
                         {(podeEmitirNova || podeReemitirHomolog) && !nfe.pendente && (
-                          <Button
-                            className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
-                            disabled={disabled}
-                            title={title}
-                            onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined, ambiente: 'homologacao' })}
-                          >
-                            {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                            {nfe.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
-                          </Button>
-                        )}
-                        {podeReemitirHomolog && !nfe.pendente && (
                           <Button
                             className="gap-1.5"
                             disabled={disabled}
                             title={title}
                             onClick={() => nfe.emitir({ valor: parseCurrencyInput(nfeValor), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined, ambiente: 'producao' })}
                           >
-                            <FileText className="h-4 w-4" /> NF-e (Produção)
+                            {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                            {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
                           </Button>
                         )}
                       </>

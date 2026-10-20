@@ -1051,25 +1051,16 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                       : 'Disponível após o contrato do consignante e a consulta realizada';
                 return (
                   <>
+                    {/* Sem homologação: emite direto em produção (pedido do usuário, 2026-10-20). */}
                     {(!nfeJaEmitida || podeReemitirHomolog) && !nfe.pendente && (
-                      <Button
-                        className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
-                        disabled={disabled}
-                        title={title}
-                        onClick={() => nfe.emitir({ valor: parseCurrencyInput(valorConsigNota), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined, ambiente: 'homologacao' })}
-                      >
-                        {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                        {nfe.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
-                      </Button>
-                    )}
-                    {podeReemitirHomolog && !nfe.pendente && (
                       <Button
                         className="gap-1.5"
                         disabled={disabled}
                         title={title}
                         onClick={() => nfe.emitir({ valor: parseCurrencyInput(valorConsigNota), observacoes: obsNfe.trim() || undefined, empresa_id: empresaId || undefined, ambiente: 'producao' })}
                       >
-                        <FileText className="h-4 w-4" /> NF-e (Produção)
+                        {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                        {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
                       </Button>
                     )}
                   </>

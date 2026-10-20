@@ -1440,10 +1440,10 @@ const ContratoDialog: React.FC<Props> = ({
     pendenciasNf.endereco.forEach((p) => pendenciasEmissaoNf.push(`Endereço do cliente: ${p}`));
     pendenciasNf.bancario.forEach((p) => pendenciasEmissaoNf.push(`Dados bancários do cliente: ${p}`));
     if (parseCurrencyInput(nfeValor) <= 0) pendenciasEmissaoNf.push('Valor da nota');
-    if (!podeReemitirHomolog) pendenciasProducaoNf.push('NF-e de teste (homologação) autorizada');
-    if (!stRetidoOk) pendenciasProducaoNf.push('ICMS-ST retido da NF de entrada da moto (BC, ICMS do substituto e ICMS-ST)');
-    if (hasTroca && !trocaCompraProdOk) pendenciasProducaoNf.push('NF-e de compra da moto da troca em produção');
-    if (precisaTransferenciaFag) pendenciasProducaoNf.push('NF-e de transferência da moto da troca para a MMATOS em produção');
+    // Sem homologação (2026-10-20): as travas que eram "só de produção" valem pra emissão.
+    if (!stRetidoOk) pendenciasEmissaoNf.push('ICMS-ST retido da NF de entrada da moto (BC, ICMS do substituto e ICMS-ST)');
+    if (hasTroca && !trocaCompraProdOk) pendenciasEmissaoNf.push('NF-e de compra da moto da troca');
+    if (precisaTransferenciaFag) pendenciasEmissaoNf.push('NF-e de transferência da moto da troca para a MMATOS');
   }
 
   if (!open) return null;
@@ -2301,35 +2301,24 @@ const ContratoDialog: React.FC<Props> = ({
                           : undefined;
                 return (
                   <>
+                    {/* Sem homologação: emite direto em produção (pedido do usuário, 2026-10-20). */}
                     {(podeEmitirNova || podeReemitirHomolog) && !nfe.pendente && (
                       <Button
-                        className="gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
-                        disabled={disabled}
-                        title={title}
-                        onClick={() => handleEmitirNf('homologacao')}
+                        className="gap-1.5"
+                        disabled={disabled || (hasTroca && !trocaCompraProdOk) || precisaTransferenciaFag || !stRetidoOk}
+                        title={!stRetidoOk
+                          ? 'Preencha os valores de ICMS-ST retido (da NF de entrada da moto) antes de emitir'
+                          : hasTroca && !trocaCompraProdOk
+                            ? 'Emita a NF-e de compra da moto da troca antes'
+                            : precisaTransferenciaFag
+                              ? 'Emita a NF-e de transferência da moto da troca para a MMATOS antes'
+                              : title}
+                        onClick={() => handleEmitirNf('producao')}
                       >
                         {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                        {nfe.erro ? 'Tentar novamente' : 'NF-e (Homologação)'}
+                        {nfe.erro ? 'Tentar novamente' : 'Emitir NF-e'}
                       </Button>
                     )}
-                    {(() => {
-                      return podeReemitirHomolog && !nfe.pendente && (
-                        <Button
-                          className="gap-1.5"
-                          disabled={disabled || (hasTroca && !trocaCompraProdOk) || precisaTransferenciaFag || !stRetidoOk}
-                          title={!stRetidoOk
-                            ? 'Preencha os valores de ICMS-ST retido (da NF de entrada da moto) antes de emitir em produção'
-                            : hasTroca && !trocaCompraProdOk
-                              ? 'Emita a NF-e de compra da moto da troca em produção antes'
-                              : precisaTransferenciaFag
-                                ? 'Emita a NF-e de transferência da moto da troca para a MMATOS em produção antes'
-                                : title}
-                          onClick={() => handleEmitirNf('producao')}
-                        >
-                          <FileText className="h-4 w-4" /> NF-e (Produção)
-                        </Button>
-                      );
-                    })()}
                   </>
                 );
               })()}

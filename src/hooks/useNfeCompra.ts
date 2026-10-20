@@ -96,7 +96,8 @@ export function useNfeCompra(
       if (typeof opts?.valor === 'number' && opts.valor > 0) extra.valor = opts.valor;
       if (opts?.empresa_id) extra.empresa_id = opts.empresa_id;
       if (typeof opts?.retirada_presencial === 'boolean') extra.retirada_presencial = opts.retirada_presencial;
-      if (opts?.ambiente) extra.ambiente = opts.ambiente;
+      // Sem homologação no BPM (2026-10-20): sem ambiente explícito, emite em produção.
+      extra.ambiente = opts?.ambiente ?? 'producao';
       // Transferência de estoque entre empresas (saída/entrada) — loja de
       // destino escolhida no popup, o backend resolve a empresa a partir dela.
       if (opts?.destino_loja_id) extra.destino_loja_id = opts.destino_loja_id;
