@@ -552,14 +552,14 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       <div className="space-y-1 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Vendidas / Com Sinal à esquerda do título — controla as abas da listagem abaixo. */}
+            <h2 className="text-lg font-bold text-foreground">Listagem</h2>
+            {/* Vendidas / Com Sinal logo após o título — controla as abas da listagem abaixo. */}
             <Tabs value={listTab} onValueChange={setListTab}>
               <TabsList>
                 <TabsTrigger value="vendidas">Vendidas ({motosVendidas.length})</TabsTrigger>
                 <TabsTrigger value="sinais">Com Sinal ({motosSinal.length})</TabsTrigger>
               </TabsList>
             </Tabs>
-            <h2 className="text-lg font-bold text-foreground">Listagem</h2>
           </div>
           <div className="flex items-center gap-1">
             <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportExcel} disabled={currentList().count === 0} title="Baixar Excel">
