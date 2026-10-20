@@ -87,6 +87,11 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [clienteId, setClienteId] = useState<string | null>(null);
   // Busca alternativa de Pessoa Física por CPF (além do telefone).
   const [cpfBusca, setCpfBusca] = useState('');
+  // Por qual campo o cliente PF foi achado. Telefone e CPF andam juntos: o
+  // campo que achou continua editável (e refaz a busca se mudar); o outro
+  // trava. Achou pelo telefone → CPF travado; achou pelo CPF → telefone
+  // travado. Nenhum dos dois achou → cadastro liberado. Vale também na edição.
+  const [origemBusca, setOrigemBusca] = useState<'telefone' | 'cpf' | null>(null);
   const [searchingCpf, setSearchingCpf] = useState(false);
   // Observação do cadastro — só usado ao CRIAR (edição usa AtendimentoObservacoes,
   // que já lista/edita o histórico direto na tabela observacoes).
@@ -355,6 +360,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           setSexo(normalizeSexo(at.cliente?.sexo));
           setTipoPessoa((at.cliente as any)?.tipo_pessoa === 'juridica' ? 'juridica' : 'fisica');
           setCpfBusca(formatCpf((at.cliente as any)?.cpf_cnpj || ''));
+          // Cliente já vinculado: conta como "achado pelo telefone" (CPF travado,
+          // telefone livre pra trocar de cliente).
+          if (at.cliente_id) { setClientFound(true); setOrigemBusca('telefone'); }
           setUf(at.cliente?.clientes_fornecedores_enderecos?.[0]?.uf || 'DF');
           setTipoAtendimento(at.tipo_atendimento);
           setOrigem(at.origem || '');
@@ -412,10 +420,14 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhone(e.target.value);
     setTelefone(formatted);
+    // Mexeu no telefone de um cliente já achado: desfaz o vínculo (o CPF veio
+    // do cadastro dele) e a busca passa a ser pelo telefone.
+    if (clientFound === true) { setClienteId(null); setCpfBusca(''); }
+    setOrigemBusca('telefone');
     setClientFound(null);
-    // Auto-search quando o telefone atinge o tamanho final (11 = celular, 10 = fixo/comercial PJ; só em novos atendimentos)
+    // Auto-search quando o telefone atinge o tamanho final (11 = celular, 10 = fixo/comercial PJ) — também na edição
     const digits = unformatPhone(formatted);
-    if ([10, 11].includes(digits.length) && !isEditing) {
+    if ([10, 11].includes(digits.length)) {
       // Trigger search after state update
       setTimeout(() => searchClientByPhoneDigits(digits), 100);
     }
@@ -444,6 +456,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         setTipoPessoa((data as any).tipo_pessoa === 'juridica' ? 'juridica' : 'fisica');
         setUf(data.clientes_fornecedores_enderecos?.[0]?.uf || ufPrincipal || '');
         setCpfBusca(formatCpf((data as any).cpf_cnpj || ''));
+        setOrigemBusca('telefone');
         setClientFound(true);
       } else {
         // Não encontrado: zera só o que veio de um cadastro — o CPF é um campo
@@ -465,9 +478,13 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCpf(e.target.value);
     setCpfBusca(formatted);
+    // Mexeu no CPF de um cliente achado pelo CPF: desfaz o vínculo (o telefone
+    // veio do cadastro dele) e busca de novo.
+    if (clientFound === true) { setClienteId(null); setTelefone(''); }
+    setOrigemBusca('cpf');
     setClientFound(null);
     const digits = unformatPhone(formatted);
-    if (digits.length === 11 && !isEditing) {
+    if (digits.length === 11) {
       setTimeout(() => searchClientByCpfDigits(digits), 100);
     }
   };
@@ -492,6 +509,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         setSexo(normalizeSexo(data.sexo));
         setTelefone(formatPhone(data.telefone || ''));
         setUf(data.clientes_fornecedores_enderecos?.[0]?.uf || ufPrincipal || '');
+        setOrigemBusca('cpf');
         setClientFound(true);
       } else {
         // Não encontrado: zera só o que veio de um cadastro (nome/sexo/UF) — o
@@ -523,6 +541,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     setUf(ufPrincipal || '');
     setClientFound(null);
     setCpfBusca('');
+    setOrigemBusca(null);
     setPjSearchTerm('');
     setPjSearchResults([]);
     setShowNovoClientePJ(false);
@@ -579,6 +598,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     setCpfBusca(formatCpf(c.cpf_cnpj || ''));
     setSexo(normalizeSexo(c.sexo));
     setUf(c.clientes_fornecedores_enderecos?.[0]?.uf || ufPrincipal || '');
+    // Escolhido pela busca por nome: trata como achado pelo telefone (CPF travado).
+    setOrigemBusca('telefone');
     setClientFound(true);
     setPfSearchOpen(false);
     setPfSearchTerm('');
@@ -623,6 +644,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   // 11 dígitos = celular; 10 = fixo (comum em telefone comercial de cliente PJ).
   const isPhoneValid = [10, 11].includes(unformatPhone(telefone).length);
   const isCpfComplete = unformatPhone(cpfBusca).length === 11;
+  // Trava do par telefone/CPF (ver origemBusca): só o campo que NÃO achou o cliente trava.
+  const cpfTravado = clientFound === true && origemBusca !== 'cpf';
+  const telefoneTravado = clientFound === true && origemBusca === 'cpf';
 
   const handleSave = async () => {
     if (nfeVendaEmitida) {
@@ -985,8 +1009,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                     <Input
                       value={telefone}
                       onChange={handlePhoneChange}
-                      disabled={isEditing}
-                      title={isEditing ? 'Telefone do cliente não pode ser alterado' : undefined}
+                      disabled={telefoneTravado}
+                      title={telefoneTravado ? 'Cliente achado pelo CPF — altere o CPF para buscar outro cliente' : undefined}
                       placeholder="(61) 90000-0000"
                       maxLength={15}
                       className="flex-1"
@@ -1005,8 +1029,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
                     <Input
                       value={cpfBusca}
                       onChange={handleCpfChange}
-                      disabled={isEditing || clientFound === true}
-                      title={(isEditing || clientFound === true) ? 'CPF do cliente não pode ser alterado' : undefined}
+                      disabled={cpfTravado}
+                      title={cpfTravado ? 'Cliente achado pelo telefone — altere o telefone para buscar outro cliente' : undefined}
                       placeholder="000.000.000-00"
                       maxLength={14}
                       className="flex-1"
