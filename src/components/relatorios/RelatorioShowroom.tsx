@@ -26,7 +26,7 @@ import { LojaFilter } from './LojaFilter';
 import DeltaBadge from './DeltaBadge';
 import {
   buildIndexes, computeRowMetrics, filterVendidas, filterSinais, filterAtendimentosGeneric,
-  matchesLoja, tipoDefault, matchesTipo,
+  matchesLoja, matchesTipo, categoriaTipo,
   type AtendimentoRow, type ShowroomIndexes,
 } from '@/lib/showroomMetrics';
 
@@ -209,8 +209,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       if (inRangeCreated(a)) entry.atendimentos += 1;
       const est = indexes.estoqueByAtendVenda.get(a.id);
       if (a.situacao === 'vendido' && inRangeVenda(est?.data_venda)) {
-        const t = est?.tipo || tipoDefault(a.loja);
-        if (matchesTipo(t, filterTipo)) {
+        if (matchesTipo(categoriaTipo(est as any, a.loja), filterTipo)) {
           entry.vendas += 1;
           entry.faturamento += Number(est?.preco ?? 0);
         }
@@ -276,7 +275,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
 
 
   const tipoLabel = (t: string) => {
-    const map: Record<string, string> = { propria: 'Própria', consignada: 'Consignada', 'test-ride': 'Test-Ride', repasse: 'Repasse', convertida: 'Convertida', ducati: 'Ducati' };
+    const map: Record<string, string> = { propria: 'Própria', consignada: 'Consignada', 'test-ride': 'Test-Ride', test_ride: 'Test-Ride', repasse: 'Repasse', convertida: 'Convertida', ducati: '0km', '0km': '0km' };
     return map[t] || t;
   };
 
@@ -365,7 +364,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     doc.setFontSize(14); doc.setTextColor(30, 41, 59);
     doc.text(`Showroom — ${title} — ${count} registro(s)`, 40, 36);
     doc.setFontSize(9); doc.setTextColor(100);
-    doc.text(`Loja: ${filterLoja === 'todos' ? 'Todas' : filterLoja}  •  Tipo: ${filterTipo === 'todos' ? 'Todos' : tipoLabel(filterTipo)}  •  Período: ${periodo}`, 40, 52);
+    doc.text(`Loja: ${filterLoja === 'todos' ? 'Todas' : filterLoja.split(',').join(', ')}  •  Tipo: ${filterTipo === 'todos' ? 'Todos' : tipoLabel(filterTipo)}  •  Período: ${periodo}`, 40, 52);
 
     autoTable(doc, {
       startY: 64,
@@ -416,11 +415,11 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
       <div className={cn('flex-col gap-3 sm:flex-row sm:items-center sm:justify-between', showFilters ? 'flex' : 'hidden md:flex')}>
-        <LojaFilter value={filterLoja} onChange={setFilterLoja} />
+        <LojaFilter value={filterLoja} onChange={setFilterLoja} multiple />
         <div className="flex flex-wrap items-center gap-2 max-w-full">
           <span className="text-xs font-medium text-muted-foreground shrink-0">Tipo:</span>
           <div className="flex flex-wrap items-center gap-2">
-            {[{ value: 'todos', label: 'Todos' }, { value: 'propria', label: 'Própria' }, { value: 'consignada', label: 'Consignada' }, { value: 'repasse', label: 'Repasse' }].map(t => (
+            {[{ value: 'todos', label: 'Todos' }, { value: 'propria', label: 'Própria' }, { value: 'consignada', label: 'Consignada' }, { value: 'repasse', label: 'Repasse' }, { value: '0km', label: '0km' }, { value: 'test-ride', label: 'Test-Ride' }].map(t => (
               <Button key={t.value} size="sm" variant={filterTipo === t.value ? 'default' : 'outline'} className={cn('rounded-full px-3 h-7 text-xs', filterTipo === t.value && 'shadow-sm')} onClick={() => setFilterTipo(t.value)}>
                 {t.label}
               </Button>

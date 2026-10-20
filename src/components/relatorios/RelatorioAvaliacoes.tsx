@@ -63,11 +63,14 @@ const normTipo = (raw: string | null | undefined): 'propria' | 'consignada' | 'c
 const isDucati = (loja: string | null | undefined) => (loja || '').toUpperCase().includes('DUCATI');
 const normLojaGroup = (loja: string | null | undefined): '299' | 'Ducati' => (isDucati(loja) ? 'Ducati' : '299');
 
-/** Aceita 'todos' | '299' | 'Ducati' | sub-loja exata */
+/** Aceita 'todos' | '299' | 'Ducati' | sub-loja exata | várias separadas por vírgula */
 const matchesLoja = (loja: string | null | undefined, filter: string) => {
   if (!filter || filter === 'todos') return true;
-  if (filter === '299' || filter === 'Ducati') return normLojaGroup(loja) === filter;
-  return (loja || '') === filter;
+  return filter.split(',').some((f) => {
+    const v = f.trim();
+    if (v === '299' || v === 'Ducati') return normLojaGroup(loja) === v;
+    return (loja || '') === v;
+  });
 };
 
 const inRange = (iso: string | null | undefined, from: Date | undefined, to: Date | undefined) => {
@@ -414,7 +417,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
     doc.setFontSize(14); doc.setTextColor(30, 41, 59);
     doc.text(`Avaliações — Motos Adquiridas — ${motosAdquiridas.length} registro(s)`, 40, 36);
     doc.setFontSize(9); doc.setTextColor(100);
-    doc.text(`Loja: ${filterLoja === 'todos' ? 'Todas' : filterLoja}  •  Período: ${periodo}`, 40, 52);
+    doc.text(`Loja: ${filterLoja === 'todos' ? 'Todas' : filterLoja.split(',').join(', ')}  •  Período: ${periodo}`, 40, 52);
 
     autoTable(doc, {
       startY: 64,
@@ -471,7 +474,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <div className={showFilters ? '' : 'hidden md:block'}><LojaFilter value={filterLoja} onChange={setFilterLoja} /></div>
+      <div className={showFilters ? '' : 'hidden md:block'}><LojaFilter value={filterLoja} onChange={setFilterLoja} multiple /></div>
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">

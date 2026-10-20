@@ -4,15 +4,20 @@
  */
 import { firstLastName } from '@/lib/utils';
 
-export type LojaFilterValue = string; // 'todos' | '299' | 'Ducati' | sub-loja
-export type TipoFilterValue = string; // 'todos' | 'propria' | 'consignada' | 'repasse' | 'ducati' | 'convertida'
+export type LojaFilterValue = string; // 'todos' | '299' | 'Ducati' | sub-loja | várias separadas por vírgula
+export type TipoFilterValue = string; // 'todos' | 'propria' | 'consignada' | 'repasse' | '0km' | 'test-ride'
 
 const isDucati = (loja: string | null | undefined) => (loja || '').toUpperCase().includes('DUCATI');
 
-export const matchesLoja = (loja: string | null | undefined, filter: LojaFilterValue) => {
-  if (!filter || filter === 'todos') return true;
+const matchesUmaLoja = (loja: string | null | undefined, filter: string) => {
   if (filter === '299' || filter === 'Ducati') return (isDucati(loja) ? 'Ducati' : '299') === filter;
   return (loja || '') === filter;
+};
+
+/** Aceita várias lojas/grupos separados por vírgula (filtro com seleção múltipla). */
+export const matchesLoja = (loja: string | null | undefined, filter: LojaFilterValue) => {
+  if (!filter || filter === 'todos') return true;
+  return filter.split(',').some((f) => matchesUmaLoja(loja, f.trim()));
 };
 
 export const tipoDefault = (loja: string | null | undefined) => (isDucati(loja) ? 'ducati' : 'propria');
@@ -20,6 +25,19 @@ export const tipoDefault = (loja: string | null | undefined) => (isDucati(loja) 
 export const matchesTipo = (tipo: string, filter: TipoFilterValue) => {
   if (!filter || filter === 'todos') return true;
   return tipo === filter;
+};
+
+/**
+ * Categoria do filtro "Tipo" (2026-10-20): 0km e Test-Ride separados (a 0km
+ * do estoque vem com tipo '0km' e tipo_unidade 'nova' | 'test_ride'); convertida
+ * entra como Própria; venda Ducati sem estoque vinculado conta como 0km.
+ */
+export const categoriaTipo = (est: { tipo?: string | null; tipo_unidade?: string | null } | null | undefined, loja: string | null | undefined) => {
+  const t = est?.tipo || tipoDefault(loja);
+  if (t === '0km' || t === 'ducati') return est?.tipo_unidade === 'test_ride' ? 'test-ride' : '0km';
+  if (t === 'test_ride') return 'test-ride';
+  if (t === 'convertida') return 'propria';
+  return t;
 };
 
 interface CostRow { avaliacao_id: string; responsavel: string | null; valor_previsto: number | null; valor_executado: number | null; }
@@ -296,8 +314,7 @@ export function filterVendidas(
     const est = idx.estoqueByAtendVenda.get(a.id);
     if (!est?.data_venda) return false;
     if (!matchesLoja(a.loja, loja)) return false;
-    const t = est?.tipo || tipoDefault(a.loja);
-    if (!matchesTipo(t, tipo)) return false;
+    if (!matchesTipo(categoriaTipo(est as any, a.loja), tipo)) return false;
     const dv = new Date(est.data_venda);
     if (dateFrom && dv < dateFrom) return false;
     if (dateTo && dv > dateTo) return false;
@@ -310,7 +327,6 @@ export function filterSinais(atends: AtendimentoRow[], idx: ShowroomIndexes, loj
     if (a.situacao !== 'sinal') return false;
     if (!matchesLoja(a.loja, loja)) return false;
     const { estoque } = resolveJoin(a, idx, 'sinal');
-    const t = estoque?.tipo || tipoDefault(a.loja);
-    return matchesTipo(t, tipo);
+    return matchesTipo(categoriaTipo(estoque as any, a.loja), tipo);
   });
 }
