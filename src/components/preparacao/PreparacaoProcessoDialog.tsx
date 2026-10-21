@@ -220,7 +220,9 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         reenviada_preparacao: 'REENVIADA PREPARAÇÃO',
         pendencia_concluida: 'PENDÊNCIA CONCLUÍDA',
         oficina_concluida: 'OFICINA CONCLUÍDA',
+        oficina_cancelada: 'OFICINA - CANCELADA', // O.S. marcada como perdida no ofc — mesma saída da Oficina da concluída
         garantia_concluida: 'GARANTIA CONCLUÍDA', // O.S. de garantia (moto vendida) finalizada no ofc — não mexe na preparação
+        garantia_cancelada: 'GARANTIA - CANCELADA', // O.S. de garantia marcada como perdida no ofc
         servico_externo_concluido: 'SERVIÇO EXTERNO CONCLUÍDO',
         repreparacao_concluida: 'REPREPARAÇÃO CONCLUÍDA',
         preparacao_concluida: 'PREPARAÇÃO CONCLUÍDA',

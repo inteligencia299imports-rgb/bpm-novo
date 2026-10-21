@@ -171,7 +171,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         .sort((x, y) => new Date(x.created_at).getTime() - new Date(y.created_at).getTime());
 
       // Última despausa = mais recente entre PENDÊNCIA/OFICINA/SERVIÇO EXTERNO CONCLUÍDO
-      const CONCLUSION_STATUSES = ['pendencia_concluida', 'oficina_concluida', 'servico_externo_concluido'];
+      // oficina_cancelada (O.S. perdida no ofc) tira a moto da Oficina igual à concluída.
+      const CONCLUSION_STATUSES = ['pendencia_concluida', 'oficina_concluida', 'oficina_cancelada', 'servico_externo_concluido'];
       const resets = prepHist
         .filter(h => CONCLUSION_STATUSES.includes(h.status))
         .map(h => h.created_at);
