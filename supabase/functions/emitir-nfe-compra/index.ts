@@ -918,6 +918,21 @@ async function aplicarCancelamento(
   // devolucao_transferencia_0km, que reaproveita o mesmo helper), só que
   // aqui é a própria NF que vira 'cancelada', sem uma NF nova.
   if (nfeRow.operacao === 'transferencia_entrada' || nfeRow.operacao === 'transferencia_entrada_0km') {
+    // A transferência foi desfeita: as contas da transferência (a receber da origem +
+    // a pagar do destino, presas à NF de SAÍDA) viram canceladas — inclusive as
+    // parcelas que a própria entrada tinha quitado (quitarCompromissosTransferenciaNaEntrada).
+    // Pedido do usuário, 2026-10-21.
+    if (nfeRow.transferencia_par_id) {
+      const { data: compsTransf } = await admin.from('compromissos').select('id')
+        .eq('nfe_entrada_id', nfeRow.transferencia_par_id).eq('origem', 'transferencia').is('deleted_at', null);
+      const idsTransf = ((compsTransf as any[]) || []).map((c) => c.id);
+      if (idsTransf.length > 0) {
+        await admin.from('compromissos').update({ status_compromisso: 'cancelada' }).in('id', idsTransf);
+        await admin.from('compromissos_parcelas')
+          .update({ status_pagamento: 'cancelado', data_pagamento: null, valor_juros: 0, valor_desconto: 0 })
+          .in('compromisso_id', idsTransf);
+      }
+    }
     const eh0kmTransf = nfeRow.operacao === 'transferencia_entrada_0km';
     const fkValOrigem = eh0kmTransf ? nfeRow.estoque_moto_nova_id : nfeRow.avaliacao_id;
     if (fkValOrigem) {
