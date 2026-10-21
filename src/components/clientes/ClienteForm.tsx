@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { decidirContribuinteIcms } from "@/lib/contribuinteIcms";
+import { BotaoSintegra } from "@/components/clientes/BotaoSintegra";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1055,12 +1056,15 @@ export function ClienteForm({
                 Inscrição Estadual
                 {isJuridica && form.isento_inscricao_estadual !== true && <span className="text-red-500"> *</span>}
               </Label>
-              <Input
-                value={form.inscricao_estadual}
-                onChange={(e) => set("inscricao_estadual")(e.target.value)}
-                disabled={form.isento_inscricao_estadual === true}
-                className={errCls(isJuridica && form.isento_inscricao_estadual !== true && !s(form.inscricao_estadual))}
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={form.inscricao_estadual}
+                  onChange={(e) => set("inscricao_estadual")(e.target.value)}
+                  disabled={form.isento_inscricao_estadual === true}
+                  className={errCls(isJuridica && form.isento_inscricao_estadual !== true && !s(form.inscricao_estadual))}
+                />
+                <BotaoSintegra cnpj={form.cpf_cnpj} />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label className="block">
