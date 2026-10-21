@@ -331,6 +331,14 @@ export const enviarNotaFiscal = (chaveNotaFiscal: string, evento: 'COMPRA' | 'VE
 
 export const consultarEstoque = (id: number, ctx?: RenaveLogCtx) => call('GET', `/api/estoques/${id}`, { ctx });
 
+// Catálogo #1 "Consultar aptidão entrada/saída" — só leitura: diz se o
+// estabelecimento (CNPJ do certificado) pode dar entrada/saída daquele veículo
+// no RENAVE. Usado pra diagnosticar credenciamento de usados (2026-10-21).
+export const aptidaoVeiculoEstoque = (
+  p: { numeroCrv: string; placa: string; renavam: string; tipoCrv: string },
+  ctx?: RenaveLogCtx,
+) => call('GET', '/api/aptidao-veiculo-estoque', { query: p, ctx });
+
 // Achado real 2026-09-22 (chassi 95VHA00AAHM000135): `consultarVeiculoPorChassi`
 // (/api/veiculos) exige que o estoque já esteja CONFIRMADO -- rejeita com
 // "Estoque do veículo encontra-se no estado de Solicitado... Veículo deve

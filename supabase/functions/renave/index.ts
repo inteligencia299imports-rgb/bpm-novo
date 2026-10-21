@@ -28,7 +28,7 @@ import {
   clienteAutenticado, pendentesEntrada, entrarEstoqueZeroKm, entrarEstoque, enviarNotaFiscal,
   consultarEstoque, consultarVeiculoPorChassi, listarEstoques, municipios, sairEstoqueZeroKm, pdfAtpvPorChassi,
   enviarAssinaturaAtpv, consultarCrlve, termoEntradaEstoque, cancelarEstoque, erroRenave,
-  sairEstoque, termoSaidaEstoque, cancelarSaidaEstoque,
+  sairEstoque, termoSaidaEstoque, cancelarSaidaEstoque, aptidaoVeiculoEstoque,
   autorizarTransferenciaZeroKm, transferirEntreEstabelecimentosZeroKm, consultarAutorizacoesTransferencia,
   type RenaveLogCtx, type EnvioAssinaturaAtpv, type EntradaEstoque,
 } from './renave.ts';
@@ -1068,6 +1068,38 @@ Deno.serve(async (req) => {
           : {}),
       });
       return json({ ok: true, estado: r.body?.estado ?? null, estoque: r.body });
+    }
+
+    // ------ APTIDÃO DE USADO (só leitura) ------
+    // Pergunta à SERPRO se o CNPJ da empresa da moto (ou o empresa_id informado)
+    // pode dar entrada dela no estoque RENAVE — sem criar nada. Se faltar número/
+    // tipo do CRV, busca no CRLV-e (mesmo caminho da entrada), sem gravar.
+    if (acao === 'aptidao-usado') {
+      const avaliacaoId: string = body.avaliacao_id;
+      if (!avaliacaoId) return json({ error: 'avaliacao_id é obrigatório' }, 400);
+      const { data: av } = await admin.from('avaliacoes')
+        .select('id, chassi, placa, renavam, numero_crv, tipo_crv').eq('id', avaliacaoId).maybeSingle();
+      if (!av) return json({ error: 'Avaliação não encontrada' }, 404);
+      const placa = String(av.placa ?? '').toUpperCase().replace(/\s|-/g, '');
+      const renavam = String(av.renavam ?? '').replace(/\D/g, '');
+      if (!placa || !renavam) return json({ error: 'Placa e Renavam são obrigatórios para consultar a aptidão.' }, 409);
+      const cnpj = body.empresa_id ? await cnpjDaEmpresa(admin, body.empresa_id) : await cnpjDaEmpresaPorAvaliacao(admin, avaliacaoId);
+      const ctx: RenaveLogCtx = { admin, operacao: acao, chassi: av.chassi, avaliacaoId, usuarioId: caller.id, cnpjEstabelecimento: cnpj };
+      let numeroCrv = av.numero_crv ? String(av.numero_crv).replace(/\D/g, '') : '';
+      let tipoCrv = av.tipo_crv ?? '';
+      if (!numeroCrv || !tipoCrv) {
+        const crlve = await consultarCrlve(placa, renavam, ctx);
+        if (crlve.status === 200 && crlve.body?.pdfCodigoSegurancaCrvBase64) {
+          const lido = await extrairCodigoSegurancaDoAtpv(crlve.body.pdfCodigoSegurancaCrvBase64, 'crv');
+          if (lido.numeroCrv) numeroCrv = String(lido.numeroCrv).replace(/\D/g, '');
+          tipoCrv = 'DIGITAL';
+        }
+      }
+      if (!numeroCrv || !tipoCrv) {
+        return json({ error: 'Número/tipo do CRV não cadastrados e não foi possível obtê-los no CRLV-e da SERPRO.', cnpj }, 409);
+      }
+      const r = await aptidaoVeiculoEstoque({ numeroCrv, placa, renavam, tipoCrv }, ctx);
+      return json({ ok: r.status === 200, status: r.status, cnpj, aptidao: r.body, erro: r.status === 200 ? null : erroRenave(r) });
     }
 
     // ------ CANCELAR ESTOQUE TRAVADO (recuperação manual) ------

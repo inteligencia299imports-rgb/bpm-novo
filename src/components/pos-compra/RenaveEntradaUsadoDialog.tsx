@@ -338,6 +338,28 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     }
   };
 
+  // ---- Aptidão (só leitura): o CNPJ da empresa pode dar entrada desta moto no RENAVE? ----
+  const [consultandoAptidao, setConsultandoAptidao] = useState(false);
+  const [aptidao, setAptidao] = useState<{ ok: boolean; status?: number; cnpj?: string | null; aptidao?: any; erro?: string | null } | null>(null);
+  const handleConsultarAptidao = async () => {
+    setConsultandoAptidao(true);
+    setAptidao(null);
+    try {
+      const { data: res, error } = await supabase.functions.invoke('renave', {
+        body: { acao: 'aptidao-usado', avaliacao_id: avaliacaoId },
+      });
+      if (error || (res && res.error)) {
+        setAptidao({ ok: false, erro: res?.error || await extrairErroFuncao(error, 'Falha ao consultar a aptidão no RENAVE'), cnpj: res?.cnpj });
+        return;
+      }
+      setAptidao(res);
+    } catch (e: any) {
+      setAptidao({ ok: false, erro: e?.message || 'Erro ao consultar a aptidão no RENAVE' });
+    } finally {
+      setConsultandoAptidao(false);
+    }
+  };
+
   // ---- Passo 4: retry do vínculo da NF-e (quando o automático do passo 2 falha) ----
   const [vinculandoNf, setVinculandoNf] = useState(false);
   const handleVincularNf = async () => {
@@ -621,6 +643,31 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                         {entrando ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
                         Confirmar Entrada
                       </Button>
+                      {/* Só consulta, não cria nada no RENAVE. */}
+                      <Button
+                        variant="outline"
+                        className="w-full gap-2"
+                        disabled={consultandoAptidao}
+                        onClick={handleConsultarAptidao}
+                      >
+                        {consultandoAptidao ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                        Consultar aptidão
+                      </Button>
+                      {aptidao && (
+                        <div className={cn('rounded-md border px-3 py-2 text-xs space-y-1',
+                          aptidao.ok ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800' : 'border-destructive/40 bg-destructive/10 text-destructive')}>
+                          <div className="font-semibold">
+                            {aptidao.ok ? 'Consulta respondida pela SERPRO' : 'SERPRO recusou / erro na consulta'}
+                            {aptidao.cnpj ? ` · CNPJ ${aptidao.cnpj}` : ''}
+                          </div>
+                          {aptidao.erro && <div>{aptidao.erro}</div>}
+                          {aptidao.aptidao && (
+                            <pre className="whitespace-pre-wrap break-all text-[11px] text-foreground/80">
+                              {JSON.stringify(aptidao.aptidao, null, 2)}
+                            </pre>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </StepRow>
