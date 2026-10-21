@@ -4,6 +4,7 @@ import { sexoParaGravar } from '@/lib/sexo';
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { decidirContribuinteIcms } from "@/lib/contribuinteIcms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -491,14 +492,8 @@ export function ClienteForm({
     }
   }, [form.tipo_pessoa, form.origem_cadastro, tab, form.tipo_cadastro]);
 
-  // Pessoa jurídica sempre é contribuinte de ICMS — exceto MEI, que em geral
-  // não tem inscrição estadual e não é contribuinte (Rejeição SEFAZ [805]:
-  // ver docs-fiscal-299 §2.16). Nesse caso o campo fica liberado pra edição.
-  useEffect(() => {
-    if (form.tipo_pessoa === "juridica" && form.regime_tributario !== "mei") {
-      setForm((f: any) => (f.tipo_pessoa === "juridica" && f.regime_tributario !== "mei" ? { ...f, contribuinte_icms: true } : f));
-    }
-  }, [form.tipo_pessoa, form.regime_tributario]);
+  // Contribuinte de ICMS da PJ não é mais forçado como "Sim": vem da IE ativa na UF (consulta do
+  // CNPJ, src/lib/contribuinteIcms.ts) e o usuário pode mudar. Decisão do usuário 2026-10-21.
 
   // Pessoa física nunca é contribuinte de ICMS (CPF não tem Inscrição Estadual de
   // contribuinte) — banco trava isso com CHECK chk_pf_nao_contribuinte_icms. Sem isso,
@@ -635,6 +630,19 @@ export function ClienteForm({
 
       setCnpjConsultado(onlyDigits(form.cpf_cnpj));
       toast.success("Dados preenchidos a partir da BrasilAPI");
+
+      // Contribuinte de ICMS: IE ativa na UF (CNPJ.ws); sem consulta, sugestão pelo CNAE
+      // (src/lib/contribuinteIcms.ts — mesma regra nos quatro sistemas).
+      void decidirContribuinteIcms(onlyDigits(form.cpf_cnpj), String(api.uf ?? ""), api.cnae_fiscal).then((r) => {
+        if (!r) return;
+        setForm((f: any) => ({
+          ...f,
+          contribuinte_icms: r.contribuinte,
+          ...(r.contribuinte && r.ie ? { inscricao_estadual: String(f.inscricao_estadual ?? "").trim() || r.ie, isento_inscricao_estadual: false } : {}),
+          ...(!r.contribuinte && r.fonte === "ie" ? { isento_inscricao_estadual: true } : {}),
+        }));
+        (r.fonte === "ie" ? toast.info : toast.warning)(`Contribuinte de ICMS: ${r.contribuinte ? "Sim" : "Não"} — ${r.motivo}`);
+      });
     },
     onError: (e: any) => toast.error(e.message ?? "Erro ao consultar CNPJ"),
   });
