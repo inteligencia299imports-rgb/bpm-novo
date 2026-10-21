@@ -748,6 +748,37 @@ async function gerarCompromissosTransferenciaEntreEmpresas(admin: any, nfeSaidaI
   }
 }
 
+const OPERACOES_ENTRADA_TRANSFERENCIA = new Set(['transferencia_entrada', 'transferencia_entrada_0km']);
+
+/**
+ * Entrada da transferência autorizada em PRODUÇÃO na empresa de destino: quita as
+ * contas da transferência entre empresas (a receber da origem + a pagar do destino,
+ * vinculadas à NF de SAÍDA = transferencia_par_id) com data de pagamento = data da
+ * NF de entrada (Brasília). Pedido do usuário, 2026-10-21. Idempotente; parcelas
+ * canceladas e já pagas não são mexidas.
+ */
+async function quitarCompromissosTransferenciaNaEntrada(admin: any, nfeEntradaId: string) {
+  const { data: ent } = await admin.from('nfe_entradas')
+    .select('id, operacao, status, ambiente, transferencia_par_id, data_emissao')
+    .eq('id', nfeEntradaId).maybeSingle();
+  if (!ent || ent.status !== 'processada' || ent.ambiente !== 'producao'
+    || !OPERACOES_ENTRADA_TRANSFERENCIA.has(ent.operacao) || !ent.transferencia_par_id) return;
+  const dataPagamento = new Date(new Date(ent.data_emissao || Date.now()).getTime() - 3 * 3600e3).toISOString().slice(0, 10);
+  const { data: comps } = await admin.from('compromissos').select('id')
+    .eq('nfe_entrada_id', ent.transferencia_par_id).eq('origem', 'transferencia')
+    .is('deleted_at', null).neq('status_compromisso', 'cancelada');
+  for (const c of ((comps || []) as any[])) {
+    await admin.from('compromissos_parcelas')
+      .update({ status_pagamento: 'pago', data_pagamento: dataPagamento })
+      .eq('compromisso_id', c.id).in('status_pagamento', ['em_aberto', 'pendente']);
+    const { data: abertas } = await admin.from('compromissos_parcelas').select('id')
+      .eq('compromisso_id', c.id).not('status_pagamento', 'in', '(pago,cancelado)').limit(1);
+    if (!((abertas as any[] | null)?.length)) {
+      await admin.from('compromissos').update({ status_compromisso: 'pago' }).eq('id', c.id);
+    }
+  }
+}
+
 /**
  * Aplica no sistema o cancelamento de uma NF-e (feito pelo nosso botão OU
  * direto na SEFAZ/Focus e detectado numa consulta): grava a linha como
@@ -2138,6 +2169,9 @@ Deno.serve(async (req) => {
       if (OPERACOES_SAIDA_TRANSFERENCIA.has(tipo)) {
         await gerarCompromissosTransferenciaEntreEmpresas(admin, (updated?.id as string) || nfeRow.id, caller.id);
       }
+      if (OPERACOES_ENTRADA_TRANSFERENCIA.has(tipo)) {
+        await quitarCompromissosTransferenciaNaEntrada(admin, (updated?.id as string) || nfeRow.id);
+      }
       if (tipo === 'venda_seminova' || tipo === 'venda_0km') {
         await reconciliarTrocaAposNfVenda(
           admin,
@@ -3481,6 +3515,9 @@ Deno.serve(async (req) => {
     });
     if (OPERACOES_SAIDA_TRANSFERENCIA.has(tipo)) {
       await gerarCompromissosTransferenciaEntreEmpresas(admin, nfeRow.id, caller.id);
+    }
+    if (OPERACOES_ENTRADA_TRANSFERENCIA.has(tipo)) {
+      await quitarCompromissosTransferenciaNaEntrada(admin, nfeRow.id);
     }
     if (tipo === 'venda_seminova' || tipo === 'venda_0km') {
       await reconciliarTrocaAposNfVenda(admin, entityId, Number(nfeRow.valor_total ?? 0), String(dataEmissao).slice(0, 10));
