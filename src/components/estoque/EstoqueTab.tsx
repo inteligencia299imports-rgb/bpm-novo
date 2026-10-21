@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { format } from 'date-fns';
@@ -26,6 +26,7 @@ import TestRideDialog from '@/components/estoque/TestRideDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
@@ -156,6 +157,10 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const PAGE_SIZE = 20;
   const [allMarcas, setAllMarcas] = useState<string[]>([]);
   const [reenviarItem, setReenviarItem] = useState<EstoqueItem | null>(null);
+  // Ponto do último clique num card — âncora do menu "Acessar" (ver PopoverAnchor abaixo).
+  const menuAnchorRef = useRef<{ getBoundingClientRect: () => DOMRect }>({
+    getBoundingClientRect: () => DOMRect.fromRect({ x: 0, y: 0, width: 0, height: 0 }),
+  });
   const [reenviarAvaliacaoData, setReenviarAvaliacaoData] = useState<any>(null);
   const [reenviarLoading, setReenviarLoading] = useState(false);
   const [retiradaDates, setRetiradaDates] = useState<Record<string, string>>({});
@@ -893,14 +898,25 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
                     return (
                       <Popover key={item.id}>
-                        <PopoverTrigger asChild>
+                        <PopoverTrigger
+                          asChild
+                          onPointerDown={(e) => {
+                            const x = e.clientX;
+                            const y = e.clientY;
+                            menuAnchorRef.current = { getBoundingClientRect: () => DOMRect.fromRect({ x, y, width: 0, height: 0 }) };
+                          }}
+                        >
                           {cardEl}
                         </PopoverTrigger>
-                        {/* Card alto: o menu não cabia acima nem abaixo e passava da tela.
-                            Limita à altura disponível (Radix) com rolagem e folga das bordas. */}
+                        {/* O menu se prende ao ponto do clique (não ao card inteiro): com card alto,
+                            preso ao card ele não cabia acima nem abaixo e passava da tela. Assim abre
+                            junto do dedo/cursor, vira pra cima se faltar espaço e fica na altura
+                            natural, sem rolagem (pedido do usuário, 2026-10-21). */}
+                        <PopoverAnchor virtualRef={menuAnchorRef as any} />
                         <PopoverContent
-                          className="w-56 p-2 overflow-y-auto max-h-[var(--radix-popover-content-available-height)]"
-                          align="center"
+                          className="w-56 p-2"
+                          side="bottom"
+                          align="start"
                           collisionPadding={12}
                         >
                           <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Acessar</p>
