@@ -360,6 +360,32 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     }
   };
 
+  const aptidaoResultado = aptidao && (
+    <div className={cn('rounded-md border px-3 py-2 text-xs space-y-1',
+      aptidao.ok ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800' : 'border-destructive/40 bg-destructive/10 text-destructive')}>
+      <div className="font-semibold">
+        {aptidao.ok ? 'Consulta respondida pela SERPRO' : 'SERPRO recusou / erro na consulta'}
+        {aptidao.cnpj ? ` · CNPJ ${aptidao.cnpj}` : ''}
+      </div>
+      {aptidao.erro && <div>{aptidao.erro}</div>}
+      {aptidao.aptidao && (
+        <pre className="whitespace-pre-wrap break-all text-[11px] text-foreground/80">
+          {JSON.stringify(aptidao.aptidao, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+  // Botão + resultado (antes da entrada). Só consulta, não cria nada no RENAVE.
+  const aptidaoUi = (
+    <>
+      <Button variant="outline" className="w-full gap-2" disabled={consultandoAptidao} onClick={handleConsultarAptidao}>
+        {consultandoAptidao ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+        Consultar aptidão
+      </Button>
+      {aptidaoResultado}
+    </>
+  );
+
   // ---- Passo 4: retry do vínculo da NF-e (quando o automático do passo 2 falha) ----
   const [vinculandoNf, setVinculandoNf] = useState(false);
   const handleVincularNf = async () => {
@@ -562,6 +588,16 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">Entrada confirmada.</span>
+                        {/* Aptidão também depois da entrada (só leitura) — serve pra
+                            calibrar a consulta com uma moto que comprovadamente entrou. */}
+                        <button
+                          type="button"
+                          onClick={handleConsultarAptidao}
+                          disabled={consultandoAptidao}
+                          className="text-xs text-muted-foreground underline decoration-dotted hover:text-foreground"
+                        >
+                          {consultandoAptidao ? 'Consultando…' : 'Consultar aptidão'}
+                        </button>
                         {/* Recuperação: entrada pode ficar órfã (intenção de venda
                             cancelada do lado da SERPRO) -- ver achado 2026-09-22. */}
                         {!mostrarCancelarEstoque && (
@@ -574,6 +610,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                           </button>
                         )}
                       </div>
+                      {aptidaoResultado}
                       {mostrarCancelarEstoque && (
                         <div className="flex items-center gap-2">
                           {/* A SERPRO exige CPF do operador pra cancelar; se não tiver
@@ -643,31 +680,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                         {entrando ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
                         Confirmar Entrada
                       </Button>
-                      {/* Só consulta, não cria nada no RENAVE. */}
-                      <Button
-                        variant="outline"
-                        className="w-full gap-2"
-                        disabled={consultandoAptidao}
-                        onClick={handleConsultarAptidao}
-                      >
-                        {consultandoAptidao ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                        Consultar aptidão
-                      </Button>
-                      {aptidao && (
-                        <div className={cn('rounded-md border px-3 py-2 text-xs space-y-1',
-                          aptidao.ok ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800' : 'border-destructive/40 bg-destructive/10 text-destructive')}>
-                          <div className="font-semibold">
-                            {aptidao.ok ? 'Consulta respondida pela SERPRO' : 'SERPRO recusou / erro na consulta'}
-                            {aptidao.cnpj ? ` · CNPJ ${aptidao.cnpj}` : ''}
-                          </div>
-                          {aptidao.erro && <div>{aptidao.erro}</div>}
-                          {aptidao.aptidao && (
-                            <pre className="whitespace-pre-wrap break-all text-[11px] text-foreground/80">
-                              {JSON.stringify(aptidao.aptidao, null, 2)}
-                            </pre>
-                          )}
-                        </div>
-                      )}
+                      {aptidaoUi}
                     </div>
                   )}
                 </StepRow>
