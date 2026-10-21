@@ -1432,6 +1432,7 @@ const ContratoDialog: React.FC<Props> = ({
     if (!empresaId) pendenciasEmissaoNf.push('Empresa vinculada à loja do atendimento');
     if (!contratoId) pendenciasEmissaoNf.push('Proposta de venda gerada');
     if (!estItemNfe) pendenciasEmissaoNf.push('Moto do estoque vinculada à Moto de Interesse');
+    else if (estItemNfe.status === 'servico') pendenciasEmissaoNf.push('Moto em serviço (preparação/oficina): a NF-e sai depois da conclusão');
     else if (!['vendido', 'sinal'].includes(String(estItemNfe.status ?? ''))) pendenciasEmissaoNf.push('Moto marcada como vendida no atendimento');
     if (consignadaVenda && !consignadaComCompra) pendenciasEmissaoNf.push('Moto consignada: devolução simbólica e NF-e de compra (Pós-Compra)');
     if (veicProdBloqueado) pendenciasEmissaoNf.push(`Dados fiscais da moto 0km (${veicProdFaltando.join(', ')}) — Estoque → "Dados Fiscais (NF-e)"`);

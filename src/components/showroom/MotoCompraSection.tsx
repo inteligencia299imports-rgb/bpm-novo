@@ -97,7 +97,11 @@ const MotoCompraSection: React.FC<Props> = ({
         // mostra moto da MESMA empresa (CNPJ) do atendimento — reservar/
         // vender moto de outra empresa gera risco de a NF de venda sair com
         // o CNPJ errado (achado real 2026-09-30).
-        let options = disponiveis.map(flatten)
+        // Em "Serviço" já vendida/reservada em outro atendimento (o status segue
+        // "Serviço" até a conclusão da oficina) não aparece pra um novo atendimento.
+        let options = disponiveis
+          .filter((m: any) => !(m.status === 'servico' && m.atendimento_venda_id && m.id !== estoqueMotoId))
+          .map(flatten)
           .filter((o) => (isDucati ? o.is0km : !o.is0km))
           .filter((o) => !empresaId || o.empresaId === empresaId);
 

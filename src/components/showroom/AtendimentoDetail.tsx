@@ -1454,7 +1454,10 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                     const motoEst = motosInteresse.find(m => m.origem === 'estoque' && m.estoque_moto_id);
                     if (motoEst) {
                       const est = estoqueData[motoEst.estoque_moto_id!];
-                      if (est && (est.status === 'vendido' || est.status === 'servico' || est.status === 'indisponivel_manual' || est.status === 'bloqueio_juridico' || (est.status === 'sinal' && est.atendimento_venda_id && est.atendimento_venda_id !== atendimento.id))) {
+                      // Em "Serviço" pode vender (o estoque segura o status até a
+                      // conclusão — gatilho estoque_moto_servico_segura_venda), desde
+                      // que não esteja reservada/vendida em outro atendimento.
+                      if (est && (est.status === 'vendido' || est.status === 'indisponivel_manual' || est.status === 'bloqueio_juridico' || ((est.status === 'sinal' || est.status === 'servico') && est.atendimento_venda_id && est.atendimento_venda_id !== atendimento.id))) {
                         return false;
                       }
                     }
