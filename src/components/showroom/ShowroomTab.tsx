@@ -196,6 +196,9 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
 
       if (search.trim()) {
         const s = normalizeSearch(search);
+        // Placa/chassi também sem hífen/espaço: "SDE-5A72", "sde5a72" e "SDE 5A72" acham a mesma moto.
+        const compacto = (v: string) => normalizeSearch(v).replace(/[^a-z0-9]/g, '');
+        const sCompacto = compacto(search);
         results = results.filter(a => {
           const fields = [
             a.cliente?.nome_razao_social, a.cliente?.telefone, a.loja, a.interesse, a.situacao,
@@ -205,8 +208,14 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
           const motosAv = (a as any).avaliacoes || [];
           const motoFields = motos.flatMap((m: any) => [m.modelo, m.marca, m.ano, m._estoque?.modelo, m._estoque?.marca]);
           const motoAvFields = motosAv.flatMap((m: any) => [m.modelo, m.marca, m.placa, m.cor, m.ano_fabricacao, m.ano_modelo, m.km]);
+          // Placa/chassi da moto de interesse (estoque) e da moto do cliente (avaliação).
+          const placas = [
+            ...motos.flatMap((m: any) => [m.chassi, m._estoque?.placa, m._estoque?.chassi]),
+            ...motosAv.flatMap((m: any) => [m.placa, m.chassi]),
+          ].filter(Boolean).map((v: any) => compacto(String(v)));
           const all = [...fields, ...motoFields, ...motoAvFields];
-          return all.some(f => f && normalizeSearch(String(f)).includes(s));
+          return all.some(f => f && normalizeSearch(String(f)).includes(s))
+            || (sCompacto.length >= 3 && placas.some((p: string) => p.includes(sCompacto)));
         });
       }
       if (filterCidade !== 'todos') {
@@ -310,7 +319,7 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled }: Show
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome ou telefone..."
+            placeholder="Buscar por nome, telefone ou placa..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-10 bg-card border-border"
