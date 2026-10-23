@@ -20,6 +20,9 @@ interface StatusTimelineProps {
   renderPopupExtra?: (entry: TimelineEntry) => React.ReactNode;
   /** Optional custom label formatter for status values */
   formatLabel?: (raw: string) => string;
+  /** Clique numa movimentação: devolva true pra tratar por conta própria (ex.: abrir
+   * outro pop-up) e não abrir o detalhe padrão. */
+  onEntryClick?: (entry: TimelineEntry) => boolean | void;
 }
 
 export const defaultFormatStatusLabel = (raw: string): string => {
@@ -63,7 +66,7 @@ const dedupeMirrorEntries = (entries: TimelineEntry[]): TimelineEntry[] => {
   return kept;
 };
 
-const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExtra, formatLabel }) => {
+const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExtra, formatLabel, onEntryClick }) => {
   const formatStatusLabel = formatLabel || defaultFormatStatusLabel;
   const [selected, setSelected] = useState<TimelineEntry | null>(null);
 
@@ -87,7 +90,7 @@ const StatusTimeline: React.FC<StatusTimelineProps> = ({ history, renderPopupExt
             <div
               key={h.id}
               className="flex items-start gap-2 pb-4 last:pb-0 cursor-pointer hover:bg-muted/50 rounded-md px-1.5 -mx-1.5"
-              onClick={() => setSelected(h)}
+              onClick={() => { if (onEntryClick?.(h) === true) return; setSelected(h); }}
             >
               {/* Gutter: centraliza a bolinha sobre a linha */}
               <div className="w-5 shrink-0 flex justify-center pt-1">
