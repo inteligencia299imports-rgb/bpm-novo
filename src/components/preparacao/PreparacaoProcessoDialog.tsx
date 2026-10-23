@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { ClipboardList, Loader2, History, Wrench, Truck, CheckCircle, Package, AlertCircle, Check, ArrowLeft, Search, MessageSquarePlus } from 'lucide-react';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import PreparacaoObservacoes from '@/components/preparacao/PreparacaoObservacoes';
+import OsObservacoesDialog from '@/components/preparacao/OsObservacoesDialog';
 import { supabase } from '@/lib/supabase';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { firstLastName } from '@/lib/utils';
@@ -118,6 +119,8 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   // O.S. aberta no ofc pra esta moto (#XXXX) — enquanto houver, o status da
   // preparação não muda por aqui (quem move é o ofc); só "Observação" fica.
   const [osAberta, setOsAberta] = useState<string | null>(null);
+  // Clique numa movimentação de O.S. (#XXXX) no histórico → observações da O.S. (só leitura).
+  const [osObservacoes, setOsObservacoes] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !avaliacaoId) { setOsAberta(null); return; }
@@ -1177,6 +1180,12 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
               <StatusTimeline
                 history={history}
+                onEntryClick={(entry) => {
+                  const m = String(entry.status ?? '').match(/#(\d{3,})\b/);
+                  if (!m) return false;
+                  setOsObservacoes(`#${m[1]}`);
+                  return true;
+                }}
                 renderPopupExtra={(entry) => (
                   entry.observacoes ? (
                     <div>
@@ -1189,6 +1198,12 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             </div>
             <Separator className="mt-4" />
             <div className="pb-3" />
+            <OsObservacoesDialog
+              open={!!osObservacoes}
+              onOpenChange={(o) => { if (!o) setOsObservacoes(null); }}
+              avaliacaoId={avaliacaoId}
+              numeroOs={osObservacoes}
+            />
           </div>
         )}
         </div>
