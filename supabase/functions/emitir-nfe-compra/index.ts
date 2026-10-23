@@ -1787,7 +1787,7 @@ Deno.serve(async (req) => {
   } else {
     const { data: atendimentoRow } = await admin
       .from('atendimentos_motos')
-      .select('id, cliente_id, loja_id, vendedor_id, interesse, retirada_presencial, tipo_atendimento')
+      .select('id, cliente_id, loja_id, vendedor_id, interesse, retirada_presencial, tipo_atendimento, troca_terceiro_avaliacao_id')
       .eq('id', atendimentoId)
       .maybeSingle();
     if (!atendimentoRow) return jsonResponse({ error: 'Atendimento não encontrado' }, 404);
@@ -2757,6 +2757,16 @@ Deno.serve(async (req) => {
         }
       }
     }
+    // Exceção: moto de terceiro como parte do pagamento (troca_terceiro_avaliacao_id)
+    // — a NF-e de venda referencia a NF-e de compra dela, então essa tem que existir.
+    if (ehVenda && atendimento.troca_terceiro_avaliacao_id) {
+      const { data: compraTerceiro } = await admin.from('nfe_entradas').select('id')
+        .eq('avaliacao_id', atendimento.troca_terceiro_avaliacao_id).eq('operacao', 'compra')
+        .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle();
+      if (!compraTerceiro) {
+        return jsonResponse({ error: 'Emita a NF-e de compra da moto que entra como parte do pagamento em produção antes de emitir a venda.' }, 409);
+      }
+    }
   } else if (nfeExistente && nfeExistente.status === 'processada' && nfeExistente.ambiente === 'producao' && !(await foiDevolvida(nfeExistente.created_at))) {
     // Depois de produção autorizada, não reemite mais nem em homologação —
     // a menos que essa NF tenha sido devolvida (negócio desfeito, libera nova emissão).
@@ -2907,6 +2917,23 @@ Deno.serve(async (req) => {
         }
         trocaInfoCpl = blocosTroca.join(' * ') || null;
       }
+    }
+    // Exceção (2026-10-23): moto de terceiro como parte do pagamento — só o bloco
+    // "NF DE ENTRADA nº - PLACA ..." no infCpl; o valor já vem do contrato
+    // ("Moto Parte Pagamento"), não soma de novo no pag.
+    if (atendimento.troca_terceiro_avaliacao_id) {
+      const [{ data: avTerc }, { data: nfTerc }] = await Promise.all([
+        admin.from('avaliacoes').select('placa').eq('id', atendimento.troca_terceiro_avaliacao_id).maybeSingle(),
+        admin.from('nfe_entradas').select('numero')
+          .eq('avaliacao_id', atendimento.troca_terceiro_avaliacao_id).eq('operacao', 'compra')
+          .eq('status', 'processada').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      const placa = String((avTerc as any)?.placa ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const bloco = [
+        (nfTerc as any)?.numero ? `NF DE ENTRADA ${(nfTerc as any).numero}` : null,
+        placa ? `PLACA ${placa}` : null,
+      ].filter(Boolean).join(' - ');
+      if (bloco) trocaInfoCpl = [trocaInfoCpl, bloco].filter(Boolean).join(' * ');
     }
 
     formasPagamentoTexto = linhasPagto.join(' * ') || null;
