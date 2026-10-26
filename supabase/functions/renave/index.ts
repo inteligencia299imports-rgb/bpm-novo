@@ -127,6 +127,23 @@ async function cnpjDaEmpresaPorAvaliacao(admin: any, avaliacaoId: string): Promi
   return cnpjDaEmpresa(admin, lojaEmpresa.empresa_id);
 }
 
+// Chave da NF-e a vincular no RENAVE (passo 4) de um usado: a SERPRO só aceita
+// NF emitida pelo próprio estabelecimento solicitante. Moto transferida entre
+// CNPJs (achado real 2026-10-26, TAM1F65: compra NF 7386 pela MMATOS, entrada
+// RENAVE pela FLN) -> vincula a NF-e de ENTRADA da transferência (emitida pela
+// empresa de destino, a mesma de cnpjDaEmpresaPorAvaliacao); senão a de compra.
+async function chaveNfVinculoUsado(admin: any, avaliacaoId: string): Promise<string | null> {
+  const { data: transf } = await admin.from('nfe_entradas').select('chave_nfe')
+    .eq('avaliacao_id', avaliacaoId).eq('operacao', 'transferencia_entrada')
+    .eq('status', 'processada').eq('ambiente', 'producao')
+    .order('data_emissao', { ascending: false }).limit(1).maybeSingle();
+  if (transf?.chave_nfe) return transf.chave_nfe;
+  const { data: compra } = await admin.from('nfe_entradas').select('chave_nfe')
+    .eq('avaliacao_id', avaliacaoId).eq('operacao', 'compra')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  return compra?.chave_nfe ?? null;
+}
+
 // Achado real 2026-09-22 (chassi 95V1X00AARM000160, placa SXI9A07): o
 // "código de segurança do CRV" muda a cada nova emissão do CLA/CRV digital
 // pela CDT -- um CRLV anexado meses atrás pode estar com um código já
@@ -827,8 +844,9 @@ Deno.serve(async (req) => {
       // essa chamada podia falhar silenciosamente, sem aparecer em lugar
       // nenhum além do log de renave_chamadas).
       let nfVinculada = false;
-      if (est.id && nfCompra.chave_nfe) {
-        const nf = await enviarNotaFiscal(soChave(nfCompra.chave_nfe), 'COMPRA', est.id, ctx);
+      const chaveVinculo = await chaveNfVinculoUsado(admin, avaliacaoId);
+      if (est.id && chaveVinculo) {
+        const nf = await enviarNotaFiscal(soChave(chaveVinculo), 'COMPRA', est.id, ctx);
         nfVinculada = nf.status < 400;
         if (!nfVinculada) {
           console.warn('renave notas-fiscais COMPRA (seminova):', erroRenave(nf));
@@ -850,16 +868,14 @@ Deno.serve(async (req) => {
       if (!av) return json({ error: 'Avaliação não encontrada' }, 404);
       if (!av.renave_id_estoque) return json({ error: 'Esta moto ainda não tem entrada no RENAVE.' }, 409);
 
-      const { data: nfCompra } = await admin.from('nfe_entradas')
-        .select('chave_nfe').eq('avaliacao_id', avaliacaoId).eq('operacao', 'compra')
-        .order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (!nfCompra?.chave_nfe) return json({ error: 'NF-e de compra não encontrada.' }, 409);
+      const chaveVinculo = await chaveNfVinculoUsado(admin, avaliacaoId);
+      if (!chaveVinculo) return json({ error: 'NF-e de compra não encontrada.' }, 409);
 
       const ctx: RenaveLogCtx = {
         admin, operacao: acao, chassi: av.chassi, avaliacaoId, usuarioId: caller.id,
         cnpjEstabelecimento: await cnpjDaEmpresaPorAvaliacao(admin, avaliacaoId),
       };
-      const nf = await enviarNotaFiscal(soChave(nfCompra.chave_nfe), 'COMPRA', av.renave_id_estoque, ctx);
+      const nf = await enviarNotaFiscal(soChave(chaveVinculo), 'COMPRA', av.renave_id_estoque, ctx);
       if (nf.status >= 400) {
         const msg = erroRenave(nf);
         await persistirAvaliacao(admin, avaliacaoId, { renave_ultimo_erro: `Vínculo da NF-e falhou: ${msg}` });
