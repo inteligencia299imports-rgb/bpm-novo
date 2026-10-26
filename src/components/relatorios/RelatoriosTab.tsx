@@ -173,7 +173,7 @@ const RelatoriosTab: React.FC = () => {
                 <>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateFrom && 'text-muted-foreground')}>
+                      <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0 bg-white', !dateFrom && 'text-muted-foreground')}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
                       </Button>
@@ -187,7 +187,7 @@ const RelatoriosTab: React.FC = () => {
               )}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateTo && 'text-muted-foreground')}>
+                  <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0 bg-white', !dateTo && 'text-muted-foreground')}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
                   </Button>
