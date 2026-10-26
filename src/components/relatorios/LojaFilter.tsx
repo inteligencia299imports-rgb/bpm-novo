@@ -1,6 +1,5 @@
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -18,13 +17,6 @@ interface LojaFilterProps {
 export const SUB_LOJAS: Record<'299' | 'Ducati', string[]> = {
   '299': ['299i', '299s', '299f', '299p', 'Aventura'],
   Ducati: ['Ducati BSB', 'Ducati FLN', 'Ducati POA'],
-};
-
-const getGroup = (v: string): 'todos' | '299' | 'Ducati' | null => {
-  if (v === 'todos') return 'todos';
-  if (v === '299' || SUB_LOJAS['299'].includes(v)) return '299';
-  if (v === 'Ducati' || SUB_LOJAS.Ducati.includes(v)) return 'Ducati';
-  return null;
 };
 
 /** Lojas selecionadas por um valor do filtro ('todos' -> vazio = sem filtro). */
@@ -96,48 +88,35 @@ export const LojaFilter: React.FC<LojaFilterProps> = ({ value, onChange, hideDuc
     );
   }
 
-  const group = getGroup(value);
-  const subs = group && group !== 'todos' ? SUB_LOJAS[group] : null;
-
+  // Uma opção só (relatórios que mandam a loja pra RPC): mesmo seletor
+  // retangular, mas marcar algo desmarca o resto (todas / grupo / loja).
+  const rotuloUnico = value === 'todos' ? 'Todas Lojas' : value;
+  const linha = (v: string, texto: string, cls: string) => (
+    <label key={v} className={cn('flex items-center gap-2 rounded-sm py-1.5 text-sm cursor-pointer hover:bg-muted', cls)}>
+      <Checkbox checked={value === v} onCheckedChange={() => onChange(v)} />
+      {texto}
+    </label>
+  );
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-1">
-        {groups.map(g => (
-          <Button
-            key={g}
-            size="sm"
-            variant={group === g ? 'default' : 'outline'}
-            className={cn('rounded-full w-24 px-0 h-8 text-xs font-medium justify-center', group === g ? 'shadow-sm' : 'bg-white')}
-            onClick={() => onChange(g)}
-          >
-            {g === 'todos' ? 'Todas Lojas' : g}
-          </Button>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex h-9 w-full sm:w-56 min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+        >
+          <span className="truncate">{rotuloUnico}</span>
+          <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-60 p-1" align="start">
+        {linha('todos', 'Todas Lojas', 'px-2')}
+        {groups.filter((g) => g !== 'todos').map((g) => (
+          <React.Fragment key={g}>
+            {linha(g, g, 'px-2 font-medium')}
+            {SUB_LOJAS[g as '299' | 'Ducati'].map((u) => linha(u, u, 'pl-8 pr-2 text-muted-foreground'))}
+          </React.Fragment>
         ))}
-      </div>
-      {subs && (
-        <div className="flex flex-wrap items-center gap-1 pl-1">
-          <span className="text-xs text-muted-foreground mr-1">Filial:</span>
-          <Button
-            size="sm"
-            variant={value === group ? 'default' : 'outline'}
-            className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', value === group ? 'shadow-sm' : 'bg-white')}
-            onClick={() => onChange(group!)}
-          >
-            Todas
-          </Button>
-          {subs.map(s => (
-            <Button
-              key={s}
-              size="sm"
-              variant={value === s ? 'default' : 'outline'}
-              className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', value === s ? 'shadow-sm' : 'bg-white')}
-              onClick={() => onChange(s)}
-            >
-              {s}
-            </Button>
-          ))}
-        </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 };

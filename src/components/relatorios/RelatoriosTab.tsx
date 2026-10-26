@@ -1,16 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bike, ClipboardCheck, Package, CalendarIcon, BarChart3, X, UserCheck, Wrench, Filter, Award, ExternalLink } from 'lucide-react';
+import { Bike, ClipboardCheck, Package, BarChart3, X, UserCheck, Wrench, Filter, Award, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPreviousPeriod, getPreviousMonthDate } from '@/lib/reportComparison';
-import { getCurrentDefaultStart, DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
+import { getCurrentDefaultStart } from '@/lib/reportCycle';
 import RelatorioShowroom from './RelatorioShowroom';
 import RelatorioAvaliacoes from './RelatorioAvaliacoes';
 import RelatorioEstoque from './RelatorioEstoque';
@@ -37,10 +32,6 @@ const RelatoriosTab: React.FC = () => {
     }
   }, [role]);
 
-  // Relatórios só mostram dados a partir de 01/09/2026 (ver reportCycle.ts).
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
-  const disabledFromDates = (date: Date) => date < DATA_INICIO_RELATORIOS || date > todayEnd;
   const initFrom = getCurrentDefaultStart();
   initFrom.setHours(0, 0, 0, 0);
   const initTo = new Date();
@@ -165,59 +156,6 @@ const RelatoriosTab: React.FC = () => {
             <Button variant="outline" size="icon" className="md:hidden shrink-0 self-end" onClick={() => setShowFilters(!showFilters)}>
               <Filter className="h-4 w-4" />
             </Button>
-          )}
-          {dept !== 'vendedores' && dept !== 'estoque' && (
-          <div className={`w-full sm:w-auto flex flex-col items-start sm:items-end gap-1 ${showFilters ? 'flex' : 'hidden md:flex'}`}>
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              {dept !== 'estoque' && (
-                <>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0 bg-white', !dateFrom && 'text-muted-foreground')}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} disabled={disabledFromDates} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateFrom ?? DATA_INICIO_RELATORIOS} />
-                    </PopoverContent>
-                  </Popover>
-                  <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
-                </>
-              )}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0 bg-white', !dateTo && 'text-muted-foreground')}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} disabled={(date: Date) => disabledFromDates(date) || (dateFrom ? date < dateFrom : false)} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateTo ?? DATA_INICIO_RELATORIOS} />
-                </PopoverContent>
-              </Popover>
-            </div>
-            {(() => {
-              if (!dateTo) return null;
-              if (dept === 'estoque') {
-                const prev = getPreviousMonthDate(dateTo);
-                if (!prev) return null;
-                return (
-                  <p className="text-xs text-muted-foreground pr-1">
-                    Comparado com {format(prev, 'dd/MM/yyyy')}
-                  </p>
-                );
-              }
-              if (!dateFrom) return null;
-              const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
-              if (!prevFrom || !prevTo) return null;
-              return (
-                <p className="text-xs text-muted-foreground pr-1">
-                  Comparado com {format(prevFrom, 'dd/MM/yyyy')} a {format(prevTo, 'dd/MM/yyyy')}
-                </p>
-              );
-            })()}
-          </div>
           )}
 
         </div>

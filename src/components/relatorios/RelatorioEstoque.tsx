@@ -10,7 +10,8 @@ import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart, Area } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
-import CidadeFilter, { CidadeFilterValue, matchesCidade } from '@/components/shared/CidadeFilter';
+import { CidadeFilterValue, matchesCidade } from '@/components/shared/CidadeFilter';
+import { FiltroMultiplo, OPCOES_CIDADE } from './FiltroMultiplo';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +37,7 @@ interface RelatorioEstoqueProps {
   showFilters?: boolean;
 }
 
-type TipoFilter = 'todos' | 'propria' | 'consignada' | '0km' | 'test_ride';
+type TipoFilter = string; // 'todos' ou lista separada por vírgula
 
 const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, setDateFrom, setDateTo, onRegisterClear, onFilterChange, showFilters = true }) => {
   const isMobile = useIsMobile();
@@ -99,17 +100,18 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       ...(((estoqueNovasRes as any).data) || []).map((r: any) => mapEstoqueMotoNova(r, lojaMap)),
     ] as any[];
     if (filterTipo !== 'todos') {
-      estoqueAll = estoqueAll.filter((m: any) => {
-        if (filterTipo === 'test_ride') return m.tipo_unidade === 'test_ride';
-        if (filterTipo === '0km') return m.tipo === '0km' && m.tipo_unidade !== 'test_ride';
-        return m.tipo === filterTipo;
-      });
+      const tipos = filterTipo.split(',');
+      estoqueAll = estoqueAll.filter((m: any) => tipos.some((t) => {
+        if (t === 'test_ride') return m.tipo_unidade === 'test_ride';
+        if (t === '0km') return m.tipo === '0km' && m.tipo_unidade !== 'test_ride';
+        return m.tipo === t;
+      }));
     }
     // Filtro de loja (cidade) — mesma lógica do RPC
     const estoqueFiltrado = estoqueAll.filter((m: any) => {
       const loja = (m.loja || '').toString();
       if (filterLoja === 'todos') return true;
-      return matchesCidade(loja, filterLoja as CidadeFilterValue);
+      return filterLoja.split(',').some((c) => matchesCidade(loja, c as CidadeFilterValue));
     });
 
     // Preparação (avaliacoes) — não depende de loja/tipo; média em dias varia por cutoff
@@ -366,23 +368,9 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       <Separator className="my-2" />
 
       {/* Filters: Loja (left) + Tipo (right) */}
-      <div className={cn('flex-wrap items-start justify-between gap-3', showFilters ? 'flex' : 'hidden md:flex')}>
-        <CidadeFilter value={filterLoja as CidadeFilterValue} onChange={(v) => setFilterLoja(v)} />
-        <div className="flex flex-wrap items-center gap-1 ml-auto">
-          {([
-            { value: 'todos', label: 'Todos' },
-            { value: 'propria', label: 'Próprias' },
-            { value: 'consignada', label: 'Consignadas' },
-            { value: '0km', label: '0KM' },
-            { value: 'test_ride', label: 'Test-Ride' },
-          ] as { value: TipoFilter; label: string }[]).map(b => (
-            <Button key={b.value} size="sm" variant={filterTipo === b.value ? 'default' : 'outline'}
-              className={cn('rounded-full px-4 h-8 text-xs font-medium', filterTipo === b.value && 'shadow-sm')}
-              onClick={() => setFilterTipo(b.value)}>
-              {b.label}
-            </Button>
-          ))}
-        </div>
+      <div className={cn('flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center', showFilters ? 'flex' : 'hidden md:flex')}>
+        <FiltroMultiplo value={filterLoja} onChange={setFilterLoja} opcoes={OPCOES_CIDADE} todosLabel="Todas Cidades" plural="cidades" />
+        <FiltroMultiplo value={filterTipo} onChange={setFilterTipo} opcoes={[{ value: 'propria', label: 'Próprias' }, { value: 'consignada', label: 'Consignadas' }, { value: '0km', label: '0KM' }, { value: 'test_ride', label: 'Test-Ride' }]} todosLabel="Todos os Tipos" plural="tipos" />
       </div>
 
 

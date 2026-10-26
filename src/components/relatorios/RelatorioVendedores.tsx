@@ -2,21 +2,17 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { abbreviateName, fmtInt } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Users, Check, CreditCard, TrendingUp, CalendarIcon } from 'lucide-react';
+import { Users, Check, CreditCard, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ComposedChart, Line } from 'recharts';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { toSaoPauloEndOfDayIso, toSaoPauloStartOfDayIso } from '@/lib/reportDateRange';
-import { getPreviousPeriod, getPreviousPeriodIso, splitComparado } from '@/lib/reportComparison';
+import { getPreviousPeriodIso, splitComparado } from '@/lib/reportComparison';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getXTickStyle } from '@/lib/chartAxis';
 import { LojaFilter } from './LojaFilter';
+import { PeriodoFilter } from './PeriodoFilter';
 import DeltaBadge from './DeltaBadge';
 
 const fmtPctInt = (v: number | null | undefined) => `${Math.round((v ?? 0) * 100)}%`;
@@ -111,45 +107,9 @@ const RelatorioVendedores: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <div className={cn('flex-col sm:flex-row sm:items-start sm:justify-between gap-3', showFilters ? 'flex' : 'hidden md:flex')}>
+      <div className={cn('flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center', showFilters ? 'flex' : 'hidden md:flex')}>
         <LojaFilter value={filterLoja} onChange={setFilterLoja} />
-        <div className="flex flex-col items-start sm:items-end gap-1">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateFrom && 'text-muted-foreground')}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Data Início'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
-            <span className="text-sm text-muted-foreground whitespace-nowrap shrink-0">até</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap shrink-0', !dateTo && 'text-muted-foreground')}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Data Fim'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} disabled={(date: Date) => (dateFrom ? date < dateFrom : false)} locale={ptBR} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
-          </div>
-          {(() => {
-            if (!dateFrom || !dateTo) return null;
-            const { prevFrom, prevTo } = getPreviousPeriod(dateFrom, dateTo);
-            if (!prevFrom || !prevTo) return null;
-            return (
-              <p className="text-xs text-muted-foreground pr-1">
-                Comparado com {format(prevFrom, 'dd/MM/yyyy')} a {format(prevTo, 'dd/MM/yyyy')}
-              </p>
-            );
-          })()}
-        </div>
+        <PeriodoFilter dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} />
       </div>
 
       {myIndicadores && (

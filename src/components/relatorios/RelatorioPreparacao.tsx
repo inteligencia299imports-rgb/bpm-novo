@@ -15,7 +15,9 @@ import { format } from 'date-fns';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { Badge } from '@/components/ui/badge';
 import { PREPARACAO_COLUMNS } from '@/types/crm';
-import CidadeFilter, { CidadeFilterValue, matchesCidade } from '@/components/shared/CidadeFilter';
+import { CidadeFilterValue, matchesCidade } from '@/components/shared/CidadeFilter';
+import { FiltroMultiplo, OPCOES_CIDADE } from './FiltroMultiplo';
+import { PeriodoFilter } from './PeriodoFilter';
 import { getPreviousPeriod } from '@/lib/reportComparison';
 import { getCycleForDate, DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
 import { getXTickStyle } from '@/lib/chartAxis';
@@ -31,10 +33,13 @@ interface Props {
   showFilters?: boolean;
 }
 
+// Cidade e tipo com seleção múltipla (lista separada por vírgula; 'todos' = sem filtro).
 const matchesLoja = (loja: string, filter: string) =>
-  matchesCidade(loja, (filter || 'todos') as CidadeFilterValue);
+  !filter || filter === 'todos' || filter.split(',').some((c) => matchesCidade(loja, c.trim() as CidadeFilterValue));
+const matchesTipoPrep = (tipo: string, filter: string) =>
+  !filter || filter === 'todos' || filter.split(',').includes(tipo);
 
-type TipoFilter = 'todos' | 'propria' | 'consignada';
+type TipoFilter = string;
 
 const fmtDate = (iso: string | null | undefined) => iso ? format(new Date(iso), 'dd/MM/yyyy HH:mm') : '-';
 const fmtInt = (n: number) => Math.round(n).toLocaleString('pt-BR');
@@ -251,7 +256,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   const filteredRows = useMemo(() => {
     return rows.filter(r => {
       if (!matchesLoja(r.loja, filterLoja)) return false;
-      if (filterTipo !== 'todos' && r.tipoCat !== filterTipo) return false;
+      if (!matchesTipoPrep(r.tipoCat, filterTipo)) return false;
       if (dateFrom && r.dataPreparacao && new Date(r.dataPreparacao) < dateFrom) return false;
       if (dateTo && r.dataPreparacao && new Date(r.dataPreparacao) > dateTo) return false;
       // If no dataPreparacao, only include when no period is set
@@ -267,7 +272,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   const computeKpis = (df: Date | undefined, dt: Date | undefined) => {
     const filtered = rows.filter(r => {
       if (!matchesLoja(r.loja, filterLoja)) return false;
-      if (filterTipo !== 'todos' && r.tipoCat !== filterTipo) return false;
+      if (!matchesTipoPrep(r.tipoCat, filterTipo)) return false;
       if (df && r.dataPreparacao && new Date(r.dataPreparacao) < df) return false;
       if (dt && r.dataPreparacao && new Date(r.dataPreparacao) > dt) return false;
       if (!r.dataPreparacao && (df || dt)) return false;
@@ -293,7 +298,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     const base = computeKpis(dateFrom, dateTo);
     const emPreparacao = rows.filter(r =>
       matchesLoja(r.loja, filterLoja) &&
-      (filterTipo === 'todos' || r.tipoCat === filterTipo) &&
+      matchesTipoPrep(r.tipoCat, filterTipo) &&
       r.situacao !== 'perdido' &&
       r.statusPrep !== 'estoque'
     ).length;
@@ -309,7 +314,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   // Charts: meses fechados a partir de 01/09/2026
   const chartData = useMemo(() => {
     // Use rows filtered by loja + tipo (not by period) for monthly chart
-    const baseFiltered = rows.filter(r => matchesLoja(r.loja, filterLoja) && (filterTipo === 'todos' || r.tipoCat === filterTipo));
+    const baseFiltered = rows.filter(r => matchesLoja(r.loja, filterLoja) && matchesTipoPrep(r.tipoCat, filterTipo));
     const buckets = getCycleBuckets();
     return buckets.map(b => {
       const prep = baseFiltered.filter(r => r.dataPreparacao && new Date(r.dataPreparacao) >= b.start && new Date(r.dataPreparacao) <= b.end);
@@ -435,17 +440,10 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
       <Separator className="my-2" />
 
       {/* Filters: Loja (left) + Tipo (right) */}
-      <div className={cn('flex-wrap items-start justify-between gap-3', showFilters ? 'flex' : 'hidden md:flex')}>
-        <CidadeFilter value={filterLoja as CidadeFilterValue} onChange={(v) => setFilterLoja(v)} />
-        <div className="flex flex-wrap items-center gap-1 ml-auto">
-          {tipoBtns.map(b => (
-            <Button key={b.value} size="sm" variant={filterTipo === b.value ? 'default' : 'outline'}
-              className={cn('rounded-full px-4 h-8 text-xs font-medium', filterTipo === b.value && 'shadow-sm')}
-              onClick={() => setFilterTipo(b.value)}>
-              {b.label}
-            </Button>
-          ))}
-        </div>
+      <div className={cn('flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center', showFilters ? 'flex' : 'hidden md:flex')}>
+        <FiltroMultiplo value={filterLoja} onChange={setFilterLoja} opcoes={OPCOES_CIDADE} todosLabel="Todas Cidades" plural="cidades" />
+        <FiltroMultiplo value={filterTipo} onChange={setFilterTipo} opcoes={[{ value: 'propria', label: 'Próprias' }, { value: 'consignada', label: 'Consignadas' }]} todosLabel="Todos os Tipos" plural="tipos" />
+        <PeriodoFilter dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} />
       </div>
 
       {/* KPIs */}
