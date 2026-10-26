@@ -107,7 +107,7 @@ export const LojaFilter: React.FC<LojaFilterProps> = ({ value, onChange, hideDuc
             key={g}
             size="sm"
             variant={group === g ? 'default' : 'outline'}
-            className={cn('rounded-full w-24 px-0 h-8 text-xs font-medium justify-center', group === g && 'shadow-sm')}
+            className={cn('rounded-full w-24 px-0 h-8 text-xs font-medium justify-center', group === g ? 'shadow-sm' : 'bg-white')}
             onClick={() => onChange(g)}
           >
             {g === 'todos' ? 'Todas Lojas' : g}
@@ -120,7 +120,7 @@ export const LojaFilter: React.FC<LojaFilterProps> = ({ value, onChange, hideDuc
           <Button
             size="sm"
             variant={value === group ? 'default' : 'outline'}
-            className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', value === group && 'shadow-sm')}
+            className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', value === group ? 'shadow-sm' : 'bg-white')}
             onClick={() => onChange(group!)}
           >
             Todas
@@ -130,7 +130,7 @@ export const LojaFilter: React.FC<LojaFilterProps> = ({ value, onChange, hideDuc
               key={s}
               size="sm"
               variant={value === s ? 'default' : 'outline'}
-              className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', value === s && 'shadow-sm')}
+              className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', value === s ? 'shadow-sm' : 'bg-white')}
               onClick={() => onChange(s)}
             >
               {s}

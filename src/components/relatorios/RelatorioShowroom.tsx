@@ -429,7 +429,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                 setFilterTipo(prox.length ? prox.join(',') : 'todos');
               };
               return (
-                <Button key={t.value} size="sm" variant={ativo ? 'default' : 'outline'} className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', ativo && 'shadow-sm')} onClick={clicar}>
+                <Button key={t.value} size="sm" variant={ativo ? 'default' : 'outline'} className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', ativo ? 'shadow-sm' : 'bg-white')} onClick={clicar}>
                   {t.label}
                 </Button>
               );
