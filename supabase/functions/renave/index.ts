@@ -107,7 +107,17 @@ async function cnpjDaEmpresa(admin: any, empresaId: string | null | undefined): 
 // Seminova não tem empresa_id direto (diferente de estoque_motos_novas) --
 // resolve pela mesma cadeia que emitir-nfe-compra já usa pra achar o CNPJ
 // emitente: avaliacao -> atendimento -> loja -> empresa.
+// Achado real 2026-10-26 (TAM1F65): moto comprada pela MMATOS e transferida
+// pra FLN (NF 7391 -> 103) — a dona atual é a empresa da última ENTRADA de
+// transferência autorizada, não a loja do atendimento original. Sem isso a
+// chamada saía com o CNPJ da MMATOS (sem certificado: 401), e o ATPV já
+// estava em nome da FLN.
 async function cnpjDaEmpresaPorAvaliacao(admin: any, avaliacaoId: string): Promise<string | null> {
+  const { data: transf } = await admin.from('nfe_entradas').select('empresa_id')
+    .eq('avaliacao_id', avaliacaoId).eq('operacao', 'transferencia_entrada')
+    .eq('status', 'processada').eq('ambiente', 'producao')
+    .order('data_emissao', { ascending: false }).limit(1).maybeSingle();
+  if (transf?.empresa_id) return cnpjDaEmpresa(admin, transf.empresa_id);
   const { data: av } = await admin.from('avaliacoes').select('atendimento_id').eq('id', avaliacaoId).maybeSingle();
   if (!av?.atendimento_id) return null;
   const { data: at } = await admin.from('atendimentos_motos').select('loja_id').eq('id', av.atendimento_id).maybeSingle();
