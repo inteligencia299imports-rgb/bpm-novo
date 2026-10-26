@@ -5,7 +5,9 @@ import { fetchAllRange } from '@/lib/fetchAllRange';
 import { abbreviateName, fmtInt } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, ShoppingCart, CreditCard, TrendingUp, DollarSign, Target, BarChart3, PieChart, FileSpreadsheet, FileDown } from 'lucide-react';
+import { Users, ShoppingCart, CreditCard, TrendingUp, DollarSign, Target, BarChart3, PieChart, FileSpreadsheet, FileDown, ChevronDown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, AreaChart, Area, ComposedChart } from 'recharts';
@@ -23,6 +25,14 @@ import { getCycleForDate, DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getXTickStyle } from '@/lib/chartAxis';
 import { LojaFilter } from './LojaFilter';
+
+const TIPOS_SHOWROOM = [
+  { value: 'propria', label: 'Própria' },
+  { value: 'consignada', label: 'Consignada' },
+  { value: 'repasse', label: 'Repasse' },
+  { value: '0km', label: '0km' },
+  { value: 'test-ride', label: 'Test-Ride' },
+];
 import DeltaBadge from './DeltaBadge';
 import {
   buildIndexes, computeRowMetrics, filterVendidas, filterSinais, filterAtendimentosGeneric,
@@ -414,28 +424,45 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <div className={cn('flex-col gap-3 sm:flex-row sm:items-center sm:justify-between', showFilters ? 'flex' : 'hidden md:flex')}>
+      <div className={cn('flex-col gap-2 sm:flex-row sm:items-center', showFilters ? 'flex' : 'hidden md:flex')}>
         <LojaFilter value={filterLoja} onChange={setFilterLoja} multiple />
-        <div className="flex flex-wrap items-center gap-2 max-w-full">
-          <span className="text-xs font-medium text-muted-foreground shrink-0">Tipo:</span>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Tipo com seleção múltipla (valor = lista separada por vírgula; 'todos' = sem filtro). */}
-            {[{ value: 'todos', label: 'Todos' }, { value: 'propria', label: 'Própria' }, { value: 'consignada', label: 'Consignada' }, { value: 'repasse', label: 'Repasse' }, { value: '0km', label: '0km' }, { value: 'test-ride', label: 'Test-Ride' }].map(t => {
-              const marcados = filterTipo === 'todos' ? [] : filterTipo.split(',');
-              const ativo = t.value === 'todos' ? filterTipo === 'todos' : marcados.includes(t.value);
-              const clicar = () => {
-                if (t.value === 'todos') return setFilterTipo('todos');
-                const prox = ativo ? marcados.filter((m) => m !== t.value) : [...marcados, t.value];
-                setFilterTipo(prox.length ? prox.join(',') : 'todos');
-              };
-              return (
-                <Button key={t.value} size="sm" variant={ativo ? 'default' : 'outline'} className={cn('rounded-full w-24 px-0 h-8 text-xs justify-center', ativo ? 'shadow-sm' : 'bg-white')} onClick={clicar}>
-                  {t.label}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Tipo: seleção múltipla no mesmo padrão do seletor de lojas
+            (valor = lista separada por vírgula; 'todos' = sem filtro). */}
+        {(() => {
+          const marcados = filterTipo === 'todos' ? [] : filterTipo.split(',');
+          const rotulo = marcados.length === 0 ? 'Todos os Tipos'
+            : marcados.length === 1 ? (TIPOS_SHOWROOM.find((t) => t.value === marcados[0])?.label ?? marcados[0])
+            : `${marcados.length} tipos`;
+          const alternar = (v: string, marcar: boolean) => {
+            const prox = marcar ? [...new Set([...marcados, v])] : marcados.filter((m) => m !== v);
+            setFilterTipo(prox.length ? TIPOS_SHOWROOM.map((t) => t.value).filter((t) => prox.includes(t)).join(',') : 'todos');
+          };
+          return (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-9 w-full sm:w-56 min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  <span className="truncate">{rotulo}</span>
+                  <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-60 p-1" align="start">
+                <label className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm cursor-pointer hover:bg-muted">
+                  <Checkbox checked={marcados.length === 0} onCheckedChange={() => setFilterTipo('todos')} />
+                  Todos os Tipos
+                </label>
+                {TIPOS_SHOWROOM.map((t) => (
+                  <label key={t.value} className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm cursor-pointer hover:bg-muted">
+                    <Checkbox checked={marcados.includes(t.value)} onCheckedChange={(c) => alternar(t.value, c === true)} />
+                    {t.label}
+                  </label>
+                ))}
+              </PopoverContent>
+            </Popover>
+          );
+        })()}
       </div>
 
       {/* Indicators - Line 1 */}

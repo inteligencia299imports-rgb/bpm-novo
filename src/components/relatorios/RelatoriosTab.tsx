@@ -114,7 +114,7 @@ const RelatoriosTab: React.FC = () => {
               <div className="hidden md:flex items-center gap-2 overflow-x-auto">
                 <TabsList className="w-max">
                   {DEPT_OPTIONS.map(o => (
-                    <TabsTrigger key={o.value} value={o.value} className="gap-1.5">
+                    <TabsTrigger key={o.value} value={o.value} className="gap-1.5 data-[state=active]:bg-white">
                       <o.icon className="h-4 w-4" /> {o.label}
                     </TabsTrigger>
                   ))}
@@ -131,7 +131,7 @@ const RelatoriosTab: React.FC = () => {
               {/* Mobile: select with icons */}
               <div className="md:hidden flex-1 min-w-0">
                 <Select value={dept} onValueChange={setDept}>
-                  <SelectTrigger className="h-9 w-full">
+                  <SelectTrigger className="h-9 w-full bg-white">
                     <SelectValue>
                       {(() => {
                         const o = DEPT_OPTIONS.find(o => o.value === dept);
