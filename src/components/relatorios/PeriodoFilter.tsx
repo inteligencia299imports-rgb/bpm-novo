@@ -8,7 +8,8 @@ import { cn } from '@/lib/utils';
 import { DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
 
 // Período (Data Início / Data Fim) na mesma linha dos demais filtros, em
-// retângulo branco igual aos seletores (pedido do usuário, 2026-10-26).
+// retângulo branco igual aos seletores, alinhado à direita e sem o "até"
+// entre as datas (pedidos do usuário, 2026-10-26).
 // Relatórios só mostram dados a partir de 01/09/2026 (ver reportCycle.ts).
 
 interface Props {
@@ -25,7 +26,7 @@ export const PeriodoFilter: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, 
   fimHoje.setHours(23, 59, 59, 999);
   const foraDoIntervalo = (d: Date) => d < DATA_INICIO_RELATORIOS || d > fimHoje;
   return (
-    <div className="flex w-full sm:w-auto items-center gap-2">
+    <div className="flex w-full sm:w-auto sm:ml-auto items-center gap-2">
       <Popover>
         <PopoverTrigger asChild>
           <button type="button" className={cn(CAIXA, !dateFrom && 'text-muted-foreground')}>
@@ -37,7 +38,6 @@ export const PeriodoFilter: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, 
           <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} disabled={foraDoIntervalo} locale={ptBR} className="p-3 pointer-events-auto" defaultMonth={dateFrom ?? DATA_INICIO_RELATORIOS} />
         </PopoverContent>
       </Popover>
-      <span className="text-sm text-muted-foreground shrink-0">até</span>
       <Popover>
         <PopoverTrigger asChild>
           <button type="button" className={cn(CAIXA, !dateTo && 'text-muted-foreground')}>
