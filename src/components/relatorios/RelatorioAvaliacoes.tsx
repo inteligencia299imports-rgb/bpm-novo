@@ -18,6 +18,7 @@ import { getCycleForDate, DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getXTickStyle } from '@/lib/chartAxis';
 import { LojaFilter } from './LojaFilter';
+import { PeriodoFilter } from './PeriodoFilter';
 import DeltaBadge from './DeltaBadge';
 import { format } from 'date-fns';
 
@@ -474,7 +475,10 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
-      <div className={showFilters ? '' : 'hidden md:block'}><LojaFilter value={filterLoja} onChange={setFilterLoja} multiple /></div>
+      <div className={cn('flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center', showFilters ? 'flex' : 'hidden md:flex')}>
+        <LojaFilter value={filterLoja} onChange={setFilterLoja} multiple />
+        <PeriodoFilter dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} />
+      </div>
 
       {/* Indicators - Line 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
