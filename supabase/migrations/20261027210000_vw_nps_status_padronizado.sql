@@ -1,0 +1,278 @@
+-- vw_nps: status do atendimento padronizado (pedido do usuário, 2026-10-27):
+--   vendemos (showroom/Ducati/equipamentos/oficina faturada) -> vendido
+--   compramos (avaliação adquirida/estoque/oficina)          -> adquirido
+--   perdido ou retirada                                    -> perdido
+-- Definição base regerada do banco (prod).
+
+CREATE OR REPLACE VIEW public.vw_nps WITH (security_invoker = on) AS
+ SELECT
+        CASE
+            WHEN lower(b.status) = ANY (ARRAY['perdido'::text, 'retirada'::text]) THEN 'perdido'::text
+            WHEN b.departamento = 'AVALIAÇÃO'::text THEN 'adquirido'::text
+            ELSE 'vendido'::text
+        END AS status,
+    b.loja,
+    b.nome_cliente,
+    b.telefone,
+    b.sexo,
+    b.uf,
+    b.interesse,
+    b.nps_status,
+    b.vendedor,
+    b.tipo_moto,
+    b.marca,
+    b.modelo,
+    b.placa,
+    b.data_venda,
+    b.departamento,
+    b.data_envio,
+    b.id_atendimento,
+    b.id_prefix
+   FROM (
+SELECT a.situacao AS status,
+    le.loja,
+    cf.nome_razao_social AS nome_cliente,
+    cf.telefone,
+    cf.sexo,
+    uf_cliente(a.cliente_id) AS uf,
+    a.interesse,
+    a.nps_status,
+    nome_usuario(a.vendedor_id, '299bpm'::text) AS vendedor,
+    COALESCE(e.tipo,
+        CASE
+            WHEN norm_loja(le.loja) = 'Ducati'::text THEN '0km'::text
+            ELSE 'propria'::text
+        END) AS tipo_moto,
+    COALESCE(e.marca, mi.marca) AS marca,
+    COALESCE(e.modelo, mi.modelo) AS modelo,
+    e.placa,
+        CASE
+            WHEN a.situacao = 'perdido'::text THEN a.created_at
+            ELSE COALESCE(
+            CASE
+                WHEN e.atendimento_venda_id = a.id THEN e.data_venda
+                ELSE NULL::timestamp with time zone
+            END, vh.created_at)
+        END AS data_venda,
+        CASE
+            WHEN COALESCE(e.tipo,
+            CASE
+                WHEN norm_loja(le.loja) = 'Ducati'::text THEN '0km'::text
+                ELSE 'propria'::text
+            END) = '0km'::text THEN 'DUCATI'::text
+            ELSE 'SHOWROOM'::text
+        END AS departamento,
+    a.nps_enviado_at AS data_envio,
+    a.id AS id_atendimento,
+    split_part(a.id::text, '-'::text, 1) AS id_prefix
+   FROM atendimentos_motos a
+     LEFT JOIN loja_empresas le ON le.id = a.loja_id
+     LEFT JOIN clientes_fornecedores cf ON cf.id = a.cliente_id
+     LEFT JOIN LATERAL ( SELECT mm.nome AS marca,
+            mo.nome AS modelo,
+            mi2.estoque_moto_id
+           FROM motos_interesse mi2
+             LEFT JOIN modelos_motos mo ON mo.id = mi2.modelo_id
+             LEFT JOIN marcas_motos mm ON mm.id = COALESCE(mi2.marca_id, mo.marca_id)
+          WHERE mi2.atendimento_id = a.id
+          ORDER BY (mi2.estoque_moto_id IS NOT NULL) DESC, mi2.created_at
+         LIMIT 1) mi ON true
+     LEFT JOIN LATERAL ( SELECT x.atendimento_venda_id,
+            x.tipo,
+            x.marca,
+            x.modelo,
+            x.placa,
+            x.data_venda,
+            x.updated_at,
+            x.created_at,
+            x.prioridade
+           FROM ( SELECT em.atendimento_venda_id,
+                    COALESCE(av0.tipo_aquisicao, 'propria'::text) AS tipo,
+                    mm.nome AS marca,
+                    mo.nome AS modelo,
+                    av0.placa,
+                    em.data_venda,
+                    em.updated_at,
+                    em.created_at,
+                        CASE
+                            WHEN mi.estoque_moto_id = em.id::text THEN 0
+                            ELSE 1
+                        END AS prioridade
+                   FROM estoque_motos em
+                     LEFT JOIN avaliacoes av0 ON av0.id = em.avaliacao_id
+                     LEFT JOIN modelos_motos mo ON mo.id = av0.modelo_id
+                     LEFT JOIN marcas_motos mm ON mm.id = COALESCE(av0.marca_id, mo.marca_id)
+                  WHERE em.atendimento_venda_id = a.id OR mi.estoque_moto_id = em.id::text
+                UNION ALL
+                 SELECT en.atendimento_venda_id,
+                        CASE
+                            WHEN en.tipo = 'test_ride'::text THEN 'test-ride'::text
+                            ELSE '0km'::text
+                        END AS text,
+                    mm.nome,
+                    mo.nome,
+                    en.placa,
+                    en.data_venda,
+                    en.updated_at,
+                    en.created_at,
+                        CASE
+                            WHEN mi.estoque_moto_id = en.id::text THEN 0
+                            ELSE 1
+                        END AS "case"
+                   FROM estoque_motos_novas en
+                     LEFT JOIN modelos_motos mo ON mo.id = en.modelo_id
+                     LEFT JOIN marcas_motos mm ON mm.id = COALESCE(en.marca_id, mo.marca_id)
+                  WHERE en.atendimento_venda_id = a.id OR mi.estoque_moto_id = en.id::text) x
+          ORDER BY x.prioridade, x.updated_at DESC NULLS LAST, x.created_at DESC NULLS LAST
+         LIMIT 1) e ON true
+     LEFT JOIN LATERAL ( SELECT sh.created_at
+           FROM status_history sh
+          WHERE sh.entity_type = 'showroom'::text AND sh.entity_id = a.id AND sh.status = 'vendido'::text
+          ORDER BY sh.created_at DESC
+         LIMIT 1) vh ON true
+  WHERE (a.situacao = ANY (ARRAY['vendido'::text, 'perdido'::text])) AND (a.interesse = ANY (ARRAY['comprar'::text, 'trocar'::text]))
+UNION ALL
+ SELECT av.situacao AS status,
+    le.loja,
+    cf.nome_razao_social AS nome_cliente,
+    cf.telefone,
+    cf.sexo,
+    uf_cliente(a.cliente_id) AS uf,
+    a.interesse,
+    av.nps_status,
+    nome_usuario(av.avaliador_id, '299bpm'::text) AS vendedor,
+    av.tipo_aquisicao AS tipo_moto,
+    mm.nome AS marca,
+    mo.nome AS modelo,
+    av.placa,
+    ( SELECT min(sh.created_at) AS min
+           FROM status_history sh
+          WHERE sh.entity_type = 'avaliacao'::text AND sh.entity_id = av.id AND sh.status = 'adquirida'::text) AS data_venda,
+    'AVALIAÇÃO'::text AS departamento,
+    av.nps_enviado_at AS data_envio,
+    av.id AS id_atendimento,
+    split_part(av.id::text, '-'::text, 1) AS id_prefix
+   FROM avaliacoes av
+     JOIN atendimentos_motos a ON a.id = av.atendimento_id
+     LEFT JOIN loja_empresas le ON le.id = a.loja_id
+     LEFT JOIN clientes_fornecedores cf ON cf.id = a.cliente_id
+     LEFT JOIN modelos_motos mo ON mo.id = av.modelo_id
+     LEFT JOIN marcas_motos mm ON mm.id = COALESCE(av.marca_id, mo.marca_id)
+  WHERE a.interesse = 'vender'::text AND (av.situacao = ANY (ARRAY['adquirida'::text, 'estoque'::text, 'oficina'::text, 'perdido'::text]))
+UNION ALL
+ SELECT ae.status,
+    le.loja,
+    cf.nome_razao_social AS nome_cliente,
+    cf.telefone,
+    cf.sexo,
+    uf_cliente(ae.cliente_id) AS uf,
+    'comprar'::text AS interesse,
+    ae.nps_status,
+    COALESCE(nome_usuario(ae.user_id, '299crm'::text), 'Sem nome'::text) AS vendedor,
+    NULL::text AS tipo_moto,
+    NULL::text AS marca,
+    NULL::text AS modelo,
+    NULL::text AS placa,
+    s.created_at AS data_venda,
+    'EQUIPAMENTOS'::text AS departamento,
+    ae.nps_enviado_at AS data_envio,
+    ae.id AS id_atendimento,
+    split_part(ae.id::text, '-'::text, 1) AS id_prefix
+   FROM atendimento_equipamentos ae
+     LEFT JOIN loja_empresas le ON le.id = ae.loja_id
+     LEFT JOIN clientes_fornecedores cf ON cf.id = ae.cliente_id
+     JOIN LATERAL ( SELECT sh.created_at
+           FROM status_history_equipamentos sh
+          WHERE sh.entity_type = 'atendimento_equipamento'::text AND sh.entity_id = ae.id AND sh.status = 'VENDIDO'::text
+          ORDER BY sh.created_at DESC
+         LIMIT 1) s ON true
+  WHERE ae.status = 'vendido'::text
+UNION ALL
+ SELECT ats.status,
+    le.loja,
+    cf.nome_razao_social AS nome_cliente,
+    cf.telefone,
+    cf.sexo,
+    uf_cliente(ats.cliente_id) AS uf,
+    'comprar'::text AS interesse,
+    ats.nps_status,
+    COALESCE(nome_usuario(ats.user_id, '299oficina'::text), 'Sem nome'::text) AS vendedor,
+    NULL::text AS tipo_moto,
+    mm.nome AS marca,
+    mo.nome AS modelo,
+    ats.moto_placa AS placa,
+    s.created_at AS data_venda,
+    'OFICINA'::text AS departamento,
+    ats.nps_enviado_at AS data_envio,
+    ats.id AS id_atendimento,
+    split_part(ats.id::text, '-'::text, 1) AS id_prefix
+   FROM atendimento_servicos ats
+     LEFT JOIN loja_empresas le ON le.id = ats.loja_id
+     LEFT JOIN clientes_fornecedores cf ON cf.id = ats.cliente_id
+     LEFT JOIN modelos_motos mo ON mo.id = ats.modelo_id
+     LEFT JOIN marcas_motos mm ON mm.id = COALESCE(ats.marca_id, mo.marca_id)
+     JOIN LATERAL ( SELECT sh.created_at
+           FROM status_history_servicos sh
+          WHERE sh.entity_type = 'atendimento_servico'::text AND sh.entity_id = ats.id AND sh.status = 'faturado'::text
+          ORDER BY sh.created_at DESC
+         LIMIT 1) s ON true
+  WHERE ats.status = 'faturado'::text AND COALESCE(ats.tipo_cliente, ''::text) <> 'frota_interna'::text
+UNION ALL
+ SELECT ae.status,
+    le.loja,
+    cf.nome_razao_social AS nome_cliente,
+    cf.telefone,
+    cf.sexo,
+    uf_cliente(ae.cliente_id) AS uf,
+    'comprar'::text AS interesse,
+    COALESCE(ae.nps_status, 'em_aberto'::text) AS nps_status,
+    COALESCE(nome_usuario(ae.user_id, '299crm'::text), 'Sem nome'::text) AS vendedor,
+    NULL::text AS tipo_moto,
+    NULL::text AS marca,
+    NULL::text AS modelo,
+    NULL::text AS placa,
+    COALESCE(p.created_at, ae.created_at) AS data_venda,
+    'EQUIPAMENTOS'::text AS departamento,
+    ae.nps_enviado_at AS data_envio,
+    ae.id AS id_atendimento,
+    split_part(ae.id::text, '-'::text, 1) AS id_prefix
+   FROM atendimento_equipamentos ae
+     LEFT JOIN loja_empresas le ON le.id = ae.loja_id
+     LEFT JOIN clientes_fornecedores cf ON cf.id = ae.cliente_id
+     LEFT JOIN LATERAL ( SELECT sh.created_at
+           FROM status_history_equipamentos sh
+          WHERE sh.entity_type = 'atendimento_equipamento'::text AND sh.entity_id = ae.id AND sh.status = 'PERDIDO'::text
+          ORDER BY sh.created_at DESC
+         LIMIT 1) p ON true
+  WHERE ae.status = 'perdido'::text AND COALESCE(ae.operacao, ''::text) <> 'voucher'::text
+UNION ALL
+ SELECT ats.status,
+    le.loja,
+    cf.nome_razao_social AS nome_cliente,
+    cf.telefone,
+    cf.sexo,
+    uf_cliente(ats.cliente_id) AS uf,
+    'comprar'::text AS interesse,
+    COALESCE(ats.nps_status, 'em_aberto'::text) AS nps_status,
+    COALESCE(nome_usuario(ats.user_id, '299oficina'::text), 'Sem nome'::text) AS vendedor,
+    NULL::text AS tipo_moto,
+    mm.nome AS marca,
+    mo.nome AS modelo,
+    ats.moto_placa AS placa,
+    COALESCE(p.created_at, ats.created_at) AS data_venda,
+    'OFICINA'::text AS departamento,
+    ats.nps_enviado_at AS data_envio,
+    ats.id AS id_atendimento,
+    split_part(ats.id::text, '-'::text, 1) AS id_prefix
+   FROM atendimento_servicos ats
+     LEFT JOIN loja_empresas le ON le.id = ats.loja_id
+     LEFT JOIN clientes_fornecedores cf ON cf.id = ats.cliente_id
+     LEFT JOIN modelos_motos mo ON mo.id = ats.modelo_id
+     LEFT JOIN marcas_motos mm ON mm.id = COALESCE(ats.marca_id, mo.marca_id)
+     LEFT JOIN LATERAL ( SELECT sh.created_at
+           FROM status_history_servicos sh
+          WHERE sh.entity_type = 'atendimento_servico'::text AND sh.entity_id = ats.id AND sh.status = 'perdido'::text
+          ORDER BY sh.created_at DESC
+         LIMIT 1) p ON true
+  WHERE ats.status = 'perdido'::text AND COALESCE(ats.tipo_cliente, ''::text) <> 'frota_interna'::text
+        ) b;
