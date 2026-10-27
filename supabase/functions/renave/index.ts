@@ -680,6 +680,16 @@ Deno.serve(async (req) => {
         ? Number(body.quilometragem_hodometro)
         : Number.isFinite(Number(av.km)) ? Number(av.km) : 0;
 
+      // Data da compra = data em que o vendedor assinou o ATPV (exigência do
+      // despachante, 2026-10-27, placa JDC1I16: entrada feita com a data da NF
+      // de compra, 20/10, e o ATPV assinado em 13/10). Sem ela, cai na data da NF.
+      const dataAssinaturaAtpv = typeof body.data_compra === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.data_compra)
+        ? body.data_compra
+        : null;
+      if (dataAssinaturaAtpv && dataAssinaturaAtpv > brasiliaNaiveIso().slice(0, 10)) {
+        return json({ error: 'A data da assinatura do ATPV não pode ser no futuro.' }, 400);
+      }
+
       const ctx: RenaveLogCtx = {
         admin, operacao: acao, chassi: av.chassi, avaliacaoId, usuarioId: caller.id,
         cnpjEstabelecimento: await cnpjDaEmpresaPorAvaliacao(admin, avaliacaoId),
@@ -725,7 +735,7 @@ Deno.serve(async (req) => {
 
       const payloadEntrada: EntradaEstoque = {
         cpfOperadorResponsavel: cpfOperador,
-        dataCompra: brasiliaNaiveIso(nfCompra.data_emissao).slice(0, 10),
+        dataCompra: dataAssinaturaAtpv ?? brasiliaNaiveIso(nfCompra.data_emissao).slice(0, 10),
         valorCompra: Number(nfCompra.valor_total),
         emailVendedor: vendedor.email,
         emailEstabelecimento: EMAIL_ESTABELECIMENTO_PADRAO,

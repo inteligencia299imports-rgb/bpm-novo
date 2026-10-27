@@ -131,6 +131,9 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   // avaliacoes.km (continua uma fonte só, só que atualizável aqui).
   const [extraindoCrlv, setExtraindoCrlv] = useState(false);
   const [quilometragem, setQuilometragem] = useState('');
+  // Data em que o vendedor assinou o ATPV — vai como data da compra na entrada
+  // (exigência do despachante, 2026-10-27).
+  const [dataAssinaturaAtpv, setDataAssinaturaAtpv] = useState('');
 
   const carregarAvaliacao = async () => {
     setLoading(true);
@@ -231,6 +234,8 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     || !avaliacao?.tipo_crv;
 
   const kmInformado = quilometragem ? Number(quilometragem) : null;
+  const hojeIso = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const dataAssinaturaValida = /^\d{4}-\d{2}-\d{2}$/.test(dataAssinaturaAtpv) && dataAssinaturaAtpv <= hojeIso;
   // Estoque já TRANSFERIDO/CONFIRMADO/FINALIZADO = assinatura do ATPV já
   // processada pela SERPRO, mesmo que feita fora do sistema (ver estoque-status
   // na edge renave e RenaveSaidaUsadoDialog).
@@ -478,7 +483,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   };
 
   const confirmarEntrada = async () => {
-    if (faltaDadosCrv || !cpfEnviadoValido) return;
+    if (faltaDadosCrv || !cpfEnviadoValido || !dataAssinaturaValida) return;
     setEntrando(true);
     try {
       // Quilometragem pode ser corrigida na hora (quem confirma está vendo o
@@ -495,6 +500,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
           avaliacao_id: avaliacaoId,
           cpf_operador: cpfEnviado,
           quilometragem_hodometro: kmInformado ?? undefined,
+          data_compra: dataAssinaturaAtpv,
         },
       });
       if (error || (res && res.error)) {
@@ -656,6 +662,17 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                           />
                         </div>
                         <div>
+                          <Label className="text-xs text-muted-foreground">Data da Assinatura do ATPV *</Label>
+                          <Input
+                            className="mt-1"
+                            type="date"
+                            max={hojeIso}
+                            value={dataAssinaturaAtpv}
+                            onChange={(e) => setDataAssinaturaAtpv(e.target.value)}
+                          />
+                          <p className="mt-1 text-[11px] text-muted-foreground">Vai como data da entrada no RENAVE.</p>
+                        </div>
+                        <div>
                           <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
                           {funcionarioLoading ? (
                             <p className="mt-1 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando…</p>
@@ -674,7 +691,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       </div>
                       <Button
                         className="w-full gap-2"
-                        disabled={entrando || funcionarioLoading || !cpfEnviadoValido || faltaDadosCrv}
+                        disabled={entrando || funcionarioLoading || !cpfEnviadoValido || faltaDadosCrv || !dataAssinaturaValida}
                         onClick={confirmarEntrada}
                       >
                         {entrando ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackagePlus className="h-4 w-4" />}
