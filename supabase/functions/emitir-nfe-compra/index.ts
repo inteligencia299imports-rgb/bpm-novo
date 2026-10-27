@@ -2394,6 +2394,21 @@ Deno.serve(async (req) => {
   // (ver cancelarCompromissosDaNf) — avisa o usuário na resposta, igual ao
   // fluxo de Cancelar.
   let parcelasPagasDevolucao = 0;
+  // Moto com venda ainda de pé em produção: NF de venda autorizada que não foi
+  // desfeita por NF de devolução de venda. Achado real 2026-10-27 (chassi
+  // 95V3G00AATM000343): venda 68 devolvida pela 84 seguia travando a entrada
+  // da transferência pra POA. Mesma regra da tela (TransferenciaEstoqueDialog).
+  const vendaVigenteEmProducao = async (
+    fkCol: string, fkVal: string, operacaoVenda: string, operacaoDevolucao: string,
+  ): Promise<boolean> => {
+    const contar = async (operacao: string) => {
+      const { count } = await admin.from('nfe_entradas').select('id', { count: 'exact', head: true })
+        .eq(fkCol, fkVal).eq('operacao', operacao).eq('status', 'processada').eq('ambiente', 'producao');
+      return count ?? 0;
+    };
+    const [vendas, devolucoes] = await Promise.all([contar(operacaoVenda), contar(operacaoDevolucao)]);
+    return vendas > devolucoes;
+  };
   // Resolve e valida a NF original de uma devolução: precisa existir, estar
   // autorizada em PRODUÇÃO, e já ter passado da janela de 24h que a SEFAZ dá
   // pra cancelamento (Ajuste SINIEF) — antes disso o caminho certo é
@@ -2575,10 +2590,7 @@ Deno.serve(async (req) => {
     // completar a entrada.
     const { data: estSeminovaVenda } = await admin.from('estoque_motos').select('id').eq('avaliacao_id', avaliacaoId).maybeSingle();
     if (estSeminovaVenda?.id) {
-      const { data: vendaOk } = await admin.from('nfe_entradas').select('id')
-        .eq('estoque_moto_id', estSeminovaVenda.id).eq('operacao', 'venda_seminova')
-        .eq('status', 'processada').eq('ambiente', 'producao').limit(1).maybeSingle();
-      if (vendaOk) {
+      if (await vendaVigenteEmProducao('estoque_moto_id', estSeminovaVenda.id, 'venda_seminova', 'devolucao_venda_seminova')) {
         return jsonResponse({ error: 'Esta moto já tem NF-e de venda autorizada em produção — não é possível gerar a entrada da transferência. Cancele a saída em vez disso.' }, 409);
       }
     }
@@ -2605,10 +2617,7 @@ Deno.serve(async (req) => {
     // Pedido do usuário, 2026-09-30: mesma trava da seminova — moto já
     // vendida (NF de venda_0km autorizada em produção) não pode receber a
     // entrada da transferência.
-    const { data: vendaOk0km } = await admin.from('nfe_entradas').select('id')
-      .eq('estoque_moto_nova_id', estoqueMotoNovaIdBody).eq('operacao', 'venda_0km')
-      .eq('status', 'processada').eq('ambiente', 'producao').limit(1).maybeSingle();
-    if (vendaOk0km) {
+    if (await vendaVigenteEmProducao('estoque_moto_nova_id', estoqueMotoNovaIdBody, 'venda_0km', 'devolucao_venda_0km')) {
       return jsonResponse({ error: 'Esta moto já tem NF-e de venda autorizada em produção — não é possível gerar a entrada da transferência. Cancele a saída em vez disso.' }, 409);
     }
   } else {
