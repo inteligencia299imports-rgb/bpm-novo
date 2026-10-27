@@ -473,12 +473,23 @@ async function acaoVenda(admin: any, atendimentoId: string, callerId: string): P
   const ehFinanciamento = (t?: string | null) => String(t ?? '').toLowerCase().includes('financiamento');
   const parcelas: Parcela[] = [];
   let n = 0;
+  // A entrada do financiamento é informativa no contrato (o Valor Faltante só
+  // soma o valor financiado; a entrada é lançada à parte, como Pix/moto da troca
+  // etc.). Por isso ela é coberta primeiro pelas demais formas e só o que sobrar
+  // vira parcela — antes entrava inteira e duplicava o a receber (achado real
+  // 2026-10-27, VND-R-1366 e outras ~24 vendas financiadas).
+  let cobertoOutrasFormas = ((formas as any[]) || [])
+    .filter((f) => !ehFinanciamento(f.tipo))
+    .reduce((s, f) => s + nz(f.valor_total), 0);
   for (const f of ((formas as any[]) || [])) {
     const venc = typeof f.data_pagamento === 'string' && f.data_pagamento ? f.data_pagamento : vencPadrao;
     if (ehFinanciamento(f.tipo)) {
-      const entrada = nz(f.valor_entrada);
+      const entradaInformada = nz(f.valor_entrada);
+      const usadoDasOutras = Math.min(entradaInformada, cobertoOutrasFormas);
+      cobertoOutrasFormas -= usadoDasOutras;
+      const entrada = Math.round((entradaInformada - usadoDasOutras) * 100) / 100;
       const financiado = nz(f.valor_financiado);
-      if (entrada > 0) parcelas.push({ numero_parcela: ++n, valor: entrada, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: venc });
+      if (entrada > 0.005) parcelas.push({ numero_parcela: ++n, valor: entrada, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_ID, data_vencimento: venc });
       if (financiado > 0) parcelas.push({ numero_parcela: ++n, valor: financiado, tipo: 'parcelado', forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, data_vencimento: venc });
     } else {
       const total = nz(f.valor_total);
