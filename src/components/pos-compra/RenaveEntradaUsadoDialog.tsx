@@ -6,7 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Bike, Loader2, AlertTriangle, History, PackagePlus, CheckCircle2, Download, ExternalLink, RefreshCw } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { ArrowLeft, Bike, Loader2, AlertTriangle, History, PackagePlus, CheckCircle2, Download, ExternalLink, RefreshCw, CalendarIcon, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { cn, firstLastName } from '@/lib/utils';
@@ -132,19 +136,22 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const [extraindoCrlv, setExtraindoCrlv] = useState(false);
   const [quilometragem, setQuilometragem] = useState('');
   // Data em que o vendedor assinou o ATPV — vai como data da compra na entrada
-  // (exigência do despachante, 2026-10-27).
+  // (exigência do despachante, 2026-10-27). Pré-preenchida pela IA, que lê o
+  // ATPV anexado (avaliacoes.atpv_data_assinatura); sempre editável antes da entrada.
   const [dataAssinaturaAtpv, setDataAssinaturaAtpv] = useState('');
+  const [lendoAtpv, setLendoAtpv] = useState(false);
 
   const carregarAvaliacao = async () => {
     setLoading(true);
     const { data } = await (supabase as any)
       .from('avaliacoes')
-      .select(`id, chassi, placa, renavam, numero_crv, codigo_seguranca_crv, tipo_crv, km, crlv_url, renave_id_estoque, renave_estado, renave_num_termo_entrada, renave_termo_entrada_url, renave_ultimo_erro, renave_atpv_numero, renave_atpv_url, renave_atpv_assinatura_url, renave_atpv_assinatura_enviada_em, renave_nf_vinculada_em, renave_crlve_url, ${MARCA_MODELO_SELECT}`)
+      .select(`id, chassi, placa, renavam, numero_crv, codigo_seguranca_crv, tipo_crv, km, crlv_url, renave_id_estoque, renave_estado, renave_num_termo_entrada, renave_termo_entrada_url, renave_ultimo_erro, renave_atpv_numero, renave_atpv_url, renave_atpv_assinatura_url, renave_atpv_assinatura_enviada_em, renave_nf_vinculada_em, renave_crlve_url, atpv_url, atpv_data_assinatura, ${MARCA_MODELO_SELECT}`)
       .eq('id', avaliacaoId)
       .maybeSingle();
     const flat = flattenMarcaModelo(data);
     setAvaliacao(flat || null);
     setQuilometragem(flat?.km ? String(flat.km).replace(/\D/g, '') : '');
+    setDataAssinaturaAtpv(flat?.atpv_data_assinatura ? String(flat.atpv_data_assinatura).slice(0, 10) : '');
     setLoading(false);
     return flat;
   };
@@ -167,6 +174,20 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
           // best-effort -- se falhar, o card avisa que continua faltando
         }
         setExtraindoCrlv(false);
+        await carregarAvaliacao();
+      }
+      // Data da assinatura do ATPV ainda não lida (ATPV anexado antes da IA
+      // passar a ler a data) — lê o ATPV já anexado ao abrir a Entrada.
+      if (data && !data.renave_id_estoque && data.atpv_url && !data.atpv_data_assinatura) {
+        setLendoAtpv(true);
+        try {
+          await supabase.functions.invoke('extrair-dados-doc-veiculo', {
+            body: { avaliacao_id: avaliacaoId, url: data.atpv_url, tipo: 'atpv' },
+          });
+        } catch {
+          // best-effort -- se não ler, o campo fica vazio pra preencher à mão
+        }
+        setLendoAtpv(false);
         await carregarAvaliacao();
       }
     })();
@@ -494,6 +515,10 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       if (kmInformado != null && kmInformado !== Number(avaliacao?.km || 0)) {
         await (supabase as any).from('avaliacoes').update({ km: kmInformado }).eq('id', avaliacaoId);
       }
+      // Data corrigida à mão também volta pra avaliação (fonte única).
+      if (dataAssinaturaAtpv !== String(avaliacao?.atpv_data_assinatura ?? '').slice(0, 10)) {
+        await (supabase as any).from('avaliacoes').update({ atpv_data_assinatura: dataAssinaturaAtpv }).eq('id', avaliacaoId);
+      }
       const { data: res, error } = await supabase.functions.invoke('renave', {
         body: {
           acao: 'entrada-usado',
@@ -592,6 +617,9 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                 <StepRow numero={1} titulo="Gerar termo de entrada" feito={entrouEstoque}>
                   {entrouEstoque ? (
                     <div className="space-y-2">
+                      {dataAssinaturaAtpv && (
+                        <Info label="Data da Assinatura do ATPV" value={format(parseISO(dataAssinaturaAtpv), 'dd/MM/yyyy')} />
+                      )}
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">Entrada confirmada.</span>
                         {/* Aptidão também depois da entrada (só leitura) — serve pra
@@ -663,14 +691,36 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                         </div>
                         <div>
                           <Label className="text-xs text-muted-foreground">Data da Assinatura do ATPV *</Label>
-                          <Input
-                            className="mt-1"
-                            type="date"
-                            max={hojeIso}
-                            value={dataAssinaturaAtpv}
-                            onChange={(e) => setDataAssinaturaAtpv(e.target.value)}
-                          />
-                          <p className="mt-1 text-[11px] text-muted-foreground">Vai como data da entrada no RENAVE.</p>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                disabled={lendoAtpv}
+                                className={cn('mt-1 flex h-10 w-full items-center gap-2 rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-60', !dataAssinaturaAtpv && 'text-muted-foreground')}
+                              >
+                                {lendoAtpv ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <CalendarIcon className="h-4 w-4 opacity-60 shrink-0" />}
+                                <span className="truncate">
+                                  {lendoAtpv ? 'Lendo o ATPV…' : dataAssinaturaAtpv ? format(parseISO(dataAssinaturaAtpv), 'dd/MM/yyyy') : 'Selecione a data'}
+                                </span>
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={dataAssinaturaAtpv ? parseISO(dataAssinaturaAtpv) : undefined}
+                                onSelect={(d) => setDataAssinaturaAtpv(d ? format(d, 'yyyy-MM-dd') : '')}
+                                disabled={(d: Date) => format(d, 'yyyy-MM-dd') > hojeIso}
+                                locale={ptBR}
+                                className="p-3 pointer-events-auto"
+                                defaultMonth={dataAssinaturaAtpv ? parseISO(dataAssinaturaAtpv) : undefined}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                            {dataAssinaturaAtpv && dataAssinaturaAtpv === String(avaliacao?.atpv_data_assinatura ?? '').slice(0, 10)
+                              ? <><Sparkles className="h-3 w-3" /> Lida do ATPV pela IA — confira. Vai como data da entrada no RENAVE.</>
+                              : 'Data em que o vendedor assinou o ATPV. Vai como data da entrada no RENAVE.'}
+                          </p>
                         </div>
                         <div>
                           <Label className="text-xs text-muted-foreground">CPF do Operador</Label>
