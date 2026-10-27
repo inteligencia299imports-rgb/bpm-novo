@@ -61,7 +61,7 @@ export async function conferirDocVeiculo(
     }
     const atualizados = (data.atualizados ?? {}) as Record<string, string>;
     const nAtualizados = Object.keys(atualizados).length;
-    toast.success(nAtualizados ? `${rotulo} conferido — nº/código de segurança do CRV atualizados` : `${rotulo} conferido`, { id: toastId });
+    toast.success(nAtualizados ? `${rotulo} conferido — dados do CRV/assinatura atualizados` : `${rotulo} conferido`, { id: toastId });
     return { ok: true, atualizados };
   } catch {
     toast.warning(`Não foi possível conferir o ${rotulo} automaticamente — verifique manualmente.`, { id: toastId });

@@ -58,6 +58,16 @@ interface Extracao {
   leitura: string | null;
   numero_crv: string | null;
   codigo_seguranca_crv: string | null;
+  data_assinatura_vendedor: string | null;
+}
+
+// "AAAA-MM-DD" válida e não futura; senão null.
+function soDataIso(v: string | null | undefined): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v ?? '').trim());
+  if (!m) return null;
+  const d = new Date(`${m[1]}-${m[2]}-${m[3]}T12:00:00Z`);
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== `${m[1]}-${m[2]}-${m[3]}`) return null;
+  return d.getTime() > Date.now() + 86400e3 ? null : `${m[1]}-${m[2]}-${m[3]}`;
 }
 
 async function extrairViaClaude(fileBase64: string, mediaType: string, apiKey: string, tipo: Tipo, moto: {
@@ -108,10 +118,11 @@ async function extrairViaClaude(fileBase64: string, mediaType: string, apiKey: s
             renavam: { type: 'string', description: 'RENAVAM do veículo no documento. "" se não houver/ilegível.' },
             numero_crv: { type: 'string', description: 'Só no ATPV-e: "NÚMERO DO CRV" (12 dígitos). É DIFERENTE do código de segurança. "" se não houver/ilegível ou se for procuração — nunca invente.' },
             codigo_seguranca_crv: { type: 'string', description: 'Só no ATPV-e: "CÓDIGO DE SEGURANÇA DO CRV" / "CÓDIGO DE SEGURANÇA DO CLA" (11 dígitos). DIFERENTE do número do CRV (12 dígitos). "" se não houver/ilegível ou se for procuração — nunca invente.' },
+            data_assinatura_vendedor: { type: 'string', description: 'Só no ATPV-e: data em que o PROPRIETÁRIO (VENDEDOR) assinou — no selo da assinatura digital gov.br do vendedor ("Documento assinado digitalmente ... Data: dd/mm/aaaa") ou, se preenchida à mão, a "DATA DECLARADA DA VENDA". NÃO use a "DATA EMISSÃO DO CRV". Formato AAAA-MM-DD. "" se não houver/ilegível ou se for procuração — nunca invente.' },
             menciona_veiculo: { type: 'boolean', description: 'true se o documento menciona um veículo específico (com placa/chassi/renavam/marca/modelo); false se é genérico.' },
             confere_com_moto: { type: 'boolean', description: 'true/false/null conforme a regra passada no texto.' },
           },
-          required: ['leitura', 'eh_documento_esperado', 'tipo_documento', 'placa', 'chassi', 'renavam', 'numero_crv', 'codigo_seguranca_crv', 'menciona_veiculo', 'confere_com_moto'],
+          required: ['leitura', 'eh_documento_esperado', 'tipo_documento', 'placa', 'chassi', 'renavam', 'numero_crv', 'codigo_seguranca_crv', 'data_assinatura_vendedor', 'menciona_veiculo', 'confere_com_moto'],
         },
       }],
       tool_choice: { type: 'tool', name: 'registrar_conferencia' },
@@ -148,6 +159,7 @@ async function extrairViaClaude(fileBase64: string, mediaType: string, apiKey: s
     leitura: limpaTexto(input.leitura as string),
     numero_crv: tipo === 'atpv' ? soNumeroCrv(input.numero_crv as string) : null,
     codigo_seguranca_crv: tipo === 'atpv' ? soCodigoSegurancaCrv(input.codigo_seguranca_crv as string) : null,
+    data_assinatura_vendedor: tipo === 'atpv' ? soDataIso(input.data_assinatura_vendedor as string) : null,
   };
 }
 
@@ -182,7 +194,7 @@ Deno.serve(async (req) => {
   const [roleRes, acessoRes] = await Promise.all([
     supabaseAdmin.from('user_roles').select('app_role').eq('user_id', caller.id).eq('projeto_id', BPM_PROJETO_ID).eq('ativo', true).maybeSingle(),
     supabaseAdmin.from('avaliacoes')
-      .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, chassi, renavam, numero_crv, codigo_seguranca_crv, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(vendedor_id, loja_id)')
+      .select('id, marca:marca_id(nome), modelo:modelo_id(nome), placa, chassi, renavam, numero_crv, codigo_seguranca_crv, atpv_data_assinatura, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(vendedor_id, loja_id)')
       .eq('id', avaliacao_id).maybeSingle(),
   ]);
 
@@ -254,6 +266,8 @@ Deno.serve(async (req) => {
     if (tipo === 'atpv' && match === true) {
       if (ex.numero_crv && ex.numero_crv !== soDigitos(acesso.numero_crv)) atualizados.numero_crv = ex.numero_crv;
       if (ex.codigo_seguranca_crv && ex.codigo_seguranca_crv !== soDigitos(acesso.codigo_seguranca_crv)) atualizados.codigo_seguranca_crv = ex.codigo_seguranca_crv;
+      // Data da assinatura do vendedor -> data da entrada no RENAVE (pedido do usuário, 2026-10-27).
+      if (ex.data_assinatura_vendedor && ex.data_assinatura_vendedor !== acesso.atpv_data_assinatura) atualizados.atpv_data_assinatura = ex.data_assinatura_vendedor;
       if (Object.keys(atualizados).length) {
         const { error: eUpd } = await supabaseAdmin.from('avaliacoes').update(atualizados).eq('id', avaliacao_id);
         if (eUpd) { console.error('extrair-dados-doc-veiculo update', eUpd.message); for (const k of Object.keys(atualizados)) delete atualizados[k]; }
