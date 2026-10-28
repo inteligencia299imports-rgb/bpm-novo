@@ -292,7 +292,9 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
         <KanbanSkeleton columns={3} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className={`flex gap-4 min-w-max md:min-w-0 md:grid ${config.columns.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-5'}`}>
+          {/* Mesma grade de 5 colunas nas duas partes: a Parte 2 (3 colunas) fica com
+              cards da mesma largura da Parte 1, em vez de esticar em 3 colunas largas. */}
+          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-5">
             {config.columns.map(col => {
               const colItems = getColumnItems(col.value);
               return (
