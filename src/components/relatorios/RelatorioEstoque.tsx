@@ -16,7 +16,7 @@ import { fetchAllRange } from '@/lib/fetchAllRange';
 import { fetchQuitacaoEstoque, formatarQuitacao, type Quitacao } from '@/lib/quitacaoEstoque';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
+import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, tipoExibicaoEstoque } from '@/lib/tipoAquisicao';
 import { getPreviousMonthDate } from '@/lib/reportComparison';
 import { getXTickStyle } from '@/lib/chartAxis';
 import DeltaBadge from './DeltaBadge';
@@ -104,9 +104,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     if (filterTipo !== 'todos') {
       const tipos = filterTipo.split(',');
       estoqueAll = estoqueAll.filter((m: any) => tipos.some((t) => {
-        if (t === 'test_ride') return m.tipo_unidade === 'test_ride';
-        if (t === '0km') return m.tipo === '0km' && m.tipo_unidade !== 'test_ride';
-        return m.tipo === t;
+        const tipo = tipoExibicaoEstoque(m);
+        if (t === 'test_ride' || t === '0km') return tipo === t;
+        // Próprias = própria/repasse/convertida (m.tipo já agrupa); test-ride seminova fica só em Test-Ride.
+        return tipo !== 'test_ride' && m.tipo === t;
       }));
     }
     // Filtro de loja (cidade) — mesma lógica do RPC
@@ -235,7 +236,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const compra = Number(m.valor_compra) || 0;
     const margemAbs = preco - compra;
     const margemPct = compra > 0 ? (margemAbs / compra) * 100 : 0;
-    const displayTipo = m.avaliacoes?.tipo_aquisicao || m.tipo;
+    const displayTipo = tipoExibicaoEstoque(m);
     return {
       empresa: m.empresa || '', tipo: getTipoAquisicaoLabel(displayTipo) || '',
       patio: m.loja || '', dias, marca: m.marca || '', modelo: m.modelo || '',
@@ -492,7 +493,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                       <TableCell className="text-xs">{m.empresa || '—'}</TableCell>
                       <TableCell className="text-xs">
                         {(() => {
-                          const displayTipo = m.avaliacoes?.tipo_aquisicao || m.tipo;
+                          const displayTipo = tipoExibicaoEstoque(m);
                           return displayTipo ? (
                             <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(displayTipo)}`}>
                               {getTipoAquisicaoLabel(displayTipo)}
