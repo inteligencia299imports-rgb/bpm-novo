@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
-import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
+import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, tipoExibicaoEstoque } from '@/lib/tipoAquisicao';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -801,7 +801,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             <span className="text-muted-foreground">Tipo</span>
                             <span className="text-foreground capitalize">
                               {(() => {
-                                const tipoExibido = item.tipo === '0km' && item.tipo_unidade === 'test_ride' ? 'test_ride' : (item.displayTipo || item.tipo);
+                                const tipoExibido = tipoExibicaoEstoque(item) || item.tipo;
                                 return (
                                   <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${getTipoAquisicaoBadgeClass(tipoExibido)}`}>
                                     {getTipoAquisicaoLabel(tipoExibido) || tipoExibido}

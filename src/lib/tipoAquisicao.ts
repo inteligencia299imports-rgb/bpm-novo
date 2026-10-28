@@ -40,6 +40,18 @@ export const empresaCompraDireta = (empresaId?: string | null): boolean =>
 export const empresaConsignaMoto = (empresaId?: string | null): boolean =>
   !empresaId || !EMPRESAS_SO_MOTO_NOVA.has(empresaId);
 
+/**
+ * Tipo exibido para uma moto do estoque (seminova ou 0km já mapeada por
+ * mapEstoqueMoto/mapEstoqueMotoNova). Test-Ride aparece como tal nos dois casos:
+ * 0km com estoque_motos_novas.tipo = 'test_ride' e seminova com
+ * avaliacoes.tipo_aquisicao = 'test-ride'.
+ */
+export const tipoExibicaoEstoque = (m: { tipo?: string | null; tipo_unidade?: string | null; tipo_aquisicao?: string | null }): string | null => {
+  if (m.tipo === '0km') return m.tipo_unidade === 'test_ride' ? 'test_ride' : '0km';
+  if (m.tipo_aquisicao === 'test-ride' || m.tipo_aquisicao === 'test_ride') return 'test_ride';
+  return m.tipo_aquisicao || m.tipo || null;
+};
+
 /** Label for display */
 export const getTipoAquisicaoLabel = (tipo: string | null | undefined): string | null => {
   if (!tipo) return null;
