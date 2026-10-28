@@ -4,7 +4,7 @@ import { getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard, FileText, Camera, Truck, CalendarIcon, CheckCircle2, Loader2, ThumbsUp, ThumbsDown, RotateCw, Search } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, FileText, Camera, Truck, CalendarIcon, CheckCircle2, Loader2, ThumbsUp, ThumbsDown, RotateCw, Search } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { podeAprovarVenda, vendaLiberada, vendaAprovada, vendaRecusada } from '@/lib/aprovacaoVenda';
@@ -152,7 +152,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     if (consignadaEstoque?.avaliacao_id) {
       const { data: avalRaw } = await supabase
         .from('avaliacoes')
-        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, tipo_pessoa, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))`)
+        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), tipo_atendimento, interesse, origem, temperatura, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, tipo_pessoa, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))`)
         .eq('id', consignadaEstoque.avaliacao_id)
         .single();
       const avalData = avalRaw ? flattenMarcaModelo(avalRaw as any) : avalRaw;
@@ -449,7 +449,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         if (consignadaEstoque?.avaliacao_id) {
           const { data: avalData } = await supabase
             .from('avaliacoes')
-            .select('*, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, tipo_pessoa, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))')
+            .select('*, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), tipo_atendimento, interesse, origem, temperatura, cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, sexo, tipo_pessoa, data_nascimento, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro, uf)))')
             .eq('id', consignadaEstoque.avaliacao_id)
             .single();
           if (avalData) {
@@ -731,7 +731,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 {!isIntermParte2 && <InfoItem label="Sexo" value={rotuloSexo(displayClient.cliente?.sexo)} />}
                 {!isIntermParte2 && <InfoItem label="Data de Nascimento" value={formatDataNascimento((displayClient.cliente as any)?.data_nascimento)} />}
                 {!isIntermParte2 && <InfoItem label="UF" value={displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.uf} />}
-                {isIntermParte2 && proprietario?.loja && <InfoItem label="Loja" value={proprietario.loja} />}
                 {displayClient.cliente?.cpf_cnpj && <InfoItem label="CPF/CNPJ" value={formatCpfCnpj(displayClient.cliente.cpf_cnpj)} />}
                 {displayClient.cliente?.email && <InfoItem label="E-mail" value={displayClient.cliente.email} />}
                 {displayClient.cliente?.clientes_fornecedores_enderecos?.[0]?.cep && <InfoItem label="CEP" value={formatCep(displayClient.cliente.clientes_fornecedores_enderecos[0].cep)} />}
@@ -755,7 +754,31 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             </CardContent>
           </Card>
 
-          {/* Dados do Atendimento - hidden for Intermediação Parte 2 */}
+          {/* Grade em pares, igual nas duas partes da Intermediação:
+              Cliente/Proprietário | Atendimento — Moto | Consulta — Observações e Histórico na largura toda. */}
+
+          {/* Dados do Atendimento - Intermediação Parte 2: atendimento da consignação (proprietário) */}
+          {isIntermParte2 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Store className="h-4 w-4 text-primary" /> Dados do Atendimento
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoItem label="Avaliador" value={avaliadorNome} />
+                  <InfoItem label="Loja" value={proprietario?.loja} />
+                  <InfoItem label="Vendedor (venda)" value={vendedorNome} />
+                  <InfoItem label="Tipo de Atendimento" value={proprietario?.tipo_atendimento} />
+                  <InfoItem label="Interesse" value={INTERESSES.find(i => i.value === proprietario?.interesse)?.label} />
+                  <InfoItem label="Origem" value={proprietario?.origem} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Dados do Atendimento - Parte 1 / Pós-Venda */}
           {!isIntermParte2 && (
             <Card>
               <CardHeader className="pb-2">
@@ -786,12 +809,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 <Separator className="mt-2" />
               </CardHeader>
               <CardContent className="flex-1 flex flex-col gap-4">
-                {avaliadorNome && (
-                  <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2">
-                    <IdCard className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-semibold text-primary">{avaliadorNome}</span>
-                  </div>
-                )}
                 <div className="grid grid-cols-2 gap-4">
                   <InfoItem label="Marca" value={motoConsignada.marca} />
                   <InfoItem label="Modelo" value={(motoConsignada.modelo || '').toUpperCase()} />
@@ -1129,31 +1146,49 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
 
 
-          {/* Observações */}
-          <AtendimentoObservacoes idOperacao={item.id} larguraTotal={!(isIntermParte2 && motoConsignada)} />
-
-          {/* Resultado da Consulta - Intermediação Parte 2: 2ª linha, à direita das Observações */}
-          {isIntermParte2 && motoConsignada && (() => {
-            const resultado = String(motoConsignada.resultado_consulta || '').trim();
-            const atencao = resultado.includes('⚠️');
+          {/* Resultado da Consulta - ao lado da moto: Parte 2 = moto consignada; Parte 1 = moto(s) vendida(s) do estoque */}
+          {(() => {
+            const consultas: { titulo: string | null; resultado: string }[] = isIntermParte2
+              ? (motoConsignada ? [{ titulo: null, resultado: String(motoConsignada.resultado_consulta || '').trim() }] : [])
+              : motosInteresse.map((mi: any) => {
+                  const est = mi.estoque_moto_id ? estoqueData[mi.estoque_moto_id] : null;
+                  return {
+                    titulo: motosInteresse.length > 1 ? [est?.marca || mi.marca, est?.modelo || mi.modelo].filter(Boolean).join(' ') : null,
+                    resultado: String(est?.resultado_consulta || '').trim(),
+                  };
+                });
+            if (consultas.length === 0) return null;
+            const comResultado = consultas.filter((c) => c.resultado);
+            const atencao = comResultado.some((c) => c.resultado.includes('⚠️'));
             return (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    {resultado
+                    {comResultado.length
                       ? (atencao ? <AlertTriangle className="h-4 w-4 text-amber-600" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />)
                       : <Search className="h-4 w-4 text-primary" />}
                     Resultado da Consulta
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  {resultado
-                    ? <p className="text-sm whitespace-pre-wrap break-words">{resultado}</p>
-                    : <p className="text-xs text-muted-foreground text-center py-4">Nenhuma consulta registrada</p>}
+                <CardContent className="space-y-3">
+                  {comResultado.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">Nenhuma consulta registrada</p>
+                  ) : consultas.map((c, idx) => (
+                    <div key={idx} className="space-y-1">
+                      {idx > 0 && <Separator className="my-2" />}
+                      {c.titulo && <p className="text-xs font-semibold text-muted-foreground uppercase">{c.titulo}</p>}
+                      {c.resultado
+                        ? <p className="text-sm whitespace-pre-wrap break-words">{c.resultado}</p>
+                        : <p className="text-xs text-muted-foreground">Nenhuma consulta registrada</p>}
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
             );
           })()}
+
+          {/* Observações */}
+          <AtendimentoObservacoes idOperacao={item.id} />
 
           {/* Histórico de Movimentações do atendimento */}
           <Card className="md:col-span-2">

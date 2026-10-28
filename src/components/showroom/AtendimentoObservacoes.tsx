@@ -23,11 +23,9 @@ interface Nota {
 
 interface Props {
   idOperacao: string;
-  /** Por padrão ocupa as 2 colunas da grade; false = só meia largura. */
-  larguraTotal?: boolean;
 }
 
-const AtendimentoObservacoes: React.FC<Props> = ({ idOperacao, larguraTotal = true }) => {
+const AtendimentoObservacoes: React.FC<Props> = ({ idOperacao }) => {
   const { user, userName, role } = useAuth();
   const [notas, setNotas] = useState<Nota[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -88,7 +86,7 @@ const AtendimentoObservacoes: React.FC<Props> = ({ idOperacao, larguraTotal = tr
 
   return (
     <>
-      <Card className={larguraTotal ? "md:col-span-2" : undefined}>
+      <Card className="md:col-span-2">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
