@@ -185,8 +185,10 @@ export interface MontarPayloadArgs {
   /**
    * Formas de pagamento estruturadas (grupo pag/detPag + cobr/fat/dup da NF-e).
    * `codigo` = tPag da SEFAZ; `descricao` só quando codigo === '99'. Só venda.
+   * `vencimento` (YYYY-MM-DD) = data de pagamento da forma no contrato — vira o
+   * dVenc da duplicata do boleto.
    */
-  formasPagamento?: { codigo: string; descricao?: string; valor: number }[];
+  formasPagamento?: { codigo: string; descricao?: string; valor: number; vencimento?: string }[];
   /**
    * Operação de bem móvel usado (venda de moto seminova). Liga:
    * - `prod/indBemMovelUsado = 1`;
@@ -766,14 +768,22 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   // para pagamento a vista" (bpm-novo, achado numa venda só-Pix em 2026-09-11).
   // Quando há boleto + outra(s) forma(s), a fatura/duplicata cobre só a
   // parcela do boleto, não o valor total da NF.
-  const vencDup = agora.slice(0, 10);
+  //
+  // Duplicata só para boleto A VENCER: vencimento (data de pagamento do contrato)
+  // depois da data de emissão, e esse é o dVenc. Boleto sem data ou já vencido/
+  // pago é liquidado — vai só no <pag>, sem <cobr>. A NT 2025.001 rejeita [853]
+  // uma única duplicata com dVenc = data de emissão (era o que saía: dVenc = hoje;
+  // venda RER3A16, Pix + Boleto pago em 24/10, emissão 28/10/2026) e dVenc
+  // anterior à emissão também é rejeitado.
+  const dataEmissao = agora.slice(0, 10);
   // Sem movimentação financeira real (entrada, ou devolução simbólica de saída):
   // não manda formas de pagamento calculadas — ver `semPagamentoReal` acima.
   const semPagto = semPagamentoReal ?? entrada;
   const formasIn = semPagto ? [] : (formasPagamento || []).filter((f) => Number(f.valor) > 0);
   const somaFormas = r2(formasIn.reduce((s, f) => s + Number(f.valor), 0));
   const formasBatem = formasIn.length > 0 && Math.abs(somaFormas - valorFmt) <= 0.02;
-  const formasBoleto = formasBatem ? formasIn.filter((f) => f.codigo === '15') : [];
+  const formasBoleto = formasBatem ? formasIn.filter((f) => f.codigo === '15' && !!f.vencimento && f.vencimento > dataEmissao) : [];
+  const ehDuplicata = (f: { codigo: string; vencimento?: string }) => formasBoleto.includes(f as any);
   const somaBoleto = r2(formasBoleto.reduce((s, f) => s + Number(f.valor), 0));
 
   // Entrada (compra/consignação) e devolução simbólica: não mexe no pagamento —
@@ -784,6 +794,8 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     : {
         formas_pagamento: formasBatem
           ? formasIn.map((f) => ({
+              // indPag explícito: boleto a vencer (o que gera <dup>) é a prazo (1), o resto à vista (0).
+              indicador_pagamento: ehDuplicata(f) ? 1 : 0,
               forma_pagamento: f.codigo,
               valor_pagamento: r2(Number(f.valor)),
               ...(f.codigo === '99' ? { descricao_pagamento: (f.descricao || 'OUTROS').slice(0, 60) } : {}),
@@ -796,7 +808,7 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
               valor_liquido_fatura: somaBoleto,
               duplicatas: formasBoleto.map((f, i) => ({
                 numero: String(i + 1).padStart(3, '0'),
-                data_vencimento: vencDup,
+                data_vencimento: f.vencimento,
                 valor: r2(Number(f.valor)),
               })),
             }

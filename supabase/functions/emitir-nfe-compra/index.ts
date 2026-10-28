@@ -2866,7 +2866,7 @@ Deno.serve(async (req) => {
   let vendedorNome: string | null = null;
   let formasPagamentoTexto: string | null = null;
   let trocaInfoCpl: string | null = null;
-  const formasPagamentoEstrut: { codigo: string; descricao?: string; valor: number }[] = [];
+  const formasPagamentoEstrut: { codigo: string; descricao?: string; valor: number; vencimento?: string }[] = [];
   if (ehVenda) {
     const fmtBRL = brl; // formato pt-BR determinístico (mesmo do infCpl do payload)
     // Nome da forma de pagamento -> código tPag da SEFAZ (mesmo mapa do crm-novo).
@@ -2886,7 +2886,7 @@ Deno.serve(async (req) => {
         ? admin.from('user_roles').select('nome').eq('user_id', atendimento.vendedor_id).eq('projeto_id', BPM_PROJETO_ID).maybeSingle()
         : Promise.resolve({ data: null }),
       contratoVendaId
-        ? admin.from('formas_pagamento_contrato').select('tipo, valor_total, valor_financiado').eq('contrato_id', contratoVendaId).order('created_at', { ascending: true })
+        ? admin.from('formas_pagamento_contrato').select('tipo, valor_total, valor_financiado, data_pagamento').eq('contrato_id', contratoVendaId).order('created_at', { ascending: true })
         : Promise.resolve({ data: null }),
     ]);
     vendedorNome = (vendedorRole as any)?.nome ?? null;
@@ -2897,7 +2897,10 @@ Deno.serve(async (req) => {
       linhasPagto.push(v > 0 ? `${fp.tipo} ${fmtBRL(v)}` : String(fp.tipo));
       if (v > 0) {
         const cod = tPagDe(fp.tipo);
-        formasPagamentoEstrut.push({ codigo: cod, descricao: cod === '99' ? String(fp.tipo ?? 'OUTROS').toUpperCase() : undefined, valor: v });
+        formasPagamentoEstrut.push({
+          codigo: cod, descricao: cod === '99' ? String(fp.tipo ?? 'OUTROS').toUpperCase() : undefined, valor: v,
+          vencimento: typeof fp.data_pagamento === 'string' && fp.data_pagamento ? fp.data_pagamento.slice(0, 10) : undefined,
+        });
       }
     }
 
