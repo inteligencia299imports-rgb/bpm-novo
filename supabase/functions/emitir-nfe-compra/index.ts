@@ -2759,25 +2759,32 @@ Deno.serve(async (req) => {
     // (só revende 0km), também depois da NF-e de TRANSFERÊNCIA dessa moto para
     // a MMATOS (ver `transferencia` no CFG).
     if (ehVenda && atendimento.interesse === 'trocar') {
+      // Troca pode ter várias motos: CADA uma precisa da NF de compra (e, na FAG,
+      // da transferência) em produção. Moto de repasse não tem NF de entrada —
+      // fica fora; sem nenhuma moto com NF, mantém a regra antiga (alguma moto).
       const { data: avsTroca } = await admin
-        .from('avaliacoes').select('id').eq('atendimento_id', atendimentoId);
-      const trocaIds = ((avsTroca as any[]) || []).map((a) => a.id);
-      const { data: compraProd } = trocaIds.length
-        ? await admin.from('nfe_entradas').select('id')
-            .in('avaliacao_id', trocaIds).eq('operacao', 'compra')
-            .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle()
-        : { data: null };
-      if (!compraProd) {
-        return jsonResponse({ error: 'Emita a NF-e de compra da moto da troca em produção antes de emitir a venda.' }, 409);
+        .from('avaliacoes').select('id, tipo_aquisicao').eq('atendimento_id', atendimentoId);
+      const todasTroca = ((avsTroca as any[]) || []);
+      const exigemNf = todasTroca.filter((a) => a.tipo_aquisicao !== 'repasse').map((a) => a.id as string);
+      const trocaIds = exigemNf.length ? exigemNf : todasTroca.map((a) => a.id as string);
+      const { data: nfsTrocaProd } = trocaIds.length
+        ? await admin.from('nfe_entradas').select('avaliacao_id, operacao')
+            .in('avaliacao_id', trocaIds).in('operacao', ['compra', 'transferencia'])
+            .eq('ambiente', 'producao').eq('status', 'processada')
+        : { data: [] };
+      const temNf = (id: string, op: string) => ((nfsTrocaProd as any[]) || []).some((n) => n.avaliacao_id === id && n.operacao === op);
+      const compraOk = exigemNf.length ? trocaIds.every((id) => temNf(id, 'compra')) : trocaIds.some((id) => temNf(id, 'compra'));
+      if (!compraOk) {
+        return jsonResponse({ error: trocaIds.length > 1
+          ? 'Emita a NF-e de compra de cada moto da troca em produção antes de emitir a venda.'
+          : 'Emita a NF-e de compra da moto da troca em produção antes de emitir a venda.' }, 409);
       }
       if (empresaId === FAG_EMPRESA_ID) {
-        const { data: transferenciaProd } = trocaIds.length
-          ? await admin.from('nfe_entradas').select('id')
-              .in('avaliacao_id', trocaIds).eq('operacao', 'transferencia')
-              .eq('ambiente', 'producao').eq('status', 'processada').limit(1).maybeSingle()
-          : { data: null };
-        if (!transferenciaProd) {
-          return jsonResponse({ error: 'Emita a NF-e de transferência da moto da troca para a MMATOS em produção antes de emitir a venda.' }, 409);
+        const transfOk = exigemNf.length ? trocaIds.every((id) => temNf(id, 'transferencia')) : trocaIds.some((id) => temNf(id, 'transferencia'));
+        if (!transfOk) {
+          return jsonResponse({ error: trocaIds.length > 1
+            ? 'Emita a NF-e de transferência de cada moto da troca para a MMATOS em produção antes de emitir a venda.'
+            : 'Emita a NF-e de transferência da moto da troca para a MMATOS em produção antes de emitir a venda.' }, 409);
         }
       }
     }

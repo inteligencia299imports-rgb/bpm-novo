@@ -145,6 +145,13 @@ const ProcessoDialog: React.FC<Props> = ({
   const [trocaAvaliacaoId, setTrocaAvaliacaoId] = useState<string>('');
   // Moto de troca de REPASSE: sem NF-e de entrada (troca) — 2026-10-15.
   const [trocaRepasse, setTrocaRepasse] = useState(false);
+  // Troca com várias motos: a etapa de NF de entrada (e a transferência FAG) anda
+  // uma moto por vez — trocaAvaliacaoId é a moto atual; a etapa só conclui quando
+  // não restar nenhuma moto sem NF.
+  const [trocaTotal, setTrocaTotal] = useState(0);
+  const [trocaPosicao, setTrocaPosicao] = useState(0);
+  const [trocaRestantes, setTrocaRestantes] = useState(0);
+  const [recarregarTroca, setRecarregarTroca] = useState(0);
   const [atendimentoEmpresaId, setAtendimentoEmpresaId] = useState<string>('');
 
   const eh0km = estoqueMoto?.fonte === '0km';
@@ -214,6 +221,9 @@ const ProcessoDialog: React.FC<Props> = ({
       let inter: string | null = null;
       let trocaAvId = '';
       let trocaEhRepasse = false;
+      let trocaTot = 0;
+      let trocaPos = 0;
+      let trocaRest = 0;
       let contratoVenda = false;
       let avConsigId = '';
       let avConsig: any = null;
@@ -277,16 +287,38 @@ const ProcessoDialog: React.FC<Props> = ({
         // acompanhada de outra entrando como parte de pagamento — não é
         // exclusividade do Pós-Venda normal.
         if ((isPosVenda || hasConverterEtapa) && inter === 'trocar') {
-          const { data: tav } = await supabase
+          const { data: tavs } = await supabase
             .from('avaliacoes')
             .select('id, tipo_aquisicao')
             .eq('atendimento_id', atendimentoId)
             .in('tipo_aquisicao', TIPOS_PROPRIA)
             .in('situacao', ['adquirida', 'estoque', 'oficina'])
-            .limit(1)
-            .maybeSingle();
-          trocaAvId = (tav as any)?.id ?? '';
-          trocaEhRepasse = (tav as any)?.tipo_aquisicao === 'repasse';
+            .order('created_at', { ascending: true });
+          const todas = ((tavs as any[]) || []);
+          // Repasse não tem NF de entrada: só as outras entram na sequência.
+          const comNf = todas.filter((a) => a.tipo_aquisicao !== 'repasse');
+          const candidatas = comNf.length ? comNf : todas.slice(0, 1);
+          // Moto "feita" = NF de compra (e, na FAG, a transferência) em produção.
+          const exigeTransf = EMPRESAS_SO_MOTO_NOVA.has(empresaIdAt);
+          const { data: nfsTroca } = candidatas.length > 1
+            ? await (supabase as any).from('nfe_entradas').select('avaliacao_id, operacao')
+                .in('avaliacao_id', candidatas.map((a) => a.id))
+                .in('operacao', ['compra', 'transferencia'])
+                .eq('status', 'processada').eq('ambiente', 'producao')
+            : { data: [] as any[] };
+          const feita = (id: string) => {
+            const ops = new Set(((nfsTroca as any[]) || []).filter((n) => n.avaliacao_id === id).map((n) => n.operacao));
+            return ops.has('compra') && (!exigeTransf || ops.has('transferencia'));
+          };
+          // Moto atual = a primeira ainda sem NF; todas feitas → a última.
+          const pendente = candidatas.findIndex((a) => !feita(a.id));
+          const idxAtual = pendente >= 0 ? pendente : candidatas.length - 1;
+          const atual = candidatas[idxAtual];
+          trocaAvId = (atual as any)?.id ?? '';
+          trocaEhRepasse = (atual as any)?.tipo_aquisicao === 'repasse';
+          trocaTot = candidatas.length;
+          trocaPos = idxAtual + 1;
+          trocaRest = candidatas.filter((a) => a.id !== trocaAvId && !feita(a.id)).length;
         }
 
         if (isPosVenda) {
@@ -338,6 +370,9 @@ const ProcessoDialog: React.FC<Props> = ({
       setContratoVendaGerado(contratoVenda);
       setTrocaAvaliacaoId(trocaAvId);
       setTrocaRepasse(trocaEhRepasse);
+      setTrocaTotal(trocaTot);
+      setTrocaPosicao(trocaPos);
+      setTrocaRestantes(trocaRest);
       setAtendimentoEmpresaId(empresaIdAt);
       setAvaliacaoConsignadaId(avConsigId);
       setAvaliacaoConsignada(avConsig);
@@ -355,7 +390,7 @@ const ProcessoDialog: React.FC<Props> = ({
     };
     load();
     return () => { cancel = true; };
-  }, [open, atendimentoId, customEtapas, isPosVenda]);
+  }, [open, atendimentoId, customEtapas, isPosVenda, recarregarTroca]);
 
   // Carrega a NF-e ao abrir.
   useEffect(() => {
@@ -391,8 +426,8 @@ const ProcessoDialog: React.FC<Props> = ({
 
   const nfEmitidaDe = (etapa: string) =>
     etapa === NF_VENDA ? nfeVenda.emitida
-    : etapa === NF_TROCA ? nfeTroca.emitida
-    : etapa === NF_TRANSFERENCIA ? nfeTransferencia.emitida
+    : etapa === NF_TROCA ? nfeTroca.emitida && trocaRestantes === 0
+    : etapa === NF_TRANSFERENCIA ? nfeTransferencia.emitida && trocaRestantes === 0
     : (etapa === ATPV_E && is0km) ? atpvEmitido
     : etapa === SAIDA_RENAVE ? saidaRenaveFeita
     : etapa === DEVOLUCAO_CONSIGNACAO ? devolucaoConvProducaoOk
@@ -665,7 +700,9 @@ const ProcessoDialog: React.FC<Props> = ({
                   ? devolucaoConvProducaoOk
                 : isNfCompraConsignacao
                   ? converterConcluido
-                  : (isNf ? !!nfeObj?.emitida : false);
+                  // Troca com várias motos: a NF de entrada/transferência só fica marcada
+                  // quando não restar moto sem NF.
+                  : (isNf ? !!nfeObj?.emitida && !((isNfTroca || isNfTransferencia) && trocaRestantes > 0) : false);
               const dataBloqueada = !isNf && !!e.data_conclusao && e.data_conclusao === datasSalvas[e.etapa];
               const dateFmt = isDateOnly ? 'dd/MM/yyyy' : 'dd/MM/yyyy HH:mm';
               return (
@@ -684,7 +721,18 @@ const ProcessoDialog: React.FC<Props> = ({
                   <div className="min-w-0">
                     <p className={`text-sm font-semibold uppercase ${(isNf ? nfMarcada : e.concluida) || (isPrevisaoPagamento && e.data_conclusao) ? 'text-foreground' : 'text-muted-foreground'}`}>
                       {e.etapa}
+                      {(isNfTroca || isNfTransferencia) && trocaTotal > 1 && (
+                        <span className="ml-1 normal-case font-normal text-muted-foreground">— moto {trocaPosicao} de {trocaTotal}</span>
+                      )}
                     </p>
+                    {(isNfTroca || isNfTransferencia) && trocaRestantes > 0 && nfeObj?.emitida && (
+                      <Button
+                        variant="link" size="sm" className="h-auto p-0 text-xs"
+                        onClick={() => setRecarregarTroca((c) => c + 1)}
+                      >
+                        Ir para a próxima moto da troca ({trocaRestantes} restante{trocaRestantes > 1 ? 's' : ''})
+                      </Button>
+                    )}
                     {isNf && nfeObj?.emitida && (nfeObj.nfe?.numero || nfeObj.nfe?.serie) && (
                       <p className="text-xs text-muted-foreground">
                         Nº {nfeObj.nfe?.numero || '-'} / Série {nfeObj.nfe?.serie || '-'}

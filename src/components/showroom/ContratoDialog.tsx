@@ -388,9 +388,25 @@ const ContratoDialog: React.FC<Props> = ({
   const [transferenciaTipo, setTransferenciaTipo] = useState<string>('');
   const [transferenciaValor, setTransferenciaValor] = useState('');
 
-  // Moto cliente
-  const [valorQuitacao, setValorQuitacao] = useState('');
-  const [valorFechamento, setValorFechamento] = useState('');
+  // Moto(s) do cliente (troca): Quitação e Fechamento POR moto (avaliação). A troca
+  // pode ter várias motos como parte do pagamento; os totais abaixo são a soma.
+  const [trocaValores, setTrocaValores] = useState<Record<string, { quitacao: string; fechamento: string }>>({});
+  const setTrocaValor = (avId: string, campo: 'quitacao' | 'fechamento') => (v: string) =>
+    setTrocaValores((prev) => ({ ...prev, [avId]: { quitacao: '', fechamento: '', ...prev[avId], [campo]: v } }));
+  const trocaItens = motosAvaliacao.map((m) => ({
+    moto: m,
+    av: (avaliacoes[m.id] ?? null) as any,
+    quitacao: trocaValores[m.id]?.quitacao ?? '',
+    fechamento: trocaValores[m.id]?.fechamento ?? '',
+  }));
+  const faltaFechamentoTroca = trocaItens.some((t) => !t.fechamento.trim());
+  const faltaQuitacaoTroca = trocaItens.some((t) => !t.quitacao.trim());
+  const somaTroca = (campo: 'quitacao' | 'fechamento') =>
+    trocaItens.reduce((s, t) => s + (t[campo].trim() ? (parseCurrencyInput(t[campo]) || 0) : 0), 0);
+  const fmtMoedaInput = (v: number) => formatCurrencyInput(String(Math.round(v * 100)));
+  // Totais da troca (todas as motos) — gravados no contrato e usados nas contas.
+  const valorFechamento = trocaItens.some((t) => t.fechamento.trim()) ? fmtMoedaInput(somaTroca('fechamento')) : '';
+  const valorQuitacao = faltaQuitacaoTroca ? '' : fmtMoedaInput(somaTroca('quitacao'));
 
   // Observações
   const [obsInternas, setObsInternas] = useState('');
@@ -591,10 +607,20 @@ const ContratoDialog: React.FC<Props> = ({
       // volta pra lá (ver saveContrato). Sem Valor de Fechamento ainda
       // definido, começa com a própria Avaliação de Compra como sugestão
       // (editável — o negociado pode divergir do avaliado).
-      const avTroca = motosAvaliacao[0] ? avaliacoes[motosAvaliacao[0].id] : null;
-      const avQuitacao = avTroca?.valor_quitacao;
-      const avFechamento = avTroca?.valor_fechamento ?? avTroca?.avaliacao_compra ?? null;
       const fmtCur = (v: number) => formatCurrencyInput(String(Math.round(v * 100)));
+      // Uma entrada por moto da troca. Com uma moto só, o contrato salvo ainda serve
+      // de fallback (Quitação do contrato tem prioridade; Fechamento vem da avaliação).
+      const umaMotoTroca = motosAvaliacao.length === 1;
+      const valoresTrocaIniciais = (c: any | null) => {
+        const out: Record<string, { quitacao: string; fechamento: string }> = {};
+        for (const m of motosAvaliacao) {
+          const av = avaliacoes[m.id];
+          const q = umaMotoTroca && c?.valor_quitacao != null ? c.valor_quitacao : av?.valor_quitacao;
+          const f = av?.valor_fechamento ?? av?.avaliacao_compra ?? (umaMotoTroca ? c?.valor_fechamento : null) ?? null;
+          out[m.id] = { quitacao: q != null ? fmtCur(q) : '', fechamento: f != null ? fmtCur(f) : '' };
+        }
+        return out;
+      };
       const atCpf = (freshAtendimento as any)?.cliente?.cpf_cnpj ?? atendimento.cliente?.cpf_cnpj;
       setClienteCpfOriginal(atCpf ? String(atCpf) : '');
       if ((freshAtendimento as any)?.cliente) setClienteRecord((freshAtendimento as any).cliente);
@@ -608,11 +634,10 @@ const ContratoDialog: React.FC<Props> = ({
         setIpvaValor(contrato.ipva_valor != null ? formatCurrencyInput(String(Math.round(contrato.ipva_valor * 100))) : '');
         setTransferenciaTipo(contrato.transferencia_tipo || '');
         setTransferenciaValor(contrato.transferencia_valor != null ? formatCurrencyInput(String(Math.round(contrato.transferencia_valor * 100))) : '');
-        setValorQuitacao(contrato.valor_quitacao != null ? fmtCur(contrato.valor_quitacao) : (avQuitacao != null ? fmtCur(avQuitacao) : ''));
-        // Fechamento tem origem única na avaliação — nunca usa o valor já
-        // salvo no contrato (ficaria divergente se a avaliação for
-        // atualizada depois de o contrato já ter sido gerado uma vez).
-        setValorFechamento(avFechamento != null ? fmtCur(avFechamento) : (contrato.valor_fechamento != null ? fmtCur(contrato.valor_fechamento) : ''));
+        // Fechamento tem origem na avaliação de cada moto — o valor salvo no
+        // contrato só entra como fallback com uma moto (ficaria divergente se a
+        // avaliação for atualizada depois de o contrato já ter sido gerado).
+        setTrocaValores(valoresTrocaIniciais(contrato));
         setObsInternas(contrato.observacoes_internas || '');
         setObsContrato(contrato.observacoes_contrato || '');
         setDataSinal(contrato.data_sinal ? new Date(contrato.data_sinal + 'T12:00:00') : undefined);
@@ -653,8 +678,7 @@ const ContratoDialog: React.FC<Props> = ({
         setIpvaValor('');
         setTransferenciaTipo('');
         setTransferenciaValor('');
-        setValorQuitacao(avQuitacao != null ? fmtCur(avQuitacao) : '');
-        setValorFechamento(avFechamento != null ? fmtCur(avFechamento) : '');
+        setTrocaValores(valoresTrocaIniciais(null));
         setObsInternas('');
         setObsContrato('');
         setDataSinal(undefined);
@@ -931,12 +955,15 @@ const ContratoDialog: React.FC<Props> = ({
     // compra continuava bloqueada. Roda em Gerar Proposta (sinal) e em Gerar
     // Venda igual — o sinal costuma ser o primeiro save da negociação, então
     // não pode esperar a venda pra propagar.
-    if (hasTroca && motoAv?.id) {
-      const parsedFechamento = parseCurrencyInput(valorFechamento);
-      await supabase.from('avaliacoes').update({
-        valor_quitacao: valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : null,
-        ...(parsedFechamento && parsedFechamento > 0 ? { valor_fechamento: parsedFechamento } : {}),
-      } as any).eq('id', motoAv.id);
+    // Cada moto da troca grava a sua Quitação e o seu Fechamento.
+    if (hasTroca) {
+      for (const t of trocaItens) {
+        const parsedFechamento = parseCurrencyInput(t.fechamento);
+        await supabase.from('avaliacoes').update({
+          valor_quitacao: t.quitacao.trim() ? parseCurrencyInput(t.quitacao) : null,
+          ...(parsedFechamento && parsedFechamento > 0 ? { valor_fechamento: parsedFechamento } : {}),
+        } as any).eq('id', t.moto.id);
+      }
     }
 
     // Agregados: substitui a lista inteira do contrato (delete + insert).
@@ -1042,26 +1069,27 @@ const ContratoDialog: React.FC<Props> = ({
   const motoInt = motosInteresse[0];
   const estItem = motoInt?.origem === 'estoque' && motoInt?.estoque_moto_id ? estoqueData[motoInt.estoque_moto_id] : null;
 
-  // Get moto do cliente data
-  const motoAv = motosAvaliacao[0];
-  const avaliacaoData = motoAv ? avaliacoes[motoAv.id] : null;
 
-  const [avaliadorTrocaNome, setAvaliadorTrocaNome] = useState<string | null>(null);
-  // "Avaliador" exibido no card Moto do Cliente é o usuário registrado na
-  // avaliação da troca (avaliador_id), não quem está emitindo a NF-e agora.
+  // "Avaliador" exibido em cada card Moto do Cliente é o usuário registrado na
+  // avaliação daquela moto (avaliador_id), não quem está emitindo a NF-e agora.
+  const [avaliadorTrocaNomes, setAvaliadorTrocaNomes] = useState<Record<string, string>>({});
+  const avaliadorIdsTroca = [...new Set(trocaItens.map((t) => t.av?.avaliador_id).filter(Boolean) as string[])].sort().join(',');
   useEffect(() => {
-    const avaliadorId = (avaliacaoData as any)?.avaliador_id;
-    if (!open || !avaliadorId) { setAvaliadorTrocaNome(null); return; }
+    if (!open || !avaliadorIdsTroca) { setAvaliadorTrocaNomes({}); return; }
     let cancel = false;
     (supabase as any)
       .from('user_roles')
-      .select('nome')
-      .eq('user_id', avaliadorId)
+      .select('user_id, nome')
+      .in('user_id', avaliadorIdsTroca.split(','))
       .eq('projeto_id', BPM_PROJETO_ID)
-      .maybeSingle()
-      .then(({ data }: any) => { if (!cancel) setAvaliadorTrocaNome(data?.nome ? firstLastName(data.nome) : null); });
+      .then(({ data }: any) => {
+        if (cancel) return;
+        const nomes: Record<string, string> = {};
+        for (const r of (data as any[]) || []) if (r.nome) nomes[r.user_id] = firstLastName(r.nome);
+        setAvaliadorTrocaNomes(nomes);
+      });
     return () => { cancel = true; };
-  }, [open, (avaliacaoData as any)?.avaliador_id]);
+  }, [open, avaliadorIdsTroca]);
 
   const buildPdfData = (): ContratoPdfData | null => {
     const produtoMarca = estItem?.marca || motoInt?.marca || '';
@@ -1151,20 +1179,21 @@ const ContratoDialog: React.FC<Props> = ({
     };
 
     // Troca info
-    if (hasTroca && motoAv) {
-      pdfData.troca = {
-        marca: (motoAv.marca || '').toUpperCase(),
-        modelo: (motoAv.modelo || '').toUpperCase(),
-        anoFabMod: [motoAv.ano_fabricacao, motoAv.ano_modelo].filter(Boolean).join('/'),
-        placaChassi: (motoAv.placa || '')?.replace(/-/g, '') || 'N/A',
-        km: motoAv.km || 'N/A',
-        valorQuitacao: `R$ ${valorQuitacao || '0,00'}`,
+    if (hasTroca) {
+      pdfData.trocas = trocaItens.map((t) => ({
+        marca: (t.moto.marca || '').toUpperCase(),
+        modelo: (t.moto.modelo || '').toUpperCase(),
+        anoFabMod: [t.moto.ano_fabricacao, t.moto.ano_modelo].filter(Boolean).join('/'),
+        placaChassi: (t.moto.placa || '')?.replace(/-/g, '') || 'N/A',
+        km: t.moto.km || 'N/A',
+        valorQuitacao: `R$ ${t.quitacao || '0,00'}`,
         // Sem Valor de Fechamento, usa o repasse de compra ao cliente
         // (Avaliação − Custos Loja), igual ao cálculo do Valor Faltante.
-        valorNegociado: parseCurrencyInput(valorFechamento) > 0
-          ? `R$ ${valorFechamento}`
-          : formatCurrency(valorRepasseTroca || 0),
-      };
+        valorNegociado: parseCurrencyInput(t.fechamento) > 0
+          ? `R$ ${t.fechamento}`
+          : formatCurrency(repasseTroca(t.av)),
+      }));
+      pdfData.troca = pdfData.trocas[0];
     }
 
     return pdfData;
@@ -1339,20 +1368,24 @@ const ContratoDialog: React.FC<Props> = ({
   // avaliação de compra − custos da loja).
   // Custos da loja ausentes contam como 0 — o valor de aquisição da moto do
   // cliente (Avaliação Compra) tem de entrar no abatimento mesmo sem custos.
-  const valorRepasseTroca = hasTroca && avaliacaoData?.avaliacao_compra != null
-    ? Math.max(Number(avaliacaoData.avaliacao_compra) - Number(avaliacaoData.previsao_custos_loja ?? 0), 0)
-    : 0;
-  // O quanto a moto da troca abate do Valor Faltante — a base é:
+  const repasseTroca = (av: any) => (av?.avaliacao_compra != null
+    ? Math.max(Number(av.avaliacao_compra) - Number(av.previsao_custos_loja ?? 0), 0)
+    : 0);
+  // O quanto cada moto da troca abate do Valor Faltante — a base é:
   //  - com Valor de Fechamento preenchido: o próprio Valor de Fechamento;
   //  - sem Valor de Fechamento: o repasse de compra (Avaliação − Custos Loja).
   // O Valor de Quitação (financiamento/dívida da moto do cliente) sai dessa base
   // antes — o saldo líquido é o que de fato entra como pagamento (mesma conta já
   // usada em ContratoCompraDialog/ContratoConsignacaoDialog: fechamento − quitação).
-  const fechamentoTrocaNum = parseCurrencyInput(valorFechamento);
-  const valorQuitacaoNum = valorQuitacao?.trim() ? parseCurrencyInput(valorQuitacao) : 0;
-  const baseAbatimentoTroca = fechamentoTrocaNum > 0 ? fechamentoTrocaNum : valorRepasseTroca;
+  // Várias motos na troca: soma o líquido de cada uma.
+  const abatimentoMotoTroca = (t: (typeof trocaItens)[number]) => {
+    const fechamentoNum = parseCurrencyInput(t.fechamento);
+    const quitacaoNum = t.quitacao.trim() ? parseCurrencyInput(t.quitacao) : 0;
+    const base = fechamentoNum > 0 ? fechamentoNum : repasseTroca(t.av);
+    return Math.max(base - quitacaoNum, 0);
+  };
   const abatimentoTroca = hasTroca
-    ? Math.max(baseAbatimentoTroca - valorQuitacaoNum, 0)
+    ? trocaItens.reduce((s, t) => s + abatimentoMotoTroca(t), 0)
     : 0;
   const somaPagamentos = somaFormasPagamento + abatimentoTroca;
   const valorFaltante = valorTotalContrato - somaPagamentos;
@@ -1388,11 +1421,11 @@ const ContratoDialog: React.FC<Props> = ({
     // andar em paralelo, antes da Venda ser fechada. Só a cobertura das
     // formas de pagamento continua exclusiva da Proposta de VENDA (no sinal
     // ainda pode não estar tudo acertado).
-    if (hasTroca && !valorFechamento?.trim()) {
-      errors.push('Valor de Fechamento da moto do cliente');
+    if (hasTroca && faltaFechamentoTroca) {
+      errors.push(trocaItens.length > 1 ? 'Valor de Fechamento de cada moto do cliente' : 'Valor de Fechamento da moto do cliente');
     }
-    if (hasTroca && !valorQuitacao?.trim()) {
-      errors.push('Valor de Quitação da moto do cliente');
+    if (hasTroca && faltaQuitacaoTroca) {
+      errors.push(trocaItens.length > 1 ? 'Valor de Quitação de cada moto do cliente' : 'Valor de Quitação da moto do cliente');
     }
     if (variant === 'venda' && valorFaltante > 0.005) errors.push('Formas de Pagamento');
     if (!obsContrato || !obsContrato.trim()) errors.push('Observações do Contrato');
@@ -1436,7 +1469,7 @@ const ContratoDialog: React.FC<Props> = ({
     else if (!['vendido', 'sinal'].includes(String(estItemNfe.status ?? ''))) pendenciasEmissaoNf.push('Moto marcada como vendida no atendimento');
     if (consignadaVenda && !consignadaComCompra) pendenciasEmissaoNf.push('Moto consignada: devolução simbólica e NF-e de compra (Pós-Compra)');
     if (veicProdBloqueado) pendenciasEmissaoNf.push(`Dados fiscais da moto 0km (${veicProdFaltando.join(', ')}) — Estoque → "Dados Fiscais (NF-e)"`);
-    if (hasTroca && !valorQuitacao?.trim()) pendenciasEmissaoNf.push('Valor de Quitação da moto do cliente');
+    if (hasTroca && faltaQuitacaoTroca) pendenciasEmissaoNf.push(trocaItens.length > 1 ? 'Valor de Quitação de cada moto do cliente' : 'Valor de Quitação da moto do cliente');
     pendenciasNf.cliente.forEach((p) => pendenciasEmissaoNf.push(`Cadastro do cliente: ${p}`));
     pendenciasNf.endereco.forEach((p) => pendenciasEmissaoNf.push(`Endereço do cliente: ${p}`));
     pendenciasNf.bancario.forEach((p) => pendenciasEmissaoNf.push(`Dados bancários do cliente: ${p}`));
@@ -1858,51 +1891,52 @@ const ContratoDialog: React.FC<Props> = ({
               </Card>
 
               {/* Card: Moto do Cliente (troca) */}
-              {hasTroca && (
-                <Card>
+              {hasTroca && trocaItens.map((t, idx) => (
+                <Card key={t.moto.id}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <Bike className="h-4 w-4 text-primary" /> Moto do Cliente
+                      <Bike className="h-4 w-4 text-primary" /> Moto do Cliente{trocaItens.length > 1 ? ` ${idx + 1}` : ''}
                     </CardTitle>
                     <Separator className="mt-2" />
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <InfoDisplay label="Avaliador" value={avaliadorTrocaNome || undefined} valueClassName="text-primary" />
+                      <InfoDisplay label="Avaliador" value={(t.av?.avaliador_id && avaliadorTrocaNomes[t.av.avaliador_id]) || undefined} valueClassName="text-primary" />
                     </div>
-                    {motoAv && (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <InfoDisplay label="Marca" value={motoAv.marca} />
-                        <InfoDisplay label="Modelo" value={motoAv.modelo ? String(motoAv.modelo).toUpperCase() : undefined} />
-                        <InfoDisplay label="Ano" value={[motoAv.ano_fabricacao, motoAv.ano_modelo].filter(Boolean).join('/') || undefined} />
-                        <InfoDisplay label="Cor" value={motoAv.cor ? String(motoAv.cor).toUpperCase() : undefined} />
-                        <InfoDisplay label="Placa" value={motoAv.placa ? motoAv.placa.replace(/-/g, '') : undefined} />
-                      </div>
-                    )}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <InfoDisplay label="Marca" value={t.moto.marca} />
+                      <InfoDisplay label="Modelo" value={t.moto.modelo ? String(t.moto.modelo).toUpperCase() : undefined} />
+                      <InfoDisplay label="Ano" value={[t.moto.ano_fabricacao, t.moto.ano_modelo].filter(Boolean).join('/') || undefined} />
+                      <InfoDisplay label="Cor" value={t.moto.cor ? String(t.moto.cor).toUpperCase() : undefined} />
+                      <InfoDisplay label="Placa" value={t.moto.placa ? t.moto.placa.replace(/-/g, '') : undefined} />
+                    </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                      {avaliacaoData && (
+                      {t.av && (
                         <>
-                          <InfoDisplay label="Avaliação Compra" value={formatCurrency(avaliacaoData.avaliacao_compra)} />
-                          <InfoDisplay label="Custos Loja" value={formatCurrency(avaliacaoData.previsao_custos_loja)} />
+                          <InfoDisplay label="Avaliação Compra" value={formatCurrency(t.av.avaliacao_compra)} />
+                          <InfoDisplay label="Custos Loja" value={formatCurrency(t.av.previsao_custos_loja)} />
                         </>
                       )}
                       {soLeitura ? (
-                        <InfoDisplay label="Valor de Fechamento" value={valorFechamento ? `R$ ${valorFechamento}` : '—'} />
+                        <InfoDisplay label="Valor de Fechamento" value={t.fechamento ? `R$ ${t.fechamento}` : '—'} />
                       ) : (
-                        <CurrencyField label="Valor de Fechamento" value={valorFechamento} onChange={setValorFechamento} required />
+                        <CurrencyField label="Valor de Fechamento" value={t.fechamento} onChange={setTrocaValor(t.moto.id, 'fechamento')} required />
                       )}
                       {soLeitura ? (
-                        <InfoDisplay label="Valor de Quitação" value={valorQuitacao ? `R$ ${valorQuitacao}` : '—'} />
+                        <InfoDisplay label="Valor de Quitação" value={t.quitacao ? `R$ ${t.quitacao}` : '—'} />
                       ) : (
-                        <CurrencyField label="Valor de Quitação" value={valorQuitacao} onChange={setValorQuitacao} required />
+                        <CurrencyField label="Valor de Quitação" value={t.quitacao} onChange={setTrocaValor(t.moto.id, 'quitacao')} required />
                       )}
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <InfoDisplay label="Valor Total (Líquido)" value={formatCurrency(abatimentoTroca)} valueClassName="text-primary" />
+                      <InfoDisplay label="Valor Total (Líquido)" value={formatCurrency(abatimentoMotoTroca(t))} valueClassName="text-primary" />
+                      {trocaItens.length > 1 && idx === trocaItens.length - 1 && (
+                        <InfoDisplay label="Total das Motos na Troca" value={formatCurrency(abatimentoTroca)} valueClassName="text-primary" />
+                      )}
                     </div>
                   </CardContent>
                 </Card>
-              )}
+              ))}
 
               {/* Card: Agregados — serviços cobrados à parte do cliente */}
               {(!soLeitura || agregados.length > 0) && (
@@ -2290,12 +2324,12 @@ const ContratoDialog: React.FC<Props> = ({
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
               {(() => {
-                const disabled = nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && !valorQuitacao?.trim()) || !nfSemPendencias || veicProdBloqueado;
+                const disabled = nfe.loading || !empresaId || parseCurrencyInput(nfeValor) <= 0 || (hasTroca && faltaQuitacaoTroca) || !nfSemPendencias || veicProdBloqueado;
                 const title = !empresaId
                   ? 'Nenhuma empresa vinculada à loja do atendimento'
                   : veicProdBloqueado
                       ? `Faltam dados fiscais do veículo (${veicProdFaltando.join(', ')}) — preencha em Estoque → "Dados Fiscais (NF-e)"`
-                      : hasTroca && !valorQuitacao?.trim()
+                      : hasTroca && faltaQuitacaoTroca
                         ? 'Valor de Quitação da moto do cliente é obrigatório'
                         : !nfSemPendencias
                           ? 'Cadastro do cliente incompleto — resolva as pendências marcadas nos cards acima'

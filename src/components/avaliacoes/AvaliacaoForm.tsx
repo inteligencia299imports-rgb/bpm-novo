@@ -1127,12 +1127,16 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     if (!atId) return;
     setAbrindoContratoVenda(true);
     try {
-      const [{ data: atFull }, { data: misRaw }] = await Promise.all([
+      const [{ data: atFull }, { data: misRaw }, { data: avsRaw }] = await Promise.all([
         supabase.from('atendimentos_motos')
           .select(`*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores(*, clientes_fornecedores_enderecos(*))`)
           .eq('id', atId).maybeSingle(),
         supabase.from('motos_interesse').select(`*, ${MARCA_MODELO_SELECT}`).eq('atendimento_id', atId),
+        // Troca pode ter várias motos do cliente: o contrato precisa de todas (abatimento = soma).
+        supabase.from('avaliacoes').select(`*, ${MARCA_MODELO_SELECT}`).eq('atendimento_id', atId).order('created_at', { ascending: true }),
       ]);
+      const outrasAvs = ((avsRaw as any[]) || []).map((a) => flattenMarcaModelo(a)).filter((a: any) => a.id !== (avaliacao as any).id);
+      const motosAv = [avaliacao, ...outrasAvs].sort((a: any, b: any) => String(a.created_at).localeCompare(String(b.created_at)));
       const mis = ((misRaw as any[]) || []).map((m) => flattenMarcaModelo(m));
       const ids = mis
         .filter((m: any) => m.origem === 'estoque' && m.estoque_moto_id)
@@ -1143,9 +1147,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       setContratoVendaCtx({
         atendimento: { ...(atFull as any), loja: (atFull as any)?.loja_empresas?.loja },
         motosInteresse: mis,
-        motosAvaliacao: [avaliacao],
+        motosAvaliacao: motosAv,
         estoqueData,
-        avaliacoes: { [(avaliacao as any).id]: avaliacao },
+        avaliacoes: Object.fromEntries(motosAv.map((a: any) => [a.id, a])),
       });
     } catch (e) {
       toast.error('Não foi possível abrir o contrato de venda.');
