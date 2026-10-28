@@ -1270,15 +1270,15 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
             </React.Fragment>
           ))}
           {interesse === 'trocar' && (
-            <div className="flex justify-end">
+            <div className="flex justify-center">
               <Button
                 type="button"
-                variant="outline"
                 className="gap-2"
+                title="Adicionar outra moto do cliente na troca"
                 disabled={isEditing && (situacao === 'sinal' || situacao === 'vendido')}
                 onClick={() => setMotosCliente((prev) => [...prev, novaMotoCliente()])}
               >
-                <Plus className="h-4 w-4" /> Adicionar outra moto na troca
+                <Plus className="h-4 w-4" /> Adicionar Moto
               </Button>
             </div>
           )}
