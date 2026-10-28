@@ -13,6 +13,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { CidadeFilterValue, matchesCidade } from '@/components/shared/CidadeFilter';
 import { FiltroMultiplo, OPCOES_CIDADE } from './FiltroMultiplo';
 import { fetchAllRange } from '@/lib/fetchAllRange';
+import { fetchQuitacaoEstoque, formatarQuitacao, type Quitacao } from '@/lib/quitacaoEstoque';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
@@ -48,6 +49,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const [indicadoresPrev, setIndicadoresPrev] = useState<any>({});
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [motos, setMotos] = useState<any[]>([]);
+  const [quitacoes, setQuitacoes] = useState<Map<string, Quitacao>>(new Map());
   const [filterLoja, setFilterLojaState] = useState('todos');
   const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
 
@@ -183,6 +185,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     motosFiltradas.sort((x: any, y: any) => cmp(x.marca, y.marca) || cmp(x.modelo, y.modelo));
     setMotos(motosFiltradas);
     setLoading(false);
+    // Quitação vem do financeiro e não trava a listagem — preenche quando chegar.
+    fetchQuitacaoEstoque(motosFiltradas).then(setQuitacoes).catch((e) => console.error('quitação do estoque', e));
   }, [dateTo, filterLoja, filterTipo]);
 
 
@@ -240,7 +244,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       // mostra o chassi nesses casos, que é o identificador que já existe
       // desde a entrada no estoque.
       placa: (m.tipo === '0km' ? m.chassi : m.placa) || '', entrada: entrada ? entrada.toLocaleDateString('pt-BR') : '',
-      situacao: statusLabel(m.status), preco, compra, margemAbs, margemPct,
+      situacao: statusLabel(m.status), quitacao: formatarQuitacao(quitacoes.get(m.id)), preco, compra, margemAbs, margemPct,
     };
   });
 
@@ -263,26 +267,26 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const rows = buildRows();
     const t = computeTotals(rows);
     const aoa = [[
-      'Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa/Chassi','Entrada','Situação','Preço','Compra','Margem (R$)','Margem (%)',
+      'Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa/Chassi','Entrada','Situação','Quitação','Preço','Compra','Margem (R$)','Margem (%)',
     ], ...rows.map(r => [
-      r.empresa, r.tipo, r.patio, r.dias, r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao,
+      r.empresa, r.tipo, r.patio, r.dias, r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao, r.quitacao,
       r.preco, r.compra || '', r.compra > 0 ? r.margemAbs : '', r.compra > 0 ? r.margemPct / 100 : '',
     ])];
     aoa.push([
-      `TOTAL (${rows.length})`, '', '', Math.round(t.diasAvg), '', '', '', '', '', '', '',
+      `TOTAL (${rows.length})`, '', '', Math.round(t.diasAvg), '', '', '', '', '', '', '', '',
       t.precoSum, t.compraSum, t.margemAbsSum, t.margemPctAvg / 100,
     ]);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [10,12,12,6,12,22,12,10,10,11,13,14,14,14,10].map(w => ({ wch: w }));
+    ws['!cols'] = [10,12,12,6,12,22,12,10,10,11,13,11,14,14,14,10].map(w => ({ wch: w }));
     // Format currency and percent columns
     const range = XLSX.utils.decode_range(ws['!ref'] as string);
     for (let R = 1; R <= range.e.r; R++) {
-      ['L','M','N'].forEach(c => { const cell = ws[`${c}${R+1}`]; if (cell && typeof cell.v === 'number') cell.z = 'R$ #,##0.00'; });
-      const pct = ws[`O${R+1}`]; if (pct && typeof pct.v === 'number') pct.z = '0.0%';
+      ['M','N','O'].forEach(c => { const cell = ws[`${c}${R+1}`]; if (cell && typeof cell.v === 'number') cell.z = 'R$ #,##0.00'; });
+      const pct = ws[`P${R+1}`]; if (pct && typeof pct.v === 'number') pct.z = '0.0%';
     }
     // Bold totals row
     const totalRow = range.e.r + 1;
-    ['A','D','L','M','N','O'].forEach(c => { const cell = ws[`${c}${totalRow}`]; if (cell) cell.s = { font: { bold: true } }; });
+    ['A','D','M','N','O','P'].forEach(c => { const cell = ws[`${c}${totalRow}`]; if (cell) cell.s = { font: { bold: true } }; });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Estoque');
     XLSX.writeFile(wb, `estoque_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -304,14 +308,14 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
     autoTable(doc, {
       startY: 64,
-      head: [['Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa/Chassi','Entrada','Situação','Preço','Compra','Margem']],
+      head: [['Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa/Chassi','Entrada','Situação','Quitação','Preço','Compra','Margem']],
       body: rows.map(r => [
-        r.empresa, r.tipo, r.patio, String(r.dias), r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao,
+        r.empresa, r.tipo, r.patio, String(r.dias), r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao, r.quitacao || '—',
         fmtBRL(r.preco), r.compra > 0 ? fmtBRL(r.compra) : '—',
         r.compra > 0 ? `${fmtBRL(r.margemAbs)} (${r.margemPct.toFixed(1)}%)` : '—',
       ]),
       foot: [[
-        `TOTAL (${rows.length})`, '', '', `Méd. ${Math.round(t.diasAvg)}`, '', '', '', '', '', '', '',
+        `TOTAL (${rows.length})`, '', '', `Méd. ${Math.round(t.diasAvg)}`, '', '', '', '', '', '', '', '',
         fmtBRL(t.precoSum), fmtBRL(t.compraSum),
         `${fmtBRL(t.margemAbsSum)} (${t.margemPctAvg.toFixed(1)}%)`,
       ]],
@@ -322,12 +326,12 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       showFoot: 'lastPage',
       alternateRowStyles: { fillColor: [245, 247, 250] },
       columnStyles: {
-        3: { halign: 'right' }, 11: { halign: 'right' }, 12: { halign: 'right' }, 13: { halign: 'right' },
+        3: { halign: 'right' }, 12: { halign: 'right' }, 13: { halign: 'right' }, 14: { halign: 'right' },
       },
       didParseCell: (data) => {
         if (data.section !== 'body') return;
         const r = rows[data.row.index];
-        if (data.column.index === 13) {
+        if (data.column.index === 14) {
           if (r.compra > 0) data.cell.styles.textColor = r.margemAbs >= 0 ? [58, 143, 106] : [220, 38, 38];
         }
         if (data.column.index === 10) {
@@ -460,6 +464,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                 <TableHead className="text-xs">Placa/Chassi</TableHead>
                 <TableHead className="text-xs">Entrada</TableHead>
                 <TableHead className="text-xs">Situação</TableHead>
+                <TableHead className="text-xs">Quitação</TableHead>
                 <TableHead className="text-xs text-right">Preço</TableHead>
                 <TableHead className="text-xs text-right">Compra</TableHead>
                 <TableHead className="text-xs text-right">Margem</TableHead>
@@ -468,7 +473,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
             <TableBody>
               {motos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={14} className="text-center text-muted-foreground text-sm py-6">
+                  <TableCell colSpan={15} className="text-center text-muted-foreground text-sm py-6">
                     Nenhuma moto encontrada com os filtros selecionados.
                   </TableCell>
                 </TableRow>
@@ -517,6 +522,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                           ) : '—';
                         })()}
                       </TableCell>
+                      <TableCell className={cn('text-xs', quitacoes.get(m.id)?.status === 'em_aberto' && 'text-amber-600')}>{formatarQuitacao(quitacoes.get(m.id)) || '—'}</TableCell>
                       <TableCell className="text-xs text-right">{fmtBRL(preco)}</TableCell>
                       <TableCell className="text-xs text-right">{compra > 0 ? fmtBRL(compra) : '—'}</TableCell>
                       <TableCell className={cn('text-xs text-right font-medium', compra > 0 ? (margemAbs >= 0 ? 'text-[#3a8f6a]' : 'text-red-500') : 'text-muted-foreground')}>
