@@ -74,6 +74,6 @@ export async function fetchQuitacaoEstoque(motos: { id: string; tipo?: string | 
   return result;
 }
 
-/** dd/mm/aaaa a partir de 'aaaa-mm-dd' (sem passar por Date, para não deslocar o fuso). */
+/** dd/mm/aaaa a partir de 'aaaa-mm-dd' (sem passar por Date, para não deslocar o fuso). Não quitada = vazio. */
 export const formatarQuitacao = (q: Quitacao | undefined) =>
-  !q ? '' : q.status === 'em_aberto' ? 'Em aberto' : q.data.slice(0, 10).split('-').reverse().join('/');
+  q?.status === 'quitado' ? q.data.slice(0, 10).split('-').reverse().join('/') : '';
