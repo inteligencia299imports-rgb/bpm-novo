@@ -384,6 +384,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   // leva uma 0km do estoque (motos_interesse.estoque_tipo = '0km') — pedido do
   // usuário, 2026-10-19 (antes dependia só de a loja ser Ducati).
   const [trocaPor0km, setTrocaPor0km] = useState(false);
+  const [motoInteresseTroca, setMotoInteresseTroca] = useState<string | null>(null);
   const [classificacao, setClassificacao] = useState('');
   const [obsAvaliador, setObsAvaliador] = useState('');
   const [valorFechamentoEdit, setValorFechamentoEdit] = useState('');
@@ -506,19 +507,36 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     loadAvaliacao();
   }, [avaliacaoId]);
 
-  // Troca por 0km? (libera o campo Trade-in na avaliação)
+  // Troca: moto(s) de interesse do cliente — "PLACA - MARCA MODELO" no card Dados
+  // do Atendimento (0km sem placa mostra o chassi) — e se é troca por 0km, que
+  // libera o campo Trade-in na avaliação.
   useEffect(() => {
     const atId = avaliacao?.atendimento?.id;
-    if (!atId || avaliacao?.atendimento?.interesse !== 'trocar') { setTrocaPor0km(false); return; }
+    if (!atId || avaliacao?.atendimento?.interesse !== 'trocar') { setTrocaPor0km(false); setMotoInteresseTroca(null); return; }
     let ativo = true;
-    // estoque_tipo ainda não está nos tipos gerados do Supabase.
-    (supabase as any)
-      .from('motos_interesse')
-      .select('id')
-      .eq('atendimento_id', atId)
-      .eq('estoque_tipo', '0km')
-      .limit(1)
-      .then(({ data }: { data: any[] | null }) => { if (ativo) setTrocaPor0km((data || []).length > 0); });
+    (async () => {
+      // estoque_tipo ainda não está nos tipos gerados do Supabase.
+      const { data } = await (supabase as any)
+        .from('motos_interesse')
+        .select(`id, estoque_moto_id, estoque_tipo, chassi, ${MARCA_MODELO_SELECT}`)
+        .eq('atendimento_id', atId)
+        .order('created_at');
+      const mis = ((data as any[]) || []).map((m) => flattenMarcaModelo(m));
+      const ids = mis
+        .filter((m: any) => m.estoque_moto_id)
+        .map((m: any) => ({ id: m.estoque_moto_id as string, tipo: (m.estoque_tipo === '0km' ? '0km' : 'seminova') as 'seminova' | '0km' }));
+      const estoque = ids.length ? await fetchEstoqueUnificado({ ids }) : [];
+      const porId = new Map(estoque.map((e: any) => [e.id, e]));
+      const textos = mis.map((m: any) => {
+        const e: any = m.estoque_moto_id ? porId.get(m.estoque_moto_id) : null;
+        const ident = (e?.placa || '').replace(/-/g, '') || e?.chassi || m.chassi || '';
+        const nome = [e?.marca || m.marca, e?.modelo || m.modelo].filter(Boolean).join(' ').toUpperCase();
+        return [ident, nome].filter(Boolean).join(' - ');
+      }).filter(Boolean);
+      if (!ativo) return;
+      setTrocaPor0km(mis.some((m: any) => m.estoque_tipo === '0km'));
+      setMotoInteresseTroca(textos.length ? textos.join(' / ') : null);
+    })();
     return () => { ativo = false; };
   }, [avaliacao?.atendimento?.id, avaliacao?.atendimento?.interesse]);
 
@@ -1481,6 +1499,11 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 <InfoItem label="Interesse" value={at?.interesse ? getInteresseLabel(at.interesse) : null} />
                 <InfoItem label="Origem" value={at?.origem} />
                 <InfoItem label="Temperatura" value={at?.temperatura} />
+                {at?.interesse === 'trocar' && (
+                  <div className="col-span-2">
+                    <InfoItem label="Moto de Interesse" value={motoInteresseTroca} />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
