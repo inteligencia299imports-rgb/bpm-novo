@@ -831,6 +831,28 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   temAcessorios={motoConsignada.tem_acessorios}
                   acessoriosDescricao={motoConsignada.acessorios_descricao}
                 />
+                {/* Valores acima dos anexos (Quanto Pede / Valor Fechamento) */}
+                {(avaliacaoConsignada?.quanto_pede != null || avaliacaoConsignada?.valor_fechamento != null) && (
+                  <>
+                    <Separator />
+                    <div className="rounded-lg border border-border bg-muted/30 p-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        {avaliacaoConsignada.quanto_pede != null && (
+                          <div>
+                            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Quanto Pede</span>
+                            <p className="text-base font-semibold text-primary">{formatCurrency(avaliacaoConsignada.quanto_pede)}</p>
+                          </div>
+                        )}
+                        {avaliacaoConsignada.valor_fechamento != null && (
+                          <div>
+                            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Valor Fechamento</span>
+                            <p className="text-base font-semibold text-primary">{formatCurrency(avaliacaoConsignada.valor_fechamento)}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
                 {motoConsignada.id && (
                   <>
                     <Separator className="mt-auto" />
@@ -904,27 +926,6 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                           setMotoConsignada({ ...motoConsignada, procuracao_url: null });
                         }}
                       />
-                    </div>
-                  </>
-                )}
-                {(avaliacaoConsignada?.quanto_pede != null || avaliacaoConsignada?.valor_fechamento != null) && (
-                  <>
-                    <Separator />
-                    <div className="rounded-lg border border-border bg-muted/30 p-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        {avaliacaoConsignada.quanto_pede != null && (
-                          <div>
-                            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Quanto Pede</span>
-                            <p className="text-base font-semibold text-primary">{formatCurrency(avaliacaoConsignada.quanto_pede)}</p>
-                          </div>
-                        )}
-                        {avaliacaoConsignada.valor_fechamento != null && (
-                          <div>
-                            <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Valor Fechamento</span>
-                            <p className="text-base font-semibold text-primary">{formatCurrency(avaliacaoConsignada.valor_fechamento)}</p>
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </>
                 )}
