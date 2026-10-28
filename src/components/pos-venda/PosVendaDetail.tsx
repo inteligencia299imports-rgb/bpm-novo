@@ -4,7 +4,7 @@ import { getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard, FileText, Camera, Truck, CalendarIcon, CheckCircle2, Loader2, ThumbsUp, ThumbsDown, RotateCw } from 'lucide-react';
+import { ArrowLeft, User, Phone, MapPin, Bike, DollarSign, Store, MessageCircle, Tag, Eye, ClipboardList, Clock, AlertTriangle, ShieldAlert, IdCard, FileText, Camera, Truck, CalendarIcon, CheckCircle2, Loader2, ThumbsUp, ThumbsDown, RotateCw, Search } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { podeAprovarVenda, vendaLiberada, vendaAprovada, vendaRecusada } from '@/lib/aprovacaoVenda';
@@ -1130,7 +1130,30 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
 
           {/* Observações */}
-          <AtendimentoObservacoes idOperacao={item.id} />
+          <AtendimentoObservacoes idOperacao={item.id} larguraTotal={!(isIntermParte2 && motoConsignada)} />
+
+          {/* Resultado da Consulta - Intermediação Parte 2: 2ª linha, à direita das Observações */}
+          {isIntermParte2 && motoConsignada && (() => {
+            const resultado = String(motoConsignada.resultado_consulta || '').trim();
+            const atencao = resultado.includes('⚠️');
+            return (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    {resultado
+                      ? (atencao ? <AlertTriangle className="h-4 w-4 text-amber-600" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />)
+                      : <Search className="h-4 w-4 text-primary" />}
+                    Resultado da Consulta
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {resultado
+                    ? <p className="text-sm whitespace-pre-wrap break-words">{resultado}</p>
+                    : <p className="text-xs text-muted-foreground text-center py-4">Nenhuma consulta registrada</p>}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Histórico de Movimentações do atendimento */}
           <Card className="md:col-span-2">
