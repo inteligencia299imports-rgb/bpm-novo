@@ -50,6 +50,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const [chartByMonth, setChartByMonth] = useState<any[]>([]);
   const [motos, setMotos] = useState<any[]>([]);
   const [quitacoes, setQuitacoes] = useState<Map<string, Quitacao>>(new Map());
+  // Filtro de Quitação: só na listagem (os indicadores não dependem do financeiro).
+  const [filterQuitacao, setFilterQuitacao] = useState('todos');
   const [filterLoja, setFilterLojaState] = useState('todos');
   const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
 
@@ -61,6 +63,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     onRegisterClear?.(() => {
       setFilterLojaState('todos');
       setFilterTipoState('todos');
+      setFilterQuitacao('todos');
       onFilterChange?.('todos', 'todos');
       setDateFrom(undefined);
       setDateTo(undefined);
@@ -228,7 +231,13 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     servico: 'Serviço', indisponivel_manual: 'Indisponível',
   } as Record<string, string>)[s] || s;
 
-  const buildRows = () => motos.map((m: any) => {
+  const motosListados = useMemo(() => {
+    if (filterQuitacao === 'todos') return motos;
+    const escolhidos = filterQuitacao.split(',');
+    return motos.filter((m: any) => escolhidos.includes(quitacoes.get(m.id)?.status === 'quitado' ? 'quitada' : 'nao_quitada'));
+  }, [motos, quitacoes, filterQuitacao]);
+
+  const buildRows = () => motosListados.map((m: any) => {
     const cutoffDate = dateTo ?? new Date();
     const entrada = m.data_entrada ? new Date(m.data_entrada) : null;
     const dias = entrada ? Math.max(0, Math.floor((cutoffDate.getTime() - entrada.getTime()) / 86400000)) : 0;
@@ -335,6 +344,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         if (data.column.index === 14) {
           if (r.compra > 0) data.cell.styles.textColor = r.margemAbs >= 0 ? [58, 143, 106] : [220, 38, 38];
         }
+        if (data.column.index === 11 && r.quitacao) data.cell.styles.textColor = [58, 143, 106];
         if (data.column.index === 10) {
           const map: Record<string, [number, number, number]> = {
             'Disponível': [34, 153, 84],
@@ -376,6 +386,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       <div className={cn('flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center', showFilters ? 'flex' : 'hidden md:flex')}>
         <FiltroMultiplo value={filterLoja} onChange={setFilterLoja} opcoes={OPCOES_CIDADE} todosLabel="Todas Cidades" plural="cidades" />
         <FiltroMultiplo value={filterTipo} onChange={setFilterTipo} opcoes={[{ value: 'propria', label: 'Próprias' }, { value: 'consignada', label: 'Consignadas' }, { value: '0km', label: '0KM' }, { value: 'test_ride', label: 'Test-Ride' }]} todosLabel="Todos os Tipos" plural="tipos" />
+        <FiltroMultiplo value={filterQuitacao} onChange={setFilterQuitacao} opcoes={[{ value: 'quitada', label: 'Quitadas' }, { value: 'nao_quitada', label: 'Não quitadas' }]} todosLabel="Toda Quitação" plural="quitações" />
       </div>
 
 
@@ -437,12 +448,12 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       <section className={LISTAGEM_SECAO}>
       <div className="space-y-1 shrink-0">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-bold text-foreground">Motos em Estoque ({motos.length})</h2>
+          <h2 className="text-lg font-bold text-foreground">Motos em Estoque ({motosListados.length})</h2>
           <div className="flex items-center gap-1">
-            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportExcel} disabled={motos.length === 0} title="Baixar Excel">
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportExcel} disabled={motosListados.length === 0} title="Baixar Excel">
               <FileSpreadsheet className="h-4 w-4 text-[#3a8f6a]" />
             </Button>
-            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportPdf} disabled={motos.length === 0} title="Baixar PDF (paisagem)">
+            <Button size="icon" variant="outline" className="h-8 w-8" onClick={handleExportPdf} disabled={motosListados.length === 0} title="Baixar PDF (paisagem)">
               <FileDown className="h-4 w-4 text-red-600" />
             </Button>
           </div>
@@ -472,14 +483,14 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
               </TableRow>
             </TableHeader>
             <TableBody>
-              {motos.length === 0 ? (
+              {motosListados.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={15} className="text-center text-muted-foreground text-sm py-6">
                     Nenhuma moto encontrada com os filtros selecionados.
                   </TableCell>
                 </TableRow>
               ) : (
-                motos.map((m: any) => {
+                motosListados.map((m: any) => {
                   const cutoffDate = dateTo ?? new Date();
                   const entrada = m.data_entrada ? new Date(m.data_entrada) : null;
                   const dias = entrada ? Math.max(0, Math.floor((cutoffDate.getTime() - entrada.getTime()) / 86400000)) : 0;
@@ -523,7 +534,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                           ) : '—';
                         })()}
                       </TableCell>
-                      <TableCell className={cn('text-xs', quitacoes.get(m.id)?.status === 'em_aberto' && 'text-amber-600')}>{formatarQuitacao(quitacoes.get(m.id)) || '—'}</TableCell>
+                      <TableCell className={cn('text-xs', quitacoes.get(m.id)?.status === 'quitado' && 'text-[#3a8f6a] font-medium')}>{formatarQuitacao(quitacoes.get(m.id)) || '—'}</TableCell>
                       <TableCell className="text-xs text-right">{fmtBRL(preco)}</TableCell>
                       <TableCell className="text-xs text-right">{compra > 0 ? fmtBRL(compra) : '—'}</TableCell>
                       <TableCell className={cn('text-xs text-right font-medium', compra > 0 ? (margemAbs >= 0 ? 'text-[#3a8f6a]' : 'text-red-500') : 'text-muted-foreground')}>
