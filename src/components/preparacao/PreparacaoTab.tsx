@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada } from '@/lib/tipoAquisicao';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
-import { MARCA_MODELO_SELECT, flattenMarcaModelo, flattenMarcaModeloList } from '@/lib/marcaModelo';
+import { MARCA_MODELO_SELECT, flattenMarcaModeloList } from '@/lib/marcaModelo';
+import { carregarItemPreparacao } from '@/lib/preparacaoItem';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -40,15 +41,7 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
 
   useEffect(() => {
     if (initialAvaliacaoId) {
-      supabase.from('avaliacoes')
-        .select(`*, ${MARCA_MODELO_SELECT}, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, tipo_pessoa, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`)
-        .eq('id', initialAvaliacaoId).single().then(({ data: raw }) => {
-          const data = raw ? flattenMarcaModelo(raw as any) : raw;
-          if (data) {
-            const am = (data as any).atendimentos_motos;
-            setSelectedItem({ ...data, atendimento: { ...am, loja: am?.loja_empresas?.loja }, moto: data });
-          }
-        });
+      carregarItemPreparacao(initialAvaliacaoId).then((item) => { if (item) setSelectedItem(item); });
       onInitialHandled?.();
     }
   }, [initialAvaliacaoId]);

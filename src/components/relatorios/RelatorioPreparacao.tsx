@@ -22,6 +22,9 @@ import { getPreviousPeriod } from '@/lib/reportComparison';
 import { getCycleForDate, DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
 import { getXTickStyle } from '@/lib/chartAxis';
 import DeltaBadge from './DeltaBadge';
+import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
+import { carregarItemPreparacao } from '@/lib/preparacaoItem';
+import { toast } from 'sonner';
 
 interface Props {
   dateFrom: Date | undefined;
@@ -101,6 +104,8 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
   const chartH = isMobile ? 220 : 280;
 
   const [loading, setLoading] = useState(true);
+  // Pop-up de preparação aberto a partir da lista (mesmo dialog da aba Preparação).
+  const [prepItem, setPrepItem] = useState<any | null>(null);
   const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
   const [filterLoja, setFilterLojaState] = useState<string>('todos');
   const [rows, setRows] = useState<any[]>([]);
@@ -435,6 +440,12 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
     { value: 'consignada', label: 'Consignadas' },
   ];
 
+  const abrirPreparacao = async (avaliacaoId: string) => {
+    const item = await carregarItemPreparacao(avaliacaoId);
+    if (item) setPrepItem(item);
+    else toast.error('Não foi possível abrir a preparação desta moto.');
+  };
+
   return (
     <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       <Separator className="my-2" />
@@ -552,7 +563,7 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
                   ? { label: 'Estoque', hex: '#169d53' }
                   : { label: 'Ag. Liberar', hex: '#607D8B' };
                 return (
-                  <TableRow key={r.id}>
+                  <TableRow key={r.id} className="cursor-pointer" title="Abrir a preparação" onClick={() => abrirPreparacao(r.id)}>
                     <TableCell className="text-xs font-medium">{r.nomeCliente}</TableCell>
                     <TableCell className="text-xs max-w-[220px] truncate" title={r.modelo}>{r.modelo}</TableCell>
                     <TableCell className="text-xs font-mono">{(r.placa || '').replace(/-/g, '')}</TableCell>
@@ -586,6 +597,17 @@ const RelatorioPreparacao: React.FC<Props> = ({ dateFrom, dateTo, setDateFrom, s
         </CardContent>
       </Card>
       </section>
+
+      {prepItem && (
+        <PreparacaoProcessoDialog
+          open={!!prepItem}
+          onOpenChange={(open) => { if (!open) { setPrepItem(null); loadData(); } }}
+          avaliacaoId={prepItem.id}
+          currentStatus={prepItem.preparacao_status || 'em_aberto'}
+          avaliacaoData={prepItem}
+          onStatusChanged={() => { setPrepItem(null); loadData(); }}
+        />
+      )}
     </div>
   );
 };

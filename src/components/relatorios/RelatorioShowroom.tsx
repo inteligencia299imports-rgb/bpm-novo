@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, AreaChart, Area, ComposedChart } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { abrirEmNovaGuia } from '@/lib/abrirEmNovaGuia';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -239,7 +240,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       .map((a) => {
         const m = computeRowMetrics(a, indexes, 'venda');
         return {
-          nomeCliente: a.nome_cliente, loja: a.loja, vendedor: indexes.nomeByUser.get(a.vendedor_id || '') || '-',
+          atendimentoId: a.id, nomeCliente: a.nome_cliente, loja: a.loja, vendedor: indexes.nomeByUser.get(a.vendedor_id || '') || '-',
           tipo: m.tipo, modelo: m.modelo, placa: m.placa, dataVenda: indexes.estoqueByAtendVenda.get(a.id)?.data_venda,
           quantoVende: m.quantoVende, valorFechamento: m.valorFechamento,
           margemPrevista: m.margemPrevista, pctMargemPrevista: m.pctMargemPrevista,
@@ -256,7 +257,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
       .map((a) => {
         const m = computeRowMetrics(a, indexes, 'sinal');
         return {
-          nomeCliente: a.nome_cliente, loja: a.loja, vendedor: indexes.nomeByUser.get(a.vendedor_id || '') || '-',
+          atendimentoId: a.id, nomeCliente: a.nome_cliente, loja: a.loja, vendedor: indexes.nomeByUser.get(a.vendedor_id || '') || '-',
           tipo: m.tipo, modelo: m.modelo, placa: m.placa, dataSinal: a.created_at,
           quantoVende: m.quantoVende, valorFechamento: m.valorFechamento,
           margemPrevista: m.margemPrevista, pctMargemPrevista: m.pctMargemPrevista,
@@ -601,7 +602,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                     {motosVendidas.length === 0 ? (
                       <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">Nenhuma moto vendida encontrada</TableCell></TableRow>
                     ) : motosVendidas.map((m: any, i: number) => (
-                      <TableRow key={i}>
+                      <TableRow key={i} className="cursor-pointer" title="Abrir a venda em nova guia" onClick={() => abrirEmNovaGuia('showroom', { atendimento: m.atendimentoId })}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
                         <TableCell className="text-xs">{m.vendedor}</TableCell>
                         <TableCell className="text-xs font-medium">{lojaLabel(m.loja)}</TableCell>
@@ -647,7 +648,7 @@ const RelatorioShowroom: React.FC<RelatorioShowroomProps> = ({ dateFrom, dateTo,
                     {motosSinal.length === 0 ? (
                       <TableRow><TableCell colSpan={14} className="text-center text-muted-foreground py-8">Nenhuma moto com sinal encontrada</TableCell></TableRow>
                     ) : motosSinal.map((m: any, i: number) => (
-                      <TableRow key={i}>
+                      <TableRow key={i} className="cursor-pointer" title="Abrir a venda em nova guia" onClick={() => abrirEmNovaGuia('showroom', { atendimento: m.atendimentoId })}>
                         <TableCell className="text-xs">{m.nomeCliente}</TableCell>
                         <TableCell className="text-xs">{m.vendedor}</TableCell>
                         <TableCell className="text-xs font-medium">{lojaLabel(m.loja)}</TableCell>

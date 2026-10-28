@@ -47,7 +47,10 @@ const Dashboard = () => {
   const [initialAtendimentoId, setInitialAtendimentoId] = useState<string | null>(
     urlTabValida && urlAtendimento && ATENDIMENTO_KEYED_TABS.has(urlTab as string) ? urlAtendimento : null,
   );
-  const [initialAvaliacaoId, setInitialAvaliacaoId] = useState<string | null>(null);
+  // ?avaliacao=<id> abre direto a avaliação (links dos Relatórios em nova guia).
+  const [initialAvaliacaoId, setInitialAvaliacaoId] = useState<string | null>(
+    urlTabValida && AVALIACAO_KEYED_TABS.has(urlTab as string) ? searchParams.get('avaliacao') : null,
+  );
   const [initialParte, setInitialParte] = useState<'parte1' | 'parte2' | null>(
     (searchParams.get('parte') as 'parte1' | 'parte2' | null) || null,
   );
@@ -62,12 +65,18 @@ const Dashboard = () => {
   // Deep link de entrada por atendimento_id em aba organizada por avaliação:
   // resolve a avaliação correspondente uma única vez, ao montar.
   useEffect(() => {
-    if (urlTabValida && AVALIACAO_KEYED_TABS.has(urlTab as string) && urlAtendimento) {
+    if (urlTabValida && AVALIACAO_KEYED_TABS.has(urlTab as string) && urlAtendimento && !searchParams.get('avaliacao')) {
       supabase.from('avaliacoes').select('id')
         .eq('atendimento_id', urlAtendimento)
         .order('created_at', { ascending: false })
         .limit(1).maybeSingle()
         .then(({ data }) => { if (data?.id) setInitialAvaliacaoId(data.id); });
+    }
+    // ?avaliacao= só serve pra abrir na entrada — a aba volta a sincronizar a URL por atendimento.
+    if (searchParams.get('avaliacao')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('avaliacao');
+      setSearchParams(next, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -87,6 +96,7 @@ const Dashboard = () => {
     const next = new URLSearchParams(searchParams);
     next.set('tab', tab);
     next.delete('atendimento');
+    next.delete('avaliacao');
     next.delete('parte');
     setSearchParams(next, { replace: true });
   };

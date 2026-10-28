@@ -12,6 +12,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { abrirEmNovaGuia } from '@/lib/abrirEmNovaGuia';
 import { getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { getPreviousPeriod } from '@/lib/reportComparison';
 import { getCycleForDate, DATA_INICIO_RELATORIOS } from '@/lib/reportCycle';
@@ -623,7 +624,7 @@ const RelatorioAvaliacoes: React.FC<RelatorioAvaliacoesProps> = ({ dateFrom, dat
                 {motosAdquiridas.length === 0 ? (
                   <TableRow><TableCell colSpan={13} className="text-center text-muted-foreground py-8">Nenhuma moto adquirida encontrada</TableCell></TableRow>
                 ) : motosAdquiridas.map((m) => (
-                  <TableRow key={m.id}>
+                  <TableRow key={m.id} className="cursor-pointer" title="Abrir a avaliação em nova guia" onClick={() => abrirEmNovaGuia('avaliacoes', { avaliacao: m.id })}>
                     <TableCell className="text-xs">{m.cliente}</TableCell>
                     <TableCell className="text-xs">{abbreviateName(m.avaliador)}</TableCell>
                     <TableCell className="text-xs font-medium">{lojaLabel(m.loja)}</TableCell>
