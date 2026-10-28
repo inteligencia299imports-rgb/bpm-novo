@@ -715,7 +715,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               tipo_aquisicao: 'propria',
               aprovacao_status: 'aprovada',
             };
-            if (fechamento > 0) avUpdate.valor_fechamento = fechamento;
+            // Várias motos na troca: cada uma mantém o próprio fechamento (definido no
+            // contrato) — o valor do pop-up é a soma e não pode ir pra cada avaliação.
+            if (fechamento > 0 && motosAvaliacao.length === 1) avUpdate.valor_fechamento = fechamento;
             estoquePromises.push(supabase.from('avaliacoes').update(avUpdate).eq('id', av.id).then(r => r));
           }
         }
@@ -1517,14 +1519,15 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         const freshVenda = freshEstoque?.valor_venda ?? atendimento.valor_venda;
                         // Fetch valor_fechamento: first from avaliacoes, fallback to contratos
                         let freshFechamento: number | null = freshContrato?.valor_fechamento ?? null;
+                        // Troca com várias motos: o fechamento é a soma das avaliações.
                         if (motosAvaliacao.length > 0) {
-                          const firstMotoId = motosAvaliacao[0].id;
-                          const av = avaliacoes[firstMotoId];
-                          if (av) {
-                            const { data: freshAv } = await supabase.from('avaliacoes').select('valor_fechamento').eq('id', av.id).maybeSingle();
-                            const avFechamento = freshAv?.valor_fechamento ?? av.valor_fechamento ?? null;
-                            if (avFechamento) freshFechamento = avFechamento;
-                          }
+                          const ids = motosAvaliacao.map((m) => m.id);
+                          const { data: freshAvs } = await supabase.from('avaliacoes').select('id, valor_fechamento').in('id', ids);
+                          const somaFechamento = ids.reduce((s, id) => {
+                            const fresh = (freshAvs || []).find((a: any) => a.id === id) as any;
+                            return s + Number(fresh?.valor_fechamento ?? avaliacoes[id]?.valor_fechamento ?? 0);
+                          }, 0);
+                          if (somaFechamento) freshFechamento = somaFechamento;
                         }
                         setValorPopup({ valorSinal: toInput(freshSinal), valorVenda: toInput(freshVenda), valorFechamento: toInput(freshFechamento), modo: btn.value as 'sinal' | 'vendido' });
                       } else if (btn.value === 'pendente' || btn.value === 'perdido') {
@@ -1682,13 +1685,17 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
               <>
                 {atendimento.interesse === 'trocar' && (
                   <div>
-                    <label className="text-sm font-medium text-foreground">Valor de Fechamento da Moto do Cliente (R$)</label>
+                    <label className="text-sm font-medium text-foreground">
+                      {motosAvaliacao.length > 1 ? 'Valor de Fechamento das Motos do Cliente (soma, R$)' : 'Valor de Fechamento da Moto do Cliente (R$)'}
+                    </label>
                     <div className="relative mt-1">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                       <Input
                         className="pl-10"
                         placeholder="0,00"
                         value={valorPopup?.valorFechamento || ''}
+                        // Com várias motos o fechamento de cada uma é editado no contrato.
+                        disabled={motosAvaliacao.length > 1}
                         onChange={(e) => {
                           const formatted = formatCurrencyInput(e.target.value);
                           setValorPopup(prev => prev ? { ...prev, valorFechamento: formatted } : null);

@@ -1,5 +1,16 @@
 import jsPDF from 'jspdf';
 
+/** Moto que entra como parte do pagamento (troca). */
+interface ContratoTrocaPdf {
+  marca: string;
+  modelo: string;
+  anoFabMod: string;
+  placaChassi: string;
+  km: string;
+  valorQuitacao: string;
+  valorNegociado: string;
+}
+
 interface ContratoPdfData {
   // Template selection
   loja: string;
@@ -40,16 +51,10 @@ interface ContratoPdfData {
   ipvaTipo?: string | null;
   ipvaCotas?: string | null;
   
-  // Moto troca (optional)
-  troca?: {
-    marca: string;
-    modelo: string;
-    anoFabMod: string;
-    placaChassi: string;
-    km: string;
-    valorQuitacao: string;
-    valorNegociado: string;
-  };
+  // Moto troca (optional). `trocas` = todas as motos que entram como parte do
+  // pagamento; `troca` = a primeira (usada nas cláusulas que citam a moto).
+  troca?: ContratoTrocaPdf;
+  trocas?: ContratoTrocaPdf[];
   
   // Formas de pagamento (besides troca)
   formasPagamento: {
@@ -485,28 +490,29 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
   doc.text(', pagos da seguinte forma:', marginLeft + vtLabelW + vtValW, y);
   y += lineHeight + sectionGap;
   
-  // Moto troca
-  if (data.troca) {
+  // Moto(s) na troca — uma seção por moto ("Moto na Troca 1:", "Moto na Troca 2:"...).
+  const motosTroca = data.trocas?.length ? data.trocas : (data.troca ? [data.troca] : []);
+  motosTroca.forEach((troca, idx) => {
     checkPageBreak(lineHeight);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(fontSize);
-    doc.text('Moto na Troca:', marginLeft, y); y += lineHeight;
+    doc.text(motosTroca.length > 1 ? `Moto na Troca ${idx + 1}:` : 'Moto na Troca:', marginLeft, y); y += lineHeight;
     setNormal();
     checkPageBreak(lineHeight);
-    doc.text(`Marca: ${data.troca.marca}`, marginLeft + 5, y); y += lineHeight;
+    doc.text(`Marca: ${troca.marca}`, marginLeft + 5, y); y += lineHeight;
     checkPageBreak(lineHeight);
-    doc.text(`Modelo: ${data.troca.modelo}`, marginLeft + 5, y); y += lineHeight;
+    doc.text(`Modelo: ${troca.modelo}`, marginLeft + 5, y); y += lineHeight;
     checkPageBreak(lineHeight);
-    doc.text(`Fab/Mod: ${data.troca.anoFabMod}`, marginLeft + 5, y); y += lineHeight;
+    doc.text(`Fab/Mod: ${troca.anoFabMod}`, marginLeft + 5, y); y += lineHeight;
     checkPageBreak(lineHeight);
-    doc.text(`Placa/Chassi: ${data.troca.placaChassi}`, marginLeft + 5, y); y += lineHeight;
+    doc.text(`Placa/Chassi: ${troca.placaChassi}`, marginLeft + 5, y); y += lineHeight;
     checkPageBreak(lineHeight);
-    doc.text(`Km: ${data.troca.km}`, marginLeft + 5, y); y += lineHeight;
+    doc.text(`Km: ${troca.km}`, marginLeft + 5, y); y += lineHeight;
     checkPageBreak(lineHeight);
-    doc.text(`Valor de Quitação: ${data.troca.valorQuitacao}`, marginLeft + 5, y); y += lineHeight;
+    doc.text(`Valor de Quitação: ${troca.valorQuitacao}`, marginLeft + 5, y); y += lineHeight;
     checkPageBreak(lineHeight);
-    doc.text(`Valor Negociado: ${data.troca.valorNegociado}`, marginLeft + 5, y); y += lineHeight + sectionGap;
-  }
+    doc.text(`Valor Negociado: ${troca.valorNegociado}`, marginLeft + 5, y); y += lineHeight + sectionGap;
+  });
   
   // Formas de pagamento
   for (const forma of data.formasPagamento) {

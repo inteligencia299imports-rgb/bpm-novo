@@ -11,7 +11,8 @@ import PhotoUpload from './PhotoUpload';
 import PlacaInput from '@/components/shared/PlacaInput';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Bike } from 'lucide-react';
+import { Bike, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   marcaId: string; setMarcaId: (v: string) => void;
@@ -35,6 +36,10 @@ interface Props {
   isEditing?: boolean;
   /** Com CRLV anexado: marca, modelo, anos e placa ficam travados. */
   crlvBloqueado?: boolean;
+  /** Troca com várias motos: número da moto no título ("Moto do Cliente 2"). */
+  numero?: number;
+  /** Mostra o botão de remover esta moto (moto extra da troca). */
+  onRemover?: () => void;
 }
 
 const MotoVendaSection: React.FC<Props> = ({
@@ -45,7 +50,7 @@ const MotoVendaSection: React.FC<Props> = ({
   manutencaoEmDia, setManutencaoEmDia,
   temAcessorios, setTemAcessorios, acessoriosDescricao, setAcessoriosDescricao,
   observacoes, setObservacoes,
-  motoAvaliacaoId, atendimentoId, interesse, isEditing, crlvBloqueado,
+  motoAvaliacaoId, atendimentoId, interesse, isEditing, crlvBloqueado, numero, onRemover,
 }) => {
   const { marcas, getModelosByMarcaId, loading } = useMarcasModelos();
   const modelos = getModelosByMarcaId(marcaId);
@@ -63,7 +68,12 @@ const MotoVendaSection: React.FC<Props> = ({
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Bike className="h-4 w-4 text-primary" /> Moto do Cliente ({interesse === 'trocar' ? 'Troca' : 'Venda'})
+          <Bike className="h-4 w-4 text-primary" /> Moto do Cliente{numero ? ` ${numero}` : ''} ({interesse === 'trocar' ? 'Troca' : 'Venda'})
+          {onRemover && (
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 ml-auto text-destructive hover:text-destructive" onClick={onRemover} title="Remover esta moto da troca">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { ArrowLeft, Save, Loader2, SendHorizonal, CheckCircle, Briefcase, User, Building2, Search, UserPlus, ClipboardList, FileText } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, SendHorizonal, CheckCircle, Briefcase, User, Building2, Search, UserPlus, ClipboardList, FileText, Plus } from 'lucide-react';
 import { LOJAS, INTERESSES, TEMPERATURAS, ORIGENS, UFS, TIPOS_ATENDIMENTO, SEXOS } from '@/types/crm';
 import type { Interesse, SituacaoShowroom } from '@/types/crm';
 import MotoVendaSection from './MotoVendaSection';
@@ -74,6 +74,42 @@ interface Props {
   atendimentoId: string | null;
   onClose: () => void;
 }
+
+/** Moto do cliente no formulário (uma avaliação). Sim/Não guardados como 'sim' | 'nao' | ''. */
+interface MotoCliente {
+  key: string;
+  avaliacaoId: string | null;
+  marcaId: string; modeloId: string; anoFab: string; anoMod: string;
+  categoria: string; cor: string; placa: string; km: string; cilindrada: string; obs: string;
+  temManual: string; temChaveReserva: string; manutencaoEmDia: string;
+  temAcessorios: string; acessoriosDescricao: string;
+  crlvUrl: string | null;
+  enviada: boolean;
+}
+
+const novaMotoCliente = (): MotoCliente => ({
+  key: Math.random().toString(36).slice(2),
+  avaliacaoId: null,
+  marcaId: '', modeloId: '', anoFab: '', anoMod: '', categoria: '', cor: '', placa: '', km: '', cilindrada: '', obs: '',
+  temManual: '', temChaveReserva: '', manutencaoEmDia: '', temAcessorios: '', acessoriosDescricao: '',
+  crlvUrl: null, enviada: false,
+});
+
+const simNao = (v: boolean | null | undefined) => (v ? 'sim' : v === false ? 'nao' : '');
+
+const motoClienteDaAvaliacao = (ma: any): MotoCliente => ({
+  key: ma.id,
+  avaliacaoId: ma.id,
+  marcaId: ma.marca_id || '', modeloId: ma.modelo_id || '',
+  anoFab: ma.ano_fabricacao || '', anoMod: ma.ano_modelo || '',
+  categoria: ma.categoria || '', cor: ma.cor || '', placa: ma.placa || '', km: ma.km || '',
+  cilindrada: ma.cilindrada || '', obs: ma.observacoes || '',
+  temManual: simNao(ma.tem_manual), temChaveReserva: simNao(ma.tem_chave_reserva),
+  manutencaoEmDia: simNao(ma.manutencao_vencida), temAcessorios: simNao(ma.tem_acessorios),
+  acessoriosDescricao: ma.acessorios_descricao || '',
+  crlvUrl: ma.crlv_url || null,
+  enviada: !!ma.enviada_avaliacao,
+});
 
 const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const { user, userName, lojaPrincipal, ufPrincipal } = useAuth();
@@ -290,25 +326,12 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   const [estoqueTipo, setEstoqueTipo] = useState('');
   const [chassi, setChassi] = useState('');
 
-  // venda
-  const [vendaMarcaId, setVendaMarcaId] = useState('');
-  const [vendaModeloId, setVendaModeloId] = useState('');
-  const [vendaAnoFab, setVendaAnoFab] = useState('');
-  const [vendaAnoMod, setVendaAnoMod] = useState('');
-  const [vendaCategoria, setVendaCategoria] = useState('');
-  const [vendaCor, setVendaCor] = useState('');
-  const [vendaPlaca, setVendaPlaca] = useState('');
-  const [vendaKm, setVendaKm] = useState('');
-  const [vendaCilindrada, setVendaCilindrada] = useState('');
-  const [vendaObs, setVendaObs] = useState('');
-  const [temManual, setTemManual] = useState('');
-  const [temChaveReserva, setTemChaveReserva] = useState('');
-  const [manutencaoEmDia, setManutencaoEmDia] = useState('');
-  const [temAcessorios, setTemAcessorios] = useState('');
-  const [acessoriosDescricao, setAcessoriosDescricao] = useState('');
-  const [motoAvaliacaoId, setMotoAvaliacaoId] = useState<string | null>(null);
-  const [vendaCrlvUrl, setVendaCrlvUrl] = useState<string | null>(null);
-  const [enviadaAvaliacao, setEnviadaAvaliacao] = useState(false);
+  // Moto(s) do cliente (venda/troca) — cada uma vira uma avaliação do atendimento.
+  // Venda: uma moto. Troca: uma ou mais motos como parte do pagamento.
+  const [motosCliente, setMotosCliente] = useState<MotoCliente[]>([novaMotoCliente()]);
+  const [motosRemovidas, setMotosRemovidas] = useState<string[]>([]);
+  const setCampoMoto = (idx: number, campo: keyof MotoCliente) => (v: string) =>
+    setMotosCliente((prev) => prev.map((m, i) => (i === idx ? { ...m, [campo]: v } : m)));
   const [vendedorId, setVendedorId] = useState<string>('');
   const [vendedores, setVendedores] = useState<{ id: string; nome: string }[]>([]);
 
@@ -381,27 +404,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           }
         }
         if (at?.interesse === 'vender' || at?.interesse === 'trocar') {
-          const { data: ma } = await supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimentoId).maybeSingle();
-          if (ma) {
-            setMotoAvaliacaoId(ma.id);
-            setVendaMarcaId((ma as any).marca_id || '');
-            setVendaModeloId((ma as any).modelo_id || '');
-            setVendaAnoFab(ma.ano_fabricacao || '');
-            setVendaAnoMod(ma.ano_modelo || '');
-            setVendaCategoria(ma.categoria || '');
-            setVendaCor(ma.cor || '');
-            setVendaPlaca(ma.placa || '');
-            setVendaKm(ma.km || '');
-            setVendaCilindrada((ma as any).cilindrada || '');
-            setVendaObs(ma.observacoes || '');
-            setTemManual((ma as any).tem_manual ? 'sim' : (ma as any).tem_manual === false ? 'nao' : '');
-            setTemChaveReserva((ma as any).tem_chave_reserva ? 'sim' : (ma as any).tem_chave_reserva === false ? 'nao' : '');
-            setManutencaoEmDia((ma as any).manutencao_vencida ? 'sim' : (ma as any).manutencao_vencida === false ? 'nao' : '');
-            setTemAcessorios((ma as any).tem_acessorios ? 'sim' : (ma as any).tem_acessorios === false ? 'nao' : '');
-            setAcessoriosDescricao((ma as any).acessorios_descricao || '');
-            setEnviadaAvaliacao(ma.enviada_avaliacao || false);
-            setVendaCrlvUrl((ma as any).crlv_url || null);
-          }
+          // Troca pode ter várias motos do cliente (uma avaliação cada), na ordem de cadastro.
+          const { data: mas } = await supabase.from('avaliacoes').select('*').eq('atendimento_id', atendimentoId).order('created_at', { ascending: true });
+          if (mas && mas.length > 0) setMotosCliente((mas as any[]).map(motoClienteDaAvaliacao));
         }
       } catch (err) {
         console.error('Erro ao carregar atendimento:', err);
@@ -658,17 +663,23 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       toast.error('Preencha todos os campos da Moto de Interesse');
       return;
     }
-    if ((interesse === 'vender' || interesse === 'trocar') && (!vendaMarcaId || !vendaModeloId || !vendaAnoFab || !vendaAnoMod || !vendaCategoria || !vendaCor || !vendaPlaca.trim() || !vendaKm.trim() || !vendaCilindrada.trim())) {
-      toast.error('Preencha todos os campos da Moto do Cliente');
-      return;
-    }
-    if ((interesse === 'vender' || interesse === 'trocar') && (!temManual || !temChaveReserva || !manutencaoEmDia || !temAcessorios)) {
-      toast.error('Informe Manual, Chave Reserva, Revisão Vencida e Acessórios');
-      return;
-    }
-    if ((interesse === 'vender' || interesse === 'trocar') && temAcessorios === 'sim' && !acessoriosDescricao.trim()) {
-      toast.error('Informe quais acessórios a moto possui');
-      return;
+    if (interesse === 'vender' || interesse === 'trocar') {
+      const motosValidar = interesse === 'vender' ? motosCliente.slice(0, 1) : motosCliente;
+      for (const [i, m] of motosValidar.entries()) {
+        const qual = motosValidar.length > 1 ? ` (moto ${i + 1})` : '';
+        if (!m.marcaId || !m.modeloId || !m.anoFab || !m.anoMod || !m.categoria || !m.cor || !m.placa.trim() || !m.km.trim() || !m.cilindrada.trim()) {
+          toast.error(`Preencha todos os campos da Moto do Cliente${qual}`);
+          return;
+        }
+        if (!m.temManual || !m.temChaveReserva || !m.manutencaoEmDia || !m.temAcessorios) {
+          toast.error(`Informe Manual, Chave Reserva, Revisão Vencida e Acessórios${qual}`);
+          return;
+        }
+        if (m.temAcessorios === 'sim' && !m.acessoriosDescricao.trim()) {
+          toast.error(`Informe quais acessórios a moto possui${qual}`);
+          return;
+        }
+      }
     }
     // Placa fora do padrao (7 caracteres / formato) nao bloqueia o salvamento --
     // apenas destaca o campo em vermelho (ver PlacaInput / MotoVendaSection).
@@ -805,39 +816,46 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
     // Save moto avaliacao
     if (interesse === 'vender' || interesse === 'trocar') {
-      if (vendaMarcaId && vendaModeloId) {
+      // Motos extras removidas no formulário (só as ainda não enviadas p/ avaliação).
+      if (motosRemovidas.length > 0) {
+        await supabase.from('avaliacoes').delete().in('id', motosRemovidas);
+      }
+      const motosSalvar = interesse === 'vender' ? motosCliente.slice(0, 1) : motosCliente;
+      for (const m of motosSalvar) {
+        if (!m.marcaId || !m.modeloId) continue;
         const maData: any = {
           atendimento_id: atId!,
-          marca_id: vendaMarcaId, modelo_id: vendaModeloId,
-          ano_fabricacao: vendaAnoFab || null, ano_modelo: vendaAnoMod || null,
-          categoria: vendaCategoria || null, cor: vendaCor || null,
-          placa: vendaPlaca || null, km: vendaKm || null,
-          cilindrada: vendaCilindrada || null,
-          observacoes: vendaObs.trim() || null,
-          tem_manual: temManual === 'sim',
-          tem_chave_reserva: temChaveReserva === 'sim',
-          manutencao_vencida: manutencaoEmDia === 'sim',
-          tem_acessorios: temAcessorios === 'sim',
-          acessorios_descricao: temAcessorios === 'sim' ? (acessoriosDescricao.trim() || null) : null,
+          marca_id: m.marcaId, modelo_id: m.modeloId,
+          ano_fabricacao: m.anoFab || null, ano_modelo: m.anoMod || null,
+          categoria: m.categoria || null, cor: m.cor || null,
+          placa: m.placa || null, km: m.km || null,
+          cilindrada: m.cilindrada || null,
+          observacoes: m.obs.trim() || null,
+          tem_manual: m.temManual === 'sim',
+          tem_chave_reserva: m.temChaveReserva === 'sim',
+          manutencao_vencida: m.manutencaoEmDia === 'sim',
+          tem_acessorios: m.temAcessorios === 'sim',
+          acessorios_descricao: m.temAcessorios === 'sim' ? (m.acessoriosDescricao.trim() || null) : null,
         };
-        if (motoAvaliacaoId) {
+        if (m.avaliacaoId) {
           // Com CRLV anexado, os dados extraídos do documento são imutáveis.
-          if (vendaCrlvUrl) {
+          if (m.crlvUrl) {
             delete maData.marca_id;
             delete maData.modelo_id;
             delete maData.ano_fabricacao;
             delete maData.ano_modelo;
             delete maData.placa;
           }
-          await supabase.from('avaliacoes').update(maData).eq('id', motoAvaliacaoId);
+          await supabase.from('avaliacoes').update(maData).eq('id', m.avaliacaoId);
         } else {
           await supabase.from('avaliacoes').insert({ ...maData, enviada_avaliacao: false });
         }
       }
     } else if (isEditing && interesse === 'comprar') {
-      // Se mudou para "comprar", remover moto do cliente (avaliação) existente
-      if (motoAvaliacaoId) {
-        await supabase.from('avaliacoes').delete().eq('id', motoAvaliacaoId);
+      // Se mudou para "comprar", remover moto(s) do cliente (avaliações) existentes
+      const ids = [...motosCliente.map((m) => m.avaliacaoId).filter(Boolean) as string[], ...motosRemovidas];
+      if (ids.length > 0) {
+        await supabase.from('avaliacoes').delete().in('id', ids);
       }
     }
 
@@ -846,7 +864,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
     onClose();
   };
 
-  const handleEnviarAvaliacao = async () => {
+  const handleEnviarAvaliacao = async (motoAvaliacaoId: string | null) => {
     if (!motoAvaliacaoId) {
       toast.error('Salve o atendimento primeiro');
       return;
@@ -872,7 +890,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         _entity_id: atendimentoId,
         _entity_type: 'avaliacao',
       });
-      setEnviadaAvaliacao(true);
+      setMotosCliente((prev) => prev.map((m) => (m.avaliacaoId === motoAvaliacaoId ? { ...m, enviada: true } : m)));
       toast.success('Moto enviada para avaliação!');
     }
   };
@@ -1205,41 +1223,64 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
       {(interesse === 'vender' || interesse === 'trocar') && (
         <>
-          <MotoVendaSection
-            marcaId={vendaMarcaId} setMarcaId={setVendaMarcaId}
-            modeloId={vendaModeloId} setModeloId={setVendaModeloId}
-            anoFab={vendaAnoFab} setAnoFab={setVendaAnoFab}
-            anoMod={vendaAnoMod} setAnoMod={setVendaAnoMod}
-            categoria={vendaCategoria} setCategoria={setVendaCategoria}
-            cor={vendaCor} setCor={setVendaCor}
-            placa={vendaPlaca} setPlaca={setVendaPlaca}
-            km={vendaKm} setKm={setVendaKm}
-            cilindrada={vendaCilindrada} setCilindrada={setVendaCilindrada}
-            temManual={temManual} setTemManual={setTemManual}
-            temChaveReserva={temChaveReserva} setTemChaveReserva={setTemChaveReserva}
-            manutencaoEmDia={manutencaoEmDia} setManutencaoEmDia={setManutencaoEmDia}
-            temAcessorios={temAcessorios} setTemAcessorios={setTemAcessorios}
-            acessoriosDescricao={acessoriosDescricao} setAcessoriosDescricao={setAcessoriosDescricao}
-            observacoes={vendaObs} setObservacoes={setVendaObs}
-            motoAvaliacaoId={motoAvaliacaoId}
-            atendimentoId={atendimentoId}
-            interesse={interesse}
-            isEditing={isEditing}
-            crlvBloqueado={!!vendaCrlvUrl}
-          />
-          {!isEditing && motoAvaliacaoId && !enviadaAvaliacao && (
+          {(interesse === 'vender' ? motosCliente.slice(0, 1) : motosCliente).map((m, idx) => (
+            <React.Fragment key={m.key}>
+              <MotoVendaSection
+                marcaId={m.marcaId} setMarcaId={setCampoMoto(idx, 'marcaId')}
+                modeloId={m.modeloId} setModeloId={setCampoMoto(idx, 'modeloId')}
+                anoFab={m.anoFab} setAnoFab={setCampoMoto(idx, 'anoFab')}
+                anoMod={m.anoMod} setAnoMod={setCampoMoto(idx, 'anoMod')}
+                categoria={m.categoria} setCategoria={setCampoMoto(idx, 'categoria')}
+                cor={m.cor} setCor={setCampoMoto(idx, 'cor')}
+                placa={m.placa} setPlaca={setCampoMoto(idx, 'placa')}
+                km={m.km} setKm={setCampoMoto(idx, 'km')}
+                cilindrada={m.cilindrada} setCilindrada={setCampoMoto(idx, 'cilindrada')}
+                temManual={m.temManual} setTemManual={setCampoMoto(idx, 'temManual')}
+                temChaveReserva={m.temChaveReserva} setTemChaveReserva={setCampoMoto(idx, 'temChaveReserva')}
+                manutencaoEmDia={m.manutencaoEmDia} setManutencaoEmDia={setCampoMoto(idx, 'manutencaoEmDia')}
+                temAcessorios={m.temAcessorios} setTemAcessorios={setCampoMoto(idx, 'temAcessorios')}
+                acessoriosDescricao={m.acessoriosDescricao} setAcessoriosDescricao={setCampoMoto(idx, 'acessoriosDescricao')}
+                observacoes={m.obs} setObservacoes={setCampoMoto(idx, 'obs')}
+                motoAvaliacaoId={m.avaliacaoId}
+                atendimentoId={atendimentoId}
+                interesse={interesse}
+                isEditing={isEditing}
+                crlvBloqueado={!!m.crlvUrl}
+                numero={interesse === 'trocar' && motosCliente.length > 1 ? idx + 1 : undefined}
+                // Moto extra da troca ainda não enviada p/ avaliação pode sair do atendimento.
+                onRemover={idx > 0 && !m.enviada ? () => {
+                  if (m.avaliacaoId) setMotosRemovidas((prev) => [...prev, m.avaliacaoId!]);
+                  setMotosCliente((prev) => prev.filter((x) => x.key !== m.key));
+                } : undefined}
+              />
+              {!isEditing && m.avaliacaoId && !m.enviada && (
+                <div className="flex justify-end">
+                  <Button variant="default" className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => handleEnviarAvaliacao(m.avaliacaoId)}>
+                    <SendHorizonal className="h-4 w-4" /> Enviar para Avaliação
+                  </Button>
+                </div>
+              )}
+              {m.enviada && (
+                <Card className="border-success/30 bg-success/5">
+                  <CardContent className="py-3 text-sm text-success font-medium text-center">
+                    ✓ Moto enviada para avaliação
+                  </CardContent>
+                </Card>
+              )}
+            </React.Fragment>
+          ))}
+          {interesse === 'trocar' && (
             <div className="flex justify-end">
-              <Button variant="default" className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90" onClick={handleEnviarAvaliacao}>
-                <SendHorizonal className="h-4 w-4" /> Enviar para Avaliação
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-2"
+                disabled={isEditing && (situacao === 'sinal' || situacao === 'vendido')}
+                onClick={() => setMotosCliente((prev) => [...prev, novaMotoCliente()])}
+              >
+                <Plus className="h-4 w-4" /> Adicionar outra moto na troca
               </Button>
             </div>
-          )}
-          {enviadaAvaliacao && (
-            <Card className="border-success/30 bg-success/5">
-              <CardContent className="py-3 text-sm text-success font-medium text-center">
-                ✓ Moto enviada para avaliação
-              </CardContent>
-            </Card>
           )}
         </>
       )}
