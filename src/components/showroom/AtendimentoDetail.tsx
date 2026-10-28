@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ArrowRight, Edit, Phone, MapPin, Tag, User, Thermometer, Store, Calendar as CalendarIcon, Bike, FileText, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil, Truck, RotateCw, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Edit, Phone, MapPin, Tag, User, Thermometer, Store, Calendar as CalendarIcon, Bike, FileText, Camera, Send, Sparkles, DollarSign, XCircle, Clock, Eye, Search, CheckCircle2, Loader2, Pencil, Truck, RotateCw, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import WhatsAppIcon from '@/components/shared/WhatsAppIcon';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -102,6 +102,9 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
   const { user, userName, role } = useAuth();
   const [motosInteresse, setMotosInteresse] = useState<MotoInteresse[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<Avaliacao[]>([]);
+  // Troca com várias motos: o card Moto do Cliente mostra uma por vez (voltar/próxima).
+  const [motoClienteIdx, setMotoClienteIdx] = useState(0);
+  const motoClienteAtual = Math.min(motoClienteIdx, Math.max(motosAvaliacao.length - 1, 0));
   const [avaliacoes, setAvaliacoes] = useState<Record<string, any>>({});
   const [estoqueData, setEstoqueData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
@@ -1166,6 +1169,19 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
                     <Tag className="h-4 w-4 text-primary" /> Moto do Cliente
+                    {motosAvaliacao.length > 1 && (
+                      <span className="flex items-center gap-0.5">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" title="Moto anterior" aria-label="Moto anterior"
+                          disabled={motoClienteAtual === 0} onClick={() => setMotoClienteIdx(motoClienteAtual - 1)}>
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-xs font-normal text-muted-foreground tabular-nums">{motoClienteAtual + 1}/{motosAvaliacao.length}</span>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" title="Próxima moto" aria-label="Próxima moto"
+                          disabled={motoClienteAtual >= motosAvaliacao.length - 1} onClick={() => setMotoClienteIdx(motoClienteAtual + 1)}>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </span>
+                    )}
                     {motosAvaliacao.some(m => (m as any).consulta_solicitada && !(m as any).consulta_realizada) && (
                       <Badge variant="secondary" className="text-xs bg-amber-500/15 text-amber-600 gap-1">
                         <Clock className="h-3 w-3" /> Consulta Solicitada
@@ -1188,9 +1204,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                 <Separator className="mt-2" />
               </CardHeader>
               <CardContent className="flex-1 flex flex-col">
-                {motosAvaliacao.map((moto, idx) => (
+                {motosAvaliacao.slice(motoClienteAtual, motoClienteAtual + 1).map((moto) => (
                   <div key={moto.id} className="flex-1 flex flex-col gap-4">
-                    {idx > 0 && <Separator />}
                     <div className="flex items-start justify-between gap-2">
                       <div className="grid grid-cols-2 gap-4 flex-1">
                         <InfoItem label="Marca" value={moto.marca} />
