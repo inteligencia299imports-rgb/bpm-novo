@@ -977,10 +977,14 @@ async function aplicarCancelamento(
 
   const parcelasPagas = await cancelarCompromissosDaNf(admin, nfeRow.id);
 
+  // Dedupe por NF (número), não por entidade: a mesma venda/avaliação pode ter
+  // várias NF canceladas em sequência (achado real UJL2F09: 7330 e depois 67 —
+  // o 2º cancelamento não entrava no histórico porque já existia o do 1º).
   const { data: jaReg } = await admin
     .from('status_history').select('id')
     .eq('entity_type', cfg.statusEntity).eq('entity_id', entityId)
-    .eq('status', `${cfg.statusHist}_cancelada`).limit(1);
+    .eq('status', `${cfg.statusHist}_cancelada`)
+    .like('observacoes', `NF-e nº ${nfeRow.numero ?? '-'} cancelada%`).limit(1);
   if (!jaReg || jaReg.length === 0) {
     await admin.from('status_history').insert({
       entity_type: cfg.statusEntity,
