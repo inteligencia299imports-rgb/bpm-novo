@@ -190,6 +190,8 @@ const NpsVendasTab = ({ onNavigateToTab }: NpsVendasTabProps) => {
   const getColumnItems = (status: SituacaoNps) =>
     atendimentos.filter(a => {
       if ((a.nps_status || 'em_aberto') !== status) return false;
+      // Respondido sem nota NPS (resposta incompleta) não aparece — pedido do usuário 2026-10-29.
+      if (status === 'respondido' && !/^d+$/.test(String(a._npsNota ?? '').trim())) return false;
       if (!matchesCidade(a.loja, filterCidade)) return false;
       if (dateFrom || dateTo) {
         if (!a.data_venda) return false;
