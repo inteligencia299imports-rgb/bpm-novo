@@ -595,7 +595,10 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
   // `semCalculoIcmsNormal` acima (sem modBC/vBC/pICMS/vICMS), mas ainda pode
   // levar o grupo opcional de desoneração — só quando a regra cadastra uma
   // alíquota de referência; sem ela, não manda o grupo.
-  if (cstIcms === '41' && regraIcms.aliquota != null && Number(regraIcms.aliquota) > 0) {
+  // CST 40 (isenta) segue o mesmo critério: transferência 0km da FAG (6912,
+  // remessa p/ demonstração) — NF-e de referência autorizada nº 3947 do NBS:
+  // CST 40 + cBenef DF814022 + vICMSDeson = vProd × 12% (interestadual), motDesICMS 9.
+  if ((cstIcms === '40' || cstIcms === '41') && regraIcms.aliquota != null && Number(regraIcms.aliquota) > 0) {
     const pIcmsRef = Number(regraIcms.aliquota);
     item.icms_valor_desonerado = r2(valorFmt * (pIcmsRef / 100));
     item.icms_motivo_desoneracao = 9;
