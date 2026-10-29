@@ -561,9 +561,9 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     }
 
-    // Option to change status (Retirada is now an option inside this dialog for consigned motos)
-    // — não se aplica a 0km (fica só "Alterar Preço"/"Test-Ride").
-    if (item.tipo !== '0km' && ['disponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(item.status)) {
+    // Alterar Status (Indisponível/Bloqueio Jurídico + observação) vale para seminova e 0km,
+    // inclusive Test-Ride. Retirada só aparece para consignada (filtro dentro do diálogo).
+    if (['disponivel', 'indisponivel_manual', 'bloqueio_juridico'].includes(item.status)) {
       options.push({
         label: 'Alterar Status',
         icon: <RefreshCw className="h-4 w-4" />,

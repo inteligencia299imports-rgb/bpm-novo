@@ -52,6 +52,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const [quitacoes, setQuitacoes] = useState<Map<string, Quitacao>>(new Map());
   // Filtro de Quitação: só na listagem (os indicadores não dependem do financeiro).
   const [filterQuitacao, setFilterQuitacao] = useState('todos');
+  // Filtro de Situação: também só na listagem (os indicadores já separam por situação).
+  const [filterSituacao, setFilterSituacao] = useState('todos');
   const [filterLoja, setFilterLojaState] = useState('todos');
   const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
 
@@ -64,6 +66,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       setFilterLojaState('todos');
       setFilterTipoState('todos');
       setFilterQuitacao('todos');
+      setFilterSituacao('todos');
       onFilterChange?.('todos', 'todos');
       setDateFrom(undefined);
       setDateTo(undefined);
@@ -232,10 +235,17 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   } as Record<string, string>)[s] || s;
 
   const motosListados = useMemo(() => {
-    if (filterQuitacao === 'todos') return motos;
-    const escolhidos = filterQuitacao.split(',');
-    return motos.filter((m: any) => escolhidos.includes(quitacoes.get(m.id)?.status === 'quitado' ? 'quitada' : 'nao_quitada'));
-  }, [motos, quitacoes, filterQuitacao]);
+    let lista = motos;
+    if (filterSituacao !== 'todos') {
+      const situacoes = filterSituacao.split(',');
+      lista = lista.filter((m: any) => situacoes.includes(m.status));
+    }
+    if (filterQuitacao !== 'todos') {
+      const escolhidos = filterQuitacao.split(',');
+      lista = lista.filter((m: any) => escolhidos.includes(quitacoes.get(m.id)?.status === 'quitado' ? 'quitada' : 'nao_quitada'));
+    }
+    return lista;
+  }, [motos, quitacoes, filterQuitacao, filterSituacao]);
 
   const buildRows = () => motosListados.map((m: any) => {
     const cutoffDate = dateTo ?? new Date();
@@ -386,6 +396,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       <div className={cn('flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center', showFilters ? 'flex' : 'hidden md:flex')}>
         <FiltroMultiplo value={filterLoja} onChange={setFilterLoja} opcoes={OPCOES_CIDADE} todosLabel="Todas Cidades" plural="cidades" />
         <FiltroMultiplo value={filterTipo} onChange={setFilterTipo} opcoes={[{ value: 'propria', label: 'Próprias' }, { value: 'consignada', label: 'Consignadas' }, { value: '0km', label: '0KM' }, { value: 'test_ride', label: 'Test-Ride' }]} todosLabel="Todos os Tipos" plural="tipos" />
+        <FiltroMultiplo value={filterSituacao} onChange={setFilterSituacao} opcoes={[{ value: 'disponivel', label: 'Disponível' }, { value: 'servico', label: 'Serviço' }, { value: 'indisponivel_manual', label: 'Indisponível' }, { value: 'bloqueio_juridico', label: 'Bloqueio' }]} todosLabel="Todas Situações" plural="situações" />
         <FiltroMultiplo value={filterQuitacao} onChange={setFilterQuitacao} opcoes={[{ value: 'quitada', label: 'Quitadas' }, { value: 'nao_quitada', label: 'Não quitadas' }]} todosLabel="Toda Quitação" plural="quitações" />
       </div>
 
