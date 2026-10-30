@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 // despesa ligado a ela (compra/troca/transferência). O compromisso chega na moto
 // por avaliacao_id (seminova) ou pela NF-e de entrada (nfe_entrada_id), que por
 // sua vez aponta para a avaliação / estoque_motos / estoque_motos_novas.
-export type Quitacao = { status: 'quitado'; data: string } | { status: 'em_aberto' };
+// vencimento: em aberto = próximo vencimento entre as parcelas não pagas; quitado = o da última parcela.
+export type Quitacao = { status: 'quitado'; data: string; vencimento: string | null } | { status: 'em_aberto'; vencimento: string | null };
 
 // `.in()` com centenas de ids estoura a URL do PostgREST e volta vazio — vai em lotes.
 const LOTE = 150;
@@ -44,7 +45,7 @@ export async function fetchQuitacaoEstoque(motos: { id: string; tipo?: string | 
   nfSemi.forEach((n) => motoPorNf.set(n.id, n.estoque_moto_id));
   nfNovas.forEach((n) => motoPorNf.set(n.id, n.estoque_moto_nova_id));
 
-  const SELECT = 'id, avaliacao_id, nfe_entrada_id, compromissos_parcelas(data_pagamento, status_pagamento)';
+  const SELECT = 'id, avaliacao_id, nfe_entrada_id, compromissos_parcelas(data_pagamento, data_vencimento, status_pagamento)';
   const soDespesa = (q: any) => q.eq('natureza', 'despesa').is('deleted_at', null);
   const [porAvaliacao, porNf] = await Promise.all([
     buscarPorIds('compromissos', SELECT, 'avaliacao_id', avaliacaoIds, soDespesa),
@@ -72,7 +73,7 @@ export async function fetchQuitacaoEstoque(motos: { id: string; tipo?: string | 
     .forEach((m) => motoPorNumeroNf.set(digitos(m.numero_nf_entrada), m.id));
   if (motoPorNumeroNf.size) {
     const variantes = [...motoPorNumeroNf.keys()].flatMap((n) => [n, n.padStart(9, '0'), `NF-${n}`, `NF${n}`]);
-    const porNumero = await buscarPorIds('compromissos', 'id, numero_documento, compromissos_parcelas(data_pagamento, status_pagamento)', 'numero_documento', variantes,
+    const porNumero = await buscarPorIds('compromissos', 'id, numero_documento, compromissos_parcelas(data_pagamento, data_vencimento, status_pagamento)', 'numero_documento', variantes,
       (q: any) => soDespesa(q).is('nfe_entrada_id', null));
     for (const c of porNumero) {
       const motoId = motoPorNumeroNf.get(digitos(c.numero_documento));
@@ -85,15 +86,21 @@ export async function fetchQuitacaoEstoque(motos: { id: string; tipo?: string | 
 
   parcelasPorMoto.forEach((porCompromisso, motoId) => {
     const parcelas = [...porCompromisso.values()].flat();
-    if (parcelas.some((p) => !p.data_pagamento)) {
-      result.set(motoId, { status: 'em_aberto' });
+    const vencimentos = (ps: any[]) => ps.map((p) => p.data_vencimento).filter(Boolean).map(String).sort();
+    const abertas = parcelas.filter((p) => !p.data_pagamento);
+    if (abertas.length) {
+      result.set(motoId, { status: 'em_aberto', vencimento: vencimentos(abertas)[0] ?? null });
     } else {
       const data = parcelas.map((p) => String(p.data_pagamento)).sort().reverse()[0];
-      result.set(motoId, { status: 'quitado', data });
+      result.set(motoId, { status: 'quitado', data, vencimento: vencimentos(parcelas).reverse()[0] ?? null });
     }
   });
   return result;
 }
+
+/** Vencimento do compromisso (dd/mm/aaaa); sem compromisso = vazio. */
+export const formatarVencimento = (q: Quitacao | undefined) =>
+  q?.vencimento ? q.vencimento.slice(0, 10).split('-').reverse().join('/') : '';
 
 /** dd/mm/aaaa a partir de 'aaaa-mm-dd' (sem passar por Date, para não deslocar o fuso). Não quitada = vazio. */
 export const formatarQuitacao = (q: Quitacao | undefined) =>
