@@ -432,7 +432,7 @@ async function construirTradeIn(
 async function acaoVenda(admin: any, atendimentoId: string, callerId: string): Promise<Record<string, unknown>> {
   const { data: contratos } = await admin
     .from('contratos')
-    .select('id, ipva_tipo, data_sinal, empresa_id')
+    .select('id, ipva_tipo, data_sinal, empresa_id, troco_formas_pagamento')
     .eq('atendimento_id', atendimentoId)
     .order('created_at', { ascending: false });
   const contratoVenda = ((contratos as any[]) || []).find((c) => c.ipva_tipo !== 'COMPRA') ?? null;
@@ -534,17 +534,20 @@ async function acaoVenda(admin: any, atendimentoId: string, callerId: string): P
   // (ver AgregadosContrato) — em vez disso, gera um compromisso de conta a
   // PAGAR ao cliente com o mesmo valor. Soma todos os agregados de troco do
   // contrato num único compromisso (não é um serviço, é dinheiro devido).
+  // Soma também a sobra das formas de pagamento sobre o Valor Total
+  // (contratos.troco_formas_pagamento, gravada pela tela do contrato).
   const { data: agsTroco } = await admin
     .from('contratos_agregados')
     .select('valor, descricao, observacoes')
     .eq('contrato_id', contratoVenda.id)
     .eq('troco', true);
-  const valorTroco = ((agsTroco as any[]) || []).reduce((s, a) => s + nz(a.valor), 0);
+  const trocoFormas = nz(contratoVenda.troco_formas_pagamento);
+  const valorTroco = ((agsTroco as any[]) || []).reduce((s, a) => s + nz(a.valor), 0) + trocoFormas;
   if (valorTroco > 0.005) {
-    const obsTroco = ((agsTroco as any[]) || [])
-      .map((a) => (a.observacoes || '').trim())
-      .filter(Boolean)
-      .join(' | ') || null;
+    const obsTroco = [
+      ...((agsTroco as any[]) || []).map((a) => (a.observacoes || '').trim()),
+      trocoFormas > 0.005 ? 'Troco das formas de pagamento' : '',
+    ].filter(Boolean).join(' | ') || null;
     out.troco = await upsertCompromisso(admin, {
       origem: 'troco',
       linkField: 'contrato_id',
