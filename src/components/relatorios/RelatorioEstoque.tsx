@@ -234,6 +234,9 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     servico: 'Serviço', indisponivel_manual: 'Indisponível',
   } as Record<string, string>)[s] || s;
 
+  // BIN (liberação da montadora) — só 0km/test-ride 0km (estoque_motos_novas.bin_liberada).
+  const binLabel = (m: any) => (m.tipo === '0km' ? (m.bin_liberada ? 'Liberada' : 'Pendente') : '');
+
   const motosListados = useMemo(() => {
     let lista = motos;
     if (filterSituacao !== 'todos') {
@@ -264,7 +267,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       // mostra o chassi nesses casos, que é o identificador que já existe
       // desde a entrada no estoque.
       placa: (m.tipo === '0km' ? m.chassi : m.placa) || '', entrada: entrada ? entrada.toLocaleDateString('pt-BR') : '',
-      situacao: statusLabel(m.status), quitacao: formatarQuitacao(quitacoes.get(m.id)), preco, compra, margemAbs, margemPct,
+      situacao: statusLabel(m.status), quitacao: formatarQuitacao(quitacoes.get(m.id)), bin: binLabel(m), preco, compra, margemAbs, margemPct,
     };
   });
 
@@ -287,17 +290,17 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const rows = buildRows();
     const t = computeTotals(rows);
     const aoa = [[
-      'Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa/Chassi','Entrada','Situação','Quitação','Preço','Compra','Margem (R$)','Margem (%)',
+      'Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa/Chassi','Entrada','Situação','Quitação','BIN','Preço','Compra','Margem (R$)','Margem (%)',
     ], ...rows.map(r => [
-      r.empresa, r.tipo, r.patio, r.dias, r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao, r.quitacao,
+      r.empresa, r.tipo, r.patio, r.dias, r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao, r.quitacao, r.bin,
       r.preco, r.compra || '', r.compra > 0 ? r.margemAbs : '', r.compra > 0 ? r.margemPct / 100 : '',
     ])];
     aoa.push([
-      `TOTAL (${rows.length})`, '', '', Math.round(t.diasAvg), '', '', '', '', '', '', '', '',
+      `TOTAL (${rows.length})`, '', '', Math.round(t.diasAvg), '', '', '', '', '', '', '', '', '',
       t.precoSum, t.compraSum, t.margemAbsSum, t.margemPctAvg / 100,
     ]);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [10,12,12,6,12,22,12,10,10,11,13,11,14,14,14,10].map(w => ({ wch: w }));
+    ws['!cols'] = [10,12,12,6,12,22,12,10,10,11,13,11,9,14,14,14,10].map(w => ({ wch: w }));
     // Format currency and percent columns
     const range = XLSX.utils.decode_range(ws['!ref'] as string);
     for (let R = 1; R <= range.e.r; R++) {
@@ -328,14 +331,14 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
     autoTable(doc, {
       startY: 64,
-      head: [['Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa/Chassi','Entrada','Situação','Quitação','Preço','Compra','Margem']],
+      head: [['Empresa','Tipo','Pátio','Dias','Marca','Modelo','Cor','Fab/Mod','Placa/Chassi','Entrada','Situação','Quitação','BIN','Preço','Compra','Margem']],
       body: rows.map(r => [
-        r.empresa, r.tipo, r.patio, String(r.dias), r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao, r.quitacao || '—',
+        r.empresa, r.tipo, r.patio, String(r.dias), r.marca, r.modelo, r.cor, r.fabMod, r.placa, r.entrada, r.situacao, r.quitacao || '—', r.bin || '—',
         fmtBRL(r.preco), r.compra > 0 ? fmtBRL(r.compra) : '—',
         r.compra > 0 ? `${fmtBRL(r.margemAbs)} (${r.margemPct.toFixed(1)}%)` : '—',
       ]),
       foot: [[
-        `TOTAL (${rows.length})`, '', '', `Méd. ${Math.round(t.diasAvg)}`, '', '', '', '', '', '', '', '',
+        `TOTAL (${rows.length})`, '', '', `Méd. ${Math.round(t.diasAvg)}`, '', '', '', '', '', '', '', '', '',
         fmtBRL(t.precoSum), fmtBRL(t.compraSum),
         `${fmtBRL(t.margemAbsSum)} (${t.margemPctAvg.toFixed(1)}%)`,
       ]],
@@ -346,15 +349,16 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       showFoot: 'lastPage',
       alternateRowStyles: { fillColor: [245, 247, 250] },
       columnStyles: {
-        3: { halign: 'right' }, 12: { halign: 'right' }, 13: { halign: 'right' }, 14: { halign: 'right' },
+        3: { halign: 'right' }, 13: { halign: 'right' }, 14: { halign: 'right' }, 15: { halign: 'right' },
       },
       didParseCell: (data) => {
         if (data.section !== 'body') return;
         const r = rows[data.row.index];
-        if (data.column.index === 14) {
+        if (data.column.index === 15) {
           if (r.compra > 0) data.cell.styles.textColor = r.margemAbs >= 0 ? [58, 143, 106] : [220, 38, 38];
         }
         if (data.column.index === 11 && r.quitacao) data.cell.styles.textColor = [58, 143, 106];
+        if (data.column.index === 12 && r.bin === 'Liberada') data.cell.styles.textColor = [58, 143, 106];
         if (data.column.index === 10) {
           const map: Record<string, [number, number, number]> = {
             'Disponível': [34, 153, 84],
@@ -488,6 +492,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                 <TableHead className="text-xs">Entrada</TableHead>
                 <TableHead className="text-xs">Situação</TableHead>
                 <TableHead className="text-xs">Quitação</TableHead>
+                <TableHead className="text-xs">BIN</TableHead>
                 <TableHead className="text-xs text-right">Preço</TableHead>
                 <TableHead className="text-xs text-right">Compra</TableHead>
                 <TableHead className="text-xs text-right">Margem</TableHead>
@@ -496,7 +501,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
             <TableBody>
               {motosListados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={15} className="text-center text-muted-foreground text-sm py-6">
+                  <TableCell colSpan={16} className="text-center text-muted-foreground text-sm py-6">
                     Nenhuma moto encontrada com os filtros selecionados.
                   </TableCell>
                 </TableRow>
@@ -546,6 +551,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                         })()}
                       </TableCell>
                       <TableCell className={cn('text-xs', quitacoes.get(m.id)?.status === 'quitado' && 'text-[#3a8f6a] font-medium')}>{formatarQuitacao(quitacoes.get(m.id)) || '—'}</TableCell>
+                      <TableCell className={cn('text-xs', m.bin_liberada && m.tipo === '0km' && 'text-[#3a8f6a] font-medium')}>{binLabel(m) || '—'}</TableCell>
                       <TableCell className="text-xs text-right">{fmtBRL(preco)}</TableCell>
                       <TableCell className="text-xs text-right">{compra > 0 ? fmtBRL(compra) : '—'}</TableCell>
                       <TableCell className={cn('text-xs text-right font-medium', compra > 0 ? (margemAbs >= 0 ? 'text-[#3a8f6a]' : 'text-red-500') : 'text-muted-foreground')}>

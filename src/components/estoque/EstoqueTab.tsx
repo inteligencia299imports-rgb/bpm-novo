@@ -102,6 +102,8 @@ interface EstoqueItem {
   displayTipo?: string | null;
   // estoque_motos_novas — coluna própria ('nova' | 'test_ride')
   tipo_unidade?: string | null;
+  // estoque_motos_novas — BIN liberada pela montadora (só 0km)
+  bin_liberada?: boolean | null;
   // estoque_motos_novas — specs do grupo veicProd da NF-e (só 0km)
   potencia_motor?: string | number | null;
   peso_liquido?: string | number | null;
@@ -813,6 +815,15 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                               <>
                                 <span className="text-muted-foreground">Empresa</span>
                                 <span className="text-foreground">{item.empresa}</span>
+                              </>
+                            )}
+                            {/* BIN (liberação da montadora) — só 0km */}
+                            {item.tipo === '0km' && (
+                              <>
+                                <span className="text-muted-foreground">BIN</span>
+                                <span className={item.bin_liberada ? 'text-emerald-600 font-medium' : 'text-muted-foreground'}>
+                                  {item.bin_liberada ? 'Liberada' : 'Pendente'}
+                                </span>
                               </>
                             )}
                           </div>

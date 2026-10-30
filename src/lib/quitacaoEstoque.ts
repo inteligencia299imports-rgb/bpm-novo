@@ -23,7 +23,7 @@ async function buscarPorIds(tabela: string, select: string, coluna: string, ids:
 }
 
 /** Mapa id da moto (estoque_motos.id / estoque_motos_novas.id) → quitação. Moto sem compromisso fica fora do mapa. */
-export async function fetchQuitacaoEstoque(motos: { id: string; tipo?: string | null; avaliacao_id?: string | null }[]): Promise<Map<string, Quitacao>> {
+export async function fetchQuitacaoEstoque(motos: { id: string; tipo?: string | null; avaliacao_id?: string | null; numero_nf_entrada?: string | null }[]): Promise<Map<string, Quitacao>> {
   const result = new Map<string, Quitacao>();
   const semi = motos.filter((m) => m.tipo !== '0km');
   const novas = motos.filter((m) => m.tipo === '0km').map((m) => m.id);
@@ -60,6 +60,27 @@ export async function fetchQuitacaoEstoque(motos: { id: string; tipo?: string | 
     if (!parcelas.length) continue;
     if (!parcelasPorMoto.has(motoId)) parcelasPorMoto.set(motoId, new Map());
     parcelasPorMoto.get(motoId)!.set(c.id, parcelas);
+  }
+
+  // 0km sem compromisso ligado pela NF-e (NF da montadora não importada no sistema): procura o
+  // compromisso lançado à mão no financeiro (sem nfe_entrada_id) pelo número da NF de entrada
+  // da moto (estoque_motos_novas.numero_nf_entrada). numero_documento é gravado em maiúsculas sem
+  // pontuação e aparece como '54669', '000054669' ou 'NF-54669'.
+  const digitos = (v: unknown) => String(v ?? '').replace(/\D/g, '').replace(/^0+/, '');
+  const motoPorNumeroNf = new Map<string, string>();
+  motos.filter((m) => m.tipo === '0km' && !parcelasPorMoto.has(m.id) && digitos(m.numero_nf_entrada))
+    .forEach((m) => motoPorNumeroNf.set(digitos(m.numero_nf_entrada), m.id));
+  if (motoPorNumeroNf.size) {
+    const variantes = [...motoPorNumeroNf.keys()].flatMap((n) => [n, n.padStart(9, '0'), `NF-${n}`, `NF${n}`]);
+    const porNumero = await buscarPorIds('compromissos', 'id, numero_documento, compromissos_parcelas(data_pagamento, status_pagamento)', 'numero_documento', variantes,
+      (q: any) => soDespesa(q).is('nfe_entrada_id', null));
+    for (const c of porNumero) {
+      const motoId = motoPorNumeroNf.get(digitos(c.numero_documento));
+      const parcelas = (c.compromissos_parcelas || []).filter((p: any) => p.status_pagamento !== 'cancelado');
+      if (!motoId || !parcelas.length) continue;
+      if (!parcelasPorMoto.has(motoId)) parcelasPorMoto.set(motoId, new Map());
+      parcelasPorMoto.get(motoId)!.set(c.id, parcelas);
+    }
   }
 
   parcelasPorMoto.forEach((porCompromisso, motoId) => {
