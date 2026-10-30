@@ -59,6 +59,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const [filterSituacao, setFilterSituacao] = useState('todos');
   const [filterLoja, setFilterLojaState] = useState('todos');
   const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
+  // Filtro de BIN (Baixada / Não baixada): só aparece com o tipo 0KM e/ou Test-Ride selecionado.
+  const [filterBin, setFilterBin] = useState('todos');
+  const mostraFiltroBin = filterTipo !== 'todos' && filterTipo.split(',').some((t) => t === '0km' || t === 'test_ride');
+  useEffect(() => { if (!mostraFiltroBin) setFilterBin('todos'); }, [mostraFiltroBin]);
 
 
   const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v, filterTipo); };
@@ -70,6 +74,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       setFilterTipoState('todos');
       setFilterQuitacao('todos');
       setFilterSituacao('todos');
+      setFilterBin('todos');
       onFilterChange?.('todos', 'todos');
       setDateFrom(undefined);
       setDateTo(undefined);
@@ -250,8 +255,12 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       const escolhidos = filterQuitacao.split(',');
       lista = lista.filter((m: any) => escolhidos.includes(quitacoes.get(m.id)?.status === 'quitado' ? 'quitada' : 'nao_quitada'));
     }
+    if (mostraFiltroBin && filterBin !== 'todos') {
+      const bins = filterBin.split(',');
+      lista = lista.filter((m: any) => m.tipo === '0km' && bins.includes(m.bin_liberada ? 'baixada' : 'nao_baixada'));
+    }
     return lista;
-  }, [motos, quitacoes, filterQuitacao, filterSituacao]);
+  }, [motos, quitacoes, filterQuitacao, filterSituacao, filterBin, mostraFiltroBin]);
 
   const buildRows = () => motosListados.map((m: any) => {
     const cutoffDate = dateTo ?? new Date();
@@ -405,6 +414,9 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         <FiltroMultiplo value={filterTipo} onChange={setFilterTipo} opcoes={[{ value: 'propria', label: 'Próprias' }, { value: 'consignada', label: 'Consignadas' }, { value: '0km', label: '0KM' }, { value: 'test_ride', label: 'Test-Ride' }]} todosLabel="Todos os Tipos" plural="tipos" />
         <FiltroMultiplo value={filterSituacao} onChange={setFilterSituacao} opcoes={[{ value: 'disponivel', label: 'Disponível' }, { value: 'servico', label: 'Serviço' }, { value: 'indisponivel_manual', label: 'Indisponível' }, { value: 'bloqueio_juridico', label: 'Bloqueio' }]} todosLabel="Todas Situações" plural="situações" />
         <FiltroMultiplo value={filterQuitacao} onChange={setFilterQuitacao} opcoes={[{ value: 'quitada', label: 'Quitadas' }, { value: 'nao_quitada', label: 'Não quitadas' }]} todosLabel="Toda Quitação" plural="quitações" />
+        {mostraFiltroBin && (
+          <FiltroMultiplo value={filterBin} onChange={setFilterBin} opcoes={[{ value: 'baixada', label: 'Baixada' }, { value: 'nao_baixada', label: 'Não baixada' }]} todosLabel="Toda BIN" plural="BINs" />
+        )}
       </div>
 
 
