@@ -919,6 +919,9 @@ const ContratoDialog: React.FC<Props> = ({
       observacoes_contrato: obsContrato || null,
       data_sinal: dataSinal ? format(dataSinal, 'yyyy-MM-dd') : null,
       data_vencimento_sinal: dataVencimento ? format(dataVencimento, 'yyyy-MM-dd') : null,
+      // Sobra das formas de pagamento sobre o Valor Total: troco ao cliente. A edge
+      // gerar-compromissos-proposta soma com os agregados de troco no compromisso TRC-D.
+      troco_formas_pagamento: trocoFormasPagamento,
     };
 
     // Save valor_sinal/valor_venda to estoque, cpf_cnpj to cliente
@@ -1389,6 +1392,11 @@ const ContratoDialog: React.FC<Props> = ({
     : 0;
   const somaPagamentos = somaFormasPagamento + abatimentoTroca;
   const valorFaltante = valorTotalContrato - somaPagamentos;
+  // Troco ao cliente: o que as formas de pagamento passam do Valor Total + agregados marcados
+  // como troco. Os dois somam no mesmo compromisso a pagar (TRC-D) do Financeiro.
+  const trocoFormasPagamento = valorFaltante < -0.005 ? Math.round(-valorFaltante * 100) / 100 : 0;
+  const trocoAgregados = agregados.reduce((s, a) => s + (a.troco ? Number(a.valor) || 0 : 0), 0);
+  const trocoTotal = trocoFormasPagamento + trocoAgregados;
 
   // Campos obrigatórios pendentes para gerar o contrato (sinal/venda), na mesma
   // ordem em que os cards aparecem na tela. Sem toast — usado tanto pelo aviso
@@ -2147,6 +2155,19 @@ const ContratoDialog: React.FC<Props> = ({
                         )}
                       </div>
                     ))}
+                  </div>
+                )}
+                {trocoTotal > 0.005 && (
+                  <div className="flex items-start gap-2 rounded-lg border border-orange-300 bg-orange-50 p-3 text-sm text-orange-700">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <p>
+                      Troco de <strong>{formatCurrency(trocoTotal)}</strong> ao cliente: gera um compromisso a pagar para o departamento financeiro.
+                      {trocoFormasPagamento > 0.005 && trocoAgregados > 0.005 && (
+                        <span className="block text-xs text-orange-600/90 mt-0.5">
+                          {formatCurrency(trocoFormasPagamento)} das formas de pagamento + {formatCurrency(trocoAgregados)} dos agregados.
+                        </span>
+                      )}
+                    </p>
                   </div>
                 )}
                 </CardContent>
