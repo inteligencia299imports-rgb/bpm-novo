@@ -20,6 +20,7 @@ import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, tipoExibicaoEstoque 
 import { getPreviousMonthDate } from '@/lib/reportComparison';
 import { getXTickStyle } from '@/lib/chartAxis';
 import DeltaBadge from './DeltaBadge';
+import BinDialog from '@/components/estoque/BinDialog';
 
 
 
@@ -52,6 +53,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const [quitacoes, setQuitacoes] = useState<Map<string, Quitacao>>(new Map());
   // Filtro de Quitação: só na listagem (os indicadores não dependem do financeiro).
   const [filterQuitacao, setFilterQuitacao] = useState('todos');
+  // Pop-up de BIN ao clicar numa linha de moto 0km/test-ride.
+  const [binItem, setBinItem] = useState<any | null>(null);
   // Filtro de Situação: também só na listagem (os indicadores já separam por situação).
   const [filterSituacao, setFilterSituacao] = useState('todos');
   const [filterLoja, setFilterLojaState] = useState('todos');
@@ -358,7 +361,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
           if (r.compra > 0) data.cell.styles.textColor = r.margemAbs >= 0 ? [58, 143, 106] : [220, 38, 38];
         }
         if (data.column.index === 11 && r.quitacao) data.cell.styles.textColor = [58, 143, 106];
-        if (data.column.index === 12 && r.bin === 'Liberada') data.cell.styles.textColor = [58, 143, 106];
+        if (data.column.index === 12 && r.bin) data.cell.styles.textColor = r.bin === 'Liberada' ? [58, 143, 106] : [234, 88, 12];
         if (data.column.index === 10) {
           const map: Record<string, [number, number, number]> = {
             'Disponível': [34, 153, 84],
@@ -516,7 +519,12 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                   const margemPct = compra > 0 ? (margemAbs / compra) * 100 : 0;
                   const anoFM = [m.ano_fabricacao, m.ano_modelo].filter(Boolean).join('/');
                   return (
-                    <TableRow key={m.id}>
+                    <TableRow
+                      key={m.id}
+                      className={cn(m.tipo === '0km' && 'cursor-pointer hover:bg-muted/50')}
+                      onClick={m.tipo === '0km' ? () => setBinItem(m) : undefined}
+                      title={m.tipo === '0km' ? 'Clique para marcar a BIN' : undefined}
+                    >
                       <TableCell className="text-xs">{m.empresa || '—'}</TableCell>
                       <TableCell className="text-xs">
                         {(() => {
@@ -551,7 +559,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                         })()}
                       </TableCell>
                       <TableCell className={cn('text-xs', quitacoes.get(m.id)?.status === 'quitado' && 'text-[#3a8f6a] font-medium')}>{formatarQuitacao(quitacoes.get(m.id)) || '—'}</TableCell>
-                      <TableCell className={cn('text-xs', m.bin_liberada && m.tipo === '0km' && 'text-[#3a8f6a] font-medium')}>{binLabel(m) || '—'}</TableCell>
+                      <TableCell className={cn('text-xs', m.tipo === '0km' && (m.bin_liberada ? 'text-[#3a8f6a] font-medium' : 'text-orange-600 font-medium'))}>{binLabel(m) || '—'}</TableCell>
                       <TableCell className="text-xs text-right">{fmtBRL(preco)}</TableCell>
                       <TableCell className="text-xs text-right">{compra > 0 ? fmtBRL(compra) : '—'}</TableCell>
                       <TableCell className={cn('text-xs text-right font-medium', compra > 0 ? (margemAbs >= 0 ? 'text-[#3a8f6a]' : 'text-red-500') : 'text-muted-foreground')}>
@@ -566,6 +574,16 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
         </CardContent>
       </Card>
       </section>
+
+      <BinDialog
+        open={!!binItem}
+        onOpenChange={(open) => { if (!open) setBinItem(null); }}
+        estoqueItem={binItem}
+        onSuccess={() => {
+          setBinItem(null);
+          loadData();
+        }}
+      />
     </div>
   );
 };

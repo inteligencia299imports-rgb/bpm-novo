@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, Download, LogOut, DollarSign, ArrowRightLeft } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, Download, LogOut, DollarSign, ArrowRightLeft, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -23,6 +23,7 @@ import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import TransferenciaEstoqueDialog from '@/components/estoque/TransferenciaEstoqueDialog';
 import AlterarPrecoDialog from '@/components/estoque/AlterarPrecoDialog';
 import TestRideDialog from '@/components/estoque/TestRideDialog';
+import BinDialog from '@/components/estoque/BinDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Popover,
@@ -172,6 +173,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [precoItem, setPrecoItem] = useState<EstoqueItem | null>(null);
   const [transferenciaItem, setTransferenciaItem] = useState<EstoqueItem | null>(null);
   const [testRideItem, setTestRideItem] = useState<EstoqueItem | null>(null);
+  const [binItem, setBinItem] = useState<EstoqueItem | null>(null);
   const [idsWithNfeVenda0km, setIdsWithNfeVenda0km] = useState<Set<string>>(new Set());
   const [idsWithNfeVendaSeminova, setIdsWithNfeVendaSeminova] = useState<Set<string>>(new Set());
   const [idsComTransferencia0kmProducao, setIdsComTransferencia0kmProducao] = useState<Set<string>>(new Set());
@@ -609,6 +611,12 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           action: () => setTestRideItem(item),
         });
       }
+      // BIN (liberação da montadora) — 0km e test-ride, a qualquer momento.
+      options.push({
+        label: item.bin_liberada ? 'BIN ✓' : 'BIN',
+        icon: <KeyRound className="h-4 w-4" />,
+        action: () => setBinItem(item),
+      });
     }
 
     addConsultaOption();
@@ -821,7 +829,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             {item.tipo === '0km' && (
                               <>
                                 <span className="text-muted-foreground">BIN</span>
-                                <span className={item.bin_liberada ? 'text-emerald-600 font-medium' : 'text-muted-foreground'}>
+                                <span className={item.bin_liberada ? 'text-emerald-600 font-medium' : 'text-orange-600 font-medium'}>
                                   {item.bin_liberada ? 'Liberada' : 'Pendente'}
                                 </span>
                               </>
@@ -1026,6 +1034,16 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         estoqueItem={precoItem}
         onSuccess={() => {
           setPrecoItem(null);
+          fetchEstoque();
+        }}
+      />
+
+      <BinDialog
+        open={!!binItem}
+        onOpenChange={(open) => { if (!open) setBinItem(null); }}
+        estoqueItem={binItem}
+        onSuccess={() => {
+          setBinItem(null);
           fetchEstoque();
         }}
       />
