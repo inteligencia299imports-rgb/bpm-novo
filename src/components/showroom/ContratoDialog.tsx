@@ -842,8 +842,9 @@ const ContratoDialog: React.FC<Props> = ({
     // Data do pagamento (obrigatória) — vira data_vencimento da parcela do compromisso a receber.
     formaData.data_pagamento = novaDataPagamento;
 
-    // A soma das formas de pagamento não pode passar do Valor Total (financiamento conta
-    // só o valor financiado; na troca o valor de fechamento da moto já entra em `somaPagamentos`).
+    // A soma das formas de pagamento pode passar do Valor Total: a sobra é troco ao cliente
+    // (aviso abaixo das formas + compromisso a pagar TRC-D). Financiamento conta só o valor
+    // financiado; na troca o valor de fechamento da moto já entra em `somaPagamentos`.
     if (valorTotalContrato > 0.005) {
       const contribNova = ehFinanciamento(novaFormaNome)
         ? Number(formaData.valor_financiado) || 0
@@ -853,10 +854,9 @@ const ContratoDialog: React.FC<Props> = ({
         ? (ehFinanciamento(fpAntiga.tipo) ? (Number(fpAntiga.valor_financiado) || 0) : (Number(fpAntiga.valor_total) || 0))
         : 0;
       const jaPago = somaPagamentos - contribAntiga;
-      if (jaPago + contribNova > valorTotalContrato + 0.005) {
-        const restante = Math.max(valorTotalContrato - jaPago, 0);
-        toast.error(`A soma das formas de pagamento não pode passar do Valor Total (${formatCurrency(valorTotalContrato)}). Restante: ${formatCurrency(restante)}.`);
-        return;
+      const sobra = jaPago + contribNova - valorTotalContrato;
+      if (sobra > 0.005) {
+        toast.warning(`As formas de pagamento passam do Valor Total em ${formatCurrency(sobra)}: a diferença será troco ao cliente.`);
       }
     }
 
