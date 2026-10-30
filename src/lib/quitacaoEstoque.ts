@@ -46,7 +46,9 @@ export async function fetchQuitacaoEstoque(motos: { id: string; tipo?: string | 
   nfNovas.forEach((n) => motoPorNf.set(n.id, n.estoque_moto_nova_id));
 
   const SELECT = 'id, avaliacao_id, nfe_entrada_id, compromissos_parcelas(data_pagamento, data_vencimento, status_pagamento)';
-  const soDespesa = (q: any) => q.eq('natureza', 'despesa').is('deleted_at', null);
+  // Transferência entre empresas do grupo (TRF-D, origem 'transferencia') também é despesa ligada
+  // à NF-e da moto, mas não é a compra da montadora — fica fora da quitação e do vencimento.
+  const soDespesa = (q: any) => q.eq('natureza', 'despesa').is('deleted_at', null).or('origem.is.null,origem.neq.transferencia');
   const [porAvaliacao, porNf] = await Promise.all([
     buscarPorIds('compromissos', SELECT, 'avaliacao_id', avaliacaoIds, soDespesa),
     buscarPorIds('compromissos', SELECT, 'nfe_entrada_id', [...motoPorNf.keys()], soDespesa),
