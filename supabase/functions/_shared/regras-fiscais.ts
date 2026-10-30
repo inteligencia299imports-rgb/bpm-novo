@@ -4,7 +4,8 @@
 // supabase/functions/_shared/regras-fiscais.ts — altere aqui e copie para os três.
 //
 // Modelo (desde 2026-09-24):
-//   naturezas_operacao                 1 natureza por CFOP por empresa (`cfop`; texto da nota em
+//   naturezas_operacao                 1 natureza por CFOP por empresa — ou mais, com `variacao` (5949-2) e
+//                                      `operacao` própria (ver carregarOperacao) — (`cfop`; texto da nota em
 //                                      `natop`; indicador de presença do cabeçalho). O
 //                                      emissor acha as naturezas pela família de CFOPs da operação
 //                                      (tabelas cfops / operacoes_fiscais). O CFOP diz se é interna (1/5),
@@ -41,6 +42,9 @@ export interface NaturezaCfop {
   operacao_devolucao: boolean;
   informacoes_complementares: string | null;
   informacoes_adicionais_fisco: string | null;
+  // Variação do CFOP na empresa (1 = padrão; 2 = "5949-2") e operação própria — vazia = família do CFOP.
+  variacao?: number | null;
+  operacao?: string | null;
 }
 
 // Tipo do destinatário: PF, PJ contribuinte (com IE) ou PJ não contribuinte/isento. Derivado em
@@ -142,20 +146,26 @@ export async function carregarOperacao(
   const { data: familia, error: e0 } = await supabase
     .from("cfops").select("codigo").eq("operacao", p.operacao).eq("ativo", true).order("codigo");
   if (e0) return { erro: `Erro ao ler o catálogo de CFOPs: ${e0.message}` };
-  const cfops = ((familia ?? []) as { codigo: string }[])
+  const familiaCfops = ((familia ?? []) as { codigo: string }[])
     .map((c) => c.codigo)
     .filter((c) => !p.sentido || sentidoDoCfop(c) === p.sentido);
-  if (!cfops.length) return { erro: `Operação "${p.operacao}" sem CFOPs no catálogo (tabela cfops).` };
+  // Natureza com operação própria (naturezas_operacao.operacao — ex.: 5949-2 "SAIDA P/ USO E CONSUMO")
+  // sai da família do CFOP e só entra na operação dela: sem isso, o 5949-2 da FAG entraria na
+  // transferência FAG -> MMATOS (5949 = transferencia_empresas no catálogo).
   let q = supabase
     .from("naturezas_operacao")
-    .select("id, empresa_id, cfop, descricao, natop, tipo, regime_tributario, indicador_presenca, faturada, consumidor_final, operacao_devolucao, informacoes_complementares, informacoes_adicionais_fisco")
+    .select("id, empresa_id, cfop, variacao, operacao, descricao, natop, tipo, regime_tributario, indicador_presenca, faturada, consumidor_final, operacao_devolucao, informacoes_complementares, informacoes_adicionais_fisco")
     .eq("empresa_id", p.empresaId)
-    .eq("ativo", true)
-    .in("cfop", cfops);
+    .eq("ativo", true);
+  q = familiaCfops.length
+    ? q.or(`operacao.eq.${p.operacao},and(operacao.is.null,cfop.in.(${familiaCfops.join(",")}))`)
+    : q.eq("operacao", p.operacao);
   if (p.naturezaId) q = q.eq("id", p.naturezaId);
   const { data: naturezas, error } = await q;
   if (error) return { erro: `Erro ao ler naturezas de operação: ${error.message}` };
-  const lista = (naturezas ?? []) as NaturezaCfop[];
+  const lista = ((naturezas ?? []) as NaturezaCfop[]).filter((n) => !p.sentido || sentidoDoCfop(n.cfop) === p.sentido);
+  const cfops = [...new Set([...familiaCfops, ...lista.map((n) => n.cfop)])].sort();
+  if (!cfops.length) return { erro: `Operação "${p.operacao}" sem CFOPs no catálogo (tabela cfops).` };
   if (!lista.length) {
     return {
       erro: p.naturezaId
