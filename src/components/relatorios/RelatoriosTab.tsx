@@ -71,6 +71,17 @@ const RelatoriosTab: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2"><BarChart3 className="h-7 w-7 text-primary" /><h1 className="text-2xl font-bold text-foreground">Relatórios</h1></div>
         <div className="flex items-center gap-2">
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="rounded-full h-9 px-3 text-sm text-primary hover:text-primary/80 hover:bg-primary/10"
+              onClick={handleClearAll}
+            >
+              <X className="h-4 w-4 mr-1" />
+              Limpar filtros
+            </Button>
+          )}
           {dept === 'showroom' && (
             <a href="https://datastudio.google.com/reporting/deed15ee-7c89-4011-8f21-84667ce16e6c" target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm" className="rounded-full h-9 px-4 text-sm font-normal whitespace-nowrap gap-2">
@@ -83,17 +94,6 @@ const RelatoriosTab: React.FC = () => {
               <ExternalLink className="h-4 w-4" /> BPM V1
             </Button>
           </a>
-          {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="rounded-full h-9 px-3 text-sm text-primary hover:text-primary/80 hover:bg-primary/10"
-              onClick={handleClearAll}
-            >
-              <X className="h-4 w-4 mr-1" />
-              Limpar filtros
-            </Button>
-          )}
         </div>
       </div>
       <p className="text-sm text-muted-foreground mt-0.5">Análise de desempenho e indicadores</p>
