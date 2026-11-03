@@ -1967,9 +1967,9 @@ const ContratoDialog: React.FC<Props> = ({
                         )}
                         <CurrencyField label="Valor de Quitação" value={t.quitacao} onChange={setTrocaValor(t.moto.id, 'quitacao')} required />
                         {/* Não editável — valor em azul no lugar do input. */}
-                        <div>
+                        <div className="text-center">
                           <span className="text-sm font-medium text-foreground">Valor Líquido</span>
-                          <p className="mt-1 flex h-10 items-center text-sm font-semibold text-primary">{formatCurrency(abatimentoMotoTroca(t))}</p>
+                          <p className="mt-1 flex h-10 items-center justify-center text-sm font-semibold text-primary">{formatCurrency(abatimentoMotoTroca(t))}</p>
                         </div>
                       </div>
                     )}
