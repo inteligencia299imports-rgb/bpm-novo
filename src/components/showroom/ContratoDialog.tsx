@@ -534,6 +534,19 @@ const ContratoDialog: React.FC<Props> = ({
         setStBcRetido(''); setStValorSubstituto(''); setStValorRetido('');
       }
 
+      // Quitação/Fechamento da troca relidos do banco: o mapa `avaliacoes` vem do
+      // AtendimentoDetail, carregado uma vez ao abrir o atendimento. Reabrir o
+      // contrato depois de salvar mostrava o fechamento antigo (ex.: 40k em vez de
+      // 41k) e o próximo save gravava esse valor velho de volta na avaliação.
+      const avaliacoesFrescas: Record<string, any> = {};
+      if (motosAvaliacao.length > 0) {
+        const { data: avs } = await supabase
+          .from('avaliacoes')
+          .select('id, valor_quitacao, valor_fechamento, avaliacao_compra')
+          .in('id', motosAvaliacao.map((m) => m.id));
+        for (const a of (avs as any[]) || []) avaliacoesFrescas[a.id] = a;
+      }
+
       // Troca: a NF-e de compra da moto que entra já foi emitida em produção?
       if (hasTroca) {
         const { data: cp } = await supabase
@@ -614,7 +627,7 @@ const ContratoDialog: React.FC<Props> = ({
       const valoresTrocaIniciais = (c: any | null) => {
         const out: Record<string, { quitacao: string; fechamento: string }> = {};
         for (const m of motosAvaliacao) {
-          const av = avaliacoes[m.id];
+          const av = { ...avaliacoes[m.id], ...avaliacoesFrescas[m.id] };
           const q = umaMotoTroca && c?.valor_quitacao != null ? c.valor_quitacao : av?.valor_quitacao;
           const f = av?.valor_fechamento ?? av?.avaliacao_compra ?? (umaMotoTroca ? c?.valor_fechamento : null) ?? null;
           out[m.id] = { quitacao: q != null ? fmtCur(q) : '', fechamento: f != null ? fmtCur(f) : '' };
