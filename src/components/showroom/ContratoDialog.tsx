@@ -390,15 +390,19 @@ const ContratoDialog: React.FC<Props> = ({
 
   // Moto(s) do cliente (troca): Quitação e Fechamento POR moto (avaliação). A troca
   // pode ter várias motos como parte do pagamento; os totais abaixo são a soma.
-  const [trocaValores, setTrocaValores] = useState<Record<string, { quitacao: string; fechamento: string }>>({});
-  const setTrocaValor = (avId: string, campo: 'quitacao' | 'fechamento') => (v: string) =>
-    setTrocaValores((prev) => ({ ...prev, [avId]: { quitacao: '', fechamento: '', ...prev[avId], [campo]: v } }));
+  const [trocaValores, setTrocaValores] = useState<Record<string, { quitacao: string; fechamento: string; tradeIn: string }>>({});
+  const setTrocaValor = (avId: string, campo: 'quitacao' | 'fechamento' | 'tradeIn') => (v: string) =>
+    setTrocaValores((prev) => ({ ...prev, [avId]: { quitacao: '', fechamento: '', tradeIn: '', ...prev[avId], [campo]: v } }));
   const trocaItens = motosAvaliacao.map((m) => ({
     moto: m,
     av: (avaliacoes[m.id] ?? null) as any,
     quitacao: trocaValores[m.id]?.quitacao ?? '',
     fechamento: trocaValores[m.id]?.fechamento ?? '',
+    // Trade-in (avaliacoes.trade_in): bônus da montadora na troca por 0km — abate o líquido da moto.
+    tradeIn: trocaValores[m.id]?.tradeIn ?? '',
   }));
+  // Campo Trade-in: troca por moto 0km (mesma regra da avaliação) ou já preenchido.
+  const podeTradeIn = (t: (typeof trocaItens)[number]) => eh0kmVenda || t.av?.trade_in != null || !!t.tradeIn.trim();
   const faltaFechamentoTroca = trocaItens.some((t) => !t.fechamento.trim());
   const faltaQuitacaoTroca = trocaItens.some((t) => !t.quitacao.trim());
   const somaTroca = (campo: 'quitacao' | 'fechamento') =>
@@ -542,7 +546,7 @@ const ContratoDialog: React.FC<Props> = ({
       if (motosAvaliacao.length > 0) {
         const { data: avs } = await supabase
           .from('avaliacoes')
-          .select('id, valor_quitacao, valor_fechamento, avaliacao_compra')
+          .select('id, valor_quitacao, valor_fechamento, avaliacao_compra, trade_in')
           .in('id', motosAvaliacao.map((m) => m.id));
         for (const a of (avs as any[]) || []) avaliacoesFrescas[a.id] = a;
       }
@@ -625,12 +629,13 @@ const ContratoDialog: React.FC<Props> = ({
       // de fallback (Quitação do contrato tem prioridade; Fechamento vem da avaliação).
       const umaMotoTroca = motosAvaliacao.length === 1;
       const valoresTrocaIniciais = (c: any | null) => {
-        const out: Record<string, { quitacao: string; fechamento: string }> = {};
+        const out: Record<string, { quitacao: string; fechamento: string; tradeIn: string }> = {};
         for (const m of motosAvaliacao) {
           const av = { ...avaliacoes[m.id], ...avaliacoesFrescas[m.id] };
           const q = umaMotoTroca && c?.valor_quitacao != null ? c.valor_quitacao : av?.valor_quitacao;
           const f = av?.valor_fechamento ?? av?.avaliacao_compra ?? (umaMotoTroca ? c?.valor_fechamento : null) ?? null;
-          out[m.id] = { quitacao: q != null ? fmtCur(q) : '', fechamento: f != null ? fmtCur(f) : '' };
+          const ti = av?.trade_in;
+          out[m.id] = { quitacao: q != null ? fmtCur(q) : '', fechamento: f != null ? fmtCur(f) : '', tradeIn: ti != null ? fmtCur(ti) : '' };
         }
         return out;
       };
@@ -978,6 +983,8 @@ const ContratoDialog: React.FC<Props> = ({
         await supabase.from('avaliacoes').update({
           valor_quitacao: t.quitacao.trim() ? parseCurrencyInput(t.quitacao) : null,
           ...(parsedFechamento && parsedFechamento > 0 ? { valor_fechamento: parsedFechamento } : {}),
+          // Trade-in só é gravado quando o campo aparece (troca por 0km ou já preenchido na avaliação).
+          ...(podeTradeIn(t) ? { trade_in: t.tradeIn.trim() ? parseCurrencyInput(t.tradeIn) : null } : {}),
         } as any).eq('id', t.moto.id);
       }
     }
@@ -1390,15 +1397,17 @@ const ContratoDialog: React.FC<Props> = ({
   // O quanto cada moto da troca abate do Valor Faltante — a base é:
   //  - com Valor de Fechamento preenchido: o próprio Valor de Fechamento;
   //  - sem Valor de Fechamento: o repasse de compra (Avaliação − Custos Loja).
-  // O Valor de Quitação (financiamento/dívida da moto do cliente) sai dessa base
-  // antes — o saldo líquido é o que de fato entra como pagamento (mesma conta já
-  // usada em ContratoCompraDialog/ContratoConsignacaoDialog: fechamento − quitação).
+  // O Trade-in (bônus da montadora na troca por 0km) SOMA ao valor da moto do
+  // cliente (pedido do usuário, 2026-11-03) e o Valor de Quitação (financiamento/
+  // dívida da moto) sai — o saldo líquido é o que de fato entra como pagamento:
+  // fechamento + trade-in − quitação.
   // Várias motos na troca: soma o líquido de cada uma.
   const abatimentoMotoTroca = (t: (typeof trocaItens)[number]) => {
     const fechamentoNum = parseCurrencyInput(t.fechamento);
     const quitacaoNum = t.quitacao.trim() ? parseCurrencyInput(t.quitacao) : 0;
+    const tradeInNum = t.tradeIn.trim() ? parseCurrencyInput(t.tradeIn) : 0;
     const base = fechamentoNum > 0 ? fechamentoNum : repasseTroca(t.av);
-    return Math.max(base - quitacaoNum, 0);
+    return Math.max(base + tradeInNum - quitacaoNum, 0);
   };
   const abatimentoTroca = hasTroca
     ? trocaItens.reduce((s, t) => s + abatimentoMotoTroca(t), 0)
@@ -1912,7 +1921,7 @@ const ContratoDialog: React.FC<Props> = ({
                 </CardContent>
               </Card>
 
-              {/* Card: Moto do Cliente (troca) */}
+              {/* Card: Moto do Cliente (troca), com o card do Valor de Fechamento dentro */}
               {hasTroca && trocaItens.map((t, idx) => (
                 <Card key={t.moto.id}>
                   <CardHeader className="pb-2">
@@ -1930,32 +1939,47 @@ const ContratoDialog: React.FC<Props> = ({
                       <InfoDisplay label="Modelo" value={t.moto.modelo ? String(t.moto.modelo).toUpperCase() : undefined} />
                       <InfoDisplay label="Ano" value={[t.moto.ano_fabricacao, t.moto.ano_modelo].filter(Boolean).join('/') || undefined} />
                       <InfoDisplay label="Cor" value={t.moto.cor ? String(t.moto.cor).toUpperCase() : undefined} />
+                      {/* Placa, Avaliação Compra e Custos Loja na mesma linha. */}
                       <InfoDisplay label="Placa" value={t.moto.placa ? t.moto.placa.replace(/-/g, '') : undefined} />
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                       {t.av && (
                         <>
                           <InfoDisplay label="Avaliação Compra" value={formatCurrency(t.av.avaliacao_compra)} />
                           <InfoDisplay label="Custos Loja" value={formatCurrency(t.av.previsao_custos_loja)} />
                         </>
                       )}
-                      {soLeitura ? (
+                    </div>
+
+                {/* Card interno: Valor de Fechamento — Fechamento > Trade-in > Quitação > Líquido */}
+                <Card className="shadow-none">
+                  <CardContent className="space-y-4 pt-4">
+                    {soLeitura ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <InfoDisplay label="Valor de Fechamento" value={t.fechamento ? `R$ ${t.fechamento}` : '—'} />
-                      ) : (
-                        <CurrencyField label="Valor de Fechamento" value={t.fechamento} onChange={setTrocaValor(t.moto.id, 'fechamento')} required />
-                      )}
-                      {soLeitura ? (
+                        {podeTradeIn(t) && <InfoDisplay label="Trade-in" value={t.tradeIn ? `R$ ${t.tradeIn}` : '—'} />}
                         <InfoDisplay label="Valor de Quitação" value={t.quitacao ? `R$ ${t.quitacao}` : '—'} />
-                      ) : (
+                        <InfoDisplay label="Valor Líquido" value={formatCurrency(abatimentoMotoTroca(t))} valueClassName="text-primary" />
+                      </div>
+                    ) : (
+                      <div className={cn('grid grid-cols-1 gap-4', podeTradeIn(t) ? 'sm:grid-cols-4' : 'sm:grid-cols-3')}>
+                        <CurrencyField label="Valor de Fechamento" value={t.fechamento} onChange={setTrocaValor(t.moto.id, 'fechamento')} required />
+                        {podeTradeIn(t) && (
+                          <CurrencyField label="Trade-in" value={t.tradeIn} onChange={setTrocaValor(t.moto.id, 'tradeIn')} />
+                        )}
                         <CurrencyField label="Valor de Quitação" value={t.quitacao} onChange={setTrocaValor(t.moto.id, 'quitacao')} required />
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <InfoDisplay label="Valor Total (Líquido)" value={formatCurrency(abatimentoMotoTroca(t))} valueClassName="text-primary" />
-                      {trocaItens.length > 1 && idx === trocaItens.length - 1 && (
+                        {/* Não editável — valor em azul no lugar do input. */}
+                        <div>
+                          <span className="text-sm font-medium text-foreground">Valor Líquido</span>
+                          <p className="mt-1 flex h-10 items-center text-sm font-semibold text-primary">{formatCurrency(abatimentoMotoTroca(t))}</p>
+                        </div>
+                      </div>
+                    )}
+                    {trocaItens.length > 1 && idx === trocaItens.length - 1 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <InfoDisplay label="Total das Motos na Troca" value={formatCurrency(abatimentoTroca)} valueClassName="text-primary" />
-                      )}
-                    </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
                   </CardContent>
                 </Card>
               ))}
