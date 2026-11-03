@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bike, ClipboardCheck, Package, BarChart3, X, UserCheck, Wrench, Filter, Award, ExternalLink } from 'lucide-react';
+import { Bike, ClipboardCheck, Package, BarChart3, X, UserCheck, Wrench, Filter, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
@@ -109,14 +109,6 @@ const RelatoriosTab: React.FC = () => {
                       <o.icon className="h-4 w-4" /> {o.label}
                     </TabsTrigger>
                   ))}
-                  <a
-                    href="https://app.powerbi.com/view?r=eyJrIjoiODEwYWM3MWMtODRhYi00MWU1LWJiZmMtNGM0NDMyZmYzYjlmIiwidCI6ImY4NmI3N2RjLWZjMjYtNGY0My1hNjEyLTAzYzU2NjE3NjlhMSJ9"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-muted-foreground hover:text-foreground"
-                  >
-                    <Award className="h-4 w-4" /> NPS
-                  </a>
                 </TabsList>
               </div>
               {/* Mobile: select with icons */}
