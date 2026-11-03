@@ -722,6 +722,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
             // contrato) — o valor do pop-up é a soma e não pode ir pra cada avaliação.
             if (fechamento > 0 && motosAvaliacao.length === 1) avUpdate.valor_fechamento = fechamento;
             estoquePromises.push(supabase.from('avaliacoes').update(avUpdate).eq('id', av.id).then(r => r));
+            // Histórico 'adquirida' é a data de aquisição dos relatórios (Avaliações: Troca/Próprias,
+            // Preparação, Pós-Compra). Sem ele a moto da troca nunca contava como aquisição.
+            if (!['adquirida', 'estoque', 'oficina'].includes(av.situacao)) {
+              estoquePromises.push(supabase.from('status_history').insert({
+                entity_type: 'avaliacao',
+                entity_id: av.id,
+                status: 'adquirida',
+                changed_by: user?.id,
+                changed_by_name: userName || user?.email || null,
+                observacoes: 'Moto da troca adquirida na venda',
+              }).then(r => r));
+            }
           }
         }
         // Sync valor_fechamento to contratos table too
