@@ -266,7 +266,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   } as Record<string, string>)[s] || s;
 
   // BIN (liberação da montadora) — só 0km/test-ride 0km (estoque_motos_novas.bin_liberada).
-  const binLabel = (m: any) => (m.tipo === '0km' ? (m.bin_liberada ? 'Liberada' : 'Pendente') : '');
+  // Pendente fica com traço, igual às motos sem BIN.
+  const binLabel = (m: any) => (m.tipo === '0km' && m.bin_liberada ? 'Liberada' : '');
 
   const motosListados = motos;
 
@@ -581,7 +582,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                       </TableCell>
                       <TableCell className="text-xs">{formatarVencimento(quitacoes.get(m.id)) || '—'}</TableCell>
                       <TableCell className={cn('text-xs', quitacoes.get(m.id)?.status === 'quitado' && 'text-[#3a8f6a] font-medium')}>{formatarQuitacao(quitacoes.get(m.id)) || '—'}</TableCell>
-                      <TableCell className={cn('text-xs', m.tipo === '0km' && (m.bin_liberada ? 'text-[#3a8f6a] font-medium' : 'text-orange-600 font-medium'))}>{binLabel(m) || '—'}</TableCell>
+                      <TableCell className={cn('text-xs', m.tipo === '0km' && m.bin_liberada && 'text-[#3a8f6a] font-medium')}>{binLabel(m) || '—'}</TableCell>
                       <TableCell className="text-xs text-right">{fmtBRL(preco)}</TableCell>
                       <TableCell className="text-xs text-right">{compra > 0 ? fmtBRL(compra) : '—'}</TableCell>
                       <TableCell className={cn('text-xs text-right font-medium', compra > 0 ? (margemAbs >= 0 ? 'text-[#3a8f6a]' : 'text-red-500') : 'text-muted-foreground')}>
