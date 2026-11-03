@@ -1951,13 +1951,7 @@ const ContratoDialog: React.FC<Props> = ({
 
                 {/* Card interno: Valor de Fechamento — Fechamento > Trade-in > Quitação > Líquido */}
                 <Card className="shadow-none">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-primary" /> Valor de Fechamento
-                    </CardTitle>
-                    <Separator className="mt-2" />
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 pt-4">
                     {soLeitura ? (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <InfoDisplay label="Valor de Fechamento" value={t.fechamento ? `R$ ${t.fechamento}` : '—'} />
