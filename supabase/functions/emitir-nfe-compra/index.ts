@@ -1289,11 +1289,10 @@ async function registrarPosAutorizacao(
     // atualizada depois de o contrato já ter sido gerado uma vez).
     const fechamento = Number(avFin?.valor_fechamento ?? contratoFin?.valor_fechamento ?? nfeRow.valor_total ?? 0);
     const quitacao = Number(avFin?.valor_quitacao ?? contratoFin?.valor_quitacao ?? 0);
-    // Troca por 0km: o bônus trade-in (montadora) abate o repasse — só no contas
-    // a pagar; a NF-e de compra continua pelo fechamento (2026-10-19). O a receber
-    // do bônus nasce em gerar-compromissos-proposta (origem 'trade_in').
-    const tradeIn = ehTrocaCompromisso ? Number((avFin as any)?.trade_in ?? 0) : 0;
-    const valorRepasse = Math.max(fechamento - quitacao - abatimentos - tradeIn, 0);
+    // Trade-in (bônus da montadora na troca por 0km) NÃO abate o repasse — mesma
+    // regra de gerar-compromissos-proposta (decisão do usuário, 2026-11-03). O a
+    // receber do bônus nasce lá (origem 'trade_in').
+    const valorRepasse = Math.max(fechamento - quitacao - abatimentos, 0);
 
     if (ehTrocaCompromisso) {
       // Troca (moto entra como parte de pagamento): quitação do financiamento
@@ -1538,7 +1537,8 @@ async function reconciliarTrocaAposNfVenda(admin: any, atendimentoId: string, va
 
     const fechamento = Number(av.valor_fechamento ?? 0);
     const quitacao = Number(av.valor_quitacao ?? 0);
-    const repasse = Math.max(fechamento - quitacao - await abatimentosCliente(admin, av.id) - Number(av.trade_in ?? 0), 0);
+    // Trade-in fora do repasse (2026-11-03) — ver gerar-compromissos-proposta.
+    const repasse = Math.max(fechamento - quitacao - await abatimentosCliente(admin, av.id), 0);
     const sobra = Math.min(Math.max(fechamento - valorNfVenda, 0), repasse);
 
     const { data: parcelas } = await admin

@@ -34,7 +34,7 @@ const PLANOS_REPASSE = new Set([PLANO_COMPRA_REPASSE, PLANO_VENDA_REPASSE]);
 const PLANO_TROCO_USADA = '31b50885-ffba-469a-8454-95eab010ca0f';
 const PLANO_TROCO_NOVA = '1299f5d9-d3b4-4fae-a601-4fa9c3e6bb58';
 // Trade-in: bônus da montadora na troca por moto 0km (avaliacoes.trade_in).
-// Abate o repasse da moto que entra (contas a pagar) e vira um contas a
+// Não abate o repasse da moto que entra (desde 2026-11-03); vira um contas a
 // RECEBER da montadora — plano 1.8.04 Bônus Trade-in, CC motos novas. Pedido
 // do usuário, 2026-10-19. Plano de contas é único (vale pra FAG/POA/FLN).
 const PLANO_BONUS_TRADE_IN = '09b79e64-3e9f-463b-a8c1-e7992ea4694e';
@@ -283,10 +283,11 @@ async function construirRepasse(
   // depois de o contrato já ter sido gerado uma vez).
   const fechamento = nz(av.valor_fechamento ?? contratoCompra?.valor_fechamento);
   const quitacao = nz(av.valor_quitacao ?? contratoCompra?.valor_quitacao);
-  // Troca por 0km: o bônus trade-in (pago pela montadora) abate o que a loja
-  // paga pela moto — só no contas a pagar; a NF-e de compra segue o fechamento.
-  const tradeIn = origem === 'troca' ? nz(av.trade_in) : 0;
-  const repasse = Math.max(fechamento - quitacao - abatimentos - tradeIn, 0);
+  // Trade-in (bônus da montadora na troca por 0km) NÃO abate o repasse: a loja paga
+  // ao cliente o fechamento − quitação − abatimentos (decisão do usuário, 2026-11-03;
+  // de 19/10 até então o bônus era descontado). O bônus segue como a receber da
+  // montadora (construirTradeIn) e soma no Valor Líquido do contrato.
+  const repasse = Math.max(fechamento - quitacao - abatimentos, 0);
 
   const venc = vencimentoOverride || addDias(contratoCompra?.data_sinal, DIAS_VENCIMENTO);
 
