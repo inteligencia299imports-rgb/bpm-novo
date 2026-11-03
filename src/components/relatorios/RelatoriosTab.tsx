@@ -60,10 +60,21 @@ const RelatoriosTab: React.FC = () => {
   const [hasInternalFilters, setHasInternalFilters] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
-  const hasActiveFilters = !!(dateFrom || dateTo || hasInternalFilters);
+  // Cada aba monta o relatório com os filtros em "todos" — o estado da aba anterior não vale.
+  useEffect(() => { setHasInternalFilters(false); }, [dept]);
 
+  // "Limpar filtros" só aparece fora do padrão: período do dia 01 do mês até hoje e
+  // filtros internos em "todos".
+  const mesmoDia = (a: Date | undefined, b: Date) => !!a && a.toDateString() === b.toDateString();
+  const periodoPadrao = mesmoDia(dateFrom, getCurrentDefaultStart()) && mesmoDia(dateTo, new Date());
+  const hasActiveFilters = !periodoPadrao || hasInternalFilters;
+
+  // Volta ao padrão (não apaga o período): os relatórios zeram as datas no clear, e o
+  // período padrão é reaplicado em seguida.
   const handleClearAll = () => {
     clearFnRef.current?.();
+    setDateFrom(getCurrentDefaultStart());
+    setDateTo(new Date());
   };
 
   return (
@@ -75,7 +86,7 @@ const RelatoriosTab: React.FC = () => {
             <Button
               variant="ghost"
               size="sm"
-              className="rounded-full h-9 px-3 text-sm text-primary hover:text-primary/80 hover:bg-primary/10"
+              className="rounded-full h-9 px-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted"
               onClick={handleClearAll}
             >
               <X className="h-4 w-4 mr-1" />
@@ -163,7 +174,7 @@ const RelatoriosTab: React.FC = () => {
               <RelatorioPreparacao showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'preparacao') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
             </TabsContent>
             <TabsContent value="estoque">
-              <RelatorioEstoque showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja, tipo) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos')} />
+              <RelatorioEstoque showFilters={showFilters} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRegisterClear={(fn) => { if (dept === 'estoque') clearFnRef.current = fn; }} onFilterChange={(loja, tipo, outros) => setHasInternalFilters(loja !== 'todos' || tipo !== 'todos' || !!outros)} />
             </TabsContent>
           </>
         )}

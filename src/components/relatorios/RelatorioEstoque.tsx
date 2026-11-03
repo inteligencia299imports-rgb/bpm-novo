@@ -42,7 +42,8 @@ interface RelatorioEstoqueProps {
   setDateFrom: (d: Date | undefined) => void;
   setDateTo: (d: Date | undefined) => void;
   onRegisterClear?: (fn: () => void) => void;
-  onFilterChange?: (loja: string, tipo: string) => void;
+  /** `outros` = Situação, Quitação ou BIN fora de "todos". */
+  onFilterChange?: (loja: string, tipo: string, outros?: boolean) => void;
   showFilters?: boolean;
 }
 
@@ -71,8 +72,12 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   useEffect(() => { if (!mostraFiltroBin) setFilterBin('todos'); }, [mostraFiltroBin]);
 
 
-  const setFilterLoja = (v: string) => { setFilterLojaState(v); onFilterChange?.(v, filterTipo); };
-  const setFilterTipo = (v: TipoFilter) => { setFilterTipoState(v); onFilterChange?.(filterLoja, v); };
+  const setFilterLoja = setFilterLojaState;
+  const setFilterTipo = setFilterTipoState;
+  // Avisa a aba de todos os filtros (não só cidade/tipo) — decide se mostra "Limpar filtros".
+  useEffect(() => {
+    onFilterChange?.(filterLoja, filterTipo, filterSituacao !== 'todos' || filterQuitacao !== 'todos' || filterBin !== 'todos');
+  }, [filterLoja, filterTipo, filterSituacao, filterQuitacao, filterBin]);
 
   useEffect(() => {
     onRegisterClear?.(() => {
