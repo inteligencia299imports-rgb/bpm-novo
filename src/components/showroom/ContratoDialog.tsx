@@ -1921,10 +1921,9 @@ const ContratoDialog: React.FC<Props> = ({
                 </CardContent>
               </Card>
 
-              {/* Card: Moto do Cliente (troca) + card do Valor de Fechamento dela */}
+              {/* Card: Moto do Cliente (troca), com o card do Valor de Fechamento dentro */}
               {hasTroca && trocaItens.map((t, idx) => (
-                <React.Fragment key={t.moto.id}>
-                <Card>
+                <Card key={t.moto.id}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Bike className="h-4 w-4 text-primary" /> Moto do Cliente{trocaItens.length > 1 ? ` ${idx + 1}` : ''}
@@ -1949,14 +1948,12 @@ const ContratoDialog: React.FC<Props> = ({
                         </>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
 
-                {/* Card: Valor de Fechamento (troca) — Fechamento > Trade-in > Quitação > Líquido */}
-                <Card>
+                {/* Card interno: Valor de Fechamento — Fechamento > Trade-in > Quitação > Líquido */}
+                <Card className="shadow-none">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-primary" /> Valor de Fechamento{trocaItens.length > 1 ? ` — Moto do Cliente ${idx + 1}` : ''}
+                      <DollarSign className="h-4 w-4 text-primary" /> Valor de Fechamento
                     </CardTitle>
                     <Separator className="mt-2" />
                   </CardHeader>
@@ -1985,7 +1982,8 @@ const ContratoDialog: React.FC<Props> = ({
                     )}
                   </CardContent>
                 </Card>
-                </React.Fragment>
+                  </CardContent>
+                </Card>
               ))}
 
               {/* Card: Agregados — serviços cobrados à parte do cliente */}
