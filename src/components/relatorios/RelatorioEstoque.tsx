@@ -29,6 +29,13 @@ const fmtBRL = (v: number | null | undefined) =>
   (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtPct = (v: number) => `${Math.round(v)}%`;
 
+/** Moto em estoque no corte: entrou até a data e não foi vendida antes dela. */
+const ativaNoCorte = (m: any, cutoffMs: number) => {
+  const entrada = m.data_entrada ? new Date(m.data_entrada).getTime() : 0;
+  const venda = m.data_venda ? new Date(m.data_venda).getTime() : null;
+  return entrada <= cutoffMs && (venda === null || venda > cutoffMs);
+};
+
 interface RelatorioEstoqueProps {
   dateFrom: Date | undefined;
   dateTo: Date | undefined;
@@ -46,10 +53,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const chartH = isMobile ? 220 : 300;
 
   const [loading, setLoading] = useState(true);
-  const [indicadores, setIndicadores] = useState<any>({});
-  const [indicadoresPrev, setIndicadoresPrev] = useState<any>({});
-  const [chartByMonth, setChartByMonth] = useState<any[]>([]);
-  const [motos, setMotos] = useState<any[]>([]);
+  const [chartByMonth] = useState<any[]>([]);
+  // Estoque do período sem filtro de cidade/tipo — os filtros são aplicados em memória (useMemo abaixo).
+  const [estoqueBase, setEstoqueBase] = useState<any[]>([]);
+  const [prepRows, setPrepRows] = useState<any[]>([]);
   const [quitacoes, setQuitacoes] = useState<Map<string, Quitacao>>(new Map());
   // Filtro de Quitação: só na listagem (os indicadores não dependem do financeiro).
   const [filterQuitacao, setFilterQuitacao] = useState('todos');
@@ -111,13 +118,36 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       fetchLojaMap(),
     ]);
 
-    let estoqueAll = [
+    const estoqueAll = [
       ...(estoqueRes.data || []).map((r: any) => mapEstoqueMoto(r, lojaMap)),
       ...(((estoqueNovasRes as any).data) || []).map((r: any) => mapEstoqueMotoNova(r, lojaMap)),
     ] as any[];
+
+    // Preparação (avaliacoes) — não depende de loja/tipo; média em dias varia por cutoff
+    const prep = (avaliacoesRes.data || []).filter((a: any) => {
+      const ps = a.preparacao_status || 'em_aberto';
+      return PREP_STATUS.includes(ps);
+    });
+
+    setEstoqueBase(estoqueAll);
+    setPrepRows(prep);
+    setLoading(false);
+    // Quitação vem do financeiro e não trava a listagem — preenche quando chegar.
+    // Busca para todo o estoque do cutoff, assim trocar cidade/tipo não refaz a consulta.
+    const cutoffMs = cutoffDate.getTime();
+    fetchQuitacaoEstoque(estoqueAll.filter((m: any) => ativaNoCorte(m, cutoffMs))).then(setQuitacoes).catch((e) => console.error('quitação do estoque', e));
+  }, [dateTo]);
+
+  // Filtros de cidade/tipo aplicados em memória, igual ao Showroom: marcar uma opção
+  // não recarrega a tela (o que desmontava o seletor e o fechava a cada clique).
+  const { indicadores, indicadoresPrev, motos } = useMemo<{ indicadores: any; indicadoresPrev: any; motos: any[] }>(() => {
+    const cutoffDate = dateTo ?? new Date();
+    const prevCutoffDate = getPreviousMonthDate(cutoffDate)!;
+
+    let estoqueTipo = estoqueBase;
     if (filterTipo !== 'todos') {
       const tipos = filterTipo.split(',');
-      estoqueAll = estoqueAll.filter((m: any) => tipos.some((t) => {
+      estoqueTipo = estoqueTipo.filter((m: any) => tipos.some((t) => {
         const tipo = tipoExibicaoEstoque(m);
         if (t === 'test_ride' || t === '0km') return tipo === t;
         // Próprias = própria/repasse/convertida (m.tipo já agrupa); test-ride seminova fica só em Test-Ride.
@@ -125,24 +155,14 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       }));
     }
     // Filtro de loja (cidade) — mesma lógica do RPC
-    const estoqueFiltrado = estoqueAll.filter((m: any) => {
+    const estoqueFiltrado = estoqueTipo.filter((m: any) => {
       const loja = (m.loja || '').toString();
       if (filterLoja === 'todos') return true;
       return filterLoja.split(',').some((c) => matchesCidade(loja, c as CidadeFilterValue));
     });
 
-    // Preparação (avaliacoes) — não depende de loja/tipo; média em dias varia por cutoff
-    const prepRows = (avaliacoesRes.data || []).filter((a: any) => {
-      const ps = a.preparacao_status || 'em_aberto';
-      return PREP_STATUS.includes(ps);
-    });
-
     const computeKpis = (cutoffMs: number) => {
-      const active = estoqueFiltrado.filter((m: any) => {
-        const entrada = m.data_entrada ? new Date(m.data_entrada).getTime() : 0;
-        const venda = m.data_venda ? new Date(m.data_venda).getTime() : null;
-        return entrada <= cutoffMs && (venda === null || venda > cutoffMs);
-      });
+      const active = estoqueFiltrado.filter((m: any) => ativaNoCorte(m, cutoffMs));
       const total = active.length;
       const somaTotal = active.reduce((s, m) => s + (Number(m.preco) || 0), 0);
       const buildBlock = (st: string) => {
@@ -184,25 +204,14 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       };
     };
 
-    setIndicadores(computeKpis(cutoffDate.getTime()));
-    setIndicadoresPrev(computeKpis(prevCutoffDate.getTime()));
-    setChartByMonth([]);
-
     // Lista de motos: apenas cutoff atual
     const cutoffMs = cutoffDate.getTime();
-    const motosFiltradas = estoqueFiltrado.filter((m: any) => {
-      const entrada = m.data_entrada ? new Date(m.data_entrada).getTime() : 0;
-      const venda = m.data_venda ? new Date(m.data_venda).getTime() : null;
-      return entrada <= cutoffMs && (venda === null || venda > cutoffMs);
-    });
+    const motosFiltradas = estoqueFiltrado.filter((m: any) => ativaNoCorte(m, cutoffMs));
     // Ordem da listagem (e do Excel/PDF, que usam a mesma lista): marca, depois modelo.
     const cmp = (x: unknown, y: unknown) => String(x ?? '').localeCompare(String(y ?? ''), 'pt-BR', { sensitivity: 'base', numeric: true });
     motosFiltradas.sort((x: any, y: any) => cmp(x.marca, y.marca) || cmp(x.modelo, y.modelo));
-    setMotos(motosFiltradas);
-    setLoading(false);
-    // Quitação vem do financeiro e não trava a listagem — preenche quando chegar.
-    fetchQuitacaoEstoque(motosFiltradas).then(setQuitacoes).catch((e) => console.error('quitação do estoque', e));
-  }, [dateTo, filterLoja, filterTipo]);
+    return { indicadores: computeKpis(cutoffMs), indicadoresPrev: computeKpis(prevCutoffDate.getTime()), motos: motosFiltradas };
+  }, [estoqueBase, prepRows, dateTo, filterLoja, filterTipo]);
 
 
 
