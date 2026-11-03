@@ -1397,17 +1397,17 @@ const ContratoDialog: React.FC<Props> = ({
   // O quanto cada moto da troca abate do Valor Faltante — a base é:
   //  - com Valor de Fechamento preenchido: o próprio Valor de Fechamento;
   //  - sem Valor de Fechamento: o repasse de compra (Avaliação − Custos Loja).
-  // O Trade-in (bônus da montadora) e o Valor de Quitação (financiamento/dívida da
-  // moto do cliente) saem dessa base antes — o saldo líquido é o que de fato entra
-  // como pagamento (mesma conta do repasse em gerar-compromissos-proposta:
-  // fechamento − quitação − trade-in).
+  // O Trade-in (bônus da montadora na troca por 0km) SOMA ao valor da moto do
+  // cliente (pedido do usuário, 2026-11-03) e o Valor de Quitação (financiamento/
+  // dívida da moto) sai — o saldo líquido é o que de fato entra como pagamento:
+  // fechamento + trade-in − quitação.
   // Várias motos na troca: soma o líquido de cada uma.
   const abatimentoMotoTroca = (t: (typeof trocaItens)[number]) => {
     const fechamentoNum = parseCurrencyInput(t.fechamento);
     const quitacaoNum = t.quitacao.trim() ? parseCurrencyInput(t.quitacao) : 0;
     const tradeInNum = t.tradeIn.trim() ? parseCurrencyInput(t.tradeIn) : 0;
     const base = fechamentoNum > 0 ? fechamentoNum : repasseTroca(t.av);
-    return Math.max(base - tradeInNum - quitacaoNum, 0);
+    return Math.max(base + tradeInNum - quitacaoNum, 0);
   };
   const abatimentoTroca = hasTroca
     ? trocaItens.reduce((s, t) => s + abatimentoMotoTroca(t), 0)
@@ -1966,7 +1966,11 @@ const ContratoDialog: React.FC<Props> = ({
                           <CurrencyField label="Trade-in" value={t.tradeIn} onChange={setTrocaValor(t.moto.id, 'tradeIn')} />
                         )}
                         <CurrencyField label="Valor de Quitação" value={t.quitacao} onChange={setTrocaValor(t.moto.id, 'quitacao')} required />
-                        <CurrencyField label="Valor Líquido" value={fmtMoedaInput(abatimentoMotoTroca(t))} onChange={() => {}} disabled />
+                        {/* Não editável — valor em azul no lugar do input. */}
+                        <div>
+                          <span className="text-sm font-medium text-foreground">Valor Líquido</span>
+                          <p className="mt-1 flex h-10 items-center text-sm font-semibold text-primary">{formatCurrency(abatimentoMotoTroca(t))}</p>
+                        </div>
                       </div>
                     )}
                     {trocaItens.length > 1 && idx === trocaItens.length - 1 && (
