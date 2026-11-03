@@ -58,11 +58,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   const [estoqueBase, setEstoqueBase] = useState<any[]>([]);
   const [prepRows, setPrepRows] = useState<any[]>([]);
   const [quitacoes, setQuitacoes] = useState<Map<string, Quitacao>>(new Map());
-  // Filtro de Quitação: só na listagem (os indicadores não dependem do financeiro).
+  // Filtros de Quitação, Situação e BIN valem para indicadores e listagem (menos Em Preparação, que vem das avaliações).
   const [filterQuitacao, setFilterQuitacao] = useState('todos');
   // Pop-up de BIN ao clicar numa linha de moto 0km/test-ride.
   const [binItem, setBinItem] = useState<any | null>(null);
-  // Filtro de Situação: também só na listagem (os indicadores já separam por situação).
   const [filterSituacao, setFilterSituacao] = useState('todos');
   const [filterLoja, setFilterLojaState] = useState('todos');
   const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
@@ -133,9 +132,11 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     setPrepRows(prep);
     setLoading(false);
     // Quitação vem do financeiro e não trava a listagem — preenche quando chegar.
-    // Busca para todo o estoque do cutoff, assim trocar cidade/tipo não refaz a consulta.
+    // Busca para todo o estoque do cutoff atual e do anterior (o filtro de Quitação também
+    // vale para o comparativo dos indicadores), assim trocar filtro não refaz a consulta.
     const cutoffMs = cutoffDate.getTime();
-    fetchQuitacaoEstoque(estoqueAll.filter((m: any) => ativaNoCorte(m, cutoffMs))).then(setQuitacoes).catch((e) => console.error('quitação do estoque', e));
+    const prevCutoffMs = prevCutoffDate.getTime();
+    fetchQuitacaoEstoque(estoqueAll.filter((m: any) => ativaNoCorte(m, cutoffMs) || ativaNoCorte(m, prevCutoffMs))).then(setQuitacoes).catch((e) => console.error('quitação do estoque', e));
   }, [dateTo]);
 
   // Filtros de cidade/tipo aplicados em memória, igual ao Showroom: marcar uma opção
@@ -155,11 +156,24 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       }));
     }
     // Filtro de loja (cidade) — mesma lógica do RPC
-    const estoqueFiltrado = estoqueTipo.filter((m: any) => {
+    let estoqueFiltrado = estoqueTipo.filter((m: any) => {
       const loja = (m.loja || '').toString();
       if (filterLoja === 'todos') return true;
       return filterLoja.split(',').some((c) => matchesCidade(loja, c as CidadeFilterValue));
     });
+    // Situação, Quitação e BIN valem para os indicadores e para a listagem.
+    if (filterSituacao !== 'todos') {
+      const situacoes = filterSituacao.split(',');
+      estoqueFiltrado = estoqueFiltrado.filter((m: any) => situacoes.includes(m.status));
+    }
+    if (filterQuitacao !== 'todos') {
+      const escolhidos = filterQuitacao.split(',');
+      estoqueFiltrado = estoqueFiltrado.filter((m: any) => escolhidos.includes(quitacoes.get(m.id)?.status === 'quitado' ? 'quitada' : 'nao_quitada'));
+    }
+    if (mostraFiltroBin && filterBin !== 'todos') {
+      const bins = filterBin.split(',');
+      estoqueFiltrado = estoqueFiltrado.filter((m: any) => m.tipo === '0km' && bins.includes(m.bin_liberada ? 'baixada' : 'nao_baixada'));
+    }
 
     const computeKpis = (cutoffMs: number) => {
       const active = estoqueFiltrado.filter((m: any) => ativaNoCorte(m, cutoffMs));
@@ -211,7 +225,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     const cmp = (x: unknown, y: unknown) => String(x ?? '').localeCompare(String(y ?? ''), 'pt-BR', { sensitivity: 'base', numeric: true });
     motosFiltradas.sort((x: any, y: any) => cmp(x.marca, y.marca) || cmp(x.modelo, y.modelo));
     return { indicadores: computeKpis(cutoffMs), indicadoresPrev: computeKpis(prevCutoffDate.getTime()), motos: motosFiltradas };
-  }, [estoqueBase, prepRows, dateTo, filterLoja, filterTipo]);
+  }, [estoqueBase, prepRows, dateTo, filterLoja, filterTipo, filterSituacao, filterQuitacao, filterBin, mostraFiltroBin, quitacoes]);
 
 
 
@@ -252,24 +266,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   } as Record<string, string>)[s] || s;
 
   // BIN (liberação da montadora) — só 0km/test-ride 0km (estoque_motos_novas.bin_liberada).
-  const binLabel = (m: any) => (m.tipo === '0km' ? (m.bin_liberada ? 'Liberada' : 'Pendente') : '');
+  // Pendente fica com traço, igual às motos sem BIN.
+  const binLabel = (m: any) => (m.tipo === '0km' && m.bin_liberada ? 'Liberada' : '');
 
-  const motosListados = useMemo(() => {
-    let lista = motos;
-    if (filterSituacao !== 'todos') {
-      const situacoes = filterSituacao.split(',');
-      lista = lista.filter((m: any) => situacoes.includes(m.status));
-    }
-    if (filterQuitacao !== 'todos') {
-      const escolhidos = filterQuitacao.split(',');
-      lista = lista.filter((m: any) => escolhidos.includes(quitacoes.get(m.id)?.status === 'quitado' ? 'quitada' : 'nao_quitada'));
-    }
-    if (mostraFiltroBin && filterBin !== 'todos') {
-      const bins = filterBin.split(',');
-      lista = lista.filter((m: any) => m.tipo === '0km' && bins.includes(m.bin_liberada ? 'baixada' : 'nao_baixada'));
-    }
-    return lista;
-  }, [motos, quitacoes, filterQuitacao, filterSituacao, filterBin, mostraFiltroBin]);
+  const motosListados = motos;
 
   const buildRows = () => motosListados.map((m: any) => {
     const cutoffDate = dateTo ?? new Date();
@@ -582,7 +582,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                       </TableCell>
                       <TableCell className="text-xs">{formatarVencimento(quitacoes.get(m.id)) || '—'}</TableCell>
                       <TableCell className={cn('text-xs', quitacoes.get(m.id)?.status === 'quitado' && 'text-[#3a8f6a] font-medium')}>{formatarQuitacao(quitacoes.get(m.id)) || '—'}</TableCell>
-                      <TableCell className={cn('text-xs', m.tipo === '0km' && (m.bin_liberada ? 'text-[#3a8f6a] font-medium' : 'text-orange-600 font-medium'))}>{binLabel(m) || '—'}</TableCell>
+                      <TableCell className={cn('text-xs', m.tipo === '0km' && m.bin_liberada && 'text-[#3a8f6a] font-medium')}>{binLabel(m) || '—'}</TableCell>
                       <TableCell className="text-xs text-right">{fmtBRL(preco)}</TableCell>
                       <TableCell className="text-xs text-right">{compra > 0 ? fmtBRL(compra) : '—'}</TableCell>
                       <TableCell className={cn('text-xs text-right font-medium', compra > 0 ? (margemAbs >= 0 ? 'text-[#3a8f6a]' : 'text-red-500') : 'text-muted-foreground')}>
