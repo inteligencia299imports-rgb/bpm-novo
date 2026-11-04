@@ -23,6 +23,7 @@ interface EstoqueOption {
   is0km: boolean;
   isTestRide: boolean;
   empresaId: string | null;
+  empresaNome: string | null;
   /** Moto em oficina: estoque "Serviço" (voltou pra preparação) ou O.S. aberta no ofc. */
   emOficina: boolean;
 }
@@ -48,11 +49,17 @@ interface Props {
    * MESMA empresa, evitando reservar/vender moto de outro CNPJ (a NF de
    * venda seria emitida com o CNPJ errado). */
   empresaId?: string;
+  /** Empresas que faturam pela loja do atendimento (loja 299 pela MMATOS e pela
+   * FAG, desde 2026-11-04). Seminova de qualquer uma delas aparece no picker;
+   * escolher uma de outra empresa troca a empresa do atendimento (onEmpresaDaMoto). */
+  empresasDaLoja?: Set<string>;
+  onEmpresaDaMoto?: (empresaId: string) => void;
 }
 
 const MotoCompraSection: React.FC<Props> = ({
   origemMoto, setOrigemMoto, marcaId, setMarcaId, modeloId, setModeloId, ano, setAno,
   estoqueMotoId, setEstoqueMotoId, setEstoqueTipo, loja, chassi = '', setChassi, disabled, empresaId,
+  empresasDaLoja, onEmpresaDaMoto,
 }) => {
   const { marcas, getModelosByMarcaId, marcaIdByNome, loading } = useMarcasModelos();
   const modelos = getModelosByMarcaId(marcaId);
@@ -84,6 +91,7 @@ const MotoCompraSection: React.FC<Props> = ({
           is0km: m.fonte === '0km',
           isTestRide: m.tipo_unidade === 'test_ride',
           empresaId: m.empresa_id ?? null,
+          empresaNome: m.empresa ?? null,
           emOficina: m.status === 'servico' || m.situacao_avaliacao === 'oficina',
         });
 
@@ -99,11 +107,15 @@ const MotoCompraSection: React.FC<Props> = ({
         // o CNPJ errado (achado real 2026-09-30).
         // Em "Serviço" já vendida/reservada em outro atendimento (o status segue
         // "Serviço" até a conclusão da oficina) não aparece pra um novo atendimento.
+        // Loja 299 que fatura por mais de uma empresa (MMATOS e FAG): mostra as
+        // seminovas de todas elas — a escolha troca a empresa do atendimento, e a
+        // NF de venda sai pelo CNPJ dono da moto.
+        const empresasAceitas = !isDucati && empresasDaLoja && empresasDaLoja.size > 1 ? empresasDaLoja : null;
         let options = disponiveis
           .filter((m: any) => !(m.status === 'servico' && m.atendimento_venda_id && m.id !== estoqueMotoId))
           .map(flatten)
           .filter((o) => (isDucati ? o.is0km : !o.is0km))
-          .filter((o) => !empresaId || o.empresaId === empresaId);
+          .filter((o) => !empresaId || o.empresaId === empresaId || (!!empresasAceitas && !!o.empresaId && empresasAceitas.has(o.empresaId)));
 
         // Mantem a moto ja selecionada mesmo que nao esteja mais "disponivel".
         if (estoqueMotoId && !options.some((item) => item.id === estoqueMotoId)) {
@@ -130,7 +142,10 @@ const MotoCompraSection: React.FC<Props> = ({
     return () => {
       isMounted = false;
     };
-  }, [origemMoto, isDucati, estoqueMotoId, empresaId]);
+  }, [origemMoto, isDucati, estoqueMotoId, empresaId, empresasDaLoja]);
+
+  // Várias empresas no picker: identifica de qual CNPJ é cada moto.
+  const variasEmpresas = new Set(estoque.map((e) => e.empresaId).filter(Boolean)).size > 1;
 
   const formatEstoqueLabel = (item?: EstoqueOption | null) => {
     if (!item) return 'Moto não encontrada';
@@ -224,11 +239,15 @@ const MotoCompraSection: React.FC<Props> = ({
                     onSelect={() => {
                       setEstoqueMotoId(item.id);
                       setEstoqueTipo?.(item.tipo);
+                      if (item.empresaId && item.empresaId !== empresaId) onEmpresaDaMoto?.(item.empresaId);
                       setComboOpen(false);
                     }}
                   >
                     <Check className={cn("mr-2 h-4 w-4", estoqueMotoId === item.id ? "opacity-100" : "opacity-0")} />
                     {formatEstoqueLabel(item)}
+                    {variasEmpresas && item.empresaNome && (
+                      <span className="ml-2 text-[10px] font-semibold text-muted-foreground uppercase">{item.empresaNome}</span>
+                    )}
                     {item.is0km && (
                       <span className={`ml-2 text-[10px] font-semibold ${item.isTestRide ? 'text-orange-600' : 'text-primary'}`}>
                         {item.isTestRide ? 'TEST-RIDE' : '0KM'}

@@ -1235,6 +1235,7 @@ export type Database = {
           empresa_id: string
           id: string
           loja: string
+          padrao: boolean
           sistema: string
           updated_at: string
         }
@@ -1244,6 +1245,7 @@ export type Database = {
           empresa_id: string
           id?: string
           loja: string
+          padrao?: boolean
           sistema: string
           updated_at?: string
         }
@@ -1253,6 +1255,7 @@ export type Database = {
           empresa_id?: string
           id?: string
           loja?: string
+          padrao?: boolean
           sistema?: string
           updated_at?: string
         }
