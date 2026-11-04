@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useLayoutEffect, useRef, useMemo } from 'react';
 import { sexoParaGravar } from '@/lib/sexo';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -69,6 +69,9 @@ const lojaUnidadeLabel = (loja: string): string =>
   loja.startsWith('Ducati ') ? loja.replace('Ducati ', '') : loja;
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
+
+/** Chave empresa + loja do mapa loja_empresas.id (uma loja pode ter mais de uma empresa). */
+const lojaKey = (empresaId: string | null | undefined, loja: string) => `${empresaId ?? ''}|${loja}`;
 
 interface Props {
   atendimentoId: string | null;
@@ -181,14 +184,22 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   useEffect(() => {
     supabase
       .from('loja_empresas')
-      .select('id, loja, empresa_id, empresas:empresa_id(id, nome, razao_social, cnpj)')
+      .select('id, loja, empresa_id, padrao, empresas:empresa_id(id, nome, razao_social, cnpj)')
       .eq('sistema', 'motos')
       .eq('ativo', true)
       .then(({ data }) => {
         const rows = (data || []) as any[];
         setLojasAtivas(new Set(rows.map(r => r.loja)));
-        setLojaIdMap(new Map(rows.map(r => [r.loja, r.id])));
-        setLojaEmpresaMap(new Map(rows.filter(r => r.empresa_id).map(r => [r.loja, r.empresa_id])));
+        // Uma loja pode faturar por mais de uma empresa (ex.: 299i pela MMATOS
+        // e pela FAG, desde 2026-11-04) — o id da loja_empresas sai do par
+        // empresa + loja; a empresa "padrão" da loja é a sugerida ao escolher a loja.
+        setLojaIdMap(new Map(rows.map(r => [lojaKey(r.empresa_id, r.loja), r.id])));
+        const padraoPorLoja = new Map<string, string>();
+        for (const r of rows) {
+          if (!r.empresa_id) continue;
+          if (r.padrao !== false || !padraoPorLoja.has(r.loja)) padraoPorLoja.set(r.loja, r.empresa_id);
+        }
+        setLojaEmpresaMap(padraoPorLoja);
 
         const empLojas = new Map<string, Set<string>>();
         const empInfo = new Map<string, any>();
@@ -208,12 +219,22 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
   }, []);
 
   // Loja escolhida -> empresa correspondente (loja_empresas.id = atendimento.loja_id -> empresa_id).
+  // Se a empresa atual também fatura por essa loja, mantém; senão vai pra padrão da loja.
   useEffect(() => {
     if (!loja) return;
+    if (empresaId && empresaLojasMap.get(empresaId)?.has(loja)) return;
     const emp = lojaEmpresaMap.get(loja);
     if (emp && emp !== empresaId) setEmpresaId(emp);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loja, lojaEmpresaMap]);
+  }, [loja, lojaEmpresaMap, empresaLojasMap]);
+
+  // Empresas que faturam pela loja escolhida (o seletor de moto do estoque
+  // mostra as seminovas de todas elas e troca a empresa ao escolher a moto).
+  const empresasDaLoja = useMemo(() => {
+    const s = new Set<string>();
+    for (const [emp, lojas] of empresaLojasMap) if (lojas.has(loja)) s.add(emp);
+    return s;
+  }, [empresaLojasMap, loja]);
 
   // Empresa não faz compra direta -> sem "vender" no interesse.
   const permiteVender = empresaCompraDireta(empresaId);
@@ -719,7 +740,7 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
       }
     }
 
-    const lojaId = loja === lojaOriginal ? lojaIdOriginal : lojaIdMap.get(loja);
+    const lojaId = lojaIdMap.get(lojaKey(empresaId, loja)) ?? (loja === lojaOriginal ? lojaIdOriginal : undefined);
     if (!lojaId) {
       toast.error('Loja inválida, selecione novamente');
       setSaving(false);
@@ -1218,6 +1239,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           chassi={chassi} setChassi={setChassi}
           disabled={isEditing && (situacao === 'sinal' || situacao === 'vendido')}
           empresaId={empresaId}
+          empresasDaLoja={empresasDaLoja}
+          onEmpresaDaMoto={(emp) => { if (emp && emp !== empresaId && empresasDaLoja.has(emp)) setEmpresaId(emp); }}
         />
       )}
 

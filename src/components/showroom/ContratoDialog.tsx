@@ -38,7 +38,6 @@ import {
   type VendedorEquipamentos,
 } from '@/lib/voucherEquipamentos';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
-import { EMPRESAS_SO_MOTO_NOVA } from '@/lib/tipoAquisicao';
 import { pendenciasVeicProd } from '@/lib/veicProd';
 
 interface Props {
@@ -458,9 +457,6 @@ const ContratoDialog: React.FC<Props> = ({
   // Troca: a NF-e de venda em PRODUÇÃO só libera depois da NF-e de compra da moto
   // da troca ter sido emitida em produção.
   const [trocaCompraProdOk, setTrocaCompraProdOk] = useState(false);
-  // Troca na FAG (só revende 0km): também exige a NF-e de transferência da
-  // moto da troca pra MMATOS em produção — ver TransferenciaFagMmatosDialog.
-  const [trocaTransferenciaProdOk, setTrocaTransferenciaProdOk] = useState(false);
 
   // Load existing contract data
   useEffect(() => {
@@ -562,18 +558,8 @@ const ContratoDialog: React.FC<Props> = ({
           .eq('status', 'processada')
           .limit(1);
         setTrocaCompraProdOk(!!(cp && cp.length));
-        const { data: tp } = await supabase
-          .from('nfe_entradas' as any)
-          .select('id')
-          .in('avaliacao_id', motosAvaliacao.map((m) => m.id))
-          .eq('operacao', 'transferencia')
-          .eq('ambiente', 'producao')
-          .eq('status', 'processada')
-          .limit(1);
-        setTrocaTransferenciaProdOk(!!(tp && tp.length));
       } else {
         setTrocaCompraProdOk(false);
-        setTrocaTransferenciaProdOk(false);
       }
 
       type InstRow = {
@@ -1489,7 +1475,6 @@ const ContratoDialog: React.FC<Props> = ({
     parseCurrencyInput(stValorSubstituto) > 0 &&
     parseCurrencyInput(stValorRetido) > 0
   );
-  const precisaTransferenciaFag = hasTroca && EMPRESAS_SO_MOTO_NOVA.has(empresaId) && !trocaTransferenciaProdOk;
   const pendenciasEmissaoNf: string[] = [];
   const pendenciasProducaoNf: string[] = [];
   if (ehNfe && !loading && (podeEmitirNova || podeReemitirHomolog)) {
@@ -1508,7 +1493,6 @@ const ContratoDialog: React.FC<Props> = ({
     // Sem homologação (2026-10-20): as travas que eram "só de produção" valem pra emissão.
     if (!stRetidoOk) pendenciasEmissaoNf.push('ICMS-ST retido da NF de entrada da moto (BC, ICMS do substituto e ICMS-ST)');
     if (hasTroca && !trocaCompraProdOk) pendenciasEmissaoNf.push('NF-e de compra da moto da troca');
-    if (precisaTransferenciaFag) pendenciasEmissaoNf.push('NF-e de transferência da moto da troca para a MMATOS');
   }
 
   if (!open) return null;
@@ -2399,14 +2383,12 @@ const ContratoDialog: React.FC<Props> = ({
                     {(podeEmitirNova || podeReemitirHomolog) && !nfe.pendente && (
                       <Button
                         className="gap-1.5"
-                        disabled={disabled || (hasTroca && !trocaCompraProdOk) || precisaTransferenciaFag || !stRetidoOk}
+                        disabled={disabled || (hasTroca && !trocaCompraProdOk) || !stRetidoOk}
                         title={!stRetidoOk
                           ? 'Preencha os valores de ICMS-ST retido (da NF de entrada da moto) antes de emitir'
                           : hasTroca && !trocaCompraProdOk
                             ? 'Emita a NF-e de compra da moto da troca antes'
-                            : precisaTransferenciaFag
-                              ? 'Emita a NF-e de transferência da moto da troca para a MMATOS antes'
-                              : title}
+                            : title}
                         onClick={() => handleEmitirNf('producao')}
                       >
                         {nfe.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : nfe.erro ? <RefreshCw className="h-4 w-4" /> : <FileText className="h-4 w-4" />}

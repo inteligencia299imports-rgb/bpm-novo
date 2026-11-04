@@ -1878,7 +1878,7 @@ Deno.serve(async (req) => {
     if (['consignada', 'convertida'].includes(String((avTipo as any)?.tipo_aquisicao || '')) && (emOrigem as any)?.loja_id) {
       const lojaCnpj = async (lojaId: string) => {
         const { data } = await admin.from('loja_empresas').select('empresas:empresa_id(cnpj)').eq('id', lojaId).maybeSingle();
-        return String((data as any)?.empresas?.cnpj || '').replace(/D/g, '');
+        return String((data as any)?.empresas?.cnpj || '').replace(/\D/g, '');
       };
       const [cnpjOrigem, cnpjDestino] = await Promise.all([lojaCnpj((emOrigem as any).loja_id), lojaCnpj(destinoLojaIdBody)]);
       if (cnpjOrigem && cnpjDestino && cnpjOrigem.slice(0, 8) !== cnpjDestino.slice(0, 8)) {
@@ -2759,37 +2759,29 @@ Deno.serve(async (req) => {
       }
     }
     // Troca: a NF-e de venda em produção só sai depois da NF-e de COMPRA da moto
-    // que está entrando como pagamento ter sido emitida em produção — e, na FAG
-    // (só revende 0km), também depois da NF-e de TRANSFERÊNCIA dessa moto para
-    // a MMATOS (ver `transferencia` no CFG).
+    // que está entrando como pagamento ter sido emitida em produção. Desde
+    // 2026-11-04 a FAG não exige mais a NF-e de transferência da moto da troca
+    // pra MMATOS — a moto continua na FAG (pedido do usuário).
     if (ehVenda && atendimento.interesse === 'trocar') {
-      // Troca pode ter várias motos: CADA uma precisa da NF de compra (e, na FAG,
-      // da transferência) em produção. Moto de repasse não tem NF de entrada —
-      // fica fora; sem nenhuma moto com NF, mantém a regra antiga (alguma moto).
+      // Troca pode ter várias motos: CADA uma precisa da NF de compra em
+      // produção. Moto de repasse não tem NF de entrada — fica fora; sem
+      // nenhuma moto com NF, mantém a regra antiga (alguma moto).
       const { data: avsTroca } = await admin
         .from('avaliacoes').select('id, tipo_aquisicao').eq('atendimento_id', atendimentoId);
       const todasTroca = ((avsTroca as any[]) || []);
       const exigemNf = todasTroca.filter((a) => a.tipo_aquisicao !== 'repasse').map((a) => a.id as string);
       const trocaIds = exigemNf.length ? exigemNf : todasTroca.map((a) => a.id as string);
       const { data: nfsTrocaProd } = trocaIds.length
-        ? await admin.from('nfe_entradas').select('avaliacao_id, operacao')
-            .in('avaliacao_id', trocaIds).in('operacao', ['compra', 'transferencia'])
+        ? await admin.from('nfe_entradas').select('avaliacao_id')
+            .in('avaliacao_id', trocaIds).eq('operacao', 'compra')
             .eq('ambiente', 'producao').eq('status', 'processada')
         : { data: [] };
-      const temNf = (id: string, op: string) => ((nfsTrocaProd as any[]) || []).some((n) => n.avaliacao_id === id && n.operacao === op);
-      const compraOk = exigemNf.length ? trocaIds.every((id) => temNf(id, 'compra')) : trocaIds.some((id) => temNf(id, 'compra'));
+      const temNf = (id: string) => ((nfsTrocaProd as any[]) || []).some((n) => n.avaliacao_id === id);
+      const compraOk = exigemNf.length ? trocaIds.every(temNf) : trocaIds.some(temNf);
       if (!compraOk) {
         return jsonResponse({ error: trocaIds.length > 1
           ? 'Emita a NF-e de compra de cada moto da troca em produção antes de emitir a venda.'
           : 'Emita a NF-e de compra da moto da troca em produção antes de emitir a venda.' }, 409);
-      }
-      if (empresaId === FAG_EMPRESA_ID) {
-        const transfOk = exigemNf.length ? trocaIds.every((id) => temNf(id, 'transferencia')) : trocaIds.some((id) => temNf(id, 'transferencia'));
-        if (!transfOk) {
-          return jsonResponse({ error: trocaIds.length > 1
-            ? 'Emita a NF-e de transferência de cada moto da troca para a MMATOS em produção antes de emitir a venda.'
-            : 'Emita a NF-e de transferência da moto da troca para a MMATOS em produção antes de emitir a venda.' }, 409);
-        }
       }
     }
     // Exceção: moto de terceiro como parte do pagamento (troca_terceiro_avaliacao_id)
@@ -3159,6 +3151,15 @@ Deno.serve(async (req) => {
   const escolhida = escolherRegra(operacaoCarregada, itemFiscal);
   if (!escolhida) {
     return jsonResponse({ error: `Natureza de operação "${naturezaDescricaoEfetiva}": nenhuma regra fiscal ativa pra UF ${ufDestino || '?'} no SisFin.` }, 409);
+  }
+  // FAG vende seminova desde 2026-11-04 (antes só 0km). Ela é Lucro Real e não
+  // tinha regra de venda de bem usado: sem uma regra marcada "bem usado" a
+  // venda cairia na regra genérica (tributação de moto nova). Trava até a
+  // regra própria da FAG existir no SisFin.
+  if (ehVenda && !ehVenda0km && empresaId === FAG_EMPRESA_ID && (escolhida.regra as any)?.bem_usado !== true) {
+    return jsonResponse({
+      error: `A FAG ainda não tem regra fiscal de venda de moto usada para a UF ${ufDestino || '?'} (natureza "${naturezaDescricaoEfetiva}"). Cadastre a regra "bem usado" no SisFin antes de emitir.`,
+    }, 409);
   }
   const linhas = comoRegrasPorImposto(operacaoCarregada, escolhida, itemFiscal);
   // Consumidor final e devolução não são mais configurados na natureza (desde 2026-09-24):

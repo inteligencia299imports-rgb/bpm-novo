@@ -132,6 +132,49 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
     return () => { cancelado = true; };
   }, [open, avaliacaoId]);
 
+  // Empresa (CNPJ) dona da moto e as lojas de moto de cada empresa. Desde
+  // 2026-11-04 uma loja pode faturar por mais de uma empresa (299i/299s/Aventura
+  // pela MMATOS e pela FAG): a liberação/reenvio grava a loja_empresas da
+  // empresa DONA da moto — a moto que entrou na troca da FAG continua na FAG.
+  // Dona = empresa da loja onde a moto já está no estoque; sem estoque ainda,
+  // a empresa do atendimento da aquisição (a que emitiu a NF de entrada). Moto
+  // que já teve a NF de transferência FAG -> MMATOS (fluxo antigo) não tem dona
+  // fixa aqui: vale a empresa padrão da loja, como antes.
+  const [empresaDona, setEmpresaDona] = useState<string | null>(null);
+  const [lojasMotos, setLojasMotos] = useState<{ id: string; loja: string; empresa_id: string; padrao: boolean }[]>([]);
+  useEffect(() => {
+    if (!open || !avaliacaoId) return;
+    let cancelado = false;
+    (async () => {
+      const [{ data: lojasRows }, { data: est }, { data: av }, { data: transf }] = await Promise.all([
+        supabase.from('loja_empresas').select('id, loja, empresa_id, padrao').eq('sistema', 'motos').eq('ativo', true),
+        supabase.from('estoque_motos').select('loja_id').eq('avaliacao_id', avaliacaoId).neq('status', 'vendido')
+          .order('created_at', { ascending: true }).limit(1).maybeSingle(),
+        supabase.from('avaliacoes').select('atendimentos_motos!avaliacoes_atendimento_id_fkey(empresa_id)').eq('id', avaliacaoId).maybeSingle(),
+        supabase.from('nfe_entradas' as any).select('id').eq('avaliacao_id', avaliacaoId).eq('operacao', 'transferencia')
+          .eq('status', 'processada').limit(1),
+      ]);
+      if (cancelado) return;
+      const rows = ((lojasRows as any[]) || []).map((r) => ({ ...r, padrao: r.padrao !== false }));
+      setLojasMotos(rows);
+      const lojaEstoque = (est as any)?.loja_id ? rows.find((r) => r.id === (est as any).loja_id) : null;
+      const empresaAquisicao = (av as any)?.atendimentos_motos?.empresa_id ?? null;
+      const transferida = ((transf as any[]) || []).length > 0;
+      setEmpresaDona(lojaEstoque?.empresa_id ?? (transferida ? null : empresaAquisicao));
+    })();
+    return () => { cancelado = true; };
+  }, [open, avaliacaoId]);
+
+  /** loja_empresas.id da loja escolhida, na empresa dona da moto (ou a padrão da loja). */
+  const lojaIdDaMoto = (nomeLoja: string): string | null => {
+    const daLoja = lojasMotos.filter((r) => r.loja === nomeLoja);
+    if (empresaDona) return daLoja.find((r) => r.empresa_id === empresaDona)?.id ?? null;
+    return (daLoja.find((r) => r.padrao) ?? daLoja[0])?.id ?? null;
+  };
+  /** Pátios oferecidos: lojas 299 em que a empresa dona da moto fatura. */
+  const lojasPatio = LOJAS.filter((l) => !l.toUpperCase().includes('DUCATI'))
+    .filter((l) => !empresaDona || !lojasMotos.length || lojasMotos.some((r) => r.loja === l && r.empresa_id === empresaDona));
+
   // Liberar form fields
   const [loja, setLoja] = useState('');
   const [precoTabela, setPrecoTabela] = useState(''); // preço da ação
@@ -514,13 +557,13 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         return;
       }
 
-      // Resolve loja_id (loja_empresas.id) a partir do nome da loja escolhida.
-      const { data: lojaEmp } = await supabase
-        .from('loja_empresas')
-        .select('id')
-        .eq('loja', loja)
-        .eq('sistema', 'motos')
-        .maybeSingle();
+      // Resolve loja_id (loja_empresas.id) a partir do nome da loja escolhida,
+      // na empresa dona da moto.
+      const lojaIdLiberacao = lojaIdDaMoto(loja);
+      if (!lojaIdLiberacao) {
+        toast.error(`A loja ${loja} não está vinculada à empresa dona desta moto. Escolha outra loja.`);
+        return;
+      }
 
       const precoAcaoValue = precoTabela ? parseCurrencyValue(precoTabela) : null;
 
@@ -539,7 +582,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         .maybeSingle();
       const dadosEstoque = {
         status: 'disponivel',
-        loja_id: (lojaEmp as any)?.id ?? null,
+        loja_id: lojaIdLiberacao,
         preco_acao: precoAcaoValue,
         observacoes: obsMoto.trim() || null,
       };
@@ -845,7 +888,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       <SelectValue placeholder="Selecione o pátio" />
                     </SelectTrigger>
                     <SelectContent>
-                      {LOJAS.filter(l => !l.toUpperCase().includes('DUCATI')).map(l => (
+                      {lojasPatio.map(l => (
                         <SelectItem key={l} value={l}>{l}</SelectItem>
                       ))}
                     </SelectContent>
@@ -890,8 +933,11 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
 
                       let novaLojaId: string | null = null;
                       if (reenviarLoja) {
-                        const { data: le } = await supabase.from('loja_empresas').select('id').eq('loja', reenviarLoja).eq('sistema', 'motos').maybeSingle();
-                        novaLojaId = (le as any)?.id ?? null;
+                        novaLojaId = lojaIdDaMoto(reenviarLoja);
+                        if (!novaLojaId) {
+                          toast.error(`A loja ${reenviarLoja} não está vinculada à empresa dona desta moto. Escolha outra loja.`);
+                          return;
+                        }
                       }
                       const { error: estoqueErr } = await supabase.from('estoque_motos').update({
                         status: 'servico',
@@ -1074,7 +1120,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          {LOJAS.filter(l => !l.toUpperCase().includes('DUCATI')).map(l => (
+                          {lojasPatio.map(l => (
                             <SelectItem key={l} value={l}>{l}</SelectItem>
                           ))}
                         </SelectContent>

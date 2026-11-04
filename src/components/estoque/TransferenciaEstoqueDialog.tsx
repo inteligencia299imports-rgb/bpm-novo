@@ -263,7 +263,7 @@ const TransferenciaEstoqueDialog: React.FC<Props> = ({ open, onOpenChange, estoq
       .eq('sistema', 'motos')
       .then(({ data }: any) => {
         if (cancel) return;
-        const raiz = (l: any) => String(l?.empresas?.cnpj || '').replace(/D/g, '').slice(0, 8);
+        const raiz = (l: any) => String(l?.empresas?.cnpj || '').replace(/\D/g, '').slice(0, 8);
         const raizOrigem = raiz(((data as any[]) || []).find((l) => l.id === estoqueItem?.loja_id));
         const opts = ((data as any[]) || [])
           .filter((l) => (l.id === estoqueItem?.loja_id ? !!modoConsignado : lojasPermitidas.includes(l.loja)))
