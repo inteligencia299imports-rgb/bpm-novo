@@ -4,6 +4,7 @@ import { Bike, ClipboardCheck, Package, BarChart3, X, UserCheck, Wrench, Filter,
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { SistemasSelect } from '@/components/SistemasSelect';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCurrentDefaultStart } from '@/lib/reportCycle';
 import RelatorioShowroom from './RelatorioShowroom';
@@ -105,6 +106,7 @@ const RelatoriosTab: React.FC = () => {
               <ExternalLink className="h-4 w-4" /> BPM V1
             </Button>
           </a>
+          <SistemasSelect atual="BPM" className="h-9 w-[150px] rounded-full bg-white" />
         </div>
       </div>
       <p className="text-sm text-muted-foreground mt-0.5">Análise de desempenho e indicadores</p>
