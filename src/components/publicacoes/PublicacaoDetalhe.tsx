@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { getTipoAquisicaoBadgeClass, getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
-import { ETAPAS_PUBLICACAO, FOTOS_MAX, FOTOS_MIN, FOTO_MAX_BYTES, MARCAS_SITE, SITE_URL, slugSite, type EtapaPublicacao } from '@/lib/siteMoto';
+import { ETAPAS_PUBLICACAO, FOTOS_MAX, FOTOS_MIN, FOTO_MAX_BYTES, MARCAS_SITE, SITE_URL, atualizarSite, slugSite, type EtapaPublicacao } from '@/lib/siteMoto';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -191,16 +191,18 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const precoAcao = estoque?.preco_acao ? Number(estoque.preco_acao) : null;
   const etapaAtual = ETAPAS_PUBLICACAO.find((e) => e.value === etapa);
 
-  const gravar = async (nova: EtapaPublicacao, msg: string, statusHistorico?: string, observacao?: string) => {
+  // Grava anúncio + fotos + histórico e pede ao site para atualizar. Devolve o endereço da página (ou null sem
+  // endereço) quando deu certo e false quando deu erro.
+  const gravar = async (nova: EtapaPublicacao, msg: string, statusHistorico?: string, observacao?: string): Promise<string | null | false> => {
     setSalvando(true);
     const base = { avaliacao_id: avId, descricao: descricao.trim() || null, etapa: nova };
     // Endereço da página: fixado na 1ª publicação (não muda depois, para não quebrar links e Google).
-    const slugAtual = site?.slug || (nova === 'publicada' ? slugSite(marcaLabel, dados?.modelo, dados?.ano_modelo) : null);
+    let slugAtual: string | null = site?.slug || (nova === 'publicada' ? slugSite(marcaLabel, dados?.modelo, dados?.ano_modelo) : null);
     let { error } = await (supabase as any).from('site_motos').upsert({ ...base, slug: slugAtual }, { onConflict: 'avaliacao_id' });
     if (error?.code === '23505' && /slug/.test(error.message) && !site?.slug) {
       // Já existe anúncio com o mesmo marca-modelo-ano: diferencia pela placa.
-      ({ error } = await (supabase as any).from('site_motos')
-        .upsert({ ...base, slug: slugSite(marcaLabel, dados?.modelo, dados?.ano_modelo, String(moto?.placa || '').replace(/-/g, '')) }, { onConflict: 'avaliacao_id' }));
+      slugAtual = slugSite(marcaLabel, dados?.modelo, dados?.ano_modelo, String(moto?.placa || '').replace(/-/g, ''));
+      ({ error } = await (supabase as any).from('site_motos').upsert({ ...base, slug: slugAtual }, { onConflict: 'avaliacao_id' }));
     }
     if (!error) {
       // Galeria inteira de uma vez (ordem = posição; a 1ª é a capa).
@@ -209,7 +211,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
     if (error) {
       setSalvando(false);
       toast.error(`Erro ao salvar: ${error.message}`);
-      return;
+      return false;
     }
     // Histórico: mudanças nas fotos (comparando com o que estava gravado) + mudança de etapa.
     const antes = fotosGravadas;
@@ -232,21 +234,43 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
         observacoes: status === statusHistorico ? observacao || null : null,
       })) as any);
     }
+    // Site atualiza na hora (sem esperar o cache de 60 s).
+    await atualizarSite();
     setSalvando(false);
     toast.success(msg);
+    return slugAtual;
+  };
+
+  // Salvar e Desativar voltam para o kanban quando dá certo.
+  const gravarEVoltar = async (...args: Parameters<typeof gravar>) => {
+    if ((await gravar(...args)) !== false) onClose();
+  };
+
+  // Publicar: a aba nova abre já no clique (senão o navegador bloqueia) e só vai para a página do anúncio
+  // depois que o anúncio foi gravado e o site atualizado.
+  const publicar = async () => {
+    const aba = window.open('', '_blank');
+    if (aba) aba.document.title = 'Publicando...';
+    const slug = await gravar('publicada', 'Publicada no site', 'publicacao_publicada');
+    if (slug) {
+      if (aba) aba.location.href = `${SITE_URL}/seminovas/${slug}`;
+      else window.open(`${SITE_URL}/seminovas/${slug}`, '_blank');
+    } else {
+      aba?.close();
+    }
     await carregar();
   };
 
   // Salvar: grava fotos e descrição. Antes de publicar, a etapa segue as fotos:
   // com o mínimo de fotos vai para Fotos Tiradas; abaixo dele fica (ou volta) em Em Aberto.
   const salvar = () => {
-    if (etapa === 'publicada') return gravar('publicada', 'Anúncio atualizado no site');
-    if (etapa === 'desativada') return gravar('desativada', 'Salvo');
+    if (etapa === 'publicada') return gravarEVoltar('publicada', 'Anúncio atualizado no site');
+    if (etapa === 'desativada') return gravarEVoltar('desativada', 'Salvo');
     const nova: EtapaPublicacao = fotos.length >= FOTOS_MIN ? 'fotos_tiradas' : 'em_aberto';
-    if (nova === etapa) return gravar(etapa, 'Salvo');
+    if (nova === etapa) return gravarEVoltar(etapa, 'Salvo');
     return nova === 'fotos_tiradas'
-      ? gravar('fotos_tiradas', 'Salvo e movido para Fotos Tiradas', 'publicacao_fotos_tiradas')
-      : gravar('em_aberto', 'Salvo e movido para Em Aberto', 'publicacao_em_aberto');
+      ? gravarEVoltar('fotos_tiradas', 'Salvo e movido para Fotos Tiradas', 'publicacao_fotos_tiradas')
+      : gravarEVoltar('em_aberto', 'Salvo e movido para Em Aberto', 'publicacao_em_aberto');
   };
 
   const subirFoto = async (f: File) => {
@@ -356,7 +380,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
           </Button>
           {/* Publicar só aparece quando já dá para ir ao ar (fotos, descrição e dados da moto completos). */}
           {etapa !== 'publicada' && dados && pendencias.length === 0 && (
-            <Button size="sm" className="w-28 gap-1.5" disabled={ocupado} onClick={() => gravar('publicada', 'Publicada no site', 'publicacao_publicada')}>
+            <Button size="sm" className="w-28 gap-1.5" disabled={ocupado} onClick={publicar}>
               <ExternalLink className="h-4 w-4" /> Publicar
             </Button>
           )}
@@ -582,7 +606,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                 onClick={async () => {
                   const motivo = motivoDesativar!.trim();
                   setMotivoDesativar(null);
-                  await gravar('desativada', 'Anúncio desativado', 'publicacao_desativada', motivo);
+                  await gravarEVoltar('desativada', 'Anúncio desativado', 'publicacao_desativada', motivo);
                 }}
               >
                 {salvando ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { CATEGORIAS_MOTO } from '@/types/crm';
+import { atualizarSite } from '@/lib/siteMoto';
 
 // Mesmo layout e lógica do "Editar Dados da Moto" do Pós-Compra (AvaliacaoForm), mas na Publicação só
 // Categoria, Cilindrada, KM, Manual, Chave, Revisão e Acessórios podem mudar; o resto aparece travado.
@@ -84,6 +85,7 @@ const EditarMotoPublicacaoDialog: React.FC<Props> = ({ open, onOpenChange, moto,
       console.error(error);
       return;
     }
+    await atualizarSite(); // km, cilindrada e categoria aparecem no site na hora
     toast.success('Dados da moto atualizados!');
     onOpenChange(false);
     onSaved();
