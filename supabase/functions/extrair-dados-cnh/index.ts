@@ -452,10 +452,18 @@ Deno.serve(async (req) => {
     const divergencias: string[] = [];
 
     let atualizouCpf = false;
+    // CPF já cadastrado nunca é sobrescrito pela CNH (CPF e telefone andam juntos;
+    // o banco recusa a troca — trg_clientes_cpf_telefone_par — e derrubaria o
+    // update inteiro, com RG/nascimento). Diferença vira divergência.
     if (extraido.cpf && extraido.cpf.length === 11 && extraido.cpf !== cpfCadastrado) {
-      if (!cpfCadastrado || matchForte) {
+      const { data: cpfDeOutro } = !cpfCadastrado
+        ? await supabaseAdmin.from('clientes_fornecedores').select('id').eq('cpf_cnpj', extraido.cpf).neq('id', cliente_id).is('deleted_at', null).limit(1).maybeSingle()
+        : { data: null };
+      if (!cpfCadastrado && !cpfDeOutro) {
         updatePayload.cpf_cnpj = extraido.cpf;
         atualizouCpf = true;
+      } else if (cpfDeOutro) {
+        divergencias.push(`CPF do documento (${extraido.cpf}) já pertence a outro cliente cadastrado`);
       } else {
         divergencias.push(`CPF do documento (${extraido.cpf}) difere do cadastro`);
       }
