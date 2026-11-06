@@ -14,6 +14,7 @@ import IntermediacacaoTab from '@/components/intermediacao/IntermediacacaoTab';
 import PosCompraTab from '@/components/pos-compra/PosCompraTab';
 import ConsignacaoTab from '@/components/consignacao/ConsignacaoTab';
 import PreparacaoTab from '@/components/preparacao/PreparacaoTab';
+import PublicacoesTab from '@/components/publicacoes/PublicacoesTab';
 import RelatoriosTab from '@/components/relatorios/RelatoriosTab';
 import NovidadesTab from '@/components/novidades/NovidadesTab';
 import NpsTab from '@/components/nps/NpsTab';
@@ -25,7 +26,7 @@ const ATENDIMENTO_KEYED_TABS = new Set(['showroom', 'pos_venda', 'intermediacao'
 const AVALIACAO_KEYED_TABS = new Set(['pos_compra', 'consignacao', 'preparacao', 'avaliacoes']);
 const VALID_TABS = new Set([
   ...ATENDIMENTO_KEYED_TABS, ...AVALIACAO_KEYED_TABS,
-  'estoque', 'consulta', 'relatorios', 'novidades', 'nps',
+  'estoque', 'consulta', 'relatorios', 'novidades', 'nps', 'publicacoes',
 ]);
 
 const Dashboard = () => {
@@ -191,6 +192,7 @@ const Dashboard = () => {
             onInitialHandled={() => setInitialAvaliacaoId(null)}
           />
         )}
+        {activeTab === 'publicacoes' && <PublicacoesTab />}
         {activeTab === 'relatorios' && <RelatoriosTab />}
         {activeTab === 'novidades' && <NovidadesTab onNavigateToShowroom={handleNavigateToShowroom} />}
         {activeTab === 'nps' && <NpsTab onNavigateToTab={handleEstoqueNav} />}
