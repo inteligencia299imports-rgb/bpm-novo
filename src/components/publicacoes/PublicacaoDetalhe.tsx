@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, Clock, ExternalLink, GripVertical, Loader2, Plus, Star, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, Clock, ExternalLink, GripVertical, Loader2, Pencil, Plus, Star, Tag, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import StatusTimeline, { defaultFormatStatusLabel } from '@/components/shared/StatusTimeline';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
+import EditarMotoPublicacaoDialog from './EditarMotoPublicacaoDialog';
 
 export interface ItemPublicacao {
   avaliacao: any;
@@ -109,6 +110,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const [arrastando, setArrastando] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [editarMotoOpen, setEditarMotoOpen] = useState(false);
   const inputFotos = useRef<HTMLInputElement>(null);
 
   const carregar = useCallback(async () => {
@@ -293,6 +295,11 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Tag className="h-4 w-4 text-primary" /> Dados da Moto
+                {moto && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setEditarMotoOpen(true)} title="Editar dados da moto">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </CardTitle>
               <Separator className="mt-2" />
             </CardHeader>
@@ -424,6 +431,8 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
           </Card>
         </div>
       </ScrollArea>
+
+      <EditarMotoPublicacaoDialog open={editarMotoOpen} onOpenChange={setEditarMotoOpen} moto={moto} onSaved={carregar} />
     </div>
   );
 };
