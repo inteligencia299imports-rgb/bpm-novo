@@ -55,6 +55,7 @@ const ROTULO_HISTORICO: Record<string, string> = {
   publicacao_fotos_editadas: 'FOTOS EDITADAS',
   publicacao_publicada: 'PUBLICADA NO SITE',
   publicacao_despublicada: 'RETIRADA DO SITE',
+  publicacao_desativada: 'DESATIVADA',
   publicacao_em_aberto: 'PUBLICAÇÃO VOLTOU PARA EM ABERTO',
   vendido: 'adquirida',
   contrato_compra_gerado: 'CONTRATO GERADO',
@@ -218,6 +219,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   // com o mínimo de fotos vai para Fotos Tiradas; abaixo dele fica (ou volta) em Em Aberto.
   const salvar = () => {
     if (etapa === 'publicada') return gravar('publicada', 'Anúncio atualizado no site');
+    if (etapa === 'desativada') return gravar('desativada', 'Salvo');
     const nova: EtapaPublicacao = fotos.length >= FOTOS_MIN ? 'fotos_tiradas' : 'em_aberto';
     if (nova === etapa) return gravar(etapa, 'Salvo');
     return nova === 'fotos_tiradas'
@@ -301,7 +303,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </h1>
             {etapaAtual && (
               <Badge className="text-[10px] shrink-0 border-transparent shadow-none" style={{ backgroundColor: `${etapaAtual.hex}26`, color: etapaAtual.hex }}>
-                {etapaAtual.value === 'publicada' ? 'Publicada' : etapaAtual.label}
+                {etapaAtual.value === 'publicada' ? 'Publicada' : etapaAtual.value === 'desativada' ? 'Desativada' : etapaAtual.label}
               </Badge>
             )}
             {item.avaliacao.tipo_aquisicao && (
@@ -323,7 +325,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </Button>
           )}
           {etapa === 'publicada' && (
-            <Button size="sm" variant="outline" className="w-28 gap-1.5 border-destructive bg-transparent text-destructive hover:bg-transparent hover:text-destructive hover:opacity-80" disabled={ocupado} onClick={() => gravar('fotos_tiradas', 'Anúncio retirado do site', 'publicacao_despublicada')}>
+            <Button size="sm" variant="outline" className="w-28 gap-1.5 border-destructive bg-transparent text-destructive hover:bg-transparent hover:text-destructive hover:opacity-80" disabled={ocupado} onClick={() => gravar('desativada', 'Anúncio desativado', 'publicacao_desativada')}>
               <X className="h-4 w-4" /> Desativar
             </Button>
           )}
