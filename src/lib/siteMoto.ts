@@ -2,12 +2,14 @@
 // Marca, modelo, km, anos, cc, cor, categoria, loja e preços vêm da moto no BPM (view site_motos_dados);
 // aqui só ficam as etapas, as marcas que o site conhece (site-299: data/marcas.ts) e o endereço da página.
 
-export type EtapaPublicacao = 'em_aberto' | 'fotos_tiradas' | 'publicada';
+export type EtapaPublicacao = 'em_aberto' | 'fotos_tiradas' | 'publicada' | 'desativada';
 
 export const ETAPAS_PUBLICACAO: { value: EtapaPublicacao; label: string; hex: string }[] = [
   { value: 'em_aberto', label: 'Em Aberto', hex: '#0ea5e9' },
   { value: 'fotos_tiradas', label: 'Fotos Tiradas', hex: '#f59e0b' },
   { value: 'publicada', label: 'Publicadas', hex: '#16a34a' },
+  // Tirada do site manualmente (botão Desativar). Vendida/retirada nem aparecem na aba.
+  { value: 'desativada', label: 'Desativadas', hex: '#dc2626' },
 ];
 
 export const MARCAS_SITE = [

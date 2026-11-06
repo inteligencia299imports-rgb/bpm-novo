@@ -23,11 +23,14 @@ import PublicacaoDetalhe, { type ItemPublicacao } from './PublicacaoDetalhe';
 // Status do estoque em que a moto sai do kanban (já não está à venda).
 const FORA_DO_KANBAN = new Set(['vendido', 'retirada']);
 
-// Colunas do kanban: Em Aberto, Fotos Tiradas, Sinal (status do estoque; cor do Showroom) e Publicadas.
+// Colunas do kanban: Em Aberto, Fotos Tiradas, Sinal (status do estoque; cor do Showroom), Publicadas e Desativadas.
+const etapaCol = (v: EtapaPublicacao) => ETAPAS_PUBLICACAO.find((e) => e.value === v)!;
 const COLUNAS = [
-  ...ETAPAS_PUBLICACAO.filter((e) => e.value !== 'publicada'),
+  etapaCol('em_aberto'),
+  etapaCol('fotos_tiradas'),
   { value: 'sinal', label: 'Sinal', hex: '#b376c4' },
-  ...ETAPAS_PUBLICACAO.filter((e) => e.value === 'publicada'),
+  etapaCol('publicada'),
+  etapaCol('desativada'),
 ];
 
 const SITUACOES = [
@@ -204,10 +207,10 @@ const PublicacoesTab: React.FC = () => {
       )}
 
       {loading ? (
-        <KanbanSkeleton columns={4} />
+        <KanbanSkeleton columns={5} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-4">
+          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-5">
             {COLUNAS.map((col) => {
               // Moto com sinal fica só na coluna Sinal (já está fora do site), seja qual for a etapa do anúncio.
               const colItems = filtrados.filter((it) => (it.estoque?.status === 'sinal' ? col.value === 'sinal' : it.etapa === col.value));
