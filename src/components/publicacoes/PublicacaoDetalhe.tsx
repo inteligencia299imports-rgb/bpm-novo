@@ -137,7 +137,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
       supabase.from('avaliacoes')
         .select(`id, atendimento_id, placa, ano_fabricacao, ano_modelo, km, cor, cilindrada, categoria, observacoes,
           tem_manual, tem_chave_reserva, manutencao_vencida, tem_acessorios, acessorios_descricao,
-          valor_fipe, quanto_pede, tipo_aquisicao, situacao, ${MARCA_MODELO_SELECT}`)
+          valor_fipe, quanto_pede, menor_valor, maior_valor, tipo_aquisicao, situacao, ${MARCA_MODELO_SELECT}`)
         .eq('id', avId).maybeSingle(),
       (supabase as any).from('site_motos_dados').select('marca, modelo, ano_modelo, preco, preco_de, pendencias').eq('avaliacao_id', avId).maybeSingle(),
       (supabase as any).from('site_motos').select('*').eq('avaliacao_id', avId).maybeSingle(),
@@ -459,6 +459,11 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                     <Destaque label="Preço" value={formatCurrency(moto.quanto_pede)} />
                     <Destaque label="Valor da FIPE" value={formatCurrency(moto.valor_fipe)} />
                     <Destaque label="Preço Ação" value={formatCurrency(precoAcao)} />
+                  </div>
+                  {/* Faixa de mercado (vai para o site junto da FIPE quando as duas pontas estão preenchidas) */}
+                  <div className="grid grid-cols-2 gap-4 text-center mt-5 pt-5 border-t border-border">
+                    <Destaque label="Menor Valor" value={formatCurrency(moto.menor_valor)} />
+                    <Destaque label="Maior Valor" value={formatCurrency(moto.maior_valor)} />
                   </div>
                 </div>
               )}
