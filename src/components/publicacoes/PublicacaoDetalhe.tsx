@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, FileText, Loader2, Pencil, Plus, RefreshCw, Save, ShoppingCart, Tag, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, FileText, Loader2, Pencil, Plus, RefreshCw, Save, ShoppingCart, Tag, Trash2, Upload, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -326,7 +326,9 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </Button>
           )}
           {etapa === 'publicada' && (
-            <Button size="sm" variant="outline" disabled={ocupado} onClick={() => gravar('fotos_tiradas', 'Anúncio retirado do site', 'publicacao_despublicada')}>Despublicar</Button>
+            <Button size="sm" variant="destructive" className="gap-1.5" disabled={ocupado} onClick={() => gravar('fotos_tiradas', 'Anúncio retirado do site', 'publicacao_despublicada')}>
+              <X className="h-4 w-4" /> Despublicar
+            </Button>
           )}
           <Button size="sm" variant="outline" className="gap-1.5" disabled={ocupado} onClick={salvar}>
             {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
