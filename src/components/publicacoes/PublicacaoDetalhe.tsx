@@ -457,7 +457,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Arraste para ordenar a galeria do site. A primeira é a capa.</p>
+                  <p className="text-[11px] text-muted-foreground">Arraste para ordenar a galeria do site.</p>
                 </div>
               )}
             </CardContent>
