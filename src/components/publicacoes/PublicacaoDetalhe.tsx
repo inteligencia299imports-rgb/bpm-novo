@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, FileText, Loader2, Pencil, Plus, RefreshCw, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, FileText, Loader2, Pencil, Plus, RefreshCw, Tag, Trash2, Upload } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -116,6 +116,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const inputSubstituir = useRef<HTMLInputElement>(null);
   const [substituindo, setSubstituindo] = useState<number | null>(null);
   const [vendo, setVendo] = useState<number | null>(null);
+  const [soltando, setSoltando] = useState(false);
 
   const carregar = useCallback(async () => {
     const [avRes, dadosRes, siteRes] = await Promise.all([
@@ -418,10 +419,12 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
               <CardTitle className="text-sm flex items-center gap-2">
                 <Camera className="h-4 w-4 text-primary" /> Fotos
                 <span className="text-xs font-normal text-muted-foreground">({fotos.length}/{FOTOS_MAX} fotos)</span>
-                <Button variant="ghost" size="sm" className="ml-auto h-7 gap-1 px-2 text-primary hover:text-primary hover:bg-transparent hover:opacity-80"
-                  disabled={ocupado || fotos.length >= FOTOS_MAX} onClick={() => inputFotos.current?.click()}>
-                  {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Adicionar
-                </Button>
+                {fotos.length > 0 && (
+                  <Button variant="ghost" size="sm" className="ml-auto h-7 gap-1 px-2 text-primary hover:text-primary hover:bg-transparent hover:opacity-80"
+                    disabled={ocupado || fotos.length >= FOTOS_MAX} onClick={() => inputFotos.current?.click()}>
+                    {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Adicionar
+                  </Button>
+                )}
                 <input ref={inputFotos} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => enviarFotos(e.target.files)} />
                 <input ref={inputSubstituir} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => substituirFoto(e.target.files)} />
               </CardTitle>
@@ -429,7 +432,23 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </CardHeader>
             <CardContent className="flex-1 flex flex-col gap-4">
               {fotos.length === 0 ? (
-                <div className="py-28 border-b border-border text-center text-sm text-muted-foreground">Nenhuma foto. Até {FOTOS_MAX} fotos, no máximo 3 MB cada.</div>
+                // Sem fotos: área para clicar ou soltar os arquivos.
+                <button
+                  type="button"
+                  disabled={ocupado}
+                  onClick={() => inputFotos.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setSoltando(true); }}
+                  onDragLeave={() => setSoltando(false)}
+                  onDrop={(e) => { e.preventDefault(); setSoltando(false); enviarFotos(e.dataTransfer.files); }}
+                  className={cn(
+                    'w-full py-24 rounded-lg border-2 border-dashed text-sm text-muted-foreground flex flex-col items-center gap-2 transition-colors',
+                    soltando ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:border-primary/60 hover:bg-muted/40',
+                  )}
+                >
+                  {enviando ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" />}
+                  <span className="font-medium text-foreground">Clique ou arraste as fotos aqui</span>
+                  <span className="text-xs">Até {FOTOS_MAX} fotos, no máximo 3 MB cada.</span>
+                </button>
               ) : (
                 <div className="space-y-1.5">
                   <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
