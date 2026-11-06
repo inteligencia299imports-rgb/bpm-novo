@@ -155,6 +155,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const pendencias = [
     ...(dados?.pendencias ?? []).filter((p) => p !== 'Fotos'),
     ...(fotos.length === 0 ? ['Fotos'] : []),
+    ...(descricao.trim() === '' ? ['Descrição do anúncio'] : []),
   ];
   const estoque = item.estoque;
   const foraDoSite = estoque && !['disponivel', 'servico'].includes(estoque.status);
