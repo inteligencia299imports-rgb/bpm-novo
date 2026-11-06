@@ -791,7 +791,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                                   onPointerDown={(e) => e.stopPropagation()}
                                   className="text-primary hover:opacity-80"
                                 >
-                                  <ShoppingCart className="h-4 w-4" />
+                                  <ShoppingCart className="h-4 w-4" fill="currentColor" />
                                 </a>
                               )}
                               <Badge className={STATUS_MAP[item.status]?.color || 'bg-muted text-muted-foreground'}>
