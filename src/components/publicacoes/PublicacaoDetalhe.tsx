@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, Clock, ExternalLink, GripVertical, Loader2, Pencil, Plus, Star, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, Clock, ExternalLink, Loader2, Pencil, Plus, Tag, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -381,17 +381,13 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                         <img src={url} alt="" draggable={false} className="w-full aspect-[3/4] object-cover pointer-events-none" />
                         {i === 0 && <span className="absolute top-1 left-1 text-[10px] font-semibold rounded bg-primary text-primary-foreground px-1.5 py-0.5">CAPA</span>}
                         <span className="absolute top-1 right-1 text-[10px] rounded bg-black/55 text-white px-1">{i + 1}</span>
-                        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/55 p-1">
-                          <GripVertical className="h-3.5 w-3.5 text-white/80" />
-                          {i > 0 && (
-                            <button type="button" title="Usar como capa" onClick={() => moverPara(i, 0)} className="text-white"><Star className="h-3.5 w-3.5" /></button>
-                          )}
+                        <div className="absolute inset-x-0 bottom-0 flex items-center justify-end bg-black/55 p-1">
                           <button type="button" title="Remover" onClick={() => setFotos((f) => f.filter((x) => x !== url))} className="text-white"><Trash2 className="h-3.5 w-3.5" /></button>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Arraste para ordenar a galeria do site. A primeira é a capa; a estrela leva a foto para a capa.</p>
+                  <p className="text-[11px] text-muted-foreground">Arraste para ordenar a galeria do site. A primeira é a capa.</p>
                 </div>
               )}
               <div className="space-y-1">
