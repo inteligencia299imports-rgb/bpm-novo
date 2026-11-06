@@ -341,15 +341,22 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
   // Anúncios no ar no site (aba Publicações): avaliação -> endereço da página. Só os que a view pública mostra
   // (publicada e ainda à venda), para o carrinho nunca levar a uma página que não existe.
+  // anunciosFora: anúncio desativado ou publicado mas fora do site (ex.: moto com sinal) -> carrinho vermelho, sem link.
   const [anunciosSite, setAnunciosSite] = useState<Map<string, string>>(new Map());
+  const [anunciosFora, setAnunciosFora] = useState<Map<string, string>>(new Map());
   useEffect(() => {
     (async () => {
       const [{ data: pub }, { data: visiveis }] = await Promise.all([
-        (supabase as any).from('site_motos').select('id, avaliacao_id, slug').eq('etapa', 'publicada').not('slug', 'is', null),
+        (supabase as any).from('site_motos').select('id, avaliacao_id, slug, etapa').in('etapa', ['publicada', 'desativada']),
         (supabase as any).from('site_motos_publicas').select('id'),
       ]);
       const noAr = new Set(((visiveis as any[]) || []).map((v) => v.id));
-      setAnunciosSite(new Map(((pub as any[]) || []).filter((p) => noAr.has(p.id)).map((p) => [p.avaliacao_id, p.slug])));
+      const lista = (pub as any[]) || [];
+      setAnunciosSite(new Map(lista.filter((p) => p.slug && noAr.has(p.id)).map((p) => [p.avaliacao_id, p.slug])));
+      setAnunciosFora(new Map(lista.filter((p) => !noAr.has(p.id)).map((p) => [
+        p.avaliacao_id,
+        p.etapa === 'desativada' ? 'Anúncio desativado (fora do site)' : 'Anúncio fora do site (moto com sinal)',
+      ])));
     })();
   }, []);
 
@@ -793,6 +800,12 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                                 >
                                   <ShoppingCart className="h-4 w-4" fill="currentColor" />
                                 </a>
+                              )}
+                              {item.avaliacao_id && !anunciosSite.has(item.avaliacao_id) && anunciosFora.has(item.avaliacao_id) && (
+                                // Anúncio existe mas não está no site (desativado ou moto com sinal): só indica, sem link.
+                                <span title={anunciosFora.get(item.avaliacao_id)} className="text-destructive">
+                                  <ShoppingCart className="h-4 w-4" fill="currentColor" />
+                                </span>
                               )}
                               <Badge className={STATUS_MAP[item.status]?.color || 'bg-muted text-muted-foreground'}>
                                 {STATUS_MAP[item.status]?.label || item.status}
