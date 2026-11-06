@@ -337,11 +337,11 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </CardContent>
           </Card>
 
-          {/* Anúncio no Site: fotos + descrição */}
+          {/* Fotos + descrição do anúncio */}
           <Card className="flex flex-col">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Camera className="h-4 w-4 text-primary" /> Anúncio no Site
+                <Camera className="h-4 w-4 text-primary" /> Fotos
                 <span className="text-xs font-normal text-muted-foreground">({fotos.length}/{FOTOS_MAX} fotos)</span>
                 <Button size="sm" variant="outline" className="gap-1.5 ml-auto h-7" disabled={ocupado || fotos.length >= FOTOS_MAX} onClick={() => inputFotos.current?.click()}>
                   {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />} Adicionar fotos
