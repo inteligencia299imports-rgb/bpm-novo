@@ -5,7 +5,7 @@
 export type EtapaPublicacao = 'em_aberto' | 'fotos_tiradas' | 'publicada';
 
 export const ETAPAS_PUBLICACAO: { value: EtapaPublicacao; label: string; hex: string }[] = [
-  { value: 'em_aberto', label: 'Em Aberto', hex: '#94a3b8' },
+  { value: 'em_aberto', label: 'Em Aberto', hex: '#0ea5e9' },
   { value: 'fotos_tiradas', label: 'Fotos Tiradas', hex: '#f59e0b' },
   { value: 'publicada', label: 'Publicadas', hex: '#16a34a' },
 ];
