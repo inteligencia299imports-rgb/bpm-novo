@@ -23,6 +23,9 @@ import PublicacaoDetalhe, { type ItemPublicacao } from './PublicacaoDetalhe';
 // Status do estoque em que a moto sai do kanban (já não está à venda).
 const FORA_DO_KANBAN = new Set(['vendido', 'retirada']);
 
+// Colunas do kanban: as 3 etapas do anúncio + Sinal (status do estoque; mesma cor do Showroom).
+const COLUNAS = [...ETAPAS_PUBLICACAO, { value: 'sinal', label: 'Sinal', hex: '#b376c4' }];
+
 const SITUACOES = [
   { value: 'preparacao', label: 'Em preparação' },
   { value: 'estoque', label: 'Em estoque' },
@@ -197,12 +200,13 @@ const PublicacoesTab: React.FC = () => {
       )}
 
       {loading ? (
-        <KanbanSkeleton columns={3} />
+        <KanbanSkeleton columns={4} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-3">
-            {ETAPAS_PUBLICACAO.map((col) => {
-              const colItems = filtrados.filter((it) => it.etapa === col.value);
+          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-4">
+            {COLUNAS.map((col) => {
+              // Moto com sinal fica só na coluna Sinal (já está fora do site), seja qual for a etapa do anúncio.
+              const colItems = filtrados.filter((it) => (it.estoque?.status === 'sinal' ? col.value === 'sinal' : it.etapa === col.value));
               return (
                 <div key={col.value} className="w-[280px] shrink-0 md:w-auto md:shrink flex flex-col">
                   <div className="flex items-center justify-between mb-3 px-1">
@@ -217,8 +221,6 @@ const PublicacoesTab: React.FC = () => {
                       <p className="text-xs text-muted-foreground text-center py-8">Nenhuma moto</p>
                     ) : colItems.map((it) => {
                       const av = it.avaliacao;
-                      const sinal = it.estoque?.status === 'sinal';
-                      const naoDisponivel = it.estoque && !['disponivel', 'servico', 'sinal'].includes(it.estoque.status);
                       return (
                         <ProcessCard
                           key={av.id}
@@ -232,11 +234,6 @@ const PublicacoesTab: React.FC = () => {
                             ? <span title="Em estoque" className="shrink-0"><Package className="h-4 w-4 text-green-600" /></span>
                             : <span title="Em preparação" className="shrink-0"><Wrench className="h-4 w-4 text-orange-500" /></span>}
                           extraBadge={av.tipo_aquisicao ? { label: getTipoAquisicaoLabel(av.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(av.tipo_aquisicao) } : undefined}
-                          secondaryBadge={
-                            sinal ? { label: 'Sinal · fora do site', className: 'bg-amber-100 text-amber-800 border-amber-200' }
-                            : naoDisponivel ? { label: 'Indisponível · fora do site', className: 'bg-red-100 text-red-700 border-red-200' }
-                            : undefined
-                          }
                           onClick={() => setSelected(it)}
                         />
                       );
