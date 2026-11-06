@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { CATEGORIAS_MOTO } from '@/types/crm';
 
@@ -98,9 +99,7 @@ const EditarMotoPublicacaoDialog: React.FC<Props> = ({ open, onOpenChange, moto,
         </DialogHeader>
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2 pr-7" style={{ scrollbarWidth: 'thin' }}>
           <div className="space-y-3 pb-4">
-            <p className="text-xs text-muted-foreground">
-              Aqui só mudam categoria, cilindrada, KM, manual, chave, revisão e acessórios. Os demais dados se alteram na avaliação.
-            </p>
+            <Separator />
             <div>
               <Label>Marca</Label>
               <Input value={moto.marca || ''} disabled />
