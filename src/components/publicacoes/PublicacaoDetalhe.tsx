@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, FileText, Loader2, Pencil, Plus, RefreshCw, Save, ShoppingCart, Tag, Trash2, Upload, X, XCircle } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, FileText, Loader2, Pencil, Plus, RefreshCw, Save, ShoppingCart, Tag, Trash2, Upload, X, XCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -508,9 +508,10 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                         onDragOver={(e) => { if (travada) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
                         onDrop={(e) => { if (travada) return; e.preventDefault(); if (arrastando !== null) moverPara(arrastando, i); setArrastando(null); }}
                         onDragEnd={() => setArrastando(null)}
+                        onClick={() => setVendo(i)}
                         className={cn(
                           'group relative rounded-md overflow-hidden border select-none',
-                          !travada && 'cursor-grab active:cursor-grabbing',
+                          travada ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
                           i === 0 ? 'border-primary ring-2 ring-primary' : 'border-border',
                           arrastando === i && 'opacity-40',
                         )}
@@ -519,12 +520,10 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                         {i === 0 && <span className="absolute top-1 left-1 text-[10px] font-semibold rounded bg-primary text-primary-foreground px-1.5 py-0.5">CAPA</span>}
                         <span className="absolute top-1 right-1 text-[10px] rounded bg-black/55 text-white px-1">{i + 1}</span>
                         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
-                          <button type="button" title="Visualizar" onClick={() => setVendo(i)}
-                            className="rounded-full bg-white/90 p-1.5 text-foreground hover:bg-white"><Eye className="h-4 w-4" /></button>
                           {!travada && (<>
-                          <button type="button" title="Substituir" disabled={ocupado} onClick={() => { setSubstituindo(i); inputSubstituir.current?.click(); }}
+                          <button type="button" title="Substituir" disabled={ocupado} onClick={(e) => { e.stopPropagation(); setSubstituindo(i); inputSubstituir.current?.click(); }}
                             className="rounded-full bg-white/90 p-1.5 text-foreground hover:bg-white"><RefreshCw className="h-4 w-4" /></button>
-                          <button type="button" title="Excluir" disabled={ocupado} onClick={() => setFotos((f) => f.filter((x) => x !== url))}
+                          <button type="button" title="Excluir" disabled={ocupado} onClick={(e) => { e.stopPropagation(); setFotos((f) => f.filter((x) => x !== url)); }}
                             className="rounded-full bg-white/90 p-1.5 text-destructive hover:bg-white"><Trash2 className="h-4 w-4" /></button>
                           </>)}
                         </div>
