@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, Clock, ExternalLink, GripVertical, Loader2, Star, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, Clock, ExternalLink, GripVertical, Loader2, Plus, Star, Tag, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -343,10 +343,10 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
               <CardTitle className="text-sm flex items-center gap-2">
                 <Camera className="h-4 w-4 text-primary" /> Fotos
                 <span className="text-xs font-normal text-muted-foreground">({fotos.length}/{FOTOS_MAX} fotos)</span>
-                <button type="button" className="ml-auto text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline inline-flex items-center gap-1"
+                <Button variant="ghost" size="sm" className="ml-auto h-7 gap-1 px-2 text-primary hover:text-primary hover:bg-transparent hover:opacity-80"
                   disabled={ocupado || fotos.length >= FOTOS_MAX} onClick={() => inputFotos.current?.click()}>
-                  {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '+'} Adicionar
-                </button>
+                  {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Adicionar
+                </Button>
                 <input ref={inputFotos} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => enviarFotos(e.target.files)} />
               </CardTitle>
               <Separator className="mt-2" />
