@@ -56,7 +56,13 @@ const DataFiltro = ({ valor, setValor, rotulo, min }: { valor?: Date; setValor: 
 );
 
 
-const PublicacoesTab: React.FC = () => {
+interface Props {
+  /** Aberto a partir de outra aba (ex.: menu do card no Estoque): abre direto a moto. */
+  initialAvaliacaoId?: string | null;
+  onInitialHandled?: () => void;
+}
+
+const PublicacoesTab: React.FC<Props> = ({ initialAvaliacaoId, onInitialHandled }) => {
   const [items, setItems] = useState<ItemPublicacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -117,6 +123,15 @@ const PublicacoesTab: React.FC = () => {
   }, []);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  // Vindo do Estoque: abre a moto assim que a lista carregar.
+  useEffect(() => {
+    if (!initialAvaliacaoId || loading) return;
+    const it = items.find((x) => x.avaliacao.id === initialAvaliacaoId);
+    if (it) setSelected(it);
+    else toast.error('Esta moto não está na aba Publicações');
+    onInitialHandled?.();
+  }, [initialAvaliacaoId, loading, items, onInitialHandled]);
 
   const filtrados = useMemo(() => {
     const termo = search.trim().toLowerCase();

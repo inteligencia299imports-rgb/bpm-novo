@@ -192,7 +192,12 @@ const Dashboard = () => {
             onInitialHandled={() => setInitialAvaliacaoId(null)}
           />
         )}
-        {activeTab === 'publicacoes' && <PublicacoesTab />}
+        {activeTab === 'publicacoes' && (
+          <PublicacoesTab
+            initialAvaliacaoId={initialAvaliacaoId}
+            onInitialHandled={() => setInitialAvaliacaoId(null)}
+          />
+        )}
         {activeTab === 'relatorios' && <RelatoriosTab />}
         {activeTab === 'novidades' && <NovidadesTab onNavigateToShowroom={handleNavigateToShowroom} />}
         {activeTab === 'nps' && <NpsTab onNavigateToTab={handleEstoqueNav} />}

@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, Download, LogOut, DollarSign, ArrowRightLeft, KeyRound } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, Download, LogOut, DollarSign, ArrowRightLeft, KeyRound, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -40,6 +40,7 @@ export type EstoqueNavTarget =
   | { tab: 'intermediacao'; atendimentoId: string; parte?: 'parte1' | 'parte2' }
   | { tab: 'pos_compra'; avaliacaoId: string }
   | { tab: 'consignacao'; avaliacaoId: string }
+  | { tab: 'publicacoes'; avaliacaoId: string }
   | { tab: 'preparacao'; avaliacaoId: string };
 
 interface EstoqueTabProps {
@@ -584,6 +585,15 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         label: 'Preparação',
         icon: <Wrench className="h-4 w-4" />,
         action: () => nav({ tab: 'preparacao', avaliacaoId: item.avaliacao_id! }),
+      });
+    }
+
+    // Publicação (anúncio no site): seminova ainda na aba Publicações (vendida/retirada e test-ride não entram).
+    if (item.avaliacao_id && item.tipo !== '0km' && !['vendido', 'retirada'].includes(item.status) && item.tipo_unidade !== 'test_ride') {
+      options.push({
+        label: 'Publicação',
+        icon: <Camera className="h-4 w-4" />,
+        action: () => nav({ tab: 'publicacoes', avaliacaoId: item.avaliacao_id! }),
       });
     }
 
