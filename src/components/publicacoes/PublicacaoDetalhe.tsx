@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, FileText, Loader2, Pencil, Plus, RefreshCw, Save, Tag, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, FileText, Loader2, Pencil, Plus, RefreshCw, Save, ShoppingCart, Tag, Trash2, Upload } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -51,6 +51,8 @@ interface DadosSite {
 // Movimentações da publicação no Histórico (status_history, entity_type 'publicacao').
 const ROTULO_HISTORICO: Record<string, string> = {
   publicacao_fotos_tiradas: 'FOTOS TIRADAS',
+  publicacao_fotos_adicionadas: 'FOTOS ADICIONADAS',
+  publicacao_fotos_editadas: 'FOTOS EDITADAS',
   publicacao_publicada: 'PUBLICADA NO SITE',
   publicacao_despublicada: 'RETIRADA DO SITE',
   publicacao_em_aberto: 'PUBLICAÇÃO VOLTOU PARA EM ABERTO',
@@ -187,14 +189,24 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
       toast.error(`Erro ao salvar: ${error.message}`);
       return;
     }
-    if (statusHistorico) {
-      await supabase.from('status_history').insert({
+    // Histórico: mudanças nas fotos (comparando com o que estava gravado) + mudança de etapa.
+    const antes: string[] = site?.fotos ?? [];
+    const adicionadas = fotos.some((u) => !antes.includes(u));
+    const mantidas = fotos.filter((u) => antes.includes(u));
+    const editadas = antes.some((u) => !fotos.includes(u)) || mantidas.some((u, i) => antes.filter((x) => fotos.includes(x))[i] !== u);
+    const registros = [
+      ...(adicionadas ? ['publicacao_fotos_adicionadas'] : []),
+      ...(editadas ? ['publicacao_fotos_editadas'] : []),
+      ...(statusHistorico ? [statusHistorico] : []),
+    ];
+    if (registros.length) {
+      await supabase.from('status_history').insert(registros.map((status) => ({
         entity_type: 'publicacao',
         entity_id: avId,
-        status: statusHistorico,
+        status,
         changed_by: user?.id,
         changed_by_name: userName || user?.email || null,
-      } as any);
+      })) as any);
     }
     setSalvando(false);
     toast.success(msg);
@@ -310,7 +322,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           {etapa === 'publicada' && site?.slug && (
             <Button size="sm" variant="ghost" asChild className="gap-1.5 text-primary">
-              <a href={`${SITE_URL}/seminovas/${site.slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /> Ver no site</a>
+              <a href={`${SITE_URL}/seminovas/${site.slug}`} target="_blank" rel="noreferrer" title="Ver anúncio no site"><ShoppingCart className="h-4 w-4" fill="currentColor" /> Site</a>
             </Button>
           )}
           {etapa === 'publicada' && (
