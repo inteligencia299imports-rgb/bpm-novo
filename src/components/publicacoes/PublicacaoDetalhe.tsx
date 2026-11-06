@@ -319,7 +319,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           {etapa === 'publicada' && site?.slug && (
             <Button size="sm" asChild className="w-28 gap-1.5">
-              <a href={`${SITE_URL}/seminovas/${site.slug}`} target="_blank" rel="noreferrer" title="Ver anúncio no site"><ShoppingCart className="h-4 w-4" fill="currentColor" /> Site</a>
+              <a href={`${SITE_URL}/seminovas/${site.slug}`} target="_blank" rel="noreferrer" title="Ver anúncio no site"><ShoppingCart className="h-4 w-4" /> Site</a>
             </Button>
           )}
           {etapa === 'publicada' && (
