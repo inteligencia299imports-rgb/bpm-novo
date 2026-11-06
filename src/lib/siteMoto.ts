@@ -1,4 +1,5 @@
 // Anúncio da moto no site 299imports.com.br (tabela site_motos, DB 299).
+import { supabase } from '@/lib/supabase';
 // Marca, modelo, km, anos, cc, cor, categoria, loja e preços vêm da moto no BPM (view site_motos_dados);
 // aqui só ficam as etapas, as marcas que o site conhece (site-299: data/marcas.ts) e o endereço da página.
 
@@ -28,6 +29,22 @@ export const MARCAS_SITE = [
 /** Limites das fotos do anúncio (o bucket site-motos também barra acima de 3 MB). */
 /** Endereço público do site (página da moto: ${SITE_URL}/seminovas/<slug>). */
 export const SITE_URL = 'https://299imports.com.br';
+
+/**
+ * Pede ao site para limpar o cache das seminovas (rota /api/revalidar-motos), para a mudança aparecer na hora.
+ * Sem isso o site renova sozinho em até 60 s. Falha aqui não impede o salvamento (só atrasa o site).
+ */
+export async function atualizarSite(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return false;
+  try {
+    const r = await fetch(`${SITE_URL}/api/revalidar-motos`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
 
 export const FOTOS_MIN = 5;
 export const FOTOS_MAX = 20;
