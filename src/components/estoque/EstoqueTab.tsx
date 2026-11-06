@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { SITE_URL } from '@/lib/siteMoto';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, tipoExibicaoEstoque } from '@/lib/tipoAquisicao';
 import { format } from 'date-fns';
@@ -337,6 +338,20 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   }, [filterStatus, filterMarca, filterTipo]);
 
   useEffect(() => { fetchEstoque(); }, [fetchEstoque]);
+
+  // Anúncios no ar no site (aba Publicações): avaliação -> endereço da página. Só os que a view pública mostra
+  // (publicada e ainda à venda), para o carrinho nunca levar a uma página que não existe.
+  const [anunciosSite, setAnunciosSite] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    (async () => {
+      const [{ data: pub }, { data: visiveis }] = await Promise.all([
+        (supabase as any).from('site_motos').select('id, avaliacao_id, slug').eq('etapa', 'publicada').not('slug', 'is', null),
+        (supabase as any).from('site_motos_publicas').select('id'),
+      ]);
+      const noAr = new Set(((visiveis as any[]) || []).map((v) => v.id));
+      setAnunciosSite(new Map(((pub as any[]) || []).filter((p) => noAr.has(p.id)).map((p) => [p.avaliacao_id, p.slug])));
+    })();
+  }, []);
 
   const CIDADE_LOJAS: Record<string, string[]> = {
     'Brasília': ['299i', '299s', 'Aventura', 'Ducati BSB'],
@@ -765,9 +780,24 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                                 {item.cilindrada ? ` · ${item.cilindrada}cc` : ''}
                               </p>
                             </div>
-                            <Badge className={STATUS_MAP[item.status]?.color || 'bg-muted text-muted-foreground'}>
-                              {STATUS_MAP[item.status]?.label || item.status}
-                            </Badge>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {item.avaliacao_id && anunciosSite.has(item.avaliacao_id) && (
+                                <a
+                                  href={`${SITE_URL}/seminovas/${anunciosSite.get(item.avaliacao_id)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Ver anúncio no site"
+                                  onClick={(e) => e.stopPropagation()}
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                  className="text-primary hover:opacity-80"
+                                >
+                                  <ShoppingCart className="h-4 w-4" fill="currentColor" />
+                                </a>
+                              )}
+                              <Badge className={STATUS_MAP[item.status]?.color || 'bg-muted text-muted-foreground'}>
+                                {STATUS_MAP[item.status]?.label || item.status}
+                              </Badge>
+                            </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Search, Filter, CalendarIcon, X, Globe } from 'lucide-react';
+import { Search, Filter, CalendarIcon, X, Camera, Package, Wrench } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { MARCA_MODELO_SELECT, flattenMarcaModeloList } from '@/lib/marcaModelo';
@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import ProcessCard from '@/components/shared/ProcessCard';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
-import PublicacaoDialog, { type ItemPublicacao } from './PublicacaoDialog';
+import PublicacaoDetalhe, { type ItemPublicacao } from './PublicacaoDetalhe';
 
 // Status do estoque em que a moto sai do kanban (já não está à venda).
 const FORA_DO_KANBAN = new Set(['vendido', 'retirada']);
@@ -64,7 +64,7 @@ const PublicacoesTab: React.FC = () => {
       fetchAllRange(() =>
         supabase
           .from('avaliacoes')
-          .select(`id, placa, ano_fabricacao, ano_modelo, km, cor, cilindrada, categoria, valor_fipe, menor_valor, maior_valor, tipo_aquisicao, situacao, created_at, ${MARCA_MODELO_SELECT}, atendimentos_motos!avaliacoes_atendimento_id_fkey(loja_empresas:loja_id(loja))`)
+          .select(`id, placa, ano_fabricacao, ano_modelo, km, cor, cilindrada, categoria, valor_fipe, quanto_vende, tem_manual, tem_chave_reserva, manutencao_vencida, tipo_aquisicao, situacao, created_at, ${MARCA_MODELO_SELECT}, atendimentos_motos!avaliacoes_atendimento_id_fkey(loja_empresas:loja_id(loja))`)
           .in('situacao', ['adquirida', 'estoque', 'oficina'])
           .order('created_at', { ascending: false }),
       ),
@@ -113,7 +113,7 @@ const PublicacoesTab: React.FC = () => {
     return items.filter((it) => {
       const av = it.avaliacao;
       if (termo) {
-        const alvo = [av.marca, av.modelo, av.placa, it.site?.modelo, it.lojaBpm].filter(Boolean).join(' ').toLowerCase();
+        const alvo = [av.marca, av.modelo, av.placa, it.lojaBpm].filter(Boolean).join(' ').toLowerCase();
         if (!alvo.includes(termo)) return false;
       }
       if (!matchesCidade(it.lojaBpm, filterCidade)) return false;
@@ -133,6 +133,8 @@ const PublicacoesTab: React.FC = () => {
     });
   }, [items, search, filterCidade, filterTipo, filterSituacao, dateFrom, dateTo]);
 
+  if (selected) return <PublicacaoDetalhe item={selected} onClose={() => { setSelected(null); fetchItems(); }} />;
+
   const temFiltro = filterCidade !== 'todos' || filterTipo !== 'todos' || filterSituacao !== 'todos' || !!dateFrom || !!dateTo;
   const limpar = () => { setFilterCidade('todos'); setFilterTipo('todos'); setFilterSituacao('todos'); setDateFrom(undefined); setDateTo(undefined); };
 
@@ -141,10 +143,9 @@ const PublicacoesTab: React.FC = () => {
       <div className="flex flex-row gap-3 items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Globe className="h-7 w-7 text-primary" />
+            <Camera className="h-7 w-7 text-primary" />
             <h1 className="text-2xl font-bold text-foreground">Publicações</h1>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5 hidden sm:block">Seminovas no site 299imports.com.br</p>
         </div>
       </div>
 
@@ -227,11 +228,13 @@ const PublicacoesTab: React.FC = () => {
                           date={it.dataAquisicao}
                           dateLabel={it.estoque ? 'Entrada' : 'Aquisição'}
                           statusColor={col.hex}
+                          titleIcon={it.estoque
+                            ? <span title="Em estoque" className="shrink-0"><Package className="h-4 w-4 text-green-600" /></span>
+                            : <span title="Em preparação" className="shrink-0"><Wrench className="h-4 w-4 text-orange-500" /></span>}
                           extraBadge={av.tipo_aquisicao ? { label: getTipoAquisicaoLabel(av.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(av.tipo_aquisicao) } : undefined}
                           secondaryBadge={
                             sinal ? { label: 'Sinal · fora do site', className: 'bg-amber-100 text-amber-800 border-amber-200' }
                             : naoDisponivel ? { label: 'Indisponível · fora do site', className: 'bg-red-100 text-red-700 border-red-200' }
-                            : !it.estoque ? { label: 'Em preparação', className: 'bg-slate-100 text-slate-700 border-slate-200' }
                             : undefined
                           }
                           onClick={() => setSelected(it)}
@@ -246,14 +249,6 @@ const PublicacoesTab: React.FC = () => {
         </div>
       )}
 
-      {selected && (
-        <PublicacaoDialog
-          open={!!selected}
-          item={selected}
-          onOpenChange={(o) => { if (!o) setSelected(null); }}
-          onSaved={() => { setSelected(null); fetchItems(); }}
-        />
-      )}
     </div>
   );
 };
