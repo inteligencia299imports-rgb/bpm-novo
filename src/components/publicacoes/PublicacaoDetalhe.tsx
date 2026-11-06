@@ -73,6 +73,10 @@ const formatKm = (km: string | null | undefined) => {
   return Number.isNaN(num) ? km : `${num.toLocaleString('pt-BR')} km`;
 };
 
+// Foto no Storage do DB 299 (bucket site-motos): a tabela guarda o caminho; a tela trabalha com a URL pública.
+const urlFoto = (caminho: string) => supabase.storage.from('site-motos').getPublicUrl(caminho).data.publicUrl;
+const caminhoFoto = (url: string) => decodeURIComponent(url.split('/site-motos/')[1] || url);
+
 const mb = (b: number) => `${(b / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
 
 /** Redimensiona para no máximo 1600px e converte para WebP no navegador (fotos menores no site). */
@@ -111,7 +115,9 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const [dados, setDados] = useState<DadosSite | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [descricao, setDescricao] = useState<string>(item.site?.descricao ?? '');
-  const [fotos, setFotos] = useState<string[]>(item.site?.fotos ?? []);
+  // Galeria (URLs públicas, na ordem; a 1ª é a capa). fotosGravadas = como está no banco, para o histórico.
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [fotosGravadas, setFotosGravadas] = useState<string[]>([]);
   const [arrastando, setArrastando] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -125,7 +131,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const [motivoDesativar, setMotivoDesativar] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
-    const [avRes, dadosRes, siteRes] = await Promise.all([
+    const [avRes, dadosRes, siteRes, fotosRes] = await Promise.all([
       supabase.from('avaliacoes')
         .select(`id, atendimento_id, placa, ano_fabricacao, ano_modelo, km, cor, cilindrada, categoria, observacoes,
           tem_manual, tem_chave_reserva, manutencao_vencida, tem_acessorios, acessorios_descricao,
@@ -133,6 +139,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
         .eq('id', avId).maybeSingle(),
       (supabase as any).from('site_motos_dados').select('marca, modelo, ano_modelo, preco, preco_de, pendencias').eq('avaliacao_id', avId).maybeSingle(),
       (supabase as any).from('site_motos').select('*').eq('avaliacao_id', avId).maybeSingle(),
+      (supabase as any).from('site_motos_fotos').select('caminho').eq('avaliacao_id', avId).order('ordem'),
     ]);
     if (avRes.error) toast.error(`Erro ao carregar a moto: ${avRes.error.message}`);
     const av = avRes.data ? flattenMarcaModelo(avRes.data as any) : null;
@@ -142,6 +149,12 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
     if (siteRes.data) {
       setSite(siteRes.data);
       setEtapa(siteRes.data.etapa);
+    }
+    if (fotosRes.error) toast.error(`Erro ao carregar as fotos: ${fotosRes.error.message}`);
+    else {
+      const urls = ((fotosRes.data as { caminho: string }[]) || []).map((r) => urlFoto(r.caminho));
+      setFotos(urls);
+      setFotosGravadas(urls);
     }
 
     // Histórico: avaliação/pós-compra/preparação/publicação (pela avaliação) + showroom/contrato (pelo atendimento).
@@ -180,7 +193,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
 
   const gravar = async (nova: EtapaPublicacao, msg: string, statusHistorico?: string, observacao?: string) => {
     setSalvando(true);
-    const base = { avaliacao_id: avId, descricao: descricao.trim() || null, fotos, etapa: nova };
+    const base = { avaliacao_id: avId, descricao: descricao.trim() || null, etapa: nova };
     // Endereço da página: fixado na 1ª publicação (não muda depois, para não quebrar links e Google).
     const slugAtual = site?.slug || (nova === 'publicada' ? slugSite(marcaLabel, dados?.modelo, dados?.ano_modelo) : null);
     let { error } = await (supabase as any).from('site_motos').upsert({ ...base, slug: slugAtual }, { onConflict: 'avaliacao_id' });
@@ -189,13 +202,17 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
       ({ error } = await (supabase as any).from('site_motos')
         .upsert({ ...base, slug: slugSite(marcaLabel, dados?.modelo, dados?.ano_modelo, String(moto?.placa || '').replace(/-/g, '')) }, { onConflict: 'avaliacao_id' }));
     }
+    if (!error) {
+      // Galeria inteira de uma vez (ordem = posição; a 1ª é a capa).
+      ({ error } = await (supabase as any).rpc('salvar_fotos_site_moto', { _avaliacao_id: avId, _caminhos: fotos.map(caminhoFoto) }));
+    }
     if (error) {
       setSalvando(false);
       toast.error(`Erro ao salvar: ${error.message}`);
       return;
     }
     // Histórico: mudanças nas fotos (comparando com o que estava gravado) + mudança de etapa.
-    const antes: string[] = site?.fotos ?? [];
+    const antes = fotosGravadas;
     const adicionadas = fotos.some((u) => !antes.includes(u));
     const mantidas = fotos.filter((u) => antes.includes(u));
     const editadas = antes.some((u) => !fotos.includes(u)) || mantidas.some((u, i) => antes.filter((x) => fotos.includes(x))[i] !== u);
