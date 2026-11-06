@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, Loader2, Pencil, Plus, RefreshCw, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, FileText, Loader2, Pencil, Plus, RefreshCw, Tag, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
@@ -364,19 +364,20 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </CardContent>
           </Card>
 
-          {/* Valores */}
-          <Card className="flex flex-col">
+          {/* Coluna da direita: Valores + Descrição do Anúncio */}
+          <div className="flex flex-col gap-4">
+          <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-primary" /> Valores
               </CardTitle>
               <Separator className="mt-2" />
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col justify-center">
+            <CardContent>
               {!moto ? (
                 <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
               ) : (
-                <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
+                <div className="py-2">
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <Destaque label="Preço" value={formatCurrency(moto.quanto_pede)} />
                     <Destaque label="Valor da FIPE" value={formatCurrency(moto.valor_fipe)} />
@@ -387,7 +388,27 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </CardContent>
           </Card>
 
-          {/* Fotos + descrição do anúncio */}
+          {/* Descrição do Anúncio */}
+          <Card className="flex-1 flex flex-col">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" /> Descrição do Anúncio
+              </CardTitle>
+              <Separator className="mt-2" />
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col gap-3">
+              <Textarea rows={5} value={descricao} onChange={(e) => setDescricao(e.target.value)}
+                placeholder="Texto que aparece na página da moto no site" className="flex-1 min-h-[120px]" />
+              {etapa !== 'em_aberto' && dados && pendencias.length > 0 && (
+                <p className="text-xs rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2">
+                  {etapa === 'publicada' ? 'Fora do site até resolver' : 'Para publicar falta'}: <b>{pendencias.join(', ')}</b>.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+          </div>
+
+          {/* Fotos */}
           <Card className="flex flex-col md:col-span-2">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -438,15 +459,6 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                   </div>
                   <p className="text-[11px] text-muted-foreground">Arraste para ordenar a galeria do site. A primeira é a capa.</p>
                 </div>
-              )}
-              <div className="space-y-1">
-                <Label>Descrição do anúncio</Label>
-                <Textarea rows={5} value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Texto que aparece na página da moto no site" />
-              </div>
-              {etapa !== 'em_aberto' && dados && pendencias.length > 0 && (
-                <p className="text-xs rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2">
-                  {etapa === 'publicada' ? 'Fora do site até resolver' : 'Para publicar falta'}: <b>{pendencias.join(', ')}</b>.
-                </p>
               )}
             </CardContent>
           </Card>
