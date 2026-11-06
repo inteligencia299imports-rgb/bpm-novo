@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, Clock, ExternalLink, GripVertical, ImagePlus, Loader2, Star, Tag, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Camera, Clock, ExternalLink, GripVertical, Loader2, Star, Tag, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -343,19 +343,17 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
               <CardTitle className="text-sm flex items-center gap-2">
                 <Camera className="h-4 w-4 text-primary" /> Fotos
                 <span className="text-xs font-normal text-muted-foreground">({fotos.length}/{FOTOS_MAX} fotos)</span>
-                <Button size="sm" variant="outline" className="gap-1.5 ml-auto h-7" disabled={ocupado || fotos.length >= FOTOS_MAX} onClick={() => inputFotos.current?.click()}>
-                  {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />} Adicionar fotos
-                </Button>
+                <button type="button" className="ml-auto text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:no-underline inline-flex items-center gap-1"
+                  disabled={ocupado || fotos.length >= FOTOS_MAX} onClick={() => inputFotos.current?.click()}>
+                  {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '+'} Adicionar
+                </button>
                 <input ref={inputFotos} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => enviarFotos(e.target.files)} />
               </CardTitle>
               <Separator className="mt-2" />
             </CardHeader>
             <CardContent className="flex-1 flex flex-col gap-4">
               {fotos.length === 0 ? (
-                <button type="button" onClick={() => inputFotos.current?.click()}
-                  className="w-full border border-dashed border-border rounded-lg py-8 text-sm text-muted-foreground flex flex-col items-center gap-2">
-                  <Upload className="h-5 w-5" /> Envie as fotos da moto (até {FOTOS_MAX}, no máximo 3 MB cada)
-                </button>
+                <p className="text-xs text-muted-foreground">Nenhuma foto. Até {FOTOS_MAX} fotos, no máximo 3 MB cada.</p>
               ) : (
                 <div className="space-y-1.5">
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
