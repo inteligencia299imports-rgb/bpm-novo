@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, Clock, ExternalLink, Loader2, Pencil, Plus, RefreshCw, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, Clock, DollarSign, ExternalLink, Loader2, Pencil, Plus, RefreshCw, Tag, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -357,20 +357,36 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                     temAcessorios={moto.tem_acessorios}
                     acessoriosDescricao={moto.acessorios_descricao}
                   />
-                  <div className="mt-auto rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <Destaque label="Preço" value={formatCurrency(moto.quanto_pede)} />
-                      <Destaque label="Valor da FIPE" value={formatCurrency(moto.valor_fipe)} />
-                      <Destaque label="Preço Ação" value={formatCurrency(precoAcao)} />
-                    </div>
-                  </div>
                 </>
               )}
             </CardContent>
           </Card>
 
-          {/* Fotos + descrição do anúncio */}
+          {/* Valores */}
           <Card className="flex flex-col">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-primary" /> Valores
+              </CardTitle>
+              <Separator className="mt-2" />
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col justify-center">
+              {!moto ? (
+                <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : (
+                <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <Destaque label="Preço" value={formatCurrency(moto.quanto_pede)} />
+                    <Destaque label="Valor da FIPE" value={formatCurrency(moto.valor_fipe)} />
+                    <Destaque label="Preço Ação" value={formatCurrency(precoAcao)} />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Fotos + descrição do anúncio */}
+          <Card className="flex flex-col md:col-span-2">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Camera className="h-4 w-4 text-primary" /> Fotos
