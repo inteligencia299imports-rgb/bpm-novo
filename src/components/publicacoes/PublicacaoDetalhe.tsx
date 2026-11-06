@@ -152,11 +152,14 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   useEffect(() => { carregar(); }, [carregar]);
 
   // Fotos conferidas aqui (estado local); o resto vem do BPM.
-  const pendencias = [
+  // pendenciasSite: o que tira a moto do site (mesma regra da view). Descrição é exigida só no botão Publicar
+  // (os anúncios migrados do site antigo estão no ar sem descrição).
+  const pendenciasSite = [
     ...(dados?.pendencias ?? []).filter((p) => p !== 'Fotos'),
     ...(fotos.length === 0 ? ['Fotos'] : []),
-    ...(descricao.trim() === '' ? ['Descrição do anúncio'] : []),
   ];
+  const pendencias = [...pendenciasSite, ...(descricao.trim() === '' ? ['Descrição do anúncio'] : [])];
+  const avisoPendencias = etapa === 'publicada' ? pendenciasSite : pendencias;
   const estoque = item.estoque;
   const foraDoSite = estoque && !['disponivel', 'servico'].includes(estoque.status);
   const marcaLabel = MARCAS_SITE.find((m) => m.value === dados?.marca)?.label || moto?.marca;
@@ -400,9 +403,9 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             <CardContent className="flex-1 flex flex-col gap-3">
               <Textarea rows={5} value={descricao} onChange={(e) => setDescricao(e.target.value)}
                 placeholder="Texto que aparece na página da moto no site" className="flex-1 min-h-[120px]" />
-              {etapa !== 'em_aberto' && dados && pendencias.length > 0 && (
+              {etapa !== 'em_aberto' && dados && avisoPendencias.length > 0 && (
                 <p className="text-xs rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2">
-                  {etapa === 'publicada' ? 'Fora do site até resolver' : 'Para publicar falta'}: <b>{pendencias.join(', ')}</b>.
+                  {etapa === 'publicada' ? 'Fora do site até resolver' : 'Para publicar falta'}: <b>{avisoPendencias.join(', ')}</b>.
                 </p>
               )}
             </CardContent>
