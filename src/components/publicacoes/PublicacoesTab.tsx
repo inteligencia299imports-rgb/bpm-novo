@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import ProcessCard from '@/components/shared/ProcessCard';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
-import PublicacaoDialog, { type ItemPublicacao } from './PublicacaoDialog';
+import PublicacaoDetalhe, { type ItemPublicacao } from './PublicacaoDetalhe';
 
 // Status do estoque em que a moto sai do kanban (já não está à venda).
 const FORA_DO_KANBAN = new Set(['vendido', 'retirada']);
@@ -133,6 +133,8 @@ const PublicacoesTab: React.FC = () => {
     });
   }, [items, search, filterCidade, filterTipo, filterSituacao, dateFrom, dateTo]);
 
+  if (selected) return <PublicacaoDetalhe item={selected} onClose={() => { setSelected(null); fetchItems(); }} />;
+
   const temFiltro = filterCidade !== 'todos' || filterTipo !== 'todos' || filterSituacao !== 'todos' || !!dateFrom || !!dateTo;
   const limpar = () => { setFilterCidade('todos'); setFilterTipo('todos'); setFilterSituacao('todos'); setDateFrom(undefined); setDateTo(undefined); };
 
@@ -245,14 +247,6 @@ const PublicacoesTab: React.FC = () => {
         </div>
       )}
 
-      {selected && (
-        <PublicacaoDialog
-          open={!!selected}
-          item={selected}
-          onOpenChange={(o) => { if (!o) setSelected(null); }}
-          onSaved={() => { setSelected(null); fetchItems(); }}
-        />
-      )}
     </div>
   );
 };

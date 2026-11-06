@@ -1,6 +1,6 @@
 -- Anúncio do site normalizado (06/11/2026).
 -- Marca, modelo, km, anos, cilindrada, categoria, cor, manual, chave reserva, revisão em dia, preço de tabela
--- (quanto_vende), FIPE e preço ação (estoque_motos.preco_acao) passam a vir da própria moto no BPM.
+-- (quanto_pede, o "Preço de Tabela" do estoque), FIPE e preço ação (estoque_motos.preco_acao) passam a vir da própria moto no BPM.
 -- site_motos guarda só o que é do anúncio: etapa, endereço (slug), descrição e fotos (a 1ª é a capa, até 20).
 
 begin;
@@ -91,9 +91,9 @@ with b as (
          public.site_cor(a.cor) as cor,
          public.site_estilo(a.categoria) as estilo,
          public.site_loja(coalesce(le_est.loja, le_at.loja)) as loja,
-         -- Preço: ação quando houver, senão o de tabela (quanto_vende); com ação abaixo da tabela, a tabela vira o "De".
-         coalesce(nullif(e.preco_acao, 0), nullif(a.quanto_vende, 0)) as preco,
-         case when e.preco_acao > 0 and a.quanto_vende > e.preco_acao then a.quanto_vende end as preco_de,
+         -- Preço: ação quando houver, senão o de tabela (quanto_pede); com ação abaixo da tabela, a tabela vira o "De".
+         coalesce(nullif(e.preco_acao, 0), nullif(a.quanto_pede, 0)) as preco,
+         case when e.preco_acao > 0 and a.quanto_pede > e.preco_acao then a.quanto_pede end as preco_de,
          nullif(a.valor_fipe, 0) as fipe,
          array_remove(array[
            case when a.tem_manual then 'Manual do proprietário' end,
@@ -152,7 +152,22 @@ select b.site_id as id, b.slug, b.marca, b.modelo, b.ano_fab, b.ano_modelo, b.km
    and (b.estoque_status is null or b.estoque_status in ('disponivel', 'servico'));
 grant select on public.site_motos_publicas to anon, authenticated;
 
--- 7) Fotos: até 3 MB cada, só imagem.
+-- 7) Histórico de Movimentações: as etapas da publicação (entity_type 'publicacao', entity_id = avaliação)
+--    ficam visíveis para quem já vê o histórico da avaliação. Mesma regra de antes + 'publicacao'.
+alter policy "Acesso status_history" on public.status_history using (
+  (changed_by = auth.uid())
+  or has_app_role(auth.uid(), 'master'::app_role)
+  or ((entity_type = any (array['atendimento', 'pos_venda', 'intermediacao']))
+      and exists (select 1 from public.atendimentos_motos a
+                   where a.id = status_history.entity_id
+                     and (a.vendedor_id = auth.uid() or has_master_or_gerente_empresa(auth.uid(), a.loja_id))))
+  or ((entity_type = any (array['avaliacao', 'pos_compra', 'consignacao', 'preparacao', 'showroom', 'consulta', 'publicacao']))
+      and exists (select 1 from public.avaliacoes av join public.atendimentos_motos a on a.id = av.atendimento_id
+                   where av.id = status_history.entity_id
+                     and (a.vendedor_id = auth.uid() or has_master_or_gerente_empresa(auth.uid(), a.loja_id))))
+);
+
+-- 8) Fotos: até 3 MB cada, só imagem.
 update storage.buckets
    set file_size_limit = 3145728,
        allowed_mime_types = array['image/webp', 'image/jpeg', 'image/png']
