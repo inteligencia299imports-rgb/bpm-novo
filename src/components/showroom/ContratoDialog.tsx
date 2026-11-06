@@ -603,8 +603,9 @@ const ContratoDialog: React.FC<Props> = ({
       setEmpresasLoja(empresas);
       setEmpresaId((contrato as any)?.empresa_id || empresas[0]?.id || '');
 
-      const atSinal = freshEstoque?.valor_sinal ?? (atendimento as any).valor_sinal;
-      const atVenda = freshEstoque?.valor_venda ?? (atendimento as any).valor_venda;
+      // Moto de Interesse externa (sem linha no estoque): os valores ficam no contrato.
+      const atSinal = freshEstoque?.valor_sinal ?? (contrato as any)?.valor_sinal ?? (atendimento as any).valor_sinal;
+      const atVenda = freshEstoque?.valor_venda ?? (contrato as any)?.valor_venda ?? (atendimento as any).valor_venda;
       // Quitação e Fechamento da moto do cliente têm a avaliação como origem —
       // editados aqui no contrato (sinal ou venda), o valor sempre propaga de
       // volta pra lá (ver saveContrato). Sem Valor de Fechamento ainda
@@ -932,6 +933,10 @@ const ContratoDialog: React.FC<Props> = ({
     const estoqueUpdate: any = {};
     const parsedSinal = parseCurrencyInput(valorSinal);
     const parsedVenda = parseCurrencyInput(valorVenda);
+    // Também no contrato: com a Moto de Interesse externa (fora do estoque) não há linha
+    // de estoque para gravar e os valores sumiam ao salvar/gerar (caso real 2026-11-05).
+    payload.valor_sinal = parsedSinal;
+    payload.valor_venda = parsedVenda;
     if (parsedSinal !== null) estoqueUpdate.valor_sinal = parsedSinal;
     if (parsedVenda !== null) estoqueUpdate.valor_venda = parsedVenda;
     if (Object.keys(estoqueUpdate).length > 0) {

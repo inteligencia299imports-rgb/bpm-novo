@@ -706,6 +706,18 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         }
       }
 
+      // Moto de Interesse externa (sem moto do estoque): os valores ficam no contrato de
+      // venda — antes não iam para lugar nenhum e sumiam (caso real 2026-11-05).
+      if (!motosInteresse.some((mi) => mi.estoque_moto_id)) {
+        const valores = { valor_venda: venda > 0 ? venda : null, valor_sinal: sinal > 0 ? sinal : null };
+        const { data: ct } = await supabase.from('contratos').select('id').eq('atendimento_id', atendimento.id)
+          .or('ipva_tipo.is.null,ipva_tipo.neq.COMPRA').order('created_at', { ascending: false }).limit(1).maybeSingle();
+        const r = ct
+          ? await supabase.from('contratos').update(valores as any).eq('id', (ct as any).id)
+          : await supabase.from('contratos').insert({ atendimento_id: atendimento.id, ...valores } as any);
+        if (r.error) toast.error(`Erro ao salvar Valor do Sinal / Valor da Venda: ${r.error.message}`);
+      }
+
       // Se for troca e vendido, marcar todas as avaliações como adquirida/própria com valor de fechamento.
       // Troca (moto como parte de pagamento) não passa por aprovação — entra direto como 'aprovada'.
       if (newStatus === 'vendido' && atendimento.interesse === 'trocar') {
@@ -1539,11 +1551,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         const [{ data: freshEstoque }, { data: freshContrato }] = await Promise.all([
                           supabase.from(_estTabela).select('valor_sinal, valor_venda').eq('atendimento_venda_id', atendimento.id).maybeSingle(),
                           // Contrato de venda (ignora o de COMPRA da troca; mais recente).
-                          supabase.from('contratos').select('valor_fechamento').eq('atendimento_id', atendimento.id)
+                          supabase.from('contratos').select('valor_fechamento, valor_sinal, valor_venda').eq('atendimento_id', atendimento.id)
                             .or('ipva_tipo.is.null,ipva_tipo.neq.COMPRA').order('created_at', { ascending: false }).limit(1).maybeSingle(),
                         ]);
-                        const freshSinal = freshEstoque?.valor_sinal ?? atendimento.valor_sinal;
-                        const freshVenda = freshEstoque?.valor_venda ?? atendimento.valor_venda;
+                        // Moto de Interesse externa (sem linha no estoque): os valores ficam no contrato.
+                        const freshSinal = freshEstoque?.valor_sinal ?? (freshContrato as any)?.valor_sinal ?? atendimento.valor_sinal;
+                        const freshVenda = freshEstoque?.valor_venda ?? (freshContrato as any)?.valor_venda ?? atendimento.valor_venda;
                         // Fetch valor_fechamento: first from avaliacoes, fallback to contratos
                         let freshFechamento: number | null = freshContrato?.valor_fechamento ?? null;
                         // Troca com várias motos: o fechamento é a soma das avaliações.

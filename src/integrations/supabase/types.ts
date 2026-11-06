@@ -669,6 +669,8 @@ export type Database = {
           updated_at: string
           valor_fechamento: number | null
           valor_quitacao: number | null
+          valor_sinal: number | null
+          valor_venda: number | null
         }
         Insert: {
           atendimento_id: string
@@ -688,6 +690,8 @@ export type Database = {
           updated_at?: string
           valor_fechamento?: number | null
           valor_quitacao?: number | null
+          valor_sinal?: number | null
+          valor_venda?: number | null
         }
         Update: {
           atendimento_id?: string
@@ -707,6 +711,8 @@ export type Database = {
           updated_at?: string
           valor_fechamento?: number | null
           valor_quitacao?: number | null
+          valor_sinal?: number | null
+          valor_venda?: number | null
         }
         Relationships: [
           {
