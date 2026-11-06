@@ -64,7 +64,7 @@ const PublicacoesTab: React.FC = () => {
       fetchAllRange(() =>
         supabase
           .from('avaliacoes')
-          .select(`id, placa, ano_fabricacao, ano_modelo, km, cor, cilindrada, categoria, valor_fipe, menor_valor, maior_valor, tipo_aquisicao, situacao, created_at, ${MARCA_MODELO_SELECT}, atendimentos_motos!avaliacoes_atendimento_id_fkey(loja_empresas:loja_id(loja))`)
+          .select(`id, placa, ano_fabricacao, ano_modelo, km, cor, cilindrada, categoria, valor_fipe, quanto_vende, tem_manual, tem_chave_reserva, manutencao_vencida, tipo_aquisicao, situacao, created_at, ${MARCA_MODELO_SELECT}, atendimentos_motos!avaliacoes_atendimento_id_fkey(loja_empresas:loja_id(loja))`)
           .in('situacao', ['adquirida', 'estoque', 'oficina'])
           .order('created_at', { ascending: false }),
       ),
@@ -113,7 +113,7 @@ const PublicacoesTab: React.FC = () => {
     return items.filter((it) => {
       const av = it.avaliacao;
       if (termo) {
-        const alvo = [av.marca, av.modelo, av.placa, it.site?.modelo, it.lojaBpm].filter(Boolean).join(' ').toLowerCase();
+        const alvo = [av.marca, av.modelo, av.placa, it.lojaBpm].filter(Boolean).join(' ').toLowerCase();
         if (!alvo.includes(termo)) return false;
       }
       if (!matchesCidade(it.lojaBpm, filterCidade)) return false;

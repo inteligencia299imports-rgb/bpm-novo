@@ -1,19 +1,13 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRight, Camera, ExternalLink, ImagePlus, Loader2, Star, Trash2, Upload } from 'lucide-react';
-import {
-  CAMBIOS_SITE, CARACTERISTICAS_SITE, CORES_SITE, ESTILOS_SITE, ETAPAS_PUBLICACAO, LOJAS_SITE, MARCAS_SITE, SELOS_SITE,
-  corSite, estiloSite, lojaSite, marcaSite, pendenciasPublicacao, slugSite, type EtapaPublicacao,
-} from '@/lib/siteMoto';
+import { Camera, ExternalLink, GripVertical, ImagePlus, Loader2, Star, Trash2, Upload } from 'lucide-react';
+import { ETAPAS_PUBLICACAO, FOTOS_MAX, FOTO_MAX_BYTES, MARCAS_SITE, slugSite, type EtapaPublicacao } from '@/lib/siteMoto';
 
 export interface ItemPublicacao {
   avaliacao: any;
@@ -31,29 +25,30 @@ interface Props {
   onSaved: () => void;
 }
 
+/** Linha da view site_motos_dados: a moto do BPM já traduzida para o site + o anúncio. */
+interface DadosSite {
+  marca: string | null;
+  modelo: string | null;
+  ano_fab: number | null;
+  ano_modelo: number | null;
+  km: number | null;
+  cc: number | null;
+  cor: string | null;
+  estilo: string | null;
+  loja: string | null;
+  preco: number | null;
+  preco_de: number | null;
+  fipe: number | null;
+  diferenciais: string[];
+  pendencias: string[];
+}
+
 const SITE_URL = 'https://299imports.com.br';
 
-const moedaTexto = (v: number | null | undefined) =>
-  v ? Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-const moedaDigitada = (s: string) => {
-  const d = s.replace(/\D/g, '');
-  return d ? (parseInt(d, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-};
-const moedaNumero = (s: string): number | null => {
-  const d = s.replace(/\D/g, '');
-  return d ? parseInt(d, 10) / 100 : null;
-};
-const inteiro = (v: unknown): number | null => {
-  const d = String(v ?? '').replace(/\D/g, '');
-  return d ? parseInt(d, 10) : null;
-};
-const decimal = (v: string): number | null => {
-  const t = v.replace(/\./g, '').replace(',', '.').trim();
-  if (!t) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
-};
-const linhas = (s: string) => s.split('\n').map((l) => l.trim()).filter(Boolean);
+const moeda = (v: number | null | undefined) =>
+  v ? Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) : '—';
+const simNao = (v: boolean | null | undefined) => (v === true ? 'Sim' : v === false ? 'Não' : '—');
+const mb = (b: number) => `${(b / 1024 / 1024).toFixed(1).replace('.', ',')} MB`;
 
 /** Redimensiona para no máximo 1600px e converte para WebP no navegador (fotos menores no site). */
 async function paraWebp(file: File): Promise<Blob> {
@@ -66,120 +61,54 @@ async function paraWebp(file: File): Promise<Blob> {
   return await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('Falha ao converter a foto'))), 'image/webp', 0.85));
 }
 
-const alternar = (lista: string[], set: (v: string[]) => void, v: string) =>
-  set(lista.includes(v) ? lista.filter((x) => x !== v) : [...lista, v]);
-
-const Campo = ({ rotulo, children, className }: { rotulo: string; children: React.ReactNode; className?: string }) => (
-  <div className={cn('space-y-1', className)}>
-    <Label className="text-xs text-muted-foreground">{rotulo}</Label>
-    {children}
+const Info = ({ rotulo, valor, destaque }: { rotulo: string; valor: React.ReactNode; destaque?: boolean }) => (
+  <div className="space-y-0.5">
+    <p className="text-[11px] text-muted-foreground">{rotulo}</p>
+    <p className={cn('text-sm', destaque ? 'font-semibold text-foreground' : 'text-foreground')}>{valor || '—'}</p>
   </div>
 );
-const Escolha = ({ valor, set, opcoes, placeholder }: { valor: string; set: (v: string) => void; opcoes: { value: string; label: string }[]; placeholder: string }) => (
-  <Select value={valor || undefined} onValueChange={set}>
-    <SelectTrigger className="h-9"><SelectValue placeholder={placeholder} /></SelectTrigger>
-    <SelectContent>{opcoes.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-  </Select>
-);
-const op = (l: string[]) => l.map((v) => ({ value: v, label: v }));
-const Chips = ({ lista, set, opcoes }: { lista: string[]; set: (v: string[]) => void; opcoes: string[] }) => (
-  <div className="flex flex-wrap gap-1.5">
-    {opcoes.map((o) => (
-      <button key={o} type="button" onClick={() => alternar(lista, set, o)}
-        className={cn('text-xs rounded-full border px-3 py-1', lista.includes(o) ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border')}>
-        {o}
-      </button>
-    ))}
-  </div>
-);
-
 
 const PublicacaoDialog: React.FC<Props> = ({ open, item, onOpenChange, onSaved }) => {
   const av = item.avaliacao;
   const s = item.site || {};
-  const marcaInicial = s.marca ?? marcaSite(av.marca);
-  const modeloInicial = s.modelo ?? (av.modelo || '');
-  const anoModeloInicial = s.ano_modelo ?? inteiro(av.ano_modelo);
-
-  const [marca, setMarca] = useState<string>(marcaInicial || '');
-  const [modelo, setModelo] = useState<string>(modeloInicial);
-  const [anoFab, setAnoFab] = useState<string>(String(s.ano_fab ?? inteiro(av.ano_fabricacao) ?? ''));
-  const [anoModelo, setAnoModelo] = useState<string>(String(anoModeloInicial ?? ''));
-  const [km, setKm] = useState<string>(String(s.km ?? inteiro(av.km) ?? ''));
-  const [cc, setCc] = useState<string>(String(s.cc ?? inteiro(av.cilindrada) ?? ''));
-  const [cor, setCor] = useState<string>(s.cor ?? corSite(av.cor));
-  const [estilo, setEstilo] = useState<string>(s.estilo ?? estiloSite(av.categoria));
-  const [loja, setLoja] = useState<string>(s.loja ?? lojaSite(item.lojaBpm));
-  const [preco, setPreco] = useState<string>(moedaTexto(s.preco ?? item.estoque?.preco_acao));
-  const [precoDe, setPrecoDe] = useState<string>(moedaTexto(s.preco_de));
-  const [fipe, setFipe] = useState<string>(moedaTexto(s.fipe ?? av.valor_fipe));
-  const [mercadoMin, setMercadoMin] = useState<string>(moedaTexto(s.mercado_min ?? av.menor_valor));
-  const [mercadoMax, setMercadoMax] = useState<string>(moedaTexto(s.mercado_max ?? av.maior_valor));
-  const [slug, setSlug] = useState<string>(s.slug ?? '');
-  const [slugTocado, setSlugTocado] = useState<boolean>(!!s.slug);
-  const [selos, setSelos] = useState<string[]>(s.selos ?? []);
-  const [caracteristicas, setCaracteristicas] = useState<string[]>(s.caracteristicas ?? []);
-  const [destaque, setDestaque] = useState<boolean>(!!s.destaque);
-  const [imagem, setImagem] = useState<string>(s.imagem ?? '');
-  const [fotos, setFotos] = useState<string[]>(s.fotos ?? []);
-  const [potencia, setPotencia] = useState<string>(s.potencia_cv != null ? String(s.potencia_cv).replace('.', ',') : '');
-  const [torque, setTorque] = useState<string>(s.torque_kgfm != null ? String(s.torque_kgfm).replace('.', ',') : '');
-  const [peso, setPeso] = useState<string>(s.peso_kg != null ? String(s.peso_kg).replace('.', ',') : '');
-  const [cambio, setCambio] = useState<string>(s.cambio ?? 'Manual');
+  const [dados, setDados] = useState<DadosSite | null>(null);
   const [descricao, setDescricao] = useState<string>(s.descricao ?? '');
-  const [diferenciais, setDiferenciais] = useState<string>((s.diferenciais ?? []).join('\n'));
-  const [acessorios, setAcessorios] = useState<string>((s.acessorios ?? []).join('\n'));
+  const [fotos, setFotos] = useState<string[]>(s.fotos ?? []);
+  const [arrastando, setArrastando] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const inputFotos = useRef<HTMLInputElement>(null);
 
-  const marcaLabel = MARCAS_SITE.find((m) => m.value === marca)?.label || '';
-  // Endereço sugerido acompanha marca/modelo/ano até alguém editar à mão.
-  const slugEfetivo = slugTocado ? slug : slugSite(marcaLabel, modelo, inteiro(anoModelo));
+  useEffect(() => {
+    (supabase as any).from('site_motos_dados').select('*').eq('avaliacao_id', av.id).maybeSingle()
+      .then(({ data, error }: any) => {
+        if (error) toast.error(`Erro ao carregar os dados da moto: ${error.message}`);
+        else setDados(data);
+      });
+  }, [av.id]);
 
-  const linha = useMemo(() => ({
-    avaliacao_id: av.id,
-    marca: marca || null,
-    modelo: modelo.trim() || null,
-    ano_fab: inteiro(anoFab),
-    ano_modelo: inteiro(anoModelo),
-    km: inteiro(km),
-    cc: inteiro(cc),
-    cor: cor || null,
-    estilo: estilo || null,
-    loja: loja || null,
-    preco: moedaNumero(preco),
-    preco_de: moedaNumero(precoDe),
-    fipe: moedaNumero(fipe),
-    mercado_min: moedaNumero(mercadoMin),
-    mercado_max: moedaNumero(mercadoMax),
-    slug: slugEfetivo || null,
-    selos,
-    caracteristicas,
-    destaque,
-    imagem: imagem || fotos[0] || '',
-    fotos,
-    potencia_cv: decimal(potencia),
-    torque_kgfm: decimal(torque),
-    peso_kg: decimal(peso),
-    cambio: cambio || null,
-    descricao: descricao.trim() || null,
-    diferenciais: linhas(diferenciais),
-    acessorios: linhas(acessorios),
-  }), [av.id, marca, modelo, anoFab, anoModelo, km, cc, cor, estilo, loja, preco, precoDe, fipe, mercadoMin, mercadoMax,
-    slugEfetivo, selos, caracteristicas, destaque, imagem, fotos, potencia, torque, peso, cambio, descricao, diferenciais, acessorios]);
-
-  const pendencias = pendenciasPublicacao(linha);
+  // Fotos são conferidas aqui (estado local); o resto vem do BPM.
+  const pendencias = [
+    ...(dados?.pendencias ?? []).filter((p) => p !== 'Fotos'),
+    ...(fotos.length === 0 ? ['Fotos'] : []),
+  ];
   const foraDoSite = item.estoque && !['disponivel', 'servico'].includes(item.estoque.status);
+  const marcaLabel = MARCAS_SITE.find((m) => m.value === dados?.marca)?.label || av.marca;
 
   const gravar = async (etapa: EtapaPublicacao, msg: string) => {
     setSalvando(true);
-    const { error } = await (supabase as any).from('site_motos').upsert({ ...linha, etapa }, { onConflict: 'avaliacao_id' });
+    const base = { avaliacao_id: av.id, descricao: descricao.trim() || null, fotos, etapa };
+    // Endereço da página: fixado na 1ª publicação (não muda depois, para não quebrar links e Google).
+    const slugBase = s.slug || (etapa === 'publicada' ? slugSite(marcaLabel, dados?.modelo, dados?.ano_modelo) : null);
+    let { error } = await (supabase as any).from('site_motos').upsert({ ...base, slug: slugBase }, { onConflict: 'avaliacao_id' });
+    if (error?.code === '23505' && /slug/.test(error.message) && !s.slug) {
+      // Já existe anúncio com o mesmo marca-modelo-ano: diferencia pela placa.
+      ({ error } = await (supabase as any).from('site_motos')
+        .upsert({ ...base, slug: slugSite(marcaLabel, dados?.modelo, dados?.ano_modelo, String(av.placa || '').replace(/-/g, '')) }, { onConflict: 'avaliacao_id' }));
+    }
     setSalvando(false);
     if (error) {
-      toast.error(error.code === '23505' && /slug/.test(error.message)
-        ? 'Já existe outro anúncio com este endereço de página. Ajuste o endereço.'
-        : `Erro ao salvar: ${error.message}`);
+      toast.error(`Erro ao salvar: ${error.message}`);
       return;
     }
     toast.success(msg);
@@ -188,10 +117,24 @@ const PublicacaoDialog: React.FC<Props> = ({ open, item, onOpenChange, onSaved }
 
   const enviarFotos = async (files: FileList | null) => {
     if (!files?.length) return;
+    const lista = Array.from(files);
+    const grandes = lista.filter((f) => f.size > FOTO_MAX_BYTES);
+    if (grandes.length) {
+      toast.error(`Foto acima de 3 MB não é aceita: ${grandes.map((f) => `${f.name} (${mb(f.size)})`).join(', ')}`);
+    }
+    const vagas = FOTOS_MAX - fotos.length;
+    const aceitas = lista.filter((f) => f.size <= FOTO_MAX_BYTES).slice(0, Math.max(0, vagas));
+    if (lista.length - grandes.length > aceitas.length) {
+      toast.error(`O anúncio aceita no máximo ${FOTOS_MAX} fotos.`);
+    }
+    if (!aceitas.length) {
+      if (inputFotos.current) inputFotos.current.value = '';
+      return;
+    }
     setEnviando(true);
     const novas: string[] = [];
     try {
-      for (const f of Array.from(files)) {
+      for (const f of aceitas) {
         const blob = await paraWebp(f);
         const caminho = `${av.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
         const { error } = await supabase.storage.from('site-motos').upload(caminho, blob, { contentType: 'image/webp', upsert: false });
@@ -201,26 +144,21 @@ const PublicacaoDialog: React.FC<Props> = ({ open, item, onOpenChange, onSaved }
     } catch (e: any) {
       toast.error(`Erro ao enviar foto: ${e?.message || e}`);
     }
-    if (novas.length) {
-      setFotos((f) => [...f, ...novas]);
-      if (!imagem) setImagem(novas[0]);
-    }
+    if (novas.length) setFotos((f) => [...f, ...novas].slice(0, FOTOS_MAX));
     setEnviando(false);
     if (inputFotos.current) inputFotos.current.value = '';
   };
 
-  const mover = (i: number, d: number) => setFotos((f) => {
-    const j = i + d;
-    if (j < 0 || j >= f.length) return f;
+  const moverPara = (de: number, para: number) => setFotos((f) => {
+    if (de === para || de < 0 || para < 0 || de >= f.length || para >= f.length) return f;
     const n = [...f];
-    [n[i], n[j]] = [n[j], n[i]];
+    const [x] = n.splice(de, 1);
+    n.splice(para, 0, x);
     return n;
   });
-  const remover = (url: string) => {
-    setFotos((f) => f.filter((x) => x !== url));
-    if (imagem === url) setImagem('');
-  };
+  const remover = (url: string) => setFotos((f) => f.filter((x) => x !== url));
   const etapaAtual = ETAPAS_PUBLICACAO.find((e) => e.value === item.etapa);
+  const precoAcao = item.estoque?.preco_acao ? Number(item.estoque.preco_acao) : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -243,102 +181,101 @@ const PublicacaoDialog: React.FC<Props> = ({ open, item, onOpenChange, onSaved }
 
         {/* Fotos */}
         <section className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Fotos</h3>
-            <Button size="sm" variant="outline" className="gap-1.5" disabled={enviando} onClick={() => inputFotos.current?.click()}>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold">Fotos <span className="font-normal text-muted-foreground">({fotos.length}/{FOTOS_MAX})</span></h3>
+            <Button size="sm" variant="outline" className="gap-1.5" disabled={enviando || fotos.length >= FOTOS_MAX} onClick={() => inputFotos.current?.click()}>
               {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
               Adicionar fotos
             </Button>
-            <input ref={inputFotos} type="file" accept="image/*" multiple className="hidden" onChange={(e) => enviarFotos(e.target.files)} />
+            <input ref={inputFotos} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => enviarFotos(e.target.files)} />
           </div>
           {fotos.length === 0 ? (
             <button type="button" onClick={() => inputFotos.current?.click()}
               className="w-full border border-dashed border-border rounded-lg py-8 text-sm text-muted-foreground flex flex-col items-center gap-2">
-              <Upload className="h-5 w-5" /> Envie as fotos da moto (a ordem aqui é a ordem da galeria no site)
+              <Upload className="h-5 w-5" /> Envie as fotos da moto (até {FOTOS_MAX}, no máximo 3 MB cada)
             </button>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               {fotos.map((url, i) => (
-                <div key={url} className={cn('relative rounded-md overflow-hidden border', (imagem || fotos[0]) === url ? 'border-primary ring-2 ring-primary' : 'border-border')}>
-                  <img src={url} alt="" className="w-full aspect-[3/4] object-cover" />
-                  <div className="absolute inset-x-0 bottom-0 flex justify-between bg-black/55 p-1">
-                    <button type="button" title="Mover para a esquerda" onClick={() => mover(i, -1)} className="text-white"><ArrowLeft className="h-3.5 w-3.5" /></button>
-                    <button type="button" title="Usar como foto do card" onClick={() => setImagem(url)} className="text-white"><Star className={cn('h-3.5 w-3.5', (imagem || fotos[0]) === url && 'fill-yellow-400 text-yellow-400')} /></button>
+                <div
+                  key={url}
+                  draggable
+                  onDragStart={(e) => { setArrastando(i); e.dataTransfer.effectAllowed = 'move'; }}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                  onDrop={(e) => { e.preventDefault(); if (arrastando !== null) moverPara(arrastando, i); setArrastando(null); }}
+                  onDragEnd={() => setArrastando(null)}
+                  className={cn(
+                    'relative rounded-md overflow-hidden border cursor-grab active:cursor-grabbing select-none',
+                    i === 0 ? 'border-primary ring-2 ring-primary' : 'border-border',
+                    arrastando === i && 'opacity-40',
+                  )}
+                >
+                  <img src={url} alt="" draggable={false} className="w-full aspect-[3/4] object-cover pointer-events-none" />
+                  {i === 0 && (
+                    <span className="absolute top-1 left-1 text-[10px] font-semibold rounded bg-primary text-primary-foreground px-1.5 py-0.5">CAPA</span>
+                  )}
+                  <span className="absolute top-1 right-1 text-[10px] rounded bg-black/55 text-white px-1">{i + 1}</span>
+                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/55 p-1">
+                    <GripVertical className="h-3.5 w-3.5 text-white/80" />
+                    {i > 0 && (
+                      <button type="button" title="Usar como capa" onClick={() => moverPara(i, 0)} className="text-white"><Star className="h-3.5 w-3.5" /></button>
+                    )}
                     <button type="button" title="Remover" onClick={() => remover(url)} className="text-white"><Trash2 className="h-3.5 w-3.5" /></button>
-                    <button type="button" title="Mover para a direita" onClick={() => mover(i, 1)} className="text-white"><ArrowRight className="h-3.5 w-3.5" /></button>
                   </div>
                 </div>
               ))}
             </div>
           )}
-          <p className="text-[11px] text-muted-foreground">A estrela marca a foto do card (listas e busca do site); sem marcação, vale a primeira.</p>
+          <p className="text-[11px] text-muted-foreground">Arraste para ordenar a galeria do site. A primeira é a capa (listas e busca); a estrela leva a foto para a capa.</p>
         </section>
 
-        {/* Identificação */}
-        <section className="space-y-2">
-          <h3 className="text-sm font-semibold">Identificação</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Campo rotulo="Marca"><Escolha valor={marca} set={setMarca} opcoes={MARCAS_SITE} placeholder="Marca" /></Campo>
-            <Campo rotulo="Modelo e versão" className="col-span-1 sm:col-span-3"><Input className="h-9" value={modelo} onChange={(e) => setModelo(e.target.value)} /></Campo>
-            <Campo rotulo="Ano de fabricação"><Input className="h-9" inputMode="numeric" value={anoFab} onChange={(e) => setAnoFab(e.target.value)} /></Campo>
-            <Campo rotulo="Ano do modelo"><Input className="h-9" inputMode="numeric" value={anoModelo} onChange={(e) => setAnoModelo(e.target.value)} /></Campo>
-            <Campo rotulo="Quilometragem"><Input className="h-9" inputMode="numeric" value={km} onChange={(e) => setKm(e.target.value)} /></Campo>
-            <Campo rotulo="Cilindrada (cc)"><Input className="h-9" inputMode="numeric" value={cc} onChange={(e) => setCc(e.target.value)} /></Campo>
-            <Campo rotulo="Cor"><Escolha valor={cor} set={setCor} opcoes={op(CORES_SITE)} placeholder="Cor" /></Campo>
-            <Campo rotulo="Estilo"><Escolha valor={estilo} set={setEstilo} opcoes={op(ESTILOS_SITE)} placeholder="Estilo" /></Campo>
-            <Campo rotulo="Loja" className="col-span-2"><Escolha valor={loja} set={setLoja} opcoes={LOJAS_SITE} placeholder="Loja" /></Campo>
-            <Campo rotulo="Endereço da página" className="col-span-2 sm:col-span-4">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span className="shrink-0">299imports.com.br/seminovas/</span>
-                <Input className="h-9" value={slugEfetivo} onChange={(e) => { setSlugTocado(true); setSlug(slugSite(e.target.value)); }} />
+        {/* Descrição */}
+        <section className="space-y-1">
+          <Label className="text-sm font-semibold">Descrição do anúncio</Label>
+          <Textarea rows={5} value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Texto que aparece na página da moto no site" />
+        </section>
+
+        {/* Dados da moto (BPM) */}
+        <section className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+            <h3 className="text-sm font-semibold">Dados da moto</h3>
+            <span className="text-[11px] text-muted-foreground">Vêm do BPM (avaliação e estoque). Para mudar, altere lá.</span>
+          </div>
+          {!dados ? (
+            <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Info rotulo="Marca" valor={av.marca} />
+                <Info rotulo="Modelo no site" valor={dados.modelo} />
+                <Info rotulo="Ano" valor={dados.ano_fab && dados.ano_modelo ? `${dados.ano_fab}/${dados.ano_modelo}` : null} />
+                <Info rotulo="Km" valor={dados.km != null ? dados.km.toLocaleString('pt-BR') : null} />
+                <Info rotulo="Cilindrada" valor={dados.cc ? `${dados.cc.toLocaleString('pt-BR')} cc` : null} />
+                <Info rotulo="Categoria" valor={dados.estilo} />
+                <Info rotulo="Cor" valor={dados.cor} />
+                <Info rotulo="Loja no site" valor={dados.loja} />
+                <Info rotulo="Manual" valor={simNao(av.tem_manual)} />
+                <Info rotulo="Chave reserva" valor={simNao(av.tem_chave_reserva)} />
+                <Info rotulo="Revisão em dia" valor={simNao(av.manutencao_vencida == null ? null : !av.manutencao_vencida)} />
+                <Info rotulo="FIPE" valor={moeda(dados.fipe)} />
+                <Info rotulo="Preço de tabela" valor={moeda(av.quanto_vende)} />
+                <Info rotulo="Preço ação" valor={moeda(precoAcao)} />
+                <Info rotulo="Preço no site" destaque
+                  valor={dados.preco ? (dados.preco_de ? <><s className="text-muted-foreground font-normal mr-1">{moeda(dados.preco_de)}</s>{moeda(dados.preco)}</> : moeda(dados.preco)) : null} />
               </div>
-            </Campo>
-          </div>
+            </>
+          )}
         </section>
 
-        {/* Preço */}
-        <section className="space-y-2">
-          <h3 className="text-sm font-semibold">Preço</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <Campo rotulo="Preço"><Input className="h-9" inputMode="numeric" value={preco} onChange={(e) => setPreco(moedaDigitada(e.target.value))} /></Campo>
-            <Campo rotulo="Preço anterior (de)"><Input className="h-9" inputMode="numeric" value={precoDe} onChange={(e) => setPrecoDe(moedaDigitada(e.target.value))} /></Campo>
-            <Campo rotulo="Tabela FIPE"><Input className="h-9" inputMode="numeric" value={fipe} onChange={(e) => setFipe(moedaDigitada(e.target.value))} /></Campo>
-            <Campo rotulo="Mercado: menor"><Input className="h-9" inputMode="numeric" value={mercadoMin} onChange={(e) => setMercadoMin(moedaDigitada(e.target.value))} /></Campo>
-            <Campo rotulo="Mercado: maior"><Input className="h-9" inputMode="numeric" value={mercadoMax} onChange={(e) => setMercadoMax(moedaDigitada(e.target.value))} /></Campo>
-          </div>
-        </section>
-
-        {/* Selos e destaques */}
-        <section className="space-y-2">
-          <h3 className="text-sm font-semibold">Selos e destaques</h3>
-          <Chips lista={selos} set={setSelos} opcoes={SELOS_SITE} />
-          <Chips lista={caracteristicas} set={setCaracteristicas} opcoes={CARACTERISTICAS_SITE} />
-          <label className="flex items-center gap-2 text-sm"><Switch checked={destaque} onCheckedChange={setDestaque} /> Destaque no topo das seminovas</label>
-        </section>
-
-        {/* Ficha técnica */}
-        <section className="space-y-2">
-          <h3 className="text-sm font-semibold">Ficha técnica e descrição</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Campo rotulo="Potência (cv)"><Input className="h-9" inputMode="decimal" value={potencia} onChange={(e) => setPotencia(e.target.value)} /></Campo>
-            <Campo rotulo="Torque (kgfm)"><Input className="h-9" inputMode="decimal" value={torque} onChange={(e) => setTorque(e.target.value)} /></Campo>
-            <Campo rotulo="Peso (kg)"><Input className="h-9" inputMode="decimal" value={peso} onChange={(e) => setPeso(e.target.value)} /></Campo>
-            <Campo rotulo="Câmbio"><Escolha valor={cambio} set={setCambio} opcoes={op(CAMBIOS_SITE)} placeholder="Câmbio" /></Campo>
-          </div>
-          <Campo rotulo="Descrição"><Textarea rows={4} value={descricao} onChange={(e) => setDescricao(e.target.value)} /></Campo>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Campo rotulo="Diferenciais (um por linha)"><Textarea rows={4} value={diferenciais} onChange={(e) => setDiferenciais(e.target.value)} /></Campo>
-            <Campo rotulo="Acessórios (um por linha)"><Textarea rows={4} value={acessorios} onChange={(e) => setAcessorios(e.target.value)} /></Campo>
-          </div>
-        </section>
-
-        {item.etapa === 'fotos_tiradas' && pendencias.length > 0 && (
-          <p className="text-xs text-muted-foreground">Para publicar falta: <b>{pendencias.join(', ')}</b>.</p>
+        {item.etapa !== 'em_aberto' && pendencias.length > 0 && (
+          <p className="text-xs rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2">
+            {item.etapa === 'publicada' ? 'Fora do site até resolver' : 'Para publicar falta'}: <b>{pendencias.join(', ')}</b>.
+          </p>
         )}
 
         <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border">
-          {item.etapa === 'publicada' && linha.slug && (
-            <a href={`${SITE_URL}/seminovas/${linha.slug}`} target="_blank" rel="noreferrer" className="mr-auto text-sm text-primary inline-flex items-center gap-1">
+          {item.etapa === 'publicada' && s.slug && (
+            <a href={`${SITE_URL}/seminovas/${s.slug}`} target="_blank" rel="noreferrer" className="mr-auto text-sm text-primary inline-flex items-center gap-1">
               <ExternalLink className="h-4 w-4" /> Ver no site
             </a>
           )}
@@ -348,17 +285,17 @@ const PublicacaoDialog: React.FC<Props> = ({ open, item, onOpenChange, onSaved }
           {item.etapa === 'publicada' && (
             <Button variant="outline" disabled={salvando} onClick={() => gravar('fotos_tiradas', 'Anúncio retirado do site')}>Despublicar</Button>
           )}
-          <Button variant="outline" disabled={salvando} onClick={() => gravar(item.etapa, item.etapa === 'publicada' ? 'Anúncio atualizado no site' : 'Salvo')}>
+          <Button variant="outline" disabled={salvando || enviando} onClick={() => gravar(item.etapa, item.etapa === 'publicada' ? 'Anúncio atualizado no site' : 'Salvo')}>
             Salvar
           </Button>
           {item.etapa === 'em_aberto' && (
-            <Button className="gap-1.5" disabled={salvando || fotos.length === 0} title={fotos.length === 0 ? 'Envie as fotos antes' : undefined}
+            <Button className="gap-1.5" disabled={salvando || enviando || fotos.length === 0} title={fotos.length === 0 ? 'Envie as fotos antes' : undefined}
               onClick={() => gravar('fotos_tiradas', 'Movida para Fotos Tiradas')}>
               <Camera className="h-4 w-4" /> Fotos tiradas
             </Button>
           )}
           {item.etapa === 'fotos_tiradas' && (
-            <Button className="gap-1.5" disabled={salvando || pendencias.length > 0} title={pendencias.length ? `Falta: ${pendencias.join(', ')}` : undefined}
+            <Button className="gap-1.5" disabled={salvando || enviando || !dados || pendencias.length > 0} title={pendencias.length ? `Falta: ${pendencias.join(', ')}` : undefined}
               onClick={() => gravar('publicada', 'Publicada no site')}>
               {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />} Publicar no site
             </Button>
