@@ -271,7 +271,11 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             <h1 className="text-lg sm:text-xl font-bold truncate">
               {[item.avaliacao.marca, item.avaliacao.modelo].filter(Boolean).join(' ').toUpperCase()}
             </h1>
-            {etapaAtual && <Badge className="text-[10px] shrink-0 text-white" style={{ backgroundColor: etapaAtual.hex }}>{etapaAtual.label}</Badge>}
+            {etapaAtual && (
+              <Badge className="text-[10px] shrink-0 border-transparent shadow-none" style={{ backgroundColor: `${etapaAtual.hex}26`, color: etapaAtual.hex }}>
+                {etapaAtual.value === 'publicada' ? 'Publicada' : etapaAtual.label}
+              </Badge>
+            )}
             {item.avaliacao.tipo_aquisicao && (
               <Badge variant="outline" className={`text-[10px] shrink-0 ${getTipoAquisicaoBadgeClass(item.avaliacao.tipo_aquisicao)}`}>
                 {getTipoAquisicaoLabel(item.avaliacao.tipo_aquisicao)}
