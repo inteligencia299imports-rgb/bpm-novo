@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, ExternalLink, Loader2, Pencil, Plus, RefreshCw, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, Clock, ExternalLink, Loader2, Pencil, Plus, RefreshCw, Tag, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -113,8 +113,6 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const [editarMotoOpen, setEditarMotoOpen] = useState(false);
   const inputFotos = useRef<HTMLInputElement>(null);
   const inputSubstituir = useRef<HTMLInputElement>(null);
-  const carrossel = useRef<HTMLDivElement>(null);
-  const rolar = (dir: number) => carrossel.current?.scrollBy({ left: dir * carrossel.current.clientWidth * 0.8, behavior: 'smooth' });
   const [substituindo, setSubstituindo] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
@@ -317,78 +315,6 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
 
       <ScrollArea className="h-[calc(100dvh-9rem)] md:h-[calc(100dvh-8rem)]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 pr-3">
-          {/* Fotos + descrição do anúncio */}
-          <Card className="flex flex-col md:col-span-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Camera className="h-4 w-4 text-primary" /> Fotos
-                <span className="text-xs font-normal text-muted-foreground">({fotos.length}/{FOTOS_MAX} fotos)</span>
-                <Button variant="ghost" size="sm" className="ml-auto h-7 gap-1 px-2 text-primary hover:text-primary hover:bg-transparent hover:opacity-80"
-                  disabled={ocupado || fotos.length >= FOTOS_MAX} onClick={() => inputFotos.current?.click()}>
-                  {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Adicionar
-                </Button>
-                <input ref={inputFotos} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => enviarFotos(e.target.files)} />
-                <input ref={inputSubstituir} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => substituirFoto(e.target.files)} />
-              </CardTitle>
-              <Separator className="mt-2" />
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col gap-4">
-              {fotos.length === 0 ? (
-                <div className="py-28 border-b border-border text-center text-sm text-muted-foreground">Nenhuma foto. Até {FOTOS_MAX} fotos, no máximo 3 MB cada.</div>
-              ) : (
-                <div className="space-y-1.5">
-                  <div className="relative">
-                  <div ref={carrossel} className="flex gap-2 overflow-x-auto scroll-smooth snap-x pb-2" style={{ scrollbarWidth: 'thin' }}>
-                    {fotos.map((url, i) => (
-                      <div
-                        key={url}
-                        draggable
-                        onDragStart={(e) => { setArrastando(i); e.dataTransfer.effectAllowed = 'move'; }}
-                        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                        onDrop={(e) => { e.preventDefault(); if (arrastando !== null) moverPara(arrastando, i); setArrastando(null); }}
-                        onDragEnd={() => setArrastando(null)}
-                        className={cn(
-                          'group relative shrink-0 w-36 sm:w-44 snap-start rounded-md overflow-hidden border cursor-grab active:cursor-grabbing select-none',
-                          i === 0 ? 'border-primary ring-2 ring-primary' : 'border-border',
-                          arrastando === i && 'opacity-40',
-                        )}
-                      >
-                        <img src={url} alt="" draggable={false} className="w-full aspect-[3/4] object-cover pointer-events-none" />
-                        {i === 0 && <span className="absolute top-1 left-1 text-[10px] font-semibold rounded bg-primary text-primary-foreground px-1.5 py-0.5">CAPA</span>}
-                        <span className="absolute top-1 right-1 text-[10px] rounded bg-black/55 text-white px-1">{i + 1}</span>
-                        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
-                          <button type="button" title="Substituir" disabled={ocupado} onClick={() => { setSubstituindo(i); inputSubstituir.current?.click(); }}
-                            className="rounded-full bg-white/90 p-1.5 text-foreground hover:bg-white"><RefreshCw className="h-4 w-4" /></button>
-                          <button type="button" title="Excluir" disabled={ocupado} onClick={() => setFotos((f) => f.filter((x) => x !== url))}
-                            className="rounded-full bg-white/90 p-1.5 text-destructive hover:bg-white"><Trash2 className="h-4 w-4" /></button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {fotos.length > 3 && (
-                    <>
-                      <button type="button" title="Anteriores" onClick={() => rolar(-1)}
-                        className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-background/90 p-1.5 shadow border border-border hover:bg-background"><ChevronLeft className="h-4 w-4" /></button>
-                      <button type="button" title="Próximas" onClick={() => rolar(1)}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-background/90 p-1.5 shadow border border-border hover:bg-background"><ChevronRight className="h-4 w-4" /></button>
-                    </>
-                  )}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">Arraste para ordenar a galeria do site. A primeira é a capa.</p>
-                </div>
-              )}
-              <div className="space-y-1">
-                <Label>Descrição do anúncio</Label>
-                <Textarea rows={5} value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Texto que aparece na página da moto no site" />
-              </div>
-              {etapa !== 'em_aberto' && dados && pendencias.length > 0 && (
-                <p className="text-xs rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2">
-                  {etapa === 'publicada' ? 'Fora do site até resolver' : 'Para publicar falta'}: <b>{pendencias.join(', ')}</b>.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Dados da Moto */}
           <Card className="flex flex-col">
             <CardHeader className="pb-2">
@@ -443,6 +369,67 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </CardContent>
           </Card>
 
+          {/* Fotos + descrição do anúncio */}
+          <Card className="flex flex-col">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Camera className="h-4 w-4 text-primary" /> Fotos
+                <span className="text-xs font-normal text-muted-foreground">({fotos.length}/{FOTOS_MAX} fotos)</span>
+                <Button variant="ghost" size="sm" className="ml-auto h-7 gap-1 px-2 text-primary hover:text-primary hover:bg-transparent hover:opacity-80"
+                  disabled={ocupado || fotos.length >= FOTOS_MAX} onClick={() => inputFotos.current?.click()}>
+                  {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Adicionar
+                </Button>
+                <input ref={inputFotos} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => enviarFotos(e.target.files)} />
+                <input ref={inputSubstituir} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => substituirFoto(e.target.files)} />
+              </CardTitle>
+              <Separator className="mt-2" />
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col gap-4">
+              {fotos.length === 0 ? (
+                <div className="py-28 border-b border-border text-center text-sm text-muted-foreground">Nenhuma foto. Até {FOTOS_MAX} fotos, no máximo 3 MB cada.</div>
+              ) : (
+                <div className="space-y-1.5">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {fotos.map((url, i) => (
+                      <div
+                        key={url}
+                        draggable
+                        onDragStart={(e) => { setArrastando(i); e.dataTransfer.effectAllowed = 'move'; }}
+                        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                        onDrop={(e) => { e.preventDefault(); if (arrastando !== null) moverPara(arrastando, i); setArrastando(null); }}
+                        onDragEnd={() => setArrastando(null)}
+                        className={cn(
+                          'group relative rounded-md overflow-hidden border cursor-grab active:cursor-grabbing select-none',
+                          i === 0 ? 'border-primary ring-2 ring-primary' : 'border-border',
+                          arrastando === i && 'opacity-40',
+                        )}
+                      >
+                        <img src={url} alt="" draggable={false} className="w-full aspect-[3/4] object-cover pointer-events-none" />
+                        {i === 0 && <span className="absolute top-1 left-1 text-[10px] font-semibold rounded bg-primary text-primary-foreground px-1.5 py-0.5">CAPA</span>}
+                        <span className="absolute top-1 right-1 text-[10px] rounded bg-black/55 text-white px-1">{i + 1}</span>
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button type="button" title="Substituir" disabled={ocupado} onClick={() => { setSubstituindo(i); inputSubstituir.current?.click(); }}
+                            className="rounded-full bg-white/90 p-1.5 text-foreground hover:bg-white"><RefreshCw className="h-4 w-4" /></button>
+                          <button type="button" title="Excluir" disabled={ocupado} onClick={() => setFotos((f) => f.filter((x) => x !== url))}
+                            className="rounded-full bg-white/90 p-1.5 text-destructive hover:bg-white"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Arraste para ordenar a galeria do site. A primeira é a capa.</p>
+                </div>
+              )}
+              <div className="space-y-1">
+                <Label>Descrição do anúncio</Label>
+                <Textarea rows={5} value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Texto que aparece na página da moto no site" />
+              </div>
+              {etapa !== 'em_aberto' && dados && pendencias.length > 0 && (
+                <p className="text-xs rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2">
+                  {etapa === 'publicada' ? 'Fora do site até resolver' : 'Para publicar falta'}: <b>{pendencias.join(', ')}</b>.
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Observações */}
           {moto?.atendimento_id && <AtendimentoObservacoes idOperacao={moto.atendimento_id} />}
