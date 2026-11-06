@@ -145,7 +145,7 @@ const EditarMotoPublicacaoDialog: React.FC<Props> = ({ open, onOpenChange, moto,
                 <SelectContent>{CATEGORIAS_MOTO.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+            <div className="grid grid-cols-2 gap-4 pt-1">
               <SimNao id="pub-moto-manual" label="Manual" valor={temManual} set={setTemManual} />
               <SimNao id="pub-moto-chave" label="Chave Reserva" valor={temChaveReserva} set={setTemChaveReserva} />
               <SimNao id="pub-moto-manut" label="Revisão Vencida" valor={manutencaoVencida} set={setManutencaoVencida} />
