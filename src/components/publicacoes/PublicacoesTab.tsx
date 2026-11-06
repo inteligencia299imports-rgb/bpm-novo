@@ -23,8 +23,12 @@ import PublicacaoDetalhe, { type ItemPublicacao } from './PublicacaoDetalhe';
 // Status do estoque em que a moto sai do kanban (já não está à venda).
 const FORA_DO_KANBAN = new Set(['vendido', 'retirada']);
 
-// Colunas do kanban: as 3 etapas do anúncio + Sinal (status do estoque; mesma cor do Showroom).
-const COLUNAS = [...ETAPAS_PUBLICACAO, { value: 'sinal', label: 'Sinal', hex: '#b376c4' }];
+// Colunas do kanban: Em Aberto, Fotos Tiradas, Sinal (status do estoque; cor do Showroom) e Publicadas.
+const COLUNAS = [
+  ...ETAPAS_PUBLICACAO.filter((e) => e.value !== 'publicada'),
+  { value: 'sinal', label: 'Sinal', hex: '#b376c4' },
+  ...ETAPAS_PUBLICACAO.filter((e) => e.value === 'publicada'),
+];
 
 const SITUACOES = [
   { value: 'preparacao', label: 'Em preparação' },
