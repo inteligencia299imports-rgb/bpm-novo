@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Search, Filter, CalendarIcon, X, Globe } from 'lucide-react';
+import { Search, Filter, CalendarIcon, X, Camera } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { MARCA_MODELO_SELECT, flattenMarcaModeloList } from '@/lib/marcaModelo';
@@ -141,10 +141,9 @@ const PublicacoesTab: React.FC = () => {
       <div className="flex flex-row gap-3 items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <Globe className="h-7 w-7 text-primary" />
+            <Camera className="h-7 w-7 text-primary" />
             <h1 className="text-2xl font-bold text-foreground">Publicações</h1>
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5 hidden sm:block">Seminovas no site 299imports.com.br</p>
         </div>
       </div>
 
