@@ -24,6 +24,9 @@ export const MARCAS_SITE = [
 ];
 
 /** Limites das fotos do anúncio (o bucket site-motos também barra acima de 3 MB). */
+/** Endereço público do site (página da moto: ${SITE_URL}/seminovas/<slug>). */
+export const SITE_URL = 'https://299imports.com.br';
+
 export const FOTOS_MIN = 5;
 export const FOTOS_MAX = 20;
 export const FOTO_MAX_BYTES = 3 * 1024 * 1024;

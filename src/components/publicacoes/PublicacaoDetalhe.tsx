@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, FileText, Loader2, Pencil, Plus, RefreshCw, Tag, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, FileText, Loader2, Pencil, Plus, RefreshCw, Save, Tag, Trash2, Upload } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { getTipoAquisicaoBadgeClass, getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
-import { ETAPAS_PUBLICACAO, FOTOS_MAX, FOTOS_MIN, FOTO_MAX_BYTES, MARCAS_SITE, slugSite, type EtapaPublicacao } from '@/lib/siteMoto';
+import { ETAPAS_PUBLICACAO, FOTOS_MAX, FOTOS_MIN, FOTO_MAX_BYTES, MARCAS_SITE, SITE_URL, slugSite, type EtapaPublicacao } from '@/lib/siteMoto';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,7 +46,7 @@ interface DadosSite {
   pendencias: string[];
 }
 
-const SITE_URL = 'https://299imports.com.br';
+
 
 // Movimentações da publicação no Histórico (status_history, entity_type 'publicacao').
 const ROTULO_HISTORICO: Record<string, string> = {
@@ -201,6 +201,17 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
     await carregar();
   };
 
+  // Salvar: grava fotos e descrição. Antes de publicar, a etapa segue as fotos:
+  // com o mínimo de fotos vai para Fotos Tiradas; abaixo dele fica (ou volta) em Em Aberto.
+  const salvar = () => {
+    if (etapa === 'publicada') return gravar('publicada', 'Anúncio atualizado no site');
+    const nova: EtapaPublicacao = fotos.length >= FOTOS_MIN ? 'fotos_tiradas' : 'em_aberto';
+    if (nova === etapa) return gravar(etapa, 'Salvo');
+    return nova === 'fotos_tiradas'
+      ? gravar('fotos_tiradas', 'Salvo e movido para Fotos Tiradas', 'publicacao_fotos_tiradas')
+      : gravar('em_aberto', 'Salvo e movido para Em Aberto', 'publicacao_em_aberto');
+  };
+
   const subirFoto = async (f: File) => {
     const blob = await paraWebp(f);
     const caminho = `${avId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
@@ -302,25 +313,16 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
               <a href={`${SITE_URL}/seminovas/${site.slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /> Ver no site</a>
             </Button>
           )}
-          {etapa === 'fotos_tiradas' && (
-            <Button size="sm" variant="ghost" disabled={ocupado} onClick={() => gravar('em_aberto', 'Voltou para Em Aberto', 'publicacao_em_aberto')}>Voltar para Em Aberto</Button>
-          )}
           {etapa === 'publicada' && (
             <Button size="sm" variant="outline" disabled={ocupado} onClick={() => gravar('fotos_tiradas', 'Anúncio retirado do site', 'publicacao_despublicada')}>Despublicar</Button>
           )}
-          <Button size="sm" variant="outline" disabled={ocupado} onClick={() => gravar(etapa, etapa === 'publicada' ? 'Anúncio atualizado no site' : 'Salvo')}>
-            Salvar
+          <Button size="sm" variant="outline" className="gap-1.5" disabled={ocupado} onClick={salvar}>
+            {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
           </Button>
-          {etapa === 'em_aberto' && (
-            <Button size="sm" className="gap-1.5" disabled={ocupado || fotos.length < FOTOS_MIN} title={fotos.length < FOTOS_MIN ? `Envie no mínimo ${FOTOS_MIN} fotos` : undefined}
-              onClick={() => gravar('fotos_tiradas', 'Movida para Fotos Tiradas', 'publicacao_fotos_tiradas')}>
-              <Camera className="h-4 w-4" /> Fotos tiradas
-            </Button>
-          )}
-          {etapa === 'fotos_tiradas' && (
-            <Button size="sm" className="gap-1.5" disabled={ocupado || !dados || pendencias.length > 0} title={pendencias.length ? `Falta: ${pendencias.join(', ')}` : undefined}
-              onClick={() => gravar('publicada', 'Publicada no site', 'publicacao_publicada')}>
-              {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />} Publicar no site
+          {/* Publicar só aparece quando já dá para ir ao ar (fotos, descrição e dados da moto completos). */}
+          {etapa !== 'publicada' && dados && pendencias.length === 0 && (
+            <Button size="sm" className="gap-1.5" disabled={ocupado} onClick={() => gravar('publicada', 'Publicada no site', 'publicacao_publicada')}>
+              <ExternalLink className="h-4 w-4" /> Publicar no site
             </Button>
           )}
         </div>
