@@ -330,7 +330,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
               <X className="h-4 w-4" /> Desativar
             </Button>
           )}
-          <Button size="sm" variant="outline" className="w-28 gap-1.5 border-primary" disabled={ocupado} onClick={salvar}>
+          <Button size="sm" variant="outline" className="w-28 gap-1.5 border-primary bg-transparent hover:bg-transparent hover:opacity-80" disabled={ocupado} onClick={salvar}>
             {salvando ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Save className="h-4 w-4 text-primary" />} Salvar
           </Button>
           {/* Publicar só aparece quando já dá para ir ao ar (fotos, descrição e dados da moto completos). */}
