@@ -114,7 +114,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const carregar = useCallback(async () => {
     const [avRes, dadosRes, siteRes] = await Promise.all([
       supabase.from('avaliacoes')
-        .select(`id, atendimento_id, placa, ano_fabricacao, ano_modelo, km, cor, cilindrada, categoria, chassi, renavam, observacoes,
+        .select(`id, atendimento_id, placa, ano_fabricacao, ano_modelo, km, cor, cilindrada, categoria, observacoes,
           tem_manual, tem_chave_reserva, manutencao_vencida, tem_acessorios, acessorios_descricao,
           valor_fipe, quanto_pede, tipo_aquisicao, situacao, ${MARCA_MODELO_SELECT}`)
         .eq('id', avId).maybeSingle(),
@@ -312,8 +312,6 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                     <InfoItem label="Placa" value={moto.placa?.replace(/-/g, '')} />
                     <InfoItem label="KM" value={formatKm(moto.km)} />
                     <InfoItem label="Loja" value={item.lojaBpm} />
-                    {moto.chassi && <InfoItem label="Chassi" value={moto.chassi} />}
-                    {moto.renavam && <InfoItem label="RENAVAM" value={moto.renavam} />}
                     {moto.observacoes && (
                       <div className="col-span-2">
                         <InfoItem label="Observações" value={moto.observacoes} />
