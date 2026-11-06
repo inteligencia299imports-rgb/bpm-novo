@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, Clock, DollarSign, ExternalLink, Loader2, Pencil, Plus, RefreshCw, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, Loader2, Pencil, Plus, RefreshCw, Tag, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,7 @@ import { ETAPAS_PUBLICACAO, FOTOS_MAX, FOTO_MAX_BYTES, MARCAS_SITE, slugSite, ty
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -114,6 +115,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const inputFotos = useRef<HTMLInputElement>(null);
   const inputSubstituir = useRef<HTMLInputElement>(null);
   const [substituindo, setSubstituindo] = useState<number | null>(null);
+  const [vendo, setVendo] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     const [avRes, dadosRes, siteRes] = await Promise.all([
@@ -424,6 +426,8 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                         {i === 0 && <span className="absolute top-1 left-1 text-[10px] font-semibold rounded bg-primary text-primary-foreground px-1.5 py-0.5">CAPA</span>}
                         <span className="absolute top-1 right-1 text-[10px] rounded bg-black/55 text-white px-1">{i + 1}</span>
                         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button type="button" title="Visualizar" onClick={() => setVendo(i)}
+                            className="rounded-full bg-white/90 p-1.5 text-foreground hover:bg-white"><Eye className="h-4 w-4" /></button>
                           <button type="button" title="Substituir" disabled={ocupado} onClick={() => { setSubstituindo(i); inputSubstituir.current?.click(); }}
                             className="rounded-full bg-white/90 p-1.5 text-foreground hover:bg-white"><RefreshCw className="h-4 w-4" /></button>
                           <button type="button" title="Excluir" disabled={ocupado} onClick={() => setFotos((f) => f.filter((x) => x !== url))}
@@ -472,6 +476,29 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
           </Card>
         </div>
       </ScrollArea>
+
+      {/* Visualizar foto (com navegação entre as fotos da galeria) */}
+      <Dialog open={vendo !== null && !!fotos[vendo]} onOpenChange={(o) => { if (!o) setVendo(null); }}>
+        <DialogContent className="max-w-4xl p-2 sm:p-4">
+          <DialogTitle className="sr-only">Foto {vendo !== null ? vendo + 1 : ''}</DialogTitle>
+          {vendo !== null && fotos[vendo] && (
+            <div className="relative flex flex-col items-center gap-2">
+              <img src={fotos[vendo]} alt="" className="max-h-[80vh] w-auto rounded-md object-contain" />
+              <span className="text-xs text-muted-foreground">
+                {vendo === 0 ? 'Capa · ' : ''}{vendo + 1} de {fotos.length}
+              </span>
+              {fotos.length > 1 && (
+                <>
+                  <button type="button" title="Anterior" onClick={() => setVendo((v) => (v === null ? v : (v - 1 + fotos.length) % fotos.length))}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow border border-border hover:bg-background"><ChevronLeft className="h-5 w-5" /></button>
+                  <button type="button" title="Próxima" onClick={() => setVendo((v) => (v === null ? v : (v + 1) % fotos.length))}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow border border-border hover:bg-background"><ChevronRight className="h-5 w-5" /></button>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <EditarMotoPublicacaoDialog open={editarMotoOpen} onOpenChange={setEditarMotoOpen} moto={moto} onSaved={carregar} />
     </div>
