@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, FileText, Loader2, Pencil, Plus, RefreshCw, Save, ShoppingCart, Tag, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, Camera, ChevronLeft, ChevronRight, Clock, DollarSign, ExternalLink, Eye, FileText, Loader2, Pencil, Plus, RefreshCw, Save, ShoppingCart, Tag, Trash2, Upload, X, XCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,8 @@ import { ETAPAS_PUBLICACAO, FOTOS_MAX, FOTOS_MIN, FOTO_MAX_BYTES, MARCAS_SITE, S
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -120,6 +121,8 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const [substituindo, setSubstituindo] = useState<number | null>(null);
   const [vendo, setVendo] = useState<number | null>(null);
   const [soltando, setSoltando] = useState(false);
+  // Pop-up do motivo da desativação (null = fechado).
+  const [motivoDesativar, setMotivoDesativar] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
     const [avRes, dadosRes, siteRes] = await Promise.all([
@@ -175,7 +178,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const precoAcao = estoque?.preco_acao ? Number(estoque.preco_acao) : null;
   const etapaAtual = ETAPAS_PUBLICACAO.find((e) => e.value === etapa);
 
-  const gravar = async (nova: EtapaPublicacao, msg: string, statusHistorico?: string) => {
+  const gravar = async (nova: EtapaPublicacao, msg: string, statusHistorico?: string, observacao?: string) => {
     setSalvando(true);
     const base = { avaliacao_id: avId, descricao: descricao.trim() || null, fotos, etapa: nova };
     // Endereço da página: fixado na 1ª publicação (não muda depois, para não quebrar links e Google).
@@ -208,6 +211,8 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
         status,
         changed_by: user?.id,
         changed_by_name: userName || user?.email || null,
+        // O motivo (ex.: desativação) vai só na linha da mudança de etapa.
+        observacoes: status === statusHistorico ? observacao || null : null,
       })) as any);
     }
     setSalvando(false);
@@ -325,7 +330,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </Button>
           )}
           {etapa === 'publicada' && (
-            <Button size="sm" variant="outline" className="w-28 gap-1.5 border-destructive bg-transparent text-destructive hover:bg-transparent hover:text-destructive hover:opacity-80" disabled={ocupado} onClick={() => gravar('desativada', 'Anúncio desativado', 'publicacao_desativada')}>
+            <Button size="sm" variant="outline" className="w-28 gap-1.5 border-destructive bg-transparent text-destructive hover:bg-transparent hover:text-destructive hover:opacity-80" disabled={ocupado} onClick={() => setMotivoDesativar('')}>
               <X className="h-4 w-4" /> Desativar
             </Button>
           )}
@@ -531,7 +536,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                 formatLabel={(raw) => ROTULO_HISTORICO[raw] || defaultFormatStatusLabel(raw)}
                 renderPopupExtra={(h) => (h.observacoes ? (
                   <div>
-                    <span className="text-xs text-muted-foreground">Observações</span>
+                    <span className="text-xs text-muted-foreground">{h.status === 'publicacao_desativada' ? 'Motivo da Desativação' : 'Observações'}</span>
                     <p className="text-sm mt-0.5 whitespace-pre-wrap">{h.observacoes}</p>
                   </div>
                 ) : null)}
@@ -540,6 +545,37 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
           </Card>
         </div>
       </ScrollArea>
+
+      {/* Desativar: motivo obrigatório (mesmo padrão do Perdido) */}
+      <Dialog open={motivoDesativar !== null} onOpenChange={(o) => { if (!o) setMotivoDesativar(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-destructive" /> Desativar Anúncio
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Motivo da desativação <span className="text-destructive">*</span></Label>
+            <Textarea value={motivoDesativar || ''} onChange={(e) => setMotivoDesativar(e.target.value)} placeholder="Informe o motivo..." rows={3} />
+            <p className="text-xs text-muted-foreground">O anúncio sai do site e vai para <strong>Desativadas</strong>. Para voltar, é só publicar de novo.</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setMotivoDesativar(null)}>Cancelar</Button>
+              <Button
+                variant="destructive"
+                disabled={!motivoDesativar?.trim() || salvando}
+                onClick={async () => {
+                  const motivo = motivoDesativar!.trim();
+                  setMotivoDesativar(null);
+                  await gravar('desativada', 'Anúncio desativado', 'publicacao_desativada', motivo);
+                }}
+              >
+                {salvando ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Visualizar foto (com navegação entre as fotos da galeria) */}
       <Dialog open={vendo !== null && !!fotos[vendo]} onOpenChange={(o) => { if (!o) setVendo(null); }}>
