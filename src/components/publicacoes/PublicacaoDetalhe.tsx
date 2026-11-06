@@ -332,12 +332,6 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                       <Destaque label="Preço Ação" value={formatCurrency(precoAcao)} />
                     </div>
                   </div>
-                  {dados?.preco ? (
-                    <p className="text-[11px] text-muted-foreground -mt-2">
-                      No site: {dados.preco_de ? <><s>{formatCurrency(dados.preco_de)}</s> por </> : null}
-                      <b className="text-foreground">{formatCurrency(dados.preco)}</b>
-                    </p>
-                  ) : null}
                 </>
               )}
             </CardContent>
