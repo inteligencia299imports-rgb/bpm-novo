@@ -321,21 +321,21 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           {etapa === 'publicada' && site?.slug && (
-            <Button size="sm" asChild className="gap-1.5">
+            <Button size="sm" asChild className="w-36 gap-1.5">
               <a href={`${SITE_URL}/seminovas/${site.slug}`} target="_blank" rel="noreferrer" title="Ver anúncio no site"><ShoppingCart className="h-4 w-4" fill="currentColor" /> Site</a>
             </Button>
           )}
           {etapa === 'publicada' && (
-            <Button size="sm" variant="outline" className="gap-1.5 border-destructive bg-transparent text-destructive hover:bg-transparent hover:text-destructive hover:opacity-80" disabled={ocupado} onClick={() => gravar('fotos_tiradas', 'Anúncio retirado do site', 'publicacao_despublicada')}>
+            <Button size="sm" variant="outline" className="w-36 gap-1.5 border-destructive bg-transparent text-destructive hover:bg-transparent hover:text-destructive hover:opacity-80" disabled={ocupado} onClick={() => gravar('fotos_tiradas', 'Anúncio retirado do site', 'publicacao_despublicada')}>
               <X className="h-4 w-4" /> Desativar
             </Button>
           )}
-          <Button size="sm" variant="outline" className="gap-1.5" disabled={ocupado} onClick={salvar}>
+          <Button size="sm" variant="outline" className="w-36 gap-1.5" disabled={ocupado} onClick={salvar}>
             {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Salvar
           </Button>
           {/* Publicar só aparece quando já dá para ir ao ar (fotos, descrição e dados da moto completos). */}
           {etapa !== 'publicada' && dados && pendencias.length === 0 && (
-            <Button size="sm" className="gap-1.5" disabled={ocupado} onClick={() => gravar('publicada', 'Publicada no site', 'publicacao_publicada')}>
+            <Button size="sm" className="w-36 gap-1.5" disabled={ocupado} onClick={() => gravar('publicada', 'Publicada no site', 'publicacao_publicada')}>
               <ExternalLink className="h-4 w-4" /> Publicar no site
             </Button>
           )}
