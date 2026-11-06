@@ -119,6 +119,8 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const [fotos, setFotos] = useState<string[]>([]);
   const [fotosGravadas, setFotosGravadas] = useState<string[]>([]);
   const [arrastando, setArrastando] = useState<number | null>(null);
+  // Foto sobre a qual a arrastada está passando (marca onde ela vai entrar).
+  const [sobre, setSobre] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [editarMotoOpen, setEditarMotoOpen] = useState(false);
@@ -529,19 +531,24 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                         key={url}
                         draggable={!travada}
                         onDragStart={(e) => { if (travada) return; setArrastando(i); e.dataTransfer.effectAllowed = 'move'; }}
-                        onDragOver={(e) => { if (travada) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                        onDrop={(e) => { if (travada) return; e.preventDefault(); if (arrastando !== null) moverPara(arrastando, i); setArrastando(null); }}
-                        onDragEnd={() => setArrastando(null)}
+                        onDragOver={(e) => { if (travada) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (sobre !== i) setSobre(i); }}
+                        onDrop={(e) => { if (travada) return; e.preventDefault(); if (arrastando !== null) moverPara(arrastando, i); setArrastando(null); setSobre(null); }}
+                        onDragEnd={() => { setArrastando(null); setSobre(null); }}
                         onClick={() => setVendo(i)}
                         className={cn(
                           'group relative rounded-md overflow-hidden border select-none',
                           travada ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
                           i === 0 ? 'border-primary ring-2 ring-primary' : 'border-border',
                           arrastando === i && 'opacity-40',
+                          arrastando !== null && sobre === i && arrastando !== i && 'ring-2 ring-primary ring-offset-2',
                         )}
                       >
                         <img src={url} alt="" draggable={false} className="w-full aspect-[3/4] object-cover pointer-events-none" />
                         {i === 0 && <span className="absolute top-1 left-1 text-[10px] font-semibold rounded bg-primary text-primary-foreground px-1.5 py-0.5">CAPA</span>}
+                        {/* Marcador: entra antes desta foto (vindo da direita) ou depois (vindo da esquerda). */}
+                        {arrastando !== null && sobre === i && arrastando !== i && (
+                          <span className={cn('absolute inset-y-0 z-10 w-1.5 rounded bg-primary shadow', arrastando > i ? 'left-0' : 'right-0')} />
+                        )}
                         <span className="absolute top-1 right-1 text-[10px] rounded bg-black/55 text-white px-1">{i + 1}</span>
                         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
                           {!travada && (<>
