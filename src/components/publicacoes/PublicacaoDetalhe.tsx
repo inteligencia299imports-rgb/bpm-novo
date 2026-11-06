@@ -326,7 +326,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </Button>
           )}
           {etapa === 'publicada' && (
-            <Button size="sm" variant="destructive" className="gap-1.5" disabled={ocupado} onClick={() => gravar('fotos_tiradas', 'Anúncio retirado do site', 'publicacao_despublicada')}>
+            <Button size="sm" variant="outline" className="gap-1.5 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={ocupado} onClick={() => gravar('fotos_tiradas', 'Anúncio retirado do site', 'publicacao_despublicada')}>
               <X className="h-4 w-4" /> Despublicar
             </Button>
           )}
