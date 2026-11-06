@@ -405,7 +405,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                 <div className="py-28 border-b border-border text-center text-sm text-muted-foreground">Nenhuma foto. Até {FOTOS_MAX} fotos, no máximo 3 MB cada.</div>
               ) : (
                 <div className="space-y-1.5">
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
                     {fotos.map((url, i) => (
                       <div
                         key={url}
