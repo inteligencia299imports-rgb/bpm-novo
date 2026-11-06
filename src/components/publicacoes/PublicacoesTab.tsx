@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Search, Filter, CalendarIcon, X, Camera } from 'lucide-react';
+import { Search, Filter, CalendarIcon, X, Camera, Package, Wrench } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRange } from '@/lib/fetchAllRange';
 import { MARCA_MODELO_SELECT, flattenMarcaModeloList } from '@/lib/marcaModelo';
@@ -228,6 +228,9 @@ const PublicacoesTab: React.FC = () => {
                           date={it.dataAquisicao}
                           dateLabel={it.estoque ? 'Entrada' : 'Aquisição'}
                           statusColor={col.hex}
+                          titleIcon={it.estoque
+                            ? <span title="Em estoque" className="shrink-0"><Package className="h-4 w-4 text-green-600" /></span>
+                            : <span title="Em preparação" className="shrink-0"><Wrench className="h-4 w-4 text-orange-500" /></span>}
                           extraBadge={av.tipo_aquisicao ? { label: getTipoAquisicaoLabel(av.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(av.tipo_aquisicao) } : undefined}
                           secondaryBadge={
                             sinal ? { label: 'Sinal · fora do site', className: 'bg-amber-100 text-amber-800 border-amber-200' }
