@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Camera, Clock, ExternalLink, Loader2, Pencil, Plus, Tag, Trash2 } from 'lucide-react';
+import { ArrowLeft, Camera, Clock, ExternalLink, Loader2, Pencil, Plus, RefreshCw, Tag, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -112,6 +112,8 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const [enviando, setEnviando] = useState(false);
   const [editarMotoOpen, setEditarMotoOpen] = useState(false);
   const inputFotos = useRef<HTMLInputElement>(null);
+  const inputSubstituir = useRef<HTMLInputElement>(null);
+  const [substituindo, setSubstituindo] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     const [avRes, dadosRes, siteRes] = await Promise.all([
@@ -188,6 +190,35 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
     await carregar();
   };
 
+  const subirFoto = async (f: File) => {
+    const blob = await paraWebp(f);
+    const caminho = `${avId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
+    const { error } = await supabase.storage.from('site-motos').upload(caminho, blob, { contentType: 'image/webp', upsert: false });
+    if (error) throw error;
+    return supabase.storage.from('site-motos').getPublicUrl(caminho).data.publicUrl;
+  };
+
+  // Substituir: troca a foto na mesma posição da galeria.
+  const substituirFoto = async (files: FileList | null) => {
+    const i = substituindo;
+    const f = files?.[0];
+    if (inputSubstituir.current) inputSubstituir.current.value = '';
+    setSubstituindo(null);
+    if (i === null || !f) return;
+    if (f.size > FOTO_MAX_BYTES) {
+      toast.error(`Foto acima de 3 MB não é aceita: ${f.name} (${mb(f.size)})`);
+      return;
+    }
+    setEnviando(true);
+    try {
+      const url = await subirFoto(f);
+      setFotos((lista) => lista.map((x, j) => (j === i ? url : x)));
+    } catch (e: any) {
+      toast.error(`Erro ao enviar foto: ${e?.message || e}`);
+    }
+    setEnviando(false);
+  };
+
   const enviarFotos = async (files: FileList | null) => {
     if (!files?.length) return;
     const lista = Array.from(files);
@@ -202,13 +233,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
     setEnviando(true);
     const novas: string[] = [];
     try {
-      for (const f of aceitas) {
-        const blob = await paraWebp(f);
-        const caminho = `${avId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
-        const { error } = await supabase.storage.from('site-motos').upload(caminho, blob, { contentType: 'image/webp', upsert: false });
-        if (error) throw error;
-        novas.push(supabase.storage.from('site-motos').getPublicUrl(caminho).data.publicUrl);
-      }
+      for (const f of aceitas) novas.push(await subirFoto(f));
     } catch (e: any) {
       toast.error(`Erro ao enviar foto: ${e?.message || e}`);
     }
@@ -355,6 +380,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                   {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Adicionar
                 </Button>
                 <input ref={inputFotos} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => enviarFotos(e.target.files)} />
+                <input ref={inputSubstituir} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => substituirFoto(e.target.files)} />
               </CardTitle>
               <Separator className="mt-2" />
             </CardHeader>
@@ -373,7 +399,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                         onDrop={(e) => { e.preventDefault(); if (arrastando !== null) moverPara(arrastando, i); setArrastando(null); }}
                         onDragEnd={() => setArrastando(null)}
                         className={cn(
-                          'relative rounded-md overflow-hidden border cursor-grab active:cursor-grabbing select-none',
+                          'group relative rounded-md overflow-hidden border cursor-grab active:cursor-grabbing select-none',
                           i === 0 ? 'border-primary ring-2 ring-primary' : 'border-border',
                           arrastando === i && 'opacity-40',
                         )}
@@ -381,8 +407,11 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                         <img src={url} alt="" draggable={false} className="w-full aspect-[3/4] object-cover pointer-events-none" />
                         {i === 0 && <span className="absolute top-1 left-1 text-[10px] font-semibold rounded bg-primary text-primary-foreground px-1.5 py-0.5">CAPA</span>}
                         <span className="absolute top-1 right-1 text-[10px] rounded bg-black/55 text-white px-1">{i + 1}</span>
-                        <div className="absolute inset-x-0 bottom-0 flex items-center justify-end bg-black/55 p-1">
-                          <button type="button" title="Remover" onClick={() => setFotos((f) => f.filter((x) => x !== url))} className="text-white"><Trash2 className="h-3.5 w-3.5" /></button>
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button type="button" title="Substituir" disabled={ocupado} onClick={() => { setSubstituindo(i); inputSubstituir.current?.click(); }}
+                            className="rounded-full bg-white/90 p-1.5 text-foreground hover:bg-white"><RefreshCw className="h-4 w-4" /></button>
+                          <button type="button" title="Excluir" disabled={ocupado} onClick={() => setFotos((f) => f.filter((x) => x !== url))}
+                            className="rounded-full bg-white/90 p-1.5 text-destructive hover:bg-white"><Trash2 className="h-4 w-4" /></button>
                         </div>
                       </div>
                     ))}
