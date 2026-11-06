@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { getTipoAquisicaoBadgeClass, getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
-import { ETAPAS_PUBLICACAO, FOTOS_MAX, FOTO_MAX_BYTES, MARCAS_SITE, slugSite, type EtapaPublicacao } from '@/lib/siteMoto';
+import { ETAPAS_PUBLICACAO, FOTOS_MAX, FOTOS_MIN, FOTO_MAX_BYTES, MARCAS_SITE, slugSite, type EtapaPublicacao } from '@/lib/siteMoto';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -159,7 +159,11 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
     ...(dados?.pendencias ?? []).filter((p) => p !== 'Fotos'),
     ...(fotos.length === 0 ? ['Fotos'] : []),
   ];
-  const pendencias = [...pendenciasSite, ...(descricao.trim() === '' ? ['Descrição do anúncio'] : [])];
+  const pendencias = [
+    ...pendenciasSite,
+    ...(fotos.length > 0 && fotos.length < FOTOS_MIN ? [`Mínimo de ${FOTOS_MIN} fotos (${fotos.length}/${FOTOS_MIN})`] : []),
+    ...(descricao.trim() === '' ? ['Descrição do anúncio'] : []),
+  ];
   const avisoPendencias = etapa === 'publicada' ? pendenciasSite : pendencias;
   const estoque = item.estoque;
   const foraDoSite = estoque && !['disponivel', 'servico'].includes(estoque.status);
@@ -308,7 +312,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             Salvar
           </Button>
           {etapa === 'em_aberto' && (
-            <Button size="sm" className="gap-1.5" disabled={ocupado || fotos.length === 0} title={fotos.length === 0 ? 'Envie as fotos antes' : undefined}
+            <Button size="sm" className="gap-1.5" disabled={ocupado || fotos.length < FOTOS_MIN} title={fotos.length < FOTOS_MIN ? `Envie no mínimo ${FOTOS_MIN} fotos` : undefined}
               onClick={() => gravar('fotos_tiradas', 'Movida para Fotos Tiradas', 'publicacao_fotos_tiradas')}>
               <Camera className="h-4 w-4" /> Fotos tiradas
             </Button>
@@ -451,7 +455,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                 >
                   {enviando ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" />}
                   <span className="font-medium text-foreground">Clique ou arraste as fotos aqui</span>
-                  <span className="text-xs">Até {FOTOS_MAX} fotos, no máximo 3 MB cada.</span>
+                  <span className="text-xs">De {FOTOS_MIN} a {FOTOS_MAX} fotos, no máximo 3 MB cada.</span>
                 </button>
               ) : (
                 <div className="space-y-1.5">
