@@ -168,7 +168,8 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   ];
   const avisoPendencias = etapa === 'publicada' ? pendenciasSite : pendencias;
   const estoque = item.estoque;
-  const foraDoSite = estoque && !['disponivel', 'servico'].includes(estoque.status);
+  // Com sinal ou vendida a moto já saiu do site: a tela fica só para consulta.
+  const travada = ['sinal', 'vendido', 'retirada'].includes(estoque?.status || '');
   const marcaLabel = MARCAS_SITE.find((m) => m.value === dados?.marca)?.label || moto?.marca;
   const precoAcao = estoque?.preco_acao ? Number(estoque.preco_acao) : null;
   const etapaAtual = ETAPAS_PUBLICACAO.find((e) => e.value === etapa);
@@ -308,17 +309,13 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                 {getTipoAquisicaoLabel(item.avaliacao.tipo_aquisicao)}
               </Badge>
             )}
-            {foraDoSite && (
-              <Badge variant="outline" className="text-[10px] shrink-0 border-amber-500 text-amber-600">
-                {estoque?.status === 'sinal' ? 'Sinal · fora do site' : 'Indisponível · fora do site'}
-              </Badge>
-            )}
           </div>
           <p className="text-xs text-muted-foreground">
             {String(item.avaliacao.placa || '').replace(/-/g, '').toUpperCase()}
             {item.dataAquisicao && ` · ${estoque ? 'Entrada' : 'Aquisição'} em ${format(new Date(item.dataAquisicao), 'dd/MM/yyyy', { locale: ptBR })}`}
           </p>
         </div>
+        {!travada && (
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           {etapa === 'publicada' && site?.slug && (
             <Button size="sm" asChild className="w-28 gap-1.5">
@@ -340,6 +337,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </Button>
           )}
         </div>
+        )}
       </div>
 
       <Separator />
@@ -351,7 +349,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Tag className="h-4 w-4 text-primary" /> Dados da Moto
-                {moto && (
+                {moto && !travada && (
                   <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setEditarMotoOpen(true)} title="Editar dados da moto">
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -426,7 +424,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
               <Separator className="mt-2" />
             </CardHeader>
             <CardContent className="flex-1 flex flex-col gap-3">
-              <Textarea rows={5} value={descricao} onChange={(e) => setDescricao(e.target.value)}
+              <Textarea rows={5} value={descricao} onChange={(e) => setDescricao(e.target.value)} readOnly={travada}
                 placeholder="Texto que aparece na página da moto no site" className="flex-1 min-h-[120px]" />
               {etapa !== 'em_aberto' && dados && avisoPendencias.length > 0 && (
                 <p className="text-xs rounded-md border border-red-200 bg-red-50 text-red-700 px-3 py-2">
@@ -443,7 +441,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
               <CardTitle className="text-sm flex items-center gap-2">
                 <Camera className="h-4 w-4 text-primary" /> Fotos
                 <span className="text-xs font-normal text-muted-foreground">({fotos.length}/{FOTOS_MAX} fotos)</span>
-                {fotos.length > 0 && (
+                {fotos.length > 0 && !travada && (
                   <Button variant="ghost" size="sm" className="ml-auto h-7 gap-1 px-2 text-primary hover:text-primary hover:bg-transparent hover:opacity-80"
                     disabled={ocupado || fotos.length >= FOTOS_MAX} onClick={() => inputFotos.current?.click()}>
                     {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Adicionar
@@ -455,7 +453,9 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
               <Separator className="mt-2" />
             </CardHeader>
             <CardContent className="flex-1 flex flex-col gap-4">
-              {fotos.length === 0 ? (
+              {fotos.length === 0 && travada ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma foto.</p>
+              ) : fotos.length === 0 ? (
                 // Sem fotos: área para clicar ou soltar os arquivos.
                 <button
                   type="button"
@@ -479,13 +479,14 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                     {fotos.map((url, i) => (
                       <div
                         key={url}
-                        draggable
-                        onDragStart={(e) => { setArrastando(i); e.dataTransfer.effectAllowed = 'move'; }}
-                        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                        onDrop={(e) => { e.preventDefault(); if (arrastando !== null) moverPara(arrastando, i); setArrastando(null); }}
+                        draggable={!travada}
+                        onDragStart={(e) => { if (travada) return; setArrastando(i); e.dataTransfer.effectAllowed = 'move'; }}
+                        onDragOver={(e) => { if (travada) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                        onDrop={(e) => { if (travada) return; e.preventDefault(); if (arrastando !== null) moverPara(arrastando, i); setArrastando(null); }}
                         onDragEnd={() => setArrastando(null)}
                         className={cn(
-                          'group relative rounded-md overflow-hidden border cursor-grab active:cursor-grabbing select-none',
+                          'group relative rounded-md overflow-hidden border select-none',
+                          !travada && 'cursor-grab active:cursor-grabbing',
                           i === 0 ? 'border-primary ring-2 ring-primary' : 'border-border',
                           arrastando === i && 'opacity-40',
                         )}
@@ -496,15 +497,17 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
                           <button type="button" title="Visualizar" onClick={() => setVendo(i)}
                             className="rounded-full bg-white/90 p-1.5 text-foreground hover:bg-white"><Eye className="h-4 w-4" /></button>
+                          {!travada && (<>
                           <button type="button" title="Substituir" disabled={ocupado} onClick={() => { setSubstituindo(i); inputSubstituir.current?.click(); }}
                             className="rounded-full bg-white/90 p-1.5 text-foreground hover:bg-white"><RefreshCw className="h-4 w-4" /></button>
                           <button type="button" title="Excluir" disabled={ocupado} onClick={() => setFotos((f) => f.filter((x) => x !== url))}
                             className="rounded-full bg-white/90 p-1.5 text-destructive hover:bg-white"><Trash2 className="h-4 w-4" /></button>
+                          </>)}
                         </div>
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Arraste para ordenar a galeria do site.</p>
+                  {!travada && <p className="text-[11px] text-muted-foreground">Arraste para ordenar a galeria do site.</p>}
                 </div>
               )}
             </CardContent>
