@@ -353,7 +353,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </CardHeader>
             <CardContent className="flex-1 flex flex-col gap-4">
               {fotos.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma foto. Até {FOTOS_MAX} fotos, no máximo 3 MB cada.</p>
+                <div className="py-8 border-b border-border text-center text-sm text-muted-foreground">Nenhuma foto. Até {FOTOS_MAX} fotos, no máximo 3 MB cada.</div>
               ) : (
                 <div className="space-y-1.5">
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -388,7 +388,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
                 </div>
               )}
               <div className="space-y-1">
-                <Label className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Descrição do anúncio</Label>
+                <Label>Descrição do anúncio</Label>
                 <Textarea rows={5} value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Texto que aparece na página da moto no site" />
               </div>
               {etapa !== 'em_aberto' && dados && pendencias.length > 0 && (
