@@ -232,7 +232,6 @@ const PublicacoesTab: React.FC = () => {
                           secondaryBadge={
                             sinal ? { label: 'Sinal · fora do site', className: 'bg-amber-100 text-amber-800 border-amber-200' }
                             : naoDisponivel ? { label: 'Indisponível · fora do site', className: 'bg-red-100 text-red-700 border-red-200' }
-                            : !it.estoque ? { label: 'Em preparação', className: 'bg-slate-100 text-slate-700 border-slate-200' }
                             : undefined
                           }
                           onClick={() => setSelected(it)}
