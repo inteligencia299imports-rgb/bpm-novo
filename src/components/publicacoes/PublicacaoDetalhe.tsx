@@ -353,7 +353,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
             </CardHeader>
             <CardContent className="flex-1 flex flex-col gap-4">
               {fotos.length === 0 ? (
-                <div className="py-16 border-b border-border text-center text-sm text-muted-foreground">Nenhuma foto. Até {FOTOS_MAX} fotos, no máximo 3 MB cada.</div>
+                <div className="py-28 border-b border-border text-center text-sm text-muted-foreground">Nenhuma foto. Até {FOTOS_MAX} fotos, no máximo 3 MB cada.</div>
               ) : (
                 <div className="space-y-1.5">
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
