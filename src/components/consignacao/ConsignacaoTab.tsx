@@ -53,7 +53,7 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
     const selectStr = `*, ${MARCA_MODELO_SELECT}, atendimentos_motos!avaliacoes_atendimento_id_fkey!inner(id, loja_id, loja_empresas:loja_id(loja), cliente_id, cliente:clientes_fornecedores(nome_razao_social, telefone, cpf_cnpj, email, clientes_fornecedores_enderecos(cep, logradouro)))`;
 
     const estResult = await fetchAllRange(() => supabase.from('estoque_motos').select('avaliacao_id, status, observacoes, created_at, atendimento_venda_id').not('avaliacao_id', 'is', null));
-    const nfeResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('avaliacao_id, status, ambiente, created_at').not('avaliacao_id', 'is', null));
+    const nfeResult = await fetchAllRange(() => supabase.from('nfe_entradas' as any).select('avaliacao_id, status, ambiente, created_at, operacao').not('avaliacao_id', 'is', null));
     // NF que realmente trava a edição da proposta de consignação: a NF DE
     // VENDA dessa moto (não a NF de consignação/devolução/compra da cadeia
     // interna, que é só formalidade de entrada) — mesma regra do
@@ -104,7 +104,10 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
         if (picked) acquDateMap[d.id] = picked;
       });
       let mapped = (data || [])
-        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeTag: nfeTagFromRows(nfeRowsPorAvaliacao[d.id]) ?? (etapaNfConcluidaSet.has(d.id) ? NFE_TAG_SEM_REGISTRO : undefined), _temNfeProducao: !!estoqueMap[d.id]?.atendimento_venda_id && atendimentosComNfeVenda.has(estoqueMap[d.id]!.atendimento_venda_id) }));
+        .map((d: any) => ({ ...d, atendimento: { ...d.atendimentos_motos, loja: d.atendimentos_motos?.loja_empresas?.loja }, moto: d, _estoqueInfo: estoqueMap[d.id] || null, _dataAquisicao: acquDateMap[d.id] || null, _nfeTag: nfeTagFromRows(nfeRowsPorAvaliacao[d.id]) ?? (etapaNfConcluidaSet.has(d.id) ? NFE_TAG_SEM_REGISTRO : undefined), _temNfeProducao: !!estoqueMap[d.id]?.atendimento_venda_id && atendimentosComNfeVenda.has(estoqueMap[d.id]!.atendimento_venda_id),
+          // Processo de consignação encerrado com NF: etapa "NF EMITIDA" marcada ou NF da
+          // cadeia (consignação/devolução/compra) autorizada em produção — igual ao Pós-Compra.
+          _temNfeConsignacao: etapaNfConcluidaSet.has(d.id) || (nfeRowsPorAvaliacao[d.id] || []).some((n: any) => ['consignacao', 'devolucao_consignacao', 'compra'].includes(n.operacao) && n.status === 'processada' && n.ambiente === 'producao') }));
       if (search.trim()) { const s = search.trim().toLowerCase(); mapped = mapped.filter((a: any) => [a.atendimento?.cliente?.nome_razao_social, a.atendimento?.cliente?.telefone, a.moto?.marca, a.moto?.modelo, a.moto?.placa].some(f => f && String(f).toLowerCase().includes(s))); }
       if (filterCidade !== 'todos') { mapped = mapped.filter((a: any) => matchesCidade(a.atendimento?.loja, filterCidade)); }
       setItems(mapped);
@@ -116,11 +119,11 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
   const getColumnItems = (status: ConsignacaoStatus) => items.filter((a: any) => {
     const s = (a.consignacao_status || 'em_aberto') as ConsignacaoStatus;
     if (s !== status) return false;
-    // Concluída com NF-e DE VENDA dessa moto já emitida em produção: processo
-    // realmente encerrado, sai do quadro (a NF de consignação/devolução/
-    // compra da cadeia interna não conta — é só formalidade de entrada).
-    // Sem a NF de venda vinculada, continua visível pra editar valores/proposta.
-    if (status === 'concluido' && a._temNfeProducao) return false;
+    // Concluída com NF (de venda da moto, da cadeia da consignação ou etapa "NF EMITIDA"
+    // marcada): processo encerrado, sai do quadro. Só as concluídas sem nenhuma NF ficam
+    // na coluna "Concluída (sem NF)" (07/11: apareciam 65 com NF). A trava do contrato
+    // continua dependendo só da NF de venda (ContratoConsignacaoDialog).
+    if (status === 'concluido' && (a._temNfeProducao || a._temNfeConsignacao)) return false;
     return true;
   });
 
