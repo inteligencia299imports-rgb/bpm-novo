@@ -217,6 +217,8 @@ interface FormaPagamento {
   financeira: string | null;
   numero_parcelas: number | null;
   valor_parcelas: number | null;
+  /** Parcela balão (opcional) — só para Financiamento. */
+  parcela_balao: number | null;
   valor_financiado: number | null;
   /** Taxa de retorno (%) — só para Financiamento. */
   taxa_retorno_pct: number | null;
@@ -238,6 +240,7 @@ const mapFormaRow = (data: any): FormaPagamento => ({
   financeira: data.financeira,
   numero_parcelas: data.numero_parcelas,
   valor_parcelas: data.valor_parcelas,
+  parcela_balao: data.parcela_balao != null ? Number(data.parcela_balao) : null,
   valor_financiado: data.valor_financiado,
   taxa_retorno_pct: data.taxa_retorno_pct != null ? Number(data.taxa_retorno_pct) : null,
   data_pagamento: data.data_pagamento ?? null,
@@ -442,6 +445,7 @@ const ContratoDialog: React.FC<Props> = ({
   const [finValorEntrada, setFinValorEntrada] = useState('');
   const [finParcelas, setFinParcelas] = useState('');
   const [finValorParcelas, setFinValorParcelas] = useState('');
+  const [finParcelaBalao, setFinParcelaBalao] = useState('');
   const [finValorFinanciado, setFinValorFinanciado] = useState('');
   const [finTaxaRetorno, setFinTaxaRetorno] = useState('');
   // Data do pagamento (yyyy-MM-dd) — comum a qualquer forma
@@ -782,6 +786,7 @@ const ContratoDialog: React.FC<Props> = ({
     setFinValorEntrada(fp.valor_entrada != null ? formatCurrencyInput(String(Math.round(fp.valor_entrada * 100))) : '');
     setFinParcelas(fp.numero_parcelas != null ? String(fp.numero_parcelas) : '');
     setFinValorParcelas(fp.valor_parcelas != null ? formatCurrencyInput(String(Math.round(fp.valor_parcelas * 100))) : '');
+    setFinParcelaBalao(fp.parcela_balao != null ? formatCurrencyInput(String(Math.round(fp.parcela_balao * 100))) : '');
     setFinValorFinanciado(fp.valor_financiado != null ? formatCurrencyInput(String(Math.round(fp.valor_financiado * 100))) : '');
     setFinTaxaRetorno(fp.taxa_retorno_pct != null ? String(fp.taxa_retorno_pct) : '');
     setNovaDataPagamento(fp.data_pagamento || '');
@@ -820,6 +825,7 @@ const ContratoDialog: React.FC<Props> = ({
       valor_entrada: null,
       numero_parcelas: null,
       valor_parcelas: null,
+      parcela_balao: null,
       valor_financiado: null,
       taxa_retorno_pct: null,
       data_pagamento: null,
@@ -832,6 +838,7 @@ const ContratoDialog: React.FC<Props> = ({
       formaData.valor_entrada = parseCurrencyInput(finValorEntrada) || null;
       formaData.numero_parcelas = finParcelas ? parseInt(finParcelas) : null;
       formaData.valor_parcelas = parseCurrencyInput(finValorParcelas) || null;
+      formaData.parcela_balao = parseCurrencyInput(finParcelaBalao) || null;
       formaData.valor_financiado = parseCurrencyInput(finValorFinanciado) || null;
       formaData.taxa_retorno_pct = parsePct(finTaxaRetorno);
     } else {
@@ -1169,6 +1176,7 @@ const ContratoDialog: React.FC<Props> = ({
             valorEntrada: fmt(f.valor_entrada),
             numeroParcelas: f.numero_parcelas || 0,
             valorParcelas: fmt(f.valor_parcelas),
+            parcelaBalao: f.parcela_balao != null ? fmt(f.parcela_balao) : '',
             valorFinanciado: fmt(f.valor_financiado),
             dataPagamento,
             observacoes: f.observacoes || '',
@@ -2062,12 +2070,13 @@ const ContratoDialog: React.FC<Props> = ({
                   {ehFinanciamento(novaFormaNome) && (
                     <div className="space-y-3">
                       <CurrencyField label="Valor de Entrada" value={finValorEntrada} onChange={setFinValorEntrada} />
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div>
                           <label className="text-sm font-medium text-foreground">Nº Parcelas</label>
                           <Input className="mt-1" type="number" value={finParcelas} onChange={e => setFinParcelas(e.target.value)} placeholder="48" />
                         </div>
                         <CurrencyField label="Valor Parcelas" value={finValorParcelas} onChange={setFinValorParcelas} />
+                        <CurrencyField label="Parcela Balão" value={finParcelaBalao} onChange={setFinParcelaBalao} />
                         <CurrencyField label="Valor Financiado" value={finValorFinanciado} onChange={setFinValorFinanciado} />
                       </div>
                       <div className="max-w-[10rem]">
@@ -2154,6 +2163,7 @@ const ContratoDialog: React.FC<Props> = ({
                               {fp.numero_parcelas != null && fp.valor_parcelas != null && (
                                 <div>{fp.numero_parcelas}x de {formatCurrency(fp.valor_parcelas)}</div>
                               )}
+                              {fp.parcela_balao != null && <div>Parcela Balão: {formatCurrency(fp.parcela_balao)}</div>}
                               {fp.valor_financiado != null && <div>Financiado: {formatCurrency(fp.valor_financiado)}</div>}
                               {fp.taxa_retorno_pct != null && <div>Taxa de Retorno: {fp.taxa_retorno_pct}%</div>}
                               {fp.valor_total != null && <div>Valor: {formatCurrency(fp.valor_total)}</div>}

@@ -65,6 +65,8 @@ interface ContratoPdfData {
     valorEntrada?: string;
     numeroParcelas?: number;
     valorParcelas?: string;
+    /** Financiamento: parcela balão (só sai no PDF quando informada). */
+    parcelaBalao?: string;
     valorFinanciado?: string;
     dataPagamento?: string;
     observacoes?: string;
@@ -529,6 +531,10 @@ export async function generateContratoPdf(data: ContratoPdfData, variant: Contra
       doc.text(`Nº Parcelas: ${forma.numeroParcelas || '-'}`, marginLeft + 5, y); y += lineHeight;
       checkPageBreak(lineHeight);
       doc.text(`Valor Parcelas: ${forma.valorParcelas || '-'}`, marginLeft + 5, y); y += lineHeight;
+      if (forma.parcelaBalao) {
+        checkPageBreak(lineHeight);
+        doc.text(`Parcela Balão: ${forma.parcelaBalao}`, marginLeft + 5, y); y += lineHeight;
+      }
       checkPageBreak(lineHeight);
       doc.text(`Valor Financiado: ${forma.valorFinanciado || '-'}`, marginLeft + 5, y); y += lineHeight;
       if (forma.dataPagamento) {
