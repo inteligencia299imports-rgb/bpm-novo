@@ -107,3 +107,29 @@ export const formatarVencimento = (q: Quitacao | undefined) =>
 /** dd/mm/aaaa a partir de 'aaaa-mm-dd' (sem passar por Date, para não deslocar o fuso). Não quitada = vazio. */
 export const formatarQuitacao = (q: Quitacao | undefined) =>
   q?.status === 'quitado' ? q.data.slice(0, 10).split('-').reverse().join('/') : '';
+
+/**
+ * Quitação do FINANCIAMENTO da moto (avaliacoes.valor_quitacao, paga pela loja ao banco) — não
+ * confundir com a "quitação" acima (pagamento da compra inteira). Vira a parcela 'QUITAÇÃO' do
+ * compromisso de despesa da avaliação (gerar-compromissos-proposta / emitir-nfe-compra).
+ * Devolve as avaliações cuja quitação já está PAGA: tem parcela QUITAÇÃO (não cancelada) e todas
+ * com data de pagamento. Sem parcela ainda (ex.: consignada antes da previsão de pagamento) = em aberto.
+ */
+export async function fetchQuitacaoFinanciamentoPaga(avaliacaoIds: string[]): Promise<Set<string>> {
+  const pagas = new Set<string>();
+  const ids = [...new Set(avaliacaoIds.filter(Boolean))];
+  if (!ids.length) return pagas;
+  const compromissos = await buscarPorIds('compromissos', 'avaliacao_id, compromissos_parcelas(observacoes, data_pagamento, status_pagamento)', 'avaliacao_id', ids,
+    (q: any) => q.eq('natureza', 'despesa').is('deleted_at', null));
+  const parcelasPorAvaliacao = new Map<string, any[]>();
+  for (const c of compromissos) {
+    const quitacao = (c.compromissos_parcelas || []).filter((p: any) =>
+      p.status_pagamento !== 'cancelado' && String(p.observacoes || '').trim().toUpperCase() === 'QUITAÇÃO');
+    if (!quitacao.length) continue;
+    parcelasPorAvaliacao.set(c.avaliacao_id, [...(parcelasPorAvaliacao.get(c.avaliacao_id) || []), ...quitacao]);
+  }
+  parcelasPorAvaliacao.forEach((parcelas, avaliacaoId) => {
+    if (parcelas.every((p) => p.data_pagamento)) pagas.add(avaliacaoId);
+  });
+  return pagas;
+}
