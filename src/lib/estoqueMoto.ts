@@ -8,7 +8,7 @@ import { nomeMarcaModelo } from '@/lib/marcaModelo';
  */
 export const ESTOQUE_MOTO_SELECT =
   '*, avaliacao:avaliacao_id(id, marca:marca_id(nome), modelo:modelo_id(nome), categoria, cor, cilindrada, placa, ' +
-  'ano_fabricacao, ano_modelo, km, quanto_pede, valor_fechamento, valor_nf_entrada, classificacao, tipo_aquisicao, chassi, renavam, ' +
+  'ano_fabricacao, ano_modelo, km, quanto_pede, valor_fechamento, valor_nf_entrada, valor_quitacao, classificacao, tipo_aquisicao, chassi, renavam, ' +
   'tem_manual, tem_chave_reserva, manutencao_vencida, tem_acessorios, acessorios_descricao, crlv_url, resultado_consulta, ' +
   'pos_compra_status, observacoes, situacao, atendimento_id, atendimento:atendimento_id(loja_id)), ' +
   'atendimento_venda:atendimento_venda_id(vendedor_id)';
@@ -84,6 +84,8 @@ export function mapEstoqueMoto(row: any, lojaMap?: Map<string, LojaInfo>) {
     manutencao_vencida: av.manutencao_vencida ?? null,
     tem_acessorios: av.tem_acessorios ?? null,
     acessorios_descricao: av.acessorios_descricao ?? null,
+    // Quitação do financiamento da moto (paga pela loja ao banco) — alerta no card do Estoque.
+    valor_quitacao: av.valor_quitacao ?? null,
     // Observação da moto do card "Dados da Moto" (mesma coluna usada em
     // Atendimento/Avaliações) — distinta de `observacoes`, que aqui é o
     // motivo de status do estoque (Serviço/Indisponível/Bloqueio/Retirada).

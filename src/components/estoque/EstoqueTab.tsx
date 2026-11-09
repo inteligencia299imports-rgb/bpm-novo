@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 import { fetchEstoqueUnificado } from '@/lib/estoqueMoto';
+import { fetchQuitacaoFinanciamentoPaga } from '@/lib/quitacaoEstoque';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { BPM_PROJETO_ID } from '@/lib/projeto';
 import { firstLastName } from '@/lib/utils';
@@ -90,6 +91,7 @@ interface EstoqueItem {
   manutencao_vencida?: boolean | null;
   tem_acessorios?: boolean | null;
   acessorios_descricao?: string | null;
+  valor_quitacao?: number | null;
   crlv_url?: string | null;
   resultado_consulta?: string | null;
   classificacao?: string | null;
@@ -148,6 +150,8 @@ const formatCurrency = (value: number | null) => {
 const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const { role, user } = useAuth();
   const [items, setItems] = useState<EstoqueItem[]>([]);
+  // avaliacao_id das motos com quitação do financiamento já paga (as demais com valor_quitacao > 0 mostram alerta).
+  const [quitacaoPaga, setQuitacaoPaga] = useState<Set<string> | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterMarca, setFilterMarca] = useState('todas');
@@ -225,6 +229,10 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       // Motos de repasse aparecem no estoque como as próprias (voltou a ser
       // tipo de aquisição em 2026-10-15 — antes ficavam ocultas daqui).
       setItems(mapped);
+
+      // Quitação do financiamento: alerta no card enquanto não estiver paga.
+      const comQuitacao = mapped.filter((m: any) => m.tipo !== '0km' && m.avaliacao_id && Number(m.valor_quitacao || 0) > 0).map((m: any) => m.avaliacao_id);
+      fetchQuitacaoFinanciamentoPaga(comQuitacao).then(setQuitacaoPaga).catch(() => setQuitacaoPaga(new Set()));
 
       // Data da retirada (histórico 'RETIRADA' do estoque)
       const estoqueIds = (data || []).map((d: any) => d.id);
@@ -901,6 +909,14 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             <div className="flex items-start gap-1.5 text-xs text-amber-700 font-medium bg-amber-500/10 border border-amber-500/30 rounded p-2">
                               <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                               <span>Transferência para loja pendente</span>
+                            </div>
+                          )}
+
+                          {/* Enquanto a busca não volta (null), não mostra — evita piscar o alerta em moto já paga. */}
+                          {item.tipo !== '0km' && item.avaliacao_id && Number(item.valor_quitacao || 0) > 0 && quitacaoPaga && !quitacaoPaga.has(item.avaliacao_id) && (
+                            <div className="flex items-start gap-1.5 text-xs text-amber-700 font-medium bg-amber-500/10 border border-amber-500/30 rounded p-2">
+                              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                              <span>Moto possui quitação em aberto ({formatCurrency(item.valor_quitacao)})</span>
                             </div>
                           )}
 
