@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import StatusTimeline, { defaultFormatStatusLabel } from '@/components/shared/StatusTimeline';
@@ -58,6 +59,8 @@ const ROTULO_HISTORICO: Record<string, string> = {
   publicacao_despublicada: 'RETIRADA DO SITE',
   publicacao_desativada: 'DESATIVADA',
   publicacao_em_aberto: 'PUBLICAÇÃO VOLTOU PARA EM ABERTO',
+  publicacao_destaque_ligado: 'MARCADA COMO DESTAQUE NO SITE',
+  publicacao_destaque_desligado: 'RETIRADA DOS DESTAQUES DO SITE',
   vendido: 'adquirida',
   contrato_compra_gerado: 'CONTRATO GERADO',
   em_andamento: 'Pós-Compra em andamento',
@@ -131,6 +134,9 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const [soltando, setSoltando] = useState(false);
   // Pop-up do motivo da desativação (null = fechado).
   const [motivoDesativar, setMotivoDesativar] = useState<string | null>(null);
+  // Moto destaque (banner do topo de /seminovas no site). Grava na hora, sem depender do Salvar.
+  const [destaque, setDestaque] = useState<boolean>(!!item.site?.destaque);
+  const [gravandoDestaque, setGravandoDestaque] = useState(false);
 
   const carregar = useCallback(async () => {
     const [avRes, dadosRes, siteRes, fotosRes] = await Promise.all([
@@ -151,6 +157,7 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
     if (siteRes.data) {
       setSite(siteRes.data);
       setEtapa(siteRes.data.etapa);
+      setDestaque(!!siteRes.data.destaque);
     }
     if (fotosRes.error) toast.error(`Erro ao carregar as fotos: ${fotosRes.error.message}`);
     else {
@@ -241,6 +248,31 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
     setSalvando(false);
     toast.success(msg);
     return slugAtual;
+  };
+
+  // Liga/desliga o destaque. Só aparece no site quando a moto está publicada (a view já filtra), mas pode
+  // ser marcada antes para entrar no banner junto com a publicação.
+  const alternarDestaque = async (valor: boolean) => {
+    setGravandoDestaque(true);
+    setDestaque(valor);
+    const { error } = await (supabase as any).from('site_motos').upsert({ avaliacao_id: avId, destaque: valor }, { onConflict: 'avaliacao_id' });
+    if (error) {
+      setDestaque(!valor);
+      setGravandoDestaque(false);
+      toast.error(`Erro ao salvar o destaque: ${error.message}`);
+      return;
+    }
+    await supabase.from('status_history').insert({
+      entity_type: 'publicacao',
+      entity_id: avId,
+      status: valor ? 'publicacao_destaque_ligado' : 'publicacao_destaque_desligado',
+      changed_by: user?.id,
+      changed_by_name: userName || user?.email || null,
+    } as any);
+    if (etapa === 'publicada') await atualizarSite();
+    setGravandoDestaque(false);
+    toast.success(valor ? 'Moto em destaque no site' : 'Moto retirada dos destaques');
+    await carregar();
   };
 
   // Salvar e Desativar voltam para o kanban quando dá certo.
@@ -367,6 +399,10 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
         </div>
         {!travada && (
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          <label className="flex items-center gap-2 h-9 px-3 rounded-md border border-input text-sm font-medium cursor-pointer select-none" title="Moto no banner de destaques do topo da página de seminovas do site">
+            <Switch checked={destaque} onCheckedChange={alternarDestaque} disabled={gravandoDestaque || ocupado} aria-label="Moto destaque" />
+            Destaque
+          </label>
           {etapa === 'publicada' && site?.slug && (
             <Button size="sm" asChild className="w-28 gap-1.5">
               <a href={`${SITE_URL}/seminovas/${site.slug}`} target="_blank" rel="noreferrer" title="Ver anúncio no site"><ShoppingCart className="h-4 w-4" /> Site</a>
