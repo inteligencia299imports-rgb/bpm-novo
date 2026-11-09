@@ -914,7 +914,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
                           {/* Enquanto a busca não volta (null), não mostra — evita piscar o alerta em moto já paga. */}
                           {item.tipo !== '0km' && item.avaliacao_id && Number(item.valor_quitacao || 0) > 0 && quitacaoPaga && !quitacaoPaga.has(item.avaliacao_id) && (
-                            <div className="flex items-start gap-1.5 text-xs text-amber-700 font-medium bg-amber-500/10 border border-amber-500/30 rounded p-2">
+                            <div className="flex items-start gap-1.5 text-xs text-destructive font-medium bg-destructive/10 border border-destructive/30 rounded p-2">
                               <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                               <span>Moto possui quitação em aberto ({formatCurrency(item.valor_quitacao)})</span>
                             </div>
