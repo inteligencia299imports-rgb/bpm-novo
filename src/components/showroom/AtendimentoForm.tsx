@@ -340,6 +340,11 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
 
   // compra
   const [origemMoto, setOrigemMoto] = useState('estoque');
+  // Origem da Moto de Interesse como estava gravada ao abrir a edição. Em Sinal com moto externa
+  // (encomenda, ex.: 0km que ainda não chegou) a moto continua editável para ligar a do estoque.
+  const [origemMotoGravada, setOrigemMotoGravada] = useState<string>('');
+  const sinalComMotoExterna = isEditing && situacao === 'sinal' && origemMotoGravada === 'externo';
+  const motoInteresseTravada = isEditing && (situacao === 'vendido' || (situacao === 'sinal' && !sinalComMotoExterna));
   const [compraMarcaId, setCompraMarcaId] = useState('');
   const [compraModeloId, setCompraModeloId] = useState('');
   const [compraAno, setCompraAno] = useState('');
@@ -415,7 +420,9 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           if (mi) {
             // Registros Ducati antigos foram salvos com origem='estoque' fixo mas
             // sem estoque_moto_id (entrada manual). Sem id real de estoque = 'externo'.
-            setOrigemMoto(mi.origem === 'estoque' && !mi.estoque_moto_id ? 'externo' : (mi.origem || 'estoque'));
+            const origemLida = mi.origem === 'estoque' && !mi.estoque_moto_id ? 'externo' : (mi.origem || 'estoque');
+            setOrigemMoto(origemLida);
+            setOrigemMotoGravada(origemLida);
             setCompraMarcaId((mi as any).marca_id || '');
             setCompraModeloId((mi as any).modelo_id || '');
             setCompraAno(mi.ano || '');
@@ -826,6 +833,20 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
         // Moto de interesse trocada: a anterior não pode continuar Sinal/Vendido
         // para este atendimento no estoque.
         await liberarEstoquePresoAoAtendimento(atId!, [miData.estoque_moto_id]);
+        // Sinal com moto externa trocada por uma do estoque: a moto escolhida fica em Sinal para este
+        // atendimento, com os valores que estavam no contrato (moto externa guarda sinal/venda lá).
+        if (sinalComMotoExterna && miData.estoque_moto_id) {
+          const { data: ct } = await supabase.from('contratos').select('valor_sinal, valor_venda').eq('atendimento_id', atId!)
+            .or('ipva_tipo.is.null,ipva_tipo.neq.COMPRA').order('created_at', { ascending: false }).limit(1).maybeSingle();
+          const tabela = miData.estoque_tipo === '0km' ? 'estoque_motos_novas' : 'estoque_motos';
+          const { error: errEst } = await (supabase as any).from(tabela).update({
+            status: 'sinal',
+            atendimento_venda_id: atId!,
+            valor_sinal: (ct as any)?.valor_sinal ?? null,
+            valor_venda: (ct as any)?.valor_venda ?? null,
+          }).eq('id', miData.estoque_moto_id);
+          if (errEst) toast.error(`Moto salva, mas não foi possível reservá-la no estoque: ${errEst.message}`);
+        }
       } else {
         await supabase.from('motos_interesse').insert(miData as any);
       }
@@ -1237,7 +1258,8 @@ const AtendimentoForm: React.FC<Props> = ({ atendimentoId, onClose }) => {
           estoqueTipo={estoqueTipo} setEstoqueTipo={setEstoqueTipo}
           loja={loja}
           chassi={chassi} setChassi={setChassi}
-          disabled={isEditing && (situacao === 'sinal' || situacao === 'vendido')}
+          // Vendido trava sempre. Sinal trava, exceto com moto externa: aí dá para trocar pela moto do estoque.
+          disabled={motoInteresseTravada}
           empresaId={empresaId}
           empresasDaLoja={empresasDaLoja}
           onEmpresaDaMoto={(emp) => { if (emp && emp !== empresaId && empresasDaLoja.has(emp)) setEmpresaId(emp); }}
