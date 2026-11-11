@@ -954,6 +954,13 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                                   <span className="font-medium text-foreground">{mi.chassi || estItem.chassi}</span>
                                 </div>
                               )}
+                              {/* Test-ride emplacada */}
+                              {estItem.fonte === '0km' && estItem.placa && (
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span className="text-muted-foreground">Placa</span>
+                                  <span className="font-medium text-foreground">{estItem.placa.replace(/-/g, '')}</span>
+                                </div>
+                              )}
                               {estItem.empresa && (
                                 <div className="flex items-center gap-2 text-sm">
                                   <span className="text-muted-foreground">Empresa</span>
@@ -964,12 +971,21 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                           ) : (
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                             {estItem.fonte === '0km' ? (
-                              estItem.chassi && (
-                                <>
-                                  <span className="text-muted-foreground">Chassi</span>
-                                  <span className="font-medium text-foreground">{estItem.chassi}</span>
-                                </>
-                              )
+                              <>
+                                {estItem.chassi && (
+                                  <>
+                                    <span className="text-muted-foreground">Chassi</span>
+                                    <span className="font-medium text-foreground">{estItem.chassi}</span>
+                                  </>
+                                )}
+                                {/* Test-ride emplacada */}
+                                {estItem.placa && (
+                                  <>
+                                    <span className="text-muted-foreground">Placa</span>
+                                    <span className="font-medium text-foreground">{estItem.placa.replace(/-/g, '')}</span>
+                                  </>
+                                )}
+                              </>
                             ) : estItem.placa && (
                               <>
                                 <span className="text-muted-foreground">Placa</span>

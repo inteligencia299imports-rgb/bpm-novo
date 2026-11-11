@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, Download, LogOut, DollarSign, ArrowRightLeft, KeyRound, Camera } from 'lucide-react';
+import { Search, Filter, Package, Bike, X, ShoppingCart, ShoppingBag, Handshake, ClipboardCheck, FileText, Wrench, Calendar, User, AlertTriangle, ShieldAlert, RefreshCw, Download, LogOut, DollarSign, ArrowRightLeft, KeyRound, Camera, RectangleHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
@@ -25,6 +25,7 @@ import RetiradaDialog from '@/components/estoque/RetiradaDialog';
 import TransferenciaEstoqueDialog from '@/components/estoque/TransferenciaEstoqueDialog';
 import AlterarPrecoDialog from '@/components/estoque/AlterarPrecoDialog';
 import TestRideDialog from '@/components/estoque/TestRideDialog';
+import PlacaDialog from '@/components/estoque/PlacaDialog';
 import BinDialog from '@/components/estoque/BinDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -179,6 +180,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [precoItem, setPrecoItem] = useState<EstoqueItem | null>(null);
   const [transferenciaItem, setTransferenciaItem] = useState<EstoqueItem | null>(null);
   const [testRideItem, setTestRideItem] = useState<EstoqueItem | null>(null);
+  const [placaItem, setPlacaItem] = useState<EstoqueItem | null>(null);
   const [binItem, setBinItem] = useState<EstoqueItem | null>(null);
   const [idsWithNfeVenda0km, setIdsWithNfeVenda0km] = useState<Set<string>>(new Set());
   const [idsWithNfeVendaSeminova, setIdsWithNfeVendaSeminova] = useState<Set<string>>(new Set());
@@ -461,6 +463,17 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
       });
     };
 
+    // Placa: só 0km test-ride (pode ser emplacada). Quem chama já garante que
+    // não há NF-e de venda emitida em produção.
+    const addPlacaOption = () => {
+      if (item.tipo !== '0km' || item.tipo_unidade !== 'test_ride') return;
+      options.push({
+        label: item.placa ? 'Placa ✓' : 'Placa',
+        icon: <RectangleHorizontal className="h-4 w-4" />,
+        action: () => setPlacaItem(item),
+      });
+    };
+
     // Vendedor: only show "Venda" if sold/reserved AND it's their sale
     if (isVendedor) {
       if (item.atendimento_venda_id && (item.status === 'vendido' || item.status === 'sinal') && isOwnSale) {
@@ -504,6 +517,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
             icon: <DollarSign className="h-4 w-4" />,
             action: () => setPrecoItem(item),
           });
+          addPlacaOption();
           options.push({
             label: 'Transferir',
             icon: <ArrowRightLeft className="h-4 w-4" />,
@@ -650,6 +664,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
           icon: <Bike className="h-4 w-4" />,
           action: () => setTestRideItem(item),
         });
+        addPlacaOption();
       }
       // BIN (liberação da montadora) — 0km e test-ride, a qualquer momento.
       options.push({
@@ -833,12 +848,21 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
 
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                             {item.tipo === '0km' ? (
-                              item.chassi && (
-                                <>
-                                  <span className="text-muted-foreground">Chassi</span>
-                                  <span className="font-medium text-foreground">{item.chassi}</span>
-                                </>
-                              )
+                              <>
+                                {item.chassi && (
+                                  <>
+                                    <span className="text-muted-foreground">Chassi</span>
+                                    <span className="font-medium text-foreground">{item.chassi}</span>
+                                  </>
+                                )}
+                                {/* Test-ride emplacada (estoque_motos_novas.placa) */}
+                                {item.placa && (
+                                  <>
+                                    <span className="text-muted-foreground">Placa</span>
+                                    <span className="font-medium text-foreground">{item.placa.replace(/-/g, '')}</span>
+                                  </>
+                                )}
+                              </>
                             ) : item.placa && (
                               <>
                                 <span className="text-muted-foreground">Placa</span>
@@ -1113,6 +1137,16 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         estoqueItem={binItem}
         onSuccess={() => {
           setBinItem(null);
+          fetchEstoque();
+        }}
+      />
+
+      <PlacaDialog
+        open={!!placaItem}
+        onOpenChange={(open) => { if (!open) setPlacaItem(null); }}
+        estoqueItem={placaItem}
+        onSuccess={() => {
+          setPlacaItem(null);
           fetchEstoque();
         }}
       />
