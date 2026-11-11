@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import ConsultaAutoria from '@/components/consulta/ConsultaAutoria';
 import { SITE_URL } from '@/lib/siteMoto';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, tipoExibicaoEstoque } from '@/lib/tipoAquisicao';
@@ -1172,6 +1173,7 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
             <p className="text-sm whitespace-pre-wrap">
               {consultaItem?.resultado_consulta || 'Nenhum resultado registrado.'}
             </p>
+            {consultaItem?.resultado_consulta && <ConsultaAutoria avaliacaoId={consultaItem.avaliacao_id} className="mt-3" />}
           </div>
         </DialogContent>
       </Dialog>

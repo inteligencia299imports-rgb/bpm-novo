@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { ConsultaAutoriaLinha } from './ConsultaAutoria';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -702,6 +703,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
                     ) : (
                       <div className="rounded-lg border bg-muted/30 p-4">
                         <p className="text-sm text-foreground whitespace-pre-wrap">{detalheTexto}</p>
+                        <ConsultaAutoriaLinha nome={(detalheRow as any).usuario_nome} em={detalheRow.created_at} className="mt-3" />
                       </div>
                     )}
 

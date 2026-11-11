@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ConsultaAutoria from '@/components/consulta/ConsultaAutoria';
 import { rotuloSexo } from '@/lib/sexo';
 import { getTipoAquisicaoLabel } from '@/lib/tipoAquisicao';
 import { Button } from '@/components/ui/button';
@@ -1138,13 +1139,14 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
 
           {/* Resultado da Consulta - ao lado da moto: Parte 2 = moto consignada; Parte 1 = moto(s) vendida(s) do estoque */}
           {(() => {
-            const consultas: { titulo: string | null; resultado: string }[] = isIntermParte2
-              ? (motoConsignada ? [{ titulo: null, resultado: String(motoConsignada.resultado_consulta || '').trim() }] : [])
+            const consultas: { titulo: string | null; resultado: string; avaliacaoId: string | null }[] = isIntermParte2
+              ? (motoConsignada ? [{ titulo: null, resultado: String(motoConsignada.resultado_consulta || '').trim(), avaliacaoId: motoConsignada.id ?? null }] : [])
               : motosInteresse.map((mi: any) => {
                   const est = mi.estoque_moto_id ? estoqueData[mi.estoque_moto_id] : null;
                   return {
                     titulo: motosInteresse.length > 1 ? [est?.marca || mi.marca, est?.modelo || mi.modelo].filter(Boolean).join(' ') : null,
                     resultado: String(est?.resultado_consulta || '').trim(),
+                    avaliacaoId: est?.avaliacao_id ?? null,
                   };
                 });
             if (consultas.length === 0) return null;
@@ -1168,7 +1170,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                       {idx > 0 && <Separator className="my-2" />}
                       {c.titulo && <p className="text-xs font-semibold text-muted-foreground uppercase">{c.titulo}</p>}
                       {c.resultado
-                        ? <p className="text-sm whitespace-pre-wrap break-words">{c.resultado}</p>
+                        ? <><p className="text-sm whitespace-pre-wrap break-words">{c.resultado}</p><ConsultaAutoria avaliacaoId={c.avaliacaoId} className="mt-2" /></>
                         : <p className="text-xs text-muted-foreground">Nenhuma consulta registrada</p>}
                     </div>
                   ))}
