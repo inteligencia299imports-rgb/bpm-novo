@@ -33,6 +33,8 @@ export interface DadosFornecedor {
   complemento: string | null;
   bairro: string | null;
   cidade: string | null;
+  /** Código IBGE do município (clientes_fornecedores_enderecos.codigo_municipio_ibge). */
+  codigo_municipio_ibge?: string | null;
   uf: string | null;
   /** RG (pessoa física), texto livre — só entra nas informações complementares em venda. */
   rg?: string | null;
@@ -872,6 +874,10 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     complemento_destinatario: fornecedor.complemento || undefined,
     bairro_destinatario: fornecedor.bairro || undefined,
     municipio_destinatario: fornecedor.cidade || undefined,
+    // Código IBGE junto do nome: sem ele a Focus resolve só pelo nome e recusa
+    // grafia diferente da oficial (achado 2026-11-11: "SANTA ISABEL DO PARA" x
+    // IBGE "Santa Izabel do Pará", 1506500).
+    codigo_municipio_destinatario: (fornecedor.codigo_municipio_ibge || '').replace(/D/g, '') || undefined,
     uf_destinatario: (fornecedor.uf || '').toUpperCase() || undefined,
     cep_destinatario: onlyDigits(fornecedor.cep) || undefined,
     pais_destinatario: 'Brasil',
