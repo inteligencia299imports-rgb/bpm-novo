@@ -39,16 +39,18 @@ interface Props {
   value: CidadeFilterValue;
   onChange: (v: CidadeFilterValue) => void;
   className?: string;
+  /** Classe extra de cada botão (ex.: largura fixa para alinhar com outro filtro). */
+  buttonClassName?: string;
 }
 
-const CidadeFilter: React.FC<Props> = ({ value, onChange, className }) => (
+const CidadeFilter: React.FC<Props> = ({ value, onChange, className, buttonClassName }) => (
   <div className={cn('flex flex-wrap items-center gap-1', className)}>
     {(['todos', 'Brasília', 'Florianópolis', 'Porto Alegre'] as const).map(c => (
       <Button
         key={c}
         size="sm"
         variant={value === c ? 'default' : 'outline'}
-        className={cn('rounded-full px-4 h-8 text-xs font-medium', value === c && 'shadow-sm')}
+        className={cn('rounded-full px-4 h-8 text-xs font-medium', buttonClassName, value === c && 'shadow-sm')}
         onClick={() => onChange(c)}
       >
         {c === 'todos' ? 'Todas Cidades' : c}

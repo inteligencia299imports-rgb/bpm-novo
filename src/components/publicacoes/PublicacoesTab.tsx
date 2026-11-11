@@ -35,6 +35,24 @@ const COLUNAS = [
   etapaCol('desativada'),
 ];
 
+type FiltroEstoque = 'todos' | 'estoque' | 'preparacao';
+// Mesmo filtro da aba Preparação: moto no estoque (sem estar em serviço) ou ainda em preparação.
+const FiltroEstoqueBotoes = ({ value, onChange, className }: { value: FiltroEstoque; onChange: (v: FiltroEstoque) => void; className?: string }) => (
+  <div className={cn('flex flex-wrap items-center gap-1', className)}>
+    {([['todos', 'Todos'], ['estoque', 'Estoque'], ['preparacao', 'Preparação']] as const).map(([v, label]) => (
+      <Button
+        key={v}
+        size="sm"
+        variant={value === v ? 'default' : 'outline'}
+        className={cn('rounded-full w-28 px-2 h-8 text-xs font-medium', value === v && 'shadow-sm')}
+        onClick={() => onChange(v)}
+      >
+        {label}
+      </Button>
+    ))}
+  </div>
+);
+
 const SITUACOES = [
   { value: 'preparacao', label: 'Em preparação' },
   { value: 'estoque', label: 'Em estoque' },
@@ -72,6 +90,7 @@ const PublicacoesTab: React.FC<Props> = ({ initialAvaliacaoId, onInitialHandled 
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
   const [filterTipo, setFilterTipo] = useState('todos');
   const [filterSituacao, setFilterSituacao] = useState('todos');
+  const [filterEstoque, setFilterEstoque] = useState<FiltroEstoque>('todos');
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [selected, setSelected] = useState<ItemPublicacao | null>(null);
@@ -148,6 +167,7 @@ const PublicacoesTab: React.FC<Props> = ({ initialAvaliacaoId, onInitialHandled 
         const tipo = String(av.tipo_aquisicao || '');
         if (filterTipo === 'propria' ? !['propria', 'repasse', 'convertida'].includes(tipo) : tipo !== filterTipo) return false;
       }
+      if (filterEstoque !== 'todos' && (filterEstoque === 'estoque') !== emEstoque(it.estoque)) return false;
       if (filterSituacao !== 'todos') {
         const st = it.estoque?.status;
         const sit = st === 'sinal' ? 'sinal' : emEstoque(it.estoque) ? 'estoque' : 'preparacao';
@@ -158,12 +178,12 @@ const PublicacoesTab: React.FC<Props> = ({ initialAvaliacaoId, onInitialHandled 
       if (dateTo && d > new Date(new Date(dateTo).setHours(23, 59, 59, 999))) return false;
       return true;
     });
-  }, [items, search, filterCidade, filterTipo, filterSituacao, dateFrom, dateTo]);
+  }, [items, search, filterCidade, filterTipo, filterSituacao, filterEstoque, dateFrom, dateTo]);
 
   if (selected) return <PublicacaoDetalhe item={selected} onClose={() => { setSelected(null); fetchItems(); }} />;
 
-  const temFiltro = filterCidade !== 'todos' || filterTipo !== 'todos' || filterSituacao !== 'todos' || !!dateFrom || !!dateTo;
-  const limpar = () => { setFilterCidade('todos'); setFilterTipo('todos'); setFilterSituacao('todos'); setDateFrom(undefined); setDateTo(undefined); };
+  const temFiltro = filterCidade !== 'todos' || filterTipo !== 'todos' || filterSituacao !== 'todos' || filterEstoque !== 'todos' || !!dateFrom || !!dateTo;
+  const limpar = () => { setFilterCidade('todos'); setFilterTipo('todos'); setFilterSituacao('todos'); setFilterEstoque('todos'); setDateFrom(undefined); setDateTo(undefined); };
 
   return (
     <div className="space-y-5">
@@ -187,13 +207,17 @@ const PublicacoesTab: React.FC<Props> = ({ initialAvaliacaoId, onInitialHandled 
         </Button>
       </div>
 
-      <CidadeFilter value={filterCidade} onChange={setFilterCidade} className="hidden md:flex" />
+      <div className="hidden md:flex flex-wrap items-center gap-3">
+        <CidadeFilter value={filterCidade} onChange={setFilterCidade} buttonClassName="w-28 px-2" />
+        <FiltroEstoqueBotoes value={filterEstoque} onChange={setFilterEstoque} className="ml-auto" />
+      </div>
 
       {showFilters && (
         <Card className="animate-fade-in border-border shadow-soft">
           <CardContent className="pt-4 space-y-3">
             <div className="block md:hidden">
-              <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+              <CidadeFilter value={filterCidade} onChange={setFilterCidade} buttonClassName="w-28 px-2" />
+              <FiltroEstoqueBotoes value={filterEstoque} onChange={setFilterEstoque} className="mt-2" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <Select value={filterTipo} onValueChange={setFilterTipo}>
