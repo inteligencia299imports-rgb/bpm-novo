@@ -582,7 +582,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         onOpenChange={setAtpvOpen}
         atendimento={item}
         estoqueMoto={moto0km}
-        onDone={() => onStatusChanged?.(item.id, 'concluido', processoProps?.statusField || statusField)}
+        // Desde 2026-11-11 o ATPV-e não encerra mais o pós-venda da 0km (a última
+        // etapa é EMPLACAMENTO/TRANSFERÊNCIA): volta para o checklist.
+        onDone={() => { setAtpvOpen(false); setProcessoOpen(true); }}
       />
     );
   }
@@ -1334,6 +1336,8 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
         {...(processoProps || {})}
         onStatusChanged={(newStatus) => {
           onStatusChanged?.(item.id, newStatus, processoProps?.statusField || statusField);
+          // 0km concluída (EMPLACAMENTO/TRANSFERÊNCIA): sai do pós-venda.
+          if (newStatus === 'concluido' && moto0km && !processoProps) onClose();
         }}
         onContratoSaved={refreshConsignada}
         onEmitirNfe={() => { setProcessoOpen(false); setNfeVendaOpen(true); }}
