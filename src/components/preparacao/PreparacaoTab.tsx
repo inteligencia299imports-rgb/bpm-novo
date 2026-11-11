@@ -142,20 +142,20 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
               key={c}
               size="sm"
               variant={filterCidade === c ? 'default' : 'outline'}
-              className={cn('rounded-full px-4 h-8 text-xs font-medium', filterCidade === c && 'shadow-sm')}
+              className={cn('rounded-full w-28 px-2 h-8 text-xs font-medium', filterCidade === c && 'shadow-sm')}
               onClick={() => setFilterCidade(c)}
             >
               {c === 'todos' ? 'Todas Cidades' : c}
             </Button>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1 md:ml-auto">
           {([['todos', 'Todos'], ['estoque', 'Estoque'], ['preparacao', 'Preparação']] as const).map(([v, label]) => (
             <Button
               key={v}
               size="sm"
               variant={filterEstoque === v ? 'default' : 'outline'}
-              className={cn('rounded-full px-4 h-8 text-xs font-medium', filterEstoque === v && 'shadow-sm')}
+              className={cn('rounded-full w-28 px-2 h-8 text-xs font-medium', filterEstoque === v && 'shadow-sm')}
               onClick={() => setFilterEstoque(v)}
             >
               {label}
