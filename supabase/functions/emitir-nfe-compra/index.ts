@@ -1170,6 +1170,21 @@ async function registrarPosAutorizacao(
   // Guard duro: só gera compromisso DEPOIS da NF-e autorizada. Vale para toda operação.
   if (!nfeRow?.id || nfeRow.status !== 'processada' || !nfeRow.empresa_id) return;
 
+  // Compra da TRANSFORMAÇÃO de consignação em compra (devolução simbólica + compra na
+  // própria empresa): a moto continua consignada em tudo, e o financeiro é só a
+  // INTERMEDIAÇÃO (compromisso 'consignante' de gerar-compromissos-proposta). Esta NF não
+  // gera "Compra de Motos Usadas" — gerava em dobro (achado TVK7J07 / CPR-D-0486, 11/11).
+  // Compra pela transferência de moto consignada (transferencia_destino_loja_id) é compra
+  // comum de outra empresa e segue o fluxo normal.
+  if (operacao === 'compra' && porAvaliacao && !nfeRow.transferencia_destino_loja_id) {
+    const [{ data: avTipo }, { data: devolucao }] = await Promise.all([
+      admin.from('avaliacoes').select('tipo_aquisicao').eq('id', entityId).maybeSingle(),
+      admin.from('nfe_entradas').select('id').eq('avaliacao_id', entityId)
+        .eq('operacao', 'devolucao_consignacao').eq('status', 'processada').limit(1),
+    ]);
+    if ((avTipo as any)?.tipo_aquisicao === 'consignada' && (devolucao ?? []).length > 0) return;
+  }
+
   const venc = new Date(nfeRow.data_emissao || dataEmissao || Date.now());
   venc.setDate(venc.getDate() + DIAS_VENCIMENTO);
   const vencStr = venc.toISOString().slice(0, 10);
