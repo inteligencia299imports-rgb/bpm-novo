@@ -34,6 +34,8 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterCidade, setFilterCidade] = useState<'todos' | 'Brasília' | 'Florianópolis' | 'Porto Alegre'>('todos');
+  // Moto já liberada para o estoque (tem registro em estoque_motos) ou ainda só na preparação.
+  const [filterEstoque, setFilterEstoque] = useState<'todos' | 'estoque' | 'preparacao'>('todos');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
@@ -112,9 +114,9 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
   }, [search]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
-  const filteredItems = filterCidade === 'todos'
-    ? items
-    : items.filter((a: any) => CIDADE_LOJAS[filterCidade].includes(a.atendimento?.loja));
+  const filteredItems = items
+    .filter((a: any) => filterCidade === 'todos' || CIDADE_LOJAS[filterCidade].includes(a.atendimento?.loja))
+    .filter((a: any) => filterEstoque === 'todos' || (filterEstoque === 'estoque') === !!a._estoqueInfo);
   const getColumnItems = (status: PreparacaoStatus) => filteredItems.filter((a: any) => (a.preparacao_status || 'em_aberto') === status);
 
   return (
@@ -144,6 +146,19 @@ const PreparacaoTab = ({ initialAvaliacaoId, onInitialHandled }: PreparacaoTabPr
               onClick={() => setFilterCidade(c)}
             >
               {c === 'todos' ? 'Todas Cidades' : c}
+            </Button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          {([['todos', 'Todos'], ['estoque', 'Estoque'], ['preparacao', 'Preparação']] as const).map(([v, label]) => (
+            <Button
+              key={v}
+              size="sm"
+              variant={filterEstoque === v ? 'default' : 'outline'}
+              className={cn('rounded-full px-4 h-8 text-xs font-medium', filterEstoque === v && 'shadow-sm')}
+              onClick={() => setFilterEstoque(v)}
+            >
+              {label}
             </Button>
           ))}
         </div>
