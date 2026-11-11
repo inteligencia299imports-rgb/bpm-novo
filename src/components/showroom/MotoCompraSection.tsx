@@ -155,6 +155,8 @@ const MotoCompraSection: React.FC<Props> = ({
     // Ducati (só 0km): MODELO - COR - CHASSI (chassi completo).
     if (isDucati) {
       if (item.chassi) parts.push(item.chassi);
+      // Test-ride emplacada: placa também ajuda a achar a moto.
+      if (item.placa) parts.push(item.placa.replace(/-/g, ''));
     } else if (item.placa) {
       // Motos 0km costumam nao ter placa ainda; sem um identificador distinto,
       // varias unidades do mesmo modelo/cor ficam indistinguiveis na lista.

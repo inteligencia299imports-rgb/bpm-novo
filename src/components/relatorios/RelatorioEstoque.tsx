@@ -291,8 +291,8 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       cor: m.cor || '', fabMod: [m.ano_fabricacao, m.ano_modelo].filter(Boolean).join('/'),
       // 0km e test-ride costumam ainda não ter placa (moto não emplacada) —
       // mostra o chassi nesses casos, que é o identificador que já existe
-      // desde a entrada no estoque.
-      placa: (m.tipo === '0km' ? m.chassi : m.placa) || '', entrada: entrada ? entrada.toLocaleDateString('pt-BR') : '',
+      // desde a entrada no estoque. Test-ride emplacada mostra a placa.
+      placa: (m.tipo === '0km' ? (m.placa || m.chassi) : m.placa) || '', entrada: entrada ? entrada.toLocaleDateString('pt-BR') : '',
       situacao: statusLabel(m.status), vencimento: formatarVencimento(quitacoes.get(m.id)), quitacao: formatarQuitacao(quitacoes.get(m.id)), bin: binLabel(m), preco, compra, margemAbs, margemPct,
     };
   });
@@ -569,7 +569,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                       <TableCell className="text-xs">{m.modelo || '—'}</TableCell>
                       <TableCell className="text-xs">{m.cor || '—'}</TableCell>
                       <TableCell className="text-xs">{anoFM || '—'}</TableCell>
-                      <TableCell className="text-xs font-mono">{(m.tipo === '0km' ? m.chassi : m.placa) || '—'}</TableCell>
+                      <TableCell className="text-xs font-mono">{(m.tipo === '0km' ? (m.placa || m.chassi) : m.placa) || '—'}</TableCell>
                       <TableCell className="text-xs">{entrada ? entrada.toLocaleDateString('pt-BR') : '—'}</TableCell>
                       <TableCell className="text-xs">
                         {(() => {
