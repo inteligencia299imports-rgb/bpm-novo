@@ -21,6 +21,7 @@ import { TIPOS_PROPRIA } from '@/lib/tipoAquisicao';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 const NF_VENDA = 'NF-E DE VENDA';
 const NF_TROCA = 'NF-E DE ENTRADA (TROCA)';
@@ -42,6 +43,14 @@ const SAIDA_RENAVE = 'SAÍDA RENAVE';
 // abrindo o mesmo ConverterConsignacaoDialog (já mostra os 2 passos).
 const DEVOLUCAO_CONSIGNACAO = 'DEVOLUÇÃO SIMBÓLICA';
 const NF_COMPRA_CONSIGNACAO = 'NF-E DE COMPRA';
+// Pós-venda de moto 0km (pedido do usuário, 2026-11-11): só NF de troca (se
+// houver), NF de venda, liberação da BIN (o mesmo check do Estoque,
+// estoque_motos_novas.bin_liberada), ATPV-e e EMPLACAMENTO/TRANSFERÊNCIA —
+// esta última encerra o pós-venda e só pode ser marcada com todas as NF-e e o
+// ATPV-e emitidos.
+const BIN_0KM = 'LIBERAÇÃO DA BIN';
+const EMPLACAMENTO_0KM = 'EMPLACAMENTO/TRANSFERÊNCIA';
+const etapas0km = (temNfTroca: boolean) => [...(temNfTroca ? [NF_TROCA] : []), NF_VENDA, BIN_0KM, ATPV_E, EMPLACAMENTO_0KM];
 
 const DEFAULT_ETAPAS = [
   'CHECK-LIST',
@@ -104,6 +113,7 @@ const ProcessoDialog: React.FC<Props> = ({
   onNavigateToPosCompra,
   vendaBloqueadaAprovacao,
 }) => {
+  const { user, userName } = useAuth();
   const isPosVenda = !customEtapas;
   const [etapas, setEtapas] = useState<EtapaData[]>(
     (customEtapas || DEFAULT_ETAPAS).map(e => ({ etapa: e, concluida: false, data_conclusao: null }))
@@ -176,6 +186,7 @@ const ProcessoDialog: React.FC<Props> = ({
 
   const etapaNames = useMemo(() => {
     if (customEtapas) return customEtapas;
+    if (eh0km) return etapas0km(interesse === 'trocar' && !!trocaAvaliacaoId && !trocaRepasse);
     const names = [...DEFAULT_ETAPAS];
     // Moto 0km: o ATPV-e (RENAVE) entra no lugar da transferência, antes do
     // PENDENTE (BOLETO).
@@ -260,7 +271,7 @@ const ProcessoDialog: React.FC<Props> = ({
         if ((mi as any)?.estoque_moto_id) {
           const eh0km = (mi as any).estoque_tipo === '0km';
           const cols = eh0km
-            ? 'id, status, renave_id_estoque, renave_estado, renave_atpv_numero, renave_atpv_url, renave_ultimo_erro, renave_atualizado_em'
+            ? 'id, status, bin_liberada, renave_id_estoque, renave_estado, renave_atpv_numero, renave_atpv_url, renave_ultimo_erro, renave_atualizado_em'
             : 'id, status, avaliacao:avaliacao_id(id, tipo_aquisicao, renave_id_estoque, renave_saida_em, renave_saida_ultimo_erro, renave_saida_atpv_numero)';
           const { data: em } = await (supabase as any)
             .from(eh0km ? 'estoque_motos_novas' : 'estoque_motos')
@@ -305,7 +316,9 @@ const ProcessoDialog: React.FC<Props> = ({
           trocaRest = candidatas.filter((a) => a.id !== trocaAvId && !feita(a.id)).length;
         }
 
-        if (isPosVenda) {
+        if (isPosVenda && estMoto?.fonte === '0km') {
+          names.splice(0, names.length, ...etapas0km(inter === 'trocar' && !!trocaAvId && !trocaEhRepasse));
+        } else if (isPosVenda) {
           if (estMoto?.fonte === '0km') {
             // Moto 0km: ATPV-e (RENAVE) no lugar da transferência, antes do
             // PENDENTE (BOLETO).
@@ -401,20 +414,63 @@ const ProcessoDialog: React.FC<Props> = ({
   // A saída/ATPV-e no RENAVE exige a NF-e de venda autorizada em produção —
   // a opção fica travada (sem clicar, sem tooltip) até lá.
   const nfVendaProducao = nfeVenda.emitida && nfeVenda.nfe?.ambiente === 'producao';
+  const binLiberada = !!(estoqueMoto as any)?.bin_liberada;
+  const [salvandoBin, setSalvandoBin] = useState(false);
+  // EMPLACAMENTO/TRANSFERÊNCIA (0km): todas as NF-e (troca e venda) e o ATPV-e emitidos.
+  const temNfTrocaEtapa = etapaNames.includes(NF_TROCA);
+  const pendenciasEmplacamento: string[] = [];
+  if (temNfTrocaEtapa && !(nfeTroca.emitida && nfeTroca.nfe?.ambiente === 'producao' && trocaRestantes === 0)) pendenciasEmplacamento.push('NF-e de entrada (troca)');
+  if (!nfVendaProducao) pendenciasEmplacamento.push('NF-e de venda em produção');
+  if (!atpvEmitido) pendenciasEmplacamento.push('ATPV-e');
+  const podeEmplacar = pendenciasEmplacamento.length === 0;
+
+  // LIBERAÇÃO DA BIN: grava direto no estoque (mesmo check do menu BIN do Estoque).
+  const alternarBin = async (liberada: boolean) => {
+    const id = (estoqueMoto as any)?.id;
+    if (!id || salvandoBin) return;
+    setSalvandoBin(true);
+    try {
+      const { error } = await supabase.from('estoque_motos_novas' as any).update({ bin_liberada: liberada }).eq('id', id);
+      if (error) throw error;
+      await supabase.from('status_history').insert({
+        entity_id: id,
+        entity_type: 'estoque',
+        status: liberada ? 'BIN LIBERADA' : 'BIN PENDENTE',
+        changed_by: user?.id || null,
+        changed_by_name: userName || null,
+      });
+      setEstoqueMoto((prev: any) => (prev ? { ...prev, bin_liberada: liberada } : prev));
+      setEtapas(prev => prev.map(e => e.etapa === BIN_0KM ? { ...e, concluida: liberada, data_conclusao: liberada ? new Date().toISOString() : null } : e));
+      toast.success(liberada ? 'BIN marcada como liberada' : 'BIN marcada como pendente');
+    } catch (err: any) {
+      toast.error('Erro ao salvar a BIN: ' + (err?.message || err));
+    } finally {
+      setSalvandoBin(false);
+    }
+  };
 
   const nfEmitidaDe = (etapa: string) =>
     etapa === NF_VENDA ? nfeVenda.emitida
     : etapa === NF_TROCA ? nfeTroca.emitida && trocaRestantes === 0
     : (etapa === ATPV_E && is0km) ? atpvEmitido
     : etapa === SAIDA_RENAVE ? saidaRenaveFeita
+    : (etapa === BIN_0KM && is0km) ? binLiberada
     : etapa === DEVOLUCAO_CONSIGNACAO ? devolucaoConvProducaoOk
     : etapa === NF_COMPRA_CONSIGNACAO ? converterConcluido
     : false;
   // Etapas "automáticas" (sem checkbox, marcadas por estado externo).
   const isNfEtapa = (etapa: string) =>
-    etapa === NF_VENDA || etapa === NF_TROCA || (etapa === ATPV_E && is0km) || etapa === SAIDA_RENAVE || etapa === DEVOLUCAO_CONSIGNACAO || etapa === NF_COMPRA_CONSIGNACAO;
+    etapa === NF_VENDA || etapa === NF_TROCA || (etapa === ATPV_E && is0km) || (etapa === BIN_0KM && is0km) || etapa === SAIDA_RENAVE || etapa === DEVOLUCAO_CONSIGNACAO || etapa === NF_COMPRA_CONSIGNACAO;
+
+  const bloqueiaEmplacamento = (etapa: string) => {
+    if (etapa !== EMPLACAMENTO_0KM || podeEmplacar) return false;
+    toast.error(`Antes do emplacamento/transferência: ${pendenciasEmplacamento.join(', ')}.`);
+    return true;
+  };
 
   const toggleEtapa = (etapa: string, checked: boolean) => {
+    if (etapa === BIN_0KM && is0km) { alternarBin(checked); return; }
+    if (checked && bloqueiaEmplacamento(etapa)) return;
     if (isNfEtapa(etapa)) return; // estado dirigido pela emissão da NF-e
     // Pedido do usuário, 2026-09-30: achados 4 casos com TRANSFERÊNCIA
     // FINALIZADA marcada sem NF-e de venda emitida — trava aqui em vez de só
@@ -434,6 +490,7 @@ const ProcessoDialog: React.FC<Props> = ({
 
   const setDate = (etapa: string, date: Date | undefined) => {
     if (!date) return;
+    if (bloqueiaEmplacamento(etapa)) return;
     setEtapas(prev =>
       prev.map(e => {
         if (e.etapa !== etapa) return e;
@@ -445,6 +502,7 @@ const ProcessoDialog: React.FC<Props> = ({
   };
 
   const setTime = (etapa: string, hours: number, minutes: number) => {
+    if (bloqueiaEmplacamento(etapa)) return;
     setEtapas(prev =>
       prev.map(e => {
         if (e.etapa !== etapa) return e;
@@ -487,7 +545,9 @@ const ProcessoDialog: React.FC<Props> = ({
                     ? ((estoqueMoto as any)?.renave_atualizado_em ?? null)
                     : e.etapa === SAIDA_RENAVE
                       ? (saidaRenaveAv?.renave_saida_em ?? null)
-                      : e.data_conclusao,
+                      : e.etapa === BIN_0KM
+                        ? (binLiberada ? (e.data_conclusao || new Date().toISOString()) : null)
+                        : e.data_conclusao,
       }));
 
       const { error: persistError } = await persistChecklistRows({
@@ -539,10 +599,10 @@ const ProcessoDialog: React.FC<Props> = ({
         }
       } else {
         // Default pos-venda behavior — a última etapa finaliza o processo:
-        // 0km encerra no ATPV-e (emitido no RENAVE); seminova na TRANSFERÊNCIA
+        // 0km encerra no EMPLACAMENTO/TRANSFERÊNCIA (após NF-e + ATPV-e); seminova na TRANSFERÊNCIA
         // FINALIZADA (checkbox manual).
         const finalConcluido = is0km
-          ? atpvEmitido
+          ? (podeEmplacar && !!etapas.find(e => e.etapa === EMPLACAMENTO_0KM)?.concluida)
           : !!etapas.find(e => e.etapa === TRANSF_FINALIZADA)?.concluida;
         const docDespachante = etapas.find(e => e.etapa === 'DOCUMENTAÇÃO COM DESPACHANTE')?.concluida;
 
@@ -642,7 +702,10 @@ const ProcessoDialog: React.FC<Props> = ({
               const isDevolucaoConsignacao = e.etapa === DEVOLUCAO_CONSIGNACAO;
               const isNfCompraConsignacao = e.etapa === NF_COMPRA_CONSIGNACAO;
               const isSaidaRenave = e.etapa === SAIDA_RENAVE;
-              const isNf = isNfVenda || isNfTroca || isAtpvAuto || isSaidaRenave || isDevolucaoConsignacao || isNfCompraConsignacao;
+              const isBin = e.etapa === BIN_0KM && is0km;
+              const isEmplacamento = e.etapa === EMPLACAMENTO_0KM && is0km;
+              const emplacamentoTravado = isEmplacamento && !podeEmplacar && !e.concluida;
+              const isNf = isNfVenda || isNfTroca || isAtpvAuto || isBin || isSaidaRenave || isDevolucaoConsignacao || isNfCompraConsignacao;
               const nfeObj = isNfVenda ? nfeVenda : isNfTroca ? nfeTroca
                 : isDevolucaoConsignacao ? nfeDevolucaoConv : isNfCompraConsignacao ? nfeCompraConv : null;
               const nfeObjDevolvida = isNfVenda ? nfeVendaDevolvida : isNfTroca ? nfeTrocaDevolvida : false;
@@ -659,8 +722,11 @@ const ProcessoDialog: React.FC<Props> = ({
                 pendenciasEtapa.push('Aprovação da venda pelo gestor');
               }
               if (isAtpvAuto && !atpvEmitido && !nfVendaProducao) pendenciasEtapa.push('NF-e de venda em produção');
+              if (emplacamentoTravado) pendenciasEtapa.push(...pendenciasEmplacamento);
               const nfMarcada = isAtpvAuto
                 ? atpvEmitido
+                : isBin
+                  ? binLiberada
                 : isSaidaRenave
                   ? saidaRenaveFeita
                 : isDevolucaoConsignacao
@@ -681,7 +747,7 @@ const ProcessoDialog: React.FC<Props> = ({
                   ) : (
                     <Checkbox
                       checked={isNf ? nfMarcada : e.concluida}
-                      disabled={isNf || dataBloqueada}
+                      disabled={(isNf && !isBin) || (isBin && salvandoBin) || emplacamentoTravado || dataBloqueada}
                       onCheckedChange={(checked) => toggleEtapa(e.etapa, !!checked)}
                     />
                   )}
@@ -974,6 +1040,12 @@ const ProcessoDialog: React.FC<Props> = ({
                         <ArrowLeftRight className="h-4 w-4" /> Emitir Compra
                       </Button>
                     )
+                  ) : isBin ? (
+                    <span className={cn('text-sm font-medium', binLiberada ? 'text-emerald-600' : 'text-muted-foreground')}>
+                      {binLiberada ? 'Liberada' : 'Pendente'}
+                    </span>
+                  ) : emplacamentoTravado ? (
+                    <span className="text-sm text-muted-foreground text-right">Aguardando NF-e e ATPV-e</span>
                   ) : isNf ? (
                     <span className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
                       {/* Venda e Entrada (troca): abre a página de emissão da NF-e
