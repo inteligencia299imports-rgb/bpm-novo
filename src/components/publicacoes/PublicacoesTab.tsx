@@ -22,6 +22,8 @@ import PublicacaoDetalhe, { type ItemPublicacao } from './PublicacaoDetalhe';
 
 // Status do estoque em que a moto sai do kanban (já não está à venda).
 const FORA_DO_KANBAN = new Set(['vendido', 'retirada']);
+// Moto que voltou do estoque para serviço (status 'servico') está na preparação de novo.
+const emEstoque = (est: { status: string } | null) => !!est && est.status !== 'servico';
 
 // Colunas do kanban: Em Aberto, Fotos Tiradas, Sinal (status do estoque; cor do Showroom), Publicadas e Desativadas.
 const etapaCol = (v: EtapaPublicacao) => ETAPAS_PUBLICACAO.find((e) => e.value === v)!;
@@ -148,7 +150,7 @@ const PublicacoesTab: React.FC<Props> = ({ initialAvaliacaoId, onInitialHandled 
       }
       if (filterSituacao !== 'todos') {
         const st = it.estoque?.status;
-        const sit = st === 'sinal' ? 'sinal' : it.estoque ? 'estoque' : 'preparacao';
+        const sit = st === 'sinal' ? 'sinal' : emEstoque(it.estoque) ? 'estoque' : 'preparacao';
         if (sit !== filterSituacao) return false;
       }
       const d = new Date(it.dataAquisicao);
@@ -252,7 +254,7 @@ const PublicacoesTab: React.FC<Props> = ({ initialAvaliacaoId, onInitialHandled 
                           date={it.dataAquisicao}
                           dateLabel={it.estoque ? 'Entrada' : 'Aquisição'}
                           statusColor={col.hex}
-                          titleIcon={it.estoque
+                          titleIcon={emEstoque(it.estoque)
                             ? <span title="Em estoque" className="shrink-0"><Package className="h-4 w-4 text-green-600" /></span>
                             : <span title="Em preparação" className="shrink-0"><Wrench className="h-4 w-4 text-orange-500" /></span>}
                           extraBadge={av.tipo_aquisicao ? { label: getTipoAquisicaoLabel(av.tipo_aquisicao) || '', className: getTipoAquisicaoBadgeClass(av.tipo_aquisicao) } : undefined}
