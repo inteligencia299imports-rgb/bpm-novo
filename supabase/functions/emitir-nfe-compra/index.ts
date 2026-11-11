@@ -3422,6 +3422,7 @@ Deno.serve(async (req) => {
       complemento: end.complemento ?? null,
       bairro: end.bairro ?? null,
       cidade: end.cidade ?? null,
+      codigo_municipio_ibge: (end as any).codigo_municipio_ibge ?? null,
       uf: end.uf ?? null,
       rg: fornecedor.rg ?? null,
     },
