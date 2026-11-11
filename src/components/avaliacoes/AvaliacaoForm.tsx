@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ConsultaAutoria from '@/components/consulta/ConsultaAutoria';
 import { rotuloSexo } from '@/lib/sexo';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada, empresaConsignaMoto } from '@/lib/tipoAquisicao';
 import { useAuth } from '@/contexts/AuthContext';
@@ -2242,6 +2243,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
           <div className="space-y-3">
             <div className="rounded-lg border bg-muted/30 p-4">
               <p className="text-sm whitespace-pre-wrap">{resultadoConsulta || 'Nenhum resultado registrado.'}</p>
+              {resultadoConsulta && <ConsultaAutoria avaliacaoId={avaliacaoId} className="mt-3" />}
             </div>
             {!travado && (
               <>

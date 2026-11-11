@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import ConsultaAutoria from '@/components/consulta/ConsultaAutoria';
 import { rotuloSexo } from '@/lib/sexo';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
@@ -1832,6 +1833,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           <div className="space-y-3">
             <div className="rounded-lg border bg-muted/30 p-4">
               <p className="text-sm whitespace-pre-wrap">{showResultadoConsulta?.texto}</p>
+              <ConsultaAutoria avaliacaoId={showResultadoConsulta?.motoId} className="mt-3" />
             </div>
             <Separator className="mt-1" />
             <Button

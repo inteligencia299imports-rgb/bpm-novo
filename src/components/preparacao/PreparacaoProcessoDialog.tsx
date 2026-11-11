@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ConsultaAutoria from '@/components/consulta/ConsultaAutoria';
 import { isTipoPropria, isTipoConsignada, getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass } from '@/lib/tipoAquisicao';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -1266,6 +1267,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
             <p className="text-sm whitespace-pre-wrap">
               {avaliacaoData?.moto?.resultado_consulta || 'Nenhum resultado registrado.'}
             </p>
+            {avaliacaoData?.moto?.resultado_consulta && <ConsultaAutoria avaliacaoId={avaliacaoId} className="mt-3" />}
           </div>
         </DialogContent>
       </Dialog>
