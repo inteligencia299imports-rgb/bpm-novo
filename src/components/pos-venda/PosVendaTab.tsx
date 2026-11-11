@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Search, X, ShoppingBag, Filter } from 'lucide-react';
 import { POS_VENDA_COLUMNS } from '@/types/crm';
 import type { PosVendaStatus } from '@/types/crm';
@@ -37,6 +38,8 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
   const [search, setSearch] = useState('');
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const [filterCidade, setFilterCidade] = useState<CidadeFilterValue>('todos');
+  // Tipo da moto vendida: Novas = 0km (test-ride conta como seminova); Seminovas = o resto.
+  const [filterTipoMoto, setFilterTipoMoto] = useState<'todas' | 'seminovas' | 'novas'>('todas');
   const [showFilters, setShowFilters] = useState(false);
 
   useAtendimentoUrlSync('pos_venda', selectedItem?.id);
@@ -147,10 +150,10 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
         // Venda de moto de repasse não tem NF-e (2026-10-15): concluída já encerra.
         const _temNfeProducao = est?.tipo_aquisicao === 'repasse' || !atendimentosComDevolucaoVenda.has(a.id)
           && (etapaNfConcluidaSet.has(a.id) || (nfeRowsPorAtendimento[a.id] || []).some((n: any) => n.status === 'processada' && n.ambiente === 'producao'));
-        if (est) return { ...a, _estoqueMoto: est, _nfeTag, _temNfeProducao };
+        if (est) return { ...a, _estoqueMoto: est, _nfeTag, _temNfeProducao, _motoNova: est.fonte === '0km' && est.tipo_unidade !== 'test_ride' };
         // Fallback: use first moto_interesse info
         const mi = a.motos_interesse?.[0];
-        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeTag, _temNfeProducao };
+        return { ...a, _estoqueMoto: mi ? { marca: mi.marca, modelo: mi.modelo, placa: null } : null, _nfeTag, _temNfeProducao, _motoNova: mi?.estoque_tipo === '0km' };
       });
 
     if (search.trim()) {
@@ -184,6 +187,7 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
   };
   const getColumnItems = (status: PosVendaStatus) => items.filter((a: any) => {
     if (columnOf(a) !== status) return false;
+    if (filterTipoMoto !== 'todas' && (filterTipoMoto === 'novas') !== !!a._motoNova) return false;
     // Concluída com NF-e de venda já emitida em produção: processo realmente
     // encerrado, sai do quadro. Sem NF-e vinculada (ex.: venda importada de
     // outro sistema), continua visível/acessível.
@@ -215,7 +219,20 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
         </Button>
       </div>
       <FiltersPanel show={showFilters}>
-        <CidadeFilter value={filterCidade} onChange={setFilterCidade} />
+        <CidadeFilter value={filterCidade} onChange={setFilterCidade} buttonClassName="w-28 px-2" />
+        <div className="flex flex-wrap items-center gap-1 md:ml-auto">
+          {([['todas', 'Todas'], ['seminovas', 'Seminovas'], ['novas', 'Novas']] as const).map(([v, label]) => (
+            <Button
+              key={v}
+              size="sm"
+              variant={filterTipoMoto === v ? 'default' : 'outline'}
+              className={cn('rounded-full w-28 px-2 h-8 text-xs font-medium', filterTipoMoto === v && 'shadow-sm')}
+              onClick={() => setFilterTipoMoto(v)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
       </FiltersPanel>
 
       {loading ? (
