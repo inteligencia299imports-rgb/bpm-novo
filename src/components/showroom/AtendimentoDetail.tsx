@@ -1281,9 +1281,6 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       temAcessorios={(moto as any).tem_acessorios}
                       acessoriosDescricao={(moto as any).acessorios_descricao}
                     />
-                    {/* Histórico da Moto (km de O.S./avaliações, vendas e revisões previstas) — DB 299. */}
-                    <HistoricoVeiculoMoto avaliacaoId={moto.id} atendimentoAtualId={atendimento.id} />
-                    <Separator className="mt-auto" />
                     <div className="flex gap-2 flex-wrap">
                       <Button size="sm" variant="outline" className={`flex-1 gap-1.5 ${(photoCountMap[moto.id] || 0) > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setPhotoMotoId(moto.id)}>
                         <Camera className="h-4 w-4" /> {(photoCountMap[moto.id] || 0) > 0 ? `Fotos (${photoCountMap[moto.id]}) ✓` : 'Fotos'}
@@ -1446,6 +1443,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                         }}
                       />
                     </div>
+                    {/* Histórico da Moto (km de O.S./avaliações, vendas e revisões previstas) — DB 299, abaixo dos documentos. */}
+                    <HistoricoVeiculoMoto avaliacaoId={moto.id} atendimentoAtualId={atendimento.id} />
                   </div>
                 ))}
               </CardContent>

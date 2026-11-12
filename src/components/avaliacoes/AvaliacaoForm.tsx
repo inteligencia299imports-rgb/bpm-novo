@@ -1557,9 +1557,6 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 temAcessorios={moto?.tem_acessorios}
                 acessoriosDescricao={moto?.acessorios_descricao}
               />
-              {/* Histórico da Moto (DB 299) — mesmo trecho do card do atendimento. */}
-              <HistoricoVeiculoMoto avaliacaoId={avaliacaoId} atendimentoAtualId={avaliacao?.atendimento_id ?? undefined} />
-              <Separator className="mt-auto" />
               <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" className={`flex-1 gap-1.5 ${fotos.length > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setShowPhotosDialog(true)}>
                   <Camera className="h-4 w-4" /> {fotos.length > 0 ? `Fotos (${fotos.length}) ✓` : 'Fotos'}
@@ -1671,6 +1668,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   }}
                 />
               </div>
+              {/* Histórico da Moto (DB 299) — mesmo trecho do card do atendimento, abaixo dos documentos. */}
+              <HistoricoVeiculoMoto avaliacaoId={avaliacaoId} atendimentoAtualId={avaliacao?.atendimento_id ?? undefined} />
             </CardContent>
           </Card>
 
