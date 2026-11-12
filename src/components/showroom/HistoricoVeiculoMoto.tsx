@@ -9,7 +9,8 @@ import { supabase } from '@/lib/supabase';
 // gatilhos no DB 299 (veiculos / veiculo_historico / veiculo_revisoes): km de cada O.S. da oficina e
 // de cada avaliação do BPM, vendas 0km/seminova e as revisões previstas na finalização da O.S.
 // A moto é achada pela própria avaliação (veiculo_historico tipo 'avaliacao', origem_id = avaliação).
-// No card: revisões previstas + "+ Ver mais"; o pop-up traz a tabela Data | Nº OS | Situação | Cliente | Km.
+// No card: revisões previstas + "+ Ver mais"; o pop-up traz a tabela Data | Nº | Situação | Cliente | Km.
+// Nº (em azul): número da O.S. (passar o mouse mostra o relato) ou, em avaliação/venda, o compromisso financeiro.
 // - Avaliação/venda: clicar na situação abre o atendimento do BPM numa nova guia (menos o atual).
 // - O.S. (ofc): sem link; passar o mouse no número mostra o relato do cliente.
 
@@ -72,6 +73,8 @@ export function HistoricoVeiculoMoto({ avaliacaoId, atendimentoAtualId }: { aval
   const [osPorEvento, setOsPorEvento] = useState<Map<string, AtendimentoDoEvento>>(new Map());
   // Atendimento do BPM por trás de cada avaliação/venda (origem_id → atendimentos_motos.id).
   const [atendimentoBpm, setAtendimentoBpm] = useState<Map<string, string>>(new Map());
+  // Compromisso(s) financeiro(s) de cada avaliação/venda (origem_id → números).
+  const [compromissos, setCompromissos] = useState<Map<string, string[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [aberto, setAberto] = useState(false);
 
@@ -128,7 +131,42 @@ export function HistoricoVeiculoMoto({ avaliacaoId, atendimentoAtualId }: { aval
         if (m.atendimento_venda_id) bpm.set(m.id, m.atendimento_venda_id);
       }));
 
+      // Compromisso financeiro de cada avaliação/venda (coluna Nº):
+      // avaliação → compromissos.avaliacao_id (compra/troca/consignação, CPR-D…);
+      // venda (0km/seminova) → contrato do atendimento de venda → compromissos.contrato_id, origem 'venda' (VND-R).
+      const ativoComp = (c: any) => !c.deleted_at && !['cancelado', 'cancelada'].includes(c.status_compromisso);
+      const comp = new Map<string, string[]>();
+      const add = (k: string, n: string) => comp.set(k, [...(comp.get(k) ?? []), n]);
+      const idsAval = ids('avaliacao');
+      const vendaPorAtendimento = new Map<string, string[]>();
+      [...ids('venda_0km'), ...ids('venda_seminova')].forEach((origem) => {
+        const at = bpm.get(origem);
+        if (at) vendaPorAtendimento.set(at, [...(vendaPorAtendimento.get(at) ?? []), origem]);
+      });
+      const [compAval, contratosVenda] = await Promise.all([
+        idsAval.length
+          ? supabase.from('compromissos' as any).select('avaliacao_id, numero_compromisso, status_compromisso, deleted_at, created_at')
+            .in('avaliacao_id', idsAval).order('created_at')
+          : null,
+        vendaPorAtendimento.size
+          ? supabase.from('contratos' as any).select('id, atendimento_id').in('atendimento_id', [...vendaPorAtendimento.keys()])
+          : null,
+      ]);
+      (((compAval as any)?.data as any[]) ?? []).filter(ativoComp).forEach((c) => add(c.avaliacao_id, c.numero_compromisso));
+      const contratoAtendimento = new Map<string, string>();
+      (((contratosVenda as any)?.data as any[]) ?? []).forEach((c) => contratoAtendimento.set(c.id, c.atendimento_id));
+      if (contratoAtendimento.size) {
+        const { data: compVenda } = await supabase.from('compromissos' as any)
+          .select('contrato_id, numero_compromisso, status_compromisso, deleted_at, created_at')
+          .in('contrato_id', [...contratoAtendimento.keys()]).eq('origem', 'venda').order('created_at');
+        ((compVenda as any[]) ?? []).filter(ativoComp).forEach((c) => {
+          const at = contratoAtendimento.get(c.contrato_id);
+          (at ? vendaPorAtendimento.get(at) ?? [] : []).forEach((origem) => add(origem, c.numero_compromisso));
+        });
+      }
+
       if (!ativo) return;
+      setCompromissos(comp);
       setVeiculoId(vid);
       setEventos(evs);
       setRevisoes(((rv as any[]) ?? []) as Revisao[]);
@@ -203,7 +241,7 @@ export function HistoricoVeiculoMoto({ avaliacaoId, atendimentoAtualId }: { aval
                 <thead className="sticky top-0 z-10 shadow-[0_1px_0_hsl(var(--border))] [&_th]:bg-white">
                   <tr className="text-muted-foreground">
                     <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Data</th>
-                    <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Nº OS</th>
+                    <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Nº</th>
                     <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Situação</th>
                     <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Cliente</th>
                     <th className="py-2.5 px-3 font-medium text-right whitespace-nowrap">Km</th>
@@ -227,13 +265,15 @@ export function HistoricoVeiculoMoto({ avaliacaoId, atendimentoAtualId }: { aval
                           {os ? (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="cursor-help">{os.numero ?? 'Orçamento'}</span>
+                                <span className="text-primary">{os.numero ?? 'Orçamento'}</span>
                               </TooltipTrigger>
                               <TooltipContent side="right" className="max-w-xs">
                                 <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-1">Relato do cliente</p>
                                 <p className="text-xs whitespace-pre-wrap">{os.relato?.trim() || 'Sem relato informado.'}</p>
                               </TooltipContent>
                             </Tooltip>
+                          ) : compromissos.get(e.origem_id)?.length ? (
+                            <span className="text-primary">{compromissos.get(e.origem_id)!.join(', ')}</span>
                           ) : '—'}
                         </td>
                         <td className="py-2.5 px-3">
