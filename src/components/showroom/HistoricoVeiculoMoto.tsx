@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Gauge, Loader2, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/lib/supabase';
 
 // Histórico da Moto (mesmo trecho do card "Moto do Cliente" do ofc). Linha do tempo mantida por
@@ -9,6 +10,8 @@ import { supabase } from '@/lib/supabase';
 // de cada avaliação do BPM, vendas 0km/seminova e as revisões previstas na finalização da O.S.
 // A moto é achada pela própria avaliação (veiculo_historico tipo 'avaliacao', origem_id = avaliação).
 // No card: revisões previstas + "+ Ver mais"; o pop-up traz a tabela Data | Nº OS | Situação | Cliente | Km.
+// - Avaliação/venda: clicar na situação abre o atendimento do BPM numa nova guia (menos o atual).
+// - O.S. (ofc): sem link; passar o mouse no número mostra o relato do cliente.
 
 const TIPO_LABEL: Record<string, string> = {
   os: 'O.S. / Atendimento',
@@ -58,15 +61,17 @@ const nomeCurto = (nome: string | null | undefined) => {
 const fmtKm = (km: number) => `${km.toLocaleString('pt-BR')} km`;
 
 interface Evento { id: string; ocorrido_em: string; tipo: string; km: number | null; cliente_id: string | null; origem_id: string }
-interface AtendimentoDoEvento { numero: string | null; status: string; frota: boolean }
+interface AtendimentoDoEvento { numero: string | null; status: string; frota: boolean; relato: string | null }
 interface Revisao { id: string; data_prevista: string; km_prevista: number }
 
-export function HistoricoVeiculoMoto({ avaliacaoId }: { avaliacaoId: string }) {
+export function HistoricoVeiculoMoto({ avaliacaoId, atendimentoAtualId }: { avaliacaoId: string; atendimentoAtualId?: string }) {
   const [veiculoId, setVeiculoId] = useState<string | null>(null);
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [revisoes, setRevisoes] = useState<Revisao[]>([]);
   const [clientes, setClientes] = useState<Map<string, string>>(new Map());
-  const [atendimentos, setAtendimentos] = useState<Map<string, AtendimentoDoEvento>>(new Map());
+  const [osPorEvento, setOsPorEvento] = useState<Map<string, AtendimentoDoEvento>>(new Map());
+  // Atendimento do BPM por trás de cada avaliação/venda (origem_id → atendimentos_motos.id).
+  const [atendimentoBpm, setAtendimentoBpm] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [aberto, setAberto] = useState(false);
 
@@ -96,30 +101,40 @@ export function HistoricoVeiculoMoto({ avaliacaoId }: { avaliacaoId: string }) {
           .order('created_at', { ascending: false }),
       ]);
       const evs = ((ev as any[]) ?? []) as Evento[];
+      const ids = (tipo: string) => evs.filter((e) => e.tipo === tipo).map((e) => e.origem_id);
+
       const idsCliente = [...new Set(evs.map((e) => e.cliente_id).filter(Boolean))] as string[];
+      const [cs, os, avs, n0km, semis] = await Promise.all([
+        idsCliente.length ? supabase.from('clientes_fornecedores' as any).select('id, nome_razao_social').in('id', idsCliente) : null,
+        ids('os').length ? supabase.from('atendimento_servicos' as any)
+          .select('id, numero_os, numero_venda_balcao, status, tipo_cliente, relato_cliente').in('id', ids('os')) : null,
+        ids('avaliacao').length ? supabase.from('avaliacoes' as any).select('id, atendimento_id').in('id', ids('avaliacao')) : null,
+        ids('venda_0km').length ? supabase.from('estoque_motos_novas' as any).select('id, atendimento_venda_id').in('id', ids('venda_0km')) : null,
+        ids('venda_seminova').length ? supabase.from('estoque_motos' as any).select('id, atendimento_venda_id').in('id', ids('venda_seminova')) : null,
+      ]);
+
       const nomes = new Map<string, string>();
-      if (idsCliente.length > 0) {
-        const { data: cs } = await supabase.from('clientes_fornecedores' as any).select('id, nome_razao_social').in('id', idsCliente);
-        ((cs as any[]) ?? []).forEach((c) => nomes.set(c.id, nomeCurto(c.nome_razao_social)));
-      }
-      const idsAtendimento = evs.filter((e) => e.tipo === 'os').map((e) => e.origem_id);
+      (((cs as any)?.data as any[]) ?? []).forEach((c) => nomes.set(c.id, nomeCurto(c.nome_razao_social)));
       const ats = new Map<string, AtendimentoDoEvento>();
-      if (idsAtendimento.length > 0) {
-        const { data: as } = await supabase.from('atendimento_servicos' as any)
-          .select('id, numero_os, numero_venda_balcao, status, tipo_cliente')
-          .in('id', idsAtendimento);
-        ((as as any[]) ?? []).forEach((a) => ats.set(a.id, {
-          numero: a.numero_os ? fmtNumeroOs(a.numero_os) : a.numero_venda_balcao ?? null,
-          status: a.status,
-          frota: a.tipo_cliente === 'frota_interna',
-        }));
-      }
+      (((os as any)?.data as any[]) ?? []).forEach((a) => ats.set(a.id, {
+        numero: a.numero_os ? fmtNumeroOs(a.numero_os) : a.numero_venda_balcao ?? null,
+        status: a.status,
+        frota: a.tipo_cliente === 'frota_interna',
+        relato: a.relato_cliente ?? null,
+      }));
+      const bpm = new Map<string, string>();
+      (((avs as any)?.data as any[]) ?? []).forEach((a) => { if (a.atendimento_id) bpm.set(a.id, a.atendimento_id); });
+      [n0km, semis].forEach((r) => (((r as any)?.data as any[]) ?? []).forEach((m) => {
+        if (m.atendimento_venda_id) bpm.set(m.id, m.atendimento_venda_id);
+      }));
+
       if (!ativo) return;
       setVeiculoId(vid);
       setEventos(evs);
       setRevisoes(((rv as any[]) ?? []) as Revisao[]);
       setClientes(nomes);
-      setAtendimentos(ats);
+      setOsPorEvento(ats);
+      setAtendimentoBpm(bpm);
       setLoading(false);
     })();
     return () => { ativo = false; };
@@ -138,6 +153,10 @@ export function HistoricoVeiculoMoto({ avaliacaoId }: { avaliacaoId: string }) {
   // Registro do km atual (o mais recente com o maior km) — destacado em laranja na tabela.
   const idKmAtual = kmAtual == null ? null : eventos.find((e) => e.km === kmAtual)?.id ?? null;
 
+  const abrirAtendimentoBpm = (id: string) => {
+    window.open(`/?tab=showroom&atendimento=${id}`, '_blank', 'noopener');
+  };
+
   const botaoVerMais = (
     <button
       type="button"
@@ -154,19 +173,22 @@ export function HistoricoVeiculoMoto({ avaliacaoId }: { avaliacaoId: string }) {
         <Gauge className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-bold text-foreground">Histórico da Moto</h3>
       </div>
-      {revisoes.length > 0 ? (
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground uppercase tracking-wide">Revisões previstas</span>
-          {revisoes.map((r, i) => (
+      <div className="space-y-1">
+        <span className="text-xs text-muted-foreground uppercase tracking-wide">Revisões previstas</span>
+        {revisoes.length > 0 ? (
+          revisoes.map((r, i) => (
             <div key={r.id} className="flex items-center justify-between gap-2 text-xs border-b border-border last:border-0 py-1">
               <span>{format(parseISO(r.data_prevista), 'dd/MM/yyyy')} ou {fmtKm(Number(r.km_prevista))}</span>
               {i === 0 && botaoVerMais}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="flex justify-end">{botaoVerMais}</div>
-      )}
+          ))
+        ) : (
+          <div className="flex items-center justify-between gap-2 text-xs py-1">
+            <span>-</span>
+            {botaoVerMais}
+          </div>
+        )}
+      </div>
 
       <Dialog open={aberto} onOpenChange={setAberto}>
         <DialogContent className="max-w-3xl">
@@ -176,39 +198,66 @@ export function HistoricoVeiculoMoto({ avaliacaoId }: { avaliacaoId: string }) {
           </DialogHeader>
           {/* Cabeçalho congelado: a tabela rola dentro da área de altura máxima, sem barra visível. */}
           <div className="relative max-h-[60vh] overflow-y-auto rounded-lg border border-border bg-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 z-10 shadow-[0_1px_0_hsl(var(--border))] [&_th]:bg-white">
-                <tr className="text-muted-foreground">
-                  <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Data</th>
-                  <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Nº OS</th>
-                  <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Situação</th>
-                  <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Cliente</th>
-                  <th className="py-2.5 px-3 font-medium text-right whitespace-nowrap">Km</th>
-                </tr>
-              </thead>
-              <tbody>
-                {eventos.length === 0 && (
-                  <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">Nenhum registro.</td></tr>
-                )}
-                {eventos.map((e) => {
-                  const at = e.tipo === 'os' ? atendimentos.get(e.origem_id) : undefined;
-                  const situacao = at
-                    ? `${statusOficinaLabel(at.status)}${at.frota ? ' · Frota Interna' : ''}`
-                    : (TIPO_LABEL[e.tipo] ?? e.tipo);
-                  return (
-                    <tr key={e.id} className="border-b border-border last:border-0">
-                      <td className="py-2.5 px-3 whitespace-nowrap">{format(parseISO(e.ocorrido_em), 'dd/MM/yyyy')}</td>
-                      <td className="py-2.5 px-3 whitespace-nowrap">{at ? (at.numero ?? 'Orçamento') : '—'}</td>
-                      <td className="py-2.5 px-3">{situacao}</td>
-                      <td className="py-2.5 px-3">{(e.cliente_id && clientes.get(e.cliente_id)) || '—'}</td>
-                      <td className={'py-2.5 px-3 text-right whitespace-nowrap font-medium' + (e.id === idKmAtual ? ' text-primary' : '')}>
-                        {e.km != null ? fmtKm(e.km) : '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <TooltipProvider delayDuration={150}>
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 z-10 shadow-[0_1px_0_hsl(var(--border))] [&_th]:bg-white">
+                  <tr className="text-muted-foreground">
+                    <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Data</th>
+                    <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Nº OS</th>
+                    <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Situação</th>
+                    <th className="py-2.5 px-3 font-medium text-left whitespace-nowrap">Cliente</th>
+                    <th className="py-2.5 px-3 font-medium text-right whitespace-nowrap">Km</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {eventos.length === 0 && (
+                    <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">Nenhum registro.</td></tr>
+                  )}
+                  {eventos.map((e) => {
+                    const os = e.tipo === 'os' ? osPorEvento.get(e.origem_id) : undefined;
+                    const situacao = os
+                      ? `${statusOficinaLabel(os.status)}${os.frota ? ' · Frota Interna' : ''}`
+                      : (TIPO_LABEL[e.tipo] ?? e.tipo);
+                    const atBpm = e.tipo !== 'os' ? atendimentoBpm.get(e.origem_id) : undefined;
+                    const linkBpm = atBpm && atBpm !== atendimentoAtualId ? atBpm : null;
+                    return (
+                      <tr key={e.id} className="border-b border-border last:border-0">
+                        <td className="py-2.5 px-3 whitespace-nowrap">{format(parseISO(e.ocorrido_em), 'dd/MM/yyyy')}</td>
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          {os ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help">{os.numero ?? 'Orçamento'}</span>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-1">Relato do cliente</p>
+                                <p className="text-xs whitespace-pre-wrap">{os.relato?.trim() || 'Sem relato informado.'}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : '—'}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          {linkBpm ? (
+                            <button
+                              type="button"
+                              className="text-left text-primary hover:opacity-80"
+                              onClick={() => abrirAtendimentoBpm(linkBpm)}
+                              title="Abrir atendimento (nova guia)"
+                            >
+                              {situacao}
+                            </button>
+                          ) : situacao}
+                        </td>
+                        <td className="py-2.5 px-3">{(e.cliente_id && clientes.get(e.cliente_id)) || '—'}</td>
+                        <td className={'py-2.5 px-3 text-right whitespace-nowrap font-medium' + (e.id === idKmAtual ? ' text-primary' : '')}>
+                          {e.km != null ? fmtKm(e.km) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </TooltipProvider>
           </div>
         </DialogContent>
       </Dialog>
