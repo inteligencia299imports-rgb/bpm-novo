@@ -12,6 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, Download, Loader2, RefreshCw, AlertTriangle, User, Bike, MessageSquare, Wallet, ArrowLeft, Pencil, MapPin, Landmark, Building2, Package, DollarSign, Receipt, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { HistoricoVeiculoMoto } from '@/components/showroom/HistoricoVeiculoMoto';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -1977,6 +1978,7 @@ const ContratoDialog: React.FC<Props> = ({
                     )}
                   </CardContent>
                 </Card>
+                    <HistoricoVeiculoMoto avaliacaoId={t.moto.id} atendimentoAtualId={atendimento.id} />
                   </CardContent>
                 </Card>
               ))}
