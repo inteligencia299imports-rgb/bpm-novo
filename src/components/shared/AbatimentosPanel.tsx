@@ -86,6 +86,30 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
     setValorQuitacao(novo);
   };
 
+  // Quitação mudou -> cria o compromisso (se ainda não existe) ou atualiza o
+  // existente: compra/troca ou, na consignada vendida, o do consignante.
+  const sincronizarCompromissoQuitacao = async () => {
+    const { data, error } = await supabase.functions.invoke('gerar-compromissos-proposta', {
+      body: { acao: 'quitacao', avaliacao_id: avaliacaoId },
+    });
+    if (error || (data as any)?.error) {
+      toast.error('Quitação salva, mas o compromisso não foi atualizado: ' + ((data as any)?.error || error?.message || 'erro'));
+      return;
+    }
+    const r = (data as any)?.quitacao || {};
+    const avisos: Record<string, string> = {
+      troca_sem_compromisso: 'O compromisso da troca nasce na proposta de venda; a quitação entra nele quando for gerado.',
+      sem_previsao_pagamento: 'Compromisso do consignante ainda não gerado: preencha a PREVISÃO DE PAGAMENTO (Parte 1).',
+      sem_valor_repasse: 'Compromisso do consignante ainda não gerado: salve o contrato de intermediação.',
+      sem_empresa: 'Compromisso não gerado: venda sem empresa.',
+      travado_nfe: 'Compromisso já vinculado à NF-e.',
+      cancelado: 'O compromisso desta moto está cancelado.',
+    };
+    if (avisos[r.status]) toast.warning(avisos[r.status]);
+    else if (r.status === 'criado') toast.success('Compromisso financeiro criado com a quitação');
+    else toast.success('Compromisso financeiro atualizado');
+  };
+
   const adicionar = async () => {
     const valor = parseCurrencyInput(newValor);
     if (valor <= 0) { toast.error('Informe o valor'); return; }
@@ -93,7 +117,7 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
     try {
       if (ehQuitacao) {
         await gravarQuitacao(Math.round(valor * 100) / 100);
-        toast.success('Valor de quitação atualizado');
+        await sincronizarCompromissoQuitacao();
       } else {
         const { data, error } = await supabase.from('custos_oficina').insert({
           avaliacao_id: avaliacaoId,
@@ -105,7 +129,7 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
         if (error) throw error;
         setCustosOficina(prev => [...prev, data]);
       }
-      recalcularRepasseCompra(avaliacaoId);
+      if (!ehQuitacao) recalcularRepasseCompra(avaliacaoId);
       setNewResp('Cliente');
       setNewDesc('');
       setNewValor('');
@@ -127,8 +151,7 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
     if (!window.confirm('Zerar o valor de quitação desta moto?')) return;
     try {
       await gravarQuitacao(0);
-      recalcularRepasseCompra(avaliacaoId);
-      toast.success('Valor de quitação zerado');
+      await sincronizarCompromissoQuitacao();
     } catch (err: any) {
       toast.error('Erro ao salvar: ' + (err?.message || err));
     }
