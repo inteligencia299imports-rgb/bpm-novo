@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import AtendimentoObservacoes from '@/components/showroom/AtendimentoObservacoes';
+import AbatimentosPanel from '@/components/shared/AbatimentosPanel';
 
 const formatCurrencyInput = (value: string): string => {
   const digits = value.replace(/\D/g, '');
@@ -489,7 +490,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" /> Processo Pós-Compra
@@ -750,87 +751,7 @@ const PosCompraProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliaca
 
           {aba === 'financeiro' && (
           <div className="space-y-6 pt-2">
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-primary">Abatimentos</h3>
-              <div className="grid grid-cols-[1fr_2fr_1fr_auto] gap-2 items-end">
-                <div>
-                  <label className="text-xs font-medium">Responsável</label>
-                  <Select value={newResp} onValueChange={setNewResp}>
-                    <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Cliente">Cliente</SelectItem>
-                      <SelectItem value="Loja">Loja</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium">Descrição</label>
-                  <Input className="mt-1 h-9" value={newDesc} onChange={e => { const v = e.target.value; setNewDesc(v.charAt(0).toUpperCase() + v.slice(1)); }} placeholder="Descrição" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium">Valor</label>
-                  <div className="relative mt-1">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
-                    <Input className="pl-7 h-9" value={newValor} onChange={e => setNewValor(formatCurrencyInput(e.target.value))} inputMode="numeric" placeholder="0,00" />
-                  </div>
-                </div>
-                <Button size="sm" className="h-9" onClick={addCusto}><Plus className="h-4 w-4" /></Button>
-              </div>
-
-              {(custosOficina.length > 0 || itensForaOficina.length > 0) && (
-                <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
-                  {custosOficina.map((c: any) => {
-                    const val = c.valor_executado || c.valor_previsto || 0;
-                    if (val <= 0) return null;
-                    const isAbatido = (c.responsavel || '').toLowerCase() === 'cliente';
-                    return (
-                      <div key={c.id} className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm">
-                        <span className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-medium shrink-0">
-                          {(c.tipo || '').toUpperCase().replace('PECA', 'PEÇA').replace('SERVICO', 'SERVIÇO')}
-                        </span>
-                        <span className="flex-1 truncate text-xs font-medium">
-                          {(c.responsavel || '').toUpperCase()} - {(c.detalhes || '-').toUpperCase()}
-                        </span>
-                        <span className={`font-semibold text-sm whitespace-nowrap ${isAbatido ? 'text-destructive' : 'text-foreground'}`}>
-                          {formatCurrency(val)}
-                        </span>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeCusto(c.id)}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                  {/* Abatimentos de fora da oficina (intermediação / previsão): só leitura — edite no contrato de intermediação ou na avaliação. */}
-                  {itensForaOficina.map((it, i) => (
-                    <div key={`fora-${i}`} className="flex items-center gap-2 rounded-md border bg-muted/30 p-2 text-sm" title={it.origem === 'intermediacao' ? 'Lançado no contrato de intermediação' : it.origem === 'comissao' ? 'Percentual do contrato de consignação sobre o valor de fechamento' : 'Previsão de custos do cliente da avaliação'}>
-                      <span className="text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 font-medium shrink-0">
-                        {it.origem === 'intermediacao' ? 'INTERMEDIAÇÃO' : it.origem === 'comissao' ? 'COMISSÃO' : 'PREVISÃO'}
-                      </span>
-                      <span className="flex-1 truncate text-xs font-medium">CLIENTE - {it.descricao.toUpperCase()}</span>
-                      <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(it.valor)}</span>
-                      <span className="h-7 w-7 shrink-0" />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="rounded-lg border-2 border-muted bg-muted/30 p-3 flex flex-col justify-center">
-                  <span className="text-xs font-semibold text-muted-foreground">Valor de Fechamento</span>
-                  <span className="text-lg font-bold">{formatCurrency(parseCurrencyInput(valorFechamento))}</span>
-                </div>
-                <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-3 flex flex-col justify-center">
-                  <span className="text-xs font-semibold text-muted-foreground">Total de Abatimentos</span>
-                  <span className="text-lg font-bold text-destructive">{formatCurrency(abatimentos)}</span>
-                </div>
-                <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-3 flex flex-col justify-center">
-                  <span className="text-xs font-semibold text-muted-foreground">Valor de Repasse</span>
-                  <span className={`text-lg font-bold ${repasseNum >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                    {formatCurrency(repasseNum > 0 ? repasseNum : 0)}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <AbatimentosPanel avaliacaoId={avaliacaoId} />
 
             <div className="flex justify-end">
               <Button onClick={handleSaveFinanceiro} disabled={savingFin} className="gap-1.5">
