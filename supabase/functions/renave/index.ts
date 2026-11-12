@@ -791,6 +791,9 @@ Deno.serve(async (req) => {
           renave_id_estoque: estP.id ?? null,
           renave_estado: estP.estado ?? null,
           renave_num_termo_entrada: estP.entradaEstoque?.numeroTermoEntradaEstoque ?? null,
+          // Veículo próprio não tem assinatura de ATPV: marca como cumprida pra
+          // liberar termo de entrada e saída (que exigem a assinatura da compra).
+          renave_atpv_assinatura_enviada_em: new Date().toISOString(),
           renave_ultimo_erro: null,
         });
         // Vínculo da NF-e de compra (se houver) — best-effort, como na compra.
@@ -971,7 +974,12 @@ Deno.serve(async (req) => {
       // termo de entrada ("...estabelecimento ainda não enviou a assinatura
       // do ATPV...") até a assinatura (passo 3) ter sido enviada -- não basta
       // ter a entrada confirmada (passo 1).
-      if (!assinaturaProcessada) {
+      // Entrada de VEÍCULO PRÓPRIO (moto já no CNPJ da loja) não tem ATPV nem
+      // assinatura — o termo sai direto (caso TPS9J76, 2026-11-12).
+      const { data: entradaPropria } = assinaturaProcessada ? { data: null } : await admin.from('renave_chamadas')
+        .select('id').eq('avaliacao_id', avaliacaoId).eq('sucesso', true)
+        .eq('endpoint', '/api/solicitacoes-entrada-estoque-veiculo-proprio').limit(1).maybeSingle();
+      if (!assinaturaProcessada && !entradaPropria) {
         return json({ error: 'Envie a assinatura do ATPV (passo 3) antes de baixar o termo de entrada — a SERPRO exige isso primeiro.' }, 409);
       }
 
