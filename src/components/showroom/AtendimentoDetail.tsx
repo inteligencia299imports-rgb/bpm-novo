@@ -30,6 +30,7 @@ import { useMarcasModelos } from '@/hooks/useMarcasModelos';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
+import { HistoricoVeiculoMoto } from '@/components/showroom/HistoricoVeiculoMoto';
 import { liberarEstoquePresoAoAtendimento } from '@/lib/liberarEstoqueAtendimento';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
@@ -1280,6 +1281,8 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
                       temAcessorios={(moto as any).tem_acessorios}
                       acessoriosDescricao={(moto as any).acessorios_descricao}
                     />
+                    {/* Histórico da Moto (km de O.S./avaliações, vendas e revisões previstas) — DB 299. */}
+                    <HistoricoVeiculoMoto avaliacaoId={moto.id} />
                     <Separator className="mt-auto" />
                     <div className="flex gap-2 flex-wrap">
                       <Button size="sm" variant="outline" className={`flex-1 gap-1.5 ${(photoCountMap[moto.id] || 0) > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setPhotoMotoId(moto.id)}>
