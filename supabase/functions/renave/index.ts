@@ -27,10 +27,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import {
   clienteAutenticado, pendentesEntrada, entrarEstoqueZeroKm, entrarEstoque, enviarNotaFiscal,
   consultarEstoque, consultarVeiculoPorChassi, listarEstoques, municipios, sairEstoqueZeroKm, pdfAtpvPorChassi,
-  enviarAssinaturaAtpv, consultarCrlve, termoEntradaEstoque, cancelarEstoque, erroRenave,
+  enviarAssinaturaAtpv, entrarEstoqueVeiculoProprio, consultarCrlve, termoEntradaEstoque, cancelarEstoque, erroRenave,
   sairEstoque, termoSaidaEstoque, cancelarSaidaEstoque, aptidaoVeiculoEstoque,
   autorizarTransferenciaZeroKm, transferirEntreEstabelecimentosZeroKm, consultarAutorizacoesTransferencia,
-  type RenaveLogCtx, type EnvioAssinaturaAtpv, type EntradaEstoque,
+  type RenaveLogCtx, type EnvioAssinaturaAtpv, type EntradaEstoque, type EntradaVeiculoProprio,
 } from './renave.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
@@ -648,19 +648,29 @@ Deno.serve(async (req) => {
       // cliente do atendimento (quem está vendendo a moto pro estabelecimento).
       // Endpoint genérico exige isso e rejeita se for o próprio CNPJ do
       // estabelecimento (ver comentário em renave.ts sobre os 2 endpoints).
-      const { data: atendimento } = av.atendimento_id
+      //
+      // Veículo PRÓPRIO (body.veiculo_proprio): a moto já foi transferida para
+      // o CNPJ da loja por fora (Detran/despachante) antes da entrada — caso
+      // TPS9J76, 2026-11-12: CRV novo emitido em 11/11 em nome da
+      // Intercontinental FLN e a entrada de compra de particular recusada com
+      // "Vendedor deveria ser o proprietário... não pode ser de propriedade do
+      // próprio estabelecimento". Nesse caso usa o endpoint
+      // /api/solicitacoes-entrada-estoque-veiculo-proprio (sem vendedor e sem
+      // assinatura de ATPV), com o número/código do CRV novo informados na tela.
+      const veiculoProprio = body.veiculo_proprio === true;
+      const { data: atendimento } = av.atendimento_id && !veiculoProprio
         ? await admin.from('atendimentos_motos').select('cliente_id').eq('id', av.atendimento_id).maybeSingle()
         : { data: null };
       const { data: vendedor } = atendimento?.cliente_id
         ? await admin.from('clientes_fornecedores').select('cpf_cnpj, tipo_pessoa, email').eq('id', atendimento.cliente_id).maybeSingle()
         : { data: null };
-      if (!vendedor?.cpf_cnpj) {
+      if (!veiculoProprio && !vendedor?.cpf_cnpj) {
         return json({ error: 'Cliente vendedor (CPF/CNPJ) não encontrado no atendimento — necessário pra declarar a entrada.' }, 409);
       }
       // Achado real 2026-09-23: a SERPRO rejeita a entrada sem e-mail do
       // vendedor ("E-mail do vendedor é obrigatório") — precisa estar
       // cadastrado no cliente do atendimento (quem está vendendo a moto).
-      if (!vendedor.email) {
+      if (!veiculoProprio && !vendedor?.email) {
         return json({ error: 'Cliente vendedor sem e-mail cadastrado — a SERPRO exige e-mail do vendedor pra declarar a entrada. Complete o cadastro do cliente.' }, 409);
       }
 
@@ -669,7 +679,7 @@ Deno.serve(async (req) => {
       const { data: nfCompra } = await admin.from('nfe_entradas')
         .select('chave_nfe, data_emissao, valor_total').eq('avaliacao_id', avaliacaoId).eq('operacao', 'compra')
         .order('created_at', { ascending: false }).limit(1).maybeSingle();
-      if (!nfCompra?.valor_total || !nfCompra?.data_emissao) {
+      if (!veiculoProprio && (!nfCompra?.valor_total || !nfCompra?.data_emissao)) {
         return json({ error: 'NF-e de compra não encontrada (ou sem valor/data) — emita a NF-e de compra antes de dar entrada no RENAVE.' }, 409);
       }
 
@@ -707,7 +717,21 @@ Deno.serve(async (req) => {
       let codigoSegurancaCrv = av.codigo_seguranca_crv ? String(av.codigo_seguranca_crv).replace(/\D/g, '') : null;
       let tipoCrv: 'AZUL' | 'VERDE' | 'BRANCO' | 'DIGITAL' | null = av.tipo_crv ?? null;
       let numeroCrvAtual = av.numero_crv ?? null;
-      if (av.placa && av.renavam) {
+      // CRV informado à mão na tela (CRV novo, emitido depois da avaliação)
+      // tem prioridade e dispensa a consulta do CRLV-e.
+      const codigoInformado = String(body.codigo_seguranca_crv ?? '').replace(/\D/g, '');
+      const numeroInformado = String(body.numero_crv ?? '').replace(/\D/g, '');
+      if (body.codigo_seguranca_crv != null && codigoInformado.length !== 11) {
+        return json({ error: 'Código de segurança do CRV deve ter 11 dígitos.' }, 400);
+      }
+      if (numeroInformado && numeroInformado.length !== 12) {
+        return json({ error: 'Número do CRV deve ter 12 dígitos.' }, 400);
+      }
+      if (codigoInformado) {
+        codigoSegurancaCrv = codigoInformado;
+        if (numeroInformado) numeroCrvAtual = numeroInformado;
+        if (['AZUL', 'VERDE', 'BRANCO', 'DIGITAL'].includes(body.tipo_crv)) tipoCrv = body.tipo_crv;
+      } else if (av.placa && av.renavam) {
         try {
           const crlve = await consultarCrlve(String(av.placa).toUpperCase().replace(/\s|-/g, ''), String(av.renavam).replace(/\D/g, ''), ctx);
           if (crlve.status === 200 && crlve.body?.pdfCodigoSegurancaCrvBase64) {
@@ -733,19 +757,68 @@ Deno.serve(async (req) => {
         });
       }
 
+      if (veiculoProprio) {
+        const payloadProprio: EntradaVeiculoProprio = {
+          cpfOperadorResponsavel: cpfOperador,
+          dataEntradaEstoque: dataAssinaturaAtpv ?? brasiliaNaiveIso().slice(0, 10),
+          veiculo: {
+            codigoSegurancaCrv,
+            dataHoraMedicaoHodometro: brasiliaNaiveIso(body.data_hora_medicao_hodometro),
+            quilometragemHodometro: quilometragem,
+            tipoCrv,
+            numeroCrv: numeroCrvAtual ? String(numeroCrvAtual).replace(/\D/g, '') : undefined,
+            placa: av.placa ? String(av.placa).toUpperCase().replace(/\s|-/g, '') : undefined,
+            renavam: av.renavam ? String(av.renavam).replace(/\D/g, '') : undefined,
+          },
+        };
+        let rp = await entrarEstoqueVeiculoProprio(payloadProprio, ctx);
+        if (rp.status !== 201 && rp.status !== 200) {
+          const m = erroRenave(rp).match(/último CRV \((\d{2})\/(\d{2})\/(\d{4})\)/i);
+          if (m) {
+            const dataCrv = `${m[3]}-${m[2]}-${m[1]}`;
+            if (dataCrv > payloadProprio.dataEntradaEstoque) {
+              rp = await entrarEstoqueVeiculoProprio({ ...payloadProprio, dataEntradaEstoque: dataCrv }, ctx);
+            }
+          }
+        }
+        if (rp.status !== 201 && rp.status !== 200) {
+          const msg = erroRenave(rp);
+          await persistirAvaliacao(admin, avaliacaoId, { renave_ultimo_erro: msg });
+          return json({ error: msg, status: rp.status, detalhe: rp.body }, 422);
+        }
+        const estP = rp.body || {};
+        await persistirAvaliacao(admin, avaliacaoId, {
+          renave_id_estoque: estP.id ?? null,
+          renave_estado: estP.estado ?? null,
+          renave_num_termo_entrada: estP.entradaEstoque?.numeroTermoEntradaEstoque ?? null,
+          renave_ultimo_erro: null,
+        });
+        // Vínculo da NF-e de compra (se houver) — best-effort, como na compra.
+        let nfVinculadaP = false;
+        if (estP.id && nfCompra?.chave_nfe) {
+          const nf = await enviarNotaFiscal(soChave(nfCompra.chave_nfe), 'COMPRA', estP.id, ctx);
+          nfVinculadaP = nf.status < 400;
+          if (!nfVinculadaP) {
+            await persistirAvaliacao(admin, avaliacaoId, { renave_ultimo_erro: `Entrada confirmada, mas vínculo da NF-e falhou: ${erroRenave(nf)}` });
+          }
+        }
+        await persistirAvaliacao(admin, avaliacaoId, { renave_nf_vinculada_em: nfVinculadaP ? new Date().toISOString() : null });
+        return json({ ok: true, veiculo_proprio: true, estoque: estP, nf_vinculada: nfVinculadaP });
+      }
+
       const payloadEntrada: EntradaEstoque = {
         cpfOperadorResponsavel: cpfOperador,
-        dataCompra: dataAssinaturaAtpv ?? brasiliaNaiveIso(nfCompra.data_emissao).slice(0, 10),
-        valorCompra: Number(nfCompra.valor_total),
-        emailVendedor: vendedor.email,
+        dataCompra: dataAssinaturaAtpv ?? brasiliaNaiveIso(nfCompra!.data_emissao).slice(0, 10),
+        valorCompra: Number(nfCompra!.valor_total),
+        emailVendedor: vendedor!.email,
         emailEstabelecimento: EMAIL_ESTABELECIMENTO_PADRAO,
         veiculo: {
           codigoSegurancaCrv,
           dataHoraMedicaoHodometro: brasiliaNaiveIso(body.data_hora_medicao_hodometro),
           quilometragemHodometro: quilometragem,
           tipoCrv,
-          documentoProprietarioAtual: String(vendedor.cpf_cnpj).replace(/\D/g, ''),
-          tipoDocumentoProprietarioAtual: vendedor.tipo_pessoa === 'juridica' ? 'CNPJ' : 'CPF',
+          documentoProprietarioAtual: String(vendedor!.cpf_cnpj).replace(/\D/g, ''),
+          tipoDocumentoProprietarioAtual: vendedor!.tipo_pessoa === 'juridica' ? 'CNPJ' : 'CPF',
           numeroCrv: numeroCrvAtual ? String(numeroCrvAtual).replace(/\D/g, '') : undefined,
           placa: av.placa ? String(av.placa).toUpperCase().replace(/\s|-/g, '') : undefined,
           renavam: av.renavam ? String(av.renavam).replace(/\D/g, '') : undefined,
@@ -837,7 +910,7 @@ Deno.serve(async (req) => {
       // essa chamada podia falhar silenciosamente, sem aparecer em lugar
       // nenhum além do log de renave_chamadas).
       let nfVinculada = false;
-      if (est.id && nfCompra.chave_nfe) {
+      if (est.id && nfCompra?.chave_nfe) {
         const nf = await enviarNotaFiscal(soChave(nfCompra.chave_nfe), 'COMPRA', est.id, ctx);
         nfVinculada = nf.status < 400;
         if (!nfVinculada) {

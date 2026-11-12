@@ -5,6 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -52,6 +53,7 @@ const Info = ({ label, value }: { label: string; value: React.ReactNode }) => (
 
 const ENDPOINT_LABEL: Record<string, string> = {
   '/api/solicitacoes-entrada-estoque': 'Entrada em estoque',
+  '/api/solicitacoes-entrada-estoque-veiculo-proprio': 'Entrada em estoque (veículo próprio)',
   '/api/notas-fiscais': 'Vínculo de nota fiscal',
   '/api/pdf-atpv': 'Download ATPV-e',
   '/api/atpv-assinatura-vendedor': 'Envio de assinatura do ATPV-e',
@@ -140,6 +142,13 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   // ATPV anexado (avaliacoes.atpv_data_assinatura); sempre editável antes da entrada.
   const [dataAssinaturaAtpv, setDataAssinaturaAtpv] = useState('');
   const [lendoAtpv, setLendoAtpv] = useState(false);
+  // Moto já transferida por fora para o CNPJ da loja (CRV novo em nome da
+  // empresa): entrada como VEÍCULO PRÓPRIO — sem vendedor e sem assinatura de
+  // ATPV, com o número/código de segurança do CRV novo digitados aqui.
+  const [veiculoProprio, setVeiculoProprio] = useState(false);
+  const [crvNumeroNovo, setCrvNumeroNovo] = useState('');
+  const [crvCodigoNovo, setCrvCodigoNovo] = useState('');
+  const [entradaPropria, setEntradaPropria] = useState(false);
 
   const carregarAvaliacao = async () => {
     setLoading(true);
@@ -225,6 +234,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       .order('created_at', { ascending: false })
       .limit(50);
     const rows: any[] = data || [];
+    setEntradaPropria(rows.some((r) => r.endpoint === '/api/solicitacoes-entrada-estoque-veiculo-proprio'));
     const usuarioIds = Array.from(new Set(rows.map((r) => r.usuario_id).filter(Boolean)));
     let nomes: Record<string, string> = {};
     if (usuarioIds.length > 0) {
@@ -250,9 +260,11 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   const cpfOperadorValido = validarCpf(cpfOperador);
   const cpfEnviadoValido = !!funcionarioCpf || cpfOperadorValido;
   const entrouEstoque = !!avaliacao?.renave_id_estoque;
-  const faltaDadosCrv = !avaliacao?.codigo_seguranca_crv
-    || String(avaliacao.codigo_seguranca_crv).replace(/\D/g, '').length !== 11
-    || !avaliacao?.tipo_crv;
+  const faltaDadosCrv = veiculoProprio
+    ? crvCodigoNovo.length !== 11 || (crvNumeroNovo.length > 0 && crvNumeroNovo.length !== 12)
+    : !avaliacao?.codigo_seguranca_crv
+      || String(avaliacao.codigo_seguranca_crv).replace(/\D/g, '').length !== 11
+      || !avaliacao?.tipo_crv;
 
   const kmInformado = quilometragem ? Number(quilometragem) : null;
   const hojeIso = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -260,7 +272,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
   // Estoque já TRANSFERIDO/CONFIRMADO/FINALIZADO = assinatura do ATPV já
   // processada pela SERPRO, mesmo que feita fora do sistema (ver estoque-status
   // na edge renave e RenaveSaidaUsadoDialog).
-  const assinaturaEnviada = !!avaliacao?.renave_atpv_assinatura_enviada_em
+  const assinaturaEnviada = entradaPropria || !!avaliacao?.renave_atpv_assinatura_enviada_em
     || ['TRANSFERIDO', 'CONFIRMADO', 'FINALIZADO'].includes(String(avaliacao?.renave_estado ?? '').toUpperCase());
   const nfVinculada = !!avaliacao?.renave_nf_vinculada_em;
   // O CRLV-e só libera quando o estabelecimento já consta como proprietário
@@ -516,7 +528,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         await (supabase as any).from('avaliacoes').update({ km: kmInformado }).eq('id', avaliacaoId);
       }
       // Data corrigida à mão também volta pra avaliação (fonte única).
-      if (dataAssinaturaAtpv !== String(avaliacao?.atpv_data_assinatura ?? '').slice(0, 10)) {
+      if (!veiculoProprio && dataAssinaturaAtpv !== String(avaliacao?.atpv_data_assinatura ?? '').slice(0, 10)) {
         await (supabase as any).from('avaliacoes').update({ atpv_data_assinatura: dataAssinaturaAtpv }).eq('id', avaliacaoId);
       }
       const { data: res, error } = await supabase.functions.invoke('renave', {
@@ -526,6 +538,12 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
           cpf_operador: cpfEnviado,
           quilometragem_hodometro: kmInformado ?? undefined,
           data_compra: dataAssinaturaAtpv,
+          ...(veiculoProprio ? {
+            veiculo_proprio: true,
+            codigo_seguranca_crv: crvCodigoNovo,
+            numero_crv: crvNumeroNovo || undefined,
+            tipo_crv: 'DIGITAL',
+          } : {}),
         },
       });
       if (error || (res && res.error)) {
@@ -600,7 +618,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                     <Loader2 className="h-4 w-4 animate-spin" /> Lendo dados do CRLV anexado…
                   </span>
                 )}
-                {!extraindoCrlv && faltaDadosCrv && (
+                {!extraindoCrlv && faltaDadosCrv && !veiculoProprio && (
                   <span className="flex items-start gap-2 text-sm text-destructive">
                     <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                     {avaliacao?.crlv_url
@@ -676,9 +694,55 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       {/* Código de segurança e tipo do CRV são só leitura aqui — vêm do
                           CRLV/avaliação. Quilometragem é editável (hodômetro de verdade
                           na hora da entrada) e grava de volta em avaliacoes.km ao confirmar. */}
+                      <label className="mt-4 flex items-start gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          className="mt-0.5"
+                          checked={veiculoProprio}
+                          onCheckedChange={(v) => {
+                            const on = v === true;
+                            setVeiculoProprio(on);
+                            setDataAssinaturaAtpv(on ? hojeIso : (avaliacao?.atpv_data_assinatura ? String(avaliacao.atpv_data_assinatura).slice(0, 10) : ''));
+                          }}
+                        />
+                        <span>
+                          Moto já transferida para o CNPJ da loja (veículo próprio)
+                          <span className="block text-[11px] text-muted-foreground">
+                            Transferência feita por fora (Detran/despachante). Informe o CRV novo, em nome da empresa — não há vendedor nem assinatura de ATPV.
+                          </span>
+                        </span>
+                      </label>
                       <div className="grid grid-cols-2 gap-3 mt-4">
-                        <Info label="Código de Segurança do CRV" value={avaliacao?.codigo_seguranca_crv} />
-                        <Info label="Tipo do CRV" value={avaliacao?.tipo_crv} />
+                        {veiculoProprio ? (
+                          <>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">Nº do CRV novo</Label>
+                              <Input
+                                className={cn('mt-1 font-mono', crvNumeroNovo.length > 0 && crvNumeroNovo.length !== 12 && 'border-destructive text-destructive')}
+                                inputMode="numeric"
+                                maxLength={12}
+                                value={crvNumeroNovo}
+                                onChange={(e) => setCrvNumeroNovo(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                                placeholder="12 dígitos"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">Código de Segurança do CRV novo *</Label>
+                              <Input
+                                className={cn('mt-1 font-mono', crvCodigoNovo.length > 0 && crvCodigoNovo.length !== 11 && 'border-destructive text-destructive')}
+                                inputMode="numeric"
+                                maxLength={11}
+                                value={crvCodigoNovo}
+                                onChange={(e) => setCrvCodigoNovo(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                                placeholder="11 dígitos"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <Info label="Código de Segurança do CRV" value={avaliacao?.codigo_seguranca_crv} />
+                            <Info label="Tipo do CRV" value={avaliacao?.tipo_crv} />
+                          </>
+                        )}
                         <div>
                           <Label className="text-xs text-muted-foreground">Quilometragem do Hodômetro</Label>
                           <Input
@@ -690,7 +754,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                           />
                         </div>
                         <div>
-                          <Label className="text-xs text-muted-foreground">Data da Assinatura do ATPV *</Label>
+                          <Label className="text-xs text-muted-foreground">{veiculoProprio ? 'Data da Entrada *' : 'Data da Assinatura do ATPV *'}</Label>
                           <Popover>
                             <PopoverTrigger asChild>
                               <button
@@ -717,7 +781,9 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                             </PopoverContent>
                           </Popover>
                           <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-                            {dataAssinaturaAtpv && dataAssinaturaAtpv === String(avaliacao?.atpv_data_assinatura ?? '').slice(0, 10)
+                            {veiculoProprio
+                              ? 'Data da entrada no estoque — não pode ser anterior à emissão do CRV novo.'
+                              : dataAssinaturaAtpv && dataAssinaturaAtpv === String(avaliacao?.atpv_data_assinatura ?? '').slice(0, 10)
                               ? <><Sparkles className="h-3 w-3" /> Lida do ATPV pela IA — confira. Vai como data da entrada no RENAVE.</>
                               : 'Data em que o vendedor assinou o ATPV. Vai como data da entrada no RENAVE.'}
                           </p>
@@ -752,7 +818,10 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                   )}
                 </StepRow>
 
-                <StepRow numero={2} titulo="Download do ATPV-e" feito={!!avaliacao?.renave_atpv_url}>
+                <StepRow numero={2} titulo="Download do ATPV-e" feito={!!avaliacao?.renave_atpv_url || entradaPropria}>
+                  {entradaPropria ? (
+                    <span className="text-xs text-muted-foreground">Não se aplica — entrada como veículo próprio.</span>
+                  ) : (<>
                   {/* Achado real 2026-09-22 (chassi 95VHA00AAHM000135): a SERPRO rejeita
                       o download do ATPV-e ("Não existe intenção de venda disponível...")
                       quando pedido antes da entrada -- a "intenção de venda" só existe
@@ -790,10 +859,13 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
                       </Button>
                     </div>
                   )}
+                  </>)}
                 </StepRow>
 
                 <StepRow numero={3} titulo="Enviar ATPV assinado" feito={assinaturaEnviada}>
-                  {!entrouEstoque ? null : assinaturaEnviada ? (
+                  {entradaPropria ? (
+                    <span className="text-xs text-muted-foreground">Não se aplica — entrada como veículo próprio.</span>
+                  ) : !entrouEstoque ? null : assinaturaEnviada ? (
                     // Já enviada à SERPRO — sem Select (nada mais pra escolher) e sem
                     // opção de remover (documento já processado do lado oficial).
                     // Só o botão verde, que abre o pop-up de visualizar/baixar.
