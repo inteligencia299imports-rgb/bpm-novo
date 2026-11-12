@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import { FileText, CalendarIcon, Save, Download, Percent, Eye, ArrowLeft, Loader2, RefreshCw, AlertTriangle, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Building2, ListChecks } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { HistoricoVeiculoMoto } from '@/components/showroom/HistoricoVeiculoMoto';
 import { listarAbatimentosForaDaOficina, recalcularRepasseCompra } from '@/lib/abatimentosCliente';
 import MaintenanceBadges from '@/components/shared/MaintenanceBadges';
 import { toast } from 'sonner';
@@ -885,6 +886,9 @@ const ContratoConsignacaoDialog: React.FC<Props> = ({ open, onOpenChange, avalia
                     temAcessorios={moto?.tem_acessorios}
                     acessoriosDescricao={moto?.acessorios_descricao}
                   />
+                  {avaliacao?.id && (
+                    <HistoricoVeiculoMoto avaliacaoId={avaliacao.id} atendimentoAtualId={avaliacao.atendimento_id ?? undefined} />
+                  )}
                 </CardContent>
               </Card>
 

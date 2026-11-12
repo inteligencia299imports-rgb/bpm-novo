@@ -1,4 +1,5 @@
 import React from 'react';
+import { HistoricoVeiculoMoto } from '@/components/showroom/HistoricoVeiculoMoto';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -214,6 +215,9 @@ const MotoVendaSection: React.FC<Props> = ({
           />
         </div>
         {motoAvaliacaoId && !isEditing && <PhotoUpload avaliacaoId={motoAvaliacaoId} />}
+        {motoAvaliacaoId && (
+          <HistoricoVeiculoMoto avaliacaoId={motoAvaliacaoId} atendimentoAtualId={atendimentoId ?? undefined} />
+        )}
       </CardContent>
     </Card>
   );

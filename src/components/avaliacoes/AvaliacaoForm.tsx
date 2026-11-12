@@ -13,6 +13,7 @@ import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProce
 import { podeAprovar } from '@/lib/aprovacao';
 import { marcarAtendimentoPerdido, marcarAquisicaoRetirada } from '@/lib/atendimentoCascata';
 import { supabase } from '@/lib/supabase';
+import { HistoricoVeiculoMoto } from '@/components/showroom/HistoricoVeiculoMoto';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -1556,6 +1557,8 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                 temAcessorios={moto?.tem_acessorios}
                 acessoriosDescricao={moto?.acessorios_descricao}
               />
+              {/* Histórico da Moto (DB 299) — mesmo trecho do card do atendimento. */}
+              <HistoricoVeiculoMoto avaliacaoId={avaliacaoId} atendimentoAtualId={avaliacao?.atendimento_id ?? undefined} />
               <Separator className="mt-auto" />
               <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline" className={`flex-1 gap-1.5 ${fotos.length > 0 ? 'border-green-500 text-green-600 hover:bg-green-50' : ''}`} onClick={() => setShowPhotosDialog(true)}>

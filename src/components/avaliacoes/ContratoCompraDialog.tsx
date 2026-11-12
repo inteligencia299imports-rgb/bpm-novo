@@ -19,6 +19,7 @@ import { NfeStatusBadge, NfeDanfeButton } from '@/components/shared/NfeCabecalho
 import { Badge } from '@/components/ui/badge';
 import { FileText, CalendarIcon, Save, Download, Eye, ArrowLeft, User, Bike, MessageSquare, Pencil, MapPin, Landmark, Loader2, RefreshCw, AlertTriangle, Building2, ListChecks } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { HistoricoVeiculoMoto } from '@/components/showroom/HistoricoVeiculoMoto';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -1029,6 +1030,9 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
                 temAcessorios={moto?.tem_acessorios}
                 acessoriosDescricao={moto?.acessorios_descricao}
               />
+              {avaliacao?.id && (
+                <HistoricoVeiculoMoto avaliacaoId={avaliacao.id} atendimentoAtualId={avaliacao.atendimento_id ?? undefined} />
+              )}
             </CardContent>
           </Card>
 
