@@ -10,6 +10,7 @@
 //     cliente, gera conta a pagar do mesmo valor.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { abatimentosCliente } from '../_shared/abatimentos-cliente.ts';
+import { sincronizarCompromissoQuitacao } from '../_shared/quitacao-compromisso.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
@@ -258,7 +259,7 @@ async function construirRepasse(
 ): Promise<Record<string, unknown>> {
   const { data: av } = await admin
     .from('avaliacoes')
-    .select('id, atendimento_id, previsao_custos_cliente, valor_quitacao, valor_fechamento, trade_in, placa, tipo_aquisicao, marca:marca_id(nome), modelo:modelo_id(nome)')
+    .select('id, atendimento_id, previsao_custos_cliente, valor_quitacao, quitacao_instituicao_id, valor_fechamento, trade_in, placa, tipo_aquisicao, marca:marca_id(nome), modelo:modelo_id(nome)')
     .eq('id', avaliacaoId)
     .maybeSingle();
   if (!av) return { origem, status: 'avaliacao_nao_encontrada' };
@@ -302,10 +303,12 @@ async function construirRepasse(
     const diferenca = Math.min(Math.max(fechamento - valorVenda, 0), repasse);
     const restante = repasse - diferenca;
     const itens: { valor: number; forma_pagamento_id: string; observacoes: string }[] = [];
-    if (quitacao > 0) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, observacoes: OBS_PARCELA_QUITACAO });
+    // Quitação: compromisso separado, no nome do banco (sincronizarCompromissoQuitacao).
+    // Sem banco informado ainda, fica como parcela aqui (regra antiga) para não sumir.
+    if (quitacao > 0 && !av.quitacao_instituicao_id) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, observacoes: OBS_PARCELA_QUITACAO });
     if (diferenca > 0) itens.push({ valor: diferenca, forma_pagamento_id: FORMA_PAGAMENTO_ID, observacoes: OBS_PARCELA_REPASSE });
     if (restante > 0) itens.push({ valor: restante, forma_pagamento_id: FORMA_PAGAMENTO_ID, observacoes: OBS_PARCELA_REPASSE });
-    if (itens.length === 0) return { origem, status: 'sem_valor' };
+    if (itens.length === 0) return { origem, status: 'sem_valor', quitacao: await sincronizarCompromissoQuitacao(admin, avaliacaoId, callerId) };
     const tipo = itens.length > 1 ? 'parcelado' : 'unico';
     parcelas = itens.map((it, i) => ({
       numero_parcela: i + 1,
@@ -329,7 +332,9 @@ async function construirRepasse(
       : { data: [] };
     const ehFinanciamento = (t?: string | null) => String(t ?? '').toLowerCase().includes('financiamento');
     const itens: { valor: number; forma_pagamento_id: string; data_vencimento: string; observacoes: string }[] = [];
-    if (quitacao > 0) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, data_vencimento: venc, observacoes: OBS_PARCELA_QUITACAO });
+    // Quitação: compromisso separado, no nome do banco (sincronizarCompromissoQuitacao).
+    // Sem banco informado ainda, fica como parcela aqui (regra antiga) para não sumir.
+    if (quitacao > 0 && !av.quitacao_instituicao_id) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, data_vencimento: venc, observacoes: OBS_PARCELA_QUITACAO });
     let cobertoFormas = 0;
     for (const f of ((formas as any[]) || [])) {
       const vencForma = typeof f.data_pagamento === 'string' && f.data_pagamento ? f.data_pagamento : venc;
@@ -357,7 +362,7 @@ async function construirRepasse(
     : await admin.from('atendimentos_motos').select('id').eq('troca_terceiro_avaliacao_id', avaliacaoId).limit(1).maybeSingle();
   const partePagamento = origem === 'troca' || !!tercAt;
 
-  return upsertCompromisso(admin, {
+  const resultado = await upsertCompromisso(admin, {
     origem,
     linkField: 'avaliacao_id',
     linkId: avaliacaoId,
@@ -371,6 +376,8 @@ async function construirRepasse(
     parcelas,
     callerId,
   });
+  const quitacaoBanco = await sincronizarCompromissoQuitacao(admin, avaliacaoId, callerId);
+  return { ...resultado, quitacao: quitacaoBanco };
 }
 
 /**
@@ -623,10 +630,11 @@ async function recalcularRepasseCompra(admin: any, avaliacaoId: string, callerId
 
   const { data: parcelasRaw } = await admin
     .from('compromissos_parcelas')
-    .select('id, numero_parcela, valor, status_pagamento, forma_pagamento_id')
+    .select('id, numero_parcela, valor, status_pagamento, forma_pagamento_id, observacoes')
     .eq('compromisso_id', comp.id);
   const parcelas = ((parcelasRaw as any[]) || []);
-  const repasseParc = parcelas.filter((p) => p.forma_pagamento_id !== FORMA_PAGAMENTO_BOLETO_ID && p.status_pagamento !== 'cancelado');
+  const ehQuitAntiga = (p: any) => String(p.observacoes || '').toUpperCase() === OBS_PARCELA_QUITACAO || (!p.observacoes && p.forma_pagamento_id === FORMA_PAGAMENTO_BOLETO_ID);
+  const repasseParc = parcelas.filter((p) => !ehQuitAntiga(p) && p.status_pagamento !== 'cancelado');
   const pago = repasseParc.filter((p) => p.status_pagamento === 'pago').reduce((s, p) => s + nz(p.valor), 0);
   const abertas = repasseParc.filter((p) => p.status_pagamento !== 'pago').sort((a, b) => a.numero_parcela - b.numero_parcela);
   const alvoAberto = Math.round((repasse - pago) * 100) / 100;
@@ -665,75 +673,30 @@ async function recalcularRepasseCompra(admin: any, avaliacaoId: string, callerId
 }
 
 /**
- * Quitação lançada/atualizada no painel de Abatimentos (Pós-Compra ou
- * Intermediação Parte 2) — pedido do usuário, 2026-11-12: cria o compromisso se
- * ainda não existe, ou atualiza o existente.
- *  - Consignada vendida: compromisso do consignante (acaoConsignante, que já
- *    inclui a parcela QUITAÇÃO).
- *  - Compra/troca: parcela QUITAÇÃO (boleto) do compromisso de compra/troca
- *    ajustada ao novo valor (parcelas pagas ficam); o repasse em aberto absorve a
- *    diferença. Sem compromisso: compra direta nasce aqui; troca nasce na proposta.
+ * Quitação lançada/atualizada/removida no painel de Abatimentos (Pós-Compra ou
+ * Intermediação Parte 2) ou na avaliação. Desde 2026-11-12 a quitação é um
+ * compromisso SEPARADO, no nome do banco/consórcio (sincronizarCompromissoQuitacao).
+ * Aqui também se acerta o repasse ao cliente/consignante, que é líquido da quitação:
+ *  - consignada vendida: reprocessa o compromisso do consignante;
+ *  - compra: recalcular_repasse; sem compromisso, a compra direta nasce aqui;
+ *  - troca: a última parcela de repasse em aberto absorve a diferença.
  */
-const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-/** Histórico de Movimentações do compromisso no SisFin (status_history_compromissos). */
-async function registrarHistoricoQuitacao(
-  admin: any, compromissoId: string | undefined | null, criado: boolean, antes: number, depois: number, callerId: string,
-) {
-  if (!compromissoId) return;
-  if (!criado && Math.abs(antes - depois) < 0.005) return;
-  const detalhe = criado
-    ? `COMPROMISSO CRIADO — QUITAÇÃO ${fmtBRL(depois)} (BPM)`
-    : depois <= 0.005
-      ? `COMPROMISSO EDITADO — QUITAÇÃO REMOVIDA (ERA ${fmtBRL(antes)}) (BPM)`
-      : antes <= 0.005
-        ? `COMPROMISSO EDITADO — QUITAÇÃO INCLUÍDA ${fmtBRL(depois)} (BPM)`
-        : `COMPROMISSO EDITADO — QUITAÇÃO ALTERADA DE ${fmtBRL(antes)} PARA ${fmtBRL(depois)} (BPM)`;
-  const { error } = await admin.from('status_history_compromissos').insert({
-    entity_id: compromissoId,
-    entity_type: 'compromissos',
-    status: criado ? 'criado' : 'editado',
-    changed_by: callerId,
-    observacoes: detalhe,
-  });
-  if (error) console.error('historico quitacao', error);
-}
-
-/** Soma das parcelas QUITAÇÃO (não canceladas) de um compromisso. */
-async function quitacaoDoCompromisso(admin: any, compromissoId: string | null | undefined): Promise<number> {
-  if (!compromissoId) return 0;
-  const { data } = await admin.from('compromissos_parcelas').select('valor, status_pagamento, observacoes, forma_pagamento_id')
-    .eq('compromisso_id', compromissoId);
-  return Math.round(((data as any[]) || [])
-    .filter((p) => p.status_pagamento !== 'cancelado')
-    .filter((p) => String(p.observacoes || '').toUpperCase() === OBS_PARCELA_QUITACAO || p.forma_pagamento_id === FORMA_PAGAMENTO_BOLETO_ID)
-    .reduce((s, p) => s + nz(p.valor), 0) * 100) / 100;
-}
-
 async function acaoQuitacao(admin: any, avaliacaoId: string, callerId: string): Promise<Record<string, unknown>> {
   const { data: av } = await admin
     .from('avaliacoes')
-    .select('id, atendimento_id, tipo_aquisicao, valor_quitacao')
+    .select('id, atendimento_id, tipo_aquisicao, valor_quitacao, valor_fechamento')
     .eq('id', avaliacaoId)
     .maybeSingle();
   if (!av) return { status: 'avaliacao_nao_encontrada' };
-  const quitacao = Math.round(nz(av.valor_quitacao) * 100) / 100;
 
-  // Consignada já vendida -> compromisso do consignante.
   if (av.tipo_aquisicao === 'consignada') {
     const { data: estC } = await admin.from('estoque_motos').select('atendimento_venda_id').eq('avaliacao_id', avaliacaoId)
       .not('atendimento_venda_id', 'is', null).limit(1).maybeSingle();
     if (estC?.atendimento_venda_id) {
-      const { data: compAntes } = await admin.from('compromissos').select('id').eq('atendimento_id', estC.atendimento_venda_id)
-        .eq('origem', 'consignante').is('deleted_at', null).order('created_at', { ascending: true }).limit(1).maybeSingle();
-      const antes = await quitacaoDoCompromisso(admin, compAntes?.id);
-      const r = await acaoConsignante(admin, estC.atendimento_venda_id, callerId);
-      const compId = (r as any)?.compromisso_id as string | undefined;
-      if (compId && ['criado', 'atualizado'].includes(String((r as any)?.status))) {
-        await registrarHistoricoQuitacao(admin, compId, (r as any).status === 'criado', antes, await quitacaoDoCompromisso(admin, compId), callerId);
-      }
-      return { alvo: 'consignante', ...r };
+      const consignante = await acaoConsignante(admin, estC.atendimento_venda_id, callerId);
+      return { ...(consignante as any).quitacao ?? await sincronizarCompromissoQuitacao(admin, avaliacaoId, callerId), consignante };
     }
+    return await sincronizarCompromissoQuitacao(admin, avaliacaoId, callerId);
   }
 
   const { data: comp } = await admin
@@ -752,78 +715,39 @@ async function acaoQuitacao(admin: any, avaliacaoId: string, callerId: string): 
       ? await admin.from('atendimentos_motos').select('interesse').eq('id', av.atendimento_id).maybeSingle()
       : { data: null };
     const { data: terc } = await admin.from('atendimentos_motos').select('id').eq('troca_terceiro_avaliacao_id', avaliacaoId).limit(1).maybeSingle();
-    if ((at as any)?.interesse === 'trocar' || terc) return { alvo: 'troca', status: 'troca_sem_compromisso' };
-    const r = await construirRepasse(admin, avaliacaoId, 'compra', null, callerId);
-    if ((r as any)?.status === 'criado') {
-      await registrarHistoricoQuitacao(admin, (r as any).compromisso_id, true, 0, await quitacaoDoCompromisso(admin, (r as any).compromisso_id), callerId);
-    }
-    return { alvo: 'compra', ...r };
+    if ((at as any)?.interesse === 'trocar' || terc) return await sincronizarCompromissoQuitacao(admin, avaliacaoId, callerId);
+    const compra = await construirRepasse(admin, avaliacaoId, 'compra', null, callerId);
+    return { ...((compra as any).quitacao ?? {}), compra };
   }
 
-  const { data: parcRaw } = await admin
-    .from('compromissos_parcelas')
-    .select('id, numero_parcela, valor, status_pagamento, forma_pagamento_id, observacoes, data_vencimento')
-    .eq('compromisso_id', comp.id);
-  const parcelas = ((parcRaw as any[]) || []).filter((p) => p.status_pagamento !== 'cancelado');
-  const ehQuit = (p: any) => String(p.observacoes || '').toUpperCase() === OBS_PARCELA_QUITACAO || p.forma_pagamento_id === FORMA_PAGAMENTO_BOLETO_ID;
-  const quitParc = parcelas.filter(ehQuit);
-  const quitAntes = Math.round(quitParc.reduce((s, p) => s + nz(p.valor), 0) * 100) / 100;
-  const quitPaga = quitParc.filter((p) => p.status_pagamento === 'pago').reduce((s, p) => s + nz(p.valor), 0);
-  const quitAbertas = quitParc.filter((p) => p.status_pagamento !== 'pago').sort((a, b) => a.numero_parcela - b.numero_parcela);
-  const alvoAberto = Math.round((quitacao - quitPaga) * 100) / 100;
-  const vencPadrao = parcelas.filter((p) => p.status_pagamento !== 'pago').map((p) => String(p.data_vencimento || '')).filter(Boolean).sort()[0]
-    || addDias(null, DIAS_VENCIMENTO);
-
-  if (quitAbertas.length > 0) {
-    const [primeira, ...resto] = quitAbertas;
-    if (resto.length) await admin.from('compromissos_parcelas').delete().in('id', resto.map((p) => p.id));
-    if (alvoAberto > 0.005) {
-      await admin.from('compromissos_parcelas').update({ valor: alvoAberto, observacoes: OBS_PARCELA_QUITACAO }).eq('id', primeira.id);
-    } else {
-      await admin.from('compromissos_parcelas').delete().eq('id', primeira.id);
-    }
-  } else if (alvoAberto > 0.005) {
-    await admin.from('compromissos_parcelas').insert({
-      compromisso_id: comp.id,
-      numero_parcela: Math.max(0, ...((parcRaw as any[]) || []).map((p) => Number(p.numero_parcela))) + 1,
-      valor: alvoAberto,
-      data_vencimento: vencPadrao,
-      tipo: 'parcelado',
-      forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID,
-      status_pagamento: comp.origem === 'troca' ? 'pendente' : 'em_aberto',
-      observacoes: OBS_PARCELA_QUITACAO,
-    });
-  }
-  const delta = Math.round((Math.max(quitacao, quitPaga) - quitAntes) * 100) / 100;
+  // O banco primeiro (tira a parcela QUITAÇÃO antiga do compromisso da moto, se houver).
+  const quitacao = await sincronizarCompromissoQuitacao(admin, avaliacaoId, callerId);
 
   let repasse: Record<string, unknown> = {};
   if (comp.origem === 'compra') {
     repasse = await recalcularRepasseCompra(admin, avaliacaoId, callerId);
-  } else if (Math.abs(delta) > 0.005) {
-    // Troca: a última parcela de repasse em aberto absorve a diferença da quitação.
-    const abertasRep = parcelas
-      .filter((p) => !ehQuit(p) && p.status_pagamento !== 'pago')
-      .sort((a, b) => a.numero_parcela - b.numero_parcela);
-    const ultima = abertasRep[abertasRep.length - 1];
-    if (ultima) {
-      const novo = Math.round((nz(ultima.valor) - delta) * 100) / 100;
+  } else {
+    // Troca: repasse = fechamento − quitação − abatimentos; a última parcela de
+    // repasse em aberto absorve a diferença.
+    const alvoRepasse = Math.round(Math.max(nz(av.valor_fechamento) - nz(av.valor_quitacao) - await abatimentosCliente(admin, avaliacaoId), 0) * 100) / 100;
+    const { data: parcRaw } = await admin.from('compromissos_parcelas')
+      .select('id, numero_parcela, valor, status_pagamento, observacoes, forma_pagamento_id').eq('compromisso_id', comp.id);
+    const repParc = ((parcRaw as any[]) || []).filter((p) => p.status_pagamento !== 'cancelado'
+      && String(p.observacoes || '').toUpperCase() !== OBS_PARCELA_QUITACAO);
+    const atual = Math.round(repParc.reduce((s, p) => s + nz(p.valor), 0) * 100) / 100;
+    const delta = Math.round((alvoRepasse - atual) * 100) / 100;
+    const abertas = repParc.filter((p) => p.status_pagamento !== 'pago').sort((a, b) => a.numero_parcela - b.numero_parcela);
+    const ultima = abertas[abertas.length - 1];
+    if (Math.abs(delta) > 0.005 && ultima) {
+      const novo = Math.round((nz(ultima.valor) + delta) * 100) / 100;
       if (novo > 0.005) await admin.from('compromissos_parcelas').update({ valor: novo }).eq('id', ultima.id);
       else await admin.from('compromissos_parcelas').delete().eq('id', ultima.id);
       repasse = { status: 'troca_ajustada', antes: nz(ultima.valor), depois: Math.max(novo, 0) };
     } else {
-      repasse = { status: 'troca_sem_repasse_em_aberto' };
+      repasse = { status: Math.abs(delta) > 0.005 ? 'troca_sem_repasse_em_aberto' : 'sem_alteracao' };
     }
   }
-
-  const { data: depois } = await admin.from('compromissos_parcelas').select('status_pagamento').eq('compromisso_id', comp.id);
-  const ativas = ((depois as any[]) || []).filter((p) => p.status_pagamento !== 'cancelado');
-  await admin.from('compromissos')
-    .update({ status_compromisso: ativas.length > 0 && ativas.every((p) => p.status_pagamento === 'pago') ? 'pago' : 'em_aberto', updated_by: callerId })
-    .eq('id', comp.id);
-
-  await registrarHistoricoQuitacao(admin, comp.id, false, quitAntes, await quitacaoDoCompromisso(admin, comp.id), callerId);
-
-  return { alvo: comp.origem, status: 'atualizado', compromisso_id: comp.id, quitacao, quitacao_antes: quitAntes, repasse };
+  return { ...quitacao, repasse };
 }
 
 /** Repasse ao consignante (venda de moto consignada): a PAGAR, no vencimento da
@@ -856,9 +780,11 @@ async function acaoConsignante(admin: any, atendimentoId: string, callerId: stri
   // 2026-11-12). Se o contrato já tem um custo operacional de quitação do cliente,
   // o valor_repasse já veio líquido dela — não desconta de novo.
   let quitacao = 0;
+  let quitacaoSemBanco = false;
   if (est?.avaliacao_id) {
-    const { data: avQ } = await admin.from('avaliacoes').select('valor_quitacao').eq('id', est.avaliacao_id).maybeSingle();
+    const { data: avQ } = await admin.from('avaliacoes').select('valor_quitacao, quitacao_instituicao_id').eq('id', est.avaliacao_id).maybeSingle();
     quitacao = Math.round(nz(avQ?.valor_quitacao) * 100) / 100;
+    quitacaoSemBanco = quitacao > 0 && !avQ?.quitacao_instituicao_id;
   }
   let quitacaoJaNoContrato = false;
   if (cc?.id && quitacao > 0) {
@@ -866,7 +792,9 @@ async function acaoConsignante(admin: any, atendimentoId: string, callerId: stri
     quitacaoJaNoContrato = ((opsQ as any[]) || []).some((o) => String(o.responsavel || '').toLowerCase() === 'cliente' && /quita/i.test(String(o.descricao || '')));
   }
   const repasse = Math.round(Math.max(nz(cc?.valor_repasse) - (quitacaoJaNoContrato ? 0 : quitacao), 0) * 100) / 100;
-  if (repasse <= 0 && quitacao <= 0) return { status: 'sem_valor_repasse' };
+  if (repasse <= 0) {
+    return { status: 'sem_valor_repasse', quitacao: est?.avaliacao_id ? await sincronizarCompromissoQuitacao(admin, est.avaliacao_id, callerId) : null };
+  }
 
   // Repasse: segue as formas de pagamento lançadas no contrato de intermediação
   // (cada uma na sua data; sem data = vencimento da PREVISÃO DE PAGAMENTO). O que
@@ -879,7 +807,9 @@ async function acaoConsignante(admin: any, atendimentoId: string, callerId: stri
         .order('created_at', { ascending: true })
     : { data: [] };
   const itens: { valor: number; forma_pagamento_id: string; data_vencimento: string; observacoes?: string }[] = [];
-  if (quitacao > 0) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, data_vencimento: vencimento, observacoes: OBS_PARCELA_QUITACAO });
+  // Quitação: compromisso separado, no nome do banco (sincronizarCompromissoQuitacao).
+  // Sem banco informado ainda, fica como parcela aqui (regra antiga) para não sumir.
+  if (quitacaoSemBanco) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, data_vencimento: vencimento, observacoes: OBS_PARCELA_QUITACAO });
   let cobertoFormas = 0;
   for (const f of ((formas as any[]) || [])) {
     const vencForma = typeof f.data_pagamento === 'string' && f.data_pagamento ? f.data_pagamento : vencimento;
@@ -926,7 +856,7 @@ async function acaoConsignante(admin: any, atendimentoId: string, callerId: stri
   const empresaId = saleAt?.empresa_id;
   if (!empresaId) return { status: 'sem_empresa' };
 
-  return upsertCompromisso(admin, {
+  const resultado = await upsertCompromisso(admin, {
     origem: 'consignante',
     linkField: 'atendimento_id',
     linkId: atendimentoId,
@@ -940,6 +870,9 @@ async function acaoConsignante(admin: any, atendimentoId: string, callerId: stri
     parcelas,
     callerId,
   });
+
+  const quitacaoBanco = est?.avaliacao_id ? await sincronizarCompromissoQuitacao(admin, est.avaliacao_id, callerId) : null;
+  return { ...resultado, quitacao: quitacaoBanco };
 }
 
 Deno.serve(async (req) => {

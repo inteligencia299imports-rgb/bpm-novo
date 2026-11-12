@@ -4,6 +4,7 @@ import { cancelarNfe, consultarNfe, emitirNfe, focusBaseUrl, mensagemErroFocus, 
 import { montarPayloadNfeCompra, brl, indicadorIeDestinatario, difalAplicavel, type RegraFiscal } from './payload.ts';
 import { carregarOperacao, montarCenario, escolherRegra, comoRegrasPorImposto, natOpDe, type Operacao as OperacaoFiscal } from '../_shared/regras-fiscais.ts';
 import { abatimentosCliente } from '../_shared/abatimentos-cliente.ts';
+import { sincronizarCompromissoQuitacao } from '../_shared/quitacao-compromisso.ts';
 
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
@@ -1288,7 +1289,7 @@ async function registrarPosAutorizacao(
     // repasse = fechamento - quitação - custo do cliente (previsão da avaliação + custos de oficina do cliente).
     const { data: avFinRaw } = await admin
       .from('avaliacoes')
-      .select('previsao_custos_cliente, valor_quitacao, valor_fechamento, trade_in, atendimento_id, marca:marca_id(nome), modelo:modelo_id(nome), placa')
+      .select('previsao_custos_cliente, valor_quitacao, quitacao_instituicao_id, valor_fechamento, trade_in, atendimento_id, marca:marca_id(nome), modelo:modelo_id(nome), placa')
       .eq('id', entityId)
       .maybeSingle();
     const avFin = avFinRaw
@@ -1377,10 +1378,16 @@ async function registrarPosAutorizacao(
       const diferenca = Math.min(Math.max(fechamento - precoTotalNovaMoto, 0), valorRepasse);
       const restante = valorRepasse - diferenca;
       const itens: { valor: number; forma_pagamento_id: string; pago: boolean; observacoes: string }[] = [];
-      if (quitacao > 0) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, pago: false, observacoes: OBS_PARCELA_QUITACAO });
+      // Quitação: compromisso separado, no nome do banco (sincronizarCompromissoQuitacao).
+      // Sem banco informado ainda, fica como parcela aqui (regra antiga) para não sumir.
+      if (quitacao > 0 && !avFin?.quitacao_instituicao_id) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, pago: false, observacoes: OBS_PARCELA_QUITACAO });
       if (diferenca > 0) itens.push({ valor: diferenca, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: false, observacoes: OBS_PARCELA_REPASSE });
       if (restante > 0) itens.push({ valor: restante, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: true, observacoes: OBS_PARCELA_REPASSE });
-      if (itens.length === 0) return;
+      if (itens.length === 0) {
+        // Só quitação (sem repasse ao cliente): ela vai no compromisso do banco.
+        try { await sincronizarCompromissoQuitacao(admin, entityId, callerId); } catch (e) { console.error('quitacao (nf compra)', e); }
+        return;
+      }
       const tipoTroca = itens.length > 1 ? 'parcelado' : 'unico';
       parcelasDesejadas = itens.map((it, i) => ({
         numero_parcela: i + 1,
@@ -1404,7 +1411,9 @@ async function registrarPosAutorizacao(
             .order('created_at', { ascending: true })
         : { data: [] };
       const itens: { valor: number; forma_pagamento_id: string; data_vencimento?: string; observacoes: string }[] = [];
-      if (quitacao > 0) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, observacoes: OBS_PARCELA_QUITACAO });
+      // Quitação: compromisso separado, no nome do banco (sincronizarCompromissoQuitacao).
+      // Sem banco informado ainda, fica como parcela aqui (regra antiga) para não sumir.
+      if (quitacao > 0 && !avFin?.quitacao_instituicao_id) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, observacoes: OBS_PARCELA_QUITACAO });
       let cobertoFormas = 0;
       for (const f of ((formasCompra || []) as any[])) {
         const vencForma = typeof f.data_pagamento === 'string' && f.data_pagamento ? f.data_pagamento : undefined;
@@ -1527,6 +1536,13 @@ async function registrarPosAutorizacao(
 
   if (parcelasAInserir.length > 0) {
     await admin.from('compromissos_parcelas').insert(parcelasAInserir);
+  }
+
+  // Compra/troca de seminova: a quitação é um compromisso separado, no nome do
+  // banco/consórcio (cria/atualiza e tira a parcela QUITAÇÃO antiga, se houver).
+  if (porAvaliacao && cfg.planoContaId === PLANO_COMPRA_USADA) {
+    try { await sincronizarCompromissoQuitacao(admin, entityId, callerId); }
+    catch (e) { console.error('quitacao (nf compra)', e); }
   }
 }
 
