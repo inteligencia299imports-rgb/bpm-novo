@@ -714,7 +714,6 @@ const ProcessoDialog: React.FC<Props> = ({
                 pendenciasEtapa.push('Aprovação da venda pelo gestor');
               }
               if (isAtpvAuto && !atpvEmitido && !nfVendaProducao) pendenciasEtapa.push('NF-e de venda em produção');
-              if (emplacamentoTravado) pendenciasEtapa.push(...pendenciasEmplacamento);
               const nfMarcada = isAtpvAuto
                 ? atpvEmitido
                 : isSaidaRenave
