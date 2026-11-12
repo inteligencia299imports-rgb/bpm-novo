@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { listarAbatimentosForaDaOficina, recalcularRepasseCompra, type AbatimentoForaDaOficina } from '@/lib/abatimentosCliente';
 import { toast } from 'sonner';
@@ -198,8 +198,9 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
             <Input className="pl-7 h-9" value={newValor} onChange={e => setNewValor(formatCurrencyInput(e.target.value))} inputMode="numeric" placeholder="0,00" />
           </div>
         </div>
-        <Button size="sm" className="h-9" onClick={adicionar} disabled={salvando}>
-          {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+        {/* Quitação já preenchida: o botão atualiza (substitui) o valor — ícone de atualizar. */}
+        <Button size="sm" className="h-9" onClick={adicionar} disabled={salvando} title={ehQuitacao && valorQuitacao > 0 ? 'Atualizar quitação' : 'Adicionar'}>
+          {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : ehQuitacao && valorQuitacao > 0 ? <RefreshCw className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
         </Button>
       </div>
 
