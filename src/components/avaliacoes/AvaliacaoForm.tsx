@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import QuitacaoInstituicaoSelect from '@/components/shared/QuitacaoInstituicaoSelect';
 import ConsultaAutoria from '@/components/consulta/ConsultaAutoria';
 import { rotuloSexo } from '@/lib/sexo';
 import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, isTipoPropria, isTipoConsignada, empresaConsignaMoto } from '@/lib/tipoAquisicao';
@@ -381,6 +382,9 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [prevCustosLoja, setPrevCustosLoja] = useState('');
   const [prevCustosCliente, setPrevCustosCliente] = useState('');
   const [valorQuitacao, setValorQuitacao] = useState('');
+  // Banco / consórcio da quitação (obrigatório com quitação > 0) — fornecedor do
+  // compromisso separado da quitação (2026-11-12).
+  const [quitacaoInstituicaoId, setQuitacaoInstituicaoId] = useState('');
   const [valorTradeIn, setValorTradeIn] = useState('');
   // Trade-in (bônus da montadora) só existe em TROCA por moto 0km: o cliente
   // leva uma 0km do estoque (motos_interesse.estoque_tipo = '0km') — pedido do
@@ -439,6 +443,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       setAvalCompra(numberToCurrencyMask(data.avaliacao_compra));
       setPrevCustosLoja(numberToCurrencyMask(data.previsao_custos_loja));
       setValorQuitacao(numberToCurrencyMask((data as any).valor_quitacao));
+      setQuitacaoInstituicaoId((data as any).quitacao_instituicao_id || '');
       setPrevCustosCliente(numberToCurrencyMask(data.previsao_custos_cliente));
       setValorTradeIn(numberToCurrencyMask((data as any).trade_in));
       setClassificacao((data as any).classificacao || '');
@@ -576,6 +581,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       toast.error('Preencha todos os campos');
       return;
     }
+    if (!nfeCompraEmitida && (parseCurrencyToNumber(valorQuitacao) ?? 0) > 0 && !quitacaoInstituicaoId) {
+      toast.error('Selecione o banco / consórcio da quitação');
+      return;
+    }
     setSaving(true);
     const updateData: any = {
       valor_fipe: parseCurrencyToNumber(valorFipe),
@@ -598,7 +607,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       avaliador_id: (avaliacao?.situacao !== 'sem_avaliar' && avaliadorId) ? avaliadorId : user!.id,
       situacao: avaliacao?.situacao === 'sem_avaliar' ? 'em_aberto' : avaliacao?.situacao ?? 'em_aberto',
       // Após a NF-e ou a aprovação da aquisição, "Valor de Quitação" e "Valor de Fechamento" ficam congelados (não são regravados).
-      ...(!nfeCompraEmitida ? { valor_quitacao: parseCurrencyToNumber(valorQuitacao) } : {}),
+      ...(!nfeCompraEmitida ? {
+        valor_quitacao: parseCurrencyToNumber(valorQuitacao),
+        quitacao_instituicao_id: (parseCurrencyToNumber(valorQuitacao) ?? 0) > 0 ? (quitacaoInstituicaoId || null) : null,
+      } : {}),
       ...(!valorFechamentoTravado && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
     };
 
@@ -634,6 +646,17 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
           entity_type: 'avaliacao',
         });
       }
+      // Quitação / banco mudou numa moto já adquirida: cria/atualiza o compromisso
+      // separado da quitação (no nome do banco) e acerta o repasse.
+      const quitAntes = Number((avaliacao as any)?.valor_quitacao ?? 0);
+      const quitDepois = Number(updateData.valor_quitacao ?? quitAntes);
+      const instAntes = (avaliacao as any)?.quitacao_instituicao_id ?? null;
+      const instDepois = 'quitacao_instituicao_id' in updateData ? updateData.quitacao_instituicao_id : instAntes;
+      if (avaliacao?.id && ['adquirida', 'estoque', 'oficina'].includes(String(avaliacao?.situacao))
+          && (Math.abs(quitAntes - quitDepois) > 0.005 || instAntes !== instDepois)) {
+        supabase.functions.invoke('gerar-compromissos-proposta', { body: { acao: 'quitacao', avaliacao_id: avaliacao.id } })
+          .then(({ error: e }) => { if (e) console.error('quitacao (avaliacao)', e); });
+      }
       toast.success('Avaliação salva!');
       setShowEvalDialog(false);
       setAvaliacao((prev: any) => ({ ...prev, ...updateData }));
@@ -645,6 +668,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
   const [tipoAquisicaoPopup, setTipoAquisicaoPopup] = useState(false);
   const [valorFechamentoAquisicao, setValorFechamentoAquisicao] = useState('');
   const [valorQuitacaoAquisicao, setValorQuitacaoAquisicao] = useState('');
+  const [quitacaoInstituicaoAquisicao, setQuitacaoInstituicaoAquisicao] = useState('');
   const [tipoSelecionado, setTipoSelecionado] = useState<string | null>(null);
   const [savingAquisicao, setSavingAquisicao] = useState(false);
   const [obsMotaAquisicao, setObsMotaAquisicao] = useState('');
@@ -900,10 +924,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       toast.error('Informe o valor de quitação (pode ser 0)');
       return;
     }
+    if (quitacao > 0 && !quitacaoInstituicaoAquisicao) {
+      toast.error('Selecione o banco / consórcio da quitação');
+      return;
+    }
     setSavingAquisicao(true);
     // Salvar dados da moto (observações + manual/chave/revisão + valores)
     if (avaliacao?.id) {
-      const motoUpdate: any = { valor_fechamento: valor, valor_quitacao: quitacao };
+      const motoUpdate: any = { valor_fechamento: valor, valor_quitacao: quitacao, quitacao_instituicao_id: quitacao > 0 ? quitacaoInstituicaoAquisicao : null };
       if (obsMotaAquisicao.trim()) motoUpdate.observacoes = obsMotaAquisicao.trim().toUpperCase();
       if (aquisManual) motoUpdate.tem_manual = aquisManual === 'sim';
       if (aquisChaveReserva) motoUpdate.tem_chave_reserva = aquisChaveReserva === 'sim';
@@ -1877,6 +1905,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                       setObsMotaAquisicao('');
                       setValorFechamentoAquisicao('');
                       setValorQuitacaoAquisicao(numberToCurrencyMask((avaliacao as any)?.valor_quitacao));
+                      setQuitacaoInstituicaoAquisicao((avaliacao as any)?.quitacao_instituicao_id || '');
                       const ma = avaliacao;
                       setAquisManual(ma?.tem_manual ? 'sim' : ma?.tem_manual === false ? 'nao' : '');
                       setAquisChaveReserva(ma?.tem_chave_reserva ? 'sim' : ma?.tem_chave_reserva === false ? 'nao' : '');
@@ -1935,6 +1964,18 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
             <CurrencyField label="Previsão Custos Loja" value={prevCustosLoja} onChange={handleCurrencyChange(setPrevCustosLoja)} />
             <CurrencyField label="Previsão Custos Cliente" value={prevCustosCliente} onChange={handleCurrencyChange(setPrevCustosCliente)} />
             <CurrencyField label="Valor de Quitação" opcional value={valorQuitacao} onChange={handleCurrencyChange(setValorQuitacao)} disabled={nfeCompraEmitida} />
+            {(parseCurrencyToNumber(valorQuitacao) ?? 0) > 0 && (
+              <div className="space-y-1.5">
+                <Label>Banco / Consórcio da Quitação <span className="text-destructive">*</span></Label>
+                <QuitacaoInstituicaoSelect
+                  className="h-10"
+                  value={quitacaoInstituicaoId}
+                  onChange={setQuitacaoInstituicaoId}
+                  disabled={nfeCompraEmitida}
+                  invalido={!quitacaoInstituicaoId}
+                />
+              </div>
+            )}
             {estoqueId && (
               <div className="space-y-1.5">
                 <Label>Preço Ação</Label>
@@ -2081,6 +2122,17 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   </div>
                 </div>
               )}
+              {!isConvertendo && (parseCurrencyToNumber(valorQuitacaoAquisicao) ?? 0) > 0 && (
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-sm font-medium text-foreground">Banco / Consórcio da Quitação <span className="text-destructive">*</span></label>
+                  <QuitacaoInstituicaoSelect
+                    className="mt-1 h-10"
+                    value={quitacaoInstituicaoAquisicao}
+                    onChange={setQuitacaoInstituicaoAquisicao}
+                    invalido={!quitacaoInstituicaoAquisicao}
+                  />
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium text-foreground">Tipo de Aquisição <span className="text-destructive">*</span></label>
@@ -2196,7 +2248,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
               >
                 <ArrowLeft className="h-4 w-4" /> Voltar
               </Button>
-              {valorFechamentoAquisicao.trim() !== '' && parseCurrencyToNumber(valorFechamentoAquisicao) !== null && (!isConvertendo || parseCurrencyToNumber(valorFechamentoAquisicao)! > 0) && (isConvertendo || (valorQuitacaoAquisicao.trim() !== '' && parseCurrencyToNumber(valorQuitacaoAquisicao) !== null)) && tipoSelecionado && (
+              {valorFechamentoAquisicao.trim() !== '' && parseCurrencyToNumber(valorFechamentoAquisicao) !== null && (!isConvertendo || parseCurrencyToNumber(valorFechamentoAquisicao)! > 0) && (isConvertendo || (valorQuitacaoAquisicao.trim() !== '' && parseCurrencyToNumber(valorQuitacaoAquisicao) !== null && ((parseCurrencyToNumber(valorQuitacaoAquisicao) ?? 0) <= 0 || !!quitacaoInstituicaoAquisicao))) && tipoSelecionado && (
                 <Button
                   className="w-full sm:flex-1 gap-2"
                   onClick={isConvertendo ? handleSaveConversao : handleSaveAquisicao}

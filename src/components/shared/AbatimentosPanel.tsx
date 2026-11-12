@@ -6,6 +6,7 @@ import { Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { listarAbatimentosForaDaOficina, recalcularRepasseCompra, type AbatimentoForaDaOficina } from '@/lib/abatimentosCliente';
 import { toast } from 'sonner';
+import QuitacaoInstituicaoSelect, { carregarInstituicoesQuitacao } from '@/components/shared/QuitacaoInstituicaoSelect';
 
 const formatCurrencyInput = (value: string): string => {
   const digits = value.replace(/\D/g, '');
@@ -30,7 +31,8 @@ interface Props {
  * Abatimentos da moto — mesmo painel no Pós-Compra e na Intermediação (Parte 2).
  * Tipo (pedido do usuário, 2026-11-12):
  *  - Abatimento: custo do cliente em custos_oficina (como sempre foi), abate do repasse;
- *  - Quitação: substitui avaliacoes.valor_quitacao (o valor de quitação da moto,
+ *  - Quitação: substitui avaliacoes.valor_quitacao + banco/consórcio (quitacao_instituicao_id);
+ *    vira um compromisso separado, no nome do banco (o valor de quitação da moto,
  *    que vira a parcela QUITAÇÃO do compromisso de compra).
  * Repasse = fechamento − quitação − abatimentos (mesma conta do compromisso).
  */
@@ -38,6 +40,9 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
   const [loading, setLoading] = useState(true);
   const [valorFechamento, setValorFechamento] = useState(0);
   const [valorQuitacao, setValorQuitacao] = useState(0);
+  const [instituicaoId, setInstituicaoId] = useState<string | null>(null);
+  const [instituicaoNome, setInstituicaoNome] = useState<string | null>(null);
+  const [newInstituicaoId, setNewInstituicaoId] = useState<string>('');
   const [custosOficina, setCustosOficina] = useState<any[]>([]);
   const [itensForaOficina, setItensForaOficina] = useState<AbatimentoForaDaOficina[]>([]);
   const [newTipo, setNewTipo] = useState<TipoAbatimento>('abatimento');
@@ -52,13 +57,17 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
     setLoading(true);
     (async () => {
       const [{ data: av }, { data: custos }, fora] = await Promise.all([
-        supabase.from('avaliacoes').select('valor_fechamento, valor_quitacao').eq('id', avaliacaoId).maybeSingle(),
+        supabase.from('avaliacoes').select('valor_fechamento, valor_quitacao, quitacao_instituicao_id').eq('id', avaliacaoId).maybeSingle(),
         supabase.from('custos_oficina').select('*').eq('avaliacao_id', avaliacaoId).order('created_at'),
         listarAbatimentosForaDaOficina(avaliacaoId),
       ]);
       if (!ativo) return;
       setValorFechamento(nz((av as any)?.valor_fechamento));
       setValorQuitacao(nz((av as any)?.valor_quitacao));
+      const instId = (av as any)?.quitacao_instituicao_id ?? null;
+      setInstituicaoId(instId);
+      setNewInstituicaoId(instId || '');
+      if (instId) carregarInstituicoesQuitacao().then((l) => { if (ativo) setInstituicaoNome(l.find((i) => i.id === instId)?.nome ?? null); });
       setCustosOficina((custos as any[]) || []);
       setItensForaOficina(fora);
       setLoading(false);
@@ -80,10 +89,17 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
   const repasseNum = valorFechamento - valorQuitacao - abatimentos;
   const ehQuitacao = newTipo === 'quitacao';
 
-  const gravarQuitacao = async (novo: number) => {
-    const { error } = await supabase.from('avaliacoes').update({ valor_quitacao: novo > 0 ? novo : null } as any).eq('id', avaliacaoId);
+  const gravarQuitacao = async (novo: number, instId: string | null) => {
+    const { error } = await supabase.from('avaliacoes')
+      .update({ valor_quitacao: novo > 0 ? novo : null, quitacao_instituicao_id: novo > 0 ? instId : instituicaoId } as any)
+      .eq('id', avaliacaoId);
     if (error) throw error;
     setValorQuitacao(novo);
+    if (novo > 0) {
+      setInstituicaoId(instId);
+      const lista = await carregarInstituicoesQuitacao();
+      setInstituicaoNome(lista.find((i) => i.id === instId)?.nome ?? null);
+    }
   };
 
   // Quitação mudou -> cria o compromisso (se ainda não existe) ou atualiza o
@@ -98,25 +114,27 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
     }
     const r = (data as any)?.quitacao || {};
     const avisos: Record<string, string> = {
-      troca_sem_compromisso: 'O compromisso da troca nasce na proposta de venda; a quitação entra nele quando for gerado.',
+      sem_instituicao: 'Informe o banco / consórcio da quitação para gerar o compromisso.',
       sem_previsao_pagamento: 'Compromisso do consignante ainda não gerado: preencha a PREVISÃO DE PAGAMENTO (Parte 1).',
       sem_valor_repasse: 'Compromisso do consignante ainda não gerado: salve o contrato de intermediação.',
       sem_empresa: 'Compromisso não gerado: venda sem empresa.',
       travado_nfe: 'Compromisso já vinculado à NF-e.',
-      cancelado: 'O compromisso desta moto está cancelado.',
     };
     if (avisos[r.status]) toast.warning(avisos[r.status]);
-    else if (r.status === 'criado') toast.success('Compromisso financeiro criado com a quitação');
-    else toast.success('Compromisso financeiro atualizado');
+    else if (r.status === 'criado') toast.success('Compromisso da quitação criado (no nome do banco)');
+    else if (r.status === 'cancelado') toast.success('Compromisso da quitação cancelado');
+    else if (r.status === 'sem_quitacao') toast.success('Quitação removida');
+    else toast.success('Compromisso da quitação atualizado');
   };
 
   const adicionar = async () => {
     const valor = parseCurrencyInput(newValor);
     if (valor <= 0) { toast.error('Informe o valor'); return; }
+    if (ehQuitacao && !newInstituicaoId) { toast.error('Selecione o banco / consórcio da quitação'); return; }
     setSalvando(true);
     try {
       if (ehQuitacao) {
-        await gravarQuitacao(Math.round(valor * 100) / 100);
+        await gravarQuitacao(Math.round(valor * 100) / 100, newInstituicaoId);
         await sincronizarCompromissoQuitacao();
       } else {
         const { data, error } = await supabase.from('custos_oficina').insert({
@@ -150,7 +168,7 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
   const removerQuitacao = async () => {
     if (!window.confirm('Zerar o valor de quitação desta moto?')) return;
     try {
-      await gravarQuitacao(0);
+      await gravarQuitacao(0, null);
       await sincronizarCompromissoQuitacao();
     } catch (err: any) {
       toast.error('Erro ao salvar: ' + (err?.message || err));
@@ -171,9 +189,15 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
             </SelectContent>
           </Select>
         </div>
+        {ehQuitacao ? (
+          <div className="col-span-2">
+            <label className="text-xs font-medium">Banco / Consórcio <span className="text-destructive">*</span></label>
+            <QuitacaoInstituicaoSelect className="mt-1" value={newInstituicaoId} onChange={setNewInstituicaoId} />
+          </div>
+        ) : (<>
         <div>
           <label className="text-xs font-medium">Responsável</label>
-          <Select value={ehQuitacao ? 'Cliente' : newResp} onValueChange={setNewResp} disabled={ehQuitacao}>
+          <Select value={newResp} onValueChange={setNewResp}>
             <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="Cliente">Cliente</SelectItem>
@@ -185,12 +209,12 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
           <label className="text-xs font-medium">Descrição</label>
           <Input
             className="mt-1 h-9"
-            value={ehQuitacao ? '' : newDesc}
-            disabled={ehQuitacao}
+            value={newDesc}
             onChange={e => { const v = e.target.value; setNewDesc(v.charAt(0).toUpperCase() + v.slice(1)); }}
-            placeholder={ehQuitacao ? 'Substitui o valor de quitação da moto' : 'Descrição'}
+            placeholder="Descrição"
           />
         </div>
+        </>)}
         <div>
           <label className="text-xs font-medium">Valor</label>
           <div className="relative mt-1">
@@ -207,9 +231,9 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
       {(valorQuitacao > 0 || custosOficina.length > 0 || itensForaOficina.length > 0) && (
         <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
           {valorQuitacao > 0 && (
-            <div className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm" title="Valor de quitação da moto (avaliação)">
+            <div className="flex items-center gap-2 rounded-md border bg-card p-2 text-sm" title="Quitação da moto — compromisso separado, no nome do banco / consórcio">
               <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-medium shrink-0">QUITAÇÃO</span>
-              <span className="flex-1 truncate text-xs font-medium">CLIENTE - VALOR DE QUITAÇÃO DA MOTO</span>
+              <span className="flex-1 truncate text-xs font-medium">{(instituicaoNome || 'BANCO / CONSÓRCIO NÃO INFORMADO').toUpperCase()}</span>
               <span className="font-semibold text-sm whitespace-nowrap text-destructive">{formatCurrency(valorQuitacao)}</span>
               <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={removerQuitacao}>
                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
