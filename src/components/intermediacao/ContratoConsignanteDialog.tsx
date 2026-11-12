@@ -361,6 +361,15 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
     setEditandoCliente(false);
   };
 
+  // Quitação da moto (avaliacoes.valor_quitacao, painel de Abatimentos da Parte 2):
+  // a loja paga ao banco e o consignante recebe o líquido. Se a quitação já foi
+  // lançada aqui como custo operacional do cliente, ela já está nos abatimentos.
+  // valor_repasse salvo continua bruto (fechamento − abatimentos); o compromisso
+  // do consignante desconta a quitação (gerar-compromissos-proposta).
+  const quitacaoMoto = Number((avaliacaoInfo as any)?.valor_quitacao) || 0;
+  const quitacaoNosCustos = custosOp.some(c => c.responsavel === 'Cliente' && /quita/i.test(String(c.descricao || '')));
+  const quitacaoDescontada = quitacaoNosCustos ? 0 : quitacaoMoto;
+
   // Calculate abatimentos: custos oficina (all) + custos operacionais where responsavel = 'Cliente'
   const calcAbatimentos = () => {
     const oficTotal = custosOficina.filter((c: any) => (c.responsavel || '').toLowerCase() === 'cliente').reduce((sum: number, c: any) => sum + (c.valor_executado || c.valor_previsto || 0), 0);
@@ -513,7 +522,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
 
   const buildPdfData = () => {
     const abat = calcAbatimentos();
-    const repasse = parseCurrencyInput(valorFechamento) - abat;
+    const repasse = parseCurrencyInput(valorFechamento) - abat - quitacaoDescontada;
 
     // Build abatimentos list (only cliente costs)
     const abatimentosList: { descricao: string; valor: string }[] = [];
@@ -648,7 +657,7 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
   };
 
   const abatimentos = calcAbatimentos();
-  const repasseNum = parseCurrencyInput(valorFechamento) - abatimentos;
+  const repasseNum = parseCurrencyInput(valorFechamento) - abatimentos - quitacaoDescontada;
 
   // Houve edição desde a última geração/carregamento? (igual contrato de compra)
   const editado = consignanteSnapshot() !== baseline || clienteTocado || formasTocadas;
@@ -941,7 +950,13 @@ const ContratoConsignanteDialog: React.FC<Props> = ({ open, onOpenChange, atendi
                 )}
 
                 {/* Totals */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className={cn('grid gap-4', quitacaoDescontada > 0 ? 'grid-cols-3' : 'grid-cols-2')}>
+                  {quitacaoDescontada > 0 && (
+                    <div className="rounded-lg border-2 border-amber-300/50 bg-amber-50/60 p-3 flex flex-col justify-center">
+                      <span className="text-xs font-semibold text-muted-foreground">Quitação</span>
+                      <span className="text-lg font-bold text-amber-700">{formatCurrency(quitacaoDescontada)}</span>
+                    </div>
+                  )}
                   <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-3 flex flex-col justify-center">
                     <span className="text-xs font-semibold text-muted-foreground">Total de Abatimentos</span>
                     <span className="text-lg font-bold text-destructive">
