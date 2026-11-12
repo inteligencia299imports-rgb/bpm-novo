@@ -14,7 +14,9 @@ import { abatimentosCliente } from '../_shared/abatimentos-cliente.ts';
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
 // Chaves fixas — MESMAS de emitir-nfe-compra/index.ts (validar com a contabilidade).
-const PLANO_COMPRA_USADA = 'd16507df-9655-4677-8ed9-01398ce28239';
+const PLANO_COMPRA_USADA = 'd16507df-9655-4677-8ed9-01398ce28239'; // 2.1.02 Compra de Motos Usadas (Parte de pagamento) — troca
+// Compra direta (origem 'compra', sem troca) — 2.4.10. Pedido do usuário, 2026-11-12.
+const PLANO_COMPRA_ESTOQUE = 'f85919fb-d575-46d8-a2fe-25618325f631'; // 2.4.10 Compra de Motos Usadas (Estoque)
 // 3.6.06 Intermediação (custo, CC motos usadas) — repasse ao consignante na venda
 // de moto consignada. Pedido do usuário 2026-10-13 (antes ia em Compra de Motos Usadas).
 const PLANO_INTERMEDIACAO = 'e1716c2d-9520-4b2c-912d-a9cf74e20e39';
@@ -27,7 +29,8 @@ const CC_MOTOS_NOVAS = '30f457e2-d6b9-48c3-aca7-e45bbf0200df';
 // usuário, 2026-10-15. Mesmas constantes de emitir-nfe-compra.
 const PLANO_COMPRA_REPASSE = '9f15eccf-8da7-48da-916f-2d57e88271d1'; // 2.4.09 Compra de Motos Repasse
 const PLANO_VENDA_REPASSE = '4ad0a3d4-4306-4a3d-ac44-1e3cbb0a1b8d';  // 1.8.03 Venda de Motos Repasse
-const PLANOS_REPASSE = new Set([PLANO_COMPRA_REPASSE, PLANO_VENDA_REPASSE]);
+// Planos que a atualização do compromisso reaplica (repasse e compra direta).
+const PLANOS_REPASSE = new Set([PLANO_COMPRA_REPASSE, PLANO_VENDA_REPASSE, PLANO_COMPRA_ESTOQUE]);
 // Troco ao cliente (agregado marcado como troco no contrato de venda) — plano
 // de contas próprio, diferente do de venda normal (não é receita de venda,
 // é devolução de dinheiro). Centro de custo é o mesmo de venda usada/nova.
@@ -355,7 +358,7 @@ async function construirRepasse(
     empresaId,
     fornecedorId: at?.cliente_id ?? null,
     natureza: 'despesa',
-    planoContaId: av.tipo_aquisicao === 'repasse' ? PLANO_COMPRA_REPASSE : PLANO_COMPRA_USADA,
+    planoContaId: av.tipo_aquisicao === 'repasse' ? PLANO_COMPRA_REPASSE : origem === 'troca' ? PLANO_COMPRA_USADA : PLANO_COMPRA_ESTOQUE,
     centroCustoId: CC_MOTOS_USADAS,
     observacoes: obsMoto(nomeCat(av.marca), nomeCat(av.modelo), av.placa),
     numeroPrefix: 'CPR-D',
