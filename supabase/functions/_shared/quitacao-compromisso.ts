@@ -30,6 +30,11 @@ const ehParcelaQuitacao = (p: any) =>
   String(p.observacoes || '').toUpperCase() === OBS_QUITACAO
   || (!p.observacoes && p.forma_pagamento_id === FORMA_BOLETO);
 
+/** Data de hoje no fuso de Brasília (YYYY-MM-DD). */
+function hojeBrasilia(): string {
+  return new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
 function addDias(dias: number): string {
   const d = new Date();
   d.setDate(d.getDate() + dias);
@@ -187,15 +192,9 @@ export async function sincronizarCompromissoQuitacao(
   const placa = String(av.placa ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
   const observacoes = ['QUITAÇÃO', moto, placa, clienteNome].filter((s) => s && String(s).trim()).join(' - ').toUpperCase();
 
-  // Vencimento: o primeiro em aberto do compromisso da moto; senão hoje + 7.
-  let venc = addDias(7);
-  if (principal?.id) {
-    const { data: abertas } = await admin.from('compromissos_parcelas').select('data_vencimento, status_pagamento')
-      .eq('compromisso_id', principal.id);
-    const datas = ((abertas as any[]) || []).filter((p) => !['pago', 'cancelado'].includes(p.status_pagamento))
-      .map((p) => String(p.data_vencimento || '')).filter(Boolean).sort();
-    if (datas[0]) venc = datas[0];
-  }
+  // Vencimento = dia do lançamento; quando a quitação (valor ou banco) é
+  // atualizada, volta para o dia da atualização (pedido do usuário, 2026-11-12).
+  const venc = hojeBrasilia();
 
   if (!existente?.id) {
     const { data: numero } = await admin.rpc('gerar_numero_compromisso', { _prefix: 'CPR-D' });
@@ -240,10 +239,16 @@ export async function sincronizarCompromissoQuitacao(
   const pago = r2(parcs.filter((p) => p.status_pagamento === 'pago').reduce((s, p) => s + nz(p.valor), 0));
   const abertas = parcs.filter((p) => p.status_pagamento !== 'pago').sort((a, b) => a.numero_parcela - b.numero_parcela);
   const alvoAberto = r2(alvo - pago);
+  const mudouValor = Math.abs(totalAntes - Math.max(alvo, pago)) > 0.005;
+  const mudouBanco = existente.fornecedor_id !== av.quitacao_instituicao_id;
   if (abertas.length) {
     const [primeira, ...resto] = abertas;
     if (resto.length) await admin.from('compromissos_parcelas').delete().in('id', resto.map((p) => p.id));
-    if (alvoAberto > 0.005) await admin.from('compromissos_parcelas').update({ valor: alvoAberto }).eq('id', primeira.id);
+    if (alvoAberto > 0.005) {
+      await admin.from('compromissos_parcelas')
+        .update({ valor: alvoAberto, ...(mudouValor || mudouBanco ? { data_vencimento: venc } : {}) })
+        .eq('id', primeira.id);
+    }
     else await admin.from('compromissos_parcelas').delete().eq('id', primeira.id);
   } else if (alvoAberto > 0.005) {
     await admin.from('compromissos_parcelas').insert({
@@ -255,8 +260,6 @@ export async function sincronizarCompromissoQuitacao(
   }
   await atualizarStatusHeader(admin, existente.id, callerId);
 
-  const mudouValor = Math.abs(totalAntes - Math.max(alvo, pago)) > 0.005;
-  const mudouBanco = existente.fornecedor_id !== av.quitacao_instituicao_id;
   if (mudouValor || mudouBanco) {
     const partes: string[] = [];
     if (mudouValor) partes.push(`QUITAÇÃO ALTERADA DE ${fmtBRL(totalAntes)} PARA ${fmtBRL(Math.max(alvo, pago))}`);
