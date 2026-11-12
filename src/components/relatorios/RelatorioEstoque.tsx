@@ -20,7 +20,6 @@ import { getTipoAquisicaoLabel, getTipoAquisicaoBadgeClass, tipoExibicaoEstoque 
 import { getPreviousMonthDate } from '@/lib/reportComparison';
 import { getXTickStyle } from '@/lib/chartAxis';
 import DeltaBadge from './DeltaBadge';
-import BinDialog from '@/components/estoque/BinDialog';
 
 
 
@@ -62,7 +61,6 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
   // Filtros de Quitação, Situação e BIN valem para indicadores e listagem (menos Em Preparação, que vem das avaliações).
   const [filterQuitacao, setFilterQuitacao] = useState('todos');
   // Pop-up de BIN ao clicar numa linha de moto 0km/test-ride.
-  const [binItem, setBinItem] = useState<any | null>(null);
   const [filterSituacao, setFilterSituacao] = useState('todos');
   const [filterLoja, setFilterLojaState] = useState('todos');
   const [filterTipo, setFilterTipoState] = useState<TipoFilter>('todos');
@@ -272,7 +270,10 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
 
   // BIN (liberação da montadora) — só 0km/test-ride 0km (estoque_motos_novas.bin_liberada).
   // Pendente fica com traço, igual às motos sem BIN.
-  const binLabel = (m: any) => (m.tipo === '0km' && m.bin_liberada ? 'Liberada' : '');
+  // Marcada na etapa LIBERAÇÃO DA BIN do pós-venda (trigger trg_pos_venda_bin_sync).
+  const binLabel = (m: any) => (m.tipo === '0km' && m.bin_liberada
+    ? (m.bin_liberada_em ? `Liberada ${new Date(m.bin_liberada_em).toLocaleDateString('pt-BR')}` : 'Liberada')
+    : '');
 
   const motosListados = motos;
 
@@ -546,12 +547,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
                   const margemPct = compra > 0 ? (margemAbs / compra) * 100 : 0;
                   const anoFM = [m.ano_fabricacao, m.ano_modelo].filter(Boolean).join('/');
                   return (
-                    <TableRow
-                      key={m.id}
-                      className={cn(m.tipo === '0km' && 'cursor-pointer hover:bg-muted/50')}
-                      onClick={m.tipo === '0km' ? () => setBinItem(m) : undefined}
-                      title={m.tipo === '0km' ? 'Clique para marcar a BIN' : undefined}
-                    >
+                    <TableRow key={m.id}>
                       <TableCell className="text-xs">{m.empresa || '—'}</TableCell>
                       <TableCell className="text-xs">
                         {(() => {
@@ -603,15 +599,6 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
       </Card>
       </section>
 
-      <BinDialog
-        open={!!binItem}
-        onOpenChange={(open) => { if (!open) setBinItem(null); }}
-        estoqueItem={binItem}
-        onSuccess={() => {
-          setBinItem(null);
-          loadData();
-        }}
-      />
     </div>
   );
 };

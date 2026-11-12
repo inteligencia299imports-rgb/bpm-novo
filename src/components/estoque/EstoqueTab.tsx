@@ -27,7 +27,6 @@ import TransferenciaEstoqueDialog from '@/components/estoque/TransferenciaEstoqu
 import AlterarPrecoDialog from '@/components/estoque/AlterarPrecoDialog';
 import TestRideDialog from '@/components/estoque/TestRideDialog';
 import PlacaDialog from '@/components/estoque/PlacaDialog';
-import BinDialog from '@/components/estoque/BinDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Popover,
@@ -111,6 +110,7 @@ interface EstoqueItem {
   tipo_unidade?: string | null;
   // estoque_motos_novas — BIN liberada pela montadora (só 0km)
   bin_liberada?: boolean | null;
+  bin_liberada_em?: string | null;
   // estoque_motos_novas — specs do grupo veicProd da NF-e (só 0km)
   potencia_motor?: string | number | null;
   peso_liquido?: string | number | null;
@@ -182,7 +182,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
   const [transferenciaItem, setTransferenciaItem] = useState<EstoqueItem | null>(null);
   const [testRideItem, setTestRideItem] = useState<EstoqueItem | null>(null);
   const [placaItem, setPlacaItem] = useState<EstoqueItem | null>(null);
-  const [binItem, setBinItem] = useState<EstoqueItem | null>(null);
   const [idsWithNfeVenda0km, setIdsWithNfeVenda0km] = useState<Set<string>>(new Set());
   const [idsWithNfeVendaSeminova, setIdsWithNfeVendaSeminova] = useState<Set<string>>(new Set());
   const [idsComTransferencia0kmProducao, setIdsComTransferencia0kmProducao] = useState<Set<string>>(new Set());
@@ -667,12 +666,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         });
         addPlacaOption();
       }
-      // BIN (liberação da montadora) — 0km e test-ride, a qualquer momento.
-      options.push({
-        label: item.bin_liberada ? 'BIN ✓' : 'BIN',
-        icon: <KeyRound className="h-4 w-4" />,
-        action: () => setBinItem(item),
-      });
+      // BIN (liberação da montadora): desde 2026-11-12 é a etapa LIBERAÇÃO DA
+      // BIN do pós-venda — o Estoque só mostra (trigger trg_pos_venda_bin_sync).
     }
 
     addConsultaOption();
@@ -916,7 +911,9 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                               <>
                                 <span className="text-muted-foreground">BIN</span>
                                 <span className={item.bin_liberada ? 'text-emerald-600 font-medium' : 'text-orange-600 font-medium'}>
-                                  {item.bin_liberada ? 'Liberada' : 'Pendente'}
+                                  {item.bin_liberada
+                                    ? (item.bin_liberada_em ? `Liberada em ${format(new Date(item.bin_liberada_em), 'dd/MM/yyyy')}` : 'Liberada')
+                                    : 'Pendente'}
                                 </span>
                               </>
                             )}
@@ -1132,15 +1129,6 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         }}
       />
 
-      <BinDialog
-        open={!!binItem}
-        onOpenChange={(open) => { if (!open) setBinItem(null); }}
-        estoqueItem={binItem}
-        onSuccess={() => {
-          setBinItem(null);
-          fetchEstoque();
-        }}
-      />
 
       <PlacaDialog
         open={!!placaItem}
