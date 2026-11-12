@@ -30,7 +30,7 @@ interface Props {
  * Abatimentos da moto — mesmo painel no Pós-Compra e na Intermediação (Parte 2).
  * Tipo (pedido do usuário, 2026-11-12):
  *  - Abatimento: custo do cliente em custos_oficina (como sempre foi), abate do repasse;
- *  - Quitação: soma em avaliacoes.valor_quitacao (o valor de quitação da moto,
+ *  - Quitação: substitui avaliacoes.valor_quitacao (o valor de quitação da moto,
  *    que vira a parcela QUITAÇÃO do compromisso de compra).
  * Repasse = fechamento − quitação − abatimentos (mesma conta do compromisso).
  */
@@ -92,7 +92,7 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
     setSalvando(true);
     try {
       if (ehQuitacao) {
-        await gravarQuitacao(Math.round((valorQuitacao + valor) * 100) / 100);
+        await gravarQuitacao(Math.round(valor * 100) / 100);
         toast.success('Valor de quitação atualizado');
       } else {
         const { data, error } = await supabase.from('custos_oficina').insert({
@@ -165,7 +165,7 @@ const AbatimentosPanel: React.FC<Props> = ({ avaliacaoId, semAvaliacaoMsg }) => 
             value={ehQuitacao ? '' : newDesc}
             disabled={ehQuitacao}
             onChange={e => { const v = e.target.value; setNewDesc(v.charAt(0).toUpperCase() + v.slice(1)); }}
-            placeholder={ehQuitacao ? 'Soma no valor de quitação da moto' : 'Descrição'}
+            placeholder={ehQuitacao ? 'Substitui o valor de quitação da moto' : 'Descrição'}
           />
         </div>
         <div>
