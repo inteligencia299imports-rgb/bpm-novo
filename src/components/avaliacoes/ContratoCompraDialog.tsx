@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import QuitacaoInstituicaoSelect from '@/components/shared/QuitacaoInstituicaoSelect';
 import { rotuloSexo } from '@/lib/sexo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -163,6 +164,29 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
 
   // Values
   const [valorQuitacao, setValorQuitacao] = useState('');
+  // Banco / consórcio da quitação (vive na avaliação, como a própria quitação) —
+  // obrigatório com quitação > 0; fornecedor do compromisso separado da quitação.
+  const [quitacaoInstituicaoId, setQuitacaoInstituicaoId] = useState('');
+  useEffect(() => {
+    if (!open || !avaliacao?.id) return;
+    let ativo = true;
+    supabase.from('avaliacoes').select('quitacao_instituicao_id').eq('id', avaliacao.id).maybeSingle()
+      .then(({ data }) => { if (ativo) setQuitacaoInstituicaoId((data as any)?.quitacao_instituicao_id || ''); });
+    return () => { ativo = false; };
+  }, [open, avaliacao?.id]);
+  const alterarQuitacaoInstituicao = async (id: string) => {
+    setQuitacaoInstituicaoId(id);
+    if (!avaliacao?.id) return;
+    const { error } = await supabase.from('avaliacoes').update({ quitacao_instituicao_id: id || null } as any).eq('id', avaliacao.id);
+    if (error) { toast.error('Erro ao salvar o banco da quitação: ' + error.message); return; }
+    // Compromisso da moto já existe: cria/atualiza o da quitação no nome do banco.
+    const { data: comp } = await supabase.from('compromissos' as any).select('id')
+      .eq('avaliacao_id', avaliacao.id).in('origem', ['compra', 'troca', 'quitacao']).is('deleted_at', null).limit(1);
+    if (((comp as any[]) || []).length > 0) {
+      supabase.functions.invoke('gerar-compromissos-proposta', { body: { acao: 'quitacao', avaliacao_id: avaliacao.id } })
+        .then(({ error: e }) => { if (e) console.error('quitacao (proposta de compra)', e); });
+    }
+  };
   const [valorFechamento, setValorFechamento] = useState('');
 
   // Formas de pagamento do repasse ao cliente (formas_pagamento_contrato do contrato de compra).
@@ -464,6 +488,7 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
     if (!cpfCnpj?.trim()) errors.push('CPF/CNPJ do cliente');
     // Quitação é obrigatória — o usuário precisa informar, ainda que seja 0.
     if (!valorQuitacao?.trim()) errors.push('Valor de Quitação');
+    if (valorQuitacao?.trim() && parseCurrencyInput(valorQuitacao) > 0 && !quitacaoInstituicaoId) errors.push('Banco / Consórcio da Quitação');
     if (!valorFechamento?.trim() || parseCurrencyInput(valorFechamento) <= 0) errors.push('Valor de Fechamento');
     if (!dataContrato) errors.push('Data do Contrato');
     return errors;
@@ -1048,6 +1073,19 @@ const ContratoCompraDialog: React.FC<Props> = ({ open, onOpenChange, avaliacao, 
               soLeitura={soLeitura}
               onAlterado={() => setFormasTocadas(true)}
             />
+          )}
+
+          {/* Banco / consórcio da quitação — obrigatório com quitação > 0 */}
+          {quitacaoNum > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-sm">Banco / Consórcio da Quitação <span className="text-destructive">*</span></Label>
+              <QuitacaoInstituicaoSelect
+                className="h-10"
+                value={quitacaoInstituicaoId}
+                onChange={alterarQuitacaoInstituicao}
+                invalido={!quitacaoInstituicaoId}
+              />
+            </div>
           )}
 
           {/* Resumo financeiro — um card por indicador (mesmo padrão da tela de venda) */}
