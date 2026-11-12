@@ -8,7 +8,9 @@ import { abatimentosCliente } from '../_shared/abatimentos-cliente.ts';
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 
 // Planos de conta / centros de custo do compromisso financeiro (chaves fixas — validar com a contabilidade).
-const PLANO_COMPRA_USADA = 'd16507df-9655-4677-8ed9-01398ce28239'; // Compra de Motos Usadas (custo)
+const PLANO_COMPRA_USADA = 'd16507df-9655-4677-8ed9-01398ce28239'; // 2.1.02 Compra de Motos Usadas (Parte de pagamento)
+// Compra direta (cliente só vende a moto, sem troca) — 2.4.10. Pedido do usuário, 2026-11-12.
+const PLANO_COMPRA_ESTOQUE = 'f85919fb-d575-46d8-a2fe-25618325f631'; // 2.4.10 Compra de Motos Usadas (Estoque)
 // Transferência de produtos entre empresas (1.8.01 receita / 2.1.07 custo) — uma conta por centro de custo.
 const PLANO_TRANSF_RECEITA_NOVA = 'aab0d1d1-ad07-471b-a682-ec9b4a14624b';  // 1.8.01, CC.101 motos novas
 const PLANO_TRANSF_RECEITA_USADA = '5aece72b-3d5f-4f6d-ab35-8f8fbd66d387'; // 1.8.01, CC.102 motos usadas
@@ -23,14 +25,19 @@ const CC_MOTOS_NOVAS = '30f457e2-d6b9-48c3-aca7-e45bbf0200df';     // CC.101 Ven
 const PLANO_COMPRA_REPASSE = '9f15eccf-8da7-48da-916f-2d57e88271d1'; // 2.4.09 Compra de Motos Repasse (despesa)
 const PLANO_VENDA_REPASSE = '4ad0a3d4-4306-4a3d-ac44-1e3cbb0a1b8d';  // 1.8.03 Venda de Motos Repasse (receita)
 
-// Plano de contas do compromisso quando a moto é de repasse: compra (por
-// avaliação) -> 2.4.09; venda de seminova (por atendimento, moto do estoque)
-// -> 1.8.03. Centro de custo continua CC.102 (motos usadas). null = não é
-// repasse (segue o plano do cfg).
+// Plano de contas do compromisso de compra/venda de seminova (2026-11-12):
+//   compra (por avaliação): repasse -> 2.4.09; parte de pagamento (atendimento
+//   de troca) -> 2.1.02 (o do cfg, retorna null); compra direta -> 2.4.10.
+//   venda de seminova de repasse (por atendimento) -> 1.8.03.
+// Centro de custo continua CC.102 (motos usadas). null = segue o plano do cfg.
 async function planoContaRepasse(admin: any, cfg: OperacaoConfig, porAvaliacao: boolean, entityId: string): Promise<string | null> {
   if (cfg.planoContaId === PLANO_COMPRA_USADA && porAvaliacao) {
-    const { data: av } = await admin.from('avaliacoes').select('tipo_aquisicao').eq('id', entityId).maybeSingle();
-    return (av as any)?.tipo_aquisicao === 'repasse' ? PLANO_COMPRA_REPASSE : null;
+    const { data: av } = await admin.from('avaliacoes').select('tipo_aquisicao, atendimento_id').eq('id', entityId).maybeSingle();
+    if ((av as any)?.tipo_aquisicao === 'repasse') return PLANO_COMPRA_REPASSE;
+    const { data: at } = (av as any)?.atendimento_id
+      ? await admin.from('atendimentos_motos').select('interesse').eq('id', (av as any).atendimento_id).maybeSingle()
+      : { data: null };
+    return (at as any)?.interesse === 'trocar' ? null : PLANO_COMPRA_ESTOQUE;
   }
   if (cfg.planoContaId === PLANO_VENDA_USADA && !porAvaliacao) {
     const { data: est } = await admin.from('estoque_motos')
@@ -1447,7 +1454,7 @@ async function registrarPosAutorizacao(
         numero_documento: nfeRow.numero ? `NF-${nfeRow.numero}` : null,
         observacoes: obsCompromisso,
         updated_by: callerId,
-        // Repasse: garante o plano próprio mesmo se a proposta gerou com o de usada.
+        // Repasse / compra direta: garante o plano certo mesmo se a proposta gerou com o de parte de pagamento.
         ...(planoRepasse ? { plano_conta_id: planoRepasse, centro_custo_id: CC_MOTOS_USADAS } : {}),
         ...(statusCompromissoTroca ? { status_compromisso: statusCompromissoTroca } : {}),
       })
