@@ -37,7 +37,12 @@ async function planoContaRepasse(admin: any, cfg: OperacaoConfig, porAvaliacao: 
     const { data: at } = (av as any)?.atendimento_id
       ? await admin.from('atendimentos_motos').select('interesse').eq('id', (av as any).atendimento_id).maybeSingle()
       : { data: null };
-    return (at as any)?.interesse === 'trocar' ? null : PLANO_COMPRA_ESTOQUE;
+    if ((at as any)?.interesse === 'trocar') return null;
+    // Moto de terceiro dada como parte do pagamento de outra venda
+    // (atendimentos_motos.troca_terceiro_avaliacao_id) também é parte de pagamento.
+    const { data: terc } = await admin.from('atendimentos_motos').select('id')
+      .eq('troca_terceiro_avaliacao_id', entityId).limit(1).maybeSingle();
+    return terc ? null : PLANO_COMPRA_ESTOQUE;
   }
   if (cfg.planoContaId === PLANO_VENDA_USADA && !porAvaliacao) {
     const { data: est } = await admin.from('estoque_motos')

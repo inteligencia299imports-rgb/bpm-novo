@@ -351,6 +351,12 @@ async function construirRepasse(
   const empresaId = contratoCompra?.empresa_id || at?.empresa_id;
   if (!empresaId) return { origem, status: 'sem_empresa' };
 
+  // Parte de pagamento (2.1.02): troca, ou moto de terceiro dada no pagamento
+  // de outra venda (troca_terceiro_avaliacao_id). Senão é compra direta (2.4.10).
+  const { data: tercAt } = origem === 'troca' ? { data: null }
+    : await admin.from('atendimentos_motos').select('id').eq('troca_terceiro_avaliacao_id', avaliacaoId).limit(1).maybeSingle();
+  const partePagamento = origem === 'troca' || !!tercAt;
+
   return upsertCompromisso(admin, {
     origem,
     linkField: 'avaliacao_id',
@@ -358,7 +364,7 @@ async function construirRepasse(
     empresaId,
     fornecedorId: at?.cliente_id ?? null,
     natureza: 'despesa',
-    planoContaId: av.tipo_aquisicao === 'repasse' ? PLANO_COMPRA_REPASSE : origem === 'troca' ? PLANO_COMPRA_USADA : PLANO_COMPRA_ESTOQUE,
+    planoContaId: av.tipo_aquisicao === 'repasse' ? PLANO_COMPRA_REPASSE : partePagamento ? PLANO_COMPRA_USADA : PLANO_COMPRA_ESTOQUE,
     centroCustoId: CC_MOTOS_USADAS,
     observacoes: obsMoto(nomeCat(av.marca), nomeCat(av.modelo), av.placa),
     numeroPrefix: 'CPR-D',
