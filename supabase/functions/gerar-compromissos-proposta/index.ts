@@ -674,6 +674,42 @@ async function recalcularRepasseCompra(admin: any, avaliacaoId: string, callerId
  *    ajustada ao novo valor (parcelas pagas ficam); o repasse em aberto absorve a
  *    diferença. Sem compromisso: compra direta nasce aqui; troca nasce na proposta.
  */
+const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/** Histórico de Movimentações do compromisso no SisFin (status_history_compromissos). */
+async function registrarHistoricoQuitacao(
+  admin: any, compromissoId: string | undefined | null, criado: boolean, antes: number, depois: number, callerId: string,
+) {
+  if (!compromissoId) return;
+  if (!criado && Math.abs(antes - depois) < 0.005) return;
+  const detalhe = criado
+    ? `COMPROMISSO CRIADO — QUITAÇÃO ${fmtBRL(depois)} (BPM)`
+    : depois <= 0.005
+      ? `COMPROMISSO EDITADO — QUITAÇÃO REMOVIDA (ERA ${fmtBRL(antes)}) (BPM)`
+      : antes <= 0.005
+        ? `COMPROMISSO EDITADO — QUITAÇÃO INCLUÍDA ${fmtBRL(depois)} (BPM)`
+        : `COMPROMISSO EDITADO — QUITAÇÃO ALTERADA DE ${fmtBRL(antes)} PARA ${fmtBRL(depois)} (BPM)`;
+  const { error } = await admin.from('status_history_compromissos').insert({
+    entity_id: compromissoId,
+    entity_type: 'compromissos',
+    status: criado ? 'criado' : 'editado',
+    changed_by: callerId,
+    observacoes: detalhe,
+  });
+  if (error) console.error('historico quitacao', error);
+}
+
+/** Soma das parcelas QUITAÇÃO (não canceladas) de um compromisso. */
+async function quitacaoDoCompromisso(admin: any, compromissoId: string | null | undefined): Promise<number> {
+  if (!compromissoId) return 0;
+  const { data } = await admin.from('compromissos_parcelas').select('valor, status_pagamento, observacoes, forma_pagamento_id')
+    .eq('compromisso_id', compromissoId);
+  return Math.round(((data as any[]) || [])
+    .filter((p) => p.status_pagamento !== 'cancelado')
+    .filter((p) => String(p.observacoes || '').toUpperCase() === OBS_PARCELA_QUITACAO || p.forma_pagamento_id === FORMA_PAGAMENTO_BOLETO_ID)
+    .reduce((s, p) => s + nz(p.valor), 0) * 100) / 100;
+}
+
 async function acaoQuitacao(admin: any, avaliacaoId: string, callerId: string): Promise<Record<string, unknown>> {
   const { data: av } = await admin
     .from('avaliacoes')
@@ -688,7 +724,15 @@ async function acaoQuitacao(admin: any, avaliacaoId: string, callerId: string): 
     const { data: estC } = await admin.from('estoque_motos').select('atendimento_venda_id').eq('avaliacao_id', avaliacaoId)
       .not('atendimento_venda_id', 'is', null).limit(1).maybeSingle();
     if (estC?.atendimento_venda_id) {
-      return { alvo: 'consignante', ...(await acaoConsignante(admin, estC.atendimento_venda_id, callerId)) };
+      const { data: compAntes } = await admin.from('compromissos').select('id').eq('atendimento_id', estC.atendimento_venda_id)
+        .eq('origem', 'consignante').is('deleted_at', null).order('created_at', { ascending: true }).limit(1).maybeSingle();
+      const antes = await quitacaoDoCompromisso(admin, compAntes?.id);
+      const r = await acaoConsignante(admin, estC.atendimento_venda_id, callerId);
+      const compId = (r as any)?.compromisso_id as string | undefined;
+      if (compId && ['criado', 'atualizado'].includes(String((r as any)?.status))) {
+        await registrarHistoricoQuitacao(admin, compId, (r as any).status === 'criado', antes, await quitacaoDoCompromisso(admin, compId), callerId);
+      }
+      return { alvo: 'consignante', ...r };
     }
   }
 
@@ -709,7 +753,11 @@ async function acaoQuitacao(admin: any, avaliacaoId: string, callerId: string): 
       : { data: null };
     const { data: terc } = await admin.from('atendimentos_motos').select('id').eq('troca_terceiro_avaliacao_id', avaliacaoId).limit(1).maybeSingle();
     if ((at as any)?.interesse === 'trocar' || terc) return { alvo: 'troca', status: 'troca_sem_compromisso' };
-    return { alvo: 'compra', ...(await construirRepasse(admin, avaliacaoId, 'compra', null, callerId)) };
+    const r = await construirRepasse(admin, avaliacaoId, 'compra', null, callerId);
+    if ((r as any)?.status === 'criado') {
+      await registrarHistoricoQuitacao(admin, (r as any).compromisso_id, true, 0, await quitacaoDoCompromisso(admin, (r as any).compromisso_id), callerId);
+    }
+    return { alvo: 'compra', ...r };
   }
 
   const { data: parcRaw } = await admin
@@ -772,6 +820,8 @@ async function acaoQuitacao(admin: any, avaliacaoId: string, callerId: string): 
   await admin.from('compromissos')
     .update({ status_compromisso: ativas.length > 0 && ativas.every((p) => p.status_pagamento === 'pago') ? 'pago' : 'em_aberto', updated_by: callerId })
     .eq('id', comp.id);
+
+  await registrarHistoricoQuitacao(admin, comp.id, false, quitAntes, await quitacaoDoCompromisso(admin, comp.id), callerId);
 
   return { alvo: comp.origem, status: 'atualizado', compromisso_id: comp.id, quitacao, quitacao_antes: quitAntes, repasse };
 }
