@@ -22,6 +22,7 @@ import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import AbatimentosPanel from '@/components/shared/AbatimentosPanel';
 
 const NF_VENDA = 'NF-E DE VENDA';
 const NF_TROCA = 'NF-E DE ENTRADA (TROCA)';
@@ -127,6 +128,19 @@ const ProcessoDialog: React.FC<Props> = ({
 
   // ---- Intermediação Parte 2: devolução simbólica / compra da consignada vendida ----
   const hasConverterEtapa = (customEtapas || []).includes(DEVOLUCAO_CONSIGNACAO) || (customEtapas || []).includes(NF_COMPRA_CONSIGNACAO);
+
+  // Intermediação Parte 2: aba Abatimentos (mesmo painel do Pós-Compra), sobre a
+  // avaliação da moto consignada vendida (estoque_motos.atendimento_venda_id).
+  const [aba, setAba] = useState<'processo' | 'abatimentos'>('processo');
+  const [avaliacaoAbatId, setAvaliacaoAbatId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open || !showContratoConsignante) return;
+    setAba('processo');
+    let ativo = true;
+    supabase.from('estoque_motos').select('avaliacao_id').eq('atendimento_venda_id', atendimentoId).limit(1).maybeSingle()
+      .then(({ data }) => { if (ativo) setAvaliacaoAbatId((data as any)?.avaliacao_id ?? null); });
+    return () => { ativo = false; };
+  }, [open, showContratoConsignante, atendimentoId]);
   const [avaliacaoConsignadaId, setAvaliacaoConsignadaId] = useState<string>('');
   const [avaliacaoConsignada, setAvaliacaoConsignada] = useState<any>(null);
   const [converterConsignacaoOpen, setConverterConsignacaoOpen] = useState(false);
@@ -665,14 +679,33 @@ const ProcessoDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className={cn('max-h-[85vh] overflow-y-auto', showContratoConsignante ? 'max-w-4xl' : 'max-w-3xl')}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" /> Processo
           </DialogTitle>
         </DialogHeader>
 
-        {loading ? (
+        {showContratoConsignante && (
+          <div className="w-max mx-auto flex items-center rounded-md bg-muted p-1 text-muted-foreground mb-1">
+            {([['processo', 'Processo'], ['abatimentos', 'Abatimentos']] as const).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setAba(v)}
+                className={cn('inline-flex items-center justify-center whitespace-nowrap rounded-sm px-5 py-1.5 text-sm font-medium transition-all focus-visible:outline-none', aba === v ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:text-foreground')}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {showContratoConsignante && aba === 'abatimentos' ? (
+          <div className="pt-2">
+            <AbatimentosPanel avaliacaoId={avaliacaoAbatId} semAvaliacaoMsg="Moto consignada sem avaliação vinculada a esta venda." />
+          </div>
+        ) : loading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
