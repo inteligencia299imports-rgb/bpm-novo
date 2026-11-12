@@ -4,6 +4,9 @@ import { Gauge, Loader2, Plus } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+
+const OFC_URL = 'https://ofc.299imports.com.br';
 
 // Histórico da Moto (mesmo trecho do card "Moto do Cliente" do ofc). Linha do tempo mantida por
 // gatilhos no DB 299 (veiculos / veiculo_historico / veiculo_revisoes): km de cada O.S. da oficina e
@@ -12,7 +15,8 @@ import { supabase } from '@/lib/supabase';
 // No card: revisões previstas + "+ Ver mais"; o pop-up traz a tabela Data | Nº | Situação | Cliente | Km.
 // Nº (em azul): número da O.S. (passar o mouse mostra o relato) ou, em avaliação/venda, o compromisso financeiro.
 // - Avaliação/venda: a linha inteira abre o atendimento do BPM numa nova guia (menos o atual).
-// - O.S. (ofc): sem link; passar o mouse no número mostra o relato do cliente.
+// - O.S. (ofc): master clica na linha e abre a O.S. no ofc (nova guia); demais perfis, sem link.
+//   Passar o mouse no número mostra o relato do cliente.
 
 const TIPO_LABEL: Record<string, string> = {
   os: 'O.S. / Atendimento',
@@ -191,6 +195,10 @@ export function HistoricoVeiculoMoto({ avaliacaoId, atendimentoAtualId }: { aval
   // Registro do km atual (o mais recente com o maior km) — destacado em laranja na tabela.
   const idKmAtual = kmAtual == null ? null : eventos.find((e) => e.km === kmAtual)?.id ?? null;
 
+  const { role } = useAuth();
+  const ehMaster = role === 'master';
+  const abrirOsOfc = (id: string) => window.open(`${OFC_URL}/oficina/${id}`, '_blank', 'noopener');
+
   const abrirAtendimentoBpm = (id: string) => {
     window.open(`/?tab=showroom&atendimento=${id}`, '_blank', 'noopener');
   };
@@ -258,13 +266,15 @@ export function HistoricoVeiculoMoto({ avaliacaoId, atendimentoAtualId }: { aval
                       : (TIPO_LABEL[e.tipo] ?? e.tipo);
                     const atBpm = e.tipo !== 'os' ? atendimentoBpm.get(e.origem_id) : undefined;
                     const linkBpm = atBpm && atBpm !== atendimentoAtualId ? atBpm : null;
+                    // O.S.: só master abre a O.S. no ofc (pedido do usuário, 2026-11-12).
+                    const linkOs = e.tipo === 'os' && ehMaster ? e.origem_id : null;
                     return (
                       // Avaliação/venda: a linha inteira abre o atendimento do BPM (nova guia), menos o atual.
                       <tr
                         key={e.id}
-                        className={'border-b border-border last:border-0' + (linkBpm ? ' cursor-pointer hover:bg-muted/50' : '')}
-                        onClick={linkBpm ? () => abrirAtendimentoBpm(linkBpm) : undefined}
-                        title={linkBpm ? 'Abrir atendimento (nova guia)' : undefined}
+                        className={'border-b border-border last:border-0' + (linkBpm || linkOs ? ' cursor-pointer hover:bg-muted/50' : '')}
+                        onClick={linkBpm ? () => abrirAtendimentoBpm(linkBpm) : linkOs ? () => abrirOsOfc(linkOs) : undefined}
+                        title={linkBpm ? 'Abrir atendimento (nova guia)' : linkOs ? 'Abrir O.S. no OFC (nova guia)' : undefined}
                       >
                         <td className="py-2.5 px-3 whitespace-nowrap">{format(parseISO(e.ocorrido_em), 'dd/MM/yyyy')}</td>
                         <td className="py-2.5 px-3 whitespace-nowrap">
