@@ -1154,8 +1154,10 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
             if (consultas.length === 0) return null;
             const comResultado = consultas.filter((c) => c.resultado);
             const atencao = comResultado.some((c) => c.resultado.includes('⚠️'));
+            // Uma moto só: quem consultou fica no rodapé do card (pedido do usuário, 2026-11-12).
+            const autoriaNoRodape = consultas.length === 1 && !!consultas[0].resultado;
             return (
-              <Card>
+              <Card className="flex flex-col">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
                     {comResultado.length
@@ -1164,7 +1166,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                     Resultado da Consulta
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="flex-1 flex flex-col gap-3">
                   {comResultado.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-4">Nenhuma consulta registrada</p>
                   ) : consultas.map((c, idx) => (
@@ -1172,10 +1174,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                       {idx > 0 && <Separator className="my-2" />}
                       {c.titulo && <p className="text-xs font-semibold text-muted-foreground uppercase">{c.titulo}</p>}
                       {c.resultado
-                        ? <><p className="text-sm whitespace-pre-wrap break-words">{c.resultado}</p><ConsultaAutoria avaliacaoId={c.avaliacaoId} className="mt-2" /></>
+                        ? <><p className="text-sm whitespace-pre-wrap break-words">{c.resultado}</p>{!autoriaNoRodape && <ConsultaAutoria avaliacaoId={c.avaliacaoId} className="mt-2" />}</>
                         : <p className="text-xs text-muted-foreground">Nenhuma consulta registrada</p>}
                     </div>
                   ))}
+                  {autoriaNoRodape && <ConsultaAutoria avaliacaoId={consultas[0].avaliacaoId} className="mt-auto" />}
                 </CardContent>
               </Card>
             );
