@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase';
 // A moto é achada pela própria avaliação (veiculo_historico tipo 'avaliacao', origem_id = avaliação).
 // No card: revisões previstas + "+ Ver mais"; o pop-up traz a tabela Data | Nº | Situação | Cliente | Km.
 // Nº (em azul): número da O.S. (passar o mouse mostra o relato) ou, em avaliação/venda, o compromisso financeiro.
-// - Avaliação/venda: clicar na situação abre o atendimento do BPM numa nova guia (menos o atual).
+// - Avaliação/venda: a linha inteira abre o atendimento do BPM numa nova guia (menos o atual).
 // - O.S. (ofc): sem link; passar o mouse no número mostra o relato do cliente.
 
 const TIPO_LABEL: Record<string, string> = {
@@ -259,7 +259,13 @@ export function HistoricoVeiculoMoto({ avaliacaoId, atendimentoAtualId }: { aval
                     const atBpm = e.tipo !== 'os' ? atendimentoBpm.get(e.origem_id) : undefined;
                     const linkBpm = atBpm && atBpm !== atendimentoAtualId ? atBpm : null;
                     return (
-                      <tr key={e.id} className="border-b border-border last:border-0">
+                      // Avaliação/venda: a linha inteira abre o atendimento do BPM (nova guia), menos o atual.
+                      <tr
+                        key={e.id}
+                        className={'border-b border-border last:border-0' + (linkBpm ? ' cursor-pointer hover:bg-muted/50' : '')}
+                        onClick={linkBpm ? () => abrirAtendimentoBpm(linkBpm) : undefined}
+                        title={linkBpm ? 'Abrir atendimento (nova guia)' : undefined}
+                      >
                         <td className="py-2.5 px-3 whitespace-nowrap">{format(parseISO(e.ocorrido_em), 'dd/MM/yyyy')}</td>
                         <td className="py-2.5 px-3 whitespace-nowrap">
                           {os ? (
@@ -277,16 +283,7 @@ export function HistoricoVeiculoMoto({ avaliacaoId, atendimentoAtualId }: { aval
                           ) : '—'}
                         </td>
                         <td className="py-2.5 px-3">
-                          {linkBpm ? (
-                            <button
-                              type="button"
-                              className="text-left text-primary hover:opacity-80"
-                              onClick={() => abrirAtendimentoBpm(linkBpm)}
-                              title="Abrir atendimento (nova guia)"
-                            >
-                              {situacao}
-                            </button>
-                          ) : situacao}
+                          {situacao}
                         </td>
                         <td className="py-2.5 px-3">{(e.cliente_id && clientes.get(e.cliente_id)) || '—'}</td>
                         <td className={'py-2.5 px-3 text-right whitespace-nowrap font-medium' + (e.id === idKmAtual ? ' text-primary' : '')}>
