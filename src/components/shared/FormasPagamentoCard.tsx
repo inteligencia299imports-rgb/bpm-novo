@@ -36,7 +36,6 @@ interface InstituicaoOpt {
   id: string;
   cliente_fornecedor_id: string;
   nome: string;
-  observacoes_contrato: string | null;
 }
 
 export interface FormaPagamento {
@@ -170,7 +169,7 @@ const FormasPagamentoCard: React.FC<Props> = ({ formas, setFormas, contratoId, v
       sb.from('formas_pagamento').select('id, nome').eq('bpm', true).eq('ativo', true).order('ordem'),
       sb
         .from('formas_pagamento_instituicoes')
-        .select('id, forma_pagamento_id, cliente_fornecedor_id, observacoes_contrato, instituicao:cliente_fornecedor_id(nome_razao_social, nome_fantasia)')
+        .select('id, forma_pagamento_id, cliente_fornecedor_id, instituicao:cliente_fornecedor_id(nome_razao_social, nome_fantasia)')
         .eq('ativo', true),
     ]).then(([{ data: formasOpts }, { data: instOpts }]) => {
       if (cancel) return;
@@ -181,7 +180,6 @@ const FormasPagamentoCard: React.FC<Props> = ({ formas, setFormas, contratoId, v
           id: r.id,
           cliente_fornecedor_id: r.cliente_fornecedor_id,
           nome: r.instituicao?.nome_fantasia || r.instituicao?.nome_razao_social || 'Instituição',
-          observacoes_contrato: r.observacoes_contrato ?? null,
         });
       }
       for (const k of Object.keys(byForma)) byForma[k].sort((a, b) => a.nome.localeCompare(b.nome));
@@ -383,8 +381,6 @@ const FormasPagamentoCard: React.FC<Props> = ({ formas, setFormas, contratoId, v
               value={novaInstituicaoId}
               onValueChange={(v) => {
                 setNovaInstituicaoId(v);
-                const sel = (instituicoesByForma[novaPagamentoTipo] || []).find(i => i.id === v);
-                setNovaObservacoes(sel?.observacoes_contrato ?? '');
               }}
             >
               <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
