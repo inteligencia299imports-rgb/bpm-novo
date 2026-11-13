@@ -72,7 +72,6 @@ interface InstituicaoOpt {
   id: string;
   cliente_fornecedor_id: string;
   nome: string;
-  observacoes_contrato: string | null;
 }
 
 const formatCurrency = (value: number | null) => {
@@ -228,7 +227,7 @@ interface FormaPagamento {
   data_pagamento: string | null;
   /** instituição (banco / administradora) escolhida — só para Financiamento / Consórcio */
   cliente_fornecedor_id: string | null;
-  /** observação da forma, editável, com default vindo de formas_pagamento_instituicoes.observacoes_contrato */
+  /** observação da forma, editável (texto livre do contrato) */
   observacoes: string | null;
 }
 
@@ -518,7 +517,7 @@ const ContratoDialog: React.FC<Props> = ({
           .order('ordem'),
         supabase
           .from('formas_pagamento_instituicoes')
-          .select('id, forma_pagamento_id, cliente_fornecedor_id, observacoes_contrato, instituicao:cliente_fornecedor_id(nome_razao_social, nome_fantasia)')
+          .select('id, forma_pagamento_id, cliente_fornecedor_id, instituicao:cliente_fornecedor_id(nome_razao_social, nome_fantasia)')
           .eq('ativo', true),
         supabase
           .from('agregados_motos')
@@ -577,7 +576,6 @@ const ContratoDialog: React.FC<Props> = ({
         id: string;
         forma_pagamento_id: string;
         cliente_fornecedor_id: string;
-        observacoes_contrato: string | null;
         instituicao: { nome_razao_social: string | null; nome_fantasia: string | null } | null;
       };
       const byForma: Record<string, InstituicaoOpt[]> = {};
@@ -586,7 +584,6 @@ const ContratoDialog: React.FC<Props> = ({
           id: r.id,
           cliente_fornecedor_id: r.cliente_fornecedor_id,
           nome: r.instituicao?.nome_fantasia || r.instituicao?.nome_razao_social || 'Instituição',
-          observacoes_contrato: r.observacoes_contrato ?? null,
         });
       }
       for (const k of Object.keys(byForma)) {
@@ -724,17 +721,34 @@ const ContratoDialog: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nfe.nfe?.observacoes]);
 
-  // Observações da NF-e: copia automaticamente as observações das formas de pagamento
-  // vinculadas a instituição (Financiamento / Consórcio) — só preenche se ainda estiver
-  // vazio E não houver NF-e já emitida (mesmo homologação) pra essa entidade, senão o
-  // valor já gravado na nota (rehydratado acima) tem prioridade sobre este default.
+  // Observações da NF-e: cada forma de pagamento com instituição (Financiamento /
+  // Consórcio) vira "ALIENAÇÃO FIDUCIÁRIA <RAZÃO SOCIAL DA FINANCEIRA>" (desde 13/11/2026
+  // — antes vinha de um texto livre do cadastro da financeira no SisFin, removido).
+  // Só preenche se ainda estiver vazio E não houver NF-e já emitida (mesmo homologação)
+  // pra essa entidade, senão o valor já gravado na nota (rehydratado acima) tem prioridade.
   useEffect(() => {
     if (!open || !ehNfe || nfeObs || nfe.nfe) return;
-    const dasFormas = formasPagamento
-      .filter(fp => ehFinInstituicao(fp.tipo) && fp.observacoes?.trim())
-      .map(fp => fp.observacoes!.trim())
-      .join(' ');
-    if (dasFormas) setNfeObs(dasFormas.toUpperCase());
+    const ids = [...new Set(
+      formasPagamento
+        .filter(fp => ehFinInstituicao(fp.tipo) && fp.cliente_fornecedor_id)
+        .map(fp => fp.cliente_fornecedor_id as string),
+    )];
+    if (ids.length === 0) return;
+    let cancel = false;
+    supabase
+      .from('clientes_fornecedores')
+      .select('id, nome_razao_social')
+      .in('id', ids)
+      .then(({ data }) => {
+        if (cancel) return;
+        const razao = new Map(((data as any[]) || []).map(r => [r.id as string, String(r.nome_razao_social ?? '').trim()]));
+        const linhas = ids
+          .map(id => razao.get(id))
+          .filter((r): r is string => !!r)
+          .map(r => `ALIENAÇÃO FIDUCIÁRIA ${r}`.toUpperCase());
+        if (linhas.length) setNfeObs(prev => prev || linhas.join(' * '));
+      });
+    return () => { cancel = true; };
   }, [open, ehNfe, formasPagamento, nfeObs, nfe.nfe]);
 
   const alterarRetiradaPresencial = async (v: boolean) => {
@@ -2076,8 +2090,6 @@ const ContratoDialog: React.FC<Props> = ({
                         value={novaInstituicaoId}
                         onValueChange={(v) => {
                           setNovaInstituicaoId(v);
-                          const sel = (instituicoesByForma[novaPagamentoTipo] || []).find(i => i.id === v);
-                          setNovaObservacoes(sel?.observacoes_contrato ?? '');
                         }}
                       >
                         <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
