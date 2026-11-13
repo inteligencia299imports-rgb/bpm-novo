@@ -74,6 +74,10 @@ interface InstituicaoOpt {
   nome: string;
 }
 
+/** Texto fixo da financeira (Financiamento / Consórcio) que vai nas observações da NF-e. */
+const textoAlienacao = (razaoSocial: string | null | undefined) =>
+  razaoSocial?.trim() ? `ALIENAÇÃO FIDUCIÁRIA ${razaoSocial.trim()}`.toUpperCase() : null;
+
 const formatCurrency = (value: number | null) => {
   if (value === null || value === undefined) return '-';
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -439,6 +443,8 @@ const ContratoDialog: React.FC<Props> = ({
   const [vendedoresEquipamentos, setVendedoresEquipamentos] = useState<VendedorEquipamentos[]>([]);
   // instituições (banco / administradora) vinculadas a cada forma_pagamento_id
   const [instituicoesByForma, setInstituicoesByForma] = useState<Record<string, InstituicaoOpt[]>>({});
+  /** cliente_fornecedor_id da financeira -> razão social (texto informativo de alienação). */
+  const [razaoFinanceira, setRazaoFinanceira] = useState<Record<string, string>>({});
   // id do registro de formas_pagamento_contrato em edição (null = formulário está em modo "adicionar")
   const [editingId, setEditingId] = useState<string | null>(null);
   // id da forma_pagamento selecionada para adicionar
@@ -579,7 +585,9 @@ const ContratoDialog: React.FC<Props> = ({
         instituicao: { nome_razao_social: string | null; nome_fantasia: string | null } | null;
       };
       const byForma: Record<string, InstituicaoOpt[]> = {};
+      const razoes: Record<string, string> = {};
       for (const r of ((instOpts ?? []) as InstRow[])) {
+        if (r.instituicao?.nome_razao_social) razoes[r.cliente_fornecedor_id] = r.instituicao.nome_razao_social;
         (byForma[r.forma_pagamento_id] ??= []).push({
           id: r.id,
           cliente_fornecedor_id: r.cliente_fornecedor_id,
@@ -590,6 +598,7 @@ const ContratoDialog: React.FC<Props> = ({
         byForma[k].sort((a, b) => a.nome.localeCompare(b.nome));
       }
       setInstituicoesByForma(byForma);
+      setRazaoFinanceira((prev) => ({ ...prev, ...razoes }));
 
       setJaGerado(!!(histGerado && histGerado.length > 0));
 
@@ -720,6 +729,26 @@ const ContratoDialog: React.FC<Props> = ({
     if (nfe.nfe?.observacoes && !nfeObs) setNfeObs(nfe.nfe.observacoes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nfe.nfe?.observacoes]);
+
+  // Razão social de financeiras lançadas que não estão (mais) ativas no catálogo.
+  useEffect(() => {
+    const faltando = [...new Set(
+      formasPagamento
+        .filter(fp => ehFinInstituicao(fp.tipo) && fp.cliente_fornecedor_id && !razaoFinanceira[fp.cliente_fornecedor_id])
+        .map(fp => fp.cliente_fornecedor_id as string),
+    )];
+    if (faltando.length === 0) return;
+    let cancel = false;
+    supabase.from('clientes_fornecedores').select('id, nome_razao_social').in('id', faltando).then(({ data }) => {
+      if (cancel || !data?.length) return;
+      setRazaoFinanceira(prev => {
+        const novo = { ...prev };
+        for (const r of data as any[]) if (r.nome_razao_social) novo[r.id] = r.nome_razao_social;
+        return novo;
+      });
+    });
+    return () => { cancel = true; };
+  }, [formasPagamento, razaoFinanceira]);
 
   // Observações da NF-e: cada forma de pagamento com instituição (Financiamento /
   // Consórcio) vira "ALIENAÇÃO FIDUCIÁRIA <RAZÃO SOCIAL DA FINANCEIRA>" (desde 13/11/2026
@@ -2107,6 +2136,18 @@ const ContratoDialog: React.FC<Props> = ({
                     </div>
                   )}
 
+                  {ehFinInstituicao(novaFormaNome) && (() => {
+                    // Texto informativo (não editável) — vai sozinho nas observações da NF-e.
+                    const sel = (instituicoesByForma[novaPagamentoTipo] || []).find(i => i.id === novaInstituicaoId);
+                    const texto = sel ? textoAlienacao(razaoFinanceira[sel.cliente_fornecedor_id]) : null;
+                    return texto ? (
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-foreground">Texto na NF-e</label>
+                        <p className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">{texto}</p>
+                      </div>
+                    ) : null;
+                  })()}
+
                   {ehFinanciamento(novaFormaNome) && (
                     <div className="space-y-3">
                       <CurrencyField label="Valor de Entrada" value={finValorEntrada} onChange={setFinValorEntrada} />
@@ -2197,6 +2238,9 @@ const ContratoDialog: React.FC<Props> = ({
                             <span className="text-xs font-semibold">{tipoLabel(fp.tipo)}</span>
                             {fp.financeira && <span className="text-xs text-muted-foreground">{fp.financeira}</span>}
                           </div>
+                          {ehFinInstituicao(fp.tipo) && fp.cliente_fornecedor_id && textoAlienacao(razaoFinanceira[fp.cliente_fornecedor_id]) && (
+                            <p className="text-xs text-muted-foreground">{textoAlienacao(razaoFinanceira[fp.cliente_fornecedor_id])}</p>
+                          )}
                           {ehFinanciamento(fp.tipo) || ehConsorcio(fp.tipo) ? (
                             <div className="text-xs text-muted-foreground space-y-0.5">
                               {fp.valor_entrada != null && <div>Entrada: {formatCurrency(fp.valor_entrada)}</div>}
