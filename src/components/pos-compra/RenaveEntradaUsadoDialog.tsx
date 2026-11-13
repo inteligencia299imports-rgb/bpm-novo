@@ -524,7 +524,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       // chamar o RENAVE, continua sendo a fonte única (só que atualizável
       // aqui, não uma cópia divergente). Código de segurança/tipo do CRV
       // continuam só leitura, vêm do CRLV.
-      if (kmInformado != null && kmInformado !== Number(avaliacao?.km || 0)) {
+      if (kmInformado != null && kmInformado !== (parseInt(String(avaliacao?.km ?? '').replace(/\D/g, ''), 10) || 0)) {
         await (supabase as any).from('avaliacoes').update({ km: kmInformado }).eq('id', avaliacaoId);
       }
       // Data corrigida à mão também volta pra avaliação (fonte única).
