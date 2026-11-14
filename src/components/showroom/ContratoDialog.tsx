@@ -1477,7 +1477,8 @@ const ContratoDialog: React.FC<Props> = ({
   const isDucati = atendimento.loja?.toLowerCase().startsWith('ducati');
   const buildErrosGeracao = (variant: 'sinal' | 'venda'): string[] => {
     const errors: string[] = [];
-    if (veicProdBloqueado) errors.push(`Specs da moto 0km pendentes (${veicProdFaltando.join(', ')})`);
+    // Specs fiscais da 0km só valem para a NF-e: exigidas na Proposta de VENDA; o sinal não exige.
+    if (variant === 'venda' && veicProdBloqueado) errors.push(`Specs da moto 0km pendentes (${veicProdFaltando.join(', ')})`);
     if (!empresaId) errors.push('Empresa vendedora');
     if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
     // Cadastro completo do cliente (e-mails, telefone comercial, endereço, dados
