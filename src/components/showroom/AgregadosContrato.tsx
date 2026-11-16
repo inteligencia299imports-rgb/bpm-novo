@@ -69,10 +69,16 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
   // Consultor de equipamentos do Voucher Equipamentos ('' = sem direcionamento).
   const [fVendedorId, setFVendedorId] = useState('');
 
+  // Cada agregado entra uma vez, exceto o Voucher Equipamentos: a proposta pode
+  // ter vários (cada um vira um atendimento no CRM, com seu consultor/loja).
   const disponiveis = useMemo(
-    () => catalogo.filter((c) => !value.some((l) => l.agregado_id === c.id)),
+    () => catalogo.filter((c) => ehVoucherEquipamentos(c.descricao) || !value.some((l) => l.agregado_id === c.id)),
     [catalogo, value],
   );
+  const nomeConsultor = (id?: string | null) => {
+    const v = id ? vendedoresEquipamentos.find((x) => x.user_id === id) : undefined;
+    return v ? firstLastName(v.nome) || v.nome : null;
+  };
   // Cortesia e troco nunca entram no total (nem são cobrados do cliente).
   const total = value.reduce((s, l) => s + (l.cortesia || l.troco ? 0 : Number(l.valor) || 0), 0);
 
@@ -181,6 +187,9 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
                   ? `Troco ao cliente - não cobrado, gera conta a pagar de ${brl(Number(l.valor) || 0)}`
                   : `Valor: ${brl(Number(l.valor) || 0)}`}
             </p>
+            {ehVoucherEquipamentos(l.descricao) && nomeConsultor(l.voucher_vendedor_id) && (
+              <p className="text-xs text-muted-foreground">Consultor Equipamentos: {nomeConsultor(l.voucher_vendedor_id)}</p>
+            )}
             {l.observacoes?.trim() && (
               <p className="text-xs text-muted-foreground italic whitespace-pre-wrap uppercase">{l.observacoes}</p>
             )}
