@@ -36,7 +36,7 @@ import AgregadosContrato, { type Agregado, type AgregadoLinha } from '@/componen
 import {
   ehVoucherEquipamentos,
   listarVendedoresEquipamentos,
-  sincronizarVoucherEquipamentos,
+  sincronizarVouchersEquipamentos,
   type VendedorEquipamentos,
 } from '@/lib/voucherEquipamentos';
 import { rotuloDocumento, ehCnpj } from '@/lib/documento';
@@ -1309,16 +1309,14 @@ const ContratoDialog: React.FC<Props> = ({
       return;
     }
 
-    // Voucher Equipamentos direcionado -> cria/atualiza o atendimento no CRM;
-    // sem voucher direcionado -> encerra o que estiver em aberto. Antes do PDF:
+    // Cada Voucher Equipamentos direcionado -> um atendimento no CRM (cria/atualiza);
+    // os que saíram da proposta -> encerra os que estiverem em aberto. Antes do PDF:
     // se o CRM recusar (ex.: atendimento já finalizado lá), a proposta não sai.
     if (!soLeitura && vendedoresEquipamentos.length > 0) {
-      const voucher = agregados.find((a) => ehVoucherEquipamentos(a.descricao) && a.voucher_vendedor_id);
-      const { error: voucherErr } = await sincronizarVoucherEquipamentos(
-        atendimento.id,
-        voucher?.voucher_vendedor_id ?? null,
-        voucher ? Number(voucher.valor) || 0 : null,
-      );
+      const vouchers = agregados
+        .filter((a) => ehVoucherEquipamentos(a.descricao) && a.voucher_vendedor_id)
+        .map((a) => ({ vendedor_id: a.voucher_vendedor_id as string, valor: Number(a.valor) || 0 }));
+      const { error: voucherErr } = await sincronizarVouchersEquipamentos(atendimento.id, vouchers);
       if (voucherErr) {
         toast.error(voucherErr.message || 'Erro ao enviar o voucher de equipamentos para o CRM');
         setGenerating(false);
