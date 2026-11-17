@@ -28,7 +28,39 @@ export interface VoucherCrmStatus {
   voucher_valor: number | null;
 }
 
-/** Vendedores de equipamentos (CRM) disponíveis para o voucher. Vazio = loja sem voucher para o CRM. */
+/**
+ * Lojas do CRM x vendedores disponíveis para o voucher (migration
+ * 20261117170000_voucher_equipamentos_loja): uma linha por loja x vendedor. Na proposta o
+ * usuário escolhe a loja e depois o vendedor — os vendedores são filtrados pela loja.
+ * padrao = loja sugerida (0km: a loja Ducati da venda). Vazio = venda sem voucher para o CRM.
+ */
+export interface LojaVendedorVoucher {
+  loja_id: string;
+  loja: string;
+  padrao: boolean;
+  user_id: string;
+  nome: string;
+}
+
+export async function listarLojasVendedoresVoucher(atendimentoMotoId: string): Promise<LojaVendedorVoucher[]> {
+  const { data } = await rpc<LojaVendedorVoucher[]>('voucher_lojas_vendedores', { _atendimento_moto_id: atendimentoMotoId });
+  return data ?? [];
+}
+
+/** Lojas distintas da lista (ordem alfabética, a sugerida primeiro). */
+export function lojasDoVoucher(linhas: LojaVendedorVoucher[]): { loja_id: string; loja: string; padrao: boolean }[] {
+  const m = new Map<string, { loja_id: string; loja: string; padrao: boolean }>();
+  for (const l of linhas) if (!m.has(l.loja_id)) m.set(l.loja_id, { loja_id: l.loja_id, loja: l.loja, padrao: l.padrao });
+  return [...m.values()].sort((a, b) => Number(b.padrao) - Number(a.padrao) || a.loja.localeCompare(b.loja, 'pt-BR'));
+}
+
+/** Vendedores de uma loja (vazio sem loja escolhida). */
+export function vendedoresDaLoja(linhas: LojaVendedorVoucher[], lojaId: string | null | undefined): VendedorEquipamentos[] {
+  if (!lojaId) return [];
+  return linhas.filter((l) => l.loja_id === lojaId).map((l) => ({ user_id: l.user_id, nome: l.nome }));
+}
+
+/** @deprecated Use listarLojasVendedoresVoucher (loja > vendedor). Vendedores de equipamentos (CRM) disponíveis para o voucher. */
 export async function listarVendedoresEquipamentos(atendimentoMotoId: string): Promise<VendedorEquipamentos[]> {
   const { data } = await rpc<VendedorEquipamentos[]>('voucher_vendedores_equipamentos', { _atendimento_moto_id: atendimentoMotoId });
   return (data ?? []).map((v) => ({ user_id: v.user_id, nome: v.nome }));
@@ -43,6 +75,8 @@ export async function statusVouchersEquipamentos(atendimentoMotoId: string): Pro
 export interface VoucherDirecionado {
   vendedor_id: string;
   valor: number;
+  /** Loja do CRM escolhida na proposta (loja_empresas, sistema equipamentos). */
+  loja_id?: string | null;
 }
 
 /**

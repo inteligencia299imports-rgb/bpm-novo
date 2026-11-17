@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, Pencil, X } from 'lucide-react';
 import { cn, firstLastName } from '@/lib/utils';
-import { ehVoucherEquipamentos, type VendedorEquipamentos } from '@/lib/voucherEquipamentos';
+import { ehVoucherEquipamentos, lojasDoVoucher, vendedoresDaLoja, type LojaVendedorVoucher } from '@/lib/voucherEquipamentos';
 
 export interface Agregado {
   id: string;
@@ -30,6 +30,8 @@ export interface AgregadoLinha {
   /** Voucher Equipamentos direcionado ao CRM: user_id do vendedor de
    * equipamentos (ver sincronizar_voucher_equipamentos). */
   voucher_vendedor_id?: string | null;
+  /** Voucher Equipamentos: loja do CRM onde nasce o atendimento (loja_empresas). */
+  voucher_loja_id?: string | null;
 }
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -46,9 +48,9 @@ interface Props {
   onChange: (linhas: AgregadoLinha[]) => void;
   catalogo: Agregado[];
   soLeitura?: boolean;
-  /** Vendedores de equipamentos da loja (CRM). Vazio = loja sem voucher para o
-   * CRM (só Ducati BSB/FLN/POA) — a opção de direcionar não aparece. */
-  vendedoresEquipamentos?: VendedorEquipamentos[];
+  /** Lojas do CRM x vendedores para o Voucher Equipamentos (escolhe a loja e depois o
+   * vendedor). Vazio = venda sem voucher para o CRM — a opção de direcionar não aparece. */
+  lojasVendedoresVoucher?: LojaVendedorVoucher[];
 }
 
 /**
@@ -59,15 +61,25 @@ interface Props {
  * Após registrado, o agregado é editado/excluído pelos ícones do card (igual
  * às Formas de Pagamento) — os campos não ficam sempre abertos.
  */
-const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitura, vendedoresEquipamentos = [] }) => {
+const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitura, lojasVendedoresVoucher = [] }) => {
   const [selId, setSelId] = useState('');
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [fValor, setFValor] = useState('');
   const [fObs, setFObs] = useState('');
   const [fCortesia, setFCortesia] = useState(false);
   const [fTroco, setFTroco] = useState(false);
-  // Consultor de equipamentos do Voucher Equipamentos ('' = sem direcionamento).
+  // Voucher Equipamentos: loja do CRM e, depois dela, o consultor ('' = não escolhido).
+  // O consultor é filtrado pela loja — nunca o contrário.
+  const [fLojaId, setFLojaId] = useState('');
   const [fVendedorId, setFVendedorId] = useState('');
+  const lojasVoucher = useMemo(() => lojasDoVoucher(lojasVendedoresVoucher), [lojasVendedoresVoucher]);
+  const lojaPadraoId = lojasVoucher.find((l) => l.padrao)?.loja_id ?? '';
+  const vendedoresLoja = useMemo(() => vendedoresDaLoja(lojasVendedoresVoucher, fLojaId), [lojasVendedoresVoucher, fLojaId]);
+  const escolherLoja = (id: string) => {
+    setFLojaId(id);
+    // Trocou de loja: o consultor só fica se também atende a nova loja.
+    if (!vendedoresDaLoja(lojasVendedoresVoucher, id).some((v) => v.user_id === fVendedorId)) setFVendedorId('');
+  };
 
   // Cada agregado entra uma vez, exceto o Voucher Equipamentos: a proposta pode
   // ter vários (cada um vira um atendimento no CRM, com seu consultor/loja).
@@ -76,9 +88,10 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     [catalogo, value],
   );
   const nomeConsultor = (id?: string | null) => {
-    const v = id ? vendedoresEquipamentos.find((x) => x.user_id === id) : undefined;
+    const v = id ? lojasVendedoresVoucher.find((x) => x.user_id === id) : undefined;
     return v ? firstLastName(v.nome) || v.nome : null;
   };
+  const nomeLoja = (id?: string | null) => (id ? lojasVoucher.find((l) => l.loja_id === id)?.loja ?? null : null);
   // Cortesia e troco nunca entram no total (nem são cobrados do cliente).
   const total = value.reduce((s, l) => s + (l.cortesia || l.troco ? 0 : Number(l.valor) || 0), 0);
 
@@ -90,8 +103,8 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
   // cortesia sem exibir as opções Cortesia/Troco. Valor e Consultor Equipamentos
   // (lojas com voucher para o CRM) são obrigatórios.
   const ehVoucher = ehVoucherEquipamentos(descAtual);
-  const podeDirecionar = ehVoucher && vendedoresEquipamentos.length > 0;
-  const faltaObrigatorio = ehVoucher && (parseInput(fValor) <= 0 || (podeDirecionar && !fVendedorId));
+  const podeDirecionar = ehVoucher && lojasVendedoresVoucher.length > 0;
+  const faltaObrigatorio = ehVoucher && (parseInput(fValor) <= 0 || (podeDirecionar && (!fLojaId || !fVendedorId)));
 
   const resetForm = () => {
     setSelId('');
@@ -100,6 +113,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setFObs('');
     setFCortesia(false);
     setFTroco(false);
+    setFLojaId('');
     setFVendedorId('');
   };
 
@@ -112,6 +126,8 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setFObs('');
     setFCortesia(ehVoucherEquipamentos(ag?.descricao));
     setFTroco(false);
+    // Voucher novo: já sugere a loja padrão (0km: loja Ducati da venda); o consultor é escolhido.
+    setFLojaId(ehVoucherEquipamentos(ag?.descricao) ? lojaPadraoId : '');
     setFVendedorId('');
   };
 
@@ -123,13 +139,18 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
     setFObs((l.observacoes ?? '').toUpperCase());
     setFCortesia(!!l.cortesia || ehVoucherEquipamentos(l.descricao));
     setFTroco(!!l.troco && !ehVoucherEquipamentos(l.descricao));
+    // Voucher antigo sem loja gravada: assume a loja sugerida se o consultor atende nela.
+    const lojaLinha = l.voucher_loja_id
+      ?? (l.voucher_vendedor_id && vendedoresDaLoja(lojasVendedoresVoucher, lojaPadraoId).some((v) => v.user_id === l.voucher_vendedor_id) ? lojaPadraoId : '');
+    setFLojaId(ehVoucherEquipamentos(l.descricao) ? (lojaLinha || '') : '');
     setFVendedorId(l.voucher_vendedor_id ?? '');
   };
 
   const salvar = () => {
     // Observações sempre em maiúsculas (pedido do usuário, 2026-10-20).
     const obs = fObs.trim().toUpperCase() || null;
-    const voucher_vendedor_id = podeDirecionar && fVendedorId ? fVendedorId : null;
+    const voucher_vendedor_id = podeDirecionar && fLojaId && fVendedorId ? fVendedorId : null;
+    const voucher_loja_id = voucher_vendedor_id ? fLojaId : null;
     const cortesia = ehVoucher || fCortesia;
     const troco = !ehVoucher && fTroco;
     if (editando) {
@@ -142,6 +163,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         cortesia,
         troco,
         voucher_vendedor_id,
+        voucher_loja_id,
       };
       onChange(next);
     } else {
@@ -155,6 +177,7 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
         cortesia,
         troco,
         voucher_vendedor_id,
+        voucher_loja_id,
       }]);
     }
     resetForm();
@@ -187,6 +210,9 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
                   ? `Troco ao cliente - não cobrado, gera conta a pagar de ${brl(Number(l.valor) || 0)}`
                   : `Valor: ${brl(Number(l.valor) || 0)}`}
             </p>
+            {ehVoucherEquipamentos(l.descricao) && nomeLoja(l.voucher_loja_id) && (
+              <p className="text-xs text-muted-foreground">Loja: {nomeLoja(l.voucher_loja_id)}</p>
+            )}
             {ehVoucherEquipamentos(l.descricao) && nomeConsultor(l.voucher_vendedor_id) && (
               <p className="text-xs text-muted-foreground">Consultor Equipamentos: {nomeConsultor(l.voucher_vendedor_id)}</p>
             )}
@@ -258,11 +284,26 @@ const AgregadosContrato: React.FC<Props> = ({ value, onChange, catalogo, soLeitu
 
             {podeDirecionar && (
               <div>
+                <Label className="text-xs text-muted-foreground">Loja <span className="text-destructive">*</span></Label>
+                <Select value={fLojaId} onValueChange={escolherLoja}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
+                  <SelectContent>
+                    {lojasVoucher.map((l) => (
+                      <SelectItem key={l.loja_id} value={l.loja_id}>{l.loja}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Consultor só depois da loja: a lista é filtrada pela loja escolhida. */}
+            {podeDirecionar && !!fLojaId && (
+              <div>
                 <Label className="text-xs text-muted-foreground">Consultor Equipamentos <span className="text-destructive">*</span></Label>
                 <Select value={fVendedorId} onValueChange={setFVendedorId}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder={vendedoresLoja.length ? 'Selecione' : 'Nenhum consultor nesta loja'} /></SelectTrigger>
                   <SelectContent>
-                    {vendedoresEquipamentos.map((v) => (
+                    {vendedoresLoja.map((v) => (
                       <SelectItem key={v.user_id} value={v.user_id}>{firstLastName(v.nome) || v.nome}</SelectItem>
                     ))}
                   </SelectContent>
