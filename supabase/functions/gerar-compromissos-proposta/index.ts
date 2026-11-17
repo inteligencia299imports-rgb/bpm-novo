@@ -93,6 +93,12 @@ type Parcela = {
   pendente?: boolean;
   /** Observação da parcela (REPASSE / QUITAÇÃO). */
   observacoes?: string;
+  /**
+   * false = não move dinheiro (compromissos_parcelas.financeiro): a parte do repasse da moto que
+   * entra como parte de pagamento e abate a venda. Sobra paga ao cliente e quitação são
+   * financeiras. Omitido = financeira (default do banco).
+   */
+  financeiro?: boolean;
 };
 
 type Origem = 'venda' | 'compra' | 'troca' | 'consignante' | 'troco' | 'trade_in';
@@ -210,6 +216,7 @@ async function upsertCompromisso(admin: any, a: UpsertArgs): Promise<Record<stri
       status_pagamento: p.pago ? 'pago' : (p.pendente ? 'pendente' : 'em_aberto'),
       ...(p.pago ? { data_pagamento: dataPagamento } : {}),
       ...(p.observacoes ? { observacoes: p.observacoes } : {}),
+      ...(p.financeiro === false ? { financeiro: false } : {}),
     }));
   if (aInserir.length > 0) {
     const { error } = await admin.from('compromissos_parcelas').insert(aInserir);
@@ -302,12 +309,13 @@ async function construirRepasse(
     const valorVenda = nz(valorVendaTroca);
     const diferenca = Math.min(Math.max(fechamento - valorVenda, 0), repasse);
     const restante = repasse - diferenca;
-    const itens: { valor: number; forma_pagamento_id: string; observacoes: string }[] = [];
+    const itens: { valor: number; forma_pagamento_id: string; observacoes: string; financeiro?: boolean }[] = [];
     // Quitação: compromisso separado, no nome do banco (sincronizarCompromissoQuitacao).
     // Sem banco informado ainda, fica como parcela aqui (regra antiga) para não sumir.
     if (quitacao > 0 && !av.quitacao_instituicao_id) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, observacoes: OBS_PARCELA_QUITACAO });
     if (diferenca > 0) itens.push({ valor: diferenca, forma_pagamento_id: FORMA_PAGAMENTO_ID, observacoes: OBS_PARCELA_REPASSE });
-    if (restante > 0) itens.push({ valor: restante, forma_pagamento_id: FORMA_PAGAMENTO_ID, observacoes: OBS_PARCELA_REPASSE });
+    // Parte que abate a venda: a moto entra como parte de pagamento — não financeira.
+    if (restante > 0) itens.push({ valor: restante, forma_pagamento_id: FORMA_PAGAMENTO_ID, observacoes: OBS_PARCELA_REPASSE, financeiro: false });
     if (itens.length === 0) return { origem, status: 'sem_valor', quitacao: await sincronizarCompromissoQuitacao(admin, avaliacaoId, callerId) };
     const tipo = itens.length > 1 ? 'parcelado' : 'unico';
     parcelas = itens.map((it, i) => ({
@@ -318,6 +326,7 @@ async function construirRepasse(
       data_vencimento: venc,
       pendente: true,
       observacoes: it.observacoes,
+      ...(it.financeiro === false ? { financeiro: false } : {}),
     }));
   } else {
     // Repasse: segue as formas de pagamento lançadas na proposta de compra
@@ -361,6 +370,11 @@ async function construirRepasse(
   const { data: tercAt } = origem === 'troca' ? { data: null }
     : await admin.from('atendimentos_motos').select('id').eq('troca_terceiro_avaliacao_id', avaliacaoId).limit(1).maybeSingle();
   const partePagamento = origem === 'troca' || !!tercAt;
+  // Moto de terceiro dada no pagamento de outra venda: o repasse abate aquela venda — não
+  // financeiro (a quitação segue financeira). Decisão do usuário, 2026-11-17.
+  if (tercAt) {
+    parcelas = parcelas.map((p) => (p.observacoes === OBS_PARCELA_REPASSE ? { ...p, financeiro: false } : p));
+  }
 
   const resultado = await upsertCompromisso(admin, {
     origem,
@@ -615,6 +629,8 @@ async function recalcularRepasseCompra(admin: any, avaliacaoId: string, callerId
   // Troca tem outra divisão (abate da venda / sobra / quitação) — não mexe aqui.
   const { data: at } = await admin.from('atendimentos_motos').select('interesse').eq('id', av.atendimento_id).maybeSingle();
   if ((at as any)?.interesse === 'trocar') return { status: 'troca_ignorada' };
+  // Moto de terceiro dada no pagamento de outra venda: repasse não financeiro.
+  const { data: tercRec } = await admin.from('atendimentos_motos').select('id').eq('troca_terceiro_avaliacao_id', avaliacaoId).limit(1).maybeSingle();
   const { data: contratoCompra } = await admin
     .from('contratos')
     .select('valor_fechamento, valor_quitacao, data_sinal')
@@ -652,6 +668,7 @@ async function recalcularRepasseCompra(admin: any, avaliacaoId: string, callerId
       forma_pagamento_id: FORMA_PAGAMENTO_ID,
       status_pagamento: 'em_aberto',
       observacoes: OBS_PARCELA_REPASSE,
+      ...(tercRec ? { financeiro: false } : {}),
     });
   } else {
     const ultima = abertas[abertas.length - 1];

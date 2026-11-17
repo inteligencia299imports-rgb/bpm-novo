@@ -1202,7 +1202,9 @@ async function registrarPosAutorizacao(
   venc.setDate(venc.getDate() + DIAS_VENCIMENTO);
   const vencStr = venc.toISOString().slice(0, 10);
 
-  type ParcelaDesejada = { numero_parcela: number; valor: number; tipo: string; forma_pagamento_id: string; data_vencimento?: string; pago?: boolean; observacoes?: string };
+  // financeiro: false = não move dinheiro (compromissos_parcelas.financeiro) — parte do repasse da
+  // moto que entra como parte de pagamento e abate a venda. Omitido = financeira.
+  type ParcelaDesejada = { numero_parcela: number; valor: number; tipo: string; forma_pagamento_id: string; data_vencimento?: string; pago?: boolean; observacoes?: string; financeiro?: boolean };
   const compromissoNatureza = cfg.compromissoTipo === 'receber' ? 'receita' : 'despesa';
   let parcelasDesejadas: ParcelaDesejada[] = [];
   let obsCompromisso: string | null = null;
@@ -1377,12 +1379,13 @@ async function registrarPosAutorizacao(
 
       const diferenca = Math.min(Math.max(fechamento - precoTotalNovaMoto, 0), valorRepasse);
       const restante = valorRepasse - diferenca;
-      const itens: { valor: number; forma_pagamento_id: string; pago: boolean; observacoes: string }[] = [];
+      const itens: { valor: number; forma_pagamento_id: string; pago: boolean; observacoes: string; financeiro?: boolean }[] = [];
       // Quitação: compromisso separado, no nome do banco (sincronizarCompromissoQuitacao).
       // Sem banco informado ainda, fica como parcela aqui (regra antiga) para não sumir.
       if (quitacao > 0 && !avFin?.quitacao_instituicao_id) itens.push({ valor: quitacao, forma_pagamento_id: FORMA_PAGAMENTO_BOLETO_ID, pago: false, observacoes: OBS_PARCELA_QUITACAO });
       if (diferenca > 0) itens.push({ valor: diferenca, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: false, observacoes: OBS_PARCELA_REPASSE });
-      if (restante > 0) itens.push({ valor: restante, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: true, observacoes: OBS_PARCELA_REPASSE });
+      // Parte que abate a venda: a moto entra como parte de pagamento — não financeira.
+      if (restante > 0) itens.push({ valor: restante, forma_pagamento_id: FORMA_PAGAMENTO_ID, pago: true, observacoes: OBS_PARCELA_REPASSE, financeiro: false });
       if (itens.length === 0) {
         // Só quitação (sem repasse ao cliente): ela vai no compromisso do banco.
         try { await sincronizarCompromissoQuitacao(admin, entityId, callerId); } catch (e) { console.error('quitacao (nf compra)', e); }
@@ -1396,6 +1399,7 @@ async function registrarPosAutorizacao(
         forma_pagamento_id: it.forma_pagamento_id,
         pago: it.pago,
         observacoes: it.observacoes,
+        ...(it.financeiro === false ? { financeiro: false } : {}),
       }));
       statusCompromissoTroca = itens.every((it) => it.pago) ? 'pago' : 'em_aberto';
     } else {
@@ -1429,7 +1433,16 @@ async function registrarPosAutorizacao(
       const restanteRepasse = Math.round((valorRepasse - cobertoFormas) * 100) / 100;
       if (restanteRepasse > 0.005) itens.push({ valor: restanteRepasse, forma_pagamento_id: FORMA_PAGAMENTO_ID, observacoes: OBS_PARCELA_REPASSE });
       const tipoCompra = itens.length > 1 ? 'parcelado' : 'unico';
-      parcelasDesejadas = itens.map((it, i) => ({ numero_parcela: i + 1, tipo: tipoCompra, ...it }));
+      // Moto de terceiro dada no pagamento de outra venda: o repasse abate aquela venda — não
+      // financeiro (a quitação segue financeira). Decisão do usuário, 2026-11-17.
+      const { data: tercFin } = await admin.from('atendimentos_motos').select('id')
+        .eq('troca_terceiro_avaliacao_id', entityId).limit(1).maybeSingle();
+      parcelasDesejadas = itens.map((it, i) => ({
+        numero_parcela: i + 1,
+        tipo: tipoCompra,
+        ...it,
+        ...(tercFin && it.observacoes === OBS_PARCELA_REPASSE ? { financeiro: false } : {}),
+      }));
     }
     obsCompromisso = obsMoto(avFin?.marca, avFin?.modelo, avFin?.placa);
   }
@@ -1532,6 +1545,7 @@ async function registrarPosAutorizacao(
       status_pagamento: p.pago ? 'pago' : 'em_aberto',
       ...(p.pago ? { data_pagamento: dataPagamento } : {}),
       ...(p.observacoes ? { observacoes: p.observacoes } : {}),
+      ...(p.financeiro === false ? { financeiro: false } : {}),
     }));
 
   if (parcelasAInserir.length > 0) {
@@ -1602,7 +1616,7 @@ async function reconciliarTrocaAposNfVenda(admin: any, atendimentoId: string, va
       const valor = Number(p.valor);
       if (valor <= excesso + 0.005) {
         await admin.from('compromissos_parcelas')
-          .update({ status_pagamento: 'pago', data_pagamento: dataPagamento, observacoes: OBS_PARCELA_REPASSE })
+          .update({ status_pagamento: 'pago', data_pagamento: dataPagamento, observacoes: OBS_PARCELA_REPASSE, financeiro: false })
           .eq('id', p.id);
         excesso -= valor;
       } else {
@@ -1620,6 +1634,7 @@ async function reconciliarTrocaAposNfVenda(admin: any, atendimentoId: string, va
           status_pagamento: 'pago',
           data_pagamento: dataPagamento,
           observacoes: OBS_PARCELA_REPASSE,
+          financeiro: false, // parte que abate a venda (moto parte de pagamento)
         });
         excesso = 0;
       }
