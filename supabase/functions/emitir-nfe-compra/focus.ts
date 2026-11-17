@@ -80,17 +80,23 @@ export function mensagemErroFocus(body: Record<string, unknown>): string {
     const cStat = body.status_sefaz;
     return (cStat ? `[${cStat}] ` : '') + msgSefaz;
   }
-  if (typeof body.mensagem === 'string' && body.mensagem) return body.mensagem;
+  // Erro de validação (HTTP 422): a Focus manda a mensagem genérica ("Erro na validação do
+  // Schema XML, verifique o detalhamento dos erros") E o detalhamento em `erros`. Antes só a
+  // genérica era gravada e não dava pra saber qual campo estava errado (2026-11-17).
   const erros = body.erros;
-  if (Array.isArray(erros) && erros.length) {
-    return erros
+  const detalhe = Array.isArray(erros) && erros.length
+    ? erros
       .map((e) => {
         if (typeof e === 'string') return e;
         const o = e as Record<string, unknown>;
         return [o.campo, o.mensagem].filter(Boolean).join(': ');
       })
-      .join(' | ');
-  }
+      .filter(Boolean)
+      .join(' | ')
+    : '';
+  const mensagem = typeof body.mensagem === 'string' ? body.mensagem : '';
+  if (mensagem && detalhe) return `${mensagem}: ${detalhe}`;
+  if (mensagem || detalhe) return mensagem || detalhe;
   if (typeof body.raw === 'string' && body.raw) return body.raw.slice(0, 500);
   return 'Falha desconhecida na emissao da NF-e';
 }

@@ -224,6 +224,17 @@ export interface MontarPayloadArgs {
 const onlyDigits = (v: string | null | undefined) => (v ?? '').replace(/\D/g, '');
 
 /**
+ * Campo de texto do XML da NF-e no tamanho máximo do schema (nome, logradouro, número,
+ * complemento, bairro, município: 60). Acima disso a Focus recusa a nota inteira com
+ * "Erro na validação do Schema XML" (achado 2026-11-17: complemento do endereço com 69
+ * caracteres na venda de seminova de Renato Sarnaglia Proenca). Vazio -> undefined.
+ */
+const campoNfe = (v: string | null | undefined, max = 60): string | undefined => {
+  const s = (v ?? '').replace(/\s+/g, ' ').trim();
+  return s ? s.slice(0, max).trim() : undefined;
+};
+
+/**
  * "R$ 1.234,56" — formato pt-BR determinístico para o texto do infCpl.
  * Não usa `toLocaleString` (o ICU do runtime Deno às vezes cai em `.` decimal,
  * gerando "R$ 92.99" num campo e "R$ 836,91" noutro na mesma nota).
@@ -864,20 +875,20 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
 
     cnpj_emitente: onlyDigits(empresa.cnpj),
 
-    nome_destinatario: fornecedor.nome,
+    nome_destinatario: campoNfe(fornecedor.nome),
     [pf ? 'cpf_destinatario' : 'cnpj_destinatario']: docForn,
     indicador_inscricao_estadual_destinatario: indIeDest,
     ...(indIeDest === 1 ? { inscricao_estadual_destinatario: ieForn } : {}),
     telefone_destinatario: onlyDigits(fornecedor.telefone) || undefined,
-    logradouro_destinatario: fornecedor.logradouro || undefined,
-    numero_destinatario: fornecedor.numero || 'S/N',
-    complemento_destinatario: fornecedor.complemento || undefined,
-    bairro_destinatario: fornecedor.bairro || undefined,
-    municipio_destinatario: fornecedor.cidade || undefined,
+    logradouro_destinatario: campoNfe(fornecedor.logradouro),
+    numero_destinatario: campoNfe(fornecedor.numero) || 'S/N',
+    complemento_destinatario: campoNfe(fornecedor.complemento),
+    bairro_destinatario: campoNfe(fornecedor.bairro),
+    municipio_destinatario: campoNfe(fornecedor.cidade),
     // Código IBGE junto do nome: sem ele a Focus resolve só pelo nome e recusa
     // grafia diferente da oficial (achado 2026-11-11: "SANTA ISABEL DO PARA" x
     // IBGE "Santa Izabel do Pará", 1506500).
-    codigo_municipio_destinatario: (fornecedor.codigo_municipio_ibge || '').replace(/D/g, '') || undefined,
+    codigo_municipio_destinatario: onlyDigits(fornecedor.codigo_municipio_ibge) || undefined,
     uf_destinatario: (fornecedor.uf || '').toUpperCase() || undefined,
     cep_destinatario: onlyDigits(fornecedor.cep) || undefined,
     pais_destinatario: 'Brasil',
@@ -885,12 +896,12 @@ export function montarPayloadNfeCompra(args: MontarPayloadArgs): Record<string, 
     // retirando no endereço da loja (mesmo formato do crm-novo/ofc).
     ...(entregaNaLoja
       ? {
-        nome_entrega: fornecedor.nome,
+        nome_entrega: campoNfe(fornecedor.nome),
         [pf ? 'cpf_entrega' : 'cnpj_entrega']: docForn,
-        logradouro_entrega: empresa.logradouro,
-        numero_entrega: empresa.numero,
-        complemento_entrega: empresa.complemento || undefined,
-        bairro_entrega: empresa.bairro,
+        logradouro_entrega: campoNfe(empresa.logradouro),
+        numero_entrega: campoNfe(empresa.numero),
+        complemento_entrega: campoNfe(empresa.complemento),
+        bairro_entrega: campoNfe(empresa.bairro),
         codigo_municipio_entrega: empresa.codigo_municipio_ibge || undefined,
         municipio_entrega: empresa.cidade,
         uf_entrega: empresa.uf,
