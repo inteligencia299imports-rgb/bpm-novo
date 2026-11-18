@@ -24,6 +24,8 @@
 // não pode ser o proprietário" (entrada) e "a assinatura... deve ser
 // realizada após a entrada em estoque" (assinatura).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { lerCodigosCrv } from '../_shared/ocr-documentos.ts';
+import { base64ParaBytes, textoDoPdf } from '../_shared/pdf-texto.ts';
 import {
   clienteAutenticado, pendentesEntrada, entrarEstoqueZeroKm, entrarEstoque, enviarNotaFiscal,
   consultarEstoque, consultarVeiculoPorChassi, listarEstoques, municipios, sairEstoqueZeroKm, pdfAtpvPorChassi,
@@ -142,6 +144,27 @@ async function cnpjDaEmpresaPorAvaliacao(admin: any, avaliacaoId: string): Promi
 // segurança NOVO -- a saída exige esse código atual, que só vem no PDF
 // `pdfCodigoSegurancaCrvBase64` do CRLV-e (a SERPRO não devolve em campo).
 async function extrairCodigoSegurancaDoAtpv(pdfBase64: string, tipoDoc: 'atpv' | 'crv' = 'atpv'): Promise<{ codigoSegurancaCrv: string | null; numeroCrv: string | null }> {
+  // 1º: o texto do próprio PDF da SERPRO (sem IA, sem custo). A IA só entra se faltar o código
+  // de segurança (ou o nº do CRV no ATPV-e). Pedido do usuário, 2026-11-18.
+  let doTexto: { codigoSegurancaCrv: string | null; numeroCrv: string | null } = { codigoSegurancaCrv: null, numeroCrv: null };
+  try {
+    const lido = lerCodigosCrv(await textoDoPdf(base64ParaBytes(pdfBase64)));
+    doTexto = { codigoSegurancaCrv: lido.codigo_seguranca_crv, numeroCrv: lido.numero_crv };
+    if (doTexto.codigoSegurancaCrv && (doTexto.numeroCrv || tipoDoc === 'crv')) {
+      console.log(`extrairCodigoSegurancaDoAtpv(${tipoDoc}): lido do texto do PDF (sem IA)`);
+      return doTexto;
+    }
+  } catch (e) {
+    console.warn('extrairCodigoSegurancaDoAtpv: texto do PDF falhou, usando a IA:', e);
+  }
+  const daIa = await extrairCodigoSegurancaViaIa(pdfBase64, tipoDoc);
+  return {
+    codigoSegurancaCrv: doTexto.codigoSegurancaCrv ?? daIa.codigoSegurancaCrv,
+    numeroCrv: doTexto.numeroCrv ?? daIa.numeroCrv,
+  };
+}
+
+async function extrairCodigoSegurancaViaIa(pdfBase64: string, tipoDoc: 'atpv' | 'crv'): Promise<{ codigoSegurancaCrv: string | null; numeroCrv: string | null }> {
   const instrucao = tipoDoc === 'crv'
     ? 'Este é o PDF do código de segurança do CRV (Certificado de Registro de Veículo) emitido pela SERPRO/Detran. Leia exatamente o "CÓDIGO DE SEGURANÇA" do CRV (11 dígitos) e, se aparecer, o "NÚMERO DO CRV" (12 dígitos), e registre-os. Nunca invente — se algum não estiver legível ou não existir no documento, devolva string vazia "".'
     : 'Este é um ATPV-e (Autorização para Transferência de Propriedade de Veículo digital) da SERPRO. Leia exatamente os campos "CÓDIGO DE SEGURANÇA CRV" (11 dígitos) e "NÚMERO CRV" (12 dígitos) e registre-os. Nunca invente — se algum não estiver legível, devolva string vazia "".';

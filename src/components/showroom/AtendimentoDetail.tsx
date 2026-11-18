@@ -48,6 +48,7 @@ import ContratoDialog from './ContratoDialog';
 import ClienteEditDialog from '@/components/shared/ClienteEditDialog';
 import { useNfeEmitida } from '@/hooks/useNfeEmitida';
 import { vendaLiberada } from '@/lib/aprovacaoVenda';
+import { lerTextoDocumento } from '@/lib/ocrDocumento';
 
 interface Props {
   atendimento: Atendimento;
@@ -484,7 +485,7 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
     const toastId = toast.loading('Conferindo o CRLV e extraindo os dados da moto…');
     try {
       const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
-        body: { avaliacao_id: avaliacaoId, url },
+        body: { avaliacao_id: avaliacaoId, url, ocr_texto: await lerTextoDocumento(url) },
       });
       if (error || !data) {
         toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });

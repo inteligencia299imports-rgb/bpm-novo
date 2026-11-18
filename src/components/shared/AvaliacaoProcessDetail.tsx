@@ -40,6 +40,7 @@ import ConsignacaoProcessoDialog from '@/components/consignacao/ConsignacaoProce
 import PreparacaoProcessoDialog from '@/components/preparacao/PreparacaoProcessoDialog';
 import PosCompraProcessoDialog from '@/components/pos-compra/PosCompraProcessoDialog';
 import PosCompraFinanceiroDialog from '@/components/pos-compra/PosCompraFinanceiroDialog';
+import { lerTextoDocumento } from '@/lib/ocrDocumento';
 
 interface Props {
   item: any;
@@ -214,7 +215,7 @@ const AvaliacaoProcessDetail: React.FC<Props> = ({ item, entityType, statusColum
     const toastId = toast.loading('Conferindo o CRLV e extraindo os dados da moto…');
     try {
       const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
-        body: { avaliacao_id: moto.id, url },
+        body: { avaliacao_id: moto.id, url, ocr_texto: await lerTextoDocumento(url) },
       });
       if (error || !data) {
         toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });

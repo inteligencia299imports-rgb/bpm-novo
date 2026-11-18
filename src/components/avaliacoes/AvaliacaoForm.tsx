@@ -51,6 +51,7 @@ import { toast } from 'sonner';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { lerTextoDocumento } from '@/lib/ocrDocumento';
 
 interface Props {
   avaliacaoId: string;
@@ -1268,7 +1269,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
     const toastId = toast.loading('Conferindo o CRLV e extraindo os dados da moto…');
     try {
       const { data, error } = await supabase.functions.invoke('extrair-dados-crlv', {
-        body: { avaliacao_id: avaliacaoId, url },
+        body: { avaliacao_id: avaliacaoId, url, ocr_texto: await lerTextoDocumento(url) },
       });
       if (error || !data) {
         toast.warning('Não foi possível validar o CRLV automaticamente — confira os dados da moto manualmente.', { id: toastId });
