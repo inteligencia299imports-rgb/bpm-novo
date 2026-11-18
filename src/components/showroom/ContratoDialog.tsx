@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, Download, Loader2, RefreshCw, AlertTriangle, User, Bike, MessageSquare, Wallet, ArrowLeft, Pencil, MapPin, Landmark, Building2, Package, DollarSign, Receipt, X } from 'lucide-react';
+import { FileText, CalendarIcon, Trash2, Plus, Save, Eye, Download, Loader2, RefreshCw, AlertTriangle, User, Bike, MessageSquare, Wallet, ArrowLeft, Pencil, MapPin, Landmark, Building2, Package, DollarSign, Receipt, X, Copy } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { HistoricoVeiculoMoto } from '@/components/showroom/HistoricoVeiculoMoto';
 import { toast } from 'sonner';
@@ -1471,6 +1471,61 @@ const ContratoDialog: React.FC<Props> = ({
   const trocoAgregados = agregados.reduce((s, a) => s + (a.troco ? Number(a.valor) || 0 : 0), 0);
   const trocoTotal = trocoFormasPagamento + trocoAgregados;
 
+  // --- Resumo da Negociação (pedido do usuário, 2026-11-18) ---
+  // Negociação: venda (+) taxas/agregados cobrados (−) moto(s) absorvida(s) = total a pagar.
+  // Pagamentos: cada forma (financiamento = valor financiado, como na conta do Valor Faltante).
+  type LinhaResumo = { sinal: '' | '+' | '-'; rotulo: string; valor: number };
+  const resumoNegociacao: LinhaResumo[] = [
+    { sinal: '', rotulo: 'Valor da Venda', valor: vendaNum },
+    ...(totalTaxasCliente > 0.005 ? [{ sinal: '+' as const, rotulo: transferenciaLabel, valor: totalTaxasCliente }] : []),
+    ...agregados
+      .filter((a) => !a.cortesia && !a.troco && (Number(a.valor) || 0) > 0.005)
+      .map((a) => ({ sinal: '+' as const, rotulo: a.descricao || 'Agregado', valor: Number(a.valor) || 0 })),
+    ...(hasTroca
+      ? trocaItens.map((t) => {
+          const nome = [t.moto.marca, t.moto.modelo].filter(Boolean).join(' ').toUpperCase();
+          const placa = (t.moto.placa || '').replace(/-/g, '').toUpperCase();
+          const desc = [nome, placa].filter(Boolean).join(' - ');
+          return { sinal: '-' as const, rotulo: `Moto absorvida${desc ? ` (${desc})` : ''}`, valor: abatimentoMotoTroca(t) };
+        })
+      : []),
+  ];
+  const resumoTotalNegociacao = valorTotalContrato - abatimentoTroca;
+  const resumoPagamentos: LinhaResumo[] = formasPagamento.map((fp) => ({
+    sinal: '',
+    rotulo: `${tipoLabel(fp.tipo)}${fp.financeira ? ` (${fp.financeira})` : ''}`,
+    valor: ehFinanciamento(fp.tipo) ? Number(fp.valor_financiado) || 0 : Number(fp.valor_total) || 0,
+  }));
+  const resumoDiferenca = somaFormasPagamento - resumoTotalNegociacao;
+  const textoResumo = () => {
+    const linha = (l: LinhaResumo, sep: string) => `${l.sinal ? `(${l.sinal}) ` : ''}${l.rotulo}${sep}${formatCurrency(l.valor)}`;
+    const partes = [
+      'Negociação:',
+      ...resumoNegociacao.map((l) => linha(l, ' = ')),
+      '',
+      `Total = ${formatCurrency(resumoTotalNegociacao)}`,
+      '',
+      '==========================',
+      '',
+      'Pagamentos:',
+      ...(resumoPagamentos.length ? resumoPagamentos.map((l) => linha(l, ': ')) : ['(nenhum pagamento lançado)']),
+      '',
+      `Total = ${formatCurrency(somaFormasPagamento)}`,
+    ];
+    if (Math.abs(resumoDiferenca) > 0.005) {
+      partes.push('', `${resumoDiferenca > 0 ? 'Sobra (troco ao cliente)' : 'Falta pagar'} = ${formatCurrency(Math.abs(resumoDiferenca))}`);
+    }
+    return partes.join('\n');
+  };
+  const copiarResumo = async () => {
+    try {
+      await navigator.clipboard.writeText(textoResumo());
+      toast.success('Resumo copiado');
+    } catch {
+      toast.error('Não foi possível copiar o resumo');
+    }
+  };
+
   // Campos obrigatórios pendentes para gerar o contrato (sinal/venda), na mesma
   // ordem em que os cards aparecem na tela. Sem toast — usado tanto pelo aviso
   // abaixo do título quanto pela validação (com toast) em validateForGeneration.
@@ -2341,6 +2396,54 @@ const ContratoDialog: React.FC<Props> = ({
                   </Card>
                 )}
               </div>
+
+              {/* Card: Resumo da Negociação — negociação x pagamentos, com botão de copiar o texto */}
+              {vendaNum > 0 && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Receipt className="h-4 w-4 text-primary" /> Resumo da Negociação
+                      </CardTitle>
+                      <Button size="sm" variant="outline" className="h-7" onClick={copiarResumo}>
+                        <Copy className="h-3.5 w-3.5 mr-1" /> Copiar
+                      </Button>
+                    </div>
+                    <Separator className="mt-2" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {([
+                        { titulo: 'Negociação', linhas: resumoNegociacao, total: resumoTotalNegociacao, vazio: '' },
+                        { titulo: 'Pagamentos', linhas: resumoPagamentos, total: somaFormasPagamento, vazio: 'Nenhum pagamento lançado' },
+                      ]).map((bloco) => (
+                        <div key={bloco.titulo} className="space-y-1.5 text-sm">
+                          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{bloco.titulo}</p>
+                          {bloco.linhas.length === 0 && bloco.vazio && <p className="text-muted-foreground">{bloco.vazio}</p>}
+                          {bloco.linhas.map((l, i) => (
+                            <div key={i} className="flex items-baseline justify-between gap-3">
+                              <span className="min-w-0">
+                                {l.sinal && <span className={cn('mr-1 font-medium', l.sinal === '-' ? 'text-red-600' : 'text-emerald-600')}>({l.sinal === '-' ? '−' : '+'})</span>}
+                                {l.rotulo}
+                              </span>
+                              <span className="shrink-0 tabular-nums">{formatCurrency(l.valor)}</span>
+                            </div>
+                          ))}
+                          <div className="flex items-baseline justify-between gap-3 border-t pt-1.5 font-semibold">
+                            <span>Total</span>
+                            <span className="tabular-nums">{formatCurrency(bloco.total)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {Math.abs(resumoDiferenca) > 0.005 && (
+                      <p className={cn('mt-3 text-sm font-medium', resumoDiferenca > 0 ? 'text-emerald-600' : 'text-orange-600')}>
+                        {resumoDiferenca > 0 ? 'Sobra (troco ao cliente)' : 'Falta pagar'}: {formatCurrency(Math.abs(resumoDiferenca))}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Card: Observações */}
               <Card>
