@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { lerTextoDocumento } from '@/lib/ocrDocumento';
 
 export type DocVeiculoTipo = 'atpv' | 'procuracao';
 
@@ -45,7 +46,7 @@ export async function conferirDocVeiculo(
   const toastId = toast.loading(`Conferindo o ${rotulo}…`);
   try {
     const { data, error } = await supabase.functions.invoke('extrair-dados-doc-veiculo', {
-      body: { avaliacao_id: avaliacaoId, url, tipo },
+      body: { avaliacao_id: avaliacaoId, url, tipo, ocr_texto: await lerTextoDocumento(url) },
     });
     if (error || !data) {
       toast.warning(`Não foi possível conferir o ${rotulo} automaticamente — verifique manualmente.`, { id: toastId });

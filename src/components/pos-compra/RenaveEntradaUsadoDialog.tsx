@@ -21,6 +21,7 @@ import { validarCpf } from '@/lib/cpf';
 import StatusTimeline from '@/components/shared/StatusTimeline';
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import DocumentUpload from '@/components/showroom/DocumentUpload';
+import { lerTextoDocumento } from '@/lib/ocrDocumento';
 
 /**
  * Entrada de moto SEMINOVA (veículo próprio) em estoque no RENAVE — etapa
@@ -177,7 +178,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         setExtraindoCrlv(true);
         try {
           await supabase.functions.invoke('extrair-dados-crlv', {
-            body: { avaliacao_id: avaliacaoId, url: data.crlv_url },
+            body: { avaliacao_id: avaliacaoId, url: data.crlv_url, ocr_texto: await lerTextoDocumento(data.crlv_url) },
           });
         } catch {
           // best-effort -- se falhar, o card avisa que continua faltando
@@ -191,7 +192,7 @@ const RenaveEntradaUsadoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         setLendoAtpv(true);
         try {
           await supabase.functions.invoke('extrair-dados-doc-veiculo', {
-            body: { avaliacao_id: avaliacaoId, url: data.atpv_url, tipo: 'atpv' },
+            body: { avaliacao_id: avaliacaoId, url: data.atpv_url, tipo: 'atpv', ocr_texto: await lerTextoDocumento(data.atpv_url) },
           });
         } catch {
           // best-effort -- se não ler, o campo fica vazio pra preencher à mão

@@ -1,4 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { lerDocVeiculo } from '../_shared/ocr-documentos.ts';
+
+// Leitura: 1º o texto do documento (camada de texto do PDF ou OCR Tesseract feito no navegador,
+// `ocr_texto` no corpo); a IA só é chamada quando esse texto não basta. Mesma lógica de
+// conferência/atualização de antes. Pedido do usuário, 2026-11-18.
 
 // Confere se um ATPV-e ou uma Procuração anexados pertencem à moto da avaliação
 // (OCR + comparação de placa/chassi/RENAVAM).
@@ -211,19 +216,46 @@ Deno.serve(async (req) => {
   }
   if (!temAcesso) return jsonResponse({ error: 'Forbidden: sem acesso a esta avaliação' }, 403);
 
-  // Extração é best-effort — nunca derruba o upload em si.
-  if (!apiKey) return jsonResponse({ extraido: false, match: null, motivo: 'ANTHROPIC_API_KEY não configurada' }, 200);
-  if (!mediaType) return jsonResponse({ extraido: false, match: null, motivo: 'Formato de arquivo não suportado para conferência' }, 200);
+  // Extração é best-effort — nunca derruba o upload em si (falta de chave/arquivo vira
+  // extraido=false com o motivo, no catch abaixo).
+  const ocrTexto = typeof body.ocr_texto === 'string' ? body.ocr_texto.slice(0, 30000) : '';
 
   try {
-    const buffer = await filePromise;
-    if (!buffer) return jsonResponse({ extraido: false, match: null, motivo: 'Falha ao baixar o arquivo' }, 200);
-
     const moto = {
       placa: soAlfaNum(acesso.placa), chassi: soAlfaNum(acesso.chassi), renavam: soDigitos(acesso.renavam),
       marca: (_nome(acesso.marca) || '').trim(), modelo: (_nome(acesso.modelo) || '').trim(),
     };
-    const ex = await extrairViaClaude(arrayBufferToBase64(buffer), mediaType, apiKey, tipo, moto);
+
+    // Texto do documento: aceito quando é o documento esperado, algum identificador (chassi,
+    // RENAVAM, placa) bate com o cadastro e nenhum diverge, e traz o que a avaliação ainda não
+    // tem (ATPV-e: nº/código do CRV e data da assinatura). Divergência NÃO rejeita pelo texto
+    // (pode ser erro de OCR): a IA confere.
+    let ex: Extracao | null = null;
+    let via: 'ocr' | 'ia' = 'ia';
+    const lidoOcr = ocrTexto ? lerDocVeiculo(ocrTexto, tipo) : null;
+    if (lidoOcr) {
+      const pares = [[lidoOcr.chassi, moto.chassi], [lidoOcr.renavam, moto.renavam], [lidoOcr.placa, moto.placa]]
+        .filter(([a, b]) => a && b);
+      const algumIgual = pares.some(([a, b]) => a === b);
+      const algumDifere = pares.some(([a, b]) => a !== b);
+      const falta = tipo === 'atpv' && (
+        (!lidoOcr.numero_crv && !acesso.numero_crv)
+        || (!lidoOcr.codigo_seguranca_crv && !acesso.codigo_seguranca_crv)
+        || (!lidoOcr.data_assinatura_vendedor && !acesso.atpv_data_assinatura)
+      );
+      if (algumIgual && !algumDifere && !falta) {
+        ex = { ...lidoOcr, tipo_documento: null, menciona_veiculo: true, confere_com_moto: true, leitura: null };
+        via = 'ocr';
+      }
+    }
+    if (!ex) {
+      if (!apiKey) throw new Error('ANTHROPIC_API_KEY não configurada');
+      if (!mediaType) throw new Error('Formato de arquivo não suportado para conferência');
+      const buffer = await filePromise;
+      if (!buffer) throw new Error('Falha ao baixar o arquivo');
+      ex = await extrairViaClaude(arrayBufferToBase64(buffer), mediaType, apiKey, tipo, moto);
+    }
+    console.log(`extrair-dados-doc-veiculo(${tipo}) via:`, via);
 
     const nomeCurto = tipo === 'atpv' ? 'ATPV-e' : 'procuração';
     if (!ex.eh_documento_esperado) {
@@ -275,7 +307,7 @@ Deno.serve(async (req) => {
       console.log('extrair-dados-doc-veiculo(atpv) atualizados:', JSON.stringify(atualizados));
     }
 
-    return jsonResponse({ extraido: true, match, motivo, lido: ex, atualizados }, 200);
+    return jsonResponse({ extraido: true, match, motivo, lido: ex, atualizados, via }, 200);
   } catch (err) {
     console.error('extrair-dados-doc-veiculo error', err);
     return jsonResponse({ extraido: false, match: null, motivo: err instanceof Error ? err.message : String(err) }, 200);

@@ -1,5 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { lerCartaoCnpj, lerIdentidade } from '../_shared/ocr-documentos.ts';
 
+// Leitura: 1º o texto do documento (camada de texto do PDF ou OCR Tesseract feito no navegador,
+// `ocr_texto` no corpo); a IA só é chamada quando esse texto não traz os campos com segurança.
+// Mesma lógica de conferência/atualização de antes. Pedido do usuário, 2026-11-18.
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 // Extração de documento (OCR + leitura de campos) exige um modelo de visão forte;
 // o Haiku erra CPF/nome/data em fotos de CNH. Sobrescrevível por env.
@@ -362,26 +366,33 @@ Deno.serve(async (req) => {
     || body.doc_tipo === 'cartao_cnpj';
 
   const vazio = { nome: null, cpf: null, rg: null, data_nascimento: null };
+  const ocrTexto = typeof body.ocr_texto === 'string' ? body.ocr_texto.slice(0, 30000) : '';
 
-  if (!apiKey) {
-    return jsonResponse({ ...vazio, extraido: false, motivo: 'ANTHROPIC_API_KEY não configurada' }, 200);
-  }
-  if (!mediaType) {
-    return jsonResponse({ ...vazio, extraido: false, motivo: 'Formato de arquivo não suportado para extração' }, 200);
-  }
+  // Arquivo para a IA — só quando o texto do documento não bastou.
+  const arquivoParaIa = async (): Promise<{ base64: string; mediaType: string; apiKey: string }> => {
+    if (!apiKey) throw new Error('ANTHROPIC_API_KEY não configurada');
+    if (!mediaType) throw new Error('Formato de arquivo não suportado para extração');
+    const buffer = await filePromise;
+    if (!buffer) throw new Error('Falha ao baixar o arquivo da CNH');
+    return { base64: arrayBufferToBase64(buffer), mediaType, apiKey };
+  };
 
   try {
-    const buffer = await filePromise;
-    if (!buffer) {
-      return jsonResponse({ ...vazio, extraido: false, motivo: 'Falha ao baixar o arquivo da CNH' }, 200);
-    }
-    const base64 = arrayBufferToBase64(buffer);
     const nomeCliente = (cliente.nome_razao_social || '').trim();
 
     // ---- Pessoa jurídica: valida o Cartão CNPJ, sem atualizar nada ----
     if (ehPj) {
       const cnpjCadastrado = soDigitos(cliente.cpf_cnpj);
-      const v = await validarCartaoCnpjViaClaude(base64, mediaType, apiKey, nomeCliente || '(sem nome cadastrado)', cnpjCadastrado || '(sem CNPJ cadastrado)');
+      // Texto do documento: aceita direto só quando é um Cartão CNPJ com o MESMO CNPJ do cadastro.
+      const lidoOcr = ocrTexto ? lerCartaoCnpj(ocrTexto) : null;
+      let v: ValidacaoCartaoCnpj;
+      if (lidoOcr?.cnpj && cnpjCadastrado && lidoOcr.cnpj === cnpjCadastrado) {
+        v = { eh_cartao_cnpj: true, tipo_documento: null, cnpj: lidoOcr.cnpj, razao_social: lidoOcr.razao_social, confere_com_cliente: true };
+        console.log('validar-cartao-cnpj: conferido pelo texto do documento (sem IA)');
+      } else {
+        const a = await arquivoParaIa();
+        v = await validarCartaoCnpjViaClaude(a.base64, a.mediaType, a.apiKey, nomeCliente || '(sem nome cadastrado)', cnpjCadastrado || '(sem CNPJ cadastrado)');
+      }
 
       if (!v.eh_cartao_cnpj) {
         const tipo = v.tipo_documento ? ` (parece ser: ${v.tipo_documento})` : '';
@@ -406,7 +417,33 @@ Deno.serve(async (req) => {
       return jsonResponse({ ...vazio, extraido: true, match: true }, 200);
     }
 
-    const extraido = await extrairViaClaude(base64, mediaType, apiKey, nomeCliente || '(sem nome cadastrado)');
+    // Texto do documento (OCR): aceito quando é CNH/RG, o nome bate bem com o cliente e traz todo
+    // campo que o cadastro ainda não tem. Senão, a IA lê a imagem como antes. O texto nunca
+    // rejeita um documento — quem rejeita é a IA.
+    let extraido: ExtracaoCnh | null = null;
+    let via: 'ocr' | 'ia' = 'ia';
+    let nomeOcrSeguro = true;
+    const lidoOcr = ocrTexto ? lerIdentidade(ocrTexto) : null;
+    if (lidoOcr?.nome) {
+      const simOcr = nomeCliente ? similaridadeNome(nomeCliente, lidoOcr.nome) : 1;
+      const falta = (!lidoOcr.cpf && !soDigitos(cliente.cpf_cnpj))
+        || (!lidoOcr.rg && !(cliente.rg || '').trim())
+        || (!lidoOcr.data_nascimento && !cliente.data_nascimento);
+      if (simOcr >= 0.6 && !falta) {
+        extraido = { ...lidoOcr, tipo_documento: null, confere_com_cliente: true };
+        via = 'ocr';
+        // O OCR pode trocar uma letra: o nome do cadastro só é substituído pelo lido quando o
+        // lido contém todas as palavras do cadastro (ex.: completa sobrenome, acerta acento).
+        const doCadastro = normNome(nomeCliente).split(' ').filter((t) => t.length > 1);
+        const lidas = new Set(normNome(lidoOcr.nome).split(' '));
+        nomeOcrSeguro = doCadastro.every((t) => lidas.has(t));
+      }
+    }
+    if (!extraido) {
+      const a = await arquivoParaIa();
+      extraido = await extrairViaClaude(a.base64, a.mediaType, a.apiKey, nomeCliente || '(sem nome cadastrado)');
+    }
+    console.log('extrair-dados-cnh via:', via);
 
     // O arquivo anexado não é CNH nem RG (CRLV, comprovante...) -> rejeita e faz rollback.
     if (extraido.tipo_detectado === 'outro') {
@@ -447,7 +484,7 @@ Deno.serve(async (req) => {
     const matchForte = !!nomeCliente && extraido.confere_com_cliente && sim >= 0.6;
 
     const updatePayload: Record<string, string> = {};
-    if (extraido.nome) updatePayload.nome_razao_social = formatarNome(extraido.nome);
+    if (extraido.nome && nomeOcrSeguro) updatePayload.nome_razao_social = formatarNome(extraido.nome);
 
     const divergencias: string[] = [];
 
@@ -506,6 +543,7 @@ Deno.serve(async (req) => {
       data_nascimento: updatePayload.data_nascimento ?? null,
       atualizou_nascimento: atualizouNascimento,
       divergencias: divergencias.length ? divergencias : undefined,
+      via,
     }, 200);
   } catch (err) {
     console.error('extrair-dados-cnh error', err);

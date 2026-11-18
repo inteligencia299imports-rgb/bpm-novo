@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { lerTextoDocumento } from '@/lib/ocrDocumento';
 
 export interface CnhExtracaoResultado {
   extraido: boolean;
@@ -97,7 +98,7 @@ export async function processarCnhAnexada(params: {
   const toastId = toast.loading(`Conferindo o ${nomeDoc}…`);
   try {
     const { data, error } = await supabase.functions.invoke('extrair-dados-cnh', {
-      body: { cliente_id: clienteId, url, doc_tipo: pj ? 'cartao_cnpj' : 'cnh' },
+      body: { cliente_id: clienteId, url, doc_tipo: pj ? 'cartao_cnpj' : 'cnh', ocr_texto: await lerTextoDocumento(url) },
     });
 
     if (error || !data) {

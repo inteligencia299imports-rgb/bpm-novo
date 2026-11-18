@@ -1,5 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { lerCrlv } from '../_shared/ocr-documentos.ts';
 
+// Leitura: 1º o texto do documento (camada de texto do PDF ou OCR Tesseract feito no navegador,
+// `ocr_texto` no corpo); a IA só é chamada quando esse texto não traz os campos com segurança.
+// Mesma lógica de conferência/atualização de antes. Pedido do usuário, 2026-11-18.
 const BPM_PROJETO_ID = 'd007a2c2-7576-4a60-ba1b-c506a9c4fcac';
 // Extração de documento (OCR + leitura de campos) exige um modelo de visão forte;
 // o Haiku erra chassi/renavam/placa em fotos de CRLV. Sobrescrevível por env.
@@ -287,24 +291,35 @@ Deno.serve(async (req) => {
     ano_fabricacao: null, ano_modelo: null, marca_documento: null, modelo_documento: null,
   };
 
-  if (!apiKey) {
-    // Extracao e sempre best-effort -- nunca deve derrubar o fluxo de
-    // upload do CRLV em si.
-    return jsonResponse({ ...vazio, extraido: false, motivo: 'ANTHROPIC_API_KEY não configurada' }, 200);
-  }
-
-  if (!mediaType) {
-    return jsonResponse({ ...vazio, extraido: false, motivo: 'Formato de arquivo não suportado para extração' }, 200);
-  }
+  // Extracao e sempre best-effort -- nunca deve derrubar o fluxo de upload do CRLV em si
+  // (falta de chave/arquivo vira extraido=false com o motivo, no catch abaixo).
+  const ocrTexto = typeof body.ocr_texto === 'string' ? body.ocr_texto.slice(0, 30000) : '';
 
   try {
-    const buffer = await filePromise;
-    if (!buffer) {
-      return jsonResponse({ ...vazio, extraido: false, motivo: 'Falha ao baixar o arquivo do CRLV' }, 200);
+    // Texto do documento: aceito quando é um CRLV com placa, chassi e RENAVAM lidos, a placa é a
+    // mesma do cadastro (ou o cadastro ainda não tem placa) e traz todo campo que a avaliação
+    // ainda não tem. Placa diferente NÃO rejeita pelo texto (pode ser erro de OCR): a IA confere.
+    let extraido: ExtracaoResultado | null = null;
+    let via: 'ocr' | 'ia' = 'ia';
+    const lidoOcr = ocrTexto ? lerCrlv(ocrTexto) : null;
+    if (lidoOcr?.placa && lidoOcr.chassi && lidoOcr.renavam) {
+      const placaCadOcr = soAlfaNum(acesso.placa);
+      const mesmaPlaca = !placaCadOcr || placaCadOcr === lidoOcr.placa;
+      const campos = ['numero_crv', 'codigo_seguranca_crv', 'tipo_crv', 'ano_fabricacao', 'ano_modelo'] as const;
+      const falta = campos.some((c) => !lidoOcr[c] && !acesso[c]);
+      if (mesmaPlaca && !falta) {
+        extraido = { ...lidoOcr, tipo_documento: null };
+        via = 'ocr';
+      }
     }
-    const base64 = arrayBufferToBase64(buffer);
-
-    const extraido = await extrairViaClaude(base64, mediaType, apiKey);
+    if (!extraido) {
+      if (!apiKey) throw new Error('ANTHROPIC_API_KEY não configurada');
+      if (!mediaType) throw new Error('Formato de arquivo não suportado para extração');
+      const buffer = await filePromise;
+      if (!buffer) throw new Error('Falha ao baixar o arquivo do CRLV');
+      extraido = await extrairViaClaude(arrayBufferToBase64(buffer), mediaType, apiKey);
+    }
+    console.log('extrair-dados-crlv via:', via);
 
     // O arquivo anexado não é um CRLV (CNH, RG, ATPV-e, comprovante...) -> rejeita e faz rollback.
     if (!extraido.eh_crlv) {
@@ -376,6 +391,7 @@ Deno.serve(async (req) => {
       ...extraido,
       extraido: true,
       match,
+      via,
       divergencias: divergencias.length ? divergencias : undefined,
       // Campos abaixo refletem o que foi de fato gravado (não o que foi só lido),
       // para o front aplicar apenas as mudanças efetivas.
