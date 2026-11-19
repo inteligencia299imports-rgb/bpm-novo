@@ -132,12 +132,21 @@ export function textoAbertura(nome: string | null, itens: Item[], principal: Ite
   const loja = `*${principal.nome_exibicao}*`;
   const tipos = new Set(itens.map((i) => i.produto));
   const soPerdido = itens.every((i) => i.negociacao === 'PERDIDO');
+  // Perdido: o que o cliente estava negociando (avaliação = ele vendendo a moto para a loja).
+  const NEGOCIO_PERDIDO: Record<string, string> = {
+    SHOWROOM: 'na *compra da sua moto*',
+    AVALIAÇÃO: 'na *venda da sua moto*',
+    EQUIPAMENTOS: 'na *compra de equipamentos*',
+    OFICINA: 'no *serviço da sua moto*',
+  };
   let motivo: string;
-  if (soPerdido) motivo = sorteia([`Obrigado por ter considerado a ${loja}.`, `Obrigado pelo seu contato com a ${loja}.`]);
-  else if (tipos.has('moto')) motivo = `Obrigado por escolher a ${loja} na *compra da sua moto*.`;
+  if (soPerdido) {
+    const negocio = NEGOCIO_PERDIDO[principal.departamento];
+    motivo = negocio ? `Obrigado por ter considerado a ${loja} ${negocio}.` : `Obrigado por ter considerado a ${loja}.`;
+  } else if (tipos.has('moto')) motivo = `Obrigado por escolher a ${loja} na *compra da sua moto*.`;
   else if (tipos.has('equipamento')) motivo = `Obrigado por escolher a ${loja} na *compra do seu equipamento*.`;
   else if (tipos.has('servico')) motivo = `Obrigado por escolher a ${loja} para *cuidar da sua moto*.`;
-  else motivo = `Obrigado por escolher a ${loja} na *negociação da sua moto*.`;
+  else motivo = `Obrigado por escolher a ${loja} na *venda da sua moto*.`;
   motivo += ` ${iconeLoja(principal)}`;
   const pedido = sorteia([
     `Por favor, *responda a uma rápida pesquisa*. São ${qtdPerguntas} perguntas e leva cerca de 1 minuto e meio.`,
