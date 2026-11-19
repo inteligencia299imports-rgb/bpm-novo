@@ -6,7 +6,7 @@ import * as uaz from './uazapi.ts';
 /** Pausa os envios (ativo = false) e avisa telefone_alerta. Só avisa na primeira vez. */
 export async function pausarPorQueda(db: SupabaseClient, detalhe: string) {
   const { data: pausou } = await db.from('nps_bot_config')
-    .update({ ativo: false, pausado_motivo: `WhatsApp fora do ar (${detalhe})`, pausado_at: new Date().toISOString() })
+    .update({ ativo: false, pausado_motivo: `WhatsApp fora do ar (${detalhe})`, pausado_at: new Date().toISOString(), falhas_conexao: 0 })
     .eq('id', true).eq('ativo', true).select('telefone_alerta');
   if (!pausou?.length) return false; // já estava pausado: não repete o alerta
 

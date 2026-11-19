@@ -28,19 +28,30 @@ const enviado = (r: any): Enviado => ({
   chatid: r?.chatid ?? r?.message?.chatid ?? null,
 });
 
-/** O WhatsApp da instância está conectado? (false = caiu, foi desconectado ou bloqueado) */
-export async function whatsappConectado(): Promise<{ conectado: boolean; detalhe: string }> {
-  try {
-    const res = await fetch(`${baseUrl()}/instance/status`, { headers: { token: token() } });
-    const j = await res.json().catch(() => null);
-    if (!res.ok) return { conectado: false, detalhe: `status HTTP ${res.status}` };
-    const st = j?.status ?? {};
-    const situacao = j?.instance?.status ?? (typeof j?.status === 'string' ? j.status : '');
-    const conectado = situacao === 'connected' && st.connected !== false && st.loggedIn !== false;
-    return { conectado, detalhe: `instância: ${situacao || 'desconhecida'}` };
-  } catch (e) {
-    return { conectado: false, detalhe: `sem resposta da uazapi: ${String(e).slice(0, 150)}` };
+/**
+ * O WhatsApp da instância está conectado?
+ *  - conectado false + incerto false: a uazapi RESPONDEU que o WhatsApp caiu/desconectou/bloqueou;
+ *  - incerto true: não deu para falar com a uazapi (rede/servidor) — NÃO quer dizer que o WhatsApp caiu.
+ * Tenta 3 vezes antes de concluir que a uazapi não responde.
+ */
+export async function whatsappConectado(): Promise<{ conectado: boolean; incerto: boolean; detalhe: string }> {
+  let ultimoErro = '';
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    if (tentativa) await new Promise((ok) => setTimeout(ok, 4000));
+    try {
+      const res = await fetch(`${baseUrl()}/instance/status`, { headers: { token: token() }, signal: AbortSignal.timeout(10000) });
+      if (res.status >= 500) { ultimoErro = `uazapi HTTP ${res.status}`; continue; }
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j) return { conectado: false, incerto: false, detalhe: `uazapi HTTP ${res.status}` };
+      const st = j?.status ?? {};
+      const situacao = j?.instance?.status ?? (typeof j?.status === 'string' ? j.status : '');
+      const conectado = situacao === 'connected' && st.connected !== false && st.loggedIn !== false;
+      return { conectado, incerto: false, detalhe: `instância: ${situacao || 'desconhecida'}` };
+    } catch (e) {
+      ultimoErro = `sem resposta da uazapi: ${String(e).slice(0, 120)}`;
+    }
   }
+  return { conectado: false, incerto: true, detalhe: ultimoErro };
 }
 
 /** O número tem WhatsApp? */

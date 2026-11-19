@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
   if (body?.EventType === 'connection') {
     // Mudou a conexão do WhatsApp: se caiu/foi bloqueado, pausa os envios e avisa na hora.
     const st = await whatsappConectado();
-    if (!st.conectado) {
+    if (!st.conectado && !st.incerto) {
       const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
       await pausarPorQueda(db, st.detalhe);
     }

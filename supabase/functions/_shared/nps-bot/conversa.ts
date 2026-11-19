@@ -49,8 +49,10 @@ export async function registrarHistorico(db: SupabaseClient, it: { id: string; t
   if (error) console.error('histórico', it.tabela, it.id, status, error.message);
 }
 
-/** O WhatsApp do robô caiu: o disparo pausa os envios e avisa. */
-export class WhatsappForaDoAr extends Error {}
+/** O WhatsApp do robô caiu (incerto = a uazapi não respondeu; pode ser só rede). */
+export class WhatsappForaDoAr extends Error {
+  constructor(msg: string, public incerto = false) { super(msg); }
+}
 
 /** Marca o atendimento como enviado (sai da fila) e registra no histórico. */
 async function marcarEnviados(db: SupabaseClient, itens: { id: string; tabela: string }[], status: string, obs: string | undefined, conversaId: string | null) {
@@ -90,7 +92,7 @@ export async function abrirConversa(db: SupabaseClient, linhas: LinhaFila[], opt
     existe = await uaz.temWhatsapp(telefone);
   } catch (e) {
     const st = await uaz.whatsappConectado();
-    if (!st.conectado) throw new WhatsappForaDoAr(st.detalhe);
+    if (!st.conectado) throw new WhatsappForaDoAr(st.detalhe, st.incerto);
     throw e;
   }
   if (!existe) {
@@ -115,7 +117,7 @@ export async function abrirConversa(db: SupabaseClient, linhas: LinhaFila[], opt
     if (!st.conectado) {
       // Caiu: apaga a conversa e deixa os atendimentos na fila para quando voltar.
       await db.from('nps_bot_conversas').delete().eq('id', conversa.id);
-      throw new WhatsappForaDoAr(st.detalhe);
+      throw new WhatsappForaDoAr(st.detalhe, st.incerto);
     }
     await db.from('nps_bot_conversas').update({ status: 'erro', erro: String(e).slice(0, 500) }).eq('id', conversa.id);
     if (!opts.teste) await marcarEnviados(db, itens, 'NPS NÃO ENVIADO', 'Falha no envio pelo WhatsApp', conversa.id);

@@ -69,6 +69,22 @@ async function encerrarParadas(db: any) {
   }
 }
 
+/**
+ * WhatsApp fora: se a uazapi respondeu que caiu, pausa e avisa na hora. Se a uazapi só não
+ * respondeu (rede), pula o ciclo e só pausa após FALHAS_PARA_PAUSAR ciclos seguidos.
+ */
+const FALHAS_PARA_PAUSAR = 5;
+async function tratarQueda(db: any, cfg: any, detalhe: string, incerto: boolean) {
+  if (incerto) {
+    const falhas = (cfg.falhas_conexao ?? 0) + 1;
+    await db.from('nps_bot_config').update({ falhas_conexao: falhas }).eq('id', true);
+    if (falhas < FALHAS_PARA_PAUSAR) return { ok: true, enviado: false, motivo: `uazapi sem resposta (${falhas}/${FALHAS_PARA_PAUSAR}): ${detalhe}` };
+    detalhe = `uazapi sem resposta há ${falhas} minutos: ${detalhe}`;
+  }
+  await pausarPorQueda(db, detalhe);
+  return { ok: true, enviado: false, motivo: `pausado: ${detalhe}` };
+}
+
 /** Próximo cliente da fila: todas as linhas prontas do mesmo telefone. */
 async function proximoCliente(db: any, ids?: string[], enviarDesde?: string | null): Promise<LinhaFila[] | null> {
   let q = db.from('vw_nps_bot_fila').select(COLUNAS_FILA);
@@ -128,10 +144,8 @@ Deno.serve(async (req) => {
 
     // WhatsApp caiu ou foi bloqueado: pausa na hora e avisa.
     const st = await whatsappConectado();
-    if (!st.conectado) {
-      await pausarPorQueda(db, st.detalhe);
-      return json({ ok: true, enviado: false, motivo: `pausado: ${st.detalhe}` });
-    }
+    if (!st.conectado) return json(await tratarQueda(db, cfg, st.detalhe, st.incerto));
+    if (cfg.falhas_conexao) await db.from('nps_bot_config').update({ falhas_conexao: 0 }).eq('id', true);
 
     const inicioDia = new Date(`${agoraSP().data}T00:00:00-03:00`).toISOString();
     const { count } = await db.from('nps_bot_conversas').select('id', { count: 'exact', head: true })
@@ -149,8 +163,9 @@ Deno.serve(async (req) => {
     return json({ ok: true, enviado: !!id, conversa: id, itens: linhas.length, motivo: id ? undefined : 'NPS NÃO ENVIADO' });
   } catch (e) {
     if (e instanceof WhatsappForaDoAr) {
-      await pausarPorQueda(db, e.message);
-      return json({ ok: true, enviado: false, motivo: `pausado: ${e.message}` });
+      // Libera o intervalo: o atendimento não saiu e continua na fila.
+      await db.from('nps_bot_config').update({ proximo_envio_at: null }).eq('id', true);
+      return json(await tratarQueda(db, cfg, e.message, e.incerto));
     }
     console.error('nps-bot-disparo', e);
     return json({ error: String(e) }, 500);
