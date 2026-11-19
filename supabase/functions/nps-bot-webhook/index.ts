@@ -5,6 +5,8 @@
 // (o WhatsApp segue funcionando normalmente para o atendimento humano).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { type Entrada, processarMensagem } from '../_shared/nps-bot/conversa.ts';
+import { pausarPorQueda } from '../_shared/nps-bot/pausa.ts';
+import { whatsappConectado } from '../_shared/nps-bot/uazapi.ts';
 
 const ok = () => new Response('ok', { status: 200 });
 
@@ -21,6 +23,15 @@ Deno.serve(async (req) => {
   if (!secret || url.searchParams.get('key') !== secret) return new Response('não autorizado', { status: 401 });
 
   const body = await req.json().catch(() => null);
+  if (body?.EventType === 'connection') {
+    // Mudou a conexão do WhatsApp: se caiu/foi bloqueado, pausa os envios e avisa na hora.
+    const st = await whatsappConectado();
+    if (!st.conectado) {
+      const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      await pausarPorQueda(db, st.detalhe);
+    }
+    return ok();
+  }
   if (!body || body.EventType !== 'messages') return ok();
   const m = body.message ?? body.data?.message ?? null;
   if (!m || m.fromMe || m.wasSentByApi || m.isGroup) return ok();

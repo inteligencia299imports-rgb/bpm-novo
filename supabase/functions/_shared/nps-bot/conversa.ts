@@ -12,7 +12,7 @@ import { classificarComentarios, classificarSemIa, interpretarOpcao } from './ia
 export interface LinhaFila {
   id: string; tabela: string; departamento: string; negociacao: string; loja: string; cidade: string;
   nome_exibicao: string; link_google: string | null; cliente_id: string | null; cliente: string | null; cliente_email: string | null;
-  telefone_envio: string; chave_telefone: string; data_negociacao: string; ducati: boolean;
+  telefone_envio: string | null; chave_telefone: string | null; data_negociacao: string; ducati: boolean;
 }
 
 interface Resposta { valor: string; indice: number; motivo?: string }
@@ -30,7 +30,45 @@ async function registrar(db: SupabaseClient, conversaId: string, direcao: 'envia
 // Abertura
 // ------------------------------------------------------------------
 
-/** Abre a conversa para um cliente (todas as linhas da fila com o mesmo telefone). */
+// Histórico de movimentações, como o n8n registrava (autor "Setor de Inteligência").
+const AUTOR_ID = '27aee000-5081-4bea-b249-ccab7e08cf66';
+const AUTOR_NOME = 'Setor de Inteligência';
+const HISTORICO: Record<string, { tabela: string; entity: string; comNome: boolean }> = {
+  atendimentos_motos: { tabela: 'status_history', entity: 'showroom', comNome: true },
+  avaliacoes: { tabela: 'status_history', entity: 'avaliacao', comNome: true },
+  atendimento_equipamentos: { tabela: 'status_history_equipamentos', entity: 'atendimento_equipamento', comNome: false },
+  atendimento_servicos: { tabela: 'status_history_servicos', entity: 'atendimento_servico', comNome: false },
+};
+
+export async function registrarHistorico(db: SupabaseClient, it: { id: string; tabela: string }, status: string, obs?: string) {
+  const h = HISTORICO[it.tabela];
+  if (!h) return;
+  const linha: Record<string, unknown> = { entity_type: h.entity, entity_id: it.id, status, changed_by: AUTOR_ID, observacoes: obs ?? null };
+  if (h.comNome) linha.changed_by_name = AUTOR_NOME;
+  const { error } = await db.from(h.tabela).insert(linha);
+  if (error) console.error('histórico', it.tabela, it.id, status, error.message);
+}
+
+/** O WhatsApp do robô caiu: o disparo pausa os envios e avisa. */
+export class WhatsappForaDoAr extends Error {}
+
+/** Marca o atendimento como enviado (sai da fila) e registra no histórico. */
+async function marcarEnviados(db: SupabaseClient, itens: { id: string; tabela: string }[], status: string, obs: string | undefined, conversaId: string | null) {
+  for (const it of itens) {
+    const { error: e } = await db.from(it.tabela).update({ nps_status: 'enviado', nps_enviado_at: agora() }).eq('id', it.id);
+    if (e) {
+      console.error('marcar enviado', it.tabela, it.id, e.message);
+      if (conversaId) await db.from('nps_bot_conversas').update({ erro: `marcar enviado ${it.tabela} ${it.id}: ${e.message}` }).eq('id', conversaId);
+    }
+    await registrarHistorico(db, it, status, obs);
+  }
+}
+
+/**
+ * Abre a conversa para um cliente (todas as linhas da fila com o mesmo telefone).
+ * Telefone inválido ou sem WhatsApp: registra "NPS NÃO ENVIADO" e tira da fila (como o n8n).
+ * Se o envio falhar porque o WhatsApp do robô caiu, lança WhatsappForaDoAr e não mexe nos atendimentos.
+ */
 export async function abrirConversa(db: SupabaseClient, linhas: LinhaFila[], opts: { teste: boolean; telefoneTeste?: string }) {
   // Principal = negociação mais recente (define loja, textos e link do Google).
   const ordenadas = [...linhas].sort((a, b) => b.data_negociacao.localeCompare(a.data_negociacao));
@@ -42,8 +80,25 @@ export async function abrirConversa(db: SupabaseClient, linhas: LinhaFila[], opt
   const passos = montarPassos(itens, principal);
   const p0 = ordenadas[0];
   const telefone = opts.teste ? opts.telefoneTeste! : p0.telefone_envio;
-  const chave = telefone.slice(2, 4) + telefone.slice(-8);
 
+  if (!telefone) {
+    if (!opts.teste) await marcarEnviados(db, itens, 'NPS NÃO ENVIADO', 'Telefone inválido no cadastro', null);
+    return null;
+  }
+  let existe: boolean;
+  try {
+    existe = await uaz.temWhatsapp(telefone);
+  } catch (e) {
+    const st = await uaz.whatsappConectado();
+    if (!st.conectado) throw new WhatsappForaDoAr(st.detalhe);
+    throw e;
+  }
+  if (!existe) {
+    if (!opts.teste) await marcarEnviados(db, itens, 'NPS NÃO ENVIADO', 'Número sem WhatsApp', null);
+    return null;
+  }
+
+  const chave = telefone.slice(2, 4) + telefone.slice(-8);
   const { data: conversa, error } = await db.from('nps_bot_conversas').insert({
     telefone, chave_telefone: chave, cliente_id: p0.cliente_id, cliente_nome: p0.cliente, cliente_email: p0.cliente_email,
     loja: principal.loja, itens, passos, status: 'enviada', teste: opts.teste,
@@ -56,20 +111,18 @@ export async function abrirConversa(db: SupabaseClient, linhas: LinhaFila[], opt
     await db.from('nps_bot_conversas').update({ chatid: r.chatid }).eq('id', conversa.id);
     await registrar(db, conversa.id, 'enviada', texto, { message_id: r.messageId, tipo: 'abertura' });
   } catch (e) {
-    await db.from('nps_bot_conversas').update({ status: 'erro', erro: String(e) }).eq('id', conversa.id);
-    throw e;
+    const st = await uaz.whatsappConectado();
+    if (!st.conectado) {
+      // Caiu: apaga a conversa e deixa os atendimentos na fila para quando voltar.
+      await db.from('nps_bot_conversas').delete().eq('id', conversa.id);
+      throw new WhatsappForaDoAr(st.detalhe);
+    }
+    await db.from('nps_bot_conversas').update({ status: 'erro', erro: String(e).slice(0, 500) }).eq('id', conversa.id);
+    if (!opts.teste) await marcarEnviados(db, itens, 'NPS NÃO ENVIADO', 'Falha no envio pelo WhatsApp', conversa.id);
+    return null;
   }
 
-  if (!opts.teste) {
-    // Mesmo efeito do envio manual: sai da fila e aparece como "Enviado".
-    for (const it of itens) {
-      const { error: e } = await db.from(it.tabela).update({ nps_status: 'enviado', nps_enviado_at: agora() }).eq('id', it.id);
-      if (e) {
-        console.error('marcar enviado', it.tabela, it.id, e.message);
-        await db.from('nps_bot_conversas').update({ erro: `marcar enviado ${it.tabela} ${it.id}: ${e.message}` }).eq('id', conversa.id);
-      }
-    }
-  }
+  if (!opts.teste) await marcarEnviados(db, itens, 'NPS ENVIADO', undefined, conversa.id);
   return conversa.id as string;
 }
 
@@ -309,6 +362,7 @@ export async function finalizar(db: SupabaseClient, c: any, opts: { silencioso?:
     await db.from('nps_bot_conversas').update({ erro: `respostas_nps: ${error.message}` }).eq('id', c.id);
     return;
   }
+  for (const it of itens) await registrarHistorico(db, it, 'NPS RESPONDIDO', 'Respondido pelo robô de NPS (WhatsApp)');
   // O gatilho da respostas_nps já marca motos, avaliações e equipamentos; a oficina, não.
   for (const it of itens.filter((x) => x.tabela === 'atendimento_servicos')) {
     await db.from('atendimento_servicos').update({ nps_status: 'respondido' }).eq('id', it.id);

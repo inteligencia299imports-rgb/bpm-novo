@@ -14,7 +14,9 @@
 //
 // Autenticação: header x-nps-bot-secret = secret NPS_BOT_SECRET.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { abrirConversa, classificar, finalizar, type LinhaFila } from '../_shared/nps-bot/conversa.ts';
+import { abrirConversa, classificar, finalizar, type LinhaFila, WhatsappForaDoAr } from '../_shared/nps-bot/conversa.ts';
+import { pausarPorQueda } from '../_shared/nps-bot/pausa.ts';
+import { whatsappConectado } from '../_shared/nps-bot/uazapi.ts';
 
 const COLUNAS_FILA =
   'id, tabela, departamento, negociacao, loja, cidade, nome_exibicao, link_google, cliente_id, cliente, cliente_email, telefone_envio, chave_telefone, data_negociacao, enviar_a_partir, ducati';
@@ -83,7 +85,9 @@ async function proximoCliente(db: any, ids?: string[], enviarDesde?: string | nu
     .eq('teste', false).or(`status.in.(enviada,em_andamento),enviada_at.gte.${desde}`);
   const bloqueadas = new Set((recentes ?? []).map((r: any) => r.chave_telefone));
   const primeiro = fila.find((l: any) => !bloqueadas.has(l.chave_telefone));
-  return primeiro ? fila.filter((l: any) => l.chave_telefone === primeiro.chave_telefone) : null;
+  if (!primeiro) return null;
+  if (!primeiro.chave_telefone) return [primeiro]; // telefone inválido: vai sozinho (registra não enviado)
+  return fila.filter((l: any) => l.chave_telefone === primeiro.chave_telefone);
 }
 
 Deno.serve(async (req) => {
@@ -122,6 +126,13 @@ Deno.serve(async (req) => {
       return json({ ok: true, enviado: false, motivo: 'aguardando intervalo' });
     }
 
+    // WhatsApp caiu ou foi bloqueado: pausa na hora e avisa.
+    const st = await whatsappConectado();
+    if (!st.conectado) {
+      await pausarPorQueda(db, st.detalhe);
+      return json({ ok: true, enviado: false, motivo: `pausado: ${st.detalhe}` });
+    }
+
     const inicioDia = new Date(`${agoraSP().data}T00:00:00-03:00`).toISOString();
     const { count } = await db.from('nps_bot_conversas').select('id', { count: 'exact', head: true })
       .eq('teste', false).gte('enviada_at', inicioDia);
@@ -135,8 +146,12 @@ Deno.serve(async (req) => {
     await db.from('nps_bot_config').update({ proximo_envio_at: new Date(Date.now() + espera * 1000).toISOString() }).eq('id', true);
 
     const id = await abrirConversa(db, linhas, { teste: false });
-    return json({ ok: true, enviado: true, conversa: id, itens: linhas.length });
+    return json({ ok: true, enviado: !!id, conversa: id, itens: linhas.length, motivo: id ? undefined : 'NPS NÃO ENVIADO' });
   } catch (e) {
+    if (e instanceof WhatsappForaDoAr) {
+      await pausarPorQueda(db, e.message);
+      return json({ ok: true, enviado: false, motivo: `pausado: ${e.message}` });
+    }
     console.error('nps-bot-disparo', e);
     return json({ error: String(e) }, 500);
   }
