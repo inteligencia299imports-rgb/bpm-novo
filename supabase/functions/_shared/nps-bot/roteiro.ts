@@ -162,10 +162,13 @@ export interface Fechamento { texto: string; linkPreview: boolean }
  *  - demais → só o agradecimento.
  */
 export function textoFechamento(
-  nota: number | null, itens: Item[], principal: Item, link: { google: string | null; portalDucati: string },
+  nota: number | null, itens: Item[], principal: Item, link: { google: string | null; portalDucati: string; instagram?: string | null },
   email: string | null,
 ): Fechamento {
-  const assinatura = `Abraços, equipe *${principal.nome_exibicao}*! 🏁`;
+  const insta = link.instagram ? `📸 Siga a gente no Instagram: ${link.instagram}
+
+` : '';
+  const assinatura = `${insta}Abraços, equipe *${principal.nome_exibicao}*! 🏁`;
   const ducatiOficina = itens.some((i) => i.ducati && i.departamento === 'OFICINA');
   if (nota === 10 && ducatiOficina) {
     const emailTxt = email

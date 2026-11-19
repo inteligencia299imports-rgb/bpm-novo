@@ -64,7 +64,10 @@ export async function abrirConversa(db: SupabaseClient, linhas: LinhaFila[], opt
     // Mesmo efeito do envio manual: sai da fila e aparece como "Enviado".
     for (const it of itens) {
       const { error: e } = await db.from(it.tabela).update({ nps_status: 'enviado', nps_enviado_at: agora() }).eq('id', it.id);
-      if (e) console.error('marcar enviado', it.tabela, it.id, e.message);
+      if (e) {
+        console.error('marcar enviado', it.tabela, it.id, e.message);
+        await db.from('nps_bot_conversas').update({ erro: `marcar enviado ${it.tabela} ${it.id}: ${e.message}` }).eq('id', conversa.id);
+      }
     }
   }
   return conversa.id as string;
@@ -264,9 +267,12 @@ export async function finalizar(db: SupabaseClient, c: any, opts: { silencioso?:
   }).eq('id', c.id);
 
   if (!opts.silencioso) {
-    const { data: cfg } = await db.from('nps_bot_config').select('link_portal_ducati').maybeSingle();
+    const [{ data: cfg }, { data: loja }] = await Promise.all([
+      db.from('nps_bot_config').select('link_portal_ducati').maybeSingle(),
+      db.from('nps_bot_lojas').select('instagram').eq('loja', principal.loja).maybeSingle(),
+    ]);
     const f = textoFechamento(nota, itens, principal, {
-      google: principal.link_google ?? null, portalDucati: cfg?.link_portal_ducati ?? '',
+      google: principal.link_google ?? null, portalDucati: cfg?.link_portal_ducati ?? '', instagram: loja?.instagram ?? null,
     }, c.cliente_email);
     try {
       const r = await uaz.enviarTexto(c.telefone, f.texto, { linkPreview: f.linkPreview });

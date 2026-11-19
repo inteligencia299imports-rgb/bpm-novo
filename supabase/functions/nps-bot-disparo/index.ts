@@ -54,6 +54,17 @@ async function encerrarParadas(db: any) {
     if (c.respostas?.nps) await finalizar(db, c, { silencioso: true });
     else await db.from('nps_bot_conversas').update({ status: 'expirada' }).eq('id', c.id);
   }
+
+  // Concluída mas a gravação em respostas_nps falhou: tenta de novo (sem reenviar nada ao cliente).
+  const { data: falhas } = await db.from('nps_bot_conversas').select('*')
+    .eq('status', 'concluida').eq('teste', false).like('erro', 'respostas_nps:%').limit(10);
+  for (const c of falhas ?? []) {
+    const ids = (c.itens ?? []).map((i: any) => i.id);
+    const { count } = await db.from('respostas_nps').select('id', { count: 'exact', head: true }).in('atendimento_id', ids);
+    if ((count ?? 0) > 0) { await db.from('nps_bot_conversas').update({ erro: null }).eq('id', c.id); continue; }
+    await db.from('nps_bot_conversas').update({ erro: null }).eq('id', c.id);
+    await finalizar(db, { ...c, erro: null }, { silencioso: true });
+  }
 }
 
 /** Próximo cliente da fila: todas as linhas prontas do mesmo telefone. */

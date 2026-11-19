@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.nps-bot-webhook]
 verify_jwt = false
+
+[functions.nps-bot-notificar]
+verify_jwt = false

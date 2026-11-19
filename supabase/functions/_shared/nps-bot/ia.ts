@@ -81,7 +81,16 @@ export async function classificarComentarios(itens: ItemResumo[], trechos: Trech
       'Um mesmo texto pode ter as duas partes: separe a crítica (melhorias) do elogio (comentario).\n' +
       'Exemplo: "Gostei do atendimento, mas a entrega atrasou" → melhorias: "A entrega atrasou."; ' +
       'comentario: "Gostei do atendimento."\n' +
-      'Regras: use as palavras do cliente (só corrija pontuação óbvia), não invente nem resuma demais. ' +
+      'Como escrever (o texto é o relato do próprio cliente):\n' +
+      '- Sempre em primeira pessoa, como se o cliente estivesse falando ("Achei o vendedor fraco", ' +
+      'nunca "O cliente achou o vendedor fraco").\n' +
+      '- Corrija erros de português, de digitação e de pontuação, e tire vícios da fala de áudio ' +
+      '(palavras repetidas, "ah", "tipo", "né"), deixando o texto claro e fácil de entender.\n' +
+      '- Mantenha o sentido, o tom e os detalhes do relato: não acrescente nada que o cliente não disse, ' +
+      'não suavize nem exagere, e não resuma a ponto de perder informação.\n' +
+      'Exemplo: "ah eu nao gostei muito do do vendedor achei o atendimento fraco" → ' +
+      '"Não gostei muito do vendedor, achei o atendimento fraco."\n' +
+      'Regras: ' +
       'Um trecho que fala de um produto ou setor específico vai só para o atendimento correspondente; ' +
       'um trecho geral (loja, atendimento, marca) vai para todos os atendimentos a que o trecho se aplica. ' +
       'Não repita o mesmo trecho nos dois campos. Deixe string vazia quando não houver nada. ' +
