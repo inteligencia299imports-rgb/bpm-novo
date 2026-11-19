@@ -203,7 +203,7 @@ export function textoFechamento(
   const ducatiOficina = itens.some((i) => i.ducati && i.departamento === 'OFICINA');
   if (nota === 10 && ducatiOficina) {
     const emailTxt = email
-      ? `Basta se inscrever com o e-mail do seu cadastro: *${email}*`
+      ? `Basta se inscrever com o e-mail do seu cadastro: ${email}`
       : 'Basta se inscrever com o seu e-mail.';
     return {
       texto: `Agradecemos por dedicar o seu tempo!\n\nQue tal deixar essa avaliação também no *portal da Ducati*? Ela faz toda a diferença para nós.\n\n🔗 ${link.portalDucati}\n\n${emailTxt}\n\n${assinatura}`,
