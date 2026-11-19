@@ -42,6 +42,8 @@ Deno.serve(async (req) => {
     if (!body.resposta_id) return json({ error: 'resposta_id obrigatório' }, 400);
     const d = await carregarResposta(db, body.resposta_id);
     if (!d) return json({ ok: true, enviados: [], motivo: 'resposta/atendimento não encontrado' });
+    // Só avisa quando o cliente deixou algum texto (melhorias ou comentário); só a nota não basta.
+    if (!d.melhorias?.trim() && !d.comentario?.trim()) return json({ ok: true, enviados: [], motivo: 'sem feedback escrito' });
     const lista = await destinatarios(db, d);
     const enviados = await notificar(db, d, lista, { registrar: true });
     return json({ ok: true, enviados });
