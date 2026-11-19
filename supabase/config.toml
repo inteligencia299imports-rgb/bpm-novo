@@ -1,1 +1,7 @@
 project_id = "gnpkkgygjfxlipqbtybg"
+
+[functions.nps-bot-disparo]
+verify_jwt = false
+
+[functions.nps-bot-webhook]
+verify_jwt = false
