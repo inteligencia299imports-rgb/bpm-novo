@@ -585,7 +585,9 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
         status: 'disponivel',
         loja_id: lojaIdLiberacao,
         preco_acao: precoAcaoValue,
-        observacoes: obsMoto.trim() || null,
+        // estoque_motos.observacoes é o motivo de status (Serviço/Indisponível/...). A observação
+        // da moto fica na avaliação (card "Dados da Moto") — gravar aqui duplicava o texto no card do Estoque.
+        observacoes: null,
       };
       const { error: estoqueError } = estoqueExistente
         ? await supabase.from('estoque_motos').update(dadosEstoque as any).eq('id', (estoqueExistente as any).id)
@@ -600,6 +602,7 @@ const PreparacaoProcessoDialog: React.FC<Props> = ({ open, onOpenChange, avaliac
       const avaliacaoUpdate: any = {
         preparacao_status: 'estoque',
         situacao: 'estoque',
+        observacoes: obsMoto.trim() || null,
       };
       if (libManual) avaliacaoUpdate.tem_manual = libManual === 'sim';
       if (libChaveReserva) avaliacaoUpdate.tem_chave_reserva = libChaveReserva === 'sim';

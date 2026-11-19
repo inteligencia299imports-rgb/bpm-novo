@@ -987,7 +987,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
                             </div>
                           )}
 
-                          {item.observacoes && (
+                          {/* Linhas antigas guardavam a observação da moto também aqui — não repete. */}
+                          {item.observacoes && item.observacoes.trim() !== (item.observacao_moto ?? '').trim() && (
                             <div className={`text-xs italic whitespace-pre-wrap break-words ${
                               item.status === 'servico' ? 'flex items-start gap-1.5 text-orange-600 font-medium bg-orange-500/10 rounded p-2' :
                               item.status === 'indisponivel_manual' ? 'flex items-start gap-1.5 text-destructive font-medium bg-destructive/10 rounded p-2' :
