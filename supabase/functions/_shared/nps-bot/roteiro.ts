@@ -24,6 +24,7 @@ export interface Passo {
   escala?: Escala;
   texto: string;
   itens: string[];               // ids dos itens a que a resposta se aplica
+  textoPedido?: string;          // sim_nao: o que pedir quando o cliente responde "Sim"
 }
 
 export const ESCALAS: Record<Escala, string[]> = {
@@ -108,13 +109,23 @@ export function montarPassos(itens: Item[], principal: Item): Passo[] {
         `De 0 a 10, o quanto você recomendaria a *${principal.nome_exibicao}* a um(a) amigo(a) ou colega?`,
       ]),
     },
-    {
-      chave: 'comentario', tipo: 'sim_nao', itens: todos,
-      texto: sorteia([
-        'Gostaria de deixar mais algum *comentário, elogio ou crítica*?',
-        'Quer deixar mais algum *comentário, elogio ou crítica*?',
-      ]),
-    },
+    // Perdido: a última pergunta quer entender por que o cliente não fechou com a gente.
+    itens.every((i) => i.negociacao === 'PERDIDO')
+      ? {
+        chave: 'comentario', tipo: 'sim_nao', itens: todos,
+        texto: sorteia([
+          'Pode nos contar *por que não fechou negócio com a gente*? Sua resposta nos ajuda muito a melhorar.',
+          'Gostaria de nos contar *o que pesou para você não fechar com a gente*? Isso nos ajuda muito a melhorar.',
+        ]),
+        textoPedido: 'Obrigado! Conta pra gente o que pesou na sua decisão (preço, condições, atendimento, prazo ou outro motivo). Pode escrever ou mandar um áudio.',
+      }
+      : {
+        chave: 'comentario', tipo: 'sim_nao', itens: todos,
+        texto: sorteia([
+          'Gostaria de deixar mais algum *comentário, elogio ou crítica*?',
+          'Quer deixar mais algum *comentário, elogio ou crítica*?',
+        ]),
+      },
   );
   return passos;
 }

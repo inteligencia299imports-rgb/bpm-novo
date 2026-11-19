@@ -78,6 +78,8 @@ export async function classificarComentarios(itens: ItemResumo[], trechos: Trech
       'e motivos de respostas negativas. Vale também para o comentário final: se o cliente diz que não ' +
       'gostou de algo, isso é melhoria, mesmo sem dizer como melhorar;\n' +
       '- comentario: só elogios e observações neutras.\n' +
+      'Em negociação não concluída (perdida), o motivo de o cliente não ter fechado (preço, condições, ' +
+      'prazo, atendimento, concorrente etc.) vai para melhorias.\n' +
       'Um mesmo texto pode ter as duas partes: separe a crítica (melhorias) do elogio (comentario).\n' +
       'Exemplo: "Gostei do atendimento, mas a entrega atrasou" → melhorias: "A entrega atrasou."; ' +
       'comentario: "Gostei do atendimento."\n' +

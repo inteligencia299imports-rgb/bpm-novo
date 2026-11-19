@@ -284,8 +284,9 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
     respostas.comentario = { valor: valor === 1 ? 'Sim' : 'Não', indice: valor };
     if (valor === 1) {
       await db.from('nps_bot_conversas').update({ respostas, aguardando: 'comentario', ultima_interacao_at: agora() }).eq('id', c.id);
-      const r = await uaz.enviarTexto(c.telefone, TEXTO_PEDIR_COMENTARIO);
-      await registrar(db, c.id, 'enviada', TEXTO_PEDIR_COMENTARIO, { message_id: r.messageId });
+      const pedido = passo.textoPedido ?? TEXTO_PEDIR_COMENTARIO;
+      const r = await uaz.enviarTexto(c.telefone, pedido);
+      await registrar(db, c.id, 'enviada', pedido, { message_id: r.messageId });
     } else {
       await finalizar(db, { ...c, respostas });
     }
