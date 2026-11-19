@@ -163,6 +163,13 @@ export const textoMotivo = (passo: Passo) =>
         'Que pena. O que aconteceu para você responder assim? Pode escrever ou mandar um áudio.',
       ]);
 
+/** Depois que o cliente conta o motivo, antes da próxima pergunta. */
+export const textoAgradeceMotivo = () => sorteia([
+  'Obrigado por compartilhar! Seu relato vai nos ajudar a melhorar. 🙏',
+  'Agradecemos por nos contar, isso nos ajuda muito a melhorar. 🙏',
+  'Obrigado pelo seu relato! Vamos levar isso para a equipe. 🙏',
+]);
+
 export const TEXTO_PEDIR_COMENTARIO =
   'Perfeito! Envie o seu feedback em uma única mensagem. Se preferir, você também pode enviar um áudio.';
 

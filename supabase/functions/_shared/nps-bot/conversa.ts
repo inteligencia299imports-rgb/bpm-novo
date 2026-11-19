@@ -5,7 +5,7 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import * as uaz from './uazapi.ts';
 import {
   abaixoDoNeutro, ESCALAS, type Item, montarPassos, opcoesDoPasso, type Passo, produtoDoItem,
-  TEXTO_PEDIR_COMENTARIO, textoAbertura, textoFechamento, textoMotivo,
+  TEXTO_PEDIR_COMENTARIO, textoAbertura, textoAgradeceMotivo, textoFechamento, textoMotivo,
 } from './roteiro.ts';
 import { classificarComentarios, classificarSemIa, interpretarOpcao } from './ia.ts';
 
@@ -224,7 +224,8 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
     }
     if (c.aguardando === 'motivo') {
       respostas[passo.chave] = { ...respostas[passo.chave], motivo: texto };
-      await avancar(db, c, respostas, i + 1);
+      // Agradece o relato antes da próxima pergunta.
+      await avancar(db, c, respostas, i + 1, textoAgradeceMotivo());
     } else {
       respostas.comentario = { ...(respostas.comentario ?? {}), texto };
       await finalizar(db, { ...c, respostas });
@@ -263,7 +264,9 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
 
   const label = passo.tipo === 'nps' ? String(valor) : ESCALAS[passo.escala!][valor];
   respostas[passo.chave] = { valor: label, indice: valor };
-  if (abaixoDoNeutro(passo, valor)) {
+  // Pergunta o motivo só na PRIMEIRA resposta abaixo de "Neutro" da conversa.
+  const jaPerguntouMotivo = Object.values(respostas).some((r: any) => r && typeof r === 'object' && 'motivo' in r);
+  if (abaixoDoNeutro(passo, valor) && !jaPerguntouMotivo) {
     await db.from('nps_bot_conversas').update({ respostas, aguardando: 'motivo', ultima_interacao_at: agora() }).eq('id', c.id);
     const t = textoMotivo(passo);
     const r = await uaz.enviarTexto(c.telefone, t);
@@ -273,9 +276,9 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
   await avancar(db, c, respostas, i + 1);
 }
 
-async function avancar(db: SupabaseClient, c: any, respostas: Record<string, any>, proximo: number) {
+async function avancar(db: SupabaseClient, c: any, respostas: Record<string, any>, proximo: number, prefixo?: string) {
   await db.from('nps_bot_conversas').update({ respostas, passo_atual: proximo, aguardando: 'opcao', ultima_interacao_at: agora() }).eq('id', c.id);
-  await enviarPasso(db, { ...c, respostas, passo_atual: proximo }, proximo);
+  await enviarPasso(db, { ...c, respostas, passo_atual: proximo }, proximo, prefixo);
 }
 
 // ------------------------------------------------------------------
