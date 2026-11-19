@@ -55,7 +55,12 @@ export async function temWhatsapp(number: string): Promise<boolean> {
  */
 export async function enviarAlerta(number: string, text: string) {
   const alt = Deno.env.get('UAZAPI_ALERTA_TOKEN');
-  return enviado(await post('/send/text', { number, text, delay: 0 }, alt || token()));
+  if (alt) {
+    try { return enviado(await post('/send/text', { number, text, delay: 0 }, alt)); } catch (e) {
+      console.error('alerta pela instância reserva falhou; tentando a do robô', e);
+    }
+  }
+  return enviado(await post('/send/text', { number, text, delay: 0 }));
 }
 
 /** Atraso aleatório (ms) que a uazapi mostra como "digitando..." antes de enviar. */
