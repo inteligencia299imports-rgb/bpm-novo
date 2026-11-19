@@ -103,11 +103,12 @@ export function montarMensagem(nomeDestinatario: string, d: DadosResposta): stri
 
   linhas.push('', `*NPS:* ${d.nps ?? '-'}`);
   const baixas = ([
-    ['Atendimento', d.atendimento], ['Outros setores', d.outros_setores], ['Produto/serviço', d.produto], ['Experiência', d.experiencia],
+    ['Atendimento', d.atendimento], ['Outros setores', d.outros_setores], ['Produto/Serviço', d.produto], ['Experiência', d.experiencia],
   ] as const).filter(([, v]) => abaixoNeutro(v)).map(([k, v]) => `${k}: ${v}`);
-  if (baixas.length) linhas.push(`*Respostas negativas:* ${baixas.join('; ')}`);
-  if (d.melhorias?.trim()) linhas.push(`*Melhorias:* ${d.melhorias.trim()}`);
-  if (d.comentario?.trim()) linhas.push(`*Comentário:* ${d.comentario.trim()}`);
+  // Uma linha em branco entre os blocos, para os textos não ficarem colados.
+  if (baixas.length) linhas.push('', '*Respostas negativas:*', ...baixas.map((b) => `- ${b}`));
+  if (d.melhorias?.trim()) linhas.push('', `*Melhorias:* ${d.melhorias.trim()}`);
+  if (d.comentario?.trim()) linhas.push('', `*Comentário:* ${d.comentario.trim()}`);
   return linhas.join('\n');
 }
 
