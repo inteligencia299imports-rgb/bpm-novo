@@ -177,5 +177,5 @@ with alvo as (
 )
 insert into public.status_history_equipamentos (entity_id, entity_type, status, observacoes, changed_by)
 select id, 'atendimento_equipamento', 'AJUSTE',
-       'Voucher criado depois da NF-e de venda da moto: a NF dos equipamentos passa a ser emitida pelo CRM.', null
+       'Voucher criado depois da NF-e de venda da moto: a NF dos equipamentos passa a ser emitida pelo CRM.', '27aee000-5081-4bea-b249-ccab7e08cf66'::uuid  -- usuário Inteligência
   from alvo;
