@@ -7,7 +7,17 @@ import { z } from 'npm:zod@4.3.6';
 
 const MODELO = 'claude-opus-5-5';
 let _client: Anthropic | null = null;
-const client = () => (_client ??= new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') }));
+// A chave do projeto não é presa a um workspace: o header anthropic-workspace-id é obrigatório
+// (mesmo padrão de extrair-dados-cnh/crlv).
+const client = () => {
+  if (_client) return _client;
+  const workspaceId = Deno.env.get('ANTHROPIC_WORKSPACE_ID');
+  _client = new Anthropic({
+    apiKey: Deno.env.get('ANTHROPIC_API_KEY'),
+    defaultHeaders: workspaceId ? { 'anthropic-workspace-id': workspaceId } : undefined,
+  });
+  return _client;
+};
 
 /**
  * Converte o texto livre do cliente em uma das opções da pergunta. Devolve o índice
@@ -64,8 +74,13 @@ export async function classificarComentarios(itens: ItemResumo[], trechos: Trech
     system:
       'Você organiza as respostas abertas de uma pesquisa de satisfação de uma loja de motos (vendas, ' +
       'equipamentos, avaliação de usadas e oficina). Para cada atendimento, preencha dois campos:\n' +
-      '- melhorias: críticas, reclamações, problemas, sugestões e motivos de respostas negativas;\n' +
-      '- comentario: elogios e qualquer outro comentário.\n' +
+      '- melhorias: tudo o que for negativo — críticas, insatisfação, reclamações, problemas, sugestões ' +
+      'e motivos de respostas negativas. Vale também para o comentário final: se o cliente diz que não ' +
+      'gostou de algo, isso é melhoria, mesmo sem dizer como melhorar;\n' +
+      '- comentario: só elogios e observações neutras.\n' +
+      'Um mesmo texto pode ter as duas partes: separe a crítica (melhorias) do elogio (comentario).\n' +
+      'Exemplo: "Gostei do atendimento, mas a entrega atrasou" → melhorias: "A entrega atrasou."; ' +
+      'comentario: "Gostei do atendimento."\n' +
       'Regras: use as palavras do cliente (só corrija pontuação óbvia), não invente nem resuma demais. ' +
       'Um trecho que fala de um produto ou setor específico vai só para o atendimento correspondente; ' +
       'um trecho geral (loja, atendimento, marca) vai para todos os atendimentos a que o trecho se aplica. ' +

@@ -118,7 +118,12 @@ async function escolha(passo: Passo, indicePasso: number, e: Entrada): Promise<n
 async function textoDaEntrada(e: Entrada, db?: SupabaseClient, conversaId?: string): Promise<string | null> {
   if (e.texto?.trim()) return e.texto.trim();
   if (e.audio && e.messageId) {
-    try { return await uaz.transcreverAudio(e.messageId); } catch (err) {
+    try {
+      const t = await uaz.transcreverAudio(e.messageId);
+      // Guarda a transcrição no registro da mensagem (auditoria).
+      if (t && db) await db.from('nps_bot_mensagens').update({ conteudo: `[áudio] ${t}` }).eq('message_id', e.messageId).eq('direcao', 'recebida');
+      return t;
+    } catch (err) {
       console.error('transcrição', err);
       if (db && conversaId) await db.from('nps_bot_conversas').update({ erro: `transcrição: ${String(err).slice(0, 300)}` }).eq('id', conversaId);
     }
@@ -225,6 +230,27 @@ const descricaoItem = (it: Item) =>
     ? `negociação não concluída (${it.departamento.toLowerCase()})`
     : it.produto ? DESCR_PRODUTO[it.produto] : `avaliação/compra da moto do cliente (${it.negociacao.toLowerCase()})`;
 
+/** Separa os textos abertos do cliente (motivos de nota baixa e comentário final) por atendimento. */
+export async function classificar(c: any, opts: { lancarErro?: boolean } = {}) {
+  const itens: Item[] = c.itens;
+  const passos: Passo[] = c.passos;
+  const respostas: Record<string, any> = c.respostas ?? {};
+  const trechos = passos.flatMap((p) => {
+    const r = respostas[p.chave];
+    if (!r) return [];
+    const txt = p.chave === 'comentario' ? r.texto : r.motivo;
+    return txt ? [{ pergunta: p.texto.replace(/\*/g, ''), resposta: p.chave === 'comentario' ? undefined : r.valor, texto: txt, itens: p.itens, motivo: p.chave !== 'comentario' }] : [];
+  });
+  const resumo = itens.map((it) => ({ id: it.id, descricao: descricaoItem(it) }));
+  try {
+    return await classificarComentarios(resumo, trechos); // sem trechos, não chama a IA
+  } catch (e) {
+    console.error('classificação IA', e);
+    if (opts.lancarErro) throw e;
+    return classificarSemIa(resumo, trechos);
+  }
+}
+
 /** Encerra: mensagem final (antes, para o cliente não esperar) e gravação das respostas. */
 export async function finalizar(db: SupabaseClient, c: any, opts: { silencioso?: boolean } = {}) {
   const itens: Item[] = c.itens;
@@ -248,21 +274,7 @@ export async function finalizar(db: SupabaseClient, c: any, opts: { silencioso?:
     } catch (e) { console.error('fechamento', e); }
   }
 
-  // Textos abertos do cliente: motivos (nota baixa) e comentário final.
-  const trechos = passos.flatMap((p) => {
-    const r = respostas[p.chave];
-    if (!r) return [];
-    const txt = p.chave === 'comentario' ? r.texto : r.motivo;
-    return txt ? [{ pergunta: p.texto.replace(/\*/g, ''), resposta: p.chave === 'comentario' ? undefined : r.valor, texto: txt, itens: p.itens, motivo: p.chave !== 'comentario' }] : [];
-  });
-  const resumo = itens.map((it) => ({ id: it.id, descricao: descricaoItem(it) }));
-  let classif;
-  try {
-    classif = await classificarComentarios(resumo, trechos); // sem trechos, não chama a IA
-  } catch (e) {
-    console.error('classificação IA', e);
-    classif = classificarSemIa(resumo, trechos);
-  }
+  const classif = await classificar(c);
 
   if (c.teste) {
     await db.from('nps_bot_conversas').update({ respostas: { ...respostas, _classificacao: classif } }).eq('id', c.id);

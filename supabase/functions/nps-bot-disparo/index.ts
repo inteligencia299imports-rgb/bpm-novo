@@ -14,7 +14,7 @@
 //
 // Autenticação: header x-nps-bot-secret = secret NPS_BOT_SECRET.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { abrirConversa, finalizar, type LinhaFila } from '../_shared/nps-bot/conversa.ts';
+import { abrirConversa, classificar, finalizar, type LinhaFila } from '../_shared/nps-bot/conversa.ts';
 
 const COLUNAS_FILA =
   'id, tabela, departamento, negociacao, loja, cidade, nome_exibicao, link_google, cliente_id, cliente, cliente_email, telefone_envio, chave_telefone, data_negociacao, enviar_a_partir, ducati';
@@ -92,6 +92,15 @@ Deno.serve(async (req) => {
       if (!linhas) return json({ error: 'nada na fila para testar' }, 404);
       const id = await abrirConversa(db, linhas, { teste: true, telefoneTeste: telefone });
       return json({ ok: true, conversa: id, itens: linhas.map((l) => `${l.departamento} ${l.negociacao} ${l.loja}`) });
+    }
+
+    // Reclassifica uma conversa de TESTE já concluída (conferir a separação melhorias/comentário).
+    if (body.acao === 'reclassificar') {
+      const { data: c } = await db.from('nps_bot_conversas').select('*').eq('id', body.conversa).eq('teste', true).maybeSingle();
+      if (!c) return json({ error: 'conversa de teste não encontrada' }, 404);
+      const classif = await classificar(c, { lancarErro: true });
+      await db.from('nps_bot_conversas').update({ respostas: { ...c.respostas, _classificacao: classif } }).eq('id', c.id);
+      return json({ ok: true, classificacao: classif });
     }
 
     await encerrarParadas(db);
