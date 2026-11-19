@@ -189,6 +189,29 @@ async function textoDaEntrada(e: Entrada, db?: SupabaseClient, conversaId?: stri
   return null;
 }
 
+/** Espera (ms) depois da última mensagem do cliente antes de seguir, no texto livre. */
+const AGRUPAR_MS = 20_000;
+
+/**
+ * Junta as mensagens que o cliente mandou desde a última pergunta do robô (textos e áudios
+ * transcritos). Devolve null se esta não é a mensagem mais recente — a mais nova é que processa.
+ */
+async function textoAgrupado(db: SupabaseClient, conversaId: string, meuId: string | null): Promise<string | null> {
+  const { data: ultima } = await db.from('nps_bot_mensagens').select('message_id')
+    .eq('conversa_id', conversaId).eq('direcao', 'recebida').order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (meuId && ultima?.message_id && ultima.message_id !== meuId) return null;
+  const { data: pergunta } = await db.from('nps_bot_mensagens').select('created_at')
+    .eq('conversa_id', conversaId).eq('direcao', 'enviada').order('created_at', { ascending: false }).limit(1).maybeSingle();
+  let q = db.from('nps_bot_mensagens').select('conteudo').eq('conversa_id', conversaId).eq('direcao', 'recebida');
+  if (pergunta?.created_at) q = q.gt('created_at', pergunta.created_at);
+  const { data: msgs } = await q.order('created_at');
+  return (msgs ?? [])
+    .map((m: any) => String(m.conteudo ?? '').trim())
+    .map((t) => (t.startsWith('[áudio] ') ? t.slice(8).trim() : t))
+    .filter((t) => t && !t.startsWith('['))
+    .join(' ');
+}
+
 export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) {
   const n = normalizar(e.texto ?? '');
   if (n && OPTOUT.test(n)) {
@@ -213,8 +236,8 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
   const respostas: Record<string, Resposta | any> = { ...(c.respostas ?? {}) };
 
   if (c.aguardando === 'motivo' || c.aguardando === 'comentario') {
-    const texto = await textoDaEntrada(e, db, c.id);
-    if (!texto) {
+    const proprio = await textoDaEntrada(e, db, c.id);
+    if (!proprio) {
       const t = e.audio
         ? 'Não consegui ouvir o seu áudio 😕 Pode escrever em uma mensagem, por favor?'
         : 'Pode escrever em uma mensagem, por favor?';
@@ -222,6 +245,13 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
       await registrar(db, c.id, 'enviada', t, { message_id: r.messageId });
       return;
     }
+    // O cliente pode mandar o relato em várias mensagens: espera ele terminar e junta tudo.
+    await new Promise((ok) => setTimeout(ok, AGRUPAR_MS));
+    const juntado = await textoAgrupado(db, c.id, e.messageId);
+    if (juntado === null) return; // chegou mensagem mais nova: ela é quem segue a conversa
+    const { data: atual } = await db.from('nps_bot_conversas').select('status, aguardando, passo_atual').eq('id', c.id).single();
+    if (!atual || atual.status !== 'em_andamento' || atual.aguardando !== c.aguardando || atual.passo_atual !== c.passo_atual) return;
+    const texto = juntado || proprio;
     if (c.aguardando === 'motivo') {
       respostas[passo.chave] = { ...respostas[passo.chave], motivo: texto };
       // Agradece o relato antes da próxima pergunta.

@@ -84,7 +84,7 @@ export function montarMensagem(nomeDestinatario: string, d: DadosResposta): stri
   if (perdido && atencao) chamada = `Um feedback de *${tipoPerdido}* para *${d.loja}* precisa da sua atenção:`;
   else if (perdido) chamada = `Chegou um feedback de *${tipoPerdido}* para *${d.loja}*:`;
   else if (atencao) chamada = `Um feedback para *${d.loja}* precisa da sua atenção:`;
-  else if (nota != null && nota >= 9) chamada = `Um cliente *promotor* deixou um feedback para *${d.loja}*! 🎉`;
+  else if (nota != null && nota >= 9) chamada = `Um cliente *promotor* deixou um feedback para *${d.loja}*!`;
   else chamada = `Chegou um novo feedback para *${d.loja}*:`;
 
   const linhas = [

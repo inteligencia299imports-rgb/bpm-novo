@@ -49,10 +49,12 @@ Deno.serve(async (req) => {
   const entrada: Entrada = {
     messageId: m.messageid ?? m.id ?? null,
     botaoId: m.buttonOrListid || null,
-    texto: typeof m.text === 'string' ? m.text : null,
+    texto: typeof m.text === 'string' && m.text.trim() ? m.text : null,
     audio: /audio|ptt/i.test(tipo),
     tipo,
   };
+  // Figurinha, reação, imagem sem legenda etc.: ignora (não responde nem conta como resposta).
+  if (/sticker|reaction/i.test(tipo) || (!entrada.botaoId && !entrada.texto && !entrada.audio)) return ok();
 
   // Registra a mensagem; se já foi processada (reenvio do webhook), para aqui.
   const { error: dup } = await db.from('nps_bot_mensagens').insert({
@@ -61,11 +63,19 @@ Deno.serve(async (req) => {
   });
   if (dup) return ok();
 
-  try {
-    await processarMensagem(db, conversa, entrada);
-  } catch (e) {
-    console.error('nps-bot-webhook', e);
-    await db.from('nps_bot_conversas').update({ erro: String(e).slice(0, 500) }).eq('id', conversa.id);
-  }
+  // Processa em segundo plano: no texto livre (motivo/comentário) o robô espera o cliente
+  // terminar de mandar as mensagens antes de seguir, e a uazapi não pode ficar esperando.
+  const trabalho = (async () => {
+    try {
+      await processarMensagem(db, conversa, entrada);
+    } catch (e) {
+      console.error('nps-bot-webhook', e);
+      await db.from('nps_bot_conversas').update({ erro: String(e).slice(0, 500) }).eq('id', conversa.id);
+    }
+  })();
+  if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(trabalho);
+  else await trabalho;
   return ok();
 });
+
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
