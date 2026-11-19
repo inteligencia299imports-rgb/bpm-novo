@@ -45,6 +45,9 @@ export const produtoDoItem = (departamento: string, negociacao: string): Produto
 };
 
 const sorteia = <T>(xs: T[]): T => xs[Math.floor(Math.random() * xs.length)];
+/** Ícone da marca: 🇮🇹 nas lojas Ducati, 🏁 nas demais (299 Imports). */
+export const iconeLoja = (item: Pick<Item, 'loja'>) => (/ducati/i.test(item.loja ?? '') ? '🇮🇹' : '🏁');
+
 export const primeiroNome = (nome: string | null) => {
   const p = (nome ?? '').trim().split(/\s+/)[0] ?? '';
   return p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : '';
@@ -135,6 +138,7 @@ export function textoAbertura(nome: string | null, itens: Item[], principal: Ite
   else if (tipos.has('equipamento')) motivo = `Obrigado por escolher a ${loja} na *compra do seu equipamento*.`;
   else if (tipos.has('servico')) motivo = `Obrigado por escolher a ${loja} para *cuidar da sua moto*.`;
   else motivo = `Obrigado por escolher a ${loja} na *negociação da sua moto*.`;
+  motivo += ` ${iconeLoja(principal)}`;
   const pedido = sorteia([
     `Por favor, *responda a uma rápida pesquisa*. São ${qtdPerguntas} perguntas e leva cerca de 1 minuto e meio.`,
     `Pode nos ajudar com uma *pesquisa rápida*? São ${qtdPerguntas} perguntas, leva cerca de 1 minuto e meio.`,
@@ -168,7 +172,7 @@ export function textoFechamento(
   const insta = link.instagram ? `📸 Siga a gente no Instagram: ${link.instagram}
 
 ` : '';
-  const assinatura = `${insta}Abraços, equipe *${principal.nome_exibicao}*! 🏁`;
+  const assinatura = `${insta}Abraços, equipe *${principal.nome_exibicao}*! ${iconeLoja(principal)}`;
   const ducatiOficina = itens.some((i) => i.ducati && i.departamento === 'OFICINA');
   if (nota === 10 && ducatiOficina) {
     const emailTxt = email
