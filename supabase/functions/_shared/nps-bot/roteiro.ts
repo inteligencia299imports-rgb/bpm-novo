@@ -11,6 +11,7 @@ export interface Item {
   loja: string;
   cidade: string;
   nome_exibicao: string;
+  link_google: string | null; // da oficina, quando o item é da oficina
   ducati: boolean;
   produto: Produto;
 }

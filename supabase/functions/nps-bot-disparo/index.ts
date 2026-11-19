@@ -17,7 +17,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { abrirConversa, finalizar, type LinhaFila } from '../_shared/nps-bot/conversa.ts';
 
 const COLUNAS_FILA =
-  'id, tabela, departamento, negociacao, loja, cidade, nome_exibicao, cliente_id, cliente, cliente_email, telefone_envio, chave_telefone, data_negociacao, enviar_a_partir, ducati';
+  'id, tabela, departamento, negociacao, loja, cidade, nome_exibicao, link_google, cliente_id, cliente, cliente_email, telefone_envio, chave_telefone, data_negociacao, enviar_a_partir, ducati';
 const CARENCIA_DIAS = 7;        // não manda nova pesquisa a quem recebeu uma nos últimos 7 dias
 const EXPIRA_SEM_INICIO_H = 72; // não tocou em "Iniciar!"
 const EXPIRA_PARADA_H = 24;     // começou e parou de responder
@@ -57,10 +57,11 @@ async function encerrarParadas(db: any) {
 }
 
 /** Próximo cliente da fila: todas as linhas prontas do mesmo telefone. */
-async function proximoCliente(db: any, ids?: string[]): Promise<LinhaFila[] | null> {
+async function proximoCliente(db: any, ids?: string[], enviarDesde?: string | null): Promise<LinhaFila[] | null> {
   let q = db.from('vw_nps_bot_fila').select(COLUNAS_FILA);
   if (ids?.length) q = q.in('id', ids);
   else q = q.lte('enviar_a_partir', agoraSP().data);
+  if (!ids?.length && enviarDesde) q = q.gte('data_negociacao', enviarDesde);
   const { data: fila, error } = await q.order('enviar_a_partir').order('data_negociacao').limit(500);
   if (error) throw error;
   if (!fila?.length) return null;
@@ -106,7 +107,7 @@ Deno.serve(async (req) => {
       .eq('teste', false).gte('enviada_at', inicioDia);
     if ((count ?? 0) >= cfg.limite_diario) return json({ ok: true, enviado: false, motivo: 'limite diário' });
 
-    const linhas = await proximoCliente(db);
+    const linhas = await proximoCliente(db, undefined, cfg.enviar_desde);
     if (!linhas) return json({ ok: true, enviado: false, motivo: 'fila vazia' });
 
     // Reserva o próximo horário antes de enviar (evita dois envios seguidos se o cron sobrepor).

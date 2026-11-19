@@ -11,7 +11,7 @@ import { classificarComentarios, classificarSemIa, interpretarOpcao } from './ia
 
 export interface LinhaFila {
   id: string; tabela: string; departamento: string; negociacao: string; loja: string; cidade: string;
-  nome_exibicao: string; cliente_id: string | null; cliente: string | null; cliente_email: string | null;
+  nome_exibicao: string; link_google: string | null; cliente_id: string | null; cliente: string | null; cliente_email: string | null;
   telefone_envio: string; chave_telefone: string; data_negociacao: string; ducati: boolean;
 }
 
@@ -36,7 +36,7 @@ export async function abrirConversa(db: SupabaseClient, linhas: LinhaFila[], opt
   const ordenadas = [...linhas].sort((a, b) => b.data_negociacao.localeCompare(a.data_negociacao));
   const itens: Item[] = ordenadas.map((l) => ({
     id: l.id, tabela: l.tabela, departamento: l.departamento, negociacao: l.negociacao, loja: l.loja,
-    cidade: l.cidade, nome_exibicao: l.nome_exibicao, ducati: l.ducati, produto: produtoDoItem(l.departamento, l.negociacao),
+    cidade: l.cidade, nome_exibicao: l.nome_exibicao, link_google: l.link_google, ducati: l.ducati, produto: produtoDoItem(l.departamento, l.negociacao),
   }));
   const principal = itens[0];
   const passos = montarPassos(itens, principal);
@@ -235,12 +235,9 @@ export async function finalizar(db: SupabaseClient, c: any, opts: { silencioso?:
   }).eq('id', c.id);
 
   if (!opts.silencioso) {
-    const [{ data: loja }, { data: cfg }] = await Promise.all([
-      db.from('nps_bot_lojas').select('link_google').eq('loja', principal.loja).maybeSingle(),
-      db.from('nps_bot_config').select('link_portal_ducati').maybeSingle(),
-    ]);
+    const { data: cfg } = await db.from('nps_bot_config').select('link_portal_ducati').maybeSingle();
     const f = textoFechamento(nota, itens, principal, {
-      google: loja?.link_google ?? null, portalDucati: cfg?.link_portal_ducati ?? '',
+      google: principal.link_google ?? null, portalDucati: cfg?.link_portal_ducati ?? '',
     }, c.cliente_email);
     try {
       const r = await uaz.enviarTexto(c.telefone, f.texto, { linkPreview: f.linkPreview });

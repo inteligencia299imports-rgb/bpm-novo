@@ -16,26 +16,30 @@
 -- Lojas: nome mostrado ao cliente, cidade e link de avaliação no Google.
 -- Loja que não estiver aqui (ou com ativo = false) não entra no robô.
 -- ------------------------------------------------------------------
+-- A oficina não tem loja própria: em Brasília ela é a loja 'Ducati BSB'. Por isso a oficina tem
+-- nome e link do Google próprios (nome_oficina/link_google_oficina; vazio = usa os da loja).
 create table if not exists public.nps_bot_lojas (
   loja text primary key,                -- loja_empresas.loja
   nome_exibicao text not null,          -- "Obrigado por escolher a <nome_exibicao>"
   cidade text not null check (cidade in ('BSB', 'FLN', 'POA')),
   link_google text,
+  nome_oficina text,
+  link_google_oficina text,
   ativo boolean not null default true,
   updated_at timestamptz not null default now()
 );
 
-insert into public.nps_bot_lojas (loja, nome_exibicao, cidade, link_google) values
-  ('299i',       '299 Imports',          'BSB', 'https://g.page/r/Cb4cpKHzrnJREBM/review'),
-  ('299s',       '299 Imports',          'BSB', 'https://g.page/r/CbwQl8FNLskcEBM/review'),
-  ('Aventura',   'Aventura',             'BSB', 'https://g.page/r/CT-UmBEZqeacEBM/review'),
-  ('Ducati BSB', 'Ducati Brasília',      'BSB', 'https://g.page/r/CT-UmBEZqeacEBM/review'),
-  ('Oficina',    '299 Imports',          'BSB', 'https://g.page/r/CUW3Rpk79cZzEBM/review'),
-  ('Ducati FLN', 'Ducati Florianópolis', 'FLN', 'https://g.page/r/CSVaro5U6XEUEBM/review'),
-  ('Ducati POA', 'Ducati Porto Alegre',  'POA', 'https://g.page/r/CStEn9l0hvyAEBM/review'),
+insert into public.nps_bot_lojas (loja, nome_exibicao, cidade, link_google, nome_oficina, link_google_oficina) values
+  ('299i',       '299 Imports',          'BSB', 'https://g.page/r/Cb4cpKHzrnJREBM/review', null, null),
+  ('299s',       '299 Imports',          'BSB', 'https://g.page/r/CbwQl8FNLskcEBM/review', null, null),
+  ('Aventura',   'Aventura',             'BSB', 'https://g.page/r/CT-UmBEZqeacEBM/review', null, null),
+  ('Ducati BSB', 'Ducati Brasília',      'BSB', 'https://g.page/r/CT-UmBEZqeacEBM/review',
+                 null, 'https://g.page/r/CUW3Rpk79cZzEBM/review'),
+  ('Ducati FLN', 'Ducati Florianópolis', 'FLN', 'https://g.page/r/CSVaro5U6XEUEBM/review', null, null),
+  ('Ducati POA', 'Ducati Porto Alegre',  'POA', 'https://g.page/r/CStEn9l0hvyAEBM/review', null, null),
   -- Sem link do Google ainda: o cliente recebe só o agradecimento.
-  ('299f',       '299 Imports',          'FLN', null),
-  ('299p',       '299 Imports',          'POA', null)
+  ('299f',       '299 Imports',          'FLN', null, null, null),
+  ('299p',       '299 Imports',          'POA', null, null, null)
 on conflict (loja) do nothing;
 
 -- ------------------------------------------------------------------
@@ -50,6 +54,7 @@ create table if not exists public.nps_bot_config (
   intervalo_min_seg integer not null default 90, -- espaço aleatório entre um envio e outro
   intervalo_max_seg integer not null default 240,
   proximo_envio_at timestamptz,                  -- controlado pelo disparo
+  enviar_desde date,                             -- só negociações a partir desta data (corta o acúmulo antigo)
   link_portal_ducati text not null
     default 'https://my.ducati.com/csiaccess?dealerCode=0000111790&country=BR&lang=',
   updated_at timestamptz not null default now()
@@ -157,8 +162,7 @@ with base as (
            when 'OFICINA' then 'atendimento_servicos'
          end as tabela,
          coalesce(am.cliente_id, av_am.cliente_id, ae.cliente_id, ats.cliente_id) as cliente_id,
-         mm.nome as marca_moto_oficina,
-         em.marca as marca_moto_venda
+         nm.marca
     from public.vw_envio_nps f
     left join public.atendimentos_motos am
            on f.departamento = 'SHOWROOM' and am.id = f.id
@@ -169,13 +173,10 @@ with base as (
            on f.departamento = 'EQUIPAMENTOS' and ae.id = f.id
     left join public.atendimento_servicos ats
            on f.departamento = 'OFICINA' and ats.id = f.id
-    left join public.veiculos ve on ve.id = ats.veiculo_id
-    left join public.marcas_motos mm on mm.id = ve.marca_id
+    -- Marca da moto como a vw_nps resolve (venda, avaliação e oficina).
     left join lateral (
-      select e.marca from public.estoque_motos e
-       where f.departamento = 'SHOWROOM' and e.atendimento_venda_id = f.id
-       limit 1
-    ) em on true
+      select n.marca from public.vw_nps n where n.id_atendimento = f.id and n.marca is not null limit 1
+    ) nm on true
 )
 select b.id,
        b.tabela,
@@ -183,7 +184,10 @@ select b.id,
        b.negociacao,
        b.loja,
        l.cidade,
-       l.nome_exibicao,
+       case when b.departamento = 'OFICINA' then coalesce(l.nome_oficina, l.nome_exibicao)
+            else l.nome_exibicao end as nome_exibicao,
+       case when b.departamento = 'OFICINA' then coalesce(l.link_google_oficina, l.link_google)
+            else l.link_google end as link_google,
        b.cliente_id,
        b.cliente,
        cf.email as cliente_email,
@@ -194,9 +198,12 @@ select b.id,
        -- Avaliação segue a data da view; o resto vai no dia seguinte à negociação.
        case when b.departamento = 'AVALIAÇÃO' then b.data_previsao
             else greatest(b.data_previsao, b.data_negociacao + 1) end as enviar_a_partir,
-       (upper(coalesce(b.loja, '')) like '%DUCATI%'
-         or upper(coalesce(b.marca_moto_oficina, '')) like '%DUCATI%'
-         or upper(coalesce(b.marca_moto_venda, '')) like '%DUCATI%') as ducati
+       -- Oficina: Ducati é a MARCA da moto (a oficina de BSB fica na loja Ducati BSB e atende
+       -- outras marcas). Demais departamentos: loja Ducati ou moto Ducati.
+       case when b.departamento = 'OFICINA'
+            then upper(coalesce(b.marca, '')) like '%DUCATI%'
+            else upper(coalesce(b.loja, '')) like '%DUCATI%'
+                 or upper(coalesce(b.marca, '')) like '%DUCATI%' end as ducati
   from base b
   join public.nps_bot_lojas l on l.loja = b.loja and l.ativo
   left join public.clientes_fornecedores cf on cf.id = b.cliente_id
