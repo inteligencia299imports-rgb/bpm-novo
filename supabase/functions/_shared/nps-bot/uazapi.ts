@@ -63,12 +63,27 @@ export async function enviarLista(
   }));
 }
 
-/** Transcreve um áudio recebido. Usa OPENAI_API_KEY se existir (senão, a chave configurada na instância). */
+/**
+ * Transcreve um áudio recebido: baixa o MP3 pela uazapi e transcreve na OpenAI (OPENAI_API_KEY).
+ * (A transcrição da própria uazapi não volta quando o arquivo já está em cache.)
+ * Lança erro com o motivo, para ficar registrado na conversa.
+ */
 export async function transcreverAudio(messageId: string): Promise<string | null> {
-  const body: Record<string, unknown> = { id: messageId, transcribe: true, generate_mp3: true };
   const openai = Deno.env.get('OPENAI_API_KEY');
-  if (openai) body.openai_apikey = openai;
-  const r = await post('/message/download', body);
-  const t = (r?.transcription ?? '').trim();
-  return t || null;
+  if (!openai) throw new Error('OPENAI_API_KEY não configurada');
+  const r = await post('/message/download', { id: messageId, generate_mp3: true });
+  if (!r?.fileURL) throw new Error('uazapi não devolveu o arquivo do áudio');
+  const audio = await fetch(r.fileURL);
+  if (!audio.ok) throw new Error(`download do áudio ${audio.status}`);
+
+  const form = new FormData();
+  form.append('file', new Blob([await audio.arrayBuffer()], { type: r.mimetype ?? 'audio/mpeg' }), 'audio.mp3');
+  form.append('model', 'gpt-4o-mini-transcribe');
+  form.append('language', 'pt');
+  const t = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST', headers: { Authorization: `Bearer ${openai}` }, body: form,
+  });
+  const j = await t.json().catch(() => null);
+  if (!t.ok) throw new Error(`OpenAI ${t.status}: ${j?.error?.code ?? j?.error?.message ?? 'erro'}`);
+  return (j?.text ?? '').trim() || null;
 }

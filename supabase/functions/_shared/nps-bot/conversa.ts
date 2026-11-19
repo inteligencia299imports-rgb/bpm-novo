@@ -115,10 +115,13 @@ async function escolha(passo: Passo, indicePasso: number, e: Entrada): Promise<n
   return passo.tipo === 'nps' ? Number(labels[i]) : i;
 }
 
-async function textoDaEntrada(e: Entrada): Promise<string | null> {
+async function textoDaEntrada(e: Entrada, db?: SupabaseClient, conversaId?: string): Promise<string | null> {
   if (e.texto?.trim()) return e.texto.trim();
   if (e.audio && e.messageId) {
-    try { return await uaz.transcreverAudio(e.messageId); } catch (err) { console.error('transcrição', err); }
+    try { return await uaz.transcreverAudio(e.messageId); } catch (err) {
+      console.error('transcrição', err);
+      if (db && conversaId) await db.from('nps_bot_conversas').update({ erro: `transcrição: ${String(err).slice(0, 300)}` }).eq('id', conversaId);
+    }
   }
   return null;
 }
@@ -147,7 +150,7 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
   const respostas: Record<string, Resposta | any> = { ...(c.respostas ?? {}) };
 
   if (c.aguardando === 'motivo' || c.aguardando === 'comentario') {
-    const texto = await textoDaEntrada(e);
+    const texto = await textoDaEntrada(e, db, c.id);
     if (!texto) {
       const t = e.audio
         ? 'Não consegui ouvir o seu áudio 😕 Pode escrever em uma mensagem, por favor?'
@@ -171,7 +174,7 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
   if (valor === null) {
     // No "quer deixar comentário?", um texto longo já é o comentário.
     if (passo.tipo === 'sim_nao') {
-      const texto = await textoDaEntrada(e);
+      const texto = await textoDaEntrada(e, db, c.id);
       if (texto && texto.split(/\s+/).length >= 3) {
         respostas.comentario = { valor: 'Sim', indice: 1, texto };
         await finalizar(db, { ...c, respostas });
