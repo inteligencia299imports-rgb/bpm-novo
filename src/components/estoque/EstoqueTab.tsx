@@ -226,6 +226,8 @@ const EstoqueTab = ({ onNavigateToTab }: EstoqueTabProps = {}) => {
         mapped = mapped.filter((m: any) => {
           if (filterTipo === 'test_ride') return m.tipo_unidade === 'test_ride';
           if (filterTipo === '0km') return m.tipo === '0km' && m.tipo_unidade !== 'test_ride';
+          // Test-Ride conta como seminova própria (pedido do usuário, 2026-11-24): entra em "Própria".
+          if (filterTipo === 'propria' && tipoExibicaoEstoque(m) === 'test_ride') return true;
           return m.tipo === filterTipo;
         });
       }
