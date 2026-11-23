@@ -595,6 +595,10 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       return;
     }
     setSaving(true);
+    // Situação lida do banco na hora de salvar: uma tela aberta há tempo (ainda "sem avaliar")
+    // não pode desfazer a aquisição feita depois (2026-11-23).
+    const { data: atualBanco } = await supabase.from('avaliacoes').select('situacao').eq('id', avaliacaoId).maybeSingle();
+    const situacaoAtual: string | undefined = (atualBanco as any)?.situacao ?? avaliacao?.situacao;
     const updateData: any = {
       valor_fipe: parseCurrencyToNumber(valorFipe),
       menor_valor: parseCurrencyToNumber(menorValor),
@@ -613,14 +617,14 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       classificacao: classificacao || null,
       observacao_avaliador: obsAvaliador.trim() || null,
       // Na 1ª avaliação o avaliador é quem está salvando; na edição respeita a seleção.
-      avaliador_id: (avaliacao?.situacao !== 'sem_avaliar' && avaliadorId) ? avaliadorId : user!.id,
-      situacao: avaliacao?.situacao === 'sem_avaliar' ? 'em_aberto' : avaliacao?.situacao ?? 'em_aberto',
+      avaliador_id: (situacaoAtual !== 'sem_avaliar' && avaliadorId) ? avaliadorId : user!.id,
+      situacao: situacaoAtual === 'sem_avaliar' ? 'em_aberto' : situacaoAtual ?? 'em_aberto',
       // Após a NF-e ou a aprovação da aquisição, "Valor de Quitação" e "Valor de Fechamento" ficam congelados (não são regravados).
       ...(!nfeCompraEmitida ? {
         valor_quitacao: parseCurrencyToNumber(valorQuitacao),
         quitacao_instituicao_id: (parseCurrencyToNumber(valorQuitacao) ?? 0) > 0 ? (quitacaoInstituicaoId || null) : null,
       } : {}),
-      ...(!valorFechamentoTravado && (avaliacao?.situacao === 'adquirida' || avaliacao?.situacao === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
+      ...(!valorFechamentoTravado && (situacaoAtual === 'adquirida' || situacaoAtual === 'estoque') && valorFechamentoEdit.trim() !== '' ? { valor_fechamento: parseCurrencyToNumber(valorFechamentoEdit) } : {}),
     };
 
     const { error } = await supabase.from('avaliacoes').update(updateData).eq('id', avaliacaoId);
@@ -633,7 +637,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
         await supabase.from('estoque_motos').update({ preco_acao: parseCurrencyToNumber(precoAcaoEdit) }).eq('id', estoqueId);
       }
       // Registrar no histórico
-      const isFirstEvaluation = avaliacao?.situacao === 'sem_avaliar';
+      const isFirstEvaluation = situacaoAtual === 'sem_avaliar';
       if (avaliacao?.id) {
         await supabase.from('status_history').insert({
           entity_type: 'avaliacao',
@@ -661,7 +665,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
       const quitDepois = Number(updateData.valor_quitacao ?? quitAntes);
       const instAntes = (avaliacao as any)?.quitacao_instituicao_id ?? null;
       const instDepois = 'quitacao_instituicao_id' in updateData ? updateData.quitacao_instituicao_id : instAntes;
-      if (avaliacao?.id && ['adquirida', 'estoque', 'oficina'].includes(String(avaliacao?.situacao))
+      if (avaliacao?.id && ['adquirida', 'estoque', 'oficina'].includes(String(situacaoAtual))
           && (Math.abs(quitAntes - quitDepois) > 0.005 || instAntes !== instDepois)) {
         supabase.functions.invoke('gerar-compromissos-proposta', { body: { acao: 'quitacao', avaliacao_id: avaliacao.id } })
           .then(({ error: e }) => { if (e) console.error('quitacao (avaliacao)', e); });
