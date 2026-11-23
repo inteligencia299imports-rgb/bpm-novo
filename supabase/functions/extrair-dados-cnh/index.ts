@@ -75,6 +75,19 @@ function similaridadeNome(a: string, b: string): number {
 
 const soDigitos = (v: string | null) => (v || '').replace(/\D/g, '');
 
+/** CPF com dígitos verificadores corretos (11 dígitos, não todos iguais). */
+const cpfValido = (v: string | null): boolean => {
+  const d = soDigitos(v);
+  if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false;
+  const dv = (n: number) => {
+    let soma = 0;
+    for (let i = 0; i < n; i++) soma += Number(d[i]) * (n + 1 - i);
+    const r = (soma * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  return dv(9) === Number(d[9]) && dv(10) === Number(d[10]);
+};
+
 /** Normaliza data ("AAAA-MM-DD" ou "DD/MM/AAAA") -> "AAAA-MM-DD"; null se inválida ou idade fora de 0..120. */
 function normDataNasc(v: string | null): string | null {
   const raw = (v || '').trim();
@@ -489,14 +502,18 @@ Deno.serve(async (req) => {
     const divergencias: string[] = [];
 
     let atualizouCpf = false;
-    // CPF já cadastrado nunca é sobrescrito pela CNH (CPF e telefone andam juntos;
+    // CPF já cadastrado (e válido) nunca é sobrescrito pela CNH (CPF e telefone andam juntos;
     // o banco recusa a troca — trg_clientes_cpf_telefone_par — e derrubaria o
     // update inteiro, com RG/nascimento). Diferença vira divergência.
+    // Exceção (2026-11-23): CPF cadastrado com dígito verificador errado é erro de digitação —
+    // a CNH corrige quando traz um CPF válido e o nome bate forte (o banco também libera).
+    const corrigeCpfInvalido = !!cpfCadastrado && !cpfValido(cpfCadastrado) && cpfValido(extraido.cpf) && matchForte;
     if (extraido.cpf && extraido.cpf.length === 11 && extraido.cpf !== cpfCadastrado) {
-      const { data: cpfDeOutro } = !cpfCadastrado
+      const podeGravarCpf = !cpfCadastrado || corrigeCpfInvalido;
+      const { data: cpfDeOutro } = podeGravarCpf
         ? await supabaseAdmin.from('clientes_fornecedores').select('id').eq('cpf_cnpj', extraido.cpf).neq('id', cliente_id).is('deleted_at', null).limit(1).maybeSingle()
         : { data: null };
-      if (!cpfCadastrado && !cpfDeOutro) {
+      if (podeGravarCpf && !cpfDeOutro) {
         updatePayload.cpf_cnpj = extraido.cpf;
         atualizouCpf = true;
       } else if (cpfDeOutro) {
