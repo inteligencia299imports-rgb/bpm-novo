@@ -65,8 +65,8 @@ const MotoCompraSection: React.FC<Props> = ({
   const modelos = getModelosByMarcaId(marcaId);
 
   const isDucati = (loja || '').toLowerCase().startsWith('ducati');
-  // 0km Test-Ride também pode ser vendida pelas lojas 299 de seminovas (pedido do usuário,
-  // 2026-11-24) — conta como seminova da loja que vendeu. A Aventura não entra.
+  // 0km Test-Ride é vendida só pelas lojas 299 de seminovas (pedido do usuário, 2026-11-24) —
+  // conta como seminova da loja que vendeu. Não aparece nas lojas Ducati nem na Aventura.
   const vendeTestRide = ['299i', '299s', '299p', '299f'].includes((loja || '').trim().toLowerCase());
   const ducatiMarcaId = marcaIdByNome('DUCATI');
   const ducatiModelos = getModelosByMarcaId(ducatiMarcaId);
@@ -117,7 +117,9 @@ const MotoCompraSection: React.FC<Props> = ({
         let options = disponiveis
           .filter((m: any) => !(m.status === 'servico' && m.atendimento_venda_id && m.id !== estoqueMotoId))
           .map(flatten)
-          .filter((o) => (isDucati ? o.is0km : !o.is0km || (vendeTestRide && o.isTestRide)))
+          // Ducati: só 0km nova (Test-Ride não aparece nas lojas Ducati, pedido do usuário 2026-11-24);
+          // 299i/299s/299p/299f: seminovas + Test-Ride.
+          .filter((o) => (isDucati ? o.is0km && !o.isTestRide : !o.is0km || (vendeTestRide && o.isTestRide)))
           .filter((o) => !empresaId || o.empresaId === empresaId || (!!empresasAceitas && !!o.empresaId && empresasAceitas.has(o.empresaId)));
 
         // Mantem a moto ja selecionada mesmo que nao esteja mais "disponivel".
