@@ -422,7 +422,7 @@ const ConsultaDetail: React.FC<ConsultaDetailProps> = ({ moto, onClose }) => {
               <Separator className="my-2" />
               <DocumentUpload
                 label={docIdentificacaoLabel(clientePj)}
-                className="w-1/4"
+                className="w-fit min-w-[25%] self-start"
                 bloquearRemocao={docRemocaoTravada}
                 currentUrl={cnhUrl}
                 bucketPath={`docs/${atendimento?.cliente_id}/${docIdentificacaoBucket(clientePj)}`}

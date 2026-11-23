@@ -730,7 +730,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                   <Separator className="my-2" />
                   <DocumentUpload
                     label={docCompradorLabel}
-                    className="w-1/4"
+                    className="w-fit min-w-[25%] self-start"
                     currentUrl={cnhUrl}
                     bucketPath={`docs/${(item as any).cliente_id}/${docIdentificacaoBucket(compradorPj)}`}
                     onUploaded={handleCnhUploaded}
