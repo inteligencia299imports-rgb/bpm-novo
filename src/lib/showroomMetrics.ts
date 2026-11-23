@@ -57,6 +57,8 @@ interface EstoqueRow {
   tipo: string | null; marca: string | null; modelo: string | null; placa: string | null;
   preco: number | null; preco_acao: number | null; valor_venda: number | null; data_venda: string | null;
   valor_custo?: number | null; chassi?: string | null; icms_st_valor_retido?: number | null;
+  /** 0km: 'nova' | 'test_ride' (estoque_motos_novas.tipo). */
+  tipo_unidade?: string | null;
   updated_at: string | null; created_at: string | null;
 }
 interface AvaliacaoRow {
@@ -283,7 +285,8 @@ export function computeRowMetrics(atend: AtendimentoRow, idx: ShowroomIndexes, m
     : fatReal - valorFechamento;
 
   return {
-    tipo, modelo, placa,
+    // Test-Ride (0km) aparece como Test-Ride na listagem, não como 0km — conta como seminova.
+    tipo: estoque?.tipo_unidade === 'test_ride' ? 'test-ride' : tipo, modelo, placa,
     quantoVende: round2(quantoVende), valorFechamento: round2(valorFechamento),
     valorVenda: round2(valorVendaReal),
     margemPrevista: round2(margemPrevista),

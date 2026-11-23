@@ -58,13 +58,16 @@ interface Props {
 
 const MotoCompraSection: React.FC<Props> = ({
   origemMoto, setOrigemMoto, marcaId, setMarcaId, modeloId, setModeloId, ano, setAno,
-  estoqueMotoId, setEstoqueMotoId, setEstoqueTipo, loja, chassi = '', setChassi, disabled, empresaId,
+  estoqueMotoId, setEstoqueMotoId, estoqueTipo, setEstoqueTipo, loja, chassi = '', setChassi, disabled, empresaId,
   empresasDaLoja, onEmpresaDaMoto,
 }) => {
   const { marcas, getModelosByMarcaId, marcaIdByNome, loading } = useMarcasModelos();
   const modelos = getModelosByMarcaId(marcaId);
 
   const isDucati = (loja || '').toLowerCase().startsWith('ducati');
+  // 0km Test-Ride também pode ser vendida pelas lojas 299 de seminovas (pedido do usuário,
+  // 2026-11-24) — conta como seminova da loja que vendeu. A Aventura não entra.
+  const vendeTestRide = ['299i', '299s', '299p', '299f'].includes((loja || '').trim().toLowerCase());
   const ducatiMarcaId = marcaIdByNome('DUCATI');
   const ducatiModelos = getModelosByMarcaId(ducatiMarcaId);
 
@@ -114,13 +117,14 @@ const MotoCompraSection: React.FC<Props> = ({
         let options = disponiveis
           .filter((m: any) => !(m.status === 'servico' && m.atendimento_venda_id && m.id !== estoqueMotoId))
           .map(flatten)
-          .filter((o) => (isDucati ? o.is0km : !o.is0km))
+          .filter((o) => (isDucati ? o.is0km : !o.is0km || (vendeTestRide && o.isTestRide)))
           .filter((o) => !empresaId || o.empresaId === empresaId || (!!empresasAceitas && !!o.empresaId && empresasAceitas.has(o.empresaId)));
 
         // Mantem a moto ja selecionada mesmo que nao esteja mais "disponivel".
         if (estoqueMotoId && !options.some((item) => item.id === estoqueMotoId)) {
           const [sel] = await fetchEstoqueUnificado({
-            ids: [{ id: estoqueMotoId, tipo: isDucati ? '0km' : 'seminova' }],
+            // Loja 299 com Test-Ride selecionada: a moto está em estoque_motos_novas.
+            ids: [{ id: estoqueMotoId, tipo: isDucati || estoqueTipo === '0km' ? '0km' : 'seminova' }],
           });
           if (sel) options = [flatten(sel), ...options];
         }
@@ -142,7 +146,7 @@ const MotoCompraSection: React.FC<Props> = ({
     return () => {
       isMounted = false;
     };
-  }, [origemMoto, isDucati, estoqueMotoId, empresaId, empresasDaLoja]);
+  }, [origemMoto, isDucati, vendeTestRide, estoqueMotoId, estoqueTipo, empresaId, empresasDaLoja]);
 
   // Várias empresas no picker: identifica de qual CNPJ é cada moto.
   const variasEmpresas = new Set(estoque.map((e) => e.empresaId).filter(Boolean)).size > 1;
