@@ -7,7 +7,7 @@ import { ESTOQUE_MOTO_SELECT, ESTOQUE_NOVA_SELECT, mapEstoqueMoto, mapEstoqueMot
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import AtendimentoDetail from '@/components/showroom/AtendimentoDetail';
 import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
-import { PARTE_CONFIG } from '@/components/intermediacao/IntermediacacaoTab';
+import { PARTE_CONFIG } from '@/lib/intermediacaoConfig';
 import DetailSkeleton from '@/components/shared/DetailSkeleton';
 import EtapasVendaBar from './EtapasVendaBar';
 import { podeAcessarAba } from '@/lib/abasPermissao';
@@ -22,7 +22,16 @@ interface Props {
   onNavigateToPosCompra?: (avaliacaoId: string) => void;
   /** Etapa a abrir ao entrar (ex.: Aprovação, vindo da coluna Aguardando Aprovação). Se estiver bloqueada, fica na Negociação. */
   etapaInicial?: EtapaVendaKey;
+  /**
+   * Aberta pela aba Pós-Venda / Intermediação: começa na tela da aba (pós-venda,
+   * parte 1 ou parte 2, sem seta destacada) e o voltar dessa tela fecha a venda.
+   */
+  base?: 'pos_venda' | 'parte1' | 'parte2';
 }
+
+/** Tela própria da aba que abriu a venda (nenhuma seta destacada). */
+const BASE = '__base';
+type Aberta = EtapaVendaKey | typeof BASE;
 
 type Parte = 'parte1' | 'parte2';
 
@@ -30,10 +39,10 @@ const AT_SELECT = `*, loja_empresas:loja_id(loja), cliente:clientes_fornecedores
 
 // Etapas que são feitas no checklist do Processo (abre direto nele).
 const ETAPAS_PROCESSO = new Set<EtapaVendaKey>([
-  'vistoria', 'nf_compra', 'nf_venda', 'comunicado', 'renave', 'transferencia',
+  'vistoria', 'nf_compra', 'nf_venda', 'renave', 'transferencia',
 ]);
-// Moto consignada: vistoria e comunicado ficam na Parte 2 (consignante).
-const ETAPAS_PARTE2 = new Set<EtapaVendaKey>(['vistoria', 'comunicado']);
+// Moto consignada: a vistoria fica na Parte 2 (consignante).
+const ETAPAS_PARTE2 = new Set<EtapaVendaKey>(['vistoria']);
 // Etapas feitas na própria tela do atendimento (Proposta e Entrega).
 const ACAO_ATENDIMENTO: Partial<Record<EtapaVendaKey, 'contrato' | 'entrega'>> = {
   contrato: 'contrato',
@@ -62,17 +71,24 @@ async function carregarItemVenda(atendimentoId: string, consignada: boolean) {
  * intermediação com o Processo aberto, NPS).
  */
 const VendaProcessoView: React.FC<Props> = ({
-  atendimento, onClose, onEdit, onDeleted, onStatusUpdated, onNavigateToNps, onNavigateToPosCompra, etapaInicial,
+  atendimento, onClose, onEdit, onDeleted, onStatusUpdated, onNavigateToNps, onNavigateToPosCompra, etapaInicial, base,
 }) => {
   const { role } = useAuth();
   const [etapas, setEtapas] = useState<EtapaVenda[]>([]);
   const [contexto, setContexto] = useState<ContextoVenda | null>(null);
   const [loadingEtapas, setLoadingEtapas] = useState(true);
-  const [etapaAberta, setEtapaAberta] = useState<EtapaVendaKey>('negociacao');
+  const [etapaAberta, setEtapaAberta] = useState<Aberta>(base ? BASE : 'negociacao');
   // Enquanto decide a etapa inicial, mostra o esqueleto (sem piscar a Negociação).
   const [inicialResolvida, setInicialResolvida] = useState(!etapaInicial);
   const [item, setItem] = useState<any | null>(null);
-  const [parte, setParte] = useState<Parte>('parte1');
+  const [parte, setParte] = useState<Parte>(base === 'parte2' ? 'parte2' : 'parte1');
+
+  // Aberta pela aba Pós-Venda / Intermediação: carrega a tela da aba de cara.
+  useEffect(() => {
+    if (!base) return;
+    carregarItemVenda(atendimento.id, base !== 'pos_venda').then(setItem);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const recarregarEtapas = useCallback(async () => {
     setLoadingEtapas(true);
@@ -92,12 +108,14 @@ const VendaProcessoView: React.FC<Props> = ({
   // - etapa que depende de outra ainda pendente, para qualquer nível de usuário.
   const bloqueadas = useMemo(() => {
     // Etapas fora do atendimento abrem o Pós-Venda/Intermediação: quem não tem a aba não abre.
+    // Exceção: Aprovação também para o gerente, que pode desaprovar (2026-11-22).
     const gestor = podeAcessarAba('pos_venda', role);
     const m = new Map<EtapaVendaKey, string>();
     for (const e of etapas) {
       if (e.key === 'negociacao') continue;
+      const acessa = gestor || ETAPAS_ATENDIMENTO.has(e.key) || e.key === 'nps' || (e.key === 'aprovacao' && role === 'gerente');
       if (e.aguardando) m.set(e.key, `Aguardando ${e.aguardando}`);
-      else if (!gestor && !ETAPAS_ATENDIMENTO.has(e.key) && e.key !== 'nps') m.set(e.key, 'Sem acesso');
+      else if (!acessa) m.set(e.key, 'Sem acesso');
     }
     return m;
   }, [role, etapas]);
@@ -121,6 +139,8 @@ const VendaProcessoView: React.FC<Props> = ({
   }, [inicialResolvida, loadingEtapas]);
 
   const voltarParaNegociacao = () => {
+    // Vindo da aba Pós-Venda / Intermediação, voltar da tela da aba fecha a venda.
+    if (base && etapaAberta === BASE) { onClose(); return; }
     setEtapaAberta('negociacao');
     setItem(null);
     recarregarEtapas();
@@ -130,22 +150,27 @@ const VendaProcessoView: React.FC<Props> = ({
   const barra = (
     <EtapasVendaBar
       etapas={etapas}
-      selecionada={etapaAberta}
+      selecionada={etapaAberta as EtapaVendaKey}
       onSelect={abrirEtapa}
       bloqueadas={bloqueadas}
       loading={loadingEtapas}
     />
   );
 
+  // Pop-up da etapa (Proposta, Entrega, Processo) só abre se ela estiver pendente;
+  // e cada tela mostra só o botão da própria etapa (pedido do usuário, 2026-11-22).
+  const pendente = (k: Aberta) => k !== BASE && !etapas.find((e) => e.key === k)?.concluida;
+
   let conteudo: React.ReactNode;
   if (!inicialResolvida) {
     conteudo = <DetailSkeleton onClose={onClose} />;
-  } else if (ETAPAS_ATENDIMENTO.has(etapaAberta)) {
+  } else if (etapaAberta !== BASE && ETAPAS_ATENDIMENTO.has(etapaAberta)) {
     conteudo = (
       <AtendimentoDetail
         key={etapaAberta}
         atendimento={atendimento}
-        acaoInicial={ACAO_ATENDIMENTO[etapaAberta]}
+        acaoInicial={pendente(etapaAberta) ? ACAO_ATENDIMENTO[etapaAberta as EtapaVendaKey] : undefined}
+        botoesEtapa={etapaAberta === 'contrato' ? ['proposta'] : etapaAberta === 'entrega' ? ['entrega'] : []}
         rolagemNaPagina
         onClose={onClose}
         onEdit={onEdit}
@@ -156,14 +181,15 @@ const VendaProcessoView: React.FC<Props> = ({
   } else if (!item) {
     conteudo = <DetailSkeleton onClose={voltarParaNegociacao} />;
   } else {
-    const consignada = !!contexto?.consignada;
+    const consignada = base ? base !== 'pos_venda' : !!contexto?.consignada;
     const config = PARTE_CONFIG[parte];
     conteudo = (
       <PosVendaDetail
         key={`${etapaAberta}-${parte}`}
         item={item}
         onClose={voltarParaNegociacao}
-        abrirProcessoAoAbrir={ETAPAS_PROCESSO.has(etapaAberta)}
+        abrirProcessoAoAbrir={etapaAberta !== BASE && ETAPAS_PROCESSO.has(etapaAberta) && pendente(etapaAberta)}
+        botoesEtapa={etapaAberta !== BASE && ETAPAS_PROCESSO.has(etapaAberta) ? ['processo'] : []}
         rolagemNaPagina
         onNavigateToPosCompra={onNavigateToPosCompra}
         onStatusChanged={() => { recarregarEtapas(); }}

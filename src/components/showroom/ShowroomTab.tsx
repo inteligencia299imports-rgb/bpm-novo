@@ -286,7 +286,11 @@ const ShowroomTab = ({ initialAtendimentoId, onInitialAtendimentoHandled, onNavi
         ((nfRes.data as any[]) || []).forEach((n) => { (nfPorAtendimento[n.atendimento_id] ??= []).push(n); });
         const tags: Record<string, NfeTag | null> = {};
         for (const id of idsVendido) {
-          tags[id] = comAtpv.has(id) ? TAG_ATPV : nfeTagFromRows(nfPorAtendimento[id]);
+          const tagNf = nfeTagFromRows(nfPorAtendimento[id]);
+          // NF-e autorizada em produção fica verde no Showroom (pedido do usuário, 2026-11-22).
+          tags[id] = comAtpv.has(id) ? TAG_ATPV
+            : tagNf && tagNf.className.startsWith('bg-primary') ? { ...tagNf, className: TAG_ATPV.className }
+            : tagNf;
         }
         setTagsVendido(tags);
       } else {

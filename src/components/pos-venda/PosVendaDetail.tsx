@@ -64,6 +64,8 @@ interface Props {
   abrirProcessoAoAbrir?: boolean;
   /** Rola a página inteira em vez de só o conteúdo (cabeçalho não fica congelado). */
   rolagemNaPagina?: boolean;
+  /** Barra de etapas: só os botões da etapa aberta. Sem a prop, todos. */
+  botoesEtapa?: ('proposta' | 'entrega' | 'processo')[];
 }
 
 const formatPhone = (value: string): string => {
@@ -96,7 +98,8 @@ const InfoItem = ({ label, value }: { label: string; value: React.ReactNode }) =
   ) : null
 );
 
-const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusField = 'pos_venda_status', processoProps, onStatusChanged, onNavigateToPosCompra, abrirProcessoAoAbrir, rolagemNaPagina }) => {
+const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusField = 'pos_venda_status', processoProps, onStatusChanged, onNavigateToPosCompra, abrirProcessoAoAbrir, rolagemNaPagina, botoesEtapa }) => {
+  const mostraBotao = (b: 'proposta' | 'entrega' | 'processo') => !botoesEtapa || botoesEtapa.includes(b);
   const AreaRolagem = rolagemNaPagina ? 'div' : ScrollArea;
   const [motosInteresse, setMotosInteresse] = useState<any[]>([]);
   const [motosAvaliacao, setMotosAvaliacao] = useState<any[]>([]);
@@ -217,7 +220,11 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     const modo = aprovacaoPopup.modo;
     const motivo = aprovacaoPopup.motivo.trim().toUpperCase();
     if ((modo === 'recusar' || modo === 'desaprovar') && !motivo) { toast.error(`Informe o motivo da ${modo === 'recusar' ? 'recusa' : 'desaprovação'}`); return; }
-    if (!podeAprovarVenda(role)) { toast.error('Apenas um master pode aprovar/recusar'); return; }
+    // Desaprovar: masters e gerentes; aprovar/recusar: só master (pedido do usuário, 2026-11-22).
+    if (modo === 'desaprovar' ? (role !== 'master' && role !== 'gerente') : !podeAprovarVenda(role)) {
+      toast.error(modo === 'desaprovar' ? 'Apenas masters e gerentes podem desaprovar' : 'Apenas um master pode aprovar/recusar');
+      return;
+    }
     // Desaprovar só trava na NF-e de PRODUÇÃO (homologação pode ser desfeita).
     if (modo === 'desaprovar' && nfeVendaProducao) { toast.error('Não é possível desaprovar depois da NF-e emitida em produção.'); return; }
     setSavingAprovacao(true);
@@ -655,7 +662,7 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
               </>
             )}
             {/* Desaprovar: só depois de já aprovada, e só até a NF-e sair em produção. */}
-            {souMaster && vendaAprovada(atAprov) && !nfeVendaProducao && (
+            {(role === 'master' || role === 'gerente') && !isIntermParte2 && vendaAprovada(atAprov) && !nfeVendaProducao && (
               <Button size="sm" variant="outline" onClick={() => setAprovacaoPopup({ modo: 'desaprovar', motivo: '' })} className="gap-1.5 border-amber-500 text-amber-600 hover:bg-amber-500/10 hover:text-amber-600">
                 <RotateCw className="h-4 w-4" /> Desaprovar
               </Button>
@@ -665,17 +672,17 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
                 <DollarSign className="h-4 w-4" /> Pagamento
               </Button>
             )}
-            {!isIntermParte2 && (
+            {!isIntermParte2 && mostraBotao('proposta') && (
               <Button size="sm" variant="outline" onClick={() => setContratoOpen(true)} className="gap-1.5">
                 <FileText className="h-4 w-4" /> Proposta
               </Button>
             )}
-            {!bloqueadoAprovacao && !isIntermParte2 && (
+            {!bloqueadoAprovacao && !isIntermParte2 && mostraBotao('entrega') && (
               <Button size="sm" variant="outline" onClick={openEntrega} className="gap-1.5">
                 <Truck className="h-4 w-4" /> Entrega
               </Button>
             )}
-            {!bloqueadoAprovacao && (
+            {!bloqueadoAprovacao && mostraBotao('processo') && (
               <Button size="sm" onClick={() => setProcessoOpen(true)} className="gap-1.5">
                 <ClipboardList className="h-4 w-4" /> Processo
               </Button>

@@ -7,7 +7,7 @@ import { Search, X, ShoppingBag, Filter } from 'lucide-react';
 import { POS_VENDA_COLUMNS } from '@/types/crm';
 import type { PosVendaStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
-import PosVendaDetail from './PosVendaDetail';
+import VendaProcessoView from '@/components/vendas/VendaProcessoView';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { fetchAllRange } from '@/lib/fetchAllRange';
@@ -23,6 +23,8 @@ interface PosVendaTabProps {
   initialAtendimentoId?: string | null;
   onInitialHandled?: () => void;
   onNavigateToPosCompra?: (avaliacaoId: string) => void;
+  onNavigateToShowroom?: (atendimentoId: string) => void;
+  onNavigateToNps?: () => void;
 }
 
 // Oculto temporariamente a pedido do usuário, 2026-09-30: atendimento
@@ -32,7 +34,12 @@ const ATENDIMENTOS_OCULTOS_POS_VENDA = new Set<string>([
   'bd165fb9-859b-4225-b2b7-df7dc4f1bb43', // Roberto Frederico Conrado Rivas Marquez
 ]);
 
-const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCompra }: PosVendaTabProps = {}) => {
+// Sem colunas de aprovação desde 2026-11-22 (pedido do usuário): a aprovação
+// fica no Showroom (coluna Aguardando Aprovação). Venda aguardando aprovação
+// não aparece aqui; aprovada e ainda sem andamento fica em Em Aberto.
+const KANBAN_COLUMNS = POS_VENDA_COLUMNS.filter(c => c.value !== 'aguardando_aprovacao' && c.value !== 'aprovada');
+
+const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCompra, onNavigateToShowroom, onNavigateToNps }: PosVendaTabProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -118,7 +125,6 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     } else {
       const statusResults = await Promise.all([
         ...statuses.map(s => supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido').eq('pos_venda_status', s).order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT)),
-        (supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido') as any).eq('venda_aprovacao_status', 'aguardando').order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT),
         (supabase.from('atendimentos_motos').select(AT_SELECT).eq('situacao', 'vendido') as any).eq('venda_aprovacao_status', 'aprovada').order('updated_at', { ascending: false }).limit(PER_STATUS_LIMIT),
       ]);
       atError = statusResults.find(r => r.error)?.error;
@@ -177,12 +183,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
   }, [search, filterCidade]);
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
-  const columnOf = (a: any): PosVendaStatus => {
+  const columnOf = (a: any): PosVendaStatus | null => {
     const normal = (a.pos_venda_status || 'em_aberto') as PosVendaStatus;
     if (a.venda_aprovacao_status === 'recusada') return normal; // fica na coluna normal com a tag "Recusado"
-    // Aguardando aprovação só enquanto o master não decide — a NF-e de venda não é pré-requisito.
-    if (a.venda_aprovacao_status === 'aguardando') return 'aguardando_aprovacao';
-    if (a.venda_aprovacao_status === 'aprovada' && normal === 'em_aberto') return 'aprovada';
+    // Aguardando aprovação: fora do quadro (está no Showroom).
+    if (a.venda_aprovacao_status === 'aguardando') return null;
     return normal;
   };
   const getColumnItems = (status: PosVendaStatus) => items.filter((a: any) => {
@@ -200,7 +205,22 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
     setSelectedItem((prev: any) => prev && prev.id === itemId ? { ...prev, [field]: newStatus } : prev);
   }, []);
 
-  if (selectedItem) return <PosVendaDetail item={selectedItem} onClose={() => setSelectedItem(null)} onStatusChanged={handleStatusChanged} onNavigateToPosCompra={onNavigateToPosCompra} />;
+  // Barra de etapas da venda no topo; começa na tela do Pós-Venda (pedido do usuário, 2026-11-22).
+  if (selectedItem) {
+    const fechar = () => { setSelectedItem(null); fetchItems(); };
+    return (
+      <VendaProcessoView
+        key={selectedItem.id}
+        atendimento={selectedItem}
+        base="pos_venda"
+        onClose={fechar}
+        onEdit={(id) => onNavigateToShowroom?.(id)}
+        onDeleted={fechar}
+        onNavigateToPosCompra={onNavigateToPosCompra}
+        onNavigateToNps={onNavigateToNps}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -236,11 +256,11 @@ const PosVendaTab = ({ initialAtendimentoId, onInitialHandled, onNavigateToPosCo
       </FiltersPanel>
 
       {loading ? (
-        <KanbanSkeleton columns={6} />
+        <KanbanSkeleton columns={4} />
       ) : (
         <div className="overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-x-visible">
-          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-6">
-            {POS_VENDA_COLUMNS.map(col => {
+          <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-4">
+            {KANBAN_COLUMNS.map(col => {
               const colItems = getColumnItems(col.value);
               return (
                 <div key={col.value} className="w-[300px] shrink-0 md:w-auto md:shrink flex flex-col">

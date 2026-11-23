@@ -18,7 +18,7 @@ import PublicacoesTab from '@/components/publicacoes/PublicacoesTab';
 import RelatoriosTab from '@/components/relatorios/RelatoriosTab';
 import NovidadesTab from '@/components/novidades/NovidadesTab';
 import NpsTab from '@/components/nps/NpsTab';
-import { podeAcessarAba } from '@/lib/abasPermissao';
+import { podeAcessarAba, abaInicial } from '@/lib/abasPermissao';
 
 // Abas cujo dialog de detalhe é aberto por atendimento_id direto.
 const ATENDIMENTO_KEYED_TABS = new Set(['showroom', 'pos_venda', 'intermediacao']);
@@ -35,7 +35,8 @@ const Dashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   // Tela inicial do BPM: Relatórios (pedido do usuário, 2026-10-18). Links com
   // ?tab=... continuam abrindo direto na aba indicada.
-  const getDefaultTab = (r: string | null) => 'relatorios';
+  // Perfil sem Relatórios (administrativo) começa na primeira aba que pode ver.
+  const getDefaultTab = (r: string | null) => abaInicial(r);
 
   const urlTab = searchParams.get('tab');
   const urlTabValida = !!urlTab && VALID_TABS.has(urlTab);
@@ -138,6 +139,12 @@ const Dashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, activeTab]);
 
+  // Atalhos das barras de etapas (venda/compra) — só para abas que o perfil acessa.
+  const irParaPreparacao = podeAcessarAba('preparacao', role)
+    ? (avaliacaoId: string) => handleEstoqueNav({ tab: 'preparacao', avaliacaoId }) : undefined;
+  const irParaNps = podeAcessarAba('nps', role) ? () => changeTab('nps') : undefined;
+  const irParaShowroom = podeAcessarAba('showroom', role) ? handleNavigateToShowroom : undefined;
+
   return (
     <div className="min-h-screen bg-background flex">
       <Sidebar
@@ -163,6 +170,8 @@ const Dashboard = () => {
           <AvaliacoesTab
             initialAvaliacaoId={initialAvaliacaoId}
             onInitialHandled={() => setInitialAvaliacaoId(null)}
+            onNavigateToPreparacao={irParaPreparacao}
+            onNavigateToNps={irParaNps}
           />
         )}
         {activeTab === 'consulta' && <ConsultaTab />}
@@ -170,6 +179,8 @@ const Dashboard = () => {
           <PosVendaTab
             initialAtendimentoId={initialAtendimentoId}
             onInitialHandled={() => setInitialAtendimentoId(null)}
+            onNavigateToShowroom={irParaShowroom}
+            onNavigateToNps={irParaNps}
             onNavigateToPosCompra={(avaliacaoId) => {
               clearInitials();
               setInitialAvaliacaoId(avaliacaoId);
@@ -185,18 +196,24 @@ const Dashboard = () => {
             initialAtendimentoId={initialAtendimentoId}
             initialParte={initialParte}
             onInitialHandled={() => { setInitialAtendimentoId(null); setInitialParte(null); }}
+            onNavigateToShowroom={irParaShowroom}
+            onNavigateToNps={irParaNps}
           />
         )}
         {activeTab === 'pos_compra' && (
           <PosCompraTab
             initialAvaliacaoId={initialAvaliacaoId}
             onInitialHandled={() => setInitialAvaliacaoId(null)}
+            onNavigateToPreparacao={irParaPreparacao}
+            onNavigateToNps={irParaNps}
           />
         )}
         {activeTab === 'consignacao' && (
           <ConsignacaoTab
             initialAvaliacaoId={initialAvaliacaoId}
             onInitialHandled={() => setInitialAvaliacaoId(null)}
+            onNavigateToPreparacao={irParaPreparacao}
+            onNavigateToNps={irParaNps}
           />
         )}
         {activeTab === 'preparacao' && (

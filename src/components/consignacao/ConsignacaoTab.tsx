@@ -9,7 +9,7 @@ import { Search, X, FileText, Filter } from 'lucide-react';
 import { CONSIGNACAO_COLUMNS } from '@/types/crm';
 import type { ConsignacaoStatus } from '@/types/crm';
 import ProcessCard from '@/components/shared/ProcessCard';
-import AvaliacaoForm from '@/components/avaliacoes/AvaliacaoForm';
+import CompraProcessoView from '@/components/compras/CompraProcessoView';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import CidadeFilter, { matchesCidade, type CidadeFilterValue } from '@/components/shared/CidadeFilter';
@@ -20,9 +20,11 @@ import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
 interface ConsignacaoTabProps {
   initialAvaliacaoId?: string | null;
   onInitialHandled?: () => void;
+  onNavigateToPreparacao?: (avaliacaoId: string) => void;
+  onNavigateToNps?: () => void;
 }
 
-const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTabProps = {}) => {
+const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled, onNavigateToPreparacao, onNavigateToNps }: ConsignacaoTabProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -127,7 +129,17 @@ const ConsignacaoTab = ({ initialAvaliacaoId, onInitialHandled }: ConsignacaoTab
     return true;
   });
 
-  if (selectedItem) return <AvaliacaoForm avaliacaoId={selectedItem.id} context="consignacao" onClose={() => { setSelectedItem(null); fetchItems(); }} />;
+  if (selectedItem) {
+    return (
+      <CompraProcessoView
+        avaliacaoId={selectedItem.id}
+        contextoBase="consignacao"
+        onClose={() => { setSelectedItem(null); fetchItems(); }}
+        onNavigateToPreparacao={onNavigateToPreparacao}
+        onNavigateToNps={onNavigateToNps}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5">

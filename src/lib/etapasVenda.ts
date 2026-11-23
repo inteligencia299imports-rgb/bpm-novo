@@ -17,7 +17,6 @@ export type EtapaVendaKey =
   | 'nf_compra'
   | 'nf_venda'
   | 'entrega'
-  | 'comunicado'
   | 'renave'
   | 'transferencia'
   | 'nps';
@@ -47,20 +46,20 @@ const LABELS: Record<EtapaVendaKey, string> = {
   nf_compra: 'NF Compra',
   nf_venda: 'NF Venda',
   entrega: 'Entrega',
-  comunicado: 'Comunicado',
   renave: 'Renave',
   transferencia: 'Transferência',
   nps: 'NPS',
 };
 
+// Comunicado de venda saiu da barra em 2026-11-22 (continua no checklist do Processo).
 const ORDEM: EtapaVendaKey[] = [
   'negociacao', 'aprovacao', 'contrato', 'vistoria', 'nf_compra', 'nf_venda',
-  'entrega', 'comunicado', 'renave', 'transferencia', 'nps',
+  'entrega', 'renave', 'transferencia', 'nps',
 ];
 // Moto 0km: a entrega vem depois do RENAVE (ATPV-e).
 const ORDEM_0KM: EtapaVendaKey[] = [
   'negociacao', 'aprovacao', 'contrato', 'vistoria', 'nf_compra', 'nf_venda',
-  'renave', 'entrega', 'comunicado', 'transferencia', 'nps',
+  'renave', 'entrega', 'transferencia', 'nps',
 ];
 
 /**
@@ -78,7 +77,6 @@ const DEPENDE_DE: Partial<Record<EtapaVendaKey, EtapaVendaKey[]>> = {
   nf_compra: ['aprovacao'],
   nf_venda: ['contrato', 'nf_compra'],
   entrega: ['nf_venda', 'contrato'],
-  comunicado: ['nf_venda', 'contrato'],
   renave: ['nf_venda'],
   transferencia: ['nf_venda', 'renave', 'contrato'],
   nps: ['entrega'],
@@ -96,7 +94,7 @@ const maisRecente = (datas: (string | null | undefined)[]) =>
   datas.map(paraData).filter((d): d is Date => !!d).sort((x, y) => y.getTime() - x.getTime())[0] ?? null;
 
 export async function carregarEtapasVenda(atendimentoId: string): Promise<{ etapas: EtapaVenda[]; contexto: ContextoVenda }> {
-  const [{ data: at }, { data: mi }, { data: processos }, { data: nfVenda }, { data: trocas }, { data: contratoVenda }, { data: historico }] = await Promise.all([
+  const [{ data: at }, { data: mi }, { data: processos }, { data: nfVenda }, { data: trocas }, { data: contratoVenda }, { data: historico }, { data: contratosSalvos }] = await Promise.all([
     supabase.from('atendimentos_motos')
       .select('situacao, interesse, venda_aprovacao_status, nps_status, nps_respondido_at, updated_at')
       .eq('id', atendimentoId).maybeSingle(),
@@ -121,6 +119,10 @@ export async function carregarEtapasVenda(atendimentoId: string): Promise<{ etap
       .eq('entity_id', atendimentoId)
       .in('status', ['vendido', 'venda_aprovada'])
       .order('created_at', { ascending: true }),
+    // Proposta salva: data de reserva para vendas sem o registro da geração no
+    // histórico (gravado só desde out/2026).
+    supabase.from('contratos').select('ipva_tipo, created_at')
+      .eq('atendimento_id', atendimentoId).order('created_at', { ascending: true }),
   ]);
 
   const a: any = at || {};
@@ -173,7 +175,6 @@ export async function carregarEtapasVenda(atendimentoId: string): Promise<{ etap
     nf_compra: compraIds.length > 0,
     nf_venda: consignada || (!!estoque && !vendaRepasse),
     entrega: true,
-    comunicado: fonte !== '0km',
     renave: fonte === '0km' || temSaidaRenave,
     transferencia: true,
     nps: true,
@@ -182,12 +183,12 @@ export async function carregarEtapasVenda(atendimentoId: string): Promise<{ etap
   const concluida: Record<EtapaVendaKey, boolean> = {
     negociacao: a.situacao === 'vendido',
     aprovacao: a.venda_aprovacao_status === 'aprovada',
-    contrato: !!contratoVenda,
+    // NF-e de venda em produção também prova o contrato: a emissão exige a proposta salva.
+    contrato: !!contratoVenda || NF_PRODUCAO(nfVenda),
     vistoria: etapaFeita('VISTORIA'),
     nf_compra: compraIds.length > 0 && compraIds.every((id) => compraFeitas.has(id)),
     nf_venda: NF_PRODUCAO(nfVenda),
     entrega: etapaFeita('ENTREGA DA MOTO'),
-    comunicado: etapaFeita('COMUNICADO DE VENDA'),
     renave: fonte === '0km' ? !!estoque?.renave_atpv_numero : !!avEstoque?.renave_saida_em,
     transferencia: etapaFeita(fonte === '0km' ? 'EMPLACAMENTO/TRANSFERÊNCIA' : 'TRANSFERÊNCIA FINALIZADA'),
     nps: a.nps_status === 'respondido',
@@ -203,12 +204,13 @@ export async function carregarEtapasVenda(atendimentoId: string): Promise<{ etap
   const conclusao: Record<EtapaVendaKey, Date | null> = {
     negociacao: dataVenda,
     aprovacao: paraData(hist.filter((h) => h.status === 'venda_aprovada').pop()?.created_at),
-    contrato: paraData((contratoVenda as any)?.created_at),
+    contrato: paraData((contratoVenda as any)?.created_at)
+      ?? paraData(((contratosSalvos as any[]) || []).find((c) => (c.ipva_tipo ?? '') !== 'COMPRA')?.created_at)
+      ?? paraData(nfVendaData),
     vistoria: dataEtapa('VISTORIA'),
     nf_compra: maisRecente(nfsCompra.map((n) => n.data_emissao || n.created_at)),
     nf_venda: paraData(nfVendaData),
     entrega: dataEtapa('ENTREGA DA MOTO'),
-    comunicado: dataEtapa('COMUNICADO DE VENDA'),
     renave: fonte === '0km'
       ? (dataEtapa('ATPV-E') ?? paraData(estoque?.renave_atualizado_em))
       : paraData(avEstoque?.renave_saida_em),

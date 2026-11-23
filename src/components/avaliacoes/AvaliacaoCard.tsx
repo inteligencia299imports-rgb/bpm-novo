@@ -10,6 +10,8 @@ interface Props {
   avaliacao: Avaliacao;
   onOpen: () => void;
   role: AppRole | null;
+  /** Cor da linha à esquerda (ex.: cor da coluna do kanban). */
+  statusColorOverride?: string;
 }
 
 const formatPhone = (value: string): string => {
@@ -42,10 +44,10 @@ const STATUS_HEX: Record<string, string> = {
 
 // Using centralized getTipoAquisicaoLabel from lib
 
-const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen }) => {
+const AvaliacaoCard: React.FC<Props> = ({ avaliacao, onOpen, statusColorOverride }) => {
   const moto = avaliacao;
   const at = avaliacao.atendimento;
-  const statusColor = STATUS_HEX[avaliacao.situacao] || '#6B7280';
+  const statusColor = statusColorOverride || STATUS_HEX[avaliacao.situacao] || '#6B7280';
 
   // Build moto label: placa - marca modelo
   const motoLabel = (() => {

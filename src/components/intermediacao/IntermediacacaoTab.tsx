@@ -5,10 +5,10 @@ import { ESTOQUE_MOTO_SELECT, mapEstoqueMoto, fetchLojaMap } from '@/lib/estoque
 import { MARCA_MODELO_SELECT, flattenMarcaModelo } from '@/lib/marcaModelo';
 import { Input } from '@/components/ui/input';
 import { Search, X, Handshake, Filter, DollarSign } from 'lucide-react';
-import { INTERMEDIACAO_PARTE1_COLUMNS, INTERMEDIACAO_PARTE2_COLUMNS, INTERMEDIACAO_PARTE1_ETAPAS, INTERMEDIACAO_PARTE2_ETAPAS } from '@/types/crm';
+import { PARTE_CONFIG } from '@/lib/intermediacaoConfig';
 import { nfeTagFromRows } from '@/lib/nfeTag';
 import ProcessCard from '@/components/shared/ProcessCard';
-import PosVendaDetail from '@/components/pos-venda/PosVendaDetail';
+import VendaProcessoView from '@/components/vendas/VendaProcessoView';
 import { toast } from 'sonner';
 import KanbanSkeleton from '@/components/shared/KanbanSkeleton';
 import { Button } from '@/components/ui/button';
@@ -19,35 +19,16 @@ import { useAtendimentoUrlSync } from '@/hooks/useAtendimentoUrlSync';
 
 type Parte = 'parte1' | 'parte2';
 
-export const PARTE_CONFIG = {
-  parte1: {
-    columns: INTERMEDIACAO_PARTE1_COLUMNS,
-    statusField: 'intermediacao_parte1_status',
-    etapas: INTERMEDIACAO_PARTE1_ETAPAS,
-    statusRules: {
-      concluded: 'TRANSFERÊNCIA FINALIZADA',
-      special: { etapa: 'DOCUMENTAÇÃO COM DESPACHANTE', status: 'doc_despachante' },
-      default: 'em_andamento',
-    },
-  },
-  parte2: {
-    columns: INTERMEDIACAO_PARTE2_COLUMNS,
-    statusField: 'intermediacao_parte2_status',
-    etapas: INTERMEDIACAO_PARTE2_ETAPAS,
-    statusRules: {
-      concluded: 'AUTORIZAÇÃO DE PAGAMENTO',
-      default: 'em_andamento',
-    },
-  },
-};
 
 interface IntermediacacaoTabProps {
   initialAtendimentoId?: string | null;
   initialParte?: 'parte1' | 'parte2' | null;
   onInitialHandled?: () => void;
+  onNavigateToShowroom?: (atendimentoId: string) => void;
+  onNavigateToNps?: () => void;
 }
 
-const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandled }: IntermediacacaoTabProps = {}) => {
+const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandled, onNavigateToShowroom, onNavigateToNps }: IntermediacacaoTabProps = {}) => {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -209,13 +190,14 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  const columnOf = (a: any): string => {
+  const columnOf = (a: any): string | null => {
     const normal = (a as any)[config.statusField] || 'em_aberto';
     // Parte 2 (consignante) não passa pela aprovação de venda — vai direto p/ o status normal.
     if (parte === 'parte2') return normal;
     if (a.venda_aprovacao_status === 'recusada') return normal; // coluna normal + tag "Recusado"
-    if (a.venda_aprovacao_status === 'aguardando') return 'aguardando_aprovacao'; // NF-e de venda não é pré-requisito
-    if (a.venda_aprovacao_status === 'aprovada' && normal === 'em_aberto') return 'aprovada';
+    // Sem colunas de aprovação desde 2026-11-22: aguardando fica no Showroom;
+    // aprovada e ainda sem andamento fica em Em Aberto.
+    if (a.venda_aprovacao_status === 'aguardando') return null;
     return normal;
   };
   const getColumnItems = (status: string) => items.filter((a: any) => columnOf(a) === status);
@@ -225,20 +207,18 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
     setSelectedItem((prev: any) => prev && prev.id === itemId ? { ...prev, [field]: newStatus } : prev);
   }, []);
 
+  // Barra de etapas da venda no topo; começa na Parte 1 ou 2 (pedido do usuário, 2026-11-22).
   if (selectedItem) {
+    const fechar = () => { setSelectedItem(null); fetchItems(); };
     return (
-      <PosVendaDetail
-        item={selectedItem}
-        onClose={() => setSelectedItem(null)}
-        statusColumns={config.columns as any}
-        statusField={config.statusField}
-        processoProps={{
-          customEtapas: config.etapas,
-          statusField: config.statusField,
-          statusRules: config.statusRules,
-          showContratoConsignante: parte === 'parte2',
-        }}
-        onStatusChanged={handleStatusChanged}
+      <VendaProcessoView
+        key={`${selectedItem.id}-${parte}`}
+        atendimento={selectedItem}
+        base={parte}
+        onClose={fechar}
+        onEdit={(id) => onNavigateToShowroom?.(id)}
+        onDeleted={fechar}
+        onNavigateToNps={onNavigateToNps}
       />
     );
   }
@@ -295,7 +275,7 @@ const IntermediacacaoTab = ({ initialAtendimentoId, initialParte, onInitialHandl
           {/* Mesma grade de 5 colunas nas duas partes: a Parte 2 (3 colunas) fica com
               cards da mesma largura da Parte 1, em vez de esticar em 3 colunas largas. */}
           <div className="flex gap-4 min-w-max md:min-w-0 md:grid md:grid-cols-5">
-            {config.columns.map(col => {
+            {config.columns.filter(col => col.value !== 'aguardando_aprovacao' && col.value !== 'aprovada').map(col => {
               const colItems = getColumnItems(col.value);
               return (
                 <div key={col.value} className="w-[300px] shrink-0 md:w-auto md:shrink flex flex-col">

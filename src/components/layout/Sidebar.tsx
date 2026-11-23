@@ -10,6 +10,7 @@ const ROLE_LABELS: Record<string, string> = {
   vendedor: 'Vendedor',
   gerente: 'Gerente',
   avaliador: 'Avaliador',
+  administrativo: 'Administrativo',
   master: 'Master',
 };
 

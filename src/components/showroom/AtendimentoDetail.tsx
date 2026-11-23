@@ -60,6 +60,8 @@ interface Props {
   acaoInicial?: 'contrato' | 'entrega';
   /** Rola a página inteira em vez de só o conteúdo (cabeçalho não fica congelado). */
   rolagemNaPagina?: boolean;
+  /** Barra de etapas: só os botões da etapa aberta (Proposta e/ou Entrega). Sem a prop, todos. */
+  botoesEtapa?: ('proposta' | 'entrega')[];
 }
 
 const formatPhone = (value: string): string => {
@@ -105,7 +107,8 @@ const parseCurrencyInput = (value: string): number => {
   return parseInt(digits || '0', 10) / 100;
 };
 
-const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted, onStatusUpdated, acaoInicial, rolagemNaPagina }) => {
+const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDeleted, onStatusUpdated, acaoInicial, rolagemNaPagina, botoesEtapa }) => {
+  const mostraBotao = (b: 'proposta' | 'entrega') => !botoesEtapa || botoesEtapa.includes(b);
   const AreaRolagem = rolagemNaPagina ? 'div' : ScrollArea;
   const { user, userName, role } = useAuth();
   const [motosInteresse, setMotosInteresse] = useState<MotoInteresse[]>([]);
@@ -900,12 +903,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
           </div>
           {/* Desktop buttons */}
           <div className="hidden sm:flex items-center gap-2 shrink-0">
-            {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && !aguardandoAprovacaoAquisicao && (
+            {mostraBotao('proposta') && (atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && !aguardandoAprovacaoAquisicao && (
               <Button size="sm" onClick={() => setContratoOpen(true)} className="gap-1.5">
                 <FileText className="h-4 w-4" /> Proposta
               </Button>
             )}
-            {atendimento.situacao === 'vendido' && !aguardandoAprovacaoAquisicao && vendaLiberada(atendimento) && (
+            {mostraBotao('entrega') && atendimento.situacao === 'vendido' && !aguardandoAprovacaoAquisicao && vendaLiberada(atendimento) && (
               <Button size="sm" variant="outline" onClick={openEntrega} className="gap-1.5">
                 <Truck className="h-4 w-4" /> Entrega
               </Button>
@@ -919,12 +922,12 @@ const AtendimentoDetail: React.FC<Props> = ({ atendimento, onClose, onEdit, onDe
         </div>
         {/* Mobile buttons - below name/date, centered, equal width */}
         <div className="flex sm:hidden gap-2 justify-center">
-          {(atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && !aguardandoAprovacaoAquisicao && (
+          {mostraBotao('proposta') && (atendimento.situacao === 'sinal' || atendimento.situacao === 'vendido') && !aguardandoAprovacaoAquisicao && (
             <Button size="sm" onClick={() => setContratoOpen(true)} className="flex-1">
               <FileText className="h-4 w-4" />
             </Button>
           )}
-          {atendimento.situacao === 'vendido' && !aguardandoAprovacaoAquisicao && vendaLiberada(atendimento) && (
+          {mostraBotao('entrega') && atendimento.situacao === 'vendido' && !aguardandoAprovacaoAquisicao && vendaLiberada(atendimento) && (
             <Button size="sm" variant="outline" onClick={openEntrega} className="flex-1">
               <Truck className="h-4 w-4" />
             </Button>
