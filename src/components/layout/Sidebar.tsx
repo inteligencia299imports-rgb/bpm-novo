@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { podeAcessarAba } from '@/lib/abasPermissao';
 import { Bike, User, Package, ClipboardCheck, PanelLeftClose, PanelLeftOpen, FileSearch, ShoppingBag, Handshake, ShoppingCart, FileText, Wrench, Flame, Award, LogOut, BarChart3, Camera } from 'lucide-react';
 import logoImg from '@/assets/logo-crm.png';
 import NotificationBell from './NotificationBell';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 const ROLE_LABELS: Record<string, string> = {
   vendedor: 'Vendedor',
   gerente: 'Gerente',
+  avaliador: 'Avaliador',
   master: 'Master',
 };
 
@@ -22,20 +24,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, collapsed, on
   const { role, userName, signOut } = useAuth();
 
   const tabs = [
-    { id: 'relatorios', label: 'Relatórios', icon: BarChart3, roles: ['master', 'gerente', 'vendedor'] },
-    { id: 'showroom', label: 'Showroom', icon: Bike, roles: ['vendedor', 'master', 'gerente'] },
-    { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck, roles: ['gerente', 'master'] },
-    { id: 'novidades', label: 'Novidades', icon: Flame, roles: ['vendedor', 'master', 'gerente'] },
-    { id: 'estoque', label: 'Estoque', icon: Package, roles: ['vendedor', 'master', 'gerente'] },
-    { id: 'consulta', label: 'Consulta', icon: FileSearch, roles: ['gerente', 'master'] },
-    { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag, roles: ['gerente', 'master'] },
-    { id: 'intermediacao', label: 'Intermediação', icon: Handshake, roles: ['gerente', 'master'] },
-    { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart, roles: ['gerente', 'master'] },
-    { id: 'consignacao', label: 'Consignação', icon: FileText, roles: ['gerente', 'master'] },
-    { id: 'preparacao', label: 'Preparação', icon: Wrench, roles: ['vendedor', 'gerente', 'master'] },
-    { id: 'publicacoes', label: 'Publicações', icon: Camera, roles: ['vendedor', 'gerente', 'master'] },
-    { id: 'nps', label: 'NPS', icon: Award, roles: ['vendedor', 'master', 'gerente'] },
-  ].filter(t => role && t.roles.includes(role));
+    { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
+    { id: 'showroom', label: 'Showroom', icon: Bike },
+    { id: 'avaliacoes', label: 'Avaliações', icon: ClipboardCheck },
+    { id: 'novidades', label: 'Novidades', icon: Flame },
+    { id: 'estoque', label: 'Estoque', icon: Package },
+    { id: 'consulta', label: 'Consulta', icon: FileSearch },
+    { id: 'pos_venda', label: 'Pós-Venda', icon: ShoppingBag },
+    { id: 'intermediacao', label: 'Intermediação', icon: Handshake },
+    { id: 'pos_compra', label: 'Pós-Compra', icon: ShoppingCart },
+    { id: 'consignacao', label: 'Consignação', icon: FileText },
+    { id: 'preparacao', label: 'Preparação', icon: Wrench },
+    { id: 'publicacoes', label: 'Publicações', icon: Camera },
+    { id: 'nps', label: 'NPS', icon: Award },
+  ].filter(t => podeAcessarAba(t.id, role));
 
   return (
     <aside className={`hidden md:flex flex-col h-screen sticky top-0 bg-sidebar text-sidebar-foreground shadow-card transition-all duration-300 ${collapsed ? 'w-16' : 'w-52'}`}>
