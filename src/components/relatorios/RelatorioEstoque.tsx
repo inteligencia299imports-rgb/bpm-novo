@@ -176,7 +176,7 @@ const RelatorioEstoque: React.FC<RelatorioEstoqueProps> = ({ dateFrom, dateTo, s
     // Em Preparação segue os filtros de loja e tipo (não os de Situação/Quitação/BIN, que são do
     // estoque). Moto em preparação é sempre seminova: o filtro só de 0KM não traz nenhuma.
     const tiposFiltro = filterTipo === 'todos' ? null : filterTipo.split(',');
-    const prepFiltrado = prepRows.filter((a: any) => passaLojaFiltro(a.loja) && (!tiposFiltro || tiposFiltro.includes(a.tipo)));
+    const prepFiltrado = prepRows.filter((a: any) => passaLojaFiltro(a.loja) && (!tiposFiltro || tiposFiltro.includes(a.tipo) || (a.tipo === 'test_ride' && tiposFiltro.includes('propria'))));
     // Situação, Quitação e BIN valem para os indicadores e para a listagem.
     if (filterSituacao !== 'todos') {
       const situacoes = filterSituacao.split(',');
