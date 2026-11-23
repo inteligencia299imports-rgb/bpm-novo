@@ -93,7 +93,7 @@ async function encerrarParadas(db: any) {
 
 /**
  * WhatsApp de um número fora: se a uazapi respondeu que caiu, pausa o número e avisa na hora.
- * Se a uazapi só não respondeu (rede), pula o ciclo e só pausa após FALHAS_PARA_PAUSAR ciclos seguidos.
+ * Se a uazapi só não respondeu (rede) ou o número está reconectando, pula o ciclo e só pausa após FALHAS_PARA_PAUSAR ciclos seguidos.
  */
 const FALHAS_PARA_PAUSAR = 5;
 async function tratarQueda(db: any, inst: any, detalhe: string, incerto: boolean) {

@@ -49,7 +49,8 @@ export function cliente(instancia: string | null | undefined = INSTANCIA_PADRAO)
     /**
      * O WhatsApp da instância está conectado?
      *  - conectado false + incerto false: a uazapi RESPONDEU que o WhatsApp caiu/desconectou/bloqueou;
-     *  - incerto true: não deu para falar com a uazapi (rede/servidor) — NÃO quer dizer que o WhatsApp caiu.
+     *  - incerto true: não deu para falar com a uazapi (rede/servidor) ou o WhatsApp está reconectando
+     *    ('connecting') — NÃO quer dizer que o WhatsApp caiu.
      * Tenta 3 vezes antes de concluir que a uazapi não responde.
      */
     async whatsappConectado(): Promise<{ conectado: boolean; incerto: boolean; detalhe: string }> {
@@ -64,7 +65,10 @@ export function cliente(instancia: string | null | undefined = INSTANCIA_PADRAO)
           const st = j?.status ?? {};
           const situacao = j?.instance?.status ?? (typeof j?.status === 'string' ? j.status : '');
           const conectado = situacao === 'connected' && st.connected !== false && st.loggedIn !== false;
-          return { conectado, incerto: false, detalhe: `instância: ${situacao || 'desconhecida'}` };
+          // 'connecting' = reconectando (passageiro, costuma voltar em segundos): conta como incerto,
+          // para só pausar se durar vários ciclos seguidos — não na primeira leitura.
+          const reconectando = !conectado && situacao === 'connecting';
+          return { conectado, incerto: reconectando, detalhe: `instância: ${situacao || 'desconhecida'}` };
         } catch (e) {
           ultimoErro = `sem resposta da uazapi: ${String(e).slice(0, 120)}`;
         }
