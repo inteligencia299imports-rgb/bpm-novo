@@ -2,7 +2,7 @@
  * Etapa de aprovação da VENDA (espelha src/lib/aprovacao.ts do pós-compra).
  * Toda venda finalizada (`atendimentos_motos.situacao = 'vendido'`) entra em
  * `venda_aprovacao_status = 'aguardando'` e só dá andamento a qualquer processo
- * (contrato, NF-e, pós-venda / intermediação) depois de um master aprovar.
+ * (contrato, NF-e, pós-venda / intermediação) depois de um master ou gerente aprovar.
  * Recusada = card fica com tag "Recusado" e continua bloqueado (o master pode
  * aprovar depois).
  */
@@ -12,8 +12,8 @@ interface AtendimentoAprovavel {
   venda_aprovacao_status?: string | null;
 }
 
-/** Só master aprova/recusa a venda. */
-export const podeAprovarVenda = (role?: string | null): boolean => role === 'master';
+/** Master e gerente aprovam/recusam a venda (gerente liberado a pedido do usuário, 2026-11-23). */
+export const podeAprovarVenda = (role?: string | null): boolean => role === 'master' || role === 'gerente';
 
 export const vendaAguardando = (at?: AtendimentoAprovavel | null): boolean =>
   at?.venda_aprovacao_status === 'aguardando';
