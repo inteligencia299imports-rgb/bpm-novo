@@ -52,6 +52,9 @@ const DEVOLUCAO_MAP: Record<string, { tipo: string; keyCol: 'avaliacao_id' | 'at
   transferencia_entrada_0km: { tipo: 'devolucao_transferencia_0km', keyCol: 'estoque_moto_nova_id' },
 };
 
+// Saídas de transferência de estoque com NF-e de entrada correspondente (a devolução é feita na entrada).
+const OPERACOES_SAIDA_TRANSFERENCIA = new Set(['transferencia_saida', 'transferencia_saida_0km']);
+
 const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe, className }) => {
   const [open, setOpen] = useState(false);
   const [texto, setTexto] = useState('');
@@ -247,6 +250,19 @@ const CancelarNfeDialog: React.FC<{ nfe: NfeLike; className?: string }> = ({ nfe
     if (err) setErro(err);
     else { setOpen(false); setTexto(''); }
   };
+
+  // Saída de transferência de estoque passadas 24h: a SEFAZ não aceita mais o
+  // cancelamento, e ela não tem devolução própria — quem desfaz a transferência
+  // é a devolução da NF-e de ENTRADA (a moto volta para a origem e o financeiro
+  // da transferência é cancelado). Mostra só a orientação, sem botão (pedido do
+  // usuário, 2026-11-23; antes caía no "Cancelar NF-e" comum, que a SEFAZ recusa).
+  if (passou24h && nfe.nfe?.ambiente === 'producao' && OPERACOES_SAIDA_TRANSFERENCIA.has(String(nfe.nfe?.operacao))) {
+    return (
+      <p className={`text-xs text-muted-foreground ${className ?? ''}`}>
+        Prazo de cancelamento encerrado. Para desfazer a transferência, devolva a NF-e de entrada.
+      </p>
+    );
+  }
 
   return (
     <>
