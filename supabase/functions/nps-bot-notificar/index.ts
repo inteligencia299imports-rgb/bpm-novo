@@ -9,6 +9,7 @@
 // Autenticação: header x-nps-bot-secret = secret NPS_BOT_SECRET.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { carregarResposta, destinatarios, juntarComAtendimento, notificar } from '../_shared/nps-bot/notificacao.ts';
+import { ESCALAS } from '../_shared/nps-bot/roteiro.ts';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -42,6 +43,14 @@ Deno.serve(async (req) => {
     if (!body.resposta_id) return json({ error: 'resposta_id obrigatório' }, 400);
     const d = await carregarResposta(db, body.resposta_id);
     if (!d) return json({ ok: true, enviados: [], motivo: 'resposta/atendimento não encontrado' });
+    // Avisa quando há texto (melhorias ou comentário) OU quando a resposta é de neutro para baixo
+    // (nota 0–8 ou algum botão em "Neutro" ou pior). Promotor (9–10) sem texto não gera aviso.
+    const nota = d.nps != null && d.nps !== '' ? Number(d.nps) : null;
+    const neutroOuPior = (nota != null && nota <= 8)
+      || [d.atendimento, d.outros_setores, d.produto, d.experiencia].some((v) => !!v && Object.values(ESCALAS).some((esc) => esc.indexOf(v) >= 2));
+    if (!d.melhorias?.trim() && !d.comentario?.trim() && !neutroOuPior) {
+      return json({ ok: true, enviados: [], motivo: 'promotor sem feedback escrito' });
+    }
     const lista = await destinatarios(db, d);
     const enviados = await notificar(db, d, lista, { registrar: true });
     return json({ ok: true, enviados });

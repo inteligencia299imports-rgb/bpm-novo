@@ -24,6 +24,7 @@ export interface Passo {
   escala?: Escala;
   texto: string;
   itens: string[];               // ids dos itens a que a resposta se aplica
+  textoPedido?: string;          // sim_nao: o que pedir quando o cliente responde "Sim"
 }
 
 export const ESCALAS: Record<Escala, string[]> = {
@@ -108,13 +109,23 @@ export function montarPassos(itens: Item[], principal: Item): Passo[] {
         `De 0 a 10, o quanto você recomendaria a *${principal.nome_exibicao}* a um(a) amigo(a) ou colega?`,
       ]),
     },
-    {
-      chave: 'comentario', tipo: 'sim_nao', itens: todos,
-      texto: sorteia([
-        'Gostaria de deixar mais algum *comentário, elogio ou crítica*?',
-        'Quer deixar mais algum *comentário, elogio ou crítica*?',
-      ]),
-    },
+    // Perdido: a última pergunta quer entender por que o cliente não fechou com a gente.
+    itens.every((i) => i.negociacao === 'PERDIDO')
+      ? {
+        chave: 'comentario', tipo: 'sim_nao', itens: todos,
+        texto: sorteia([
+          'Pode nos contar *por que não fechou negócio com a gente*? Sua resposta nos ajuda muito a melhorar.',
+          'Gostaria de nos contar *o que pesou para você não fechar com a gente*? Isso nos ajuda muito a melhorar.',
+        ]),
+        textoPedido: 'Obrigado! Conta pra gente o que pesou na sua decisão (preço, condições, atendimento, prazo ou outro motivo). Pode escrever ou mandar um áudio.',
+      }
+      : {
+        chave: 'comentario', tipo: 'sim_nao', itens: todos,
+        texto: sorteia([
+          'Gostaria de deixar mais algum *comentário, elogio ou crítica*?',
+          'Quer deixar mais algum *comentário, elogio ou crítica*?',
+        ]),
+      },
   );
   return passos;
 }
@@ -132,12 +143,21 @@ export function textoAbertura(nome: string | null, itens: Item[], principal: Ite
   const loja = `*${principal.nome_exibicao}*`;
   const tipos = new Set(itens.map((i) => i.produto));
   const soPerdido = itens.every((i) => i.negociacao === 'PERDIDO');
+  // Perdido: o que o cliente estava negociando (avaliação = ele vendendo a moto para a loja).
+  const NEGOCIO_PERDIDO: Record<string, string> = {
+    SHOWROOM: 'na *compra da sua moto*',
+    AVALIAÇÃO: 'na *venda da sua moto*',
+    EQUIPAMENTOS: 'na *compra de equipamentos*',
+    OFICINA: 'no *serviço da sua moto*',
+  };
   let motivo: string;
-  if (soPerdido) motivo = sorteia([`Obrigado por ter considerado a ${loja}.`, `Obrigado pelo seu contato com a ${loja}.`]);
-  else if (tipos.has('moto')) motivo = `Obrigado por escolher a ${loja} na *compra da sua moto*.`;
+  if (soPerdido) {
+    const negocio = NEGOCIO_PERDIDO[principal.departamento];
+    motivo = negocio ? `Obrigado por ter considerado a ${loja} ${negocio}.` : `Obrigado por ter considerado a ${loja}.`;
+  } else if (tipos.has('moto')) motivo = `Obrigado por escolher a ${loja} na *compra da sua moto*.`;
   else if (tipos.has('equipamento')) motivo = `Obrigado por escolher a ${loja} na *compra do seu equipamento*.`;
   else if (tipos.has('servico')) motivo = `Obrigado por escolher a ${loja} para *cuidar da sua moto*.`;
-  else motivo = `Obrigado por escolher a ${loja} na *negociação da sua moto*.`;
+  else motivo = `Obrigado por escolher a ${loja} na *venda da sua moto*.`;
   motivo += ` ${iconeLoja(principal)}`;
   const pedido = sorteia([
     `Por favor, *responda a uma rápida pesquisa*. São ${qtdPerguntas} perguntas e leva cerca de 1 minuto e meio.`,
@@ -153,6 +173,13 @@ export const textoMotivo = (passo: Passo) =>
         'Poxa, sentimos muito. Pode nos contar o que motivou essa resposta? Pode escrever ou mandar um áudio.',
         'Que pena. O que aconteceu para você responder assim? Pode escrever ou mandar um áudio.',
       ]);
+
+/** Depois que o cliente conta o motivo, antes da próxima pergunta. */
+export const textoAgradeceMotivo = () => sorteia([
+  'Obrigado por compartilhar! Seu relato vai nos ajudar a melhorar. 🙏',
+  'Agradecemos por nos contar, isso nos ajuda muito a melhorar. 🙏',
+  'Obrigado pelo seu relato! Vamos levar isso para a equipe. 🙏',
+]);
 
 export const TEXTO_PEDIR_COMENTARIO =
   'Perfeito! Envie o seu feedback em uma única mensagem. Se preferir, você também pode enviar um áudio.';
@@ -176,7 +203,7 @@ export function textoFechamento(
   const ducatiOficina = itens.some((i) => i.ducati && i.departamento === 'OFICINA');
   if (nota === 10 && ducatiOficina) {
     const emailTxt = email
-      ? `Basta se inscrever com o e-mail do seu cadastro: *${email}*`
+      ? `Basta se inscrever com o e-mail do seu cadastro: ${email}`
       : 'Basta se inscrever com o seu e-mail.';
     return {
       texto: `Agradecemos por dedicar o seu tempo!\n\nQue tal deixar essa avaliação também no *portal da Ducati*? Ela faz toda a diferença para nós.\n\n🔗 ${link.portalDucati}\n\n${emailTxt}\n\n${assinatura}`,
