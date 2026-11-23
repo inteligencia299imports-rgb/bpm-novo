@@ -4,7 +4,8 @@
  * (?tab=pos_venda&atendimento=...) sem conferir o perfil.
  */
 // Desde 2026-11-22 (pedido do usuário): gerente restrito às abas abaixo (antes
-// via tudo, como o master); avaliador é perfil novo; vendedor sem Publicações.
+// via tudo, como o master); avaliador é perfil novo; vendedor vê Publicações só para
+// consulta (2026-11-23).
 // Consulta, Pós-Venda, Intermediação, Pós-Compra e Consignação: master e
 // administrativo (perfil criado em 2026-11-22, sem Relatórios).
 // A ordem das chaves define a tela inicial de quem não tem Relatórios.
@@ -20,7 +21,7 @@ export const ABA_PAPEIS: Record<string, string[]> = {
   pos_compra: ['master', 'administrativo'],
   consignacao: ['master', 'administrativo'],
   preparacao: ['master', 'gerente', 'avaliador', 'vendedor', 'administrativo'],
-  publicacoes: ['master', 'gerente', 'avaliador'],
+  publicacoes: ['master', 'gerente', 'avaliador', 'vendedor'],
   nps: ['master', 'gerente', 'avaliador', 'vendedor'],
 };
 

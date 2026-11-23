@@ -195,8 +195,8 @@ const PublicacaoDetalhe: React.FC<Props> = ({ item, onClose }) => {
   const avisoPendencias = etapa === 'publicada' ? pendenciasSite : pendencias;
   const estoque = item.estoque;
   // Com sinal ou vendida a moto já saiu do site: a tela fica só para consulta.
-  // Avaliador também só consulta (perfil criado em 2026-11-22).
-  const travada = ['sinal', 'vendido', 'retirada'].includes(estoque?.status || '') || role === 'avaliador';
+  // Avaliador e vendedor só consultam: veem e abrem as fotos, sem editar nem incluir (2026-11-22 / 2026-11-23).
+  const travada = ['sinal', 'vendido', 'retirada'].includes(estoque?.status || '') || role === 'avaliador' || role === 'vendedor';
   const marcaLabel = MARCAS_SITE.find((m) => m.value === dados?.marca)?.label || moto?.marca;
   const precoAcao = estoque?.preco_acao ? Number(estoque.preco_acao) : null;
   const etapaAtual = ETAPAS_PUBLICACAO.find((e) => e.value === etapa);
