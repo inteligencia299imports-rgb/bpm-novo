@@ -1,12 +1,13 @@
 // deno-lint-ignore-file no-explicit-any
 // Robô de NPS — webhook da uazapi (evento "messages").
-// URL: <SUPABASE_URL>/functions/v1/nps-bot-webhook?key=<NPS_BOT_SECRET>
+// URL: <SUPABASE_URL>/functions/v1/nps-bot-webhook?key=<NPS_BOT_SECRET>&inst=<id do número>
+// (um webhook por número; sem `inst`, é o número 'comunicacao').
 // Só trata mensagens de clientes que têm uma pesquisa aberta; o resto é ignorado
 // (o WhatsApp segue funcionando normalmente para o atendimento humano).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { type Entrada, processarMensagem } from '../_shared/nps-bot/conversa.ts';
 import { pausarPorQueda } from '../_shared/nps-bot/pausa.ts';
-import { whatsappConectado } from '../_shared/nps-bot/uazapi.ts';
+import { cliente, INSTANCIA_PADRAO } from '../_shared/nps-bot/uazapi.ts';
 
 const ok = () => new Response('ok', { status: 200 });
 
@@ -22,13 +23,14 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   if (!secret || url.searchParams.get('key') !== secret) return new Response('não autorizado', { status: 401 });
 
+  const inst = url.searchParams.get('inst') || INSTANCIA_PADRAO;
   const body = await req.json().catch(() => null);
   if (body?.EventType === 'connection') {
     // Mudou a conexão do WhatsApp: se caiu/foi bloqueado, pausa os envios e avisa na hora.
-    const st = await whatsappConectado();
+    const st = await cliente(inst).whatsappConectado();
     if (!st.conectado && !st.incerto) {
       const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-      await pausarPorQueda(db, st.detalhe);
+      await pausarPorQueda(db, inst, st.detalhe);
     }
     return ok();
   }
@@ -41,7 +43,7 @@ Deno.serve(async (req) => {
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const { data: conversa } = await db.from('nps_bot_conversas').select('*')
-    .eq('chave_telefone', chave).in('status', ['enviada', 'em_andamento'])
+    .eq('chave_telefone', chave).eq('instancia', inst).in('status', ['enviada', 'em_andamento'])
     .order('enviada_at', { ascending: false }).limit(1).maybeSingle();
   if (!conversa) return ok();
 

@@ -19,6 +19,9 @@ interface Resposta { valor: string; indice: number; motivo?: string }
 
 const agora = () => new Date().toISOString();
 
+/** Número (instância da uazapi) por onde a conversa anda: sempre o mesmo do início. */
+const api = (c: { instancia?: string | null }) => uaz.cliente(c.instancia);
+
 async function registrar(db: SupabaseClient, conversaId: string, direcao: 'enviada' | 'recebida', conteudo: string, extra: { message_id?: string | null; tipo?: string } = {}) {
   const { error } = await db.from('nps_bot_mensagens').insert({
     conversa_id: conversaId, direcao, conteudo, message_id: extra.message_id ?? null, tipo: extra.tipo ?? null,
@@ -71,7 +74,11 @@ async function marcarEnviados(db: SupabaseClient, itens: { id: string; tabela: s
  * Telefone inválido ou sem WhatsApp: registra "NPS NÃO ENVIADO" e tira da fila (como o n8n).
  * Se o envio falhar porque o WhatsApp do robô caiu, lança WhatsappForaDoAr e não mexe nos atendimentos.
  */
-export async function abrirConversa(db: SupabaseClient, linhas: LinhaFila[], opts: { teste: boolean; telefoneTeste?: string }) {
+export async function abrirConversa(
+  db: SupabaseClient, linhas: LinhaFila[],
+  opts: { teste: boolean; telefoneTeste?: string; instancia?: string; retomada?: boolean },
+) {
+  const wa = uaz.cliente(opts.instancia);
   // Principal = negociação mais recente (define loja, textos e link do Google).
   const ordenadas = [...linhas].sort((a, b) => b.data_negociacao.localeCompare(a.data_negociacao));
   const itens: Item[] = ordenadas.map((l) => ({
@@ -89,9 +96,9 @@ export async function abrirConversa(db: SupabaseClient, linhas: LinhaFila[], opt
   }
   let existe: boolean;
   try {
-    existe = await uaz.temWhatsapp(telefone);
+    existe = await wa.temWhatsapp(telefone);
   } catch (e) {
-    const st = await uaz.whatsappConectado();
+    const st = await wa.whatsappConectado();
     if (!st.conectado) throw new WhatsappForaDoAr(st.detalhe, st.incerto);
     throw e;
   }
@@ -103,17 +110,29 @@ export async function abrirConversa(db: SupabaseClient, linhas: LinhaFila[], opt
   const chave = telefone.slice(2, 4) + telefone.slice(-8);
   const { data: conversa, error } = await db.from('nps_bot_conversas').insert({
     telefone, chave_telefone: chave, cliente_id: p0.cliente_id, cliente_nome: p0.cliente, cliente_email: p0.cliente_email,
-    loja: principal.loja, itens, passos, status: 'enviada', teste: opts.teste,
-  }).select('id').single();
+    loja: principal.loja, itens, passos, status: 'enviada', teste: opts.teste, instancia: wa.instancia,
+  }).select('*').single();
   if (error) throw error;
+
+  // Cliente que já tinha tocado em "Iniciar!" numa pesquisa que travou: vai direto à 1ª pergunta.
+  if (opts.retomada) {
+    try {
+      await retomarConversa(db, conversa);
+    } catch (e) {
+      await db.from('nps_bot_conversas').delete().eq('id', conversa.id);
+      throw e;
+    }
+    if (!opts.teste) await marcarEnviados(db, itens, 'NPS ENVIADO', 'Pesquisa retomada pelo robô de NPS', conversa.id);
+    return conversa.id as string;
+  }
 
   const texto = textoAbertura(p0.cliente, itens, principal, passos.length);
   try {
-    const r = await uaz.enviarBotoes(telefone, texto, [{ texto: 'Iniciar!', id: 'iniciar' }], uaz.digitando(800, 1500));
+    const r = await wa.enviarBotoes(telefone, texto, [{ texto: 'Iniciar!', id: 'iniciar' }], uaz.digitando(800, 1500));
     await db.from('nps_bot_conversas').update({ chatid: r.chatid }).eq('id', conversa.id);
     await registrar(db, conversa.id, 'enviada', texto, { message_id: r.messageId, tipo: 'abertura' });
   } catch (e) {
-    const st = await uaz.whatsappConectado();
+    const st = await wa.whatsappConectado();
     if (!st.conectado) {
       // Caiu: apaga a conversa e deixa os atendimentos na fila para quando voltar.
       await db.from('nps_bot_conversas').delete().eq('id', conversa.id);
@@ -126,6 +145,28 @@ export async function abrirConversa(db: SupabaseClient, linhas: LinhaFila[], opt
 
   if (!opts.teste) await marcarEnviados(db, itens, 'NPS ENVIADO', undefined, conversa.id);
   return conversa.id as string;
+}
+
+/**
+ * Retoma uma pesquisa em que o cliente já tocou em "Iniciar!" (ou já respondeu alguma pergunta)
+ * mas o robô não recebeu, porque o WhatsApp estava fora. Pede desculpas e segue de onde parou:
+ * sem botaoId, manda a 1ª pergunta; com botaoId (resposta que se perdeu), aplica a resposta e segue.
+ */
+export async function retomarConversa(db: SupabaseClient, c: any, botaoId?: string | null) {
+  const nome = String(c.cliente_nome ?? '').trim().split(/\s+/)[0] ?? '';
+  const primeiro = nome ? nome[0].toUpperCase() + nome.slice(1).toLowerCase() : '';
+  const desculpa = `Olá${primeiro ? `, ${primeiro}` : ''}! Desculpe a demora: tivemos uma instabilidade no nosso WhatsApp e não recebemos a sua resposta. Vamos continuar de onde paramos? 🙏`;
+  const base = { ...c, status: 'em_andamento', passo_atual: 0, aguardando: 'opcao', respostas: c.respostas ?? {}, erro: null };
+  await db.from('nps_bot_conversas').update({
+    status: 'em_andamento', passo_atual: 0, aguardando: 'opcao', erro: null, ultima_interacao_at: agora(),
+  }).eq('id', c.id);
+  if (!botaoId) {
+    await enviarPasso(db, base, 0, desculpa);
+    return;
+  }
+  const t = await api(c).enviarTexto(c.telefone, desculpa);
+  await registrar(db, c.id, 'enviada', desculpa, { message_id: t.messageId });
+  await processarMensagem(db, base, { messageId: null, botaoId, texto: null, audio: false, tipo: 'retomada' });
 }
 
 // ------------------------------------------------------------------
@@ -141,8 +182,8 @@ async function enviarPasso(db: SupabaseClient, c: any, indice: number, prefixo?:
   const passo: Passo = c.passos[indice];
   const texto = prefixo ? `${prefixo}\n\n${passo.texto}` : passo.texto;
   const r = passo.tipo === 'nps'
-    ? await uaz.enviarLista(c.telefone, texto, 'Selecione uma das opções', 'Nota', opcoesDoPasso(passo, indice))
-    : await uaz.enviarBotoes(c.telefone, texto, opcoesDoPasso(passo, indice));
+    ? await api(c).enviarLista(c.telefone, texto, 'Selecione uma das opções', 'Nota', opcoesDoPasso(passo, indice))
+    : await api(c).enviarBotoes(c.telefone, texto, opcoesDoPasso(passo, indice));
   await registrar(db, c.id, 'enviada', texto, { message_id: r.messageId, tipo: passo.chave });
 }
 
@@ -173,11 +214,11 @@ async function escolha(passo: Passo, indicePasso: number, e: Entrada): Promise<n
   return passo.tipo === 'nps' ? Number(labels[i]) : i;
 }
 
-async function textoDaEntrada(e: Entrada, db?: SupabaseClient, conversaId?: string): Promise<string | null> {
+async function textoDaEntrada(e: Entrada, db?: SupabaseClient, conversaId?: string, instancia?: string | null): Promise<string | null> {
   if (e.texto?.trim()) return e.texto.trim();
   if (e.audio && e.messageId) {
     try {
-      const t = await uaz.transcreverAudio(e.messageId);
+      const t = await uaz.cliente(instancia).transcreverAudio(e.messageId);
       // Guarda a transcrição no registro da mensagem (auditoria).
       if (t && db) await db.from('nps_bot_mensagens').update({ conteudo: `[áudio] ${t}` }).eq('message_id', e.messageId).eq('direcao', 'recebida');
       return t;
@@ -218,7 +259,7 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
     await db.from('nps_bot_optout').upsert({ chave_telefone: c.chave_telefone, telefone: c.telefone });
     await db.from('nps_bot_conversas').update({ status: 'optout', ultima_interacao_at: agora() }).eq('id', c.id);
     const t = 'Tudo bem, não enviaremos mais pesquisas para este número. Obrigado!';
-    const r = await uaz.enviarTexto(c.telefone, t);
+    const r = await api(c).enviarTexto(c.telefone, t);
     await registrar(db, c.id, 'enviada', t, { message_id: r.messageId });
     return;
   }
@@ -236,12 +277,12 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
   const respostas: Record<string, Resposta | any> = { ...(c.respostas ?? {}) };
 
   if (c.aguardando === 'motivo' || c.aguardando === 'comentario') {
-    const proprio = await textoDaEntrada(e, db, c.id);
+    const proprio = await textoDaEntrada(e, db, c.id, c.instancia);
     if (!proprio) {
       const t = e.audio
         ? 'Não consegui ouvir o seu áudio 😕 Pode escrever em uma mensagem, por favor?'
         : 'Pode escrever em uma mensagem, por favor?';
-      const r = await uaz.enviarTexto(c.telefone, t);
+      const r = await api(c).enviarTexto(c.telefone, t);
       await registrar(db, c.id, 'enviada', t, { message_id: r.messageId });
       return;
     }
@@ -268,7 +309,7 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
   if (valor === null) {
     // No "quer deixar comentário?", um texto longo já é o comentário.
     if (passo.tipo === 'sim_nao') {
-      const texto = await textoDaEntrada(e, db, c.id);
+      const texto = await textoDaEntrada(e, db, c.id, c.instancia);
       if (texto && texto.split(/\s+/).length >= 3) {
         respostas.comentario = { valor: 'Sim', indice: 1, texto };
         await finalizar(db, { ...c, respostas });
@@ -285,7 +326,7 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
     if (valor === 1) {
       await db.from('nps_bot_conversas').update({ respostas, aguardando: 'comentario', ultima_interacao_at: agora() }).eq('id', c.id);
       const pedido = passo.textoPedido ?? TEXTO_PEDIR_COMENTARIO;
-      const r = await uaz.enviarTexto(c.telefone, pedido);
+      const r = await api(c).enviarTexto(c.telefone, pedido);
       await registrar(db, c.id, 'enviada', pedido, { message_id: r.messageId });
     } else {
       await finalizar(db, { ...c, respostas });
@@ -300,7 +341,7 @@ export async function processarMensagem(db: SupabaseClient, c: any, e: Entrada) 
   if (abaixoDoNeutro(passo, valor) && !jaPerguntouMotivo) {
     await db.from('nps_bot_conversas').update({ respostas, aguardando: 'motivo', ultima_interacao_at: agora() }).eq('id', c.id);
     const t = textoMotivo(passo);
-    const r = await uaz.enviarTexto(c.telefone, t);
+    const r = await api(c).enviarTexto(c.telefone, t);
     await registrar(db, c.id, 'enviada', t, { message_id: r.messageId });
     return;
   }
@@ -364,7 +405,7 @@ export async function finalizar(db: SupabaseClient, c: any, opts: { silencioso?:
       google: principal.link_google ?? null, portalDucati: cfg?.link_portal_ducati ?? '', instagram: loja?.instagram ?? null,
     }, c.cliente_email);
     try {
-      const r = await uaz.enviarTexto(c.telefone, f.texto, { linkPreview: f.linkPreview });
+      const r = await api(c).enviarTexto(c.telefone, f.texto, { linkPreview: f.linkPreview });
       await registrar(db, c.id, 'enviada', f.texto, { message_id: r.messageId, tipo: 'fechamento' });
     } catch (e) { console.error('fechamento', e); }
   }

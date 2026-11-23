@@ -161,7 +161,7 @@ export async function notificar(db: SupabaseClient, d: DadosResposta, lista: { n
     }
     try {
       if (i > 0) await espera(3000 + Math.random() * 4000);
-      await uaz.enviarTexto(p.telefone, montarMensagem(p.nome, d));
+      await uaz.enviarAviso(p.telefone, montarMensagem(p.nome, d));
       enviados.push(p.nome);
     } catch (e) {
       console.error('notificar', p.telefone, e);
