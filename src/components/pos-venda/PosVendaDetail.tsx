@@ -220,9 +220,9 @@ const PosVendaDetail: React.FC<Props> = ({ item, onClose, statusColumns, statusF
     const modo = aprovacaoPopup.modo;
     const motivo = aprovacaoPopup.motivo.trim().toUpperCase();
     if ((modo === 'recusar' || modo === 'desaprovar') && !motivo) { toast.error(`Informe o motivo da ${modo === 'recusar' ? 'recusa' : 'desaprovação'}`); return; }
-    // Desaprovar: masters e gerentes; aprovar/recusar: só master (pedido do usuário, 2026-11-22).
+    // Aprovar, recusar e desaprovar: masters e gerentes (gerente aprova desde 2026-11-23).
     if (modo === 'desaprovar' ? (role !== 'master' && role !== 'gerente') : !podeAprovarVenda(role)) {
-      toast.error(modo === 'desaprovar' ? 'Apenas masters e gerentes podem desaprovar' : 'Apenas um master pode aprovar/recusar');
+      toast.error(modo === 'desaprovar' ? 'Apenas masters e gerentes podem desaprovar' : 'Apenas masters e gerentes podem aprovar/recusar');
       return;
     }
     // Desaprovar só trava na NF-e de PRODUÇÃO (homologação pode ser desfeita).
