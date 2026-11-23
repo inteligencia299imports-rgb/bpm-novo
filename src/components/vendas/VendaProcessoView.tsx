@@ -189,7 +189,7 @@ const VendaProcessoView: React.FC<Props> = ({
         item={item}
         onClose={voltarParaNegociacao}
         abrirProcessoAoAbrir={etapaAberta !== BASE && ETAPAS_PROCESSO.has(etapaAberta) && pendente(etapaAberta)}
-        botoesEtapa={etapaAberta !== BASE && ETAPAS_PROCESSO.has(etapaAberta) ? ['processo'] : []}
+        botoesEtapa={etapaAberta !== BASE && ETAPAS_PROCESSO.has(etapaAberta) ? ['processo'] : etapaAberta === 'aprovacao' ? ['proposta'] : []}
         rolagemNaPagina
         onNavigateToPosCompra={onNavigateToPosCompra}
         onStatusChanged={() => { recarregarEtapas(); }}
