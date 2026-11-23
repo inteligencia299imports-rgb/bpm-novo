@@ -22,10 +22,16 @@ export const matchesLoja = (loja: string | null | undefined, filter: LojaFilterV
 
 export const tipoDefault = (loja: string | null | undefined) => (isDucati(loja) ? 'ducati' : 'propria');
 
-/** Aceita vários tipos separados por vírgula (filtro com seleção múltipla). */
+/**
+ * Aceita vários tipos separados por vírgula (filtro com seleção múltipla).
+ * Test-Ride vendida conta como seminova própria (pedido do usuário, 2026-11-23):
+ * entra no filtro "Própria" e continua aparecendo sozinha no filtro "Test-Ride".
+ */
 export const matchesTipo = (tipo: string, filter: TipoFilterValue) => {
   if (!filter || filter === 'todos') return true;
-  return filter.split(',').includes(tipo);
+  const tipos = filter.split(',');
+  if (tipo === 'test-ride' && tipos.includes('propria')) return true;
+  return tipos.includes(tipo);
 };
 
 /**
