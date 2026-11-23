@@ -1477,8 +1477,8 @@ const ContratoDialog: React.FC<Props> = ({
   const isDucati = atendimento.loja?.toLowerCase().startsWith('ducati');
   const buildErrosGeracao = (variant: 'sinal' | 'venda'): string[] => {
     const errors: string[] = [];
-    // Specs fiscais da 0km só valem para a NF-e: exigidas na Proposta de VENDA; o sinal não exige.
-    if (variant === 'venda' && veicProdBloqueado) errors.push(`Specs da moto 0km pendentes (${veicProdFaltando.join(', ')})`);
+    // Specs fiscais da 0km só valem para a NF-e: a proposta (sinal ou venda) pode ser gerada sem
+    // elas; só a NF-e de venda fica bloqueada (pedido do usuário, 2026-11-23).
     if (!empresaId) errors.push('Empresa vendedora');
     if (!cpfCnpj) errors.push('CPF/CNPJ do cliente');
     // Cadastro completo do cliente (e-mails, telefone comercial, endereço, dados
@@ -1591,7 +1591,7 @@ const ContratoDialog: React.FC<Props> = ({
       {veicProdBloqueado && !ehNfe && (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive flex items-center gap-1.5">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-          Emissão bloqueada: faltam dados fiscais do veículo ({veicProdFaltando.join(', ')}) — sem eles a NF-e sai sem o grupo estruturado do veículo e o DETRAN rejeita a transferência. Preencha em Estoque → menu da moto → "Dados Fiscais (NF-e)".
+          Moto sem os dados fiscais de entrada: a proposta pode ser gerada, mas a NF-e de venda só sai depois que eles forem incluídos. Fale com o responsável pelo Administrativo.
         </div>
       )}
 
