@@ -1530,7 +1530,7 @@ const AvaliacaoForm: React.FC<Props> = ({ avaliacaoId, onClose, context = 'avali
                   <Separator className="mt-auto" />
                   <DocumentUpload
                     label={docIdentLabel}
-                    className="w-1/4"
+                    className="w-fit min-w-[25%] self-start"
                     currentUrl={cnhUrl}
                     bucketPath={`docs/${at.cliente_id}/${docIdentificacaoBucket(clientePj)}`}
                     onUploaded={handleCnhUploaded}
